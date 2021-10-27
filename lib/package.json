@@ -1,0 +1,48 @@
+{
+  "name": "@opentdf/client",
+  "version": "0.0.1",
+  "description": "Access and generate tdf protected content",
+  "homepage": "https://github.com/opentdf/webclient",
+  "bugs": {
+    "url": "https://github.com/opentdf/webclient/issues"
+  },
+  "files": [
+    "dist/esm/src/**",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/opentdf/webclient.git",
+    "directory": "lib"
+  },
+  "license": "MIT",
+  "author": "Virtru",
+  "type": "module",
+  "exports": {
+    "./*.js": {
+      "import": "./dist/esm/src/*.js",
+      "types": "./dist/esm/src/*.d.ts"
+    }
+  },
+  "scripts": {
+    "test": "npm run build && web-test-runner \"dist/esm/test/**/*.spec.js\" --node-resolve",
+    "build": "tsc -d",
+    "build:watch": "tsc --watch",
+    "prepack": "npm run build",
+    "test:watch": "web-test-runner \"dist/esm/test/**/*.spec.js\" --node-resolve --watch",
+    "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))",
+    "format": "prettier --write \"{src,test}/**/*.ts\"",
+    "lint": "prettier --check \"{src,test}/**/*.ts\""
+  },
+  "dependencies": {
+    "jsonwebtoken": "~8.5.1"
+  },
+  "devDependencies": {
+    "@esm-bundle/chai": "4.3.4-fix.0",
+    "@types/chai": "^4.2.22",
+    "@types/mocha": "9.0.0",
+    "@web/test-runner": "0.13.18",
+    "prettier": "^2.2.1",
+    "typescript": "^4.4.4"
+  }
+}

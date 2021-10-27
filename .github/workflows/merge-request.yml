@@ -1,0 +1,61 @@
+name: Merge Request Testing
+
+on: pull_request
+
+jobs:
+  lib:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./lib
+    steps:
+      - uses: actions/setup-node@v2
+        with:
+          node-version: "16"
+      - uses: actions/checkout@v2
+      - name: Install dependencies
+        run: npm install
+      - name: Run tests
+        run: npm test
+      - name: Run lint
+        run: npm run lint
+
+  cli:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./cli
+    steps:
+      - uses: actions/setup-node@v2
+        with:
+          node-version: "16"
+      - uses: actions/checkout@v2
+      - name: Install opentdf-client
+        run: make opentdf-client-$(cd lib && node -p "require('./package.json').version").tgz
+        working-directory: ./
+      - name: Install dependencies
+        run: npm install
+      - name: Run tests
+        run: npm test
+      - name: Run lint
+        run: npm run lint
+
+  sample-web-app:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./sample-web-app
+    steps:
+      - uses: actions/setup-node@v2
+        with:
+          node-version: "16"
+      - uses: actions/checkout@v2
+      - name: Install opentdf-client
+        run: make opentdf-client-$(cd lib && node -p "require('./package.json').version").tgz
+        working-directory: ./
+      - name: Install dependencies
+        run: npm install
+      - name: Run tests
+        run: npm test
+      - name: Run lint
+        run: npm run lint

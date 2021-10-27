@@ -1,0 +1,26 @@
+{
+  "include": [
+    "src","test"
+  ],  
+  "compilerOptions": {
+    "target": "es2017",
+    "module": "ESNext",
+    "sourceMap": true,
+    "outDir": "dist/esm",
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+
+    /* Additional Checks */
+    "noUnusedLocals": true,
+    "noImplicitReturns": true,
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true
+  }
+}
