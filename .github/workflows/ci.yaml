@@ -21,3 +21,8 @@ jobs:
         with:
           name: coverage
           path: lib/coverage/
+      - name: Setup BATS
+        uses: mig4/setup-bats@v1
+        with:
+          bats-version: 1.2.1
+      - run: bats cli/bin/opentdf.bats
