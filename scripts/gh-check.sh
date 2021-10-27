@@ -20,5 +20,5 @@ curl \
   -X POST \
   -H "Accept: application/vnd.github.v3+json" \
   -H "authorization: Bearer ${GH_TOKEN}" \
-  "${GITHUB_API_URL}/repos/opentdf/webclient/check-runs" \
+  "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/check-runs" \
   -d "${d}"
