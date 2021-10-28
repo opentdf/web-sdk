@@ -3,7 +3,7 @@
   "compilerOptions": {
     "module": "esnext",
     "target": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "nodenext",
     "jsx": "preserve",
     "baseUrl": "./",
     /* paths - import rewriting/resolving */
