@@ -10,20 +10,20 @@ clean:
 start: all
 	(cd sample-web-app && npm run start)
 
-ci:
-	(cd lib && npm ci && npm pack --pack-destination ../)
-	for x in cli sample-web-app; do (cd $$x && npm ci || exit 1); done
+ci: opentdf-client-$(version).tgz
+	for x in cli sample-web-app; do (cd $$x && npm ci && npm i ../opentdf-client-$(version).tgz) || exit 1; done
 
 i:
-	for x in $(pkgs); do (cd $$x && npm i --include=dev || exit 1); done
+	(cd lib && npm i && npm pack --pack-destination ../)
+	for x in cli sample-web-app; do (cd $$x && npm i ../opentdf-client-$(version).tgz) || exit 1; done
 
 all: ci opentdf-client-$(version).tgz opentdf-cli-$(version).tgz opentdf-sample-web-app-$(version).tgz
 
 opentdf-cli-$(version).tgz: opentdf-client-$(version).tgz $(shell find cli -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
-	(cd cli && npm i ../opentdf-client-$(version).tgz && npm pack --pack-destination ../)
+	(cd cli && npm ci ../opentdf-client-$(version).tgz && npm pack --pack-destination ../)
 
 opentdf-sample-web-app-$(version).tgz: opentdf-client-$(version).tgz $(shell find sample-web-app -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
-	(cd sample-web-app && npm i ../opentdf-client-$(version).tgz && npm pack --pack-destination ../)
+	(cd sample-web-app && npm ci ../opentdf-client-$(version).tgz && npm pack --pack-destination ../)
 
 opentdf-client-$(version).tgz: $(shell find lib -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
 	(cd lib && npm ci --including=dev && npm pack --pack-destination ../)
