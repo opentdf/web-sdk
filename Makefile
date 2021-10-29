@@ -11,11 +11,11 @@ start: all
 	(cd sample-web-app && npm run start)
 
 ci: opentdf-client-$(version).tgz
-	for x in cli sample-web-app; do (cd $$x && npm ci && npm i ../opentdf-client-$(version).tgz) || exit 1; done
+	for x in cli sample-web-app; do (cd $$x && npm uninstall @opentdf/client && npm ci && npm i ../opentdf-client-$(version).tgz) || exit 1; done
 
 i:
 	(cd lib && npm i && npm pack --pack-destination ../)
-	for x in cli sample-web-app; do (cd $$x && npm i ../opentdf-client-$(version).tgz) || exit 1; done
+	for x in cli sample-web-app; do (cd $$x && npm uninstall @opentdf/client && npm i && npm i ../opentdf-client-$(version).tgz) || exit 1; done
 
 all: ci opentdf-client-$(version).tgz opentdf-cli-$(version).tgz opentdf-sample-web-app-$(version).tgz
 
