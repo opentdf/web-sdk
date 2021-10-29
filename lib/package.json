@@ -7,6 +7,8 @@
     "url": "https://github.com/opentdf/webclient/issues"
   },
   "files": [
+    "dist/*/package.json",
+    "dist/cjs/src/**",
     "dist/esm/src/**",
     "README.md"
   ],
@@ -19,15 +21,26 @@
   "author": "Virtru",
   "type": "module",
   "exports": {
+    ".": {
+      "import": "./dist/esm/src/index.js",
+      "require": "./dist/cjs/src/index.js",
+      "types": "./dist/esm/src/index.d.ts"
+    },
     "./*.js": {
       "import": "./dist/esm/src/*.js",
+      "require": "./dist/cjs/src/*.js",
       "types": "./dist/esm/src/*.d.ts"
     }
   },
+  "main": "./dist/cjs/src/index.js",
+  "module": "./dist/esm/src/index.js",
+  "types": "./dist/esm/src/index.d.ts",
   "scripts": {
     "test": "npm run build && web-test-runner \"dist/esm/test/**/*.spec.js\" --node-resolve",
-    "build": "tsc -d",
-    "build:watch": "tsc --watch",
+    "build": "npm run build:esm && npm run build:cjs",
+    "build:cjs": "tsc -p tsconfig-cjs.json && ../scripts/add-module-types.sh lib cjs",
+    "build:esm": "tsc -p tsconfig-esm.json && ../scripts/add-module-types.sh lib esm",
+    "build:watch": "npm run build:esm && ../scripts/add-module-types lib esm && tsc --module esnext --outDir dist/esm --watch",
     "prepack": "npm run build",
     "test:watch": "web-test-runner \"dist/esm/test/**/*.spec.js\" --node-resolve --watch",
     "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))",

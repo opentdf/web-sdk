@@ -5,9 +5,7 @@
   "compilerOptions": {
     "target": "es2017",
     "composite": true,
-    "module": "ESNext",
     "sourceMap": true,
-    "outDir": "dist/esm",
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
