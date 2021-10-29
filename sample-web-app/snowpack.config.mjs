@@ -24,12 +24,13 @@ export default {
     // "bundle": true,
   },
   packageOptions: {
-    /* ... */
+    types: true,
   },
   devOptions: {
     /* ... */
   },
   buildOptions: {
-    /* ... */
+    out: "dist",
+    sourcemap: true,
   },
 };
