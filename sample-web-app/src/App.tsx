@@ -26,7 +26,7 @@ function App({}: AppProps) {
 
   const handleSubmission = async () => {
     if (!selectedFile) {
-      return;
+      return false;
     }
     setSegments('[THINKING]');
     const chunker = await fromBrowserFile(selectedFile);
@@ -34,6 +34,7 @@ function App({}: AppProps) {
     const end = await chunker(-10);
     console.log('Success:', start, end);
     setSegments(`start: ${toHex(start)}; end: ${toHex(end)}`);
+    return false;
   };
 
   // Create the count state.
@@ -53,7 +54,7 @@ function App({}: AppProps) {
         </p>
       </header>
       <p>Select a file and submit to slice it.</p>
-      <form>
+      <div>
         <label htmlFor="file-selector">Select file:</label>
         <input type="file" name="file" id="file-selector" onChange={changeHandler} />
         {selectedFile ? (
@@ -70,10 +71,12 @@ function App({}: AppProps) {
           <h3>{segments}</h3>
         ) : (
           <div>
-            <button onClick={handleSubmission}>Process</button>
+            <button disabled={!isFilePicked} onClick={handleSubmission}>
+              Process
+            </button>
           </div>
         )}
-      </form>
+      </div>
     </div>
   );
 }
