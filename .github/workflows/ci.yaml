@@ -5,7 +5,6 @@ on: [push]
 jobs:
   test:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v2
       - run: scripts/check-version-is.sh
@@ -15,14 +14,42 @@ jobs:
           cache: 'npm'
           cache-dependency-path: '**/package-lock.json'
       - run: make all
+      - uses: actions/upload-artifact@v2
+        with:
+          name: opentdf-client-lib
+          path: opentdf-client-*.tgz
+          retention-days: 1
       - run: make test
       - run: make lint
       - uses: actions/upload-artifact@v2
         with:
           name: coverage
           path: lib/coverage/
-      - name: Setup BATS
-        uses: mig4/setup-bats@v1
+          retention-days: 1
+      - uses: mig4/setup-bats@v1
         with:
           bats-version: 1.2.1
       - run: bats cli/bin/opentdf.bats
+
+  cjs_test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./cli-cjs
+    needs: test
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '12.x'
+      - uses: actions/download-artifact@v2
+        with:
+          name: opentdf-client-lib
+      - run: npm i ../opentdf-client-*.tgz
+      - run: npm ci
+      - run: npm test
+      - uses: mig4/setup-bats@v1
+        with:
+          bats-version: 1.2.1
+      - run: bats bin/opentdf.bats
+
