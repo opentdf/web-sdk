@@ -14,7 +14,8 @@
     "test": "web-test-runner \"src/**/*.test.tsx\"",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"",
     "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; ISC; MIT'",
-    "lint": "prettier --check \"src/**/*.{js,jsx,ts,tsx}\""
+    "lint": "eslint \"src/**/*.{js,jsx,ts,tsx}\"",
+    "lint:fix": "eslint --fix \"src/**/*.{js,jsx,ts,tsx}\""
   },
   "dependencies": {
     "@opentdf/client": "file:../opentdf-client-0.0.1.tgz",
@@ -33,8 +34,13 @@
     "@types/react": "^17.0.33",
     "@types/react-dom": "^17.0.3",
     "@types/snowpack-env": "^2.3.3",
-    "@web/test-runner": "^0.13.3",
+    "@typescript-eslint/eslint-plugin": "^5.2.0",
+    "@typescript-eslint/parser": "^5.2.0",
+    "@web/test-runner": "0.13.18",
     "chai": "^4.3.4",
+    "eslint": "^8.1.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-prettier": "^4.0.0",
     "license-checker": "^25.0.1",
     "prettier": "^2.2.1",
     "snowpack": "^3.3.7",

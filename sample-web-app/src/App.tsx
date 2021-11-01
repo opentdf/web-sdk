@@ -4,13 +4,11 @@ import './App.css';
 import { sum } from '@opentdf/client/sum.js';
 import { fromBrowserFile } from '@opentdf/client/chunkers.js';
 
-interface AppProps {}
-
 function toHex(a: Uint8Array) {
   return [...a].map((x) => x.toString(16).padStart(2, '0')).join('');
 }
 
-function App({}: AppProps) {
+function App() {
   const [selectedFile, setSelectedFile] = useState<File | undefined>();
   const [isFilePicked, setIsFilePicked] = useState(false);
   const [segments, setSegments] = useState('');

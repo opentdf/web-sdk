@@ -7,7 +7,7 @@ import App from './App.jsx';
 describe('<App>', () => {
   it('renders', () => {
     render(<App />);
-    const element = screen.getByText(/sum\(1\,2\)\s*=\s*3/i);
+    const element = screen.getByText(/sum\(1,2\)\s*=\s*3/i);
     expect(document.body.contains(element)).to.be.ok;
   });
 
