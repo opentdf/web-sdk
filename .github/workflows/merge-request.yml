@@ -17,6 +17,7 @@ jobs:
           cache-dependency-path: './lib/package-lock.json'
       - run: npm ci
       - run: npm test
+      - run: npm audit
       - run: npm run license-check
       - run: npm run lint
       - run: npm pack
@@ -45,6 +46,7 @@ jobs:
           name: opentdf-client-lib
       - run: npm uninstall @opentdf/client && npm ci && npm i ../opentdf-client-*.tgz
       - run: npm test
+      - run: npm audit
       - run: npm run license-check
       - run: npm run lint
       - run: npm pack
@@ -69,6 +71,7 @@ jobs:
       - run: npm uninstall @opentdf/client && npm ci && npm i ../opentdf-client-*.tgz
       - run: npm install
       - run: npm test
+      - run: npm audit
       - run: npm run license-check
       - run: npm run lint
       - run: npm pack
