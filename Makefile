@@ -2,13 +2,13 @@
 version=0.0.1
 pkgs=lib cli sample-web-app
 
-.PHONY: all lint test ci i start format clean
-
-clean:
-	rm *.tgz
+.PHONY: all license-check lint test ci i start format clean
 
 start: all
 	(cd sample-web-app && npm run start)
+
+clean:
+	rm *.tgz
 
 ci: opentdf-client-$(version).tgz
 	for x in cli sample-web-app; do (cd $$x && npm uninstall @opentdf/client && npm ci && npm i ../opentdf-client-$(version).tgz) || exit 1; done
@@ -28,12 +28,6 @@ opentdf-sample-web-app-$(version).tgz: opentdf-client-$(version).tgz $(shell fin
 opentdf-client-$(version).tgz: $(shell find lib -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
 	(cd lib && npm ci --including=dev && npm pack --pack-destination ../)
 
-test: ci
-	for x in $(pkgs); do (cd $$x && npm test) || exit 1; done
-
-lint: ci
-	for x in $(pkgs); do (cd $$x && npm run lint) || exit 1; done
-
-format: ci
-	for x in $(pkgs); do (cd $$x && npm run format); done
+format license-check lint test: ci
+	for x in $(pkgs); do (cd $$x && npm run $@) || exit 1; done
 	
