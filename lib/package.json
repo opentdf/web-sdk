@@ -32,8 +32,8 @@
     "test:watch": "web-test-runner \"dist/esm/test/**/*.spec.js\" --node-resolve --watch",
     "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))",
     "format": "prettier --write \"{src,test}/**/*.ts\"",
-    "lint": "prettier --check \"{src,test}/**/*.ts\"",
-    "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; ISC; MIT'"
+    "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; ISC; MIT'",
+    "lint": "prettier --check \"{src,test}/**/*.ts\""
   },
   "dependencies": {
     "jsonwebtoken": "~8.5.1"

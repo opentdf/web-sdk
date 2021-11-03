@@ -13,8 +13,8 @@
     "build": "snowpack build",
     "test": "web-test-runner \"src/**/*.test.tsx\"",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"",
-    "lint": "prettier --check \"src/**/*.{js,jsx,ts,tsx}\"",
-    "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; ISC; MIT'"
+    "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; ISC; MIT'",
+    "lint": "prettier --check \"src/**/*.{js,jsx,ts,tsx}\""
   },
   "dependencies": {
     "@opentdf/client": "file:../opentdf-client-0.0.1.tgz",
