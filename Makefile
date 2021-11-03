@@ -2,7 +2,7 @@
 version=0.0.1
 pkgs=lib cli sample-web-app
 
-.PHONY: all license-check lint test ci i start format clean
+.PHONY: all audit license-check lint test ci i start format clean
 
 start: all
 	(cd sample-web-app && npm run start)
@@ -27,6 +27,9 @@ opentdf-sample-web-app-$(version).tgz: opentdf-client-$(version).tgz $(shell fin
 
 opentdf-client-$(version).tgz: $(shell find lib -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
 	(cd lib && npm ci --including=dev && npm pack --pack-destination ../)
+
+audit:
+	for x in $(pkgs); do (cd $$x && npm audit) || exit 1; done
 
 format license-check lint test: ci
 	for x in $(pkgs); do (cd $$x && npm run $@) || exit 1; done
