@@ -3,23 +3,24 @@
     "src","test"
   ],  
   "compilerOptions": {
-    "target": "es2017",
-    "composite": true,
-    "sourceMap": true,
-    "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "strictFunctionTypes": true,
-    "strictBindCallApply": true,
-    "strictPropertyInitialization": true,
-    "noImplicitThis": true,
+    "allowJs": true,
     "alwaysStrict": true,
-
-    /* Additional Checks */
-    "noUnusedLocals": true,
-    "noImplicitReturns": true,
-    "moduleResolution": "node",
+    "baseUrl": "./src",
+    "composite": true,
+    "declaration": true,
+    "declarationDir": "./dist/dev/types",
+    "declarationMap": true,
     "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "inlineSourceMap": true,
+    "moduleResolution": "node",
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noUnusedLocals": true,
+    "outDir": "./dist/dev/impl",
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "es2017"
   }
 }
