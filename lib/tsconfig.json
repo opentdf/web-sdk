@@ -1,7 +1,4 @@
 {
-  "include": [
-    "src","test"
-  ],  
   "compilerOptions": {
     "allowJs": true,
     "alwaysStrict": true,
@@ -13,6 +10,8 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "inlineSourceMap": true,
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "module": "esnext",
     "moduleResolution": "node",
     "noImplicitAny": true,
     "noImplicitReturns": true,
@@ -20,7 +19,12 @@
     "noUnusedLocals": true,
     "outDir": "./dist/dev/impl",
     "skipLibCheck": true,
-    "strict": true,
-    "target": "es2017"
-  }
+    "strict": false,
+    "strictBindCallApply": true,
+    "strictFunctionTypes": true,
+    "strictNullChecks": true,
+    "strictPropertyInitialization": true,
+    "target": "esnext"
+  },
+  "include": ["src", "test"]
 }
