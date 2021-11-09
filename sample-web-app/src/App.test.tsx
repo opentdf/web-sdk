@@ -7,7 +7,7 @@ import App from './App.jsx';
 describe('<App>', () => {
   it('renders', () => {
     render(<App />);
-    const element = screen.getByText(/sum\(1,2\)\s*=\s*3/i);
+    const element = screen.getByText(/object Object/);
     expect(document.body.contains(element)).to.be.ok;
   });
 
@@ -28,7 +28,7 @@ describe('<App>', () => {
     await screen.findByText(/hello.txt/i);
     const processButton = screen.getByText(/process/i) as HTMLInputElement;
     userEvent.click(processButton);
-    const el = await screen.findByText(/start/i);
-    expect(el.textContent).to.match(/start[:]\s*68/i);
+    const el = await screen.findByText(/found/i);
+    expect(el.textContent).to.match(/found[:]\s*68/i);
   });
 });

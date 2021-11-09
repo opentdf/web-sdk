@@ -44,8 +44,8 @@
     "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; ISC; MIT'",
     "lint": "eslint ./{src,test}/**/*.ts",
     "prepack": "npm run build",
-    "test": "npm run build && web-test-runner \"dist/esm/test/**/*.spec.js\" --node-resolve",
-    "test:watch": "web-test-runner \"dist/esm/test/**/*.spec.js\" --node-resolve --watch",
+    "test": "npm run build && web-test-runner",
+    "test:watch": "web-test-runner --watch",
     "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))"
   },
   "dependencies": {

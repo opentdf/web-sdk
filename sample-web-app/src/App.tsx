@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 
-import { sum } from '@opentdf/client/sum.js';
-import { fromBrowserFile } from '@opentdf/client/chunkers.js';
+import { NanoTDFClient } from '@opentdf/client';
 
 function toHex(a: Uint8Array) {
   return [...a].map((x) => x.toString(16).padStart(2, '0')).join('');
@@ -27,11 +26,10 @@ function App() {
       return false;
     }
     setSegments('[THINKING]');
-    const chunker = await fromBrowserFile(selectedFile);
-    const start = await chunker(0, 10);
-    const end = await chunker(-10);
-    console.log('Success:', start, end);
-    setSegments(`start: ${toHex(start)}; end: ${toHex(end)}`);
+    const arrayBuffer = await selectedFile.arrayBuffer();
+    const buf = new Uint8Array(arrayBuffer);
+    console.log('Success:', buf);
+    setSegments(`found: ${toHex(buf)}`);
     return false;
   };
 
@@ -46,7 +44,7 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <p>sum(1,2) = {sum(1, 2)}</p>
+        <p>client {`${new NanoTDFClient({})}`}</p>
         <p>
           Page has been open for <code>{count}</code> seconds.
         </p>

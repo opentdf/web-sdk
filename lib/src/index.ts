@@ -11,7 +11,7 @@ import { TypedArray, createAttribute, Policy } from './tdf/index.js';
  *  const KAS_URL = 'http://localhost:65432/kas';
  *
  *  const ciphertext = '...';
- *  const client = new NanoTDFClient.default(
+ *  const client = new NanoTDFClient(
  *    {
  *      clientId: 'tdf-client',
  *      clientSecret: '123-456',
@@ -28,7 +28,7 @@ import { TypedArray, createAttribute, Policy } from './tdf/index.js';
  *      console.error('Some error occurred', err);
  *    })
  */
-export default class NanoTDFClient extends Client {
+export class NanoTDFClient extends Client {
   /**
    * Decrypt ciphertext
    *
