@@ -24,17 +24,17 @@
     ".": {
       "import": "./dist/esm/src/index.js",
       "require": "./dist/cjs/src/index.js",
-      "types": "./dist/esm/src/index.d.ts"
+      "types": "./dist/types/src/index.d.ts"
     },
     "./*.js": {
       "import": "./dist/esm/src/*.js",
       "require": "./dist/cjs/src/*.js",
-      "types": "./dist/esm/src/*.d.ts"
+      "types": "./dist/types/src/*.d.ts"
     }
   },
   "main": "./dist/cjs/src/index.js",
   "module": "./dist/esm/src/index.js",
-  "types": "./dist/esm/src/index.d.ts",
+  "types": "./dist/types/src/index.d.ts",
   "scripts": {
     "build": "npm run build:esm && npm run build:cjs",
     "build:cjs": "tsc -p tsconfig-cjs.json && ../scripts/add-module-types.sh lib cjs",
