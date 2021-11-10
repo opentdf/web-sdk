@@ -1,4 +1,4 @@
-import { JWTPayload, SignJWT } from 'jose-browser-runtime';
+import { JWTPayload, SignJWT } from 'jose';
 import { AlgorithmName } from './enums.js';
 
 /**
