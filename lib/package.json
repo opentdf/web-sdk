@@ -10,6 +10,7 @@
     "dist/*/package.json",
     "dist/cjs/src/**",
     "dist/esm/src/**",
+    "dist/types/src/**",
     "README.md"
   ],
   "repository": {
