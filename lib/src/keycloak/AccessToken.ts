@@ -38,15 +38,10 @@ export class AccessToken {
     this.request = request || fetch;
     this.baseUrl = cfg.auth_server_url;
     this.virtru_client_pubkey = cfg.virtru_client_pubkey;
-    // For POST, always set
-    // if (cfg.virtru_client_pubkey) {
-    //   request.defaults.headers.post['X-VirtruPubKey'] = cfg.virtru_client_pubkey;
-    // }
   }
 
   setVirtruPubkey(publicKey: string): void {
     this.virtru_client_pubkey = publicKey;
-    // request.defaults.headers.post['X-VirtruPubKey'] = cfg.virtru_client_pubkey;
   }
 
   async info(accessToken: string): Promise<unknown> {
@@ -97,10 +92,7 @@ export class AccessToken {
     const url = `${this.baseUrl}/auth/realms/${encodeURIComponent(
       cfg.realm
     )}/protocol/openid-connect/token`;
-    const response = await this.request(url, {
-      method: 'POST',
-      body: qstringify(args),
-    });
+    const response = await this.doPost(url, args);
 
     this.data = await response.json();
     return this.data?.access_token as string;
@@ -121,12 +113,23 @@ export class AccessToken {
         cfg.client_secret && { client_secret: cfg.client_secret }),
     };
 
-    const response = await this.request(url, {
-      method: 'POST',
-      body: qstringify(args),
-    });
+    const response = await this.doPost(url, args);
     this.data = await response.json();
     return this.data?.access_token as string;
+  }
+
+  async doPost(url: string, o: Record<string, string>) {
+    let headers: Record<string, string> | null = null;
+    if (this.virtru_client_pubkey) {
+      headers = {
+        'X-VirtruPubKey': this.virtru_client_pubkey,
+      };
+    }
+    return this.request(url, {
+      method: 'POST',
+      ...headers,
+      body: qstringify(o),
+    });
   }
 
   async get(): Promise<string> {
@@ -140,13 +143,10 @@ export class AccessToken {
       const url = `${this.baseUrl}/auth/realms/${encodeURIComponent(
         cfg.realm
       )}/protocol/openid-connect/token`;
-      const response = await this.request(url, {
-        method: 'POST',
-        body: qstringify({
-          grant_type: 'client_credentials',
-          client_id: cfg.client_id,
-          client_secret: cfg.client_secret,
-        }),
+      const response = await this.doPost(url, {
+        grant_type: 'client_credentials',
+        client_id: cfg.client_id,
+        client_secret: cfg.client_secret,
       });
       this.data = await response.json();
 

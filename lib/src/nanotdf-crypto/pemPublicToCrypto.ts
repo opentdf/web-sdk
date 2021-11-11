@@ -32,32 +32,26 @@ import getCryptoLib from './getCryptoLib.js';
 import removeLines from './helpers/removeLines.js';
 import arrayBufferToHex from './helpers/arrayBufferToHex.js';
 
-const ECDH = 'ECDH';
-const ECDSA = 'ECDSA';
 const RSA_OID = '06092a864886f70d010101';
 const EC_OID = '06072a8648ce3d0201';
 const P256_OID = '06082a8648ce3d030107';
 const P384_OID = '06052b81040022';
 const P521_OID = '06052b81040023';
-const RSA_OAEP = 'RSA-OAEP';
-const RSA_PSS = 'RSA-PSS';
 const SHA_512 = 'SHA-512';
 const SPKI = 'spki';
 const CERT_BEGIN = '-----BEGIN CERTIFICATE-----';
 const CERT_END = '-----END CERTIFICATE-----';
 
-enum CurveName {
-  P_256 = 'P-256',
-  P_384 = 'P-384',
-  P_512 = 'P-512',
-}
+const P_256 = 'P-256';
+const P_384 = 'P-384';
+const P_512 = 'P-512';
+type CurveName = typeof P_256 | typeof P_384 | typeof P_512;
 
-enum AlgorithmNames {
-  ECDH = 'ECDH',
-  ECDSA = 'ECDSA',
-  RSA_OAEP = 'RSA-OAEP',
-  RSA_PSS = 'RSA-PSS',
-}
+const ECDH = 'ECDH';
+const ECDSA = 'ECDSA';
+const RSA_OAEP = 'RSA-OAEP';
+const RSA_PSS = 'RSA-PSS';
+type AlgorithmName = typeof ECDH | typeof ECDSA | typeof RSA_OAEP | typeof RSA_PSS;
 
 interface PemPublicToCryptoOptions {
   name?: string;
@@ -66,7 +60,7 @@ interface PemPublicToCryptoOptions {
   isExtractable: boolean;
 }
 
-function getKeyUsages(algorithmName: AlgorithmNames, usages?: KeyUsage[]): KeyUsage[] {
+function guessKeyUsages(algorithmName: AlgorithmName, usages?: KeyUsage[]): KeyUsage[] {
   if (usages) return usages;
   switch (algorithmName) {
     case ECDSA:
@@ -81,30 +75,30 @@ function getKeyUsages(algorithmName: AlgorithmNames, usages?: KeyUsage[]): KeyUs
   }
 }
 
-function getAlgorithmName(hex: string, algorithmName?: string): AlgorithmNames | never {
+function guessAlgorithmName(hex: string, algorithmName?: string): AlgorithmName {
   if (hex.includes(EC_OID)) {
     if (!algorithmName || algorithmName === ECDH) {
-      return AlgorithmNames.ECDH;
-    } else if (algorithmName === AlgorithmNames.ECDSA) {
-      return AlgorithmNames.ECDSA;
+      return ECDH;
+    } else if (algorithmName === ECDSA) {
+      return ECDSA;
     }
   } else if (hex.includes(RSA_OID)) {
     if (!algorithmName || algorithmName === RSA_OAEP) {
-      return AlgorithmNames.RSA_OAEP;
-    } else if (algorithmName === AlgorithmNames.RSA_PSS) {
-      return AlgorithmNames.RSA_PSS;
+      return RSA_OAEP;
+    } else if (algorithmName === RSA_PSS) {
+      return RSA_PSS;
     }
   }
   throw new TypeError(`Invalid public key, ${algorithmName}`);
 }
 
-function getCurveName(hex: string): string | never {
+function guessCurveName(hex: string): CurveName {
   if (hex.includes(P256_OID)) {
-    return CurveName.P_256;
+    return P_256;
   } else if (hex.includes(P384_OID)) {
-    return CurveName.P_384;
+    return P_384;
   } else if (hex.includes(P521_OID)) {
-    return CurveName.P_512;
+    return P_512;
   }
   throw new Error('Unsupported curve name or invalid key');
 }
@@ -133,24 +127,21 @@ export default async function pemPublicToCrypto(
   const arrayBuffer = base64.decodeArrayBuffer(b64);
   const hex = arrayBufferToHex(arrayBuffer);
 
-  const algorithmName = getAlgorithmName(hex, options.name);
-  const keyUsages = getKeyUsages(algorithmName, options.usages);
+  const algorithmName = guessAlgorithmName(hex, options.name);
+  const keyUsages = guessKeyUsages(algorithmName, options.usages);
 
-  if (algorithmName === AlgorithmNames.ECDH || algorithmName === AlgorithmNames.ECDSA) {
+  if (algorithmName === ECDH || algorithmName === ECDSA) {
     return crypto.importKey(
       SPKI,
       arrayBuffer,
       {
         name: algorithmName,
-        namedCurve: getCurveName(hex),
+        namedCurve: guessCurveName(hex),
       },
       options.isExtractable,
       keyUsages
     );
-  } else if (
-    algorithmName === AlgorithmNames.RSA_OAEP ||
-    algorithmName === AlgorithmNames.RSA_PSS
-  ) {
+  } else if (algorithmName === RSA_OAEP || algorithmName === RSA_PSS) {
     return crypto.importKey(
       SPKI,
       arrayBuffer,
@@ -169,39 +160,38 @@ export default async function pemPublicToCrypto(
 }
 
 export async function extractPublicFromCertToCrypto(
-  crt: string,
+  pem: string,
   options: PemPublicToCryptoOptions = {
     isExtractable: true,
   }
 ): Promise<CryptoKey> {
   const crypto = getCryptoLib();
 
-  crt = crt.replace(CERT_BEGIN, '');
+  let crt = pem.replace(CERT_BEGIN, '');
   crt = crt.replace(CERT_END, '');
   const b64 = removeLines(crt);
   const arrayBuffer = base64.decodeArrayBuffer(b64);
   const hex = arrayBufferToHex(arrayBuffer);
 
-  const algorithmName = getAlgorithmName(hex, options.name);
-  const keyUsages = getKeyUsages(algorithmName, options.usages);
+  const algorithmName = guessAlgorithmName(hex, options.name);
+  const keyUsages = guessKeyUsages(algorithmName, options.usages);
 
-  if (algorithmName === AlgorithmNames.ECDH || algorithmName === AlgorithmNames.ECDSA) {
+  if (algorithmName === ECDH || algorithmName === ECDSA) {
+    const namedCurve = guessCurveName(hex);
+
     return crypto.importKey(
-      'pkcs8',
+      SPKI,
       arrayBuffer,
       {
         name: algorithmName,
-        namedCurve: getCurveName(hex),
+        namedCurve,
       },
       options.isExtractable,
       keyUsages
     );
-  } else if (
-    algorithmName === AlgorithmNames.RSA_OAEP ||
-    algorithmName === AlgorithmNames.RSA_PSS
-  ) {
+  } else if (algorithmName === RSA_OAEP || algorithmName === RSA_PSS) {
     return crypto.importKey(
-      'pkcs8',
+      SPKI,
       arrayBuffer,
       {
         name: algorithmName,
