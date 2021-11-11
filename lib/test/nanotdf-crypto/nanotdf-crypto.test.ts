@@ -1,7 +1,7 @@
 /* globals window describe it chai bufferToHex fixtures_basicExample */
 import { expect } from '@esm-bundle/chai';
 
-import { decrypt, encrypt } from '../src/nanotdf-crypto/index.js';
+import { decrypt, encrypt, extractPublicFromCertToCrypto } from '../../src/nanotdf-crypto/index.js';
 
 /**
  * Alice will act as data creator
@@ -94,5 +94,38 @@ describe('NanoTDF Crypto', () => {
 
     const plainText = await decrypt(encrypteeKey, new Uint8Array(cipherText), iv);
     expect(txtDec.decode(plainText)).to.be.equal(plainTextExpected);
+  });
+
+  it('handles KAS public key', async () => {
+    const pem = `-----BEGIN CERTIFICATE-----
+MIIBCzCBsgIJAL1qc/lWpG3HMAoGCCqGSM49BAMCMA4xDDAKBgNVBAMMA2thczAe
+Fw0yMTA5MTUxNDExNDlaFw0yMjA5MTUxNDExNDlaMA4xDDAKBgNVBAMMA2thczBZ
+MBMGByqGSM49AgEGCCqGSM49AwEHA0IABH2VM7Ws9SVr19rywr/o3fewDBj+170/
+6y8zo4leVaJqCl76Nd9QfDNy4KjNCtmmjo6ftTS+iFAhnPCeugAJOWUwCgYIKoZI
+zj0EAwIDSAAwRQIhAIFdrqhwvgL8ctPjUtmULXmg2ii0PFKg/Mox2GiCVXQdAiAW
+UDdeafEoprE+qc4paMmbWoEpRXLlo+3S7rnc5T12Kw==
+-----END CERTIFICATE-----`;
+    const key = await extractPublicFromCertToCrypto(pem);
+    expect(key.algorithm).to.eql({ name: 'ECDH', namedCurve: 'P-256' });
+    expect(key.extractable).to.be.true;
+    expect(key.usages).to.be.empty;
+  });
+
+  it('handles another example cert', async () => {
+    // Copied from https://github.com/panva/jose/blob/main/docs/functions/key_import.importX509.md
+    const pem = `-----BEGIN CERTIFICATE-----
+        MIIBXjCCAQSgAwIBAgIGAXvykuMKMAoGCCqGSM49BAMCMDYxNDAyBgNVBAMMK3Np
+        QXBNOXpBdk1VaXhXVWVGaGtjZXg1NjJRRzFyQUhXaV96UlFQTVpQaG8wHhcNMjEw
+        OTE3MDcwNTE3WhcNMjIwNzE0MDcwNTE3WjA2MTQwMgYDVQQDDCtzaUFwTTl6QXZN
+        VWl4V1VlRmhrY2V4NTYyUUcxckFIV2lfelJRUE1aUGhvMFkwEwYHKoZIzj0CAQYI
+        KoZIzj0DAQcDQgAE8PbPvCv5D5xBFHEZlBp/q5OEUymq7RIgWIi7tkl9aGSpYE35
+        UH+kBKDnphJO3odpPZ5gvgKs2nwRWcrDnUjYLDAKBggqhkjOPQQDAgNIADBFAiEA
+        1yyMTRe66MhEXID9+uVub7woMkNYd0LhSHwKSPMUUTkCIFQGsfm1ecXOpeGOufAh
+        v+A1QWZMuTWqYt+uh/YSRNDn
+        -----END CERTIFICATE-----`;
+    const key = await extractPublicFromCertToCrypto(pem);
+    expect(key.algorithm).to.eql({ name: 'ECDH', namedCurve: 'P-256' });
+    expect(key.extractable).to.be.true;
+    expect(key.usages).to.be.empty;
   });
 });

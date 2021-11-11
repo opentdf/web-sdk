@@ -27,6 +27,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+import { importX509 } from 'jose';
+
 import * as base64 from '../encodings/base64.js';
 import getCryptoLib from './getCryptoLib.js';
 import removeLines from './helpers/removeLines.js';
@@ -159,50 +161,43 @@ export default async function pemPublicToCrypto(
   }
 }
 
+/**
+ * Look up JWK algorithm at https://github.com/panva/jose/issues/210
+ */
+function toJwsAlg(hex: string) {
+  const a = guessAlgorithmName(hex);
+  if (a === ECDH) {
+    return 'ECDH-ES';
+  } else if (a === ECDSA) {
+    switch (guessCurveName(hex)) {
+      case 'P-256':
+        return 'ES256';
+      case 'P-384':
+        return 'ES384';
+      case 'P-512':
+        return 'ES512';
+    }
+  } else if (a === RSA_OAEP) {
+    return 'RS512';
+  } else {
+    return 'RSA-OAEP-512';
+  }
+}
+
 export async function extractPublicFromCertToCrypto(
   pem: string,
   options: PemPublicToCryptoOptions = {
     isExtractable: true,
   }
 ): Promise<CryptoKey> {
-  const crypto = getCryptoLib();
-
   let crt = pem.replace(CERT_BEGIN, '');
   crt = crt.replace(CERT_END, '');
   const b64 = removeLines(crt);
   const arrayBuffer = base64.decodeArrayBuffer(b64);
   const hex = arrayBufferToHex(arrayBuffer);
+  const alg = toJwsAlg(hex);
 
-  const algorithmName = guessAlgorithmName(hex, options.name);
-  const keyUsages = guessKeyUsages(algorithmName, options.usages);
-
-  if (algorithmName === ECDH || algorithmName === ECDSA) {
-    const namedCurve = guessCurveName(hex);
-
-    return crypto.importKey(
-      SPKI,
-      arrayBuffer,
-      {
-        name: algorithmName,
-        namedCurve,
-      },
-      options.isExtractable,
-      keyUsages
-    );
-  } else if (algorithmName === RSA_OAEP || algorithmName === RSA_PSS) {
-    return crypto.importKey(
-      SPKI,
-      arrayBuffer,
-      {
-        name: algorithmName,
-        hash: {
-          name: options.hash || SHA_512,
-        },
-      },
-      options.isExtractable,
-      keyUsages
-    );
-  } else {
-    throw new TypeError('Invalid public key');
-  }
+  const keylike = await importX509(pem, alg, { extractable: options.isExtractable });
+  console.log({ keylike, type: typeof keylike });
+  return keylike as CryptoKey;
 }

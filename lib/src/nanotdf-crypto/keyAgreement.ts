@@ -70,8 +70,8 @@ export default async function keyAgreement(
   }
 ): Promise<CryptoKey> {
   if (
-    publicKey.algorithm.name !== AlgorithmName.ECDSA &&
-    publicKey.algorithm.name !== AlgorithmName.ECDH
+    publicKey?.algorithm?.name !== AlgorithmName.ECDSA &&
+    publicKey?.algorithm?.name !== AlgorithmName.ECDH
   ) {
     throw new Error('CryptoKey is expected to be of type ECDSA or ECDH');
   }
