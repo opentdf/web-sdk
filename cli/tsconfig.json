@@ -1,8 +1,9 @@
 {
+  "extends": "../lib/tsconfig-esm.json",
   "compilerOptions": {
-    "target": "esnext",
-    "module": "nodenext",
+    "lib": ["es2021"],
+    "target": "es2021",
     "outDir": "dist"
   },
-  "include": ["**/*.ts"]
+  "include": ["src", "test"]
 }

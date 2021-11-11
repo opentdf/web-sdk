@@ -165,8 +165,8 @@ export default class Client {
   protected kasUrl: string;
   protected kasPubKey: string;
   protected authProvider: AuthProvider;
-  protected dissems: string[] = [];
-  protected dataAttributes: string[] = [];
+  dissems: string[] = [];
+  dataAttributes: string[] = [];
   protected ephemeralKeyPair?: Required<Readonly<CryptoKeyPair>>;
   protected requestSignerKeyPair?: Required<Readonly<CryptoKeyPair>>;
   protected unwrappedKey?: CryptoKey;

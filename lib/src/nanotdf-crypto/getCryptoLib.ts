@@ -1,16 +1,23 @@
 /* eslint @typescript-eslint/ban-ts-comment: "off" */
 
 export default function getCryptoLib(): SubtleCrypto {
-  let crypto = window.crypto;
-  if (!crypto) {
-    // @ts-ignore: Swap in incompatible crypto lib
-    crypto = window.msCrypto;
+  if (typeof window !== 'undefined') {
+    let crypto = window.crypto;
+    if (!crypto) {
+      // @ts-ignore: Swap in incompatible crypto lib
+      crypto = window.msCrypto;
+    }
+    let subtleCrypto = crypto.subtle;
+    if (!subtleCrypto) {
+      // @ts-ignore: Swap in incompatible crypto lib
+      subtleCrypto = crypto.webkitSubtle;
+    }
+    return subtleCrypto;
   }
-
-  let subtleCrypto = crypto.subtle;
-  if (!subtleCrypto) {
+  if (typeof globalThis !== 'undefined') {
     // @ts-ignore: Swap in incompatible crypto lib
-    subtleCrypto = crypto.webkitSubtle;
+    return globalThis.crypto.subtle;
   }
-  return subtleCrypto;
+  // @ts-ignore: Giving up
+  return crypto;
 }

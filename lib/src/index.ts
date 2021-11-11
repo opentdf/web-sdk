@@ -1,6 +1,7 @@
 import { Client, NanoTDF, encrypt, decrypt } from './nanotdf/index.js';
 import { TypedArray, createAttribute, Policy } from './tdf/index.js';
 
+
 /**
  * NanoTDF SDK Client
  *
@@ -150,3 +151,5 @@ export class NanoTDFClient extends Client {
     );
   }
 }
+
+export * as AuthProviders from './nanotdf/Client.js';
