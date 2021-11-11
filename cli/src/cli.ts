@@ -11,6 +11,7 @@ import { Level, log } from './logger.js';
 import 'cross-fetch/dist/node-polyfill.js';
 
 declare global {
+  // polyfill for browser crypto
   // eslint-disable-next-line no-var
   var crypto: typeof webcrypto;
 }
