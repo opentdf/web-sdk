@@ -19,7 +19,7 @@ export type Logger = {
 
 export const log: Logger = Object.assign(
   (thing: Error | CLIError | Level, message?: string) => {
-    let e: Error;
+    let e: Error | null;
     let m: string;
     let l: Level;
 
@@ -34,23 +34,32 @@ export const log: Logger = Object.assign(
     } else {
       l = thing as Level;
       m = message || '';
-      e = new Error(m);
+      e = null;
     }
+    const prefixed = `[${l}] ${m}`;
     const i = Levels.indexOf(l);
     if (i <= Levels.indexOf(log.level)) {
       switch (l) {
         case 'CRITICAL':
         case 'ERROR':
-          console.error(m, e);
+          if (e) {
+            console.error(prefixed, e);
+          } else {
+            console.error(prefixed);
+          }
           break;
         case 'WARNING':
-          console.warn(m, e);
+          if (e) {
+            console.warn(prefixed, e);
+          } else {
+            console.warn(prefixed);
+          }
           break;
         case 'INFO':
-          console.info(m);
+          console.info(prefixed);
           break;
         default:
-          console.log(`[${l}] ${m}`);
+          console.log(prefixed);
           break;
       }
     }
