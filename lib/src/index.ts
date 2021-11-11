@@ -1,7 +1,6 @@
 import { Client, NanoTDF, encrypt, decrypt } from './nanotdf/index.js';
 import { TypedArray, createAttribute, Policy } from './tdf/index.js';
 
-
 /**
  * NanoTDF SDK Client
  *
