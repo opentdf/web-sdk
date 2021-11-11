@@ -47,12 +47,7 @@
   },
   "dependencies": {
     "@opentdf/client": "file:../opentdf-client-0.0.1.tgz",
-    "ansicolor": "^1.1.95",
-    "as-table": "^1.0.55",
     "cross-fetch": "^3.1.4",
-    "dedent": "^0.7.0",
-    "meow": "^10.1.1",
-    "npmlog": "^5.0.1",
     "yargs": "^17.2.1"
   }
 }
