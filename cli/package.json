@@ -19,7 +19,7 @@
     "preppack": "npm run build",
     "test": "npm run build && mocha dist/**/*.spec.js",
     "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))",
-    "format": "prettier --write \"*.ts\"",
+    "format": "prettier --write \"{src,test}/**/*.ts\"",
     "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; ISC; MIT'",
     "lint": "eslint *.ts bin/opentdf.mjs",
     "lint:fix": "eslint --fix *.ts bin/opentdf.mjs"
