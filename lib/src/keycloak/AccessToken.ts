@@ -119,15 +119,15 @@ export class AccessToken {
   }
 
   async doPost(url: string, o: Record<string, string>) {
-    let headers: Record<string, string> | null = null;
+    const extraOptions: Record<string, string | Record<string, string>> = {};
     if (this.virtru_client_pubkey) {
-      headers = {
+      extraOptions.headers = {
         'X-VirtruPubKey': this.virtru_client_pubkey,
       };
     }
     return this.request(url, {
       method: 'POST',
-      ...headers,
+      ...extraOptions,
       body: qstringify(o),
     });
   }

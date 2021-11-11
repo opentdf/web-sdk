@@ -47,6 +47,7 @@ describe('AccessToken', () => {
           },
           mf
         );
+        accessToken.setVirtruPubkey('fake-pub-key');
         const res = await accessToken.refresh('refresh');
         expect(res).to.equal('fdfsdffsdf');
         expect(mf.lastCall.firstArg).to.match(
@@ -59,6 +60,7 @@ describe('AccessToken', () => {
           client_secret: 'mysecret',
           refresh_token: 'refresh',
         });
+        expect(mf.lastCall.lastArg.headers).to.have.property('X-VirtruPubKey', 'fake-pub-key');
       });
     });
     describe('using browser flow', () => {
