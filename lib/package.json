@@ -11,6 +11,7 @@
     "dist/cjs/src/**",
     "dist/esm/src/**",
     "dist/types/src/**",
+    "src/**",
     "README.md"
   ],
   "repository": {

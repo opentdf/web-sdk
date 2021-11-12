@@ -1,8 +1,5 @@
 import getCryptoLib from './getCryptoLib.js';
 
-const EXPORT_KEY_TYPE = 'raw';
-const CRYPTO_KEY_OBJECT_STRING = '[object CryptoKey]';
-
 /**
  *
  * Export to PEM format to binary buffer
@@ -10,12 +7,7 @@ const CRYPTO_KEY_OBJECT_STRING = '[object CryptoKey]';
  */
 export default async function exportCryptoKey(key: CryptoKey): Promise<ArrayBuffer> {
   const crypto = getCryptoLib();
-  if (Object.prototype.toString.call(key) !== CRYPTO_KEY_OBJECT_STRING) {
-    throw new TypeError('Expected input to be a CryptoKey Object');
-  }
-
-  const exportedKey = await crypto.exportKey(EXPORT_KEY_TYPE, key);
-
+  const exportedKey = await crypto.exportKey('raw', key);
   const keyBuffer = new Uint8Array(exportedKey);
   const len = keyBuffer.byteLength;
   const xPoint = keyBuffer.slice(0, (1 + len) >>> 1); // drop `y`

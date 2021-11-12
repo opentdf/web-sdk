@@ -1,5 +1,5 @@
 import yargs from 'yargs';
-import * as fs from 'fs';
+import { readFile, stat, writeFile } from 'fs/promises';
 import { webcrypto } from 'crypto';
 
 import { hideBin } from 'yargs/helpers';
@@ -67,20 +67,20 @@ async function processAuth({
   );
 }
 
-function processDataIn(file: string) {
+async function processDataIn(file: string) {
   if (!file) {
     log('CRITICAL', 'Must specify file or pipe');
     throw new Error();
   }
   log('DEBUG', 'Checking if file exists.');
-  const stats = fs.statSync(file);
+  const stats = await stat(file);
   if (!stats?.isFile()) {
     log('CRITICAL', `File does not exist [${file}]`);
     throw new Error();
   }
   log('DEBUG', `Found file [${file}]`);
   log('INFO', 'Using file input');
-  return fs.readFileSync(file);
+  return readFile(file);
 }
 
 export const handleArgs = (args: string[]) => {
@@ -194,6 +194,10 @@ export const handleArgs = (args: string[]) => {
           desc: 'Disable logging',
         },
       })
+      .option('output', {
+        type: 'string',
+        description: 'output file',
+      })
       .command(
         'decrypt [file]',
         'Decrypt TDF to string',
@@ -209,13 +213,17 @@ export const handleArgs = (args: string[]) => {
             log('INFO', 'Running decrypt command');
             const client = await processAuth(argv);
             console.log(argv.positional);
-            const buffer = processDataIn(argv.file as string);
+            const buffer = await processDataIn(argv.file as string);
 
             log('INFO', 'Decrypt data.');
             const plaintext = await client.decrypt(buffer);
 
             log('INFO', 'Handle output.');
-            console.log(Buffer.from(plaintext).toString('utf8'));
+            if (argv.output) {
+              await writeFile(argv.output, Buffer.from(plaintext));
+            } else {
+              console.log(Buffer.from(plaintext).toString('utf8'));
+            }
           } catch (e) {
             log(e);
           }
@@ -245,11 +253,15 @@ export const handleArgs = (args: string[]) => {
             }
             log('INFO', 'Encrypting data');
             console.log(argv);
-            const buffer = processDataIn(argv.file as string);
+            const buffer = await processDataIn(argv.file as string);
             const cyphertext = await client.encrypt(buffer);
 
             log('INFO', 'Handle cyphertext output');
-            console.log(Buffer.from(cyphertext).toString('base64'));
+            if (argv.output) {
+              await writeFile(argv.output, Buffer.from(cyphertext));
+            } else {
+              console.log(Buffer.from(cyphertext).toString('base64'));
+            }
           } catch (e) {
             log(e);
           }

@@ -27,12 +27,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-import { importX509 } from 'jose';
-
 import * as base64 from '../encodings/base64.js';
 import getCryptoLib from './getCryptoLib.js';
 import removeLines from './helpers/removeLines.js';
 import arrayBufferToHex from './helpers/arrayBufferToHex.js';
+import { importX509 } from 'jose';
+import type { KeyObject } from 'crypto';
 
 const RSA_OID = '06092a864886f70d010101';
 const EC_OID = '06072a8648ce3d0201';
@@ -183,6 +183,19 @@ function toJwsAlg(hex: string) {
     return 'RSA-OAEP-512';
   }
 }
+function toSubtleAlg(hex: string) {
+  const name = guessAlgorithmName(hex);
+  if (name === ECDH || name === ECDSA) {
+    return {
+      name,
+      namedCurve: guessCurveName(hex),
+    };
+  }
+  return {
+    name,
+    hash: { name: SHA_512 },
+  };
+}
 
 export async function extractPublicFromCertToCrypto(
   pem: string,
@@ -195,9 +208,28 @@ export async function extractPublicFromCertToCrypto(
   const b64 = removeLines(crt);
   const arrayBuffer = base64.decodeArrayBuffer(b64);
   const hex = arrayBufferToHex(arrayBuffer);
-  const alg = toJwsAlg(hex);
-
-  const keylike = await importX509(pem, alg, { extractable: options.isExtractable });
-  console.log({ keylike, type: typeof keylike });
+  const jwsAlg = toJwsAlg(hex);
+  const keylike = await importX509(pem, jwsAlg, { extractable: options.isExtractable });
+  const { type } = keylike;
+  if (type !== 'public') {
+    throw new Error('Unpublic');
+  }
+  // FIXME Jose workaround for node clients.
+  // jose returns a crypto key on node, but we expect a subtle-crypto key
+  // The below should convert it, I hope, by exporting to a JWK and back.
+  if ((keylike as KeyObject)?.export) {
+    const keyObject = keylike as KeyObject;
+    const subtleAlg = toSubtleAlg(hex);
+    const keyUsages = guessKeyUsages(subtleAlg.name, options.usages);
+    console.log({ jwsAlg, subtleAlg });
+    const subtleKey = await crypto.subtle.importKey(
+      'jwk',
+      keyObject.export({ format: 'jwk' }),
+      subtleAlg,
+      options.isExtractable,
+      keyUsages
+    );
+    return subtleKey;
+  }
   return keylike as CryptoKey;
 }

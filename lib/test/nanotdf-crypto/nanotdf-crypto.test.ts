@@ -1,4 +1,3 @@
-/* globals window describe it chai bufferToHex fixtures_basicExample */
 import { expect } from '@esm-bundle/chai';
 
 import { decrypt, encrypt, extractPublicFromCertToCrypto } from '../../src/nanotdf-crypto/index.js';
