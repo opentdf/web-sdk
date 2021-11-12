@@ -9,6 +9,8 @@ start: all
 
 clean:
 	rm *.tgz
+	rm -r */dist
+	rm -r */node_modules
 
 ci: opentdf-client-$(version).tgz
 	for x in cli sample-web-app; do (cd $$x && npm uninstall @opentdf/client && npm ci && npm i ../opentdf-client-$(version).tgz) || exit 1; done
