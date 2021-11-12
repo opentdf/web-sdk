@@ -5,7 +5,7 @@ import { webcrypto } from 'crypto';
 import { hideBin } from 'yargs/helpers';
 import { AuthProviders, NanoTDFClient } from '@opentdf/client';
 
-import { Level, log } from './logger.js';
+import { CLIError, Level, log } from './logger.js';
 
 // Load global 'fetch' functions
 import 'cross-fetch/dist/node-polyfill.js';
@@ -39,22 +39,23 @@ async function processAuth({
   kasEndpoint,
   oidcEndpoint,
 }: AuthToProcess) {
-  log('INFO', 'Processing auth params');
+  log('DEBUG', 'Processing auth params');
   if (auth) {
     log('DEBUG', 'Processing an auth string');
     const authParts = auth.split(':');
     if (authParts.length !== 3) {
-      log('CRITICAL', 'Auth expects <orgName>:<clientId>:<clientSecret>');
-      throw new Error();
+      throw new CLIError('CRITICAL', 'Auth expects <orgName>:<clientId>:<clientSecret>');
     }
 
     [orgName, clientId, clientSecret] = authParts;
   } else if (!orgName || !clientId || !clientSecret) {
-    log('CRITICAL', 'Auth expects orgName, clientId, and clientSecret');
-    throw new Error();
+    throw new CLIError(
+      'CRITICAL',
+      'Auth expects orgName, clientId, and clientSecret, or combined auth param'
+    );
   }
 
-  log('INFO', `Building Virtru client for [${clientId}@${orgName}], via [${oidcEndpoint}]`);
+  log('DEBUG', `Building Virtru client for [${clientId}@${orgName}], via [${oidcEndpoint}]`);
   return new NanoTDFClient(
     await AuthProviders.clientSecretAuthProvider({
       organizationName: orgName,
@@ -69,17 +70,13 @@ async function processAuth({
 
 async function processDataIn(file: string) {
   if (!file) {
-    log('CRITICAL', 'Must specify file or pipe');
-    throw new Error();
+    throw new CLIError('CRITICAL', 'Must specify file or pipe');
   }
-  log('DEBUG', 'Checking if file exists.');
   const stats = await stat(file);
   if (!stats?.isFile()) {
-    log('CRITICAL', `File does not exist [${file}]`);
-    throw new Error();
+    throw new CLIError('CRITICAL', `File does not exist [${file}]`);
   }
-  log('DEBUG', `Found file [${file}]`);
-  log('INFO', 'Using file input');
+  log('DEBUG', `Using input from file [${file}]`);
   return readFile(file);
 }
 
@@ -87,7 +84,6 @@ export const handleArgs = (args: string[]) => {
   return (
     yargs(args)
       .middleware((argv) => {
-        log.level = 'INFO';
         if (argv.silent) {
           log.level = 'CRITICAL';
         } else if (argv['log-level']) {
@@ -95,6 +91,17 @@ export const handleArgs = (args: string[]) => {
           log.level = ll.toUpperCase() as Level;
         }
         return argv;
+      })
+      .fail((msg, err, yargs) => {
+        if (err instanceof CLIError) {
+          log(err);
+          process.exit(1);
+        } else if (err) {
+          throw err;
+        } else {
+          console.error(`${msg}\n\n${yargs.help()}`);
+          process.exit(1);
+        }
       })
 
       // AUTH OPTIONS
@@ -210,15 +217,14 @@ export const handleArgs = (args: string[]) => {
         },
         async (argv) => {
           try {
-            log('INFO', 'Running decrypt command');
+            log('DEBUG', 'Running decrypt command');
             const client = await processAuth(argv);
-            console.log(argv.positional);
             const buffer = await processDataIn(argv.file as string);
 
-            log('INFO', 'Decrypt data.');
+            log('DEBUG', 'Decrypt data.');
             const plaintext = await client.decrypt(buffer);
 
-            log('INFO', 'Handle output.');
+            log('DEBUG', 'Handle output.');
             if (argv.output) {
               await writeFile(argv.output, Buffer.from(plaintext));
             } else {
@@ -241,7 +247,7 @@ export const handleArgs = (args: string[]) => {
         },
         async (argv) => {
           try {
-            log('INFO', 'Running encrypt command');
+            log('DEBUG', 'Running encrypt command');
             const client = await processAuth(argv);
 
             log('SILLY', 'Build encrypt params');
@@ -251,12 +257,11 @@ export const handleArgs = (args: string[]) => {
             if (argv['users-with-access']?.length) {
               client.dissems = argv['users-with-access'].split(',');
             }
-            log('INFO', 'Encrypting data');
-            console.log(argv);
+            log('DEBUG', 'Encrypting data');
             const buffer = await processDataIn(argv.file as string);
             const cyphertext = await client.encrypt(buffer);
 
-            log('INFO', 'Handle cyphertext output');
+            log('DEBUG', 'Handle cyphertext output');
             if (argv.output) {
               await writeFile(argv.output, Buffer.from(cyphertext));
             } else {
@@ -288,14 +293,13 @@ export const handleArgs = (args: string[]) => {
 export type mainArgs = ReturnType<typeof handleArgs>;
 export const main = async (argsPromise: mainArgs) => {
   await loadCrypto();
-  const args = await argsPromise;
-  console.log(`"action" was [${args.action}].`);
+  await argsPromise;
 };
 
 const a = handleArgs(hideBin(process.argv));
 main(a)
-  .then((text) => {
-    console.log(text);
+  .then(() => {
+    // Nothing;
   })
   .catch((err) => {
     console.error(err);

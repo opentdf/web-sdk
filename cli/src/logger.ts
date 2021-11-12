@@ -42,7 +42,7 @@ export const log: Logger = Object.assign(
       switch (l) {
         case 'CRITICAL':
         case 'ERROR':
-          if (e) {
+          if (e && !(e instanceof CLIError)) {
             console.error(prefixed, e);
           } else {
             console.error(prefixed);
