@@ -119,15 +119,15 @@ export class AccessToken {
   }
 
   async doPost(url: string, o: Record<string, string>) {
-    const extraOptions: Record<string, string | Record<string, string>> = {};
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    };
     if (this.virtru_client_pubkey) {
-      extraOptions.headers = {
-        'X-VirtruPubKey': this.virtru_client_pubkey,
-      };
+      headers['X-VirtruPubKey'] = this.virtru_client_pubkey;
     }
     return this.request(url, {
       method: 'POST',
-      ...extraOptions,
+      headers,
       body: qstringify(o),
     });
   }
@@ -148,9 +148,9 @@ export class AccessToken {
         client_id: cfg.client_id,
         client_secret: cfg.client_secret,
       });
-      this.data = await response.json();
-
-      return this.data?.access_token as string;
+      const tokenResponse = await response.json();
+      this.data = tokenResponse;
+      return tokenResponse.access_token;
     }
     try {
       await this.info(this.data.access_token);
