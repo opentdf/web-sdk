@@ -13,6 +13,7 @@
  * Payload
  *   - The plaintext payload is `Virtru`.
  *
+ * NOTE This uses the deprecated 3 byte iv.
  */
 
 import PolicyTypeEnum from '../nanotdf/enum/PolicyTypeEnum.js';

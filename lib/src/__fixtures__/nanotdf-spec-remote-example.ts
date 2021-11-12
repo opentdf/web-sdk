@@ -13,6 +13,7 @@
  * Payload
  *   - The plaintext payload is `DON'T`.
  *
+ * NOTE This uses the deprecated 3 byte iv.
  * @link https://github.com/virtru/nanotdf/blob/master/spec/index.md#61-basic-example
  */
 
