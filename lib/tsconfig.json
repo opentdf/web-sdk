@@ -10,7 +10,7 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "inlineSourceMap": true,
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": ["dom", "dom.iterable", "es2020"],
     "module": "esnext",
     "moduleResolution": "node",
     "noImplicitAny": true,
@@ -23,7 +23,7 @@
     "strictFunctionTypes": true,
     "strictNullChecks": true,
     "strictPropertyInitialization": true,
-    "target": "esnext"
+    "target": "es2020"
   },
   "include": ["src", "test"]
 }
