@@ -1,6 +1,6 @@
 {
   "name": "@opentdf/client",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Access and generate tdf protected content",
   "homepage": "https://github.com/opentdf/client-web",
   "bugs": {
@@ -74,6 +74,6 @@
     "prettier": "^2.4.1",
     "rollup": "^2.59.0",
     "sinon": "~12.0.1",
-    "typescript": "4.4.4"
+    "typescript": "4.5.2"
   }
 }

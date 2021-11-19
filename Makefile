@@ -1,5 +1,5 @@
 
-version=0.0.1
+version=0.0.2
 pkgs=lib cli sample-web-app
 
 .PHONY: all audit license-check lint test ci i start format clean
@@ -35,4 +35,4 @@ audit:
 
 format license-check lint test: ci
 	for x in $(pkgs); do (cd $$x && npm run $@) || exit 1; done
-	
+

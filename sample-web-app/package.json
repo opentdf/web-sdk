@@ -18,7 +18,7 @@
     "lint:fix": "eslint --fix \"src/**/*.{js,jsx,ts,tsx}\""
   },
   "dependencies": {
-    "@opentdf/client": "file:../opentdf-client-0.0.1.tgz",
+    "@opentdf/client": "file:../opentdf-client-0.0.2.tgz",
     "react": "^17.0.2",
     "react-dom": "^17.0.2"
   },
@@ -44,6 +44,6 @@
     "license-checker": "^25.0.1",
     "prettier": "^2.4.1",
     "snowpack": "^3.3.7",
-    "typescript": "^4.5.0-beta"
+    "typescript": "^4.5.2"
   }
 }
