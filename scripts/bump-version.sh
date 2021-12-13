@@ -12,7 +12,7 @@ set -euo pipefail
 increment_type="${1:-patch}"
 detail="${2:-autobump}"
 
-: ${BUMP_EXPECTED_BRANCH:=main}
+: "${BUMP_EXPECTED_BRANCH:=main}"
 
 if [[ $BUMP_EXPECTED_BRANCH != $(git rev-parse --abbrev-ref HEAD) ]]; then
   echo "Please run this command on the main branch"

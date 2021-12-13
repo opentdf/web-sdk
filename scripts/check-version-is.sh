@@ -14,7 +14,7 @@ fi
 
 for x in lib cli sample-web-app; do
   sub_version="$(cd $x && node -p "require('./package.json').version")"
-  if [[ $expected_version != $sub_version ]]; then
+  if [[ $expected_version != "$sub_version" ]]; then
     echo "${x} has incorrect version  [${sub_version}], expected [${expected_version}]"
     exit 1
   fi

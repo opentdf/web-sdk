@@ -40,10 +40,6 @@ export class AccessToken {
     this.virtru_client_pubkey = cfg.virtru_client_pubkey;
   }
 
-  setVirtruPubkey(publicKey: string): void {
-    this.virtru_client_pubkey = publicKey;
-  }
-
   async info(accessToken: string): Promise<unknown> {
     // TODO make sure realm is uri encoded
     const url = `${this.baseUrl}/auth/realms/${encodeURIComponent(
@@ -121,6 +117,7 @@ export class AccessToken {
   async doPost(url: string, o: Record<string, string>) {
     const headers: Record<string, string> = {
       'Content-Type': 'application/x-www-form-urlencoded',
+      Accept: 'application/json',
     };
     if (this.virtru_client_pubkey) {
       headers['X-VirtruPubKey'] = this.virtru_client_pubkey;

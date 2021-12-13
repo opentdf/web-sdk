@@ -1,0 +1,154 @@
+name: Build, Test, and Deliver Client
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - release/[0-9]+.[0-9]+.[0-9]+
+    tags:
+      - v[0-9]+.[0-9]+.[0-9]+
+
+jobs:
+  lib:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./lib
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '16'
+          cache: 'npm'
+          cache-dependency-path: './lib/package-lock.json'
+      - run: npm ci
+      - run: npm test
+      - uses: actions/upload-artifact@v2
+        with:
+          name: coverage
+          path: lib/coverage/
+      - run: npm audit
+      - run: npm run license-check
+      - run: npm run lint
+      - run: npm pack
+      - uses: actions/upload-artifact@v2
+        with:
+          name: opentdf-client-lib
+          path: ./lib/opentdf-client-*.tgz
+
+  cli:
+    needs:
+      - lib
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./cli
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '16'
+          cache: 'npm'
+          cache-dependency-path: './cli/package-lock.json'
+      - uses: actions/download-artifact@v2
+        with:
+          name: opentdf-client-lib
+      - run: npm uninstall @opentdf/client && npm ci && npm i ../opentdf-client-*.tgz
+      - run: npm test
+      - run: npm audit
+      - run: npm run license-check
+      - run: npm run lint
+      - run: npm pack
+      - name: Setup BATS
+        uses: mig4/setup-bats@v1
+        with:
+          bats-version: 1.2.1
+      - run: bats bin/opentdf.bats
+
+  sample-web-app:
+    needs:
+      - lib
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./sample-web-app
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '16'
+          cache: 'npm'
+          cache-dependency-path: './sample-web-app/package-lock.json'
+      - uses: actions/download-artifact@v2
+        with:
+          name: opentdf-client-lib
+      - run: npm uninstall @opentdf/client && npm ci && npm i ../opentdf-client-*.tgz
+      - run: npm install
+      - run: npm test
+      - run: npm audit
+      - run: npm run license-check
+      - run: npm run lint
+      - run: npm pack
+
+  scripts:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./scripts
+    steps:
+      - uses: actions/checkout@v2
+      - uses: mig4/setup-bats@v1
+        with:
+          bats-version: 1.2.1
+      - name: 🦇🦇🦇🦇🦇🦇
+        run: docker run --rm -v "$PWD:/mnt" --workdir "/mnt" bats/bats:1.5.0 *.bats
+      - name: 🦪 ✔ 🧼🧼🧼
+        run: >-
+          docker run --rm -v "$PWD:/mnt" --workdir "/mnt" "koalaman/shellcheck:v0.8.0"
+          --color=always *.sh
+
+  deliver-ghp:
+    runs-on: ubuntu-latest
+    needs: [lib, cli, sample-web-app, scripts]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '16.x'
+          registry-url: https://npm.pkg.github.com
+      - run: |-
+          if [[ ${{ github.ref }} = refs/heads/release/* ]]; then
+            scripts/check-version-is.sh "${GITHUB_REF##*release/}"
+          elif [[ ${{ github.ref }} = refs/tags/v* ]]; then
+            scripts/check-version-is.sh "${GITHUB_REF_NAME#v}"
+          else
+            scripts/check-version-is.sh
+          fi
+      - run: make test
+      - run: scripts/publish-to.sh $(scripts/gh-semver.sh) $(./scripts/guess-dist-tag.sh)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deliver-npmjs:
+    runs-on: ubuntu-latest
+    environment: npmjs
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: deliver-ghp
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '16.x'
+      - run: |-
+          if [[ ${{ github.ref }} = refs/heads/release/* ]]; then
+            scripts/check-version-is.sh "${GITHUB_REF##*release/}"
+          elif [[ ${{ github.ref }} = refs/tags/v* ]]; then
+            scripts/check-version-is.sh "${GITHUB_REF_NAME#v}"
+          else
+            scripts/check-version-is.sh
+          fi
+      - run: make test
+      - run: scripts/publish-to.sh $(scripts/gh-semver.sh) $(./scripts/guess-dist-tag.sh)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

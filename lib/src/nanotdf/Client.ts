@@ -164,7 +164,7 @@ export default class Client {
   */
   protected kasUrl: string;
   protected kasPubKey: string;
-  protected authProvider: AuthProvider;
+  readonly authProvider: AuthProvider;
   dissems: string[] = [];
   dataAttributes: string[] = [];
   protected ephemeralKeyPair?: Required<Readonly<CryptoKeyPair>>;
@@ -197,13 +197,6 @@ export default class Client {
       this.ephemeralKeyPair = ephemeralKeyPair;
       this.iv = 1;
     }
-  }
-
-  /**
-   * Get OIDC client which was initialized
-   */
-  getAuthProvider(): AuthProvider {
-    return this.authProvider;
   }
 
   /**

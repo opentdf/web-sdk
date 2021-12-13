@@ -39,8 +39,8 @@
   "types": "./dist/types/src/index.d.ts",
   "scripts": {
     "build": "npm run build:esm && npm run build:cjs",
-    "build:cjs": "tsc -p tsconfig-cjs.json && ../scripts/add-module-types.sh lib cjs",
-    "build:esm": "tsc -p tsconfig-esm.json && ../scripts/add-module-types.sh lib esm",
+    "build:cjs": "tsc -p tsconfig-cjs.json && ../scripts/add-module-types.sh cjs",
+    "build:esm": "tsc -p tsconfig-esm.json && ../scripts/add-module-types.sh esm",
     "build:watch": "npm run build:esm && ../scripts/add-module-types lib esm && tsc --module esnext --outDir dist/esm --watch",
     "format": "prettier --write \"{src,test}/**/*.ts\"",
     "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; ISC; MIT'",

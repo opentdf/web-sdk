@@ -13,6 +13,6 @@ describe('nanotdf client', () => {
       clientSecret: 'password',
     });
     const client = new Client(authProvider, kasUrl);
-    expect(client.getAuthProvider()).to.be.ok;
+    expect(client.authProvider).to.be.ok;
   });
 });

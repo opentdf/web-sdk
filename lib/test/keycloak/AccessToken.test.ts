@@ -47,7 +47,7 @@ describe('AccessToken', () => {
           },
           mf
         );
-        accessToken.setVirtruPubkey('fake-pub-key');
+        accessToken.virtru_client_pubkey = 'fake-pub-key';
         const res = await accessToken.refresh('refresh');
         expect(res).to.equal('fdfsdffsdf');
         expect(mf.lastCall.firstArg).to.match(
