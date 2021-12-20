@@ -1,6 +1,42 @@
 #!/usr/bin/env bash
-# Validate that version number is same across all expected files
-
+# Create a pre-release (or release) SemVer for the current file based on its
+# git state and 'target' semver found in its package.
+#
+# Examples:
+# 
+# Main branches build beta builds:
+# ```
+#    package.version = 1.2.3
+#    branch = main
+#    workflow run = 256
+#    workflow id = bad
+#    git SHA = decaf
+#    ----
+#    1.2.3-beta.256+bad.decaf
+# ```
+# 
+# Release branches build rc builds:
+# ```
+#    package.version = 1.2.3
+#    branch = release/1.2.3
+#    workflow run = 256
+#    workflow id = bad
+#    git SHA = decaf
+#    ----
+#    1.2.3-rc.256+bad.decaf
+# ```
+# 
+# Tags go to release:
+# ```
+#    package.version = 1.2.3
+#    tag = v1.2.3
+#    workflow run = 256
+#    git SHA = decaf
+#    ----
+#    1.2.3
+# ```
+#
+# 
 set -euo pipefail
 
 SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null && pwd)"

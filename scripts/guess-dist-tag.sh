@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# Validate that version number is same across all expected files
+# Guess the desired NPM 'dist' tag based on current git ref
+# Release = latest
+# Release candidate = rc
+# Beta = beta
 
 set -euo pipefail
 
