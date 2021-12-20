@@ -95,7 +95,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./scripts
+        working-directory: .github/workflows
     steps:
       - uses: actions/checkout@v2
       - uses: mig4/setup-bats@v1
@@ -128,7 +128,7 @@ jobs:
             scripts/check-version-is.sh
           fi
       - run: make test
-      - run: scripts/publish-to.sh $(scripts/gh-semver.sh) $(./scripts/guess-dist-tag.sh)
+      - run: .github/workflows/publish-to.sh $(.github/workflows/gh-semver.sh) $(.github/workflows/guess-dist-tag.sh)
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -151,6 +151,6 @@ jobs:
             scripts/check-version-is.sh
           fi
       - run: make test
-      - run: scripts/publish-to.sh $(scripts/gh-semver.sh) $(./scripts/guess-dist-tag.sh)
+      - run: .github/workflows/publish-to.sh $(.github/workflows/gh-semver. h) $(.github/workflows/guess-dist-tag.sh) 
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
