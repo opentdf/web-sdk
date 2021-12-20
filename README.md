@@ -4,7 +4,7 @@ This project is focused on providing web client support for the opentdf family o
 
 ## Contributing to this repository
 
-[![Integration Test](https://github.com/opentdf/client-web/actions/workflows/ci.yaml/badge.svg)](https://github.com/opentdf/client-web/actions/workflows/ci.yaml)
+[![Build](https://github.com/opentdf/client-web/actions/workflows/build.yaml/badge.svg)](https://github.com/opentdf/client-web/actions/workflows/build.yaml)
 
 Developing with this code requires a recent version of `npm` and `node`. We recommend installing `nvm` and useing this to manage your node installation. To checkout, vuild, validate your installation, and test the sample web appliation, you may:
 
