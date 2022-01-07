@@ -37,7 +37,7 @@
   "module": "./dist/esm/src/index.js",
   "types": "./dist/types/src/index.d.ts",
   "scripts": {
-    "build": "npm run build:esm && npm run build:cjs",
+    "build": "npm run build:esm",
     "build:cjs": "tsc -p tsconfig-cjs.json && ../scripts/add-module-types.sh cjs",
     "build:esm": "tsc -p tsconfig-esm.json && ../scripts/add-module-types.sh esm",
     "build:watch": "npm run build:esm && ../scripts/add-module-types lib esm && tsc --module esnext --outDir dist/esm --watch",
