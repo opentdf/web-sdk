@@ -14,7 +14,7 @@ import { AuthProvider } from '../../auth.js';
  * The client can supply this provider with a JWT issued by that trusted 3rd-party IdP, and that JWT will be exchanged
  * for a tokenset with TDF claims.
  *
- * The client's public key must be set in all OIDC token requests in order to recieve a token with valid
+ * The client's public key must be set in all OIDC token requests in order to receive a token with valid
  * Virtru claims. The public key may be passed to this provider's constructor, or supplied post-construction by calling
  * @see updateClientPublicKey
  * which will force an explicit token refresh
@@ -65,16 +65,14 @@ export class OIDCExternalJwtProvider implements AuthProvider {
    * Calling this function will (optionally) trigger a forcible token refresh using the cached refresh token,
    * and update the auth server config with the current key.
    *
-   * @param {string} clientPubkey - the client's public key, base64 encoded. Will be bound to the OIDC token.
+   * @param clientPubKey - the client's public key, base64 encoded. Will be bound to the OIDC token.
    */
   async updateClientPublicKey(clientPubKey: string): Promise<void> {
-    this.oidcAuth.refreshTokenClaimsWithClientPubkeyIfNeeded(clientPubKey);
+    await this.oidcAuth.refreshTokenClaimsWithClientPubkeyIfNeeded(clientPubKey);
   }
 
   /**
-   * Augment the provided http request with custom auth info to be used by downstream services (KAS, etc).
-   *
-   * @param httpReq - Required. The KAS (or other Virtru downstream service) request to decorate with auth.
+   * Augment the provided http request with custom auth info to be used by downstream services (KAS, etc.).
    *
    * @throws AuthException if the function is not able to generate auth credentials. Non-recoverable.
    * @throws TransientAuthProviderException if the function is not able to generate auth credentials due to a transient issue. Recoverable.
@@ -85,7 +83,7 @@ export class OIDCExternalJwtProvider implements AuthProvider {
     //If we've been seeded with an externally-issued JWT, consume it
     //and exchange it for a Virtru bearer token.
     if (this.externalJwt) {
-      this.oidcAuth.exchangeExternalJwt(this.externalJwt);
+      await this.oidcAuth.exchangeExternalJwt(this.externalJwt);
       delete this.externalJwt;
     }
     const accessToken = this.oidcAuth.getCurrentAccessToken();

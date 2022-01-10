@@ -300,16 +300,16 @@ export default class Client {
     clientVersion: string,
     authTagLength: number
   ): Promise<CryptoKey> {
-    // Ensure the ephemeral key pair has been set or generated (see createOidcServiceProvider)
-    await this.fetchOIDCToken();
-
     // Ensure the ephemeral key pair has been set or generated (see fetchEntityObject)
     if (!this.ephemeralKeyPair?.privateKey) {
       throw new Error('Ephemeral key has not been set or generated');
     }
 
     if (!this.requestSignerKeyPair?.privateKey) {
-      throw new Error('Signer key has not been set or generated');
+      await this.generateSignerKeyPair();
+      if (!this.requestSignerKeyPair?.privateKey) {
+        throw new Error('Signer key has not been set or generated');
+      }
     }
 
     try {
@@ -382,6 +382,7 @@ export default class Client {
         // Decrypt the wrapped key
         decryptedKey = await decrypt(unwrappingKey, encryptedSharedKey, iv, authTagLength);
       } catch (e) {
+        console.error(e);
         throw new Error(
           `Unable to decrypt key. Are you using the right KAS? Is the salt correct?\n Caused by: ${e.message}`
         );
@@ -404,6 +405,7 @@ export default class Client {
 
       return this.unwrappedKey;
     } catch (e) {
+      console.error(e);
       throw new Error(`Could not rewrap key with entity object.\n Caused by: ${e.message}`);
     }
   }

@@ -17,8 +17,6 @@ export type AccessTokenResponse = {
 export class AccessToken {
   config: AccessTokenConfig;
 
-  request: typeof fetch;
-
   data?: AccessTokenResponse;
 
   baseUrl: string;
@@ -27,7 +25,7 @@ export class AccessToken {
 
   extraHeaders: Record<string, string> = {};
 
-  constructor(cfg: AccessTokenConfig, request?: typeof fetch) {
+  constructor(cfg: AccessTokenConfig) {
     if (!cfg.client_id) {
       throw new Error('A Keycloak client identifier is currently required for all auth mechanisms');
     }
@@ -35,7 +33,6 @@ export class AccessToken {
       throw new Error('When using client credentials, both clientId and clientSecret are required');
     }
     this.config = cfg;
-    this.request = request || fetch;
     this.baseUrl = cfg.auth_server_url;
     this.virtru_client_pubkey = cfg.virtru_client_pubkey;
   }
@@ -45,14 +42,14 @@ export class AccessToken {
     const url = `${this.baseUrl}/auth/realms/${encodeURIComponent(
       this.config.realm
     )}/protocol/openid-connect/userinfo`;
-    const response = await this.request(url, {
+    const response = await fetch(url, {
       headers: {
         ...this.extraHeaders,
         Authorization: `Bearer ${accessToken}`,
       },
     });
 
-    return response.json() as unknown;
+    return (await response.json()) as unknown;
   }
 
   async forceRefresh(): Promise<string> {
@@ -122,7 +119,7 @@ export class AccessToken {
     if (this.virtru_client_pubkey) {
       headers['X-VirtruPubKey'] = this.virtru_client_pubkey;
     }
-    return this.request(url, {
+    return fetch(url, {
       method: 'POST',
       headers,
       body: qstringify(o),

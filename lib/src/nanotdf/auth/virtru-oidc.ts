@@ -89,7 +89,6 @@ export default class VirtruOIDC {
       return;
     }
     this.accessTokenGetter.virtru_client_pubkey = clientPubKey;
-    this.currentAccessToken = await this.accessTokenGetter.forceRefresh();
     this.clientPubKey = clientPubKey;
   }
 

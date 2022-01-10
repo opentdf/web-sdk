@@ -50,8 +50,6 @@ export class NanoTDFClient extends Client {
     // Parse ciphertext
     const nanotdf = NanoTDF.from(ciphertext);
 
-    await this.fetchOIDCToken();
-
     // TODO: The version number should be fetched from the API
     const version = '0.0.1';
     // Rewrap key on every request
@@ -112,8 +110,6 @@ export class NanoTDFClient extends Client {
   async encrypt(data: string | TypedArray | ArrayBuffer): Promise<ArrayBuffer> {
     // For encrypt always generate the client ephemeralKeyPair
     await this.generateEphemeralKeyPair();
-
-    await this.fetchOIDCToken();
 
     if (!this.kasPubKey) {
       const kasPubKeyResponse = await fetch(`${this.kasUrl}/kas_public_key?algorithm=ec:secp256r1`);
@@ -254,12 +250,10 @@ export class NanoTDFDatasetClient extends Client {
    * @param data to decrypt
    */
   async encrypt(data: string | TypedArray | ArrayBuffer): Promise<ArrayBuffer> {
-    // Intial encrypt
+    // Initial encrypt
     if (this.keyIterationCount == 0) {
       // For encrypt always generate the client ephemeralKeyPair
       const ephemeralKeyPair = await this.generateEphemeralKeyPair();
-
-      await this.fetchOIDCToken();
 
       if (!this.kasPubKey) {
         const kasPubKeyResponse = await fetch(
