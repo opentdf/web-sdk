@@ -1,5 +1,5 @@
-import { AuthProvider } from 'auth.js';
-import { IOIDCClientCredentialsProvider } from 'nanotdf/interfaces/OIDCInterface.js';
+import { AuthProvider } from '../../auth.js';
+import { IOIDCClientCredentialsProvider } from '../interfaces/OIDCInterface.js';
 import VirtruOIDC from './virtru-oidc.js';
 
 /**

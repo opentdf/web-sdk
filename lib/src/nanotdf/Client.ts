@@ -13,7 +13,6 @@ import {
 import getHkdfSalt from './helpers/getHkdfSalt.js';
 import DefaultParams from './models/DefaultParams.js';
 import { fetchWrappedKey } from '../kas.js';
-// import OIDCRefreshTokenProvider from './auth/oidc-refreshtoken-provider.js';
 import {
   ClientSecretCredentials,
   ExternalJwtCredentials,
@@ -21,7 +20,7 @@ import {
   RefreshTokenCredentials,
 } from './types/OIDCCredentials.js';
 import { isBrowser } from './utils/utils.js';
-import { AuthProvider } from 'auth.js';
+import { AuthProvider } from '../auth.js';
 
 const { KeyUsageType, AlgorithmName, NamedCurve } = cryptoEnums;
 
