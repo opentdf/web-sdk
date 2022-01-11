@@ -44,9 +44,11 @@ SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null && pwd)"
 : "${DIST_TAG="$("${SCRIPTS_DIR}"/guess-dist-tag.sh)"}"
 : "${MMP_VER=$(cd lib && node -p "require('./package.json').version")}"
 
-BUILD_META=
-if [[ ${GITHUB_RUN_ID:-} ]]; then
-  BUILD_META="+${GITHUB_RUN_ID:-0}.${GITHUB_SHA:0:6}"
+if [ -z ${BUILD_META+x} ]; then
+  BUILD_META=
+  if [[ ${GITHUB_RUN_ID:-} ]]; then
+    BUILD_META="+${GITHUB_RUN_ID:-0}.${GITHUB_SHA:0:6}"
+  fi
 fi
 
 if [[ ${DIST_TAG} != latest ]]; then
