@@ -14,4 +14,4 @@ jobs:
       - run: .github/workflows/gh-semver.sh
       - name: trigger xtest
         run: |
-          BUILD_META="" curl -v -XPOST -u "virtru-cloudnative:${{secrets.PERSONAL_ACCESS_TOKEN}}" -H "Accept: application/vnd.github.everest-preview+json" -H "Content-Type: application/json" "https://api.github.com/repos/opentdf/backend/dispatches" --data '{"event_type": "xtest", "client_payload": {"version":"'$(.github/workflows/gh-semver.sh)'"}}'
+          BUILD_META="" curl -XPOST -u "virtru-cloudnative:${{secrets.PERSONAL_ACCESS_TOKEN}}" -H "Accept: application/vnd.github.everest-preview+json" -H "Content-Type: application/json" "https://api.github.com/repos/opentdf/backend/dispatches" --data '{"event_type": "xtest", "client_payload": {"version":"'$(.github/workflows/gh-semver.sh)'"}}'
