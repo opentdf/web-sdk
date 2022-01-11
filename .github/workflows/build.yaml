@@ -131,6 +131,13 @@ jobs:
       - run: .github/workflows/publish-to.sh $(.github/workflows/gh-semver.sh) $(.github/workflows/guess-dist-tag.sh)
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: trigger xtest
+        run: >-
+          curl -XPOST -u "virtru-cloudnative:${{secrets.PERSONAL_ACCESS_TOKEN}}"
+              -H "Accept: application/vnd.github.everest-preview+json"
+              -H "Content-Type: application/json"
+              https://api.github.com/repos/opentdf/backend
+              --data '{"event_type": "xtest", "client_payload": "{\"version\": \"'$(.github/workflows/gh-semver.sh)'\"}"}'
 
   deliver-npmjs:
     runs-on: ubuntu-latest
@@ -151,6 +158,6 @@ jobs:
             scripts/check-version-is.sh
           fi
       - run: make test
-      - run: .github/workflows/publish-to.sh $(.github/workflows/gh-semver. h) $(.github/workflows/guess-dist-tag.sh) 
+      - run: .github/workflows/publish-to.sh $(.github/workflows/gh-semver.sh) $(.github/workflows/guess-dist-tag.sh) 
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
