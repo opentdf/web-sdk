@@ -17,7 +17,7 @@ export type AccessTokenResponse = {
 export class AccessToken {
   config: AccessTokenConfig;
 
-  request: typeof fetch;
+  request: ((input: RequestInfo, init?: RequestInit) => Promise<Response>) | undefined;
 
   data?: AccessTokenResponse;
 
@@ -35,7 +35,7 @@ export class AccessToken {
       throw new Error('When using client credentials, both clientId and clientSecret are required');
     }
     this.config = cfg;
-    this.request = request || fetch;
+    this.request = request;
     this.baseUrl = cfg.auth_server_url;
     this.virtru_client_pubkey = cfg.virtru_client_pubkey;
   }
@@ -45,14 +45,14 @@ export class AccessToken {
     const url = `${this.baseUrl}/auth/realms/${encodeURIComponent(
       this.config.realm
     )}/protocol/openid-connect/userinfo`;
-    const response = await this.request(url, {
+    const response = await (this.request || fetch)(url, {
       headers: {
         ...this.extraHeaders,
         Authorization: `Bearer ${accessToken}`,
       },
     });
 
-    return response.json() as unknown;
+    return (await response.json()) as unknown;
   }
 
   async forceRefresh(): Promise<string> {
@@ -122,7 +122,7 @@ export class AccessToken {
     if (this.virtru_client_pubkey) {
       headers['X-VirtruPubKey'] = this.virtru_client_pubkey;
     }
-    return this.request(url, {
+    return (this.request || fetch)(url, {
       method: 'POST',
       headers,
       body: qstringify(o),

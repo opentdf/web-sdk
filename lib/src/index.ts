@@ -113,8 +113,6 @@ export class NanoTDFClient extends Client {
     // For encrypt always generate the client ephemeralKeyPair
     await this.generateEphemeralKeyPair();
 
-    await this.fetchOIDCToken();
-
     if (!this.kasPubKey) {
       const kasPubKeyResponse = await fetch(`${this.kasUrl}/kas_public_key?algorithm=ec:secp256r1`);
       this.kasPubKey = await kasPubKeyResponse.json();
@@ -258,8 +256,6 @@ export class NanoTDFDatasetClient extends Client {
     if (this.keyIterationCount == 0) {
       // For encrypt always generate the client ephemeralKeyPair
       const ephemeralKeyPair = await this.generateEphemeralKeyPair();
-
-      await this.fetchOIDCToken();
 
       if (!this.kasPubKey) {
         const kasPubKeyResponse = await fetch(
