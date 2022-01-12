@@ -6,7 +6,10 @@
     "forceConsistentCasingInFileNames": true,
     "importsNotUsedAsValues": "error",
     "jsx": "preserve",
-    "lib": ["es2020"],
+    "lib": [
+      "es2020",
+      "dom"
+    ],
     "module": "esnext",
     "moduleResolution": "node",
     "noEmit": true,
