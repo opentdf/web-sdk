@@ -1,4 +1,4 @@
-import getCryptoLib from './getCryptoLib.js';
+import getCryptoLib from './getCryptoLib.ts';
 
 /**
  *

@@ -35,11 +35,15 @@
   },
   "main": "./dist/cjs/src/index.js",
   "module": "./dist/esm/src/index.js",
+  "context": "browser",
   "types": "./dist/types/src/index.d.ts",
+  "source": "./src/index.ts",
   "scripts": {
     "build": "npm run build:esm && npm run build:cjs",
     "build:cjs": "tsc -p tsconfig-cjs.json && ../scripts/add-module-types.sh cjs",
     "build:esm": "tsc -p tsconfig-esm.json && ../scripts/add-module-types.sh esm",
+    "build:parcel": "parcel build src/index.ts",
+    "watch:parcel": "parcel watch",
     "build:watch": "npm run build:esm && ../scripts/add-module-types lib esm && tsc --module esnext --outDir dist/esm --watch",
     "format": "prettier --write \"{src,test}/**/*.ts\"",
     "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; ISC; MIT'",
@@ -54,7 +58,11 @@
     "uuid": "~8.3.2"
   },
   "devDependencies": {
+    "@babel/core": "^7.17.5",
     "@esm-bundle/chai": "~4.3.4-fix.0",
+    "@parcel/diagnostic": "^2.3.2",
+    "@parcel/packager-ts": "^2.0.0-beta.2",
+    "@parcel/transformer-typescript-types": "^2.0.0-beta.2",
     "@types/chai": "~4.2.22",
     "@types/jsonwebtoken": "~8.5.5",
     "@types/mocha": "~9.0.0",

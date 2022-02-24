@@ -1,5 +1,5 @@
-import CipherEnum from '../enum/CipherEnum.js';
-import InvalidCipherError from '../errors/InvalidCipherError.js';
+import CipherEnum from '../enum/CipherEnum.ts';
+import InvalidCipherError from '../errors/InvalidCipherError.ts';
 
 interface CipherInterface {
   name: CipherEnum;

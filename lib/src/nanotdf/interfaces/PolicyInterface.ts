@@ -1,5 +1,5 @@
-import PolicyTypeEnum from '../enum/PolicyTypeEnum.js';
-import ResourceLocator from '../models/ResourceLocator.js';
+import PolicyTypeEnum from '../enum/PolicyTypeEnum.ts';
+import ResourceLocator from '../models/ResourceLocator.ts';
 
 export default interface PolicyInterface {
   type: PolicyTypeEnum;

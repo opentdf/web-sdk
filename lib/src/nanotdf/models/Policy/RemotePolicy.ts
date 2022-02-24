@@ -1,7 +1,7 @@
-import AbstractPolicy from './AbstractPolicy.js';
-import ResourceLocator from '../ResourceLocator.js';
-import { RemotePolicyInterface } from '../../interfaces/PolicyInterface.js';
-import PolicyTypeEnum from '../../enum/PolicyTypeEnum.js';
+import AbstractPolicy from './AbstractPolicy.ts';
+import ResourceLocator from '../ResourceLocator.ts';
+import { RemotePolicyInterface } from '../../interfaces/PolicyInterface.ts';
+import PolicyTypeEnum from '../../enum/PolicyTypeEnum.ts';
 
 /**
  * Set remote policy body

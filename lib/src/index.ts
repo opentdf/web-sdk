@@ -7,9 +7,9 @@ import {
   encryptDataset,
   getHkdfSalt,
   DefaultParams,
-} from './nanotdf/index.js';
-import { keyAgreement, extractPublicFromCertToCrypto } from './nanotdf-crypto/index.js';
-import { TypedArray, createAttribute, Policy } from './tdf/index.js';
+} from './nanotdf/index.ts';
+import { keyAgreement, extractPublicFromCertToCrypto } from './nanotdf-crypto/index.ts';
+import { TypedArray, createAttribute, Policy } from './tdf/index.ts';
 
 /**
  * NanoTDF SDK Client
@@ -413,4 +413,9 @@ export class NanoTDFDatasetClient extends Client {
   }
 }
 
-export * as AuthProviders from './nanotdf/Client.js';
+// export * as AuthProviders from './nanotdf/Client.ts';
+
+import * as AuthProviders2 from './nanotdf/Client.ts';
+export const AuthProviders = {
+  ...AuthProviders2,
+};

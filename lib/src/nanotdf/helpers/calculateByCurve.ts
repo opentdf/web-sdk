@@ -1,5 +1,5 @@
-import CurveNameEnum from '../enum/CurveNameEnum.js';
-import EcCurves from '../models/EcCurves.js';
+import CurveNameEnum from '../enum/CurveNameEnum.ts';
+import EcCurves from '../models/EcCurves.ts';
 
 /**
  * Length of public key

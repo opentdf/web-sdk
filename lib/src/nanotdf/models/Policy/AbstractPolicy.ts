@@ -1,5 +1,5 @@
-import PolicyInterface from '../../interfaces/PolicyInterface.js';
-import PolicyType from '../../enum/PolicyTypeEnum.js';
+import PolicyInterface from '../../interfaces/PolicyInterface.ts';
+import PolicyType from '../../enum/PolicyTypeEnum.ts';
 
 abstract class AbstractPolicy implements PolicyInterface {
   static readonly TYPE_BYTE_OFF = 0;

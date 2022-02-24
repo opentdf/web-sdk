@@ -17,8 +17,8 @@
  * @link https://github.com/virtru/nanotdf/blob/master/spec/index.md#61-basic-example
  */
 
-import PolicyTypeEnum from '../nanotdf/enum/PolicyTypeEnum.js';
-import hexArrayTag from '../../test/nanotdf/helpers/hexArrayTag.js';
+import PolicyTypeEnum from '../nanotdf/enum/PolicyTypeEnum.ts';
+import hexArrayTag from '../../test/nanotdf/helpers/hexArrayTag.ts';
 
 // 6.1.5 nanotdf
 export const nanotdf = `

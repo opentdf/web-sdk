@@ -1,5 +1,5 @@
-import CurveNameEnum from '../enum/CurveNameEnum.js';
-import InvalidCurveNameError from '../errors/InvalidCurveNameError.js';
+import CurveNameEnum from '../enum/CurveNameEnum.ts';
+import InvalidCurveNameError from '../errors/InvalidCurveNameError.ts';
 
 interface CurveInterface {
   name: CurveNameEnum;

@@ -1,6 +1,6 @@
-import Header from './Header.js';
-import { getBitLength } from '../models/Ciphers.js';
-import InvalidPayloadError from '../errors/InvalidPayloadError.js';
+import Header from './Header.ts';
+import { getBitLength } from '../models/Ciphers.ts';
+import InvalidPayloadError from '../errors/InvalidPayloadError.ts';
 
 /**
  * Payload

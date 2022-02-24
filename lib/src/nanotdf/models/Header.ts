@@ -1,17 +1,17 @@
 // Models
-import { getBitLength } from './Ciphers.js';
-import ResourceLocator from './ResourceLocator.js';
-import PolicyFactory from './Policy/PolicyFactory.js';
+import { getBitLength } from './Ciphers.ts';
+import ResourceLocator from './ResourceLocator.ts';
+import PolicyFactory from './Policy/PolicyFactory.ts';
 // Interfaces
-import PolicyInterface from '../interfaces/PolicyInterface.js';
+import PolicyInterface from '../interfaces/PolicyInterface.ts';
 // Enum
-import CipherEnum from '../enum/CipherEnum.js';
-import CurveNameEnum from '../enum/CurveNameEnum.js';
+import CipherEnum from '../enum/CipherEnum.ts';
+import CurveNameEnum from '../enum/CurveNameEnum.ts';
 // Helpers
-import { lengthOfPublicKey } from '../helpers/calculateByCurve.js';
-import DefaultParams from './DefaultParams.js';
+import { lengthOfPublicKey } from '../helpers/calculateByCurve.ts';
+import DefaultParams from './DefaultParams.ts';
 // Errors
-import InvalidEphemeralKeyError from '../errors/InvalidEphemeralKeyError.js';
+import InvalidEphemeralKeyError from '../errors/InvalidEphemeralKeyError.ts';
 
 /**
  * NanoTDF Header

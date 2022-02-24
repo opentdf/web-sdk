@@ -27,9 +27,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-import * as base64 from '../encodings/base64.js';
-import getCryptoLib from './getCryptoLib.js';
-import addNewLines from './helpers/addNewLines.js';
+import * as base64 from '../encodings/base64.ts';
+import getCryptoLib from './getCryptoLib.ts';
+import addNewLines from './helpers/addNewLines.ts';
 
 const EXPORT_KEY_TYPE = 'pkcs8';
 const PRIVATE_KEY_STRING = 'private';

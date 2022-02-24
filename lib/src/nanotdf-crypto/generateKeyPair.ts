@@ -1,4 +1,4 @@
-import { AlgorithmName, NamedCurve, KeyUsageType } from './enums.js';
+import { AlgorithmName, NamedCurve, KeyUsageType } from './enums.ts';
 
 interface GenerateKeyPairOptions {
   type: AlgorithmName.ECDH | AlgorithmName.ECDSA;

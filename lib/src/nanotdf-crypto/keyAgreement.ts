@@ -27,8 +27,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-import getCryptoLib from './getCryptoLib.js';
-import { AlgorithmName, CipherType, HashType, KeyFormat, KeyType, KeyUsageType } from './enums.js';
+import getCryptoLib from './getCryptoLib.ts';
+import { AlgorithmName, CipherType, HashType, KeyFormat, KeyType, KeyUsageType } from './enums.ts';
 
 const KEY_USAGE_DERIVE_KEY = 'deriveKey';
 

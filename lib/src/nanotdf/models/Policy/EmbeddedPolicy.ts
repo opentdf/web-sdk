@@ -1,6 +1,6 @@
-import AbstractPolicy from './AbstractPolicy.js';
-import { EmbeddedPolicyInterface } from '../../interfaces/PolicyInterface.js';
-import PolicyTypes from '../../enum/PolicyTypeEnum.js';
+import AbstractPolicy from './AbstractPolicy.ts';
+import { EmbeddedPolicyInterface } from '../../interfaces/PolicyInterface.ts';
+import PolicyTypes from '../../enum/PolicyTypeEnum.ts';
 
 /**
  * Embedded Policy

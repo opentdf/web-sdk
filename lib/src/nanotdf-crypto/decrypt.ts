@@ -1,4 +1,4 @@
-import { Ciphers, CipherTagLengths } from './ciphers.js';
+import { Ciphers, CipherTagLengths } from './ciphers.ts';
 
 /**
  * Decrypt plaintext buffer to plaintext buffer

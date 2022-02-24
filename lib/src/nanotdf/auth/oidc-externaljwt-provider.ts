@@ -1,6 +1,6 @@
-import VirtruOIDC from './virtru-oidc.js';
-import { IOIDCExternalJwtProvider } from '../interfaces/OIDCInterface.js';
-import { AuthProvider } from '../../auth.js';
+import VirtruOIDC from './virtru-oidc.ts';
+import { IOIDCExternalJwtProvider } from '../interfaces/OIDCInterface.ts';
+import { AuthProvider } from '../../auth.ts';
 
 /**
  * OIDC External JWT Provider for browser contexts.

@@ -1,5 +1,5 @@
 import { JWTPayload, SignJWT } from 'jose';
-import { AlgorithmName } from './enums.js';
+import { AlgorithmName } from './enums.ts';
 
 /**
  * Get auth token from private key

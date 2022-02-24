@@ -1,13 +1,13 @@
-import NanoTDF from './NanoTDF.js';
-import Header from './models/Header.js';
-import ResourceLocator from './models/ResourceLocator.js';
-import DefaultParams from './models/DefaultParams.js';
-import EmbeddedPolicy from './models/Policy/EmbeddedPolicy.js';
-import Payload from './models/Payload.js';
-import getHkdfSalt from './helpers/getHkdfSalt.js';
-import { getBitLength as authTagLengthForCipher } from './models/Ciphers.js';
-import { lengthOfBinding } from './helpers/calculateByCipher.js';
-import { TypedArray } from '../tdf/index.js';
+import NanoTDF from './NanoTDF.ts';
+import Header from './models/Header.ts';
+import ResourceLocator from './models/ResourceLocator.ts';
+import DefaultParams from './models/DefaultParams.ts';
+import EmbeddedPolicy from './models/Policy/EmbeddedPolicy.ts';
+import Payload from './models/Payload.ts';
+import getHkdfSalt from './helpers/getHkdfSalt.ts';
+import { getBitLength as authTagLengthForCipher } from './models/Ciphers.ts';
+import { lengthOfBinding } from './helpers/calculateByCipher.ts';
+import { TypedArray } from '../tdf/index.ts';
 
 import {
   encrypt as cryptoEncrypt,
@@ -15,7 +15,7 @@ import {
   extractPublicFromCertToCrypto,
   digest,
   exportCryptoKey,
-} from '../nanotdf-crypto/index.js';
+} from '../nanotdf-crypto/index.ts';
 
 /**
  * Encrypt the plain data into nanotdf buffer

@@ -1,1 +1,1 @@
-declare module './utils/utils.js';
+declare module './utils/utils.ts';

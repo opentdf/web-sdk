@@ -1,12 +1,12 @@
-import { TypedArray } from '../tdf/index.js';
-import Header from './models/Header.js';
-import Payload from './models/Payload.js';
-import Signature from './models/Signature.js';
-import EncodingEnum from './enum/EncodingEnum.js';
-import InvalidDataTypeError from './errors/InvalidDataTypeError.js';
-import SignatureError from './errors/SignatureError.js';
-import decodeBase64ToArrayBuffer from './helpers/decodeBase64ToArrayBuffer.js';
-import encodeArrayBufferToBase64 from './helpers/encodeArrayBufferToBase64.js';
+import { TypedArray } from '../tdf/index.ts';
+import Header from './models/Header.ts';
+import Payload from './models/Payload.ts';
+import Signature from './models/Signature.ts';
+import EncodingEnum from './enum/EncodingEnum.ts';
+import InvalidDataTypeError from './errors/InvalidDataTypeError.ts';
+import SignatureError from './errors/SignatureError.ts';
+import decodeBase64ToArrayBuffer from './helpers/decodeBase64ToArrayBuffer.ts';
+import encodeArrayBufferToBase64 from './helpers/encodeArrayBufferToBase64.ts';
 
 // Defaults when none set during encryption
 
