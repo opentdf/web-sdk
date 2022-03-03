@@ -1,6 +1,6 @@
-import VirtruOIDC from './virtru-oidc.js';
-import { IOIDCRefreshTokenProvider } from '../interfaces/OIDCInterface.js';
-import { AuthProvider } from '../../auth.js';
+import VirtruOIDC from './virtru-oidc';
+import { IOIDCRefreshTokenProvider } from '../interfaces/OIDCInterface';
+import { AuthProvider } from '../../auth';
 
 /**
  * OIDC Refresh Token Provider for browser and non-browser contexts.

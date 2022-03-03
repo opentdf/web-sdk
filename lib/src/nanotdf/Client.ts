@@ -1,5 +1,5 @@
-import type { TypedArray } from '../tdf/index.js';
-import * as base64 from '../encodings/base64.js';
+import type { TypedArray } from '../tdf/index';
+import * as base64 from '../encodings/base64';
 import {
   authToken,
   cryptoPublicToPem,
@@ -9,18 +9,18 @@ import {
   importRawKey,
   keyAgreement,
   pemPublicToCrypto,
-} from '../nanotdf-crypto/index.js';
-import getHkdfSalt from './helpers/getHkdfSalt.js';
-import DefaultParams from './models/DefaultParams.js';
-import { fetchWrappedKey } from '../kas.js';
+} from '../nanotdf-crypto/index';
+import getHkdfSalt from './helpers/getHkdfSalt';
+import DefaultParams from './models/DefaultParams';
+import { fetchWrappedKey } from '../kas';
 import {
   ClientSecretCredentials,
   ExternalJwtCredentials,
   OIDCCredentials,
   RefreshTokenCredentials,
-} from './types/OIDCCredentials.js';
-import { isBrowser } from './utils/utils.js';
-import { AuthProvider } from '../auth.js';
+} from './types/OIDCCredentials';
+import { isBrowser } from './utils/utils';
+import { AuthProvider } from '../auth';
 
 const { KeyUsageType, AlgorithmName, NamedCurve } = cryptoEnums;
 
@@ -29,7 +29,7 @@ export const clientSecretAuthProvider = async (
   clientPubKey?: string
 ): Promise<AuthProvider> => {
   const { OIDCClientCredentialsProvider } = await import(
-    './auth/oidc-clientcredentials-provider.js'
+    './auth/oidc-clientcredentials-provider'
   );
   return new OIDCClientCredentialsProvider({
     organizationName: clientConfig.organizationName,
@@ -44,7 +44,7 @@ export const externalAuthProvider = async (
   clientConfig: ExternalJwtCredentials,
   clientPubKey?: string
 ): Promise<AuthProvider> => {
-  const { OIDCExternalJwtProvider } = await import('./auth/oidc-externaljwt-provider.js');
+  const { OIDCExternalJwtProvider } = await import('./auth/oidc-externaljwt-provider');
   return new OIDCExternalJwtProvider({
     organizationName: clientConfig.organizationName,
     clientPubKey: clientPubKey,
@@ -58,7 +58,7 @@ export const refreshAuthProvider = async (
   clientConfig: RefreshTokenCredentials,
   clientPubKey?: string
 ): Promise<AuthProvider> => {
-  const { OIDCRefreshTokenProvider } = await import('./auth/oidc-refreshtoken-provider.js');
+  const { OIDCRefreshTokenProvider } = await import('./auth/oidc-refreshtoken-provider');
   return new OIDCRefreshTokenProvider({
     organizationName: clientConfig.organizationName,
     clientPubKey: clientPubKey,

@@ -27,10 +27,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-import * as base64 from '../encodings/base64.js';
-import getCryptoLib from './getCryptoLib.js';
-import removeLines from './helpers/removeLines.js';
-import arrayBufferToHex from './helpers/arrayBufferToHex.js';
+import * as base64 from '../encodings/base64';
+import getCryptoLib from './getCryptoLib';
+import removeLines from './helpers/removeLines';
+import arrayBufferToHex from './helpers/arrayBufferToHex';
 import { importX509 } from 'jose';
 import type { KeyObject } from 'crypto';
 

@@ -1,6 +1,8 @@
 /* eslint @typescript-eslint/ban-ts-comment: "off" */
 
-export default function getCryptoLib(): SubtleCrypto {
+import * as crypto from "crypto";
+
+export default function getCryptoLib(): any {
   if (typeof window !== 'undefined') {
     let crypto = window.crypto;
     if (!crypto) {
@@ -14,10 +16,13 @@ export default function getCryptoLib(): SubtleCrypto {
     }
     return subtleCrypto;
   }
-  if (typeof globalThis !== 'undefined') {
-    // @ts-ignore: Swap in incompatible crypto lib
-    return globalThis.crypto.subtle;
-  }
+  // return crypto
+  // if (typeof globalThis !== 'undefined') {
+  //   // @ts-ignore: Swap in incompatible crypto lib
+  //   return globalThis.crypto.subtle;
+  // }
+  console.log('crypto lib: ', crypto.Certificate);
+  console.log('window: ', globalThis);
   // @ts-ignore: Giving up
-  return crypto;
+  return crypto.webcrypto;
 }
