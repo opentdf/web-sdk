@@ -414,6 +414,8 @@ export class NanoTDFDatasetClient extends Client {
 }
 
 // export * as AuthProviders from './nanotdf/Client.ts';
+window.NanoTDFClient = NanoTDFClient;
+window.NanoTDFDatasetClient = NanoTDFDatasetClient;
 
 import * as AuthProviders2 from './nanotdf/Client.ts';
 export const AuthProviders = {
