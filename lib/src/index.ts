@@ -10,6 +10,8 @@ import {
 } from './nanotdf/index.ts';
 import { keyAgreement, extractPublicFromCertToCrypto } from './nanotdf-crypto/index.ts';
 import { TypedArray, createAttribute, Policy } from './tdf/index.ts';
+import { isBrowser } from './nanotdf-crypto/utils/utils.ts';
+
 
 /**
  * NanoTDF SDK Client
@@ -413,9 +415,12 @@ export class NanoTDFDatasetClient extends Client {
   }
 }
 
+if(isBrowser()) {
+  window.NanoTDFClient = NanoTDFClient;
+  window.NanoTDFDatasetClient = NanoTDFDatasetClient;
+}
+
 // export * as AuthProviders from './nanotdf/Client.ts';
-window.NanoTDFClient = NanoTDFClient;
-window.NanoTDFDatasetClient = NanoTDFDatasetClient;
 
 import * as AuthProviders2 from './nanotdf/Client.ts';
 export const AuthProviders = {

@@ -120,7 +120,12 @@ export const clientAuthProvider = async (
   return clientSecretAuthProvider(clientConfig, clientPubKey);
 };
 
-window.clientAuthProvider = clientAuthProvider;
+if(isBrowser()){
+  window.clientAuthProvider = clientAuthProvider;
+  window.clientSecretAuthProvider = clientSecretAuthProvider;
+  window.externalAuthProvider = externalAuthProvider;
+  window.refreshAuthProvider = refreshAuthProvider;
+}
 
 /**
  * A Client encapsulates sessions interacting with TDF3 and nanoTDF backends, KAS and any
