@@ -39,11 +39,28 @@
   "outputFormat": "global",
   "types": "./dist/types/src/index.d.ts",
   "source": "./src/index.ts",
+  "targets": {
+    "node": {
+      "engines": {
+        "node": ">=11.x",
+        "electron": ">=7.x"
+      }
+    },
+    "web": {
+      "engines": {
+        "browsers": [
+          "> 1%",
+          "not dead"
+        ]
+      }
+    }
+  },
   "scripts": {
     "build": "npm run build:esm && npm run build:cjs",
     "build:cjs": "tsc -p tsconfig-cjs.json && ../scripts/add-module-types.sh cjs",
     "build:esm": "tsc -p tsconfig-esm.json && ../scripts/add-module-types.sh esm",
-    "build:parcel": "parcel build src/index.ts",
+    "build:parcel": "parcel build src/index.ts --target web",
+    "build:parcel:web": "parcel build src/index-web.ts",
     "watch:parcel": "parcel watch",
     "build:watch": "npm run build:esm && ../scripts/add-module-types lib esm && tsc --module esnext --outDir dist/esm --watch",
     "format": "prettier --write \"{src,test}/**/*.ts\"",
@@ -81,6 +98,7 @@
     "license-checker": "^25.0.1",
     "parcel": "^2.3.2",
     "prettier": "^2.4.1",
+    "process": "^0.11.10",
     "rollup": "^2.59.0",
     "sinon": "~12.0.1",
     "typescript": "4.5.2"

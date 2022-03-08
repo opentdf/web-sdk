@@ -415,10 +415,8 @@ export class NanoTDFDatasetClient extends Client {
   }
 }
 
-if(isBrowser()) {
-  window.NanoTDFClient = NanoTDFClient;
-  window.NanoTDFDatasetClient = NanoTDFDatasetClient;
-}
+window.NanoTDFClient = NanoTDFClient;
+window.NanoTDFDatasetClient = NanoTDFDatasetClient;
 
 // export * as AuthProviders from './nanotdf/Client.ts';
 
