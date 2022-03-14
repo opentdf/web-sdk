@@ -414,3 +414,4 @@ export class NanoTDFDatasetClient extends Client {
 }
 
 export * as AuthProviders from './nanotdf/Client.js';
+export { Version } from './version/version.js';
