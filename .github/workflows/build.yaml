@@ -141,7 +141,7 @@ jobs:
 
             If they aren't any good, please remove them with:
             \`\`\`
-            git pull && git reset --hard HEAD~1 && git push --force-with-lease origin {{github.ref_name}}
+            git pull && git reset --hard HEAD~1 && git push --force-with-lease origin ${context.ref_name}
             \`\`\`
             `;
             github.rest.issues.createComment({
