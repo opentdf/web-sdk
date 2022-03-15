@@ -1,9 +1,9 @@
 class VersionInfo {
-  version: string;
+  version: string | undefined;
   clientType: string;
   constructor() {
     //can add more info as needed
-    this.version = '__VERSION__';
+    this.version = process.env.PKG_VERSION;
     this.clientType = 'client-web';
   }
 

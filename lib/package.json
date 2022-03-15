@@ -48,7 +48,7 @@
     "test": "npm run build && web-test-runner",
     "test:watch": "web-test-runner --watch",
     "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))",
-    "fill-version": "grep -rli '\"__VERSION__\"' ./dist/* | xargs -I@ perl -pi -w -e 's/\"__VERSION__\"/'\"$(npm pkg get version)\"'/g;' @"
+    "fill-version": "grep -rli 'process.env.PKG_VERSION' ./dist/* | xargs -I@ perl -pi -w -e 's/process.env.PKG_VERSION/'\"$(npm pkg get version)\"'/g;' @"
   },
   "dependencies": {
     "jose": "~4.2.1",
