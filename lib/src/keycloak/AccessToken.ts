@@ -2,7 +2,7 @@ const qstringify = (obj: Record<string, string>) => new URLSearchParams(obj).toS
 
 export type AccessTokenConfig = {
   auth_mode?: 'browser' | 'credentials';
-  realm: string;
+  realm : string;
   client_id: string;
   client_secret?: string;
   auth_server_url: string;
