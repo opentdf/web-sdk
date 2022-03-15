@@ -121,6 +121,8 @@ jobs:
           cache: 'npm'
           cache-dependency-path: './lib/package-lock.json'
       - run: make format
+      - name: ignore package-lock changes
+        run: git checkout -- {cli,sample-web-app}/package-lock.json
       - name: Commit changes
         id: auto-commit
         uses: stefanzweifel/git-auto-commit-action@v4
