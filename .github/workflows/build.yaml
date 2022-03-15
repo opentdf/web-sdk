@@ -111,8 +111,7 @@ jobs:
   format:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' && github.ref != 'refs/heads/main'
-    needs:
-      - scripts
+    needs: [lib, cli, sample-web-app, scripts]
     steps:
       - uses: actions/checkout@v2
         with:
