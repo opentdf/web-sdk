@@ -38,8 +38,8 @@
   "types": "./dist/types/src/index.d.ts",
   "scripts": {
     "build": "npm run build:esm && npm run build:cjs",
-    "build:cjs": "tsc -p tsconfig-cjs.json && ../scripts/add-module-types.sh cjs && npm run fill-version",
-    "build:esm": "tsc -p tsconfig-esm.json && ../scripts/add-module-types.sh esm && npm run fill-version",
+    "build:cjs": "tsc -p tsconfig-cjs.json && ../scripts/add-module-types.sh cjs && ../scripts/fill-version.sh",
+    "build:esm": "tsc -p tsconfig-esm.json && ../scripts/add-module-types.sh esm && ../scripts/fill-version.sh",
     "build:watch": "npm run build:esm && ../scripts/add-module-types lib esm && tsc --module esnext --outDir dist/esm --watch",
     "format": "prettier --write \"{src,test}/**/*.ts\"",
     "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; ISC; MIT'",
@@ -47,8 +47,7 @@
     "prepack": "npm run build",
     "test": "npm run build && web-test-runner",
     "test:watch": "web-test-runner --watch",
-    "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))",
-    "fill-version": "grep -rli 'process.env.PKG_VERSION' ./dist/* | xargs -I@ perl -pi -w -e 's/process.env.PKG_VERSION/'\"$(npm pkg get version)\"'/g;' @"
+    "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))"
   },
   "dependencies": {
     "jose": "~4.2.1",
