@@ -122,6 +122,7 @@ export default async function pemPublicToCrypto(
   }
 ): Promise<CryptoKey> {
   const crypto = getCryptoLib();
+  console.log('pemPublicToCrypto Crypto lib: ', crypto);
 
   pem = pem.replace('-----BEGIN PUBLIC KEY-----', '');
   pem = pem.replace('-----END PUBLIC KEY-----', '');

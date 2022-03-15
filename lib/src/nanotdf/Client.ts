@@ -120,9 +120,6 @@ export const clientAuthProvider = async (
   return clientSecretAuthProvider(clientConfig, clientPubKey);
 };
 
-// @ts-ignore
-window.clientAuthProvider = clientAuthProvider;
-
 
 /**
  * A Client encapsulates sessions interacting with TDF3 and nanoTDF backends, KAS and any
