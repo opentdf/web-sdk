@@ -136,15 +136,15 @@ jobs:
           script: |
             const body = `If these changes look good, signoff on them with:
             \`\`\`
-            git commit --amend --signoff && git push origin
+            git pull && git commit --amend --signoff && git push --force-with-lease origin
             \`\`\`
 
             If they aren't any good, please remove them with:
             \`\`\`
-            git reset --hard HEAD~1 && git push --force-with-lease origin {{github.ref_name}}
+            git pull && git reset --hard HEAD~1 && git push --force-with-lease origin {{github.ref_name}}
             \`\`\`
             `;
-            github.issues.createComment({
+            github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
