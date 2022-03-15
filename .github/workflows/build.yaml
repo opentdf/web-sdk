@@ -123,10 +123,34 @@ jobs:
           cache-dependency-path: './lib/package-lock.json'
       - run: make format
       - name: Commit changes
+        id: auto-commit
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
-          commit_message: 🤖 🎨 Autoformat
-          branch: ${{ github.head_ref }}
+          commit_message: |-
+            🤖 🎨 Autoformat
+            
+      - name: Suggest user signoff
+        if: steps.auto-commit.outputs.changes_detected == 'true'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const body = `If these changes look good, signoff on them with:
+            \`\`\`
+            git commit --amend --signoff && git push origin
+            \`\`\`
+
+            If they aren't any good, please remove them with:
+            \`\`\`
+            git reset --hard HEAD~1 && git push --force-with-lease origin {{github.ref_name}}
+            \`\`\`
+            `;
+            github.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            });
 
   deliver-ghp:
     runs-on: ubuntu-latest
