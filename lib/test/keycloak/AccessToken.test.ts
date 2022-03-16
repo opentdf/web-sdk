@@ -6,19 +6,10 @@ import { AccessToken } from '../../src/keycloak/AccessToken.js';
 const qsparse = (s: string) =>
   [...new URLSearchParams(s).entries()].reduce((o, i) => ({ ...o, [i[0]]: i[1] }), {});
 
-const ok = {
-  ok: true,
-  redirected: false,
-  status: 200,
-  statusText: 'ok',
-  type: 'basic',
-  url: 'about:none',
-} as Awaited<ReturnType<typeof fetch>>;
-
 function mockFetch(r: unknown = { hello: 'world' }) {
   const json = fake.resolves(r);
-  const response = fake.resolves({ json });
-  return response;
+  const request = fake.resolves({ json });
+  return request;
 }
 
 // Due to Jest mocks not working with ESModules currently,
@@ -295,14 +286,11 @@ describe('AccessToken', () => {
     });
     it('should attempt to refresh token if userinfo call throws error', async () => {
       const json = fake.resolves({ access_token: 'a' });
-      const mf = fake((url: RequestInfo, init?: RequestInit): Promise<Response> => {
-        if (!init) {
-          return Promise.reject('No init found');
+      const mf = fake((url: string, { method, headers }: { method: string; headers: unknown }) => {
+        if (method === 'POST') {
+          return Promise.resolve({ json });
         }
-        if (init.method === 'POST') {
-          return Promise.resolve({ ...ok, json });
-        }
-        return Promise.reject(`yee [${url}] [${JSON.stringify(init.headers)}]`);
+        return Promise.reject(`yee [${url}] [${JSON.stringify(headers)}]`);
       });
       const accessTokenClient = new AccessToken(
         {
