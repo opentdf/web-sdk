@@ -108,11 +108,56 @@ jobs:
           docker run --rm -v "$PWD:/mnt" --workdir "/mnt" "koalaman/shellcheck:v0.8.0"
           --color=always *.sh
 
+  format:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.ref != 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '16'
+          cache: 'npm'
+          cache-dependency-path: './lib/package-lock.json'
+      - run: make format
+      - name: ignore package-lock changes
+        run: git checkout -- {cli,sample-web-app}/package-lock.json
+      - name: Commit changes
+        id: auto-commit
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: |-
+            🤖 🎨 Autoformat
+            
+      - name: Suggest user signoff
+        if: steps.auto-commit.outputs.changes_detected == 'true'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const body = `If these changes look good, signoff on them with:
+            \`\`\`
+            git pull && git commit --amend --signoff && git push --force-with-lease origin
+            \`\`\`
+
+            If they aren't any good, please remove them with:
+            \`\`\`
+            git pull && git reset --hard HEAD~1 && git push --force-with-lease origin
+            \`\`\`
+            `;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            });
+
   deliver-ghp:
     runs-on: ubuntu-latest
     needs: [lib, cli, sample-web-app, scripts]
     # To publish from a release or feature branch, remove the ref == condition below
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2
@@ -140,7 +185,7 @@ jobs:
   deliver-npmjs:
     runs-on: ubuntu-latest
     environment: npmjs
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: deliver-ghp
     steps:
       - uses: actions/checkout@v2
