@@ -50,29 +50,29 @@
     "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))"
   },
   "dependencies": {
-    "jose": "~4.2.1",
+    "jose": "~4.6.0",
     "uuid": "~8.3.2"
   },
   "devDependencies": {
     "@esm-bundle/chai": "~4.3.4-fix.0",
-    "@types/chai": "~4.2.22",
-    "@types/jsonwebtoken": "~8.5.5",
-    "@types/mocha": "~9.0.0",
-    "@types/sinon": "~10.0.6",
-    "@types/uuid": "~8.3.1",
-    "@typescript-eslint/eslint-plugin": "^5.9.1",
-    "@typescript-eslint/parser": "^5.9.1",
-    "@web/dev-server-rollup": "~0.3.13",
-    "@web/test-runner": "~0.13.21",
-    "@web/test-runner-commands": "~0.5.13",
-    "eslint": "^8.6.0",
-    "eslint-config-prettier": "^8.3.0",
-    "eslint-plugin-import": "^2.25.2",
+    "@types/chai": "~4.3.0",
+    "@types/jsonwebtoken": "~8.5.8",
+    "@types/mocha": "~9.1.0",
+    "@types/sinon": "~10.0.11",
+    "@types/uuid": "~8.3.4",
+    "@typescript-eslint/eslint-plugin": "^5.15.0",
+    "@typescript-eslint/parser": "^5.15.0",
+    "@web/dev-server-rollup": "~0.3.15",
+    "@web/test-runner": "~0.13.27",
+    "@web/test-runner-commands": "~0.6.1",
+    "eslint": "^8.11.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-plugin-import": "^2.25.4",
     "eslint-plugin-prettier": "^4.0.0",
     "license-checker": "^25.0.1",
-    "prettier": "^2.4.1",
-    "rollup": "^2.59.0",
-    "sinon": "~12.0.1",
-    "typescript": "4.5.2"
+    "prettier": "^2.5.1",
+    "rollup": "^2.70.1",
+    "sinon": "~13.0.1",
+    "typescript": "4.6.2"
   }
 }
