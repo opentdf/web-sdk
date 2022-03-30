@@ -3,7 +3,7 @@ import { readFile, stat, writeFile } from 'fs/promises';
 import { webcrypto } from 'crypto';
 
 import { hideBin } from 'yargs/helpers';
-import { AuthProviders, NanoTDFClient } from '@opentdf/client';
+import { AuthProviders, NanoTDFClient, version } from '@opentdf/client';
 
 import { CLIError, Level, log } from './logger.js';
 
@@ -284,7 +284,13 @@ export const handleArgs = (args: string[]) => {
         },
       })
 
-      .version('version', process.env.npm_package_version || 'UNRELEASED')
+      .version(
+        'version',
+        JSON.stringify({
+          '@opentdf/cli': process.env.npm_package_version || 'UNRELEASED',
+          '@opentdf/client': version,
+        })
+      )
       .alias('version', 'V')
       .parseAsync()
   );

@@ -18,7 +18,7 @@
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc --watch",
-    "preppack": "npm run build",
+    "prepack": "npm run build",
     "test": "npm run build && mocha dist/**/*.spec.js",
     "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))",
     "format": "prettier --write \"{src,test}/**/*.ts\"",
@@ -32,23 +32,23 @@
     "@esm-bundle/chai": "4.3.4-fix.0",
     "@types/mocha": "9.1.0",
     "@types/sinon": "^10.0.11",
-    "@types/yargs": "^17.0.9",
-    "@typescript-eslint/eslint-plugin": "^5.15.0",
-    "@typescript-eslint/parser": "^5.15.0",
+    "@types/yargs": "^17.0.10",
+    "@typescript-eslint/eslint-plugin": "^5.17.0",
+    "@typescript-eslint/parser": "^5.17.0",
     "chai": "^4.3.6",
-    "eslint": "^8.11.0",
+    "eslint": "^8.12.0",
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-prettier": "^4.0.0",
     "license-checker": "^25.0.1",
     "mocha": "^9.2.2",
-    "prettier": "^2.5.1",
+    "prettier": "^2.6.1",
     "sinon": "^13.0.1",
     "ts-node": "^10.7.0",
-    "typescript": "^4.6.2"
+    "typescript": "^4.6.3"
   },
   "dependencies": {
     "@opentdf/client": "file:../opentdf-client-0.1.0.tgz",
     "cross-fetch": "^3.1.5",
-    "yargs": "^17.3.1"
+    "yargs": "^17.4.0"
   }
 }
