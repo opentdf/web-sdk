@@ -14,3 +14,9 @@
   run $BATS_TEST_DIRNAME/opentdf.mjs --kasEndpoint https://invalid --oidcEndpoint http://invalid --auth a:b:c encrypt notafile
   [[ $output == *"no such file or directory"* ]]
 }
+
+@test "version command" {
+  run $BATS_TEST_DIRNAME/opentdf.mjs --version
+  [[ $output == *"@opentdf/client\":\""* ]]
+  [[ $output == *"@opentdf/cli\":\""* ]]
+}
