@@ -20,7 +20,6 @@ export default function getCryptoLib(): any {
   //   // @ts-ignore: Swap in incompatible crypto lib
   //   return globalThis.crypto.subtle;
   // }
-  console.log('crypto lib: ', crypto);
   // @ts-ignore: Giving up
   return crypto.webcrypto.subtle;
 }

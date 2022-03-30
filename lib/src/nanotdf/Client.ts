@@ -19,6 +19,10 @@ import {
   OIDCCredentials,
   RefreshTokenCredentials,
 } from './types/OIDCCredentials';
+import { OIDCClientCredentialsProvider } from './auth/oidc-clientcredentials-provider';
+import { OIDCExternalJwtProvider } from './auth/oidc-externaljwt-provider';
+import { OIDCRefreshTokenProvider } from './auth/oidc-refreshtoken-provider';
+
 import { isBrowser } from './utils/utils';
 import { AuthProvider } from '../auth';
 
@@ -28,9 +32,6 @@ export const clientSecretAuthProvider = async (
   clientConfig: ClientSecretCredentials,
   clientPubKey?: string
 ): Promise<AuthProvider> => {
-  const { OIDCClientCredentialsProvider } = await import(
-    './auth/oidc-clientcredentials-provider'
-  );
   return new OIDCClientCredentialsProvider({
     organizationName: clientConfig.organizationName,
     clientPubKey: clientPubKey,
@@ -44,7 +45,6 @@ export const externalAuthProvider = async (
   clientConfig: ExternalJwtCredentials,
   clientPubKey?: string
 ): Promise<AuthProvider> => {
-  const { OIDCExternalJwtProvider } = await import('./auth/oidc-externaljwt-provider');
   return new OIDCExternalJwtProvider({
     organizationName: clientConfig.organizationName,
     clientPubKey: clientPubKey,
@@ -58,7 +58,6 @@ export const refreshAuthProvider = async (
   clientConfig: RefreshTokenCredentials,
   clientPubKey?: string
 ): Promise<AuthProvider> => {
-  const { OIDCRefreshTokenProvider } = await import('./auth/oidc-refreshtoken-provider');
   return new OIDCRefreshTokenProvider({
     organizationName: clientConfig.organizationName,
     clientPubKey: clientPubKey,
