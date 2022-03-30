@@ -17,6 +17,5 @@ export default async function generateKeyPair(
   }
 ): Promise<CryptoKeyPair | never> {
   const crypto = getCryptoLib();
-  console.log('SELECTED CRYPTO LIB: ', crypto.generateKey);
   return await crypto.generateKey({ name, namedCurve }, isExtractable, keyUsages);
 }

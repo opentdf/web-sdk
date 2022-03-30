@@ -1,6 +1,6 @@
 /* eslint @typescript-eslint/ban-ts-comment: "off" */
 
-import * as crypto from "crypto";
+import crypto from "crypto";
 
 export default function getCryptoLib(): any {
   if (typeof window !== 'undefined') {
@@ -16,7 +16,6 @@ export default function getCryptoLib(): any {
     }
     return subtleCrypto;
   }
-  // return crypto
   // if (typeof globalThis !== 'undefined') {
   //   // @ts-ignore: Swap in incompatible crypto lib
   //   return globalThis.crypto.subtle;

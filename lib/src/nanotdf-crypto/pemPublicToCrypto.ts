@@ -211,6 +211,7 @@ export async function extractPublicFromCertToCrypto(
   const hex = arrayBufferToHex(arrayBuffer);
   const jwsAlg = toJwsAlg(hex);
   const keylike = await importX509(pem, jwsAlg, { extractable: options.isExtractable });
+  const crypto = getCryptoLib();
   const { type } = keylike;
   if (type !== 'public') {
     throw new Error('Unpublic');
@@ -223,7 +224,7 @@ export async function extractPublicFromCertToCrypto(
     const subtleAlg = toSubtleAlg(hex);
     const keyUsages = guessKeyUsages(subtleAlg.name, options.usages);
     console.log({ jwsAlg, subtleAlg });
-    const subtleKey = await crypto.subtle.importKey(
+    const subtleKey = await crypto.importKey(
       'jwk',
       keyObject.export({ format: 'jwk' }),
       subtleAlg,

@@ -1,4 +1,5 @@
 import { Ciphers, CipherTagLengths } from './ciphers';
+import getCryptoLib from './getCryptoLib';
 
 /**
  * Encrypt plaintext buffer to ciphertext buffer
@@ -18,7 +19,9 @@ export default async function encrypt(
   iv: Uint8Array,
   tagLength?: number
 ): Promise<ArrayBuffer> {
-  return crypto.subtle.encrypt(
+  const crypto = getCryptoLib();
+
+  return crypto.encrypt(
     {
       name: Ciphers.AesGcm,
       iv,
