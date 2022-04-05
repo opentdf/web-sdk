@@ -90,7 +90,6 @@ export const handleArgs = (args: string[]) => {
           const ll = argv['log-level'] as string;
           log.level = ll.toUpperCase() as Level;
         }
-        return argv;
       })
       .fail((msg, err, yargs) => {
         if (err instanceof CLIError) {

@@ -12,22 +12,24 @@ describe('<App>', () => {
   });
 
   it('loads files', async () => {
+    const user = userEvent.setup();
     const file = new File(['hello, world!'], 'hello.txt', { type: 'text/plain' });
     render(<App />);
     const input = screen.getByLabelText(/select file/i) as HTMLInputElement;
-    userEvent.upload(input, file);
+    user.upload(input, file);
     const filenameEl = await screen.findByText(/hello.txt/i);
     expect(document.body.contains(filenameEl)).to.be.ok;
   });
 
   it('processes files', async () => {
+    const user = userEvent.setup();
     const file = new File(['hello, world!'], 'hello.txt', { type: 'text/plain' });
     render(<App />);
     const input = screen.getByLabelText(/select file/i) as HTMLInputElement;
-    userEvent.upload(input, file);
+    user.upload(input, file);
     await screen.findByText(/hello.txt/i);
     const processButton = screen.getByText(/process/i) as HTMLInputElement;
-    userEvent.click(processButton);
+    user.click(processButton);
     const el = await screen.findByText(/found/i);
     expect(el.textContent).to.match(/found[:]\s*68/i);
   });
