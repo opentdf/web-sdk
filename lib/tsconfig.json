@@ -23,7 +23,10 @@
     "strictFunctionTypes": true,
     "strictNullChecks": true,
     "strictPropertyInitialization": true,
-    "target": "ES2017"
+    "target": "ES2017",
+    "paths": {
+      "crypto": ["node_modules/crypto-js"]
+    }
   },
   "include": ["src", "test"]
 }

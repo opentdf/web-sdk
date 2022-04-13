@@ -1,16 +1,15 @@
 {
   "name": "@opentdf/client",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Access and generate tdf protected content",
   "homepage": "https://github.com/opentdf/client-web",
   "bugs": {
     "url": "https://github.com/opentdf/client-web/issues"
   },
   "files": [
-    "dist/*/package.json",
-    "dist/cjs/src/**",
-    "dist/esm/src/**",
-    "dist/types/src/**",
+    "dist/client/*",
+    "dist/server/*",
+    "dist/types/**/*",
     "README.md"
   ],
   "repository": {
@@ -20,46 +19,23 @@
   },
   "license": "MIT",
   "author": "Virtru",
-  "type": "module",
-  "exports": {
-    ".": {
-      "import": "./dist/esm/src/index.js",
-      "require": "./dist/cjs/src/index.js",
-      "types": "./dist/types/src/index.d.ts"
-    },
-    "./*.js": {
-      "import": "./dist/esm/src/*.js",
-      "require": "./dist/cjs/src/*.js",
-      "types": "./dist/types/src/*.d.ts"
-    }
-  },
-  "main": "./dist/cjs/src/index.js",
-  "module": "./dist/esm/src/index.js",
+  "browser": "./dist/client/client-web.web.js",
+  "main": "./dist/server/node.cjs.js",
   "types": "./dist/types/src/index.d.ts",
   "scripts": {
     "build": "npm run clean && webpack",
-    "build:client": "npm run build -- --config-name=client",
-    "build:server": "npm run build -- --config-name=server",
-    "build:production": "npm run clean && webpack --mode=production",
-    "build:client:production": "npm run build:production -- --config-name=client",
-    "build:server:production": "npm run build:production -- --config-name=server",
-    "build:tsc": "npm run build:tsc:esm && npm run build:tsc:cjs",
-    "build:tsc:cjs": "tsc -p tsconfig-cjs.json && ../scripts/add-module-types.sh cjs",
-    "build:tsc:esm": "tsc -p tsconfig-esm.json && ../scripts/add-module-types.sh esm",
-    "build:tsc:watch": "npm run build:esm && ../scripts/add-module-types lib esm && tsc --module esnext --outDir dist/esm --watch",
+    "build:test": "rm -rf dist/esm && tsc -p tsconfig-esm.json && ../scripts/add-module-types.sh esm",
     "clean": "rm -rf {build,dist}",
     "format": "prettier --write \"{src,test}/**/*.ts\"",
     "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; ISC; MIT'",
     "lint": "eslint ./{src,test}/**/*.ts",
     "prepack": "npm run build",
-    "test": "npm run build && web-test-runner",
+    "test": "npm run build:test && web-test-runner",
     "test:watch": "web-test-runner --watch",
     "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))"
   },
-  "browser": {
-    "crypto": false
-  },
   "dependencies": {
+    "crypto-js": "^4.1.1",
     "jose": "~4.2.1",
     "node-fetch": "^3.2.3",
     "node-polyfill-webpack-plugin": "^1.1.4",
@@ -77,7 +53,6 @@
     "@web/dev-server-rollup": "~0.3.13",
     "@web/test-runner": "~0.13.21",
     "@web/test-runner-commands": "~0.5.13",
-    "crypto-browserify": "^3.12.0",
     "eslint": "^8.6.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-import": "^2.25.2",
