@@ -1,16 +1,15 @@
 {
   "name": "@opentdf/client",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Access and generate tdf protected content",
   "homepage": "https://github.com/opentdf/client-web",
   "bugs": {
     "url": "https://github.com/opentdf/client-web/issues"
   },
   "files": [
-    "dist/*/package.json",
-    "dist/cjs/src/**",
-    "dist/esm/src/**",
-    "dist/types/src/**",
+    "dist/client/*",
+    "dist/server/*",
+    "dist/types/**/*",
     "README.md"
   ],
   "repository": {
@@ -20,32 +19,18 @@
   },
   "license": "MIT",
   "author": "Virtru",
-  "type": "module",
-  "exports": {
-    ".": {
-      "import": "./dist/esm/src/index.js",
-      "require": "./dist/cjs/src/index.js",
-      "types": "./dist/types/src/index.d.ts"
-    },
-    "./*.js": {
-      "import": "./dist/esm/src/*.js",
-      "require": "./dist/cjs/src/*.js",
-      "types": "./dist/types/src/*.d.ts"
-    }
-  },
-  "main": "./dist/cjs/src/index.js",
-  "module": "./dist/esm/src/index.js",
+  "browser": "./dist/client/client-web.web.js",
+  "main": "./dist/server/node.cjs.js",
   "types": "./dist/types/src/index.d.ts",
   "scripts": {
-    "build": "npm run build:esm && npm run build:cjs",
-    "build:cjs": "tsc -p tsconfig-cjs.json && ../scripts/add-module-types.sh cjs && ../scripts/fill-version.sh",
-    "build:esm": "tsc -p tsconfig-esm.json && ../scripts/add-module-types.sh esm && ../scripts/fill-version.sh",
-    "build:watch": "npm run build:esm && ../scripts/add-module-types lib esm && tsc --module esnext --outDir dist/esm --watch",
+    "build": "npm run clean && webpack",
+    "build:test": "npm run clean && tsc -p tsconfig-esm.json && ../scripts/add-module-types.sh esm && ../scripts/fill-version.sh",
+    "clean": "rm -rf {build,dist}",
     "format": "prettier --write \"{src,test}/**/*.ts\"",
     "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; ISC; MIT'",
     "lint": "eslint ./{src,test}/**/*.ts",
     "prepack": "npm run build",
-    "test": "npm run build && web-test-runner",
+    "test": "npm run build:test && web-test-runner",
     "test:watch": "web-test-runner --watch",
     "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))"
   },
@@ -70,9 +55,13 @@
     "eslint-plugin-import": "^2.25.4",
     "eslint-plugin-prettier": "^4.0.0",
     "license-checker": "^25.0.1",
+    "node-polyfill-webpack-plugin": "^1.1.4",
     "prettier": "^2.6.2",
     "rollup": "^2.70.1",
     "sinon": "~13.0.1",
-    "typescript": "4.6.3"
+    "ts-loader": "^9.2.8",
+    "typescript": "4.6.3",
+    "webpack": "^5.72.0",
+    "webpack-cli": "^4.9.2"
   }
 }
