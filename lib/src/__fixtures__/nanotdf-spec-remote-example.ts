@@ -17,8 +17,8 @@
  * @link https://github.com/virtru/nanotdf/blob/master/spec/index.md#61-basic-example
  */
 
-import PolicyTypeEnum from '../nanotdf/enum/PolicyTypeEnum.js';
-import hexArrayTag from '../../test/nanotdf/helpers/hexArrayTag.js';
+import PolicyTypeEnum from '../nanotdf/enum/PolicyTypeEnum';
+import hexArrayTag from '../../test/nanotdf/helpers/hexArrayTag';
 
 // 6.1.2 nanotdf Creator's DER encoded Private Key (base64)
 export const creatorPrivateKey = `
