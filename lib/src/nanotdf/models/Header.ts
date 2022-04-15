@@ -1,17 +1,17 @@
 // Models
-import { getBitLength } from './Ciphers.js';
-import ResourceLocator from './ResourceLocator.js';
-import PolicyFactory from './Policy/PolicyFactory.js';
+import { getBitLength } from './Ciphers';
+import ResourceLocator from './ResourceLocator';
+import PolicyFactory from './Policy/PolicyFactory';
 // Interfaces
-import PolicyInterface from '../interfaces/PolicyInterface.js';
+import PolicyInterface from '../interfaces/PolicyInterface';
 // Enum
-import CipherEnum from '../enum/CipherEnum.js';
-import CurveNameEnum from '../enum/CurveNameEnum.js';
+import CipherEnum from '../enum/CipherEnum';
+import CurveNameEnum from '../enum/CurveNameEnum';
 // Helpers
-import { lengthOfPublicKey } from '../helpers/calculateByCurve.js';
-import DefaultParams from './DefaultParams.js';
+import { lengthOfPublicKey } from '../helpers/calculateByCurve';
+import DefaultParams from './DefaultParams';
 // Errors
-import InvalidEphemeralKeyError from '../errors/InvalidEphemeralKeyError.js';
+import InvalidEphemeralKeyError from '../errors/InvalidEphemeralKeyError';
 
 /**
  * NanoTDF Header
@@ -81,11 +81,11 @@ export default class Header {
      *
      * @link https://github.com/virtru/nanotdf/blob/master/spec/index.md#3311-magic-number--version
      */
-    // Convert to ascii
+      // Convert to ascii
     const magicNumberVersion = buff.subarray(
-      Header.MAGIC_NUMBER_VERSION_BYTE_OFF,
-      Header.MAGIC_NUMBER_VERSION_BYTE_LEN
-    );
+        Header.MAGIC_NUMBER_VERSION_BYTE_OFF,
+        Header.MAGIC_NUMBER_VERSION_BYTE_LEN
+      );
     offset += Header.MAGIC_NUMBER_VERSION_BYTE_LEN;
 
     /**
@@ -173,7 +173,7 @@ export default class Header {
      *
      * @link https://github.com/virtru/nanotdf/blob/master/spec/index.md#3316-key
      */
-    // TODO: Resolve where offset isn't adding 1 byte
+      // TODO: Resolve where offset isn't adding 1 byte
     const ephemeralPublicKeyLength = lengthOfPublicKey(ephemeralCurveName) + 1;
     const ephemeralPublicKey = buff.subarray(offset, offset + ephemeralPublicKeyLength);
     offset += ephemeralPublicKeyLength;

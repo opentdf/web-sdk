@@ -1,6 +1,6 @@
-import VirtruOIDC from './virtru-oidc.js';
-import { IOIDCExternalJwtProvider } from '../interfaces/OIDCInterface.js';
-import { AuthProvider } from '../../auth.js';
+import VirtruOIDC from './virtru-oidc';
+import { IOIDCExternalJwtProvider } from '../interfaces/OIDCInterface';
+import { AuthProvider } from '../../auth';
 
 /**
  * OIDC External JWT Provider for browser contexts.
@@ -36,12 +36,12 @@ export class OIDCExternalJwtProvider implements AuthProvider {
    * @param {string} oidcOrigin - The endpoint of the OIDC IdP to authenticate against, ex. 'https://virtru.com/auth'
    */
   constructor({
-    organizationName,
-    clientPubKey,
-    clientId,
-    externalJwt,
-    oidcOrigin,
-  }: IOIDCExternalJwtProvider) {
+                organizationName,
+                clientPubKey,
+                clientId,
+                externalJwt,
+                oidcOrigin,
+              }: IOIDCExternalJwtProvider) {
     if (!organizationName || !clientId || !externalJwt) {
       throw new Error(
         'To use this browser-only provider you must supply organizationName/clientId/JWT from trusted external IdP'

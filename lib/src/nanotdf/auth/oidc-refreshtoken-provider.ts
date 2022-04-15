@@ -1,6 +1,6 @@
-import VirtruOIDC from './virtru-oidc.js';
-import { IOIDCRefreshTokenProvider } from '../interfaces/OIDCInterface.js';
-import { AuthProvider } from '../../auth.js';
+import VirtruOIDC from './virtru-oidc';
+import { IOIDCRefreshTokenProvider } from '../interfaces/OIDCInterface';
+import { AuthProvider } from '../../auth';
 
 /**
  * OIDC Refresh Token Provider for browser and non-browser contexts.
@@ -36,13 +36,13 @@ export class OIDCRefreshTokenProvider implements AuthProvider {
    */
 
   constructor({
-    organizationName,
-    clientPubKey,
-    clientId,
-    externalRefreshToken,
-    oidcOrigin,
-    clientSecret,
-  }: IOIDCRefreshTokenProvider) {
+                organizationName,
+                clientPubKey,
+                clientId,
+                externalRefreshToken,
+                oidcOrigin,
+                clientSecret,
+              }: IOIDCRefreshTokenProvider) {
     if (!organizationName || !clientId || !externalRefreshToken) {
       throw new Error(
         'To use this browser-only provider you must supply organizationName/clientId/valid OIDC refresh token'

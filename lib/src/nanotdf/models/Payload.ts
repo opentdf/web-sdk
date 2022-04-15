@@ -1,6 +1,6 @@
-import Header from './Header.js';
-import { getBitLength } from '../models/Ciphers.js';
-import InvalidPayloadError from '../errors/InvalidPayloadError.js';
+import Header from './Header';
+import { getBitLength } from './Ciphers';
+import InvalidPayloadError from '../errors/InvalidPayloadError';
 
 /**
  * Payload
@@ -49,7 +49,7 @@ export default class Payload {
      * NOTE: it includes the IV + Ciphertext + Auth Tag. To get the Auth Tag length you have to subtract the other
      * lengths
      */
-    // TODO: This will not work in Big Endian host environments
+      // TODO: This will not work in Big Endian host environments
     const length = (buff[offset] << 16) + (buff[offset + 1] << 8) + buff[offset + 2];
     const ciphertextLength = length - Payload.IV_LEN - authTagByteLength;
     offset += Payload.LENGTH_LEN;
