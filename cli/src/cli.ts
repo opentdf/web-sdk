@@ -8,7 +8,7 @@ const { AuthProviders, NanoTDFClient, version } = require('@opentdf/client');
 const { CLIError, Level, log } = require('./logger.js');
 
 // Load global 'fetch' functions
-require('cross-fetch/dist/node-polyfill.js')
+require('cross-fetch/dist/node-polyfill.js');
 
 // declare global {
 //   // polyfill for browser crypto
