@@ -9,8 +9,5 @@ export { default as importRawKey } from './importRawKey';
 export { default as keyAgreement } from './keyAgreement';
 export { default as exportCryptoKey } from './exportCryptoKey';
 export { default as generateRandomNumber } from './generateRandomNumber';
-export {
-  default as pemPublicToCrypto,
-  extractPublicFromCertToCrypto,
-} from './pemPublicToCrypto';
+export { default as pemPublicToCrypto, extractPublicFromCertToCrypto } from './pemPublicToCrypto';
 export * as enums from './enums';
