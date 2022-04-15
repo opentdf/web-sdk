@@ -1,10 +1,10 @@
-# openTDF Web Browser Client Documentation
+# OpenTDF Web Browser Client Documentation
 
-This project is focused on providing web client support for the openTDF family of data protection formats and protocols. Notably, it is a web-friendly library `@opentdf/client`, and tools and support for testing it and building it into web applications.
+This project is focused on providing web client support for the OpenTDF family of data protection formats and protocols. Notably, it is a web-friendly library `@opentdf/client`, and tools and support for testing it and building it into web applications.
 
 ## Evaluate
 
-Do you want a quick demonstration of openTDF? See [Quickstart](https://github.com/opentdf/documentation/tree/main/quickstart#readme)
+Do you want a quick demonstration of OpenTDF? See [Quickstart](https://github.com/opentdf/documentation/tree/main/quickstart#readme)
 
 ## Integrate
 

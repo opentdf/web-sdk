@@ -1,3 +1,3 @@
 # webclient
 
-opentdf client for browsers
+OpenTDF client for browsers
