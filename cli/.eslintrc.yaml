@@ -1,5 +1,9 @@
 env:
   node: true
+rules:
+  "@typescript-eslint/ban-ts-comment": off
+  "@typescript-eslint/no-var-requires": off
+  strict: off
 extends:
   - eslint:recommended
   - plugin:@typescript-eslint/recommended
