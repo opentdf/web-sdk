@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
-import { AccessToken, AccessTokenConfig } from '../../keycloak/AccessToken';
-import { IVirtruOIDC } from '../interfaces/OIDCInterface';
+import { AccessToken, AccessTokenConfig } from '../keycloak/AccessToken';
+import { IVirtruOIDC } from '../nanotdf/interfaces/OIDCInterface';
 
 /**
  * Class that provides OIDC functionality to auth providers.

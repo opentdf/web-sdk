@@ -15,28 +15,30 @@ import { TypedArray, createAttribute, Policy } from './tdf/index';
  * NanoTDF SDK Client
  *
  * @example
- *  import NanoTDFClient from '@opentdf/client';
+ * ```
+ * import NanoTDFClient from '@opentdf/client';
  *
- *  const OIDC_ENDPOINT = 'http://localhost:65432/keycloak/';
- *  const KAS_URL = 'http://localhost:65432/kas';
+ * const OIDC_ENDPOINT = 'http://localhost:65432/keycloak/';
+ * const KAS_URL = 'http://localhost:65432/kas';
  *
- *  const ciphertext = '...';
- *  const client = new NanoTDFClient(
- *    {
- *      clientId: 'tdf-client',
- *      clientSecret: '123-456',
- *      organizationName: 'tdf',
- *      oidcOrigin: OIDC_ENDPOINT,
- *    },
- *    KAS_URL
- *  );
- *  client.decrypt(ciphertext)
- *    .then(plaintext => {
- *      console.log('Plaintext', plaintext);
- *    })
- *    .catch(err => {
- *      console.error('Some error occurred', err);
- *    })
+ * const ciphertext = '...';
+ * const client = new NanoTDFClient(
+ *   {
+ *     clientId: 'tdf-client',
+ *     clientSecret: '123-456',
+ *     organizationName: 'tdf',
+ *     oidcOrigin: OIDC_ENDPOINT,
+ *   },
+ *   KAS_URL
+ * );
+ * client.decrypt(ciphertext)
+ *   .then(plaintext => {
+ *     console.log('Plaintext', plaintext);
+ *   })
+ *   .catch(err => {
+ *     console.error('Some error occurred', err);
+ *   })
+ * ```
  */
 export class NanoTDFClient extends Client {
   /**
@@ -417,5 +419,5 @@ export class NanoTDFDatasetClient extends Client {
   }
 }
 
-export * as AuthProviders from './nanotdf/Client';
+export * as AuthProviders from './auth/providers';
 export { version, clientType } from './version';

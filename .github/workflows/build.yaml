@@ -228,6 +228,7 @@ jobs:
             scripts/check-version-is.sh
           fi
       - run: make test
+      - run: make doc
       - run:
           .github/workflows/publish-to.sh $(.github/workflows/gh-semver.sh)
           $(.github/workflows/guess-dist-tag.sh)
@@ -236,6 +237,11 @@ jobs:
       - name: trigger xtest
         run: |
           curl -XPOST -u "virtru-cloudnative:${{secrets.PERSONAL_ACCESS_TOKEN}}" -H "Accept: application/vnd.github.everest-preview+json" -H "Content-Type: application/json" "https://api.github.com/repos/opentdf/backend/dispatches" --data '{"event_type": "xtest", "client_payload": {"version":"'$(BUILD_META="" .github/workflows/gh-semver.sh)'"}}'
+      - name: 
+        uses: JamesIves/github-pages-deploy-action@v4.3.3
+        with:
+          branch: gh-pages
+          folder: lib/dist/docs
 
   deliver-npmjs:
     runs-on: ubuntu-latest
