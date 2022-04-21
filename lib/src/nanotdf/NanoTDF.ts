@@ -1,4 +1,4 @@
-import { TypedArray } from '../tdf';
+import { TypedArray } from '../tdf/index';
 import Header from './models/Header';
 import Payload from './models/Payload';
 import Signature from './models/Signature';

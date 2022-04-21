@@ -1,4 +1,4 @@
-import { decrypt as cryptoDecrypt } from '../nanotdf-crypto';
+import { decrypt as cryptoDecrypt } from '../nanotdf-crypto/index';
 import type NanoTDF from './NanoTDF';
 
 /**

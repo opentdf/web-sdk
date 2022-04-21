@@ -1,4 +1,4 @@
-import type { TypedArray } from '../tdf';
+import type { TypedArray } from '../tdf/index';
 import * as base64 from '../encodings/base64';
 import {
   authToken,
@@ -9,7 +9,7 @@ import {
   importRawKey,
   keyAgreement,
   pemPublicToCrypto,
-} from '../nanotdf-crypto';
+} from '../nanotdf-crypto/index';
 import getHkdfSalt from './helpers/getHkdfSalt';
 import DefaultParams from './models/DefaultParams';
 import { fetchWrappedKey } from '../kas';

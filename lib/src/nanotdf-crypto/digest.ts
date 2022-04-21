@@ -1,4 +1,4 @@
-import { TypedArray } from '../tdf';
+import { TypedArray } from '../tdf/index';
 import getCryptoLib from './getCryptoLib';
 
 export default function digest(

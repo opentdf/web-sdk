@@ -7,9 +7,9 @@ import {
   encryptDataset,
   getHkdfSalt,
   DefaultParams,
-} from './nanotdf';
-import { keyAgreement, extractPublicFromCertToCrypto } from './nanotdf-crypto';
-import { TypedArray, createAttribute, Policy } from './tdf';
+} from './nanotdf/index';
+import { keyAgreement, extractPublicFromCertToCrypto } from './nanotdf-crypto/index';
+import { TypedArray, createAttribute, Policy } from './tdf/index';
 
 /**
  * NanoTDF SDK Client

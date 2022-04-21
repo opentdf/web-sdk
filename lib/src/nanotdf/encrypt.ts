@@ -7,7 +7,7 @@ import Payload from './models/Payload';
 import getHkdfSalt from './helpers/getHkdfSalt';
 import { getBitLength as authTagLengthForCipher } from './models/Ciphers';
 import { lengthOfBinding } from './helpers/calculateByCipher';
-import { TypedArray } from '../tdf';
+import { TypedArray } from '../tdf/index';
 
 import {
   encrypt as cryptoEncrypt,
@@ -15,7 +15,7 @@ import {
   extractPublicFromCertToCrypto,
   digest,
   exportCryptoKey,
-} from '../nanotdf-crypto';
+} from '../nanotdf-crypto/index';
 
 /**
  * Encrypt the plain data into nanotdf buffer
