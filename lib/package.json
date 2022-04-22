@@ -29,6 +29,8 @@
     "build:production": "npm run clean && webpack --mode=production",
     "build:client:production": "npm run build:production -- --config-name=client",
     "build:server:production": "npm run build:production -- --config-name=server",
+    "build:cjs": "tsc -p tsconfig-cjs.json && ../scripts/add-module-types.sh cjs && ../scripts/fill-version.sh",
+    "build:esm": "tsc -p tsconfig-esm.json && ../scripts/add-module-types.sh esm && ../scripts/fill-version.sh",
     "build:test": "npm run clean && tsc -p tsconfig-esm.json && ../scripts/add-module-types.sh esm && ../scripts/fill-version.sh",
     "clean": "rm -rf {build,dist}",
     "format": "prettier --write \"{src,test}/**/*.ts\"",
