@@ -24,6 +24,11 @@
   "types": "./dist/types/src/index.d.ts",
   "scripts": {
     "build": "npm run clean && webpack",
+    "build:client": "npm run build -- --config-name=client",
+    "build:server": "npm run build -- --config-name=server",
+    "build:production": "npm run clean && webpack --mode=production",
+    "build:client:production": "npm run build:production -- --config-name=client",
+    "build:server:production": "npm run build:production -- --config-name=server",
     "build:test": "npm run clean && tsc -p tsconfig-esm.json && ../scripts/add-module-types.sh esm && ../scripts/fill-version.sh",
     "clean": "rm -rf {build,dist}",
     "format": "prettier --write \"{src,test}/**/*.ts\"",
