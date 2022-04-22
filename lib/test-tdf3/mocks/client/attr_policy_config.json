@@ -1,0 +1,140 @@
+{
+  "attributes": [
+    {
+      "name": "Classification",
+      "url": "https://example.com/attr/Classification",
+      "type": "hierarchy",
+      "values": [
+        {
+          "name": "Top Secret",
+          "value": "TS",
+          "level": 3,
+          "kasPolicy": {
+            "required": true,
+            "pubKeyId": "4"
+          }
+        },
+        {
+          "name": "Secret",
+          "value": "S",
+          "level": 2,
+          "kasPolicy": {
+            "required": false,
+            "pubKeyId": ""
+          }
+        },
+        {
+          "name": "Confidential",
+          "value": "C",
+          "level": 1,
+          "kasPolicy": {
+            "required": false,
+            "pubKeyId": ""
+          }
+        },
+        {
+          "name": "Unclassified",
+          "value": "U",
+          "level": 0,
+          "kasPolicy": {
+            "required": false,
+            "pubKeyId": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "Rel",
+      "url": "https://example.com/attr/Rel",
+      "type": "anyOf",
+      "values": [
+        {
+          "name": "USA",
+          "value": "USA",
+          "level": -1,
+          "kasPolicy": {
+            "required": true,
+            "pubKeyId": "41"
+          }
+        },
+        {
+          "name": "GBR",
+          "value": "GBR",
+          "level": -1,
+          "kasPolicy": {
+            "required": true,
+            "pubKeyId": "42"
+          }
+        },
+        {
+          "name": "CAN",
+          "value": "CAN",
+          "level": -1,
+          "kasPolicy": {
+            "required": true,
+            "pubKeyId": "43"
+          }
+        },
+        {
+          "name": "AUS",
+          "value": "AUS",
+          "level": -1,
+          "kasPolicy": {
+            "required": true,
+            "pubKeyId": "44"
+          }
+        }
+      ]
+    },
+    {
+      "name": "NTK",
+      "url": "https://example.com/attr/NTK",
+      "type": "allOf",
+      "values": [
+        {
+          "name": "Project X",
+          "value": "projx",
+          "level": -1,
+          "kasPolicy": {
+            "required": true,
+            "pubKeyId": "31"
+          }
+        },
+        {
+          "name": "Financial",
+          "value": "financial",
+          "level": -1,
+          "kasPolicy": {
+            "required": true,
+            "pubKeyId": "32"
+          }
+        }
+      ]
+    },
+    {
+      "name": "COI",
+      "url": "https://example.com/attr/COI",
+      "type": "allOf",
+      "values": [
+        {
+          "name": "Project X",
+          "value": "PRX",
+          "level": -1,
+          "kasPolicy": {
+            "required": true,
+            "pubKeyId": "51"
+          }
+        },
+        {
+          "name": "Financial",
+          "value": "AAA",
+          "level": -1,
+          "kasPolicy": {
+            "required": true,
+            "pubKeyId": "52"
+          }
+        }
+      ]
+    }
+  ]
+}

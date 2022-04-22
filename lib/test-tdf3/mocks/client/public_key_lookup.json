@@ -1,0 +1,38 @@
+{
+  "4": {
+    "public_key_path": "./mocks/kas/key/public.pem",
+    "kas_url": "http://127.0.0.1:5000"
+  },
+  "41": {
+    "public_key_path": "./mocks/kas/key/public.pem",
+    "kas_url": "http://127.0.0.1:5000"
+  },
+  "42": {
+    "public_key_path": "./mocks/kas/key/public.pem",
+    "kas_url": "http://127.0.0.1:5000"
+  },
+  "43": {
+    "public_key_path": "./mocks/kas/key/public.pem",
+    "kas_url": "http://127.0.0.1:5000"
+  },
+  "44": {
+    "public_key_path": "./mocks/kas/key/public.pem",
+    "kas_url": "http://127.0.0.1:5000"
+  },
+  "31": {
+    "public_key_path": "./mocks/kas/key/public.pem",
+    "kas_url": "http://127.0.0.1:5000"
+  },
+  "32": {
+    "public_key_path": "./mocks/kas/key/public.pem",
+    "kas_url": "http://127.0.0.1:5000"
+  },
+  "51": {
+    "public_key_path": "./mocks/kas/key/public.pem",
+    "kas_url": "http://127.0.0.1:5001"
+  },
+  "52": {
+    "public_key_path": "./mocks/kas/key/public.pem",
+    "kas_url": "http://127.0.0.1:5000"
+  }
+}

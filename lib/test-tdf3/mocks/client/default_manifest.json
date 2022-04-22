@@ -1,0 +1,41 @@
+{
+  "payload": {
+    "type": "reference",
+    "url": "0.payload",
+    "protocol": "zip",
+    "isEncrypted": true
+  },
+  "encryptionInformation": {
+    "type": "split",
+    "keyAccess": [
+      {
+        "type": "wrapped",
+        "url": "http://kas.gsk.com:5000",
+        "protocol": "kas",
+        "wrappedKey": "OqnOETpwyGE3PVpUpwwWZoJTNW24UMhnXIif0mSnqLVCUPKAAhrjeue11uAXWpb9sD7ZDsmrc9ylmnSKP9vWel8ST68tv6PeVO+CPYUND7cqG2NhUHCLv5Ouys3Klurykvy8/O3cCLDYl6RDISosxFKqnd7LYD7VnxsYqUns4AW5/odXJrwIhNO3szZV0JgoBXs+U9bul4tSGNxmYuPOj0RE0HEX5yF5lWlt2vHNCqPlmSBV6+jePf7tOBBsqDq35GxCSHhFZhqCgA3MvnBLmKzVPArtJ1lqg3WUdnWV+o6BUzhDpOIyXzeKn4cK2mCxOXGMP2ck2C1a0sECyB82uw==",
+        "policyBinding": "BzmgoIxZzMmIF42qzbdD4Rw30GtdaRSQL2Xlfms1OPs=",
+        "encryptedMetadata": "ZoJTNW24UMhnXIif0mSnqLVCU="
+      }
+    ],
+    "method": {
+      "algorithm": "aes-256-gcm",
+      "isStreamable": false,
+      "iv": "S5FtOSsesp3VfzfNHcHQpg=="
+    },
+    "integrityInformation": {
+      "rootSignature": {
+        "alg": "HS256",
+        "sig": "eyJib2...V19fQ=="
+      },
+      "segmentSizeDefault": "1048576",
+      "segmentHashAlg": "HS256",
+      "segments": [
+        {
+          "segmentSize": "1048576",
+          "hash": "eyJape...dq82UR9=="
+        }
+      ]
+    },
+    "policy": "eyJib2R5IjogeyJkYXRhQXR0cmlidXRlcyI6IFt7InVybCI6ICJodHRwczovL2V4YW1wbGUuY29tL2F0dHIvQ2xhc3NpZmljYXRpb24uUyIsICJuYW1lIjogIlRvcCBTZWNyZXQifSwgeyJ1cmwiOiAiaHR0cHM6Ly9leGFtcGxlLmNvbS9hdHRyL0NPSS5QUlgiLCAibmFtZSI6ICJQcm9qZWN0IFgifV19fQ=="
+  }
+}

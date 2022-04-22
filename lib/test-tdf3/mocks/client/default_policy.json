@@ -1,0 +1,16 @@
+{
+  "uuid": "1111-2222-33333-44444-abddef-timestamp",
+  "body": {
+    "dataAttributes": [
+      {
+        "url": "https://example.com/attr/Classification.S",
+        "name": "Top Secret"
+      },
+      {
+        "url": "https://example.com/attr/COI.PRX",
+        "name": "Project X"
+      }
+    ],
+    "dissem": ["user-id@domain.com"]
+  }
+}
