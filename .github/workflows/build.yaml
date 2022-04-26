@@ -162,9 +162,9 @@ jobs:
           node-version: '16'
           cache: 'npm'
           cache-dependency-path: './lib/package-lock.json'
-      - uses: actions/download-artifact@v2
-        with:
-          name: opentdf-client-lib
+      # - uses: actions/download-artifact@v2
+      #   with:
+      #     name: opentdf-client-lib
       - name: Git clone backend 
         run: |
           git clone https://github.com/opentdf/documentation.git
