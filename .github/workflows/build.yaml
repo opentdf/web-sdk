@@ -152,6 +152,62 @@ jobs:
               repo: context.repo.repo,
               body,
             });
+  
+  backend-roundtrip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '16'
+          cache: 'npm'
+          cache-dependency-path: './lib/package-lock.json'
+      - uses: actions/download-artifact@v2
+        with:
+          name: opentdf-client-lib
+      - name: Git clone backend 
+        run: |
+          git clone https://github.com/opentdf/documentation.git
+      - uses: actions/setup-python@v3
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+      - run: pip install opentdf
+      - uses: yokawasa/action-setup-kube-tools@v0.7.1
+        with:
+          setup-tools: |
+            kubectl
+            helm
+            tilt
+          # This should be in sync with the minikube-deployed kube version below
+          kubectl: "1.23.1"
+          helm: "3.8.0"
+          tilt: "0.26.2"
+      - run: |
+          kubectl version --client
+          kustomize version
+          tilt version
+      - name: start minikube
+        id: minikube
+        uses: medyagh/setup-minikube@master
+        with:
+          minikube-version: 1.25.1
+          # This should be in sync with the setup-tools version above
+          kubernetes-version: 1.23.1
+      - name: Run tilt & test roundtrip
+        run: |-
+          kubectl version
+          pwd
+          cd documentation/quickstart
+          pwd
+          tilt up &
+          tilt wait --for=condition=Ready "uiresource/abacus" --for=condition=Ready "uiresource/kas" --timeout 600s
+          python3 tests/oidc-auth.py
+          cd ../..
+          cd ${{ github.workspace }}
+          pid=$(tilt get session Tiltfile -o jsonpath --template '{.status.pid}')
+          kill $pid
+          tilt down
 
   deliver-ghp:
     runs-on: ubuntu-latest
