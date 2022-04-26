@@ -16,11 +16,6 @@ declare global {
   var crypto: typeof webcrypto;
 }
 
-async function loadCrypto() {
-  if (!globalThis.crypto) {
-    globalThis.crypto = webcrypto;
-  }
-}
 
 type AuthToProcess = {
   auth?: string;
@@ -297,7 +292,6 @@ export const handleArgs = (args: string[]) => {
 
 export type mainArgs = ReturnType<typeof handleArgs>;
 export const main = async (argsPromise: mainArgs) => {
-  await loadCrypto();
   await argsPromise;
 };
 
