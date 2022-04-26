@@ -200,7 +200,7 @@ jobs:
           pwd
           cd documentation/quickstart
           pwd
-          tilt up
+          (tilt up &) 2> /dev/null
           tilt wait --for=condition=Ready "uiresource/abacus" --for=condition=Ready "uiresource/kas" --timeout 600s
       - name: Run RT test
         run: |-
