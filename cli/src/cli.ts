@@ -16,7 +16,6 @@ declare global {
   var crypto: typeof webcrypto;
 }
 
-
 type AuthToProcess = {
   auth?: string;
   orgName?: string;
