@@ -21,6 +21,10 @@
   },
   "license": "MIT",
   "author": "Virtru",
+  "browser": "./dist/client/client-web.web.js",
+  "main": "./dist/server/node.cjs.js",
+  "module": "./dist/esm/src/index.node.js",
+  "types": "./dist/types/src/index.d.ts",
   "exports": {
     ".": {
       "import": "./dist/esm/src/index.node.js",
@@ -28,10 +32,6 @@
       "types": "./dist/types/src/index.d.ts"
     }
   },
-  "browser": "./dist/client/client-web.web.js",
-  "main": "./dist/server/node.cjs.js",
-  "module": "./dist/esm/src/index.node.js",
-  "types": "./dist/types/src/index.d.ts",
   "scripts": {
     "build": "npm run clean && webpack && tsc -p tsconfig-esm.json && node prepareNodeESM.js && ../scripts/add-module-types.sh esm && ../scripts/fill-version.sh",
     "clean": "rm -rf {build,dist}",
