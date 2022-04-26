@@ -65,6 +65,10 @@ jobs:
         with:
           bats-version: 1.2.1
       - run: bats bin/opentdf.bats
+      - uses: actions/upload-artifact@v2
+        with:
+          name: opentdf-cli
+          path: ./cli/opentdf-cli-*.tgz
 
   sample-web-app:
     needs:
@@ -154,25 +158,33 @@ jobs:
             });
   
   backend-roundtrip:
+    needs:
+        - cli
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .github/workflows/roundtrip
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2
         with:
           node-version: '16'
           cache: 'npm'
-          cache-dependency-path: './lib/package-lock.json'
-      # - uses: actions/download-artifact@v2
-      #   with:
-      #     name: opentdf-client-lib
+          cache-dependency-path: '.github/workflows/roundtrip/package-lock.json'
+      - uses: actions/download-artifact@v2
+        with:
+          name: opentdf-client
+      - uses: actions/download-artifact@v2
+        with:
+          name: opentdf-cli
       - name: Git clone backend 
         run: |
           git clone https://github.com/opentdf/documentation.git
-      - uses: actions/setup-python@v3
-        with:
-          python-version: '3.9'
-          cache: 'pip'
-      - run: pip install opentdf
+      # - uses: actions/setup-python@v3
+      #   with:
+      #     python-version: '3.9'
+      #     cache: 'pip'
+      # - run: pip install opentdf
       - uses: yokawasa/action-setup-kube-tools@v0.7.1
         with:
           setup-tools: |
@@ -194,23 +206,11 @@ jobs:
           minikube-version: 1.25.1
           # This should be in sync with the setup-tools version above
           kubernetes-version: 1.23.1
-      - name: Run tilt up
+      - name: Run tilt ci
+        env:
+          TEST_SCRIPT: ./encrypt-decrypt.sh
         run: |-
-          kubectl version
-          pwd
-          ( cd documentation/quickstart && tilt up --stream=false & )
-          tilt wait --for=condition=Ready "uiresource/abacus" --for=condition=Ready "uiresource/kas" --timeout 600s
-      - name: Run RT test
-        run: |-
-          pwd
-          python3 tests/oidc-auth.py
-          cd ../..
-          cd ${{ github.workspace }}
-      - name: Run tilt down
-        run: |-
-          pid=$(tilt get session Tiltfile -o jsonpath --template '{.status.pid}')
-          kill $pid
-          tilt down
+          tilt ci --file documentation/quickstart/Tiltfile
 
   deliver-ghp:
     runs-on: ubuntu-latest
