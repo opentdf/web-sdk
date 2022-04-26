@@ -173,7 +173,7 @@ jobs:
           cache-dependency-path: '.github/workflows/roundtrip/package-lock.json'
       - uses: actions/download-artifact@v2
         with:
-          name: opentdf-client
+          name: opentdf-client-lib
       - uses: actions/download-artifact@v2
         with:
           name: opentdf-cli
