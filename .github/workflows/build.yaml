@@ -198,9 +198,7 @@ jobs:
         run: |-
           kubectl version
           pwd
-          cd documentation/quickstart
-          pwd
-          (tilt up &) 2> /dev/null
+          ( cd documentation/quickstart && tilt up --stream=false & )
           tilt wait --for=condition=Ready "uiresource/abacus" --for=condition=Ready "uiresource/kas" --timeout 600s
       - name: Run RT test
         run: |-
