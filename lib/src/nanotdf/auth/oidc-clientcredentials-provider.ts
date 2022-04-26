@@ -34,12 +34,12 @@ export class OIDCClientCredentialsProvider implements AuthProvider {
    * @param {string} oidcOrigin - The endpoint of the OIDC IdP to authenticate against, ex. 'https://virtru.com/auth'
    */
   constructor({
-                organizationName,
-                clientPubKey,
-                clientId,
-                clientSecret,
-                oidcOrigin,
-              }: IOIDCClientCredentialsProvider) {
+    organizationName,
+    clientPubKey,
+    clientId,
+    clientSecret,
+    oidcOrigin,
+  }: IOIDCClientCredentialsProvider) {
     if (!organizationName || !clientId || !clientSecret) {
       throw new Error(
         'To use this nonbrowser-only provider you must supply organizationName/clientId/clientSecret'

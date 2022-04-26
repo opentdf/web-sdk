@@ -36,13 +36,13 @@ export class OIDCRefreshTokenProvider implements AuthProvider {
    */
 
   constructor({
-                organizationName,
-                clientPubKey,
-                clientId,
-                externalRefreshToken,
-                oidcOrigin,
-                clientSecret,
-              }: IOIDCRefreshTokenProvider) {
+    organizationName,
+    clientPubKey,
+    clientId,
+    externalRefreshToken,
+    oidcOrigin,
+    clientSecret,
+  }: IOIDCRefreshTokenProvider) {
     if (!organizationName || !clientId || !externalRefreshToken) {
       throw new Error(
         'To use this browser-only provider you must supply organizationName/clientId/valid OIDC refresh token'

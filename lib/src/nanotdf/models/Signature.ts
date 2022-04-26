@@ -25,7 +25,7 @@ export default class Signature {
      *
      * This section contains the compressed public key of the private key used to sign the message.
      */
-      // TODO: Resolve where offset is missing 1 byte
+    // TODO: Resolve where offset is missing 1 byte
     const publicKeyLength = lengthOfPublicKey(header.signatureCurveName) + 1;
     const publicKey = buff.subarray(offset, offset + publicKeyLength);
     offset += publicKeyLength;
