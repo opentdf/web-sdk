@@ -30,6 +30,10 @@
       "import": "./dist/esm/src/index.node.js",
       "require": "./dist/server/node.cjs.js",
       "types": "./dist/types/src/index.d.ts"
+    },
+    "./web": {
+      "import": "./dist/esm/src/index.js",
+      "types": "./dist/types/src/index.d.ts"
     }
   },
   "scripts": {
