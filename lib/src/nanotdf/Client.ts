@@ -65,7 +65,6 @@ export default class Client {
   dataAttributes: string[] = [];
   protected ephemeralKeyPair?: Required<Readonly<CryptoKeyPair>>;
   protected requestSignerKeyPair?: Required<Readonly<CryptoKeyPair>>;
-  protected unwrappedKey?: CryptoKey;
   protected iv?: number;
 
   /**
@@ -128,15 +127,6 @@ export default class Client {
     }
     this.requestSignerKeyPair = { publicKey, privateKey };
     return { publicKey, privateKey };
-  }
-
-  /**
-   * Get the unwrapped key
-   *
-   * Returns the unwrapped key or undefined if not rewrapped
-   */
-  getUnwrappedKey(): CryptoKey | undefined {
-    return this.unwrappedKey;
   }
 
   /**
@@ -285,8 +275,9 @@ export default class Client {
       }
 
       // UnwrappedKey
+      let unwrappedKey;
       try {
-        this.unwrappedKey = await importRawKey(
+        unwrappedKey = await importRawKey(
           decryptedKey,
           // Want to use the key to encrypt and decrypt. Signing key will be used later.
           [KeyUsageType.Encrypt, KeyUsageType.Decrypt],
@@ -299,7 +290,7 @@ export default class Client {
         throw new Error(`Unable to import raw key.\n Caused by: ${e.message}`);
       }
 
-      return this.unwrappedKey;
+      return unwrappedKey;
     } catch (e) {
       throw new Error(`Could not rewrap key with entity object.\n Caused by: ${e.message}`);
     }

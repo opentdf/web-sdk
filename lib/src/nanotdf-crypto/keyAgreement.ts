@@ -50,7 +50,7 @@ interface KeyAgreementOptions {
  * - privateKey         {CryptoKey}     default: "undefined"
  * - options            {Object}        default: { bitLength: 256, hkdfHash: 'SHA-512', hkdfSalt: "new UInt8Array()", hkdfInfo: "new UInt8Array()", keyCipher: 'AES-GCM', keyLength: 256, keyUsages: ['encrypt', 'decrypt', 'wrapKey', 'unwrapKey'], isExtractable: true }
  */
-export default async function keyAgreement(
+export async function keyAgreement(
   privateKey: CryptoKey,
   publicKey: CryptoKey,
   options: Partial<KeyAgreementOptions> = {
