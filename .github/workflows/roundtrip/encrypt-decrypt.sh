@@ -2,6 +2,7 @@
 set -e
 
 pwd
+cd ../..
 
 mv ../../../opentdf-cli-*.tgz ../../../cli
 npm uninstall @opentdf/cli && npm ci && npm i ../../../cli/opentdf-cli-*.tgz
