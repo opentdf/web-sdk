@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -e
 
-cd ../..
 pwd
 
 mv ../../../opentdf-cli-*.tgz ../../../cli

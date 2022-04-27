@@ -204,7 +204,7 @@ jobs:
       - name: Run tilt ci
         env:
           #path relative to the quickstart Tiltfile
-          TEST_SCRIPT: ../../encrypt-decrypt.sh
+          TEST_SCRIPT: ../../wait-and-test.sh
         run: |-
           tilt ci --file documentation/quickstart/Tiltfile
 
