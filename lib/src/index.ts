@@ -127,7 +127,7 @@ export class NanoTDFClient extends Client {
       policy.addAttribute(attribute);
     }
 
-    if (this.dissems.length == 0 || this.dataAttributes.length == 0) {
+    if (this.dissems.length == 0 && this.dataAttributes.length == 0) {
       console.warn(
         'This policy has an empty attributes list and an empty dissemination list. This will allow any entity with a valid Entity Object to access this TDF.'
       );
