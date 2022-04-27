@@ -7,8 +7,7 @@ pwd
 mv ../../../opentdf-cli-*.tgz ../../../cli
 npm uninstall @opentdf/cli && npm ci && npm i ../../../cli/opentdf-cli-*.tgz
 
-touch ./sample.txt
-echo "Hello World!" >> ./sample.txt
+echo "Hello World!" > ./sample.txt
 
 npx @opentdf/cli --log-level DEBUG \
 --kasEndpoint http://localhost:65432/api/kas \
@@ -25,4 +24,4 @@ npx @opentdf/cli --log-level DEBUG \
 
 diff sample.txt sample_out.txt
 
-echo "Rountrip successful!"
+echo "Roundtrip successful!"
