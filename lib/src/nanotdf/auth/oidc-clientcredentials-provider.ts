@@ -1,6 +1,6 @@
-import { AuthProvider } from '../../auth.js';
-import { IOIDCClientCredentialsProvider } from '../interfaces/OIDCInterface.js';
-import VirtruOIDC from './virtru-oidc.js';
+import { AuthProvider } from '../../auth';
+import { IOIDCClientCredentialsProvider } from '../interfaces/OIDCInterface';
+import VirtruOIDC from './virtru-oidc';
 
 /**
  * OIDC Client Credentials Provider for non-browser contexts.
