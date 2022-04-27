@@ -1,5 +1,3 @@
-/* eslint @typescript-eslint/ban-ts-comment: "off" */
-
 export default function getCryptoLib(): SubtleCrypto {
   if (typeof window !== 'undefined') {
     let crypto = window.crypto;
@@ -14,10 +12,7 @@ export default function getCryptoLib(): SubtleCrypto {
     }
     return subtleCrypto;
   }
-  if (typeof globalThis !== 'undefined') {
-    // @ts-ignore: Swap in incompatible crypto lib
-    return globalThis.crypto.subtle;
-  }
-  // @ts-ignore: Giving up
-  return crypto;
+
+  // @ts-ignore
+  return globalThis.crypto.webcrypto.subtle;
 }
