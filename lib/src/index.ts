@@ -390,6 +390,10 @@ export class NanoTDFDatasetClient extends Client {
     if (iv === undefined) {
       throw new Error('Dataset full');
     }
+    // assert iv ∈ ℤ ∩ (0, 2^24)
+    if (!Number.isInteger(iv) || iv <= 0 || 0xff_ffff < iv) {
+      throw new Error('Invalid state');
+    }
 
     const lengthAsUint32 = new Uint32Array(1);
     lengthAsUint32[0] = iv;
@@ -403,7 +407,7 @@ export class NanoTDFDatasetClient extends Client {
     ivVector[11] = lengthAsUint24[0];
 
     // Increment the IV
-    if (iv == 0xfff) {
+    if (iv == 0xff_ffff) {
       delete this.iv;
     } else {
       this.iv = iv + 1;
