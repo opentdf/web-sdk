@@ -1,6 +1,6 @@
 {
   "name": "@opentdf/cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Node based CLI for opentdf",
   "repository": {
     "type": "git",
@@ -48,7 +48,6 @@
   },
   "dependencies": {
     "@opentdf/client": "file:../opentdf-client-0.1.1.tgz",
-    "cross-fetch": "^3.1.5",
     "yargs": "^17.4.0"
   }
 }
