@@ -1,0 +1,23 @@
+{
+  "payload": { "type": "reference", "url": "0.payload", "protocol": "zip", "isEncrypted": true },
+  "encryptionInformation": {
+    "keyAccesses": [
+      {
+        "type": "split",
+        "splits": [
+          [
+            {
+              "type": "remoteWrapped",
+              "url": "http://127.0.0.1:4000",
+              "protocol": "kas",
+              "wrappedKey": "x8lk9Nxhx+zv+DVpCz89XLbMwbeeoNMhWIRO7CKdTNEWRWI9T+Ubkdvvi+SgrTJLQeEFBJspLQdombPI8Li1SVGD3pyfMNGXQ/FDoYIp2JHfyVKETfksU4q4gnNU3G63bTvCdQ41FeJJP26DIm63dKbF8BJQ/iSpXIPFalvMy/E9lR6kEv7ShKrwCKThFzynsg37ProbSmaYtTab+8J1/37oxm39PAUUfOOta9JA0mn8dz7f7a3nMVcXcyqrCTZSYbWKqhTowPeK2QiIfGJ1+K4F0V2UXMVuxIw6SEVbNL2hRkZ6+OSQd+kWMZTuneXtZeOHfBuOFRRzVzIEawagdA==",
+              "policyBinding": "fNPuURQu6ZpZk26TglgJxG1E7HiOynaFoyajj+8V1xg="
+            }
+          ]
+        ]
+      }
+    ],
+    "method": { "algorithm": "aes-256-gcm", "iv": "uZL5shabrTGBQW4pN6JmHA==" },
+    "policy": "eyJib2R5IjogeyJkYXRhQXR0cmlidXRlcyI6IFt7InVybCI6ICJodHRwczovL2V4YW1wbGUuY29tL2F0dHIvQ2xhc3NpZmljYXRpb24uUyIsICJuYW1lIjogIlRvcCBTZWNyZXQifSwgeyJ1cmwiOiAiaHR0cHM6Ly9leGFtcGxlLmNvbS9hdHRyL0NPSS5QUlgiLCAibmFtZSI6ICJQcm9qZWN0IFgifV19fQ=="
+  }
+}

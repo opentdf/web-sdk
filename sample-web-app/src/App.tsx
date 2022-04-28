@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 
-import { NanoTDFClient } from '@opentdf/client/web';
+import { NanoTDFClient } from '@opentdf/client/nano';
 
 function toHex(a: Uint8Array) {
   return [...a].map((x) => x.toString(16).padStart(2, '0')).join('');

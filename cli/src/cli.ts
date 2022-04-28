@@ -3,7 +3,7 @@ import { readFile, stat, writeFile } from 'fs/promises';
 import { webcrypto } from 'crypto';
 
 import { hideBin } from 'yargs/helpers';
-import { AuthProviders, NanoTDFClient, version } from '@opentdf/client';
+import { AuthProviders, NanoTDFClient, version } from '@opentdf/client/nano-node-esm';
 
 import { CLIError, Level, log } from './logger.js';
 
