@@ -37,7 +37,7 @@
     }
   },
   "scripts": {
-    "build": "npm run clean && webpack && tsc -p tsconfig-esm.json && node prepareNodeESM.js && ../scripts/add-module-types.sh esm && ../scripts/fill-version.sh",
+    "build": "npm run clean && webpack --mode=production && tsc -p tsconfig-esm.json && node prepareNodeESM.js && ../scripts/add-module-types.sh esm && ../scripts/fill-version.sh",
     "clean": "rm -rf {build,dist}",
     "format": "prettier --write \"{src,test}/**/*.ts\"",
     "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; ISC; MIT'",
