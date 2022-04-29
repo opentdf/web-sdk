@@ -65,6 +65,10 @@ jobs:
         with:
           bats-version: 1.2.1
       - run: bats bin/opentdf.bats
+      - uses: actions/upload-artifact@v2
+        with:
+          name: opentdf-cli
+          path: ./cli/opentdf-cli-*.tgz
 
   sample-web-app:
     needs:
@@ -152,6 +156,57 @@ jobs:
               repo: context.repo.repo,
               body,
             });
+  
+  backend-roundtrip:
+    needs:
+        - cli
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .github/workflows/roundtrip
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '16'
+          cache: 'npm'
+          cache-dependency-path: '.github/workflows/roundtrip/package-lock.json'
+      - uses: actions/download-artifact@v2
+        with:
+          name: opentdf-client-lib
+      - uses: actions/download-artifact@v2
+        with:
+          name: opentdf-cli
+      - name: Git clone backend 
+        run: |
+          git clone https://github.com/opentdf/documentation.git
+      - uses: yokawasa/action-setup-kube-tools@v0.7.1
+        with:
+          setup-tools: |
+            kubectl
+            helm
+            tilt
+          # This should be in sync with the minikube-deployed kube version below
+          kubectl: "1.23.1"
+          helm: "3.8.0"
+          tilt: "0.26.2"
+      - run: |
+          kubectl version --client
+          kustomize version
+          tilt version
+      - name: start minikube
+        id: minikube
+        uses: medyagh/setup-minikube@master
+        with:
+          minikube-version: 1.25.1
+          # This should be in sync with the setup-tools version above
+          kubernetes-version: 1.23.1
+      - name: Run tilt ci
+        env:
+          #path relative to the quickstart Tiltfile
+          TEST_SCRIPT: ../../wait-and-test.sh
+        run: |-
+          tilt ci --file documentation/quickstart/Tiltfile
 
   deliver-ghp:
     runs-on: ubuntu-latest
