@@ -7,9 +7,9 @@ import {
   encryptDataset,
   getHkdfSalt,
   DefaultParams,
-} from './nanotdf/index.js';
-import { keyAgreement, extractPublicFromCertToCrypto } from './nanotdf-crypto/index.js';
-import { TypedArray, createAttribute, Policy } from './tdf/index.js';
+} from './nanotdf/index';
+import { keyAgreement, extractPublicFromCertToCrypto } from './nanotdf-crypto/index';
+import { TypedArray, createAttribute, Policy } from './tdf/index';
 
 /**
  * NanoTDF SDK Client
@@ -127,7 +127,7 @@ export class NanoTDFClient extends Client {
       policy.addAttribute(attribute);
     }
 
-    if (this.dissems.length == 0 || this.dataAttributes.length == 0) {
+    if (this.dissems.length == 0 && this.dataAttributes.length == 0) {
       console.warn(
         'This policy has an empty attributes list and an empty dissemination list. This will allow any entity with a valid Entity Object to access this TDF.'
       );
@@ -390,6 +390,10 @@ export class NanoTDFDatasetClient extends Client {
     if (iv === undefined) {
       throw new Error('Dataset full');
     }
+    // assert iv ∈ ℤ ∩ (0, 2^24)
+    if (!Number.isInteger(iv) || iv <= 0 || 0xff_ffff < iv) {
+      throw new Error('Invalid state');
+    }
 
     const lengthAsUint32 = new Uint32Array(1);
     lengthAsUint32[0] = iv;
@@ -403,7 +407,7 @@ export class NanoTDFDatasetClient extends Client {
     ivVector[11] = lengthAsUint24[0];
 
     // Increment the IV
-    if (iv == 0xfff) {
+    if (iv == 0xff_ffff) {
       delete this.iv;
     } else {
       this.iv = iv + 1;
@@ -413,5 +417,5 @@ export class NanoTDFDatasetClient extends Client {
   }
 }
 
-export * as AuthProviders from './nanotdf/Client.js';
-export { version, clientType } from './version.js';
+export * as AuthProviders from './nanotdf/Client';
+export { version, clientType } from './version';

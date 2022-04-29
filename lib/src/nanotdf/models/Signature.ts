@@ -1,5 +1,5 @@
-import Header from './Header.js';
-import { lengthOfPublicKey, lengthOfSignature } from '../helpers/calculateByCurve.js';
+import Header from './Header';
+import { lengthOfPublicKey, lengthOfSignature } from '../helpers/calculateByCurve';
 
 /**
  * NanoTDF Signature

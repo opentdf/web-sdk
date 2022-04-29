@@ -1,26 +1,9 @@
 import yargs from 'yargs';
 import { readFile, stat, writeFile } from 'fs/promises';
-import { webcrypto } from 'crypto';
-
 import { hideBin } from 'yargs/helpers';
 import { AuthProviders, NanoTDFClient, version } from '@opentdf/client';
 
 import { CLIError, Level, log } from './logger.js';
-
-// Load global 'fetch' functions
-import 'cross-fetch/dist/node-polyfill.js';
-
-declare global {
-  // polyfill for browser crypto
-  // eslint-disable-next-line no-var
-  var crypto: typeof webcrypto;
-}
-
-async function loadCrypto() {
-  if (!globalThis.crypto) {
-    globalThis.crypto = webcrypto;
-  }
-}
 
 type AuthToProcess = {
   auth?: string;
@@ -297,7 +280,6 @@ export const handleArgs = (args: string[]) => {
 
 export type mainArgs = ReturnType<typeof handleArgs>;
 export const main = async (argsPromise: mainArgs) => {
-  await loadCrypto();
   await argsPromise;
 };
 

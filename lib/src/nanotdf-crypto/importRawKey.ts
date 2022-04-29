@@ -1,4 +1,5 @@
-import { CipherType, KeyFormat, KeyUsageType } from './enums.js';
+import { CipherType, KeyFormat, KeyUsageType } from './enums';
+import getCryptoLib from './getCryptoLib';
 
 /**
  * Import raw key
@@ -15,5 +16,6 @@ export default async function importRawKey(
   keyUsages: Array<KeyUsageType>,
   isExtractable = false
 ): Promise<CryptoKey> {
-  return crypto.subtle.importKey(KeyFormat.Raw, key, CipherType.AesGcm, isExtractable, keyUsages);
+  const crypto = getCryptoLib();
+  return crypto.importKey(KeyFormat.Raw, key, CipherType.AesGcm, isExtractable, keyUsages);
 }

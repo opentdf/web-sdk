@@ -16,8 +16,8 @@
  * NOTE This uses the deprecated 3 byte iv.
  */
 
-import PolicyTypeEnum from '../nanotdf/enum/PolicyTypeEnum.js';
-import hexArrayTag from '../../test/nanotdf/helpers/hexArrayTag.js';
+import PolicyTypeEnum from '../nanotdf/enum/PolicyTypeEnum';
+import hexArrayTag from '../../test/nanotdf/helpers/hexArrayTag';
 
 // 6.1.5 nanotdf
 export const nanotdf = `
