@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -e
 
-pwd
 cd ../..
+pwd
 
-mv ../../../opentdf-cli-*.tgz ../../../cli
+cp ../../../opentdf-cli-*.tgz ../../../cli
 npm uninstall @opentdf/cli && npm ci && npm i ../../../cli/opentdf-cli-*.tgz
 
 echo "Hello World!" > ./sample.txt
