@@ -1,3 +1,3 @@
 # webclient
 
-opentdf client for browsers and node.js
+OpenTDF client for browsers and node.js
