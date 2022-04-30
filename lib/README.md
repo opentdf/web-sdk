@@ -1,4 +1,4 @@
-# An OpenTDF Library for Browser and NodeJS Clients
+# An OpenTDF Library for Browsers and NodeJS Clients
 
 This project packages a set of javascript modules that can write and read
 a variety of OpenTDF data formats, including NanoTDF, Dataset TDF, and the
