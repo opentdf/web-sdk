@@ -49,3 +49,8 @@
     transform: rotate(360deg);
   }
 }
+
+.authinfo {
+  margin: 2em;
+  border: 1px red;
+}

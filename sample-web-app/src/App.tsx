@@ -1,11 +1,47 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
+import {
+  OidcSecure,
+  OidcUserStatus,
+  useOidcIdToken,
+  useOidcUser,
+} from '@axa-fr/react-oidc-context';
 
 import { NanoTDFClient } from '@opentdf/client/nano';
 
 function toHex(a: Uint8Array) {
   return [...a].map((x) => x.toString(16).padStart(2, '0')).join('');
 }
+
+const DisplayUserInfo = () => {
+  const { oidcUser, oidcUserLoadingState } = useOidcUser();
+  const { idToken, idTokenPayload } = useOidcIdToken();
+
+  switch (oidcUserLoadingState) {
+    case OidcUserStatus.Loading:
+      return <p>User Information are loading</p>;
+    case OidcUserStatus.Unauthenticated:
+      return <p>you are not authenticated</p>;
+    case OidcUserStatus.LoadingError:
+      return <p>Fail to load user information</p>;
+    default:
+      return (
+        <div>
+          <div className="card-body">
+            <h5 className="card-title">User information</h5>
+            <p className="card-text">{JSON.stringify(oidcUser)}</p>
+          </div>
+          <div className="card-body">
+            <h5 className="card-title">ID Token</h5>
+            {<p className="card-text">{JSON.stringify(idToken)}</p>}
+            {idTokenPayload != null && (
+              <p className="card-text">{JSON.stringify(idTokenPayload)}</p>
+            )}
+          </div>
+        </div>
+      );
+  }
+};
 
 function App() {
   const [selectedFile, setSelectedFile] = useState<File | undefined>();
@@ -72,6 +108,12 @@ function App() {
             </button>
           </div>
         )}
+      </div>
+      <OidcSecure>
+        <h1>My sub component</h1>
+      </OidcSecure>
+      <div className="authinfo">
+        <DisplayUserInfo />
       </div>
     </div>
   );

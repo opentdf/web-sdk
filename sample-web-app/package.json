@@ -9,17 +9,20 @@
   },
   "license": "BSD-3-Clause-Clear",
   "scripts": {
-    "start": "snowpack dev",
-    "build": "snowpack build",
-    "test": "web-test-runner \"src/**/*.test.tsx\"",
+    "copy": "copyfiles -f ./node_modules/@axa-fr/react-oidc-context/dist/OidcServiceWorker.js ./public && copyfiles -f -s ./node_modules/@axa-fr/react-oidc-context/dist/OidcTrustedDomains.js ./public",
+    "start": "npm run copy && snowpack dev",
+    "build": "npm run copy && snowpack build",
+    "test": "npm run copy && web-test-runner \"src/**/*.test.tsx\"",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"",
     "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; CC-BY-4.0; ISC; MIT'",
     "lint": "eslint \"src/**/*.{js,jsx,ts,tsx}\"",
     "lint:fix": "eslint --fix \"src/**/*.{js,jsx,ts,tsx}\""
   },
   "dependencies": {
+    "@axa-fr/react-oidc-context": "^5.5.1",
     "@opentdf/client": "file:../opentdf-client-0.2.2.tgz",
     "process": "^0.11.10",
+    "prop-types": "^15.8.1",
     "react": "^18.0.0",
     "react-dom": "^18.0.0"
   },
@@ -39,6 +42,7 @@
     "@typescript-eslint/parser": "^5.18.0",
     "@web/test-runner": "0.13.27",
     "chai": "^4.3.6",
+    "copyfiles": "^2.4.1",
     "eslint": "^8.12.0",
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-prettier": "^4.0.0",
