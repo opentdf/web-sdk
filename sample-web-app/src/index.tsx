@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import { OidcProvider } from '@axa-fr/react-oidc-context';
 import App from './App.jsx';
 import './index.css';
@@ -14,13 +14,15 @@ const configuration = {
   service_worker_only: true,
 };
 
-ReactDOM.render(
+const container = document.getElementById('root');
+const root = createRoot(container);
+
+root.render(
   <React.StrictMode>
     <OidcProvider configuration={configuration}>
       <App />
     </OidcProvider>
-  </React.StrictMode>,
-  document.getElementById('root')
+  </React.StrictMode>
 );
 
 // Hot Module Replacement (HMR) - Remove this snippet to remove HMR.
