@@ -16,19 +16,19 @@ import { TypedArray, createAttribute, Policy } from './tdf/index';
  *
  * @example
  * ```
- * import NanoTDFClient from '@opentdf/client';
+ * import { clientSecretAuthProvider, NanoTDFClient } from '@opentdf/client';
  *
- * const OIDC_ENDPOINT = 'http://localhost:65432/keycloak/';
- * const KAS_URL = 'http://localhost:65432/kas';
+ * const OIDC_ENDPOINT = 'http://localhost:65432/auth/';
+ * const KAS_URL = 'http://localhost:65432/api/kas/';
  *
  * const ciphertext = '...';
  * const client = new NanoTDFClient(
- *   {
+ *   await clientSecretAuthProvider({
  *     clientId: 'tdf-client',
  *     clientSecret: '123-456',
  *     organizationName: 'tdf',
  *     oidcOrigin: OIDC_ENDPOINT,
- *   },
+ *   }),
  *   KAS_URL
  * );
  * client.decrypt(ciphertext)
@@ -38,7 +38,6 @@ import { TypedArray, createAttribute, Policy } from './tdf/index';
  *   .catch(err => {
  *     console.error('Some error occurred', err);
  *   })
- * ```
  */
 export class NanoTDFClient extends Client {
   /**
@@ -57,7 +56,7 @@ export class NanoTDFClient extends Client {
     // TODO: The version number should be fetched from the API
     const version = '0.0.1';
     // Rewrap key on every request
-    await this.rewrapKey(
+    const ukey = await this.rewrapKey(
       nanotdf.header.toBuffer(),
       nanotdf.header.getKasRewrapUrl(),
       nanotdf.header.magicNumberVersion,
@@ -65,7 +64,6 @@ export class NanoTDFClient extends Client {
       nanotdf.header.authTagLength
     );
 
-    const ukey = this.unwrappedKey;
     if (!ukey) {
       throw new Error('Key rewrap failure');
     }
@@ -88,7 +86,7 @@ export class NanoTDFClient extends Client {
 
     const legacyVersion = '0.0.0';
     // Rewrap key on every request
-    await this.rewrapKey(
+    const key = await this.rewrapKey(
       nanotdf.header.toBuffer(),
       nanotdf.header.getKasRewrapUrl(),
       nanotdf.header.magicNumberVersion,
@@ -96,7 +94,6 @@ export class NanoTDFClient extends Client {
       nanotdf.header.authTagLength
     );
 
-    const key = this.unwrappedKey;
     if (!key) {
       throw new Error('Failed unwrap');
     }
@@ -168,29 +165,26 @@ export class NanoTDFClient extends Client {
  *
  *
  * @example
- *  import NanoTDFDatasetClient from 'nanotdf-sdk';
+ * ```
+ * import { clientSecretAuthProvider, NanoTDFDatasetClient } from '@opentdf/client';
  *
- *  const OIDC_ENDPOINT = 'http://localhost:65432/keycloak/';
- *  const KAS_URL = 'http://localhost:65432/kas';
+ * const OIDC_ENDPOINT = 'http://localhost:65432/auth/';
+ * const KAS_URL = 'http://localhost:65432/api/kas/';
  *
- *  const ciphertext = '...';
- *  const client = new NanoTDFDatasetClient.default(
- *    {
- *      clientId: 'tdf-client',
- *      clientSecret: '123-456',
- *      organizationName: 'tdf',
- *      exchange: 'client',
- *      oidcOrigin: OIDC_ENDPOINT,
- *    },
- *    KAS_URL
- *  );
- *  client.decrypt(ciphertext)
- *    .then(plaintext => {
- *      console.log('Plaintext', plaintext);
- *    })
- *    .catch(err => {
- *      console.error('Some error occurred', err);
- *    })
+ * const ciphertext = '...';
+ * const client = new NanoTDFDatasetClient.default(
+ *   await clientSecretAuthProvider({
+ *     clientId: 'tdf-client',
+ *     clientSecret: '123-456',
+ *     organizationName: 'tdf',
+ *     exchange: 'client',
+ *     oidcOrigin: OIDC_ENDPOINT,
+ *   }),
+ *   KAS_URL
+ * );
+ * const plaintext = client.decrypt(ciphertext);
+ * console.log('Plaintext', plaintext);
+ * ```
  */
 export class NanoTDFDatasetClient extends Client {
   // Total unique IVs(2^24 -1) used for encrypting the nano tdf payloads
@@ -199,7 +193,8 @@ export class NanoTDFDatasetClient extends Client {
 
   private maxKeyIteration: number;
   private keyIterationCount: number;
-  private cachedEphemmeralKey?: Uint8Array;
+  private cachedEphemeralKey?: Uint8Array;
+  private unwrappedKey?: CryptoKey;
   private symmetricKey?: CryptoKey;
   private cachedHeader?: Header;
 
@@ -345,13 +340,13 @@ export class NanoTDFDatasetClient extends Client {
     // Parse ciphertext
     const nanotdf = NanoTDF.from(ciphertext);
 
-    if (!this.cachedEphemmeralKey) {
+    if (!this.cachedEphemeralKey) {
       // First decrypt
       return this.rewrapAndDecrypt(nanotdf);
     }
 
     // Other encrypts
-    if (this.cachedEphemmeralKey.toString() == nanotdf.header.ephemeralPublicKey.toString()) {
+    if (this.cachedEphemeralKey.toString() == nanotdf.header.ephemeralPublicKey.toString()) {
       const ukey = this.unwrappedKey;
       if (!ukey) {
         throw new Error('Key rewrap failure');
@@ -369,19 +364,19 @@ export class NanoTDFDatasetClient extends Client {
 
     const version = '0.0.1';
     // Rewrap key on every request
-    await this.rewrapKey(
+    const ukey = await this.rewrapKey(
       nanotdf.header.toBuffer(),
       nanotdf.header.getKasRewrapUrl(),
       nanotdf.header.magicNumberVersion,
       version,
       nanotdf.header.authTagLength
     );
-    const ukey = this.unwrappedKey;
     if (!ukey) {
       throw new Error('Key rewrap failure');
     }
 
-    this.cachedEphemmeralKey = nanotdf.header.ephemeralPublicKey;
+    this.cachedEphemeralKey = nanotdf.header.ephemeralPublicKey;
+    this.unwrappedKey = ukey;
 
     // Return decrypt promise
     return decrypt(ukey, nanotdf);
