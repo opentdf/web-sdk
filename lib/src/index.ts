@@ -74,7 +74,7 @@ export class NanoTDFClient extends Client {
   }
 
   /**
-   * Decrypt ciphertext of the legacy TDF
+   * Decrypt ciphertext of the legacy TDF, with the older, smaller i.v. calculation.
    *
    * Pass a base64 string, TypedArray, or ArrayBuffer ciphertext and get a promise which resolves plaintext
    *
@@ -419,5 +419,9 @@ export class NanoTDFDatasetClient extends Client {
   }
 }
 
+/**
+ * Authorization for connecting authZ tokens to
+ * remote requests.
+ */
 export * as AuthProviders from './auth/providers';
 export { version, clientType } from './version';

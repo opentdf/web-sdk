@@ -22,6 +22,7 @@ export interface AuthProvider {
 
   /**
    * Compute an auth header value for an http request, to associate the session with the current entity
+   * @returns a value that will be attached as a bearer token in the `Authorization` header for requests to backend services
    */
   authorization(): Promise<string>;
 }
