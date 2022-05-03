@@ -16,28 +16,28 @@ import { TypedArray, createAttribute, Policy } from './tdf/index';
  *
  * @example
  * ```
- *  import { clientSecretAuthProvider, NanoTDFClient } from '@opentdf/client';
+ * import { clientSecretAuthProvider, NanoTDFClient } from '@opentdf/client';
  *
- *  const OIDC_ENDPOINT = 'http://localhost:65432/auth/';
- *  const KAS_URL = 'http://localhost:65432/api/kas/';
+ * const OIDC_ENDPOINT = 'http://localhost:65432/auth/';
+ * const KAS_URL = 'http://localhost:65432/api/kas/';
  *
- *  const ciphertext = '...';
- *  const client = new NanoTDFClient(
- *    await clientSecretAuthProvider({
- *      clientId: 'tdf-client',
- *      clientSecret: '123-456',
- *      organizationName: 'tdf',
- *      oidcOrigin: OIDC_ENDPOINT,
- *    }),
- *    KAS_URL
- *  );
- *  client.decrypt(ciphertext)
- *    .then(plaintext => {
- *      console.log('Plaintext', plaintext);
- *    })
- *    .catch(err => {
- *      console.error('Some error occurred', err);
- *    })
+ * const ciphertext = '...';
+ * const client = new NanoTDFClient(
+ *   await clientSecretAuthProvider({
+ *     clientId: 'tdf-client',
+ *     clientSecret: '123-456',
+ *     organizationName: 'tdf',
+ *     oidcOrigin: OIDC_ENDPOINT,
+ *   }),
+ *   KAS_URL
+ * );
+ * client.decrypt(ciphertext)
+ *   .then(plaintext => {
+ *     console.log('Plaintext', plaintext);
+ *   })
+ *   .catch(err => {
+ *     console.error('Some error occurred', err);
+ *   })
  */
 export class NanoTDFClient extends Client {
   /**
@@ -166,24 +166,24 @@ export class NanoTDFClient extends Client {
  *
  * @example
  * ```
- *  import { clientSecretAuthProvider, NanoTDFDatasetClient } from '@opentdf/client';
+ * import { clientSecretAuthProvider, NanoTDFDatasetClient } from '@opentdf/client';
  *
- *  const OIDC_ENDPOINT = 'http://localhost:65432/auth/';
- *  const KAS_URL = 'http://localhost:65432/api/kas/';
+ * const OIDC_ENDPOINT = 'http://localhost:65432/auth/';
+ * const KAS_URL = 'http://localhost:65432/api/kas/';
  *
- *  const ciphertext = '...';
- *  const client = new NanoTDFDatasetClient.default(
- *    await clientSecretAuthProvider({
- *      clientId: 'tdf-client',
- *      clientSecret: '123-456',
- *      organizationName: 'tdf',
- *      exchange: 'client',
- *      oidcOrigin: OIDC_ENDPOINT,
- *    }),
- *    KAS_URL
- *  );
- *  const plaintext = client.decrypt(ciphertext);
- *  console.log('Plaintext', plaintext);
+ * const ciphertext = '...';
+ * const client = new NanoTDFDatasetClient.default(
+ *   await clientSecretAuthProvider({
+ *     clientId: 'tdf-client',
+ *     clientSecret: '123-456',
+ *     organizationName: 'tdf',
+ *     exchange: 'client',
+ *     oidcOrigin: OIDC_ENDPOINT,
+ *   }),
+ *   KAS_URL
+ * );
+ * const plaintext = client.decrypt(ciphertext);
+ * console.log('Plaintext', plaintext);
  * ```
  */
 export class NanoTDFDatasetClient extends Client {
