@@ -1,6 +1,6 @@
 {
   "name": "@opentdf/client",
-  "version": "0.1.1",
+  "version": "0.1.13",
   "description": "Access and generate tdf protected content",
   "homepage": "https://github.com/opentdf/client-web",
   "bugs": {
@@ -26,6 +26,11 @@
   "module": "./dist/esm/src/index.node.js",
   "types": "./dist/types/src/index.d.ts",
   "exports": {
+    ".": {
+      "import": "./dist/client/client-web.js",
+      "require": "./dist/server/node.cjs.js",
+      "types": "./dist/types/src/index.d.ts"
+    },
     "./nano": {
       "import": "./dist/esm/src/index.js",
       "require": "./dist/server/node-nano.cjs.js",
@@ -62,7 +67,6 @@
     "node-polyfill-webpack-plugin": "^1.1.4",
     "query-string": "^7.1.1",
     "sjcl": "^1.0.8",
-    "streamsaver": "^2.0.6",
     "ua-parser-js": "^1.0.2",
     "uuid": "~8.3.2",
     "web-streams-node": "^0.4.0",
@@ -121,6 +125,7 @@
     "rollup": "^2.70.1",
     "send": "^0.18.0",
     "sinon": "~13.0.1",
+    "streamsaver": "^2.0.6",
     "ts-loader": "^9.2.8",
     "ts-node": "^10.7.0",
     "tsify": "^5.0.4",
