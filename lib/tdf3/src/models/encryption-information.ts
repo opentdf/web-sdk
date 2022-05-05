@@ -1,13 +1,41 @@
 import { keySplit } from '../utils';
-import { base64, hex } from '../encodings';
+import { base64, hex } from '../../../src/encodings';
 import { Binary } from '../binary';
 import { SymmetricCipher } from '../ciphers/symmetric-cipher-base';
-import { KeyAccess } from './key-access';
+import { KeyAccess, KeyAccessObject } from './key-access';
 import { Policy } from './policy';
 
 export type KeyInfo = {
   readonly unwrappedKeyBinary: Binary;
   readonly unwrappedKeyIvBinary: Binary;
+};
+
+export type Segment = {
+  readonly hash: string;
+  readonly segmentSize: number;
+  readonly encryptedSegmentSize: number;
+};
+
+export type EncryptionInformation = {
+  readonly type: string;
+  readonly keyAccess: KeyAccessObject[];
+  readonly integrityInformation: {
+    readonly rootSignature: {
+      readonly alg: string;
+      readonly sig: string;
+    };
+    readonly segmentHash: string;
+    readonly segmentHashAlg: string;
+    readonly segments: Segment[];
+    readonly segmentSizeDefault?: number;
+    readonly encryptedSegmentSizeDefault?: number;
+  };
+  readonly method: {
+    readonly algorithm: string;
+    readonly isStreamable: boolean;
+    readonly iv: string;
+  };
+  readonly policy: string;
 };
 
 export class SplitKey {
@@ -86,7 +114,11 @@ export class SplitKey {
     return Binary.fromString(hex.decode(iv));
   }
 
-  async write(policy, keyInfo) {
+  async write(policy: Policy, keyInfo: KeyInfo): Promise<EncryptionInformation> {
+    const algorithm = this.cipher.name;
+    if (!algorithm) {
+      throw new Error('Uninitialized cipher type');
+    }
     const keyAccessObjects = await this.getKeyAccessObjects(policy, keyInfo);
 
     // For now we're only concerned with a single (first) key access object
@@ -96,7 +128,7 @@ export class SplitKey {
       type: 'split',
       keyAccess: keyAccessObjects,
       method: {
-        algorithm: this.cipher.name,
+        algorithm,
         isStreamable: false,
         iv: base64.encode(keyInfo.unwrappedKeyIvBinary.asString()),
       },
@@ -105,8 +137,8 @@ export class SplitKey {
           alg: 'HS256',
           sig: '',
         },
-        segmentSizeDefault: '',
         segmentHashAlg: '',
+        segmentHash: '',
         segments: [],
       },
       policy: policyForManifest,

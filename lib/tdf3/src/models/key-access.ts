@@ -1,5 +1,5 @@
 import { Binary } from '../binary';
-import { base64 } from '../encodings';
+import { base64, hex } from '../../../src/encodings';
 import { cryptoService } from '../crypto';
 import { Policy } from './policy';
 
@@ -19,16 +19,16 @@ export class Wrapped {
     public readonly metadata: unknown
   ) {}
 
-  async write(policy: Policy, keyBuffer: Buffer, encryptedMetadataStr: string) {
+  async write(policy: Policy, keyBuffer: Uint8Array, encryptedMetadataStr: string) {
     const policyStr = JSON.stringify(policy);
-    const unwrappedKeyBinary = Binary.fromBuffer(keyBuffer);
+    const unwrappedKeyBinary = Binary.fromBuffer(Buffer.from(keyBuffer));
     const wrappedKeyBinary = await cryptoService.encryptWithPublicKey(
       unwrappedKeyBinary,
       this.publicKey
     );
 
     const policyBinding = await cryptoService.hmac(
-      keyBuffer.toString('hex'),
+      hex.encodeArrayBuffer(keyBuffer),
       base64.encode(policyStr)
     );
 
@@ -57,13 +57,13 @@ export class Remote {
     public readonly metadata: unknown
   ) {}
 
-  async write(policy: Policy, keyBuffer: Buffer, encryptedMetadataStr: string) {
+  async write(policy: Policy, keyBuffer: Uint8Array, encryptedMetadataStr: string) {
     const policyStr = JSON.stringify(policy);
     const policyBinding = await cryptoService.hmac(
-      keyBuffer.toString('hex'),
+      hex.encodeArrayBuffer(keyBuffer),
       base64.encode(policyStr)
     );
-    const unwrappedKeyBinary = Binary.fromBuffer(keyBuffer);
+    const unwrappedKeyBinary = Binary.fromBuffer(Buffer.from(keyBuffer));
     const wrappedKeyBinary = await cryptoService.encryptWithPublicKey(
       unwrappedKeyBinary,
       this.publicKey

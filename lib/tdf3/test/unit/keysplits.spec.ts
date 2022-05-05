@@ -3,7 +3,7 @@ import { randomBytes } from 'crypto';
 
 import { bxor, keySplit, keyMerge } from '../../src/utils/keysplit';
 import { NodeCryptoService, BrowserJsCryptoService } from '../../src/crypto';
-import { hex } from '../../src/encodings';
+import { hex } from '../../../src/encodings';
 import { Binary } from '../../src/binary';
 
 describe('keysplits', () => {
@@ -33,7 +33,7 @@ describe('keysplits', () => {
       const unwrappedKeyBinary = Binary.fromString(hex.decode(key));
       const splits = keySplit(unwrappedKeyBinary.asBuffer(), 1);
 
-      expect(splits[0].toString('hex')).to.eql(key);
+      expect(hex.encodeArrayBuffer(splits[0])).to.eql(key);
     });
   });
 });
