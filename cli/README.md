@@ -1,4 +1,4 @@
-# opentdf command line tool (for node)
+# OpenTDF command line tool (for node)
 
 ## Usage
 

@@ -13,111 +13,9 @@ import {
 import getHkdfSalt from './helpers/getHkdfSalt';
 import DefaultParams from './models/DefaultParams';
 import { fetchWrappedKey } from '../kas';
-import {
-  ClientSecretCredentials,
-  ExternalJwtCredentials,
-  OIDCCredentials,
-  RefreshTokenCredentials,
-} from './types/OIDCCredentials';
-import { OIDCClientCredentialsProvider } from './auth/oidc-clientcredentials-provider';
-import { OIDCExternalJwtProvider } from './auth/oidc-externaljwt-provider';
-import { OIDCRefreshTokenProvider } from './auth/oidc-refreshtoken-provider';
-
-import { isBrowser } from './utils/utils';
-import { AuthProvider } from '../auth';
+import { AuthProvider } from '../auth/providers';
 
 const { KeyUsageType, AlgorithmName, NamedCurve } = cryptoEnums;
-
-export const clientSecretAuthProvider = async (
-  clientConfig: ClientSecretCredentials,
-  clientPubKey?: string
-): Promise<AuthProvider> => {
-  return new OIDCClientCredentialsProvider({
-    organizationName: clientConfig.organizationName,
-    clientPubKey: clientPubKey,
-    clientId: clientConfig.clientId,
-    clientSecret: clientConfig.clientSecret,
-    oidcOrigin: clientConfig.oidcOrigin,
-  });
-};
-
-export const externalAuthProvider = async (
-  clientConfig: ExternalJwtCredentials,
-  clientPubKey?: string
-): Promise<AuthProvider> => {
-  return new OIDCExternalJwtProvider({
-    organizationName: clientConfig.organizationName,
-    clientPubKey: clientPubKey,
-    clientId: clientConfig.clientId,
-    externalJwt: clientConfig.externalJwt,
-    oidcOrigin: clientConfig.oidcOrigin,
-  });
-};
-
-export const refreshAuthProvider = async (
-  clientConfig: RefreshTokenCredentials,
-  clientPubKey?: string
-): Promise<AuthProvider> => {
-  return new OIDCRefreshTokenProvider({
-    organizationName: clientConfig.organizationName,
-    clientPubKey: clientPubKey,
-    clientId: clientConfig.clientId,
-    externalRefreshToken: clientConfig.oidcRefreshToken,
-    oidcOrigin: clientConfig.oidcOrigin,
-  });
-};
-
-/**
- * Generate an auth provder. In gneral, you should use the methods above to avoid importing more than you need.
- * @param clientConfig OIDC client credentials
- * @param clientPubKey Client identification
- * @returns a promise for a new auth provider with the requested excahnge type
- */
-export const clientAuthProvider = async (
-  clientConfig: OIDCCredentials,
-  clientPubKey?: string
-): Promise<AuthProvider> => {
-  if (!clientConfig.organizationName) {
-    throw new Error('Client Organization must be provided to constructor');
-  }
-
-  if (!clientConfig.clientId) {
-    throw new Error('Client ID must be provided to constructor');
-  }
-
-  if (isBrowser()) {
-    //If you're in a browser and passing client secrets, you're Doing It Wrong.
-    // if (clientConfig.clientSecret) {
-    //   throw new Error('Client credentials not supported in a browser context');
-    // }
-    //Are we exchanging a refreshToken for a bearer token (normal AuthCode browser auth flow)?
-    //If this is a browser context, we expect the caller to handle the initial
-    //browser-based OIDC login and authentication process against the OIDC endpoint using their chosen method,
-    //and provide us with a valid refresh token/clientId obtained from that process.
-    switch (clientConfig.exchange) {
-      case 'refresh': {
-        return refreshAuthProvider(clientConfig, clientPubKey);
-      }
-      case 'external': {
-        return externalAuthProvider(clientConfig, clientPubKey);
-      }
-      case 'client': {
-        return clientSecretAuthProvider(clientConfig, clientPubKey);
-      }
-      default:
-        throw new Error(`Unsupported client type`);
-    }
-  }
-  //If you're NOT in a browser and are NOT passing client secrets, you're Doing It Wrong.
-  //If this is not a browser context, we expect the caller to supply their client ID and client secret, so that
-  // we can authenticate them directly with the OIDC endpoint.
-  if (clientConfig.exchange !== 'client') {
-    throw new Error(
-      'If using client credentials, must supply both client ID and client secret to constructor'
-    );
-  }
-  return clientSecretAuthProvider(clientConfig, clientPubKey);
-};
 
 /**
  * A Client encapsulates sessions interacting with TDF3 and nanoTDF backends, KAS and any
@@ -167,7 +65,6 @@ export default class Client {
   dataAttributes: string[] = [];
   protected ephemeralKeyPair?: Required<Readonly<CryptoKeyPair>>;
   protected requestSignerKeyPair?: Required<Readonly<CryptoKeyPair>>;
-  protected unwrappedKey?: CryptoKey;
   protected iv?: number;
 
   /**
@@ -230,15 +127,6 @@ export default class Client {
     }
     this.requestSignerKeyPair = { publicKey, privateKey };
     return { publicKey, privateKey };
-  }
-
-  /**
-   * Get the unwrapped key
-   *
-   * Returns the unwrapped key or undefined if not rewrapped
-   */
-  getUnwrappedKey(): CryptoKey | undefined {
-    return this.unwrappedKey;
   }
 
   /**
@@ -387,8 +275,9 @@ export default class Client {
       }
 
       // UnwrappedKey
+      let unwrappedKey;
       try {
-        this.unwrappedKey = await importRawKey(
+        unwrappedKey = await importRawKey(
           decryptedKey,
           // Want to use the key to encrypt and decrypt. Signing key will be used later.
           [KeyUsageType.Encrypt, KeyUsageType.Decrypt],
@@ -401,7 +290,7 @@ export default class Client {
         throw new Error(`Unable to import raw key.\n Caused by: ${e.message}`);
       }
 
-      return this.unwrappedKey;
+      return unwrappedKey;
     } catch (e) {
       throw new Error(`Could not rewrap key with entity object.\n Caused by: ${e.message}`);
     }

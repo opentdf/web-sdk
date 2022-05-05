@@ -9,7 +9,7 @@
     "declarationMap": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "inlineSourceMap": false,
+    "inlineSourceMap": true,
     "lib": ["dom", "dom.iterable", "es2020"],
     "module": "esnext",
     "moduleResolution": "node",
