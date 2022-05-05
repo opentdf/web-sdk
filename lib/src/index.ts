@@ -10,6 +10,7 @@ import {
 } from './nanotdf/index';
 import { keyAgreement, extractPublicFromCertToCrypto } from './nanotdf-crypto/index';
 import { TypedArray, createAttribute, Policy } from './tdf/index';
+import * as AuthProviders from './nanotdf/Client';
 
 /**
  * NanoTDF SDK Client
@@ -413,6 +414,14 @@ export class NanoTDFDatasetClient extends Client {
     return ivVector;
   }
 }
+
+// @ts-ignore
+globalThis.AuthProviders = AuthProviders;
+// @ts-ignore
+globalThis.NanoTDFClient = NanoTDFClient;
+// @ts-ignore
+globalThis.NanoTDFDatasetClient = NanoTDFDatasetClient;
+
 
 /**
  * Authorization for connecting authZ tokens to

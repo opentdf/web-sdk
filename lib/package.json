@@ -43,6 +43,13 @@
   },
   "scripts": {
     "build": "npm run clean && webpack && tsc -p tsconfig-esm.json && node prepareNodeESM.js && ../scripts/add-module-types.sh esm && ../scripts/fill-version.sh",
+    "build:client": "npm run build -- --config-name=client",
+    "build:server": "npm run build -- --config-name=server",
+    "build:production": "npm run clean && webpack --mode=production",
+    "build:client:production": "npm run build:production -- --config-name=client",
+    "build:server:production": "npm run build:production -- --config-name=server",
+    "build:cjs": "tsc -p tsconfig-cjs.json && ../scripts/add-module-types.sh cjs && ../scripts/fill-version.sh",
+    "build:esm": "tsc -p tsconfig-esm.json && ../scripts/add-module-types.sh esm && ../scripts/fill-version.sh",
     "clean": "rm -rf {build,dist}",
     "doc": "typedoc --out dist/docs src/index.ts",
     "format": "prettier --write \"{src,test}/**/*.ts\"",
