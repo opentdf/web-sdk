@@ -22,7 +22,7 @@
     "test": "npm run build && mocha dist/**/*.spec.js",
     "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))",
     "format": "prettier --write \"{src,test}/**/*.ts\"",
-    "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; ISC; MIT'",
+    "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; ISC; MIT' --excludePackages 'caniuse-lite@1.0.30001336'",
     "lint": "eslint ./{src,test}/**/*.ts"
   },
   "bin": {
