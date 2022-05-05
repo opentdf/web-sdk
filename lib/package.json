@@ -49,8 +49,9 @@
     "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; ISC; MIT' --excludePackages 'caniuse-lite@1.0.30001336'",
     "lint": "eslint ./{src,test}/**/*.ts",
     "prepack": "npm run build",
-    "test": "npm run clean && tsc -p tsconfig-esm.json && web-test-runner",
+    "test": "npm run clean && tsc -p tsconfig-esm.json && web-test-runner && npm run test:tdf3",
     "test:watch": "web-test-runner --watch",
+    "test:tdf3": "nyc mocha --require @babel/register --timeout 300000",
     "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))"
   },
   "dependencies": {
