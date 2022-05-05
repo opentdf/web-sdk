@@ -8,11 +8,11 @@
     ".ts"
   ],
   "include": [
-    "src/**/*.js",
-    "src/**/*.ts"
+    "tdf3/src/**/*.js",
+    "tdf3/src/**/*.ts"
   ],
   "exclude": [
-    "test/**/*.spec.*"
+    "tdf3/test/**/*.spec.*"
   ],
   "require": [
     "ts-node/register"

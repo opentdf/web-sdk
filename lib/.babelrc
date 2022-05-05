@@ -1,0 +1,15 @@
+{
+  "plugins": [["@babel/plugin-transform-runtime", { "corejs": 3, "proposals": true }]],
+  "ignore": ["**/*.html"],
+  "presets": [
+    [
+      "@babel/preset-env",
+      {
+        "targets": {
+          "ie": "11"
+        }
+      }
+    ],
+    "@babel/preset-typescript"
+  ]
+}
