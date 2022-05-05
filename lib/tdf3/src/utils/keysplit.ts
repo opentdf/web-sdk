@@ -16,7 +16,7 @@ export function bxor(b1: Uint8Array, b2: Uint8Array): Uint8Array {
  * @param n The number of entries to split across
  * @returns `n` entries of `length(key)` size
  */
-export function keySplit(key: Uint8Array, n = 1) {
+export function keySplit(key: Uint8Array, n = 1): Buffer[] {
   if (!(key instanceof Uint8Array)) {
     throw Error('ERROR in keySplit - key is not an unsigned byte array');
   }
