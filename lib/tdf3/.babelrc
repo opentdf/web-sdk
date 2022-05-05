@@ -1,0 +1,22 @@
+{
+  "plugins": [
+    ["@babel/plugin-transform-runtime", { "corejs": 3, "proposals": true }],
+    ["module-resolver", {
+      "alias": {
+        "streamsaver": "./mocks/streamsaver"
+      }
+    }]
+  ],
+  "ignore": ["**/*.html"],
+  "presets": [
+    [
+      "@babel/preset-env",
+      {
+        "targets": {
+          "ie": "11"
+        }
+      }
+    ],
+    "@babel/preset-typescript"
+  ]
+}

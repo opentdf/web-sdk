@@ -1,0 +1,8 @@
+# renamed from license-checker-config.yml because GH gets confused and thinks this is the license file
+blacklisted-licenses:
+  - gpl
+
+whitelisted-modules:
+  - jszip@3.7.1
+  - node-forge@1.2.1
+  - ua-parser-js@0.7.9
