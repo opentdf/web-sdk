@@ -30,9 +30,9 @@
 import * as base64 from '../encodings/base64';
 import getCryptoLib from './getCryptoLib';
 import removeLines from './helpers/removeLines';
-import arrayBufferToHex from './helpers/arrayBufferToHex';
 import { importX509 } from 'jose';
 import type { KeyObject } from 'crypto';
+import { encodeArrayBuffer as hexEncodeArrayBuffer } from '../encodings/hex';
 
 const RSA_OID = '06092a864886f70d010101';
 const EC_OID = '06072a8648ce3d0201';
@@ -127,7 +127,7 @@ export default async function pemPublicToCrypto(
   pem = pem.replace('-----END PUBLIC KEY-----', '');
   const b64 = removeLines(pem);
   const arrayBuffer = base64.decodeArrayBuffer(b64);
-  const hex = arrayBufferToHex(arrayBuffer);
+  const hex = hexEncodeArrayBuffer(arrayBuffer);
 
   const algorithmName = guessAlgorithmName(hex, options.name);
   const keyUsages = guessKeyUsages(algorithmName, options.usages);
@@ -207,7 +207,7 @@ export async function extractPublicFromCertToCrypto(
   crt = crt.replace(CERT_END, '');
   const b64 = removeLines(crt);
   const arrayBuffer = base64.decodeArrayBuffer(b64);
-  const hex = arrayBufferToHex(arrayBuffer);
+  const hex = hexEncodeArrayBuffer(arrayBuffer);
   const jwsAlg = toJwsAlg(hex);
   const keylike = await importX509(pem, jwsAlg, { extractable: options.isExtractable });
   const crypto = getCryptoLib();

@@ -1,36 +1,67 @@
 import { keySplit } from '../utils';
-import { base64, hex } from '../encodings';
+import { base64, hex } from '../../../src/encodings';
 import { Binary } from '../binary';
+import { SymmetricCipher } from '../ciphers/symmetric-cipher-base';
+import { KeyAccess, KeyAccessObject } from './key-access';
+import { Policy } from './policy';
 
-class EncryptionInformation {
-  constructor() {
+export type KeyInfo = {
+  readonly unwrappedKeyBinary: Binary;
+  readonly unwrappedKeyIvBinary: Binary;
+};
+
+export type Segment = {
+  readonly hash: string;
+  readonly segmentSize: number;
+  readonly encryptedSegmentSize: number;
+};
+
+export type EncryptionInformation = {
+  readonly type: string;
+  readonly keyAccess: KeyAccessObject[];
+  readonly integrityInformation: {
+    readonly rootSignature: {
+      readonly alg: string;
+      readonly sig: string;
+    };
+    readonly segmentHash: string;
+    readonly segmentHashAlg: string;
+    readonly segments: Segment[];
+    readonly segmentSizeDefault?: number;
+    readonly encryptedSegmentSizeDefault?: number;
+  };
+  readonly method: {
+    readonly algorithm: string;
+    readonly isStreamable: boolean;
+    readonly iv: string;
+  };
+  readonly policy: string;
+};
+
+export class SplitKey {
+  readonly keyAccess: KeyAccess[];
+
+  constructor(public readonly cipher: SymmetricCipher) {
     this.keyAccess = [];
   }
-}
 
-class SplitKey extends EncryptionInformation {
-  constructor(cipher) {
-    super();
-    this.cipher = cipher;
-  }
-
-  async generateKey() {
-    const unwrappedKey = await this.cipher.generateKey();
+  async generateKey(): Promise<KeyInfo> {
+    const unwrappedKey = this.cipher.generateKey();
     const unwrappedKeyBinary = Binary.fromString(hex.decode(unwrappedKey));
     const unwrappedKeyIvBinary = await this.generateIvBinary();
     return { unwrappedKeyBinary, unwrappedKeyIvBinary };
   }
 
-  async encrypt(contentBinary, keyBinary, ivBinaryOptional) {
+  async encrypt(contentBinary: Binary, keyBinary: Binary, ivBinaryOptional?: Binary) {
     const ivBinary = ivBinaryOptional || (await this.generateIvBinary());
     return this.cipher.encrypt(contentBinary, keyBinary, ivBinary);
   }
 
-  async decrypt(content, keyBinary) {
+  async decrypt(content: Binary, keyBinary: Binary) {
     return this.cipher.decrypt(content, keyBinary);
   }
 
-  async getKeyAccessObjects(policy, keyInfo) {
+  async getKeyAccessObjects(policy: Policy, keyInfo: KeyInfo) {
     const unwrappedKeySplitBuffers = keySplit(
       keyInfo.unwrappedKeyBinary.asBuffer(),
       this.keyAccess.length
@@ -40,10 +71,18 @@ class SplitKey extends EncryptionInformation {
     for (let i = 0; i < this.keyAccess.length; i++) {
       // use the key split to encrypt metadata for each key access object
       const unwrappedKeySplitBuffer = unwrappedKeySplitBuffers[i];
-      const unwrappedKeySplitBinary = Binary.fromBuffer(unwrappedKeySplitBuffer);
+      const unwrappedKeySplitBinary = Binary.fromBuffer(Buffer.from(unwrappedKeySplitBuffer));
 
       const metadata = this.keyAccess[i].metadata || '';
-      const metadataStr = typeof metadata === 'object' ? JSON.stringify(metadata) : metadata;
+      const metadataStr = (
+        typeof metadata === 'object'
+          ? JSON.stringify(metadata)
+          : typeof metadata === 'string'
+          ? metadata
+          : () => {
+              throw new Error();
+            }
+      ) as string;
 
       const metadataBinary = Binary.fromString(metadataStr);
 
@@ -62,8 +101,7 @@ class SplitKey extends EncryptionInformation {
       const keyAccessObject = await this.keyAccess[i].write(
         policy,
         unwrappedKeySplitBuffer,
-        encryptedMetadataStr,
-        metadataStr
+        encryptedMetadataStr
       );
       keyAccessObjects.push(keyAccessObject);
     }
@@ -76,7 +114,11 @@ class SplitKey extends EncryptionInformation {
     return Binary.fromString(hex.decode(iv));
   }
 
-  async write(policy, keyInfo) {
+  async write(policy: Policy, keyInfo: KeyInfo): Promise<EncryptionInformation> {
+    const algorithm = this.cipher.name;
+    if (!algorithm) {
+      throw new Error('Uninitialized cipher type');
+    }
     const keyAccessObjects = await this.getKeyAccessObjects(policy, keyInfo);
 
     // For now we're only concerned with a single (first) key access object
@@ -86,7 +128,7 @@ class SplitKey extends EncryptionInformation {
       type: 'split',
       keyAccess: keyAccessObjects,
       method: {
-        algorithm: this.cipher.name,
+        algorithm,
         isStreamable: false,
         iv: base64.encode(keyInfo.unwrappedKeyIvBinary.asString()),
       },
@@ -95,13 +137,11 @@ class SplitKey extends EncryptionInformation {
           alg: 'HS256',
           sig: '',
         },
-        segmentSizeDefault: '',
         segmentHashAlg: '',
+        segmentHash: '',
         segments: [],
       },
       policy: policyForManifest,
     };
   }
 }
-
-export default SplitKey;
