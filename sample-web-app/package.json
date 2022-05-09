@@ -7,7 +7,7 @@
     "url": "git+https://github.com/opentdf/webclient.git",
     "directory": "app"
   },
-  "license": "MIT",
+  "license": "BSD-3-Clause-Clear",
   "scripts": {
     "start": "snowpack dev",
     "build": "snowpack build",
