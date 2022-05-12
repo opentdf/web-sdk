@@ -7,7 +7,7 @@
     "url": "git+https://github.com/opentdf/client-web.git",
     "directory": "cli"
   },
-  "license": "MIT",
+  "license": "BSD-3-Clause-Clear",
   "author": "Virtru",
   "main": "dist/src/cli.js",
   "type": "module",
