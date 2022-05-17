@@ -29,7 +29,7 @@ Start a local, blank cluster. See [Integrate](https://github.com/opentdf/documen
 
 ### Examples
 
-Review examples to see how to integrate. See [Examples](https://github.com/opentdf/documentation/tree/feature/integrate/examples)
+Review examples to see how to integrate. See [Examples](https://github.com/opentdf/documentation/tree/main/examples)
 
 ## Distribute
 
