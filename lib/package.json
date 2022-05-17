@@ -19,7 +19,7 @@
     "url": "git+https://github.com/opentdf/client-web.git",
     "directory": "lib"
   },
-  "license": "MIT",
+  "license": "BSD-3-Clause-Clear",
   "author": "Virtru",
   "browser": "./dist/client/client-web.js",
   "main": "./dist/server/node.cjs.js",
