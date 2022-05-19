@@ -206,10 +206,10 @@ function sha256(content: string): Promise<string> {
  * @param  content Content string
  * @return Hex hash
  */
-function hmac(key: string, content: string): Promise<string> {
+async function hmac(key: string, content: string): Promise<string> {
   const hs256 = new sjcl.misc.hmac(sjcl.codec.hex.toBits(key), sjcl.hash.sha256);
   const hash = hs256.mac(sjcl.codec.utf8String.toBits(content));
-  return Promise.resolve(sjcl.codec.hex.fromBits(hash));
+  return sjcl.codec.hex.fromBits(hash);
 }
 
 /**

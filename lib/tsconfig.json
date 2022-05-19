@@ -25,5 +25,5 @@
     "strictPropertyInitialization": true,
     "target": "ES2017"
   },
-  "include": ["src", "test"]
+  "include": ["facade", "src", "test", "tdf3"]
 }

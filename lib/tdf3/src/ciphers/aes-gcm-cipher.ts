@@ -6,6 +6,7 @@ import type { CryptoService, DecryptResult, EncryptResult } from '../crypto/decl
 
 const KEY_LENGTH = 32;
 const IV_LENGTH = 12;
+// Should this be a Binary, Buffer, or... both?
 // @ts-ignore
 function processGcmPayload(buffer) {
   // Read the 12 byte IV from the beginning of the stream
@@ -33,18 +34,16 @@ class AesGcmCipher extends SymmetricCipher {
    * Encrypts the payload using AES w/ GCM mode.  This function will take the
    * result from the crypto service and construct the payload automatically from
    * it's parts.  There is no need to process the payload.
-   * @returns {Object}
    */
   override async encrypt(payload: Binary, key: Binary, iv: Binary): Promise<EncryptResult> {
+    const toConcat: Buffer[] = [];
     const result = await this.cryptoService.encrypt(payload, key, iv, Algorithms.AES_256_GCM);
-    const ivBuffer = iv.asBuffer();
-    // @ts-ignore
-    const authTagBuffer = result.authTag.asBuffer();
-
-    result.payload = Binary.fromBuffer(
-      Buffer.concat([ivBuffer, result.payload.asBuffer(), authTagBuffer])
-    );
-
+    toConcat.push(iv.asBuffer());
+    toConcat.push(result.payload.asBuffer());
+    if (result.authTag) {
+      toConcat.push(result.authTag.asBuffer());
+    }
+    result.payload = Binary.fromBuffer(Buffer.concat(toConcat));
     return result;
   }
 

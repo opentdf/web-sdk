@@ -1,10 +1,10 @@
 export default interface AttributeObject {
   readonly attribute: string;
-  readonly isDefault: boolean;
-  readonly displayName: string;
+  readonly isDefault?: boolean;
+  readonly displayName?: string;
   /** PEM encoded public key */
-  readonly pubKey: string;
-  readonly kasUrl: string;
+  readonly pubKey?: string;
+  readonly kasUrl?: string;
   /** The most recent version 1.1.0. */
   readonly schemaVersion?: string;
 }

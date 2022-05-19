@@ -86,10 +86,10 @@ function decrypt(
   if (alg === 'aes-256-gcm') {
     console.assert(typeof authTag === 'object');
     return isStream(payload)
-      // @ts-ignore
-      ? _doStreamingGcmDecrypt(payload, key, iv, authTag)
-      // @ts-ignore
-      : _doGcmDecryptSync(payload, key, iv, authTag);
+      ? // @ts-ignore
+        _doStreamingGcmDecrypt(payload, key, iv, authTag)
+      : // @ts-ignore
+        _doGcmDecryptSync(payload, key, iv, authTag);
   }
 
   // CBC
@@ -299,7 +299,7 @@ function encryptWithPublicKey(payload: Binary, publicKey: string): Promise<Binar
  */
 function generateKeyPair(size?: number): Promise<PemKeyPair> {
   const minKeySize = MIN_ASYMMETRIC_KEY_SIZE_BITS;
-// @ts-ignore
+  // @ts-ignore
   if (!isValidAsymmetricKeySize(size, minKeySize)) {
     throw new Error('Invalid key size requested');
   }
@@ -309,17 +309,19 @@ function generateKeyPair(size?: number): Promise<PemKeyPair> {
   return new Promise((resolve, reject) => {
     const keySize = !size ? minKeySize : size;
 
-    generateKeyPair('rsa', {
-      modulusLength: keySize,
-      publicKeyEncoding: {
-        type: 'spki',
-        format: 'pem'
+    generateKeyPair(
+      'rsa',
+      {
+        modulusLength: keySize,
+        publicKeyEncoding: {
+          type: 'spki',
+          format: 'pem',
+        },
+        privateKeyEncoding: {
+          type: 'pkcs8',
+          format: 'pem',
+        },
       },
-      privateKeyEncoding: {
-        type: 'pkcs8',
-        format: 'pem',
-      }
-    },
       (err, publicKey, privateKey) => {
         if (err) {
           reject(err);
@@ -351,7 +353,7 @@ function sha256(content: string) {
  */
 function hmac(key: string, content: string): Promise<string> {
   const decoded = Buffer.from(key, 'hex');
-// @ts-ignore
+  // @ts-ignore
   const hmacObj = crypto.createHmac('sha256', decoded);
 
   // FIXME: defaults to utf8 encoding. Is this what we want

@@ -66,8 +66,7 @@ describe('AttributeSet', function () {
     // default attribute should exist at a time in the AttributeSet.
     assert.equal(aSet.attributes.length, 1);
     assert.equal(aSet.attributes[0].attribute, secondUrl);
-    // @ts-ignore
-    assert.equal(aSet.getDefault().attribute, secondUrl);
+    assert.equal(aSet.getDefault()?.attribute, secondUrl);
   });
 
   it('should verify that an attribute is in the set', () => {
