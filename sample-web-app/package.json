@@ -1,6 +1,6 @@
 {
   "name": "@opentdf/sample-web-app",
-  "version": "0.1.1",
+  "version": "0.2.1",
   "description": "",
   "repository": {
     "type": "git",
@@ -13,7 +13,7 @@
     "build": "snowpack build",
     "test": "web-test-runner \"src/**/*.test.tsx\"",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"",
-    "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; ISC; MIT' --excludePackages 'caniuse-lite@1.0.30001336'",
+    "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; CC-BY-4.0; ISC; MIT'",
     "lint": "eslint \"src/**/*.{js,jsx,ts,tsx}\"",
     "lint:fix": "eslint --fix \"src/**/*.{js,jsx,ts,tsx}\""
   },
