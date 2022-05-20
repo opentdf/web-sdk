@@ -14,13 +14,17 @@ export abstract class SymmetricCipher {
     this.cryptoService = cryptoService;
   }
 
-  generateInitializationVector() {
-    // @ts-ignore
+  generateInitializationVector(): string {
+    if (!this.ivLength) {
+      throw Error('No iv length');
+    }
     return this.cryptoService.generateInitializationVector(this.ivLength);
   }
 
-  generateKey() {
-    // @ts-ignore
+  generateKey(): string {
+    if (!this.keyLength) {
+      throw Error('No key length');
+    }
     return this.cryptoService.generateKey(this.keyLength);
   }
 

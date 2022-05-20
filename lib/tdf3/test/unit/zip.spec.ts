@@ -105,7 +105,7 @@ describe('zip utilities', () => {
         'Hey.txt',
         2000,
         0x1337,
-        2175008768,
+        0x81a40000,
         new Date('1980-01-01T00:00:00')
       );
       expect(parseCDBuffer(cdrBuffer)).to.deep.include({
@@ -130,7 +130,7 @@ describe('zip utilities', () => {
         'Hey.txt',
         2000,
         0x1337,
-        2175008768,
+        0x81a40000,
         new Date('1980-01-01T00:00:00')
       );
       expect(parseCDBuffer(cdrBuffer)).to.deep.include({

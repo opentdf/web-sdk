@@ -4,18 +4,25 @@ import { TDFCiphertextStream } from '../tdf3/src/client/tdf-cipher-text-stream';
 import { PlaintextStream } from '../tdf3/src/client/tdf-stream';
 
 interface FileClientConfig {
-  clientId: string,
-  organizationName: string,
-  oidcOrigin: string,
-  kasEndpoint: string,
-  clientSecret?: string,
-  oidcRefreshToken?: string,
+  clientId: string;
+  organizationName: string;
+  oidcOrigin: string;
+  kasEndpoint: string;
+  clientSecret?: string;
+  oidcRefreshToken?: string;
 }
 
 export class FileClient {
   private client: ClientTdf3;
 
-  constructor({ clientId, clientSecret, oidcRefreshToken, organizationName, oidcOrigin, kasEndpoint }: FileClientConfig) {
+  constructor({
+    clientId,
+    clientSecret,
+    oidcRefreshToken,
+    organizationName,
+    oidcOrigin,
+    kasEndpoint,
+  }: FileClientConfig) {
     this.client = new ClientTdf3({
       clientId,
       organizationName,
@@ -26,26 +33,33 @@ export class FileClient {
     });
   }
 
-  private static setSource (source: ReadableStream | TDFCiphertextStream | Buffer | String | ArrayBuffer, params: EncryptParamsBuilder | DecryptParamsBuilder) {
+  private static setSource(
+    source: ReadableStream | TDFCiphertextStream | Buffer | string | ArrayBuffer,
+    params: EncryptParamsBuilder | DecryptParamsBuilder
+  ) {
     // @ts-ignore
-    if(source.pipe !== undefined) {
+    if (source.pipe !== undefined) {
       // @ts-ignore
       params.setStreamSource(source);
     }
-    if(Buffer && Buffer.isBuffer(source)) {
+    if (Buffer && Buffer.isBuffer(source)) {
       params.setBufferSource(source);
     }
-    if(typeof source === 'string') {
+    if (typeof source === 'string') {
       // there is not point to used tdf3.js withStringSource, after merging we have nanoTdf for that
       params.setFileSource(source);
     }
-    if(source instanceof ArrayBuffer) {
-      params.setArrayBufferSource(source)
+    if (source instanceof ArrayBuffer) {
+      params.setArrayBufferSource(source);
     }
     return params.build();
   }
 
-  async encrypt(source: ReadableStream | Buffer | String | ArrayBuffer = '', users: string[] = [], params?: any ): Promise<TDFCiphertextStream> {
+  async encrypt(
+    source: ReadableStream | Buffer | string | ArrayBuffer = '',
+    users: string[] = [],
+    params?: any
+  ): Promise<TDFCiphertextStream> {
     const encryptParams = new EncryptParamsBuilder().withOffline().withUsersWithAccess(users);
 
     if (params) {
@@ -55,7 +69,10 @@ export class FileClient {
     return await this.client.encrypt(FileClient.setSource(source, encryptParams));
   }
 
-  async decrypt(source: ReadableStream | Buffer | String | ArrayBuffer = '', params?: any): Promise<PlaintextStream> {
+  async decrypt(
+    source: ReadableStream | Buffer | string | ArrayBuffer = '',
+    params?: any
+  ): Promise<PlaintextStream> {
     const decryptParams = new DecryptParamsBuilder();
 
     if (params) {

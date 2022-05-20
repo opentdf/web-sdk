@@ -1,10 +1,7 @@
 import { PolicyIntegrityError } from '../errors';
+import { AttributeObject } from './attribute-set';
 
 export const CURRENT_VERSION = '1.1.0';
-
-export type AttributeObject = {
-  attribute: string;
-};
 
 export type PolicyBody = {
   dataAttributesList: AttributeObject[];

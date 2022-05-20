@@ -1,6 +1,15 @@
 import { escHtml, escJavaScript } from './escaper';
-// @ts-ignore
-export default ({ manifest, payload, transferUrl, transferBaseUrl }) => `<html>
+export default ({
+  manifest,
+  payload,
+  transferUrl,
+  transferBaseUrl,
+}: {
+  manifest: string;
+  payload: string;
+  transferUrl: string;
+  transferBaseUrl: string;
+}) => `<html>
 <head>
     <meta charset="UTF-8">
   </head>

@@ -5,7 +5,7 @@ import { Policy } from './policy';
 
 export type KeyAccessType = 'remote' | 'wrapped';
 
-export function isRemote(keyAccessJSON: KeyAccess) {
+export function isRemote(keyAccessJSON: KeyAccess | KeyAccessObject): boolean {
   return keyAccessJSON.type === 'remote';
 }
 
@@ -19,7 +19,11 @@ export class Wrapped {
     public readonly metadata: unknown
   ) {}
 
-  async write(policy: Policy, keyBuffer: Uint8Array, encryptedMetadataStr: string) {
+  async write(
+    policy: Policy,
+    keyBuffer: Uint8Array,
+    encryptedMetadataStr: string
+  ): Promise<KeyAccessObject> {
     const policyStr = JSON.stringify(policy);
     const unwrappedKeyBinary = Binary.fromBuffer(Buffer.from(keyBuffer));
     const wrappedKeyBinary = await cryptoService.encryptWithPublicKey(
@@ -57,7 +61,11 @@ export class Remote {
     public readonly metadata: unknown
   ) {}
 
-  async write(policy: Policy, keyBuffer: Uint8Array, encryptedMetadataStr: string) {
+  async write(
+    policy: Policy,
+    keyBuffer: Uint8Array,
+    encryptedMetadataStr: string
+  ): Promise<KeyAccessObject> {
     const policyStr = JSON.stringify(policy);
     const policyBinding = await cryptoService.hmac(
       hex.encodeArrayBuffer(keyBuffer),

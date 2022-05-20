@@ -1,3 +1,4 @@
+import { Manifest } from '../models';
 import { chunker } from './chunkers';
 
 // TODO: Better document what these constants are
@@ -86,7 +87,7 @@ export class ZipReader {
    * Gets the manifest
    * @returns The manifest as a buffer represented as JSON
    */
-  async getManifest(cdBuffers: CentralDirectory[], manifestFileName: string) {
+  async getManifest(cdBuffers: CentralDirectory[], manifestFileName: string): Promise<Manifest> {
     const cdObj = cdBuffers.find(({ fileName }) => fileName === manifestFileName);
     if (!cdObj) {
       throw new Error('Unable to retrieve CD manifest');
@@ -99,7 +100,7 @@ export class ZipReader {
     return JSON.parse(manifestBuffer.toString());
   }
 
-  async adjustHeaders(cdObj: CentralDirectory) {
+  async adjustHeaders(cdObj: CentralDirectory): Promise<void> {
     if (!cdObj) {
       throw new Error('Unable to retrieve CD adjust');
     }
@@ -118,7 +119,7 @@ export class ZipReader {
     payloadName: string,
     encrpytedSegmentOffset: number,
     encryptedSegmentSize: number
-  ) {
+  ): Promise<Buffer> {
     const cdObj = cdBuffers.find(({ fileName }) => payloadName === fileName);
     if (!cdObj) {
       throw new Error('Unable to retrieve CD');
@@ -310,7 +311,7 @@ export function readUInt64LE(buffer: Buffer, offset: number): number {
  * Breaks extra field buffer into slices by field identifier.
  */
 function sliceExtraFields(extraFieldBuffer: Buffer, cd: CentralDirectory): Record<number, Buffer> {
-  const extraFields = {};
+  const extraFields: Record<number, Buffer> = {};
 
   let i = 0;
   while (i < extraFieldBuffer.length - 3) {
@@ -323,11 +324,9 @@ function sliceExtraFields(extraFieldBuffer: Buffer, cd: CentralDirectory): Recor
     }
     const dataBuffer = Buffer.allocUnsafe(dataSize);
     extraFieldBuffer.copy(dataBuffer, 0, dataStart, dataEnd);
-    // @ts-ignore
     if (extraFields[headerId]) {
       throw new Error(`Conflicting extra field #${headerId} for entry [${cd.fileName}]`);
     }
-    // @ts-ignore
     extraFields[headerId] = dataBuffer;
     i = dataEnd;
   }
