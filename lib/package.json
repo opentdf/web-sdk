@@ -1,6 +1,6 @@
 {
   "name": "@opentdf/client",
-  "version": "0.2.3",
+  "version": "0.3.9",
   "description": "Access and generate tdf protected content",
   "homepage": "https://github.com/opentdf/client-web",
   "bugs": {
@@ -68,8 +68,7 @@
     "sjcl": "^1.0.8",
     "ua-parser-js": "^1.0.2",
     "uuid": "~8.3.2",
-    "web-streams-node": "^0.4.0",
-    "web-streams-polyfill": "^3.2.1"
+    "web-streams-node": "^0.4.0"
   },
   "devDependencies": {
     "@babel/cli": "^7.17.6",
