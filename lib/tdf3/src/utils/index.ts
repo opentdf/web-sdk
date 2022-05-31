@@ -1,31 +1,20 @@
-import { Stream } from 'stream';
+import { toWebReadableStream } from 'web-streams-node';
 
 export { ZipReader, readUInt64LE } from './zip-reader';
 export { ZipWriter } from './zip-writer';
 export { keySplit, keyMerge } from './keysplit';
+import { PlaintextStream } from '../client/tdf-stream';
 export * from './chunkers';
-
-/**
- * Tests if an object is reasonably a Stream object... Not perfect, but should be
- * good enough.
- *
- * This method is a bit unreliable and may need to be updated from time to time
- * if it doesn't work...  This broke recently on us when webpack changed their
- * NodeJS shim object hierarchy to not have {Stream} as the root...
- */
-export function isStream(obj: unknown): obj is Stream {
-  // Do an instanceof check as a shortcut, this should work from node
-  const isInstanceOfStream = obj instanceof Stream;
-
-  // Additionally test the object structure and if it has a pipe function, this should work
-  // in the browser.
-  return (
-    isInstanceOfStream || (typeof obj === 'object' && typeof (obj as Stream).pipe === 'function')
-  );
-}
 
 export function inBrowser(): boolean {
   return typeof window !== 'undefined';
+}
+
+// @ts-ignore
+export async function streamToBuffer(stream) {
+  return await PlaintextStream.toBuffer(
+    stream instanceof ReadableStream ? stream : toWebReadableStream(stream)
+  );
 }
 
 export function base64ToBuffer(b64: string): Buffer | Uint8Array {

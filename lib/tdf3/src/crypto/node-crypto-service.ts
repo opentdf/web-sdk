@@ -1,7 +1,6 @@
 import constants from 'constants';
 import * as Crypto from 'crypto';
 
-import { isStream } from '../utils';
 import { Algorithms } from '../ciphers';
 import { Binary } from '../binary';
 import { TdfDecryptError } from '../errors';
@@ -12,7 +11,6 @@ import {
   PemKeyPair,
 } from './declarations';
 import { isValidAsymmetricKeySize } from './crypto-utils';
-import { Stream } from 'stream';
 // @ts-ignore
 let crypto;
 
@@ -39,7 +37,7 @@ try {
  */
 
 function encrypt(
-  payload: Binary | Stream,
+  payload: Binary,
   key: Binary,
   iv: Binary,
   algorithm: string
@@ -50,16 +48,12 @@ function encrypt(
 
   const alg = selectAlgorithm(algorithm);
   if (alg === 'aes-256-gcm') {
-    return isStream(payload)
-      ? _doStreamingGcmEncrypt(payload, key, iv)
-      : _doGcmEncryptSync(payload, key, iv);
+    return _doGcmEncryptSync(payload, key, iv);
   }
 
   // CBC
   console.assert(algorithm === 'aes-256-cbc');
-  return isStream(payload)
-    ? _doStreamingCrypt('createCipheriv', payload, key, iv)
-    : cbcCrypt('createCipheriv', payload, key, iv);
+  return cbcCrypt('createCipheriv', payload, key, iv);
 }
 
 /**
@@ -71,7 +65,7 @@ function encrypt(
  * @param authTag The authentication tag for authenticated crypto.
  */
 function decrypt(
-  payload: Binary | Stream,
+  payload: Binary,
   key: Binary,
   iv: Binary,
   algorithm?: string,
@@ -85,18 +79,13 @@ function decrypt(
   const alg = selectAlgorithm(algorithm);
   if (alg === 'aes-256-gcm') {
     console.assert(typeof authTag === 'object');
-    return isStream(payload)
-      // @ts-ignore
-      ? _doStreamingGcmDecrypt(payload, key, iv, authTag)
-      // @ts-ignore
-      : _doGcmDecryptSync(payload, key, iv, authTag);
+    // @ts-ignore
+    return _doGcmDecryptSync(payload, key, iv, authTag);
   }
 
   // CBC
   console.assert(algorithm === 'aes-256-cbc');
-  return isStream(payload)
-    ? _doStreamingCrypt('createDecipheriv', payload, key, iv)
-    : cbcCrypt('createDecipheriv', payload, key, iv);
+  return cbcCrypt('createDecipheriv', payload, key, iv);
 }
 
 /**
@@ -121,50 +110,6 @@ function decryptWithPrivateKey(encryptedPayload: Binary, privateKey: string): Pr
     } catch (e) {
       reject(e);
     }
-  });
-}
-
-function _doStreamingCrypt(
-  method: string,
-  stream: Stream,
-  key: Binary,
-  iv: Binary
-): Promise<DecryptResult> {
-  // @ts-ignore
-  const cryptoStream = crypto[method]('aes-256-cbc', key.asBuffer(), iv.asBuffer());
-
-  stream.pipe(cryptoStream);
-
-  return Promise.resolve({
-    payload: cryptoStream,
-  });
-}
-
-function _doStreamingGcmEncrypt(stream: Stream, key: Binary, iv: Binary): Promise<EncryptResult> {
-  // @ts-ignore
-  const cryptoStream = crypto.createCipheriv('aes-256-gcm', key.asBuffer(), iv.asBuffer());
-
-  stream.pipe(cryptoStream);
-
-  return Promise.resolve({
-    payload: cryptoStream,
-  });
-}
-
-function _doStreamingGcmDecrypt(
-  stream: Stream,
-  key: Binary,
-  iv: Binary,
-  authTag: Binary
-): Promise<DecryptResult> {
-  // @ts-ignore
-  const cryptoStream = crypto.createDecipheriv('aes-256-gcm', key.asBuffer(), iv.asBuffer());
-
-  cryptoStream.setAuthTag(authTag.asBuffer());
-  stream.pipe(cryptoStream);
-
-  return Promise.resolve({
-    payload: cryptoStream,
   });
 }
 

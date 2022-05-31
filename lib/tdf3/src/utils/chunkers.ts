@@ -1,6 +1,6 @@
 import axios, { AxiosResponse } from 'axios';
 import { createReadStream, readFile, statSync } from 'fs';
-import { Stream } from 'stream';
+import { PlaintextStream } from '../client/tdf-stream';
 
 /**
  * Read data from a seekable stream.
@@ -114,22 +114,6 @@ export const fromUrl = (location: string): chunker => {
   };
 };
 
-/**
- * If provided a 'stream' type, dump it all into a buffer.
- * TODO: Introduce TDF stream implementation to allow reasonable chunking for this case.
- */
-export async function streamToBuffer(stream: Stream): Promise<Buffer> {
-  return new Promise<Buffer>((resolve, reject) => {
-    // @ts-ignore
-    const bufs = [];
-
-    stream.on('data', (chunk) => bufs.push(chunk));
-    // @ts-ignore
-    stream.on('end', () => resolve(Buffer.concat(bufs)));
-    stream.on('error', reject);
-  });
-}
-
 type sourcetype = 'buffer' | 'file-browser' | 'file-node' | 'remote' | 'stream';
 type DataSource = {
   type: sourcetype;
@@ -159,10 +143,11 @@ export const fromDataSource = async ({ type, location }: DataSource) => {
       }
       return fromUrl(location);
     case 'stream':
-      if (!(location instanceof Stream)) {
-        throw new Error('Invalid data source; must be at least a Blob');
+      if (!(location instanceof PlaintextStream)) {
+        throw new Error('Invalid data source; must be PlaintextStream');
       }
-      return fromBuffer(await streamToBuffer(location));
+      // @ts-ignore
+      return fromBuffer(await location.toBuffer());
     default:
       throw new Error(`Data source type not defined, or not supported: ${type}}`);
   }

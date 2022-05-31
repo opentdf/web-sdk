@@ -1,6 +1,6 @@
 {
   "name": "@opentdf/client",
-  "version": "0.3.9",
+  "version": "0.2.1",
   "description": "Access and generate tdf protected content",
   "homepage": "https://github.com/opentdf/client-web",
   "bugs": {
@@ -119,7 +119,6 @@
     "license-checker": "^25.0.1",
     "mocha": "^9.2.2",
     "node-fetch": "^3.2.4",
-    "node-polyfill-webpack-plugin": "^1.1.4",
     "nyc": "^15.1.0",
     "prettier": "^2.6.2",
     "rimraf": "^3.0.2",
