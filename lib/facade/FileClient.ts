@@ -29,7 +29,7 @@ export class FileClient {
       clientSecret,
       oidcRefreshToken,
       kasEndpoint,
-      virtruOIDCEndpoint: oidcOrigin,
+      oidcOrigin,
     });
   }
 
