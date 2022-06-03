@@ -46,7 +46,7 @@
     "clean": "rm -rf {build,dist}",
     "doc": "typedoc --out dist/docs src/index.ts",
     "format": "prettier --write \"{facade,src,tdf3,test}/**/*.ts\"",
-    "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; ISC; MIT' --excludePackages 'caniuse-lite@1.0.30001336'",
+    "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; CC-BY-4.0; ISC; MIT'",
     "lint": "eslint ./{src,test}/**/*.ts",
     "prepack": "npm run build",
     "test": "npm run clean && tsc -p tsconfig-esm.json && web-test-runner && npm run test:tdf3",

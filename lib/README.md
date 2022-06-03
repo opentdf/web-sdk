@@ -22,4 +22,4 @@ TDF3 with JSON envelopes.
 
 ### Examples
 
-Review examples to see how to integrate. See [Examples](https://github.com/opentdf/documentation/tree/feature/integrate/examples)
+Review examples to see how to integrate. See [Examples](https://github.com/opentdf/opentdf/tree/feature/integrate/examples)
