@@ -43,7 +43,7 @@ const { Client } = require("tdf3-js");
     organizationName: 'tdf', // realm
     kasEndpoint: 'http://localhost/kas',
     clientSecret: 'someSecret', // nodeJS realm
-    virtruOIDCEndpoint: 'http://localhost/oidc',
+    oidcOrigin: 'http://localhost/oidc',
   });
   const encryptParams = new Client.EncryptParamsBuilder()
     .withStringSource("Hello world") // could be also .withFileSource("img.jpg")
@@ -67,8 +67,8 @@ const { Client } = require("tdf3-js");
     clientId: "tdf-client",
     organizationName: 'tdf',
     kasEndpoint: 'http://localhost/kas',
-    oidcRefreshToken: 'token', // Here is only difference in usage, browser build needs oidc tocken 
-    virtruOIDCEndpoint: 'http://localhost/oidc',
+    oidcRefreshToken: 'token', // Here is only difference in usage, browser build needs oidc tocken
+    oidcOrigin: 'http://localhost/oidc',
   });
 ```
 Rest is the same, you could use `withArrayBufferSource` for files in browser. For generating file in browser you could do
@@ -316,7 +316,7 @@ const publicKey = keyPair.publicKey;
 
 Type: `String`
 
-The URL of the KAS public key endpoint, for example: `http://localhost:4000/kas_public_key`
+The URL of the KAS public key endpoint, for example: `http://localhost:4000/api/kas/kas_public_key`
 
 #### loadTDFStream(url)
 
