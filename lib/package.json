@@ -95,7 +95,6 @@
     "@web/test-runner-commands": "~0.6.1",
     "audit-ci": "^6.2.0",
     "babel-loader": "^8.2.5",
-    "babel-plugin-module-resolver": "^4.1.0",
     "browserify": "^17.0.0",
     "buffer": "^6.0.3",
     "chai": "^4.3.6",
