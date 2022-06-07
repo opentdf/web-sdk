@@ -1,4 +1,3 @@
-import { toWebReadableStream } from 'web-streams-node';
 
 export { ZipReader, readUInt64LE } from './zip-reader';
 export { ZipWriter } from './zip-writer';
@@ -13,7 +12,7 @@ export function inBrowser(): boolean {
 // @ts-ignore
 export async function streamToBuffer(stream) {
   return await PlaintextStream.toBuffer(
-    stream instanceof ReadableStream ? stream : toWebReadableStream(stream)
+    stream
   );
 }
 
