@@ -1,6 +1,7 @@
 import constants from 'constants';
 import * as Crypto from 'crypto';
 
+import { isStream } from '../utils';
 import { Algorithms } from '../ciphers';
 import { Binary } from '../binary';
 import { TdfDecryptError } from '../errors';
@@ -11,6 +12,7 @@ import {
   PemKeyPair,
 } from './declarations';
 import { isValidAsymmetricKeySize } from './crypto-utils';
+import { Stream } from 'stream';
 // @ts-ignore
 let crypto;
 
@@ -37,7 +39,7 @@ try {
  */
 
 function encrypt(
-  payload: Binary,
+  payload: Binary | Stream,
   key: Binary,
   iv: Binary,
   algorithm: string
@@ -48,12 +50,16 @@ function encrypt(
 
   const alg = selectAlgorithm(algorithm);
   if (alg === 'aes-256-gcm') {
-    return _doGcmEncryptSync(payload, key, iv);
+    return isStream(payload)
+      ? _doStreamingGcmEncrypt(payload, key, iv)
+      : _doGcmEncryptSync(payload, key, iv);
   }
 
   // CBC
   console.assert(algorithm === 'aes-256-cbc');
-  return cbcCrypt('createCipheriv', payload, key, iv);
+  return isStream(payload)
+    ? _doStreamingCrypt('createCipheriv', payload, key, iv)
+    : cbcCrypt('createCipheriv', payload, key, iv);
 }
 
 /**
@@ -65,7 +71,7 @@ function encrypt(
  * @param authTag The authentication tag for authenticated crypto.
  */
 function decrypt(
-  payload: Binary,
+  payload: Binary | Stream,
   key: Binary,
   iv: Binary,
   algorithm?: string,
@@ -79,13 +85,18 @@ function decrypt(
   const alg = selectAlgorithm(algorithm);
   if (alg === 'aes-256-gcm') {
     console.assert(typeof authTag === 'object');
-    // @ts-ignore
-    return _doGcmDecryptSync(payload, key, iv, authTag);
+    return isStream(payload)
+      ? // @ts-ignore
+        _doStreamingGcmDecrypt(payload, key, iv, authTag)
+      : // @ts-ignore
+        _doGcmDecryptSync(payload, key, iv, authTag);
   }
 
   // CBC
   console.assert(algorithm === 'aes-256-cbc');
-  return cbcCrypt('createDecipheriv', payload, key, iv);
+  return isStream(payload)
+    ? _doStreamingCrypt('createDecipheriv', payload, key, iv)
+    : cbcCrypt('createDecipheriv', payload, key, iv);
 }
 
 /**
@@ -110,6 +121,50 @@ function decryptWithPrivateKey(encryptedPayload: Binary, privateKey: string): Pr
     } catch (e) {
       reject(e);
     }
+  });
+}
+
+function _doStreamingCrypt(
+  method: string,
+  stream: Stream,
+  key: Binary,
+  iv: Binary
+): Promise<DecryptResult> {
+  // @ts-ignore
+  const cryptoStream = crypto[method]('aes-256-cbc', key.asBuffer(), iv.asBuffer());
+
+  stream.pipe(cryptoStream);
+
+  return Promise.resolve({
+    payload: cryptoStream,
+  });
+}
+
+function _doStreamingGcmEncrypt(stream: Stream, key: Binary, iv: Binary): Promise<EncryptResult> {
+  // @ts-ignore
+  const cryptoStream = crypto.createCipheriv('aes-256-gcm', key.asBuffer(), iv.asBuffer());
+
+  stream.pipe(cryptoStream);
+
+  return Promise.resolve({
+    payload: cryptoStream,
+  });
+}
+
+function _doStreamingGcmDecrypt(
+  stream: Stream,
+  key: Binary,
+  iv: Binary,
+  authTag: Binary
+): Promise<DecryptResult> {
+  // @ts-ignore
+  const cryptoStream = crypto.createDecipheriv('aes-256-gcm', key.asBuffer(), iv.asBuffer());
+
+  cryptoStream.setAuthTag(authTag.asBuffer());
+  stream.pipe(cryptoStream);
+
+  return Promise.resolve({
+    payload: cryptoStream,
   });
 }
 
@@ -244,7 +299,7 @@ function encryptWithPublicKey(payload: Binary, publicKey: string): Promise<Binar
  */
 function generateKeyPair(size?: number): Promise<PemKeyPair> {
   const minKeySize = MIN_ASYMMETRIC_KEY_SIZE_BITS;
-// @ts-ignore
+  // @ts-ignore
   if (!isValidAsymmetricKeySize(size, minKeySize)) {
     throw new Error('Invalid key size requested');
   }
@@ -254,17 +309,19 @@ function generateKeyPair(size?: number): Promise<PemKeyPair> {
   return new Promise((resolve, reject) => {
     const keySize = !size ? minKeySize : size;
 
-    generateKeyPair('rsa', {
-      modulusLength: keySize,
-      publicKeyEncoding: {
-        type: 'spki',
-        format: 'pem'
+    generateKeyPair(
+      'rsa',
+      {
+        modulusLength: keySize,
+        publicKeyEncoding: {
+          type: 'spki',
+          format: 'pem',
+        },
+        privateKeyEncoding: {
+          type: 'pkcs8',
+          format: 'pem',
+        },
       },
-      privateKeyEncoding: {
-        type: 'pkcs8',
-        format: 'pem',
-      }
-    },
       (err, publicKey, privateKey) => {
         if (err) {
           reject(err);
@@ -296,7 +353,7 @@ function sha256(content: string) {
  */
 function hmac(key: string, content: string): Promise<string> {
   const decoded = Buffer.from(key, 'hex');
-// @ts-ignore
+  // @ts-ignore
   const hmacObj = crypto.createHmac('sha256', decoded);
 
   // FIXME: defaults to utf8 encoding. Is this what we want

@@ -4,6 +4,7 @@ import { Binary } from '../binary';
 import { SymmetricCipher } from '../ciphers/symmetric-cipher-base';
 import { KeyAccess, KeyAccessObject } from './key-access';
 import { Policy } from './policy';
+import { DecryptResult, EncryptResult } from '../crypto/declarations';
 
 export type KeyInfo = {
   readonly unwrappedKeyBinary: Binary;
@@ -12,8 +13,10 @@ export type KeyInfo = {
 
 export type Segment = {
   readonly hash: string;
-  readonly segmentSize: number;
-  readonly encryptedSegmentSize: number;
+  // If not present, segmentSizeDefault must be defined and used.
+  readonly segmentSize?: number;
+  // If not present, encryptedSegmentSizeDefault must be defined and used.??
+  readonly encryptedSegmentSize?: number;
 };
 
 export type EncryptionInformation = {
@@ -39,7 +42,7 @@ export type EncryptionInformation = {
 };
 
 export class SplitKey {
-  readonly keyAccess: KeyAccess[];
+  keyAccess: KeyAccess[];
 
   constructor(public readonly cipher: SymmetricCipher) {
     this.keyAccess = [];
@@ -52,16 +55,20 @@ export class SplitKey {
     return { unwrappedKeyBinary, unwrappedKeyIvBinary };
   }
 
-  async encrypt(contentBinary: Binary, keyBinary: Binary, ivBinaryOptional?: Binary) {
+  async encrypt(
+    contentBinary: Binary,
+    keyBinary: Binary,
+    ivBinaryOptional?: Binary
+  ): Promise<EncryptResult> {
     const ivBinary = ivBinaryOptional || (await this.generateIvBinary());
     return this.cipher.encrypt(contentBinary, keyBinary, ivBinary);
   }
 
-  async decrypt(content: Binary, keyBinary: Binary) {
+  async decrypt(content: Binary, keyBinary: Binary): Promise<DecryptResult> {
     return this.cipher.decrypt(content, keyBinary);
   }
 
-  async getKeyAccessObjects(policy: Policy, keyInfo: KeyInfo) {
+  async getKeyAccessObjects(policy: Policy, keyInfo: KeyInfo): Promise<KeyAccessObject[]> {
     const unwrappedKeySplitBuffers = keySplit(
       keyInfo.unwrappedKeyBinary.asBuffer(),
       this.keyAccess.length
@@ -109,7 +116,7 @@ export class SplitKey {
     return keyAccessObjects;
   }
 
-  async generateIvBinary() {
+  async generateIvBinary(): Promise<Binary> {
     const iv = await this.cipher.generateInitializationVector();
     return Binary.fromString(hex.decode(iv));
   }

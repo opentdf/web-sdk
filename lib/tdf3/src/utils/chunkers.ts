@@ -27,12 +27,12 @@ export const fromNodeFile = (filePath: string): chunker => {
   const fileSize = statSync(filePath).size;
 
   return (byteStart?: number, byteEnd?: number): Promise<Uint8Array> => {
-    let start = byteStart;
+    let start = byteStart || 0;
     let end = byteEnd;
 
-    if (!byteStart && !byteEnd) {
+    if (!start && !end) {
       return new Promise<Uint8Array>((resolve, reject) => {
-        readFile(filePath, (err, data) => {
+        readFile(filePath, (err: any | null, data: Uint8Array | PromiseLike<Uint8Array>) => {
           if (err) {
             reject(err);
           } else {
@@ -41,11 +41,9 @@ export const fromNodeFile = (filePath: string): chunker => {
         });
       });
     }
-// @ts-ignore
-    if (byteStart < 0) {
+    if (start < 0) {
       // max with 0 for the case where the chunk size is larger than the file size.
-      // @ts-ignore
-      start = Math.max(0, fileSize - Math.abs(byteStart));
+      start = Math.max(0, fileSize - Math.abs(start));
     }
     if (byteEnd) {
       if (byteEnd < 0) {
@@ -56,15 +54,16 @@ export const fromNodeFile = (filePath: string): chunker => {
     }
 
     const rs = createReadStream(filePath, { start, end });
-    // @ts-ignore
-    const buffers = [];
+    const buffers: Uint8Array[] = [];
     return new Promise<Uint8Array>((resolve, reject) => {
       rs.on('data', (buff) => {
+        if (typeof buff === 'string') {
+          throw new Error('Incorrect read stream');
+        }
         buffers.push(buff);
       });
       rs.on('error', reject);
       rs.on('end', () => {
-        // @ts-ignore
         resolve(Buffer.concat(buffers));
       });
     });
@@ -72,8 +71,7 @@ export const fromNodeFile = (filePath: string): chunker => {
 };
 
 export const fromUrl = (location: string): chunker => {
-  // @ts-ignore
-  async function getRemoteChunk(url, range?): Promise<Uint8Array> {
+  async function getRemoteChunk(url: string, range?: string): Promise<Uint8Array> {
     try {
       const res: AxiosResponse<Uint8Array> = await axios.get(url, {
         ...(range && {
@@ -102,13 +100,11 @@ export const fromUrl = (location: string): chunker => {
       return getRemoteChunk(location);
     }
     let rangeHeader = `${byteStart}`;
-    // @ts-ignore
-    if (byteEnd < 0) {
+    if (byteEnd && byteEnd < 0) {
       // NOTE: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Range
       throw Error('negative end unsupported');
     } else {
-      // @ts-ignore
-      rangeHeader += `-${byteEnd - 1}`;
+      rangeHeader += `-${(byteEnd || 0) - 1}`;
     }
     return getRemoteChunk(location, rangeHeader);
   };

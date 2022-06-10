@@ -6,14 +6,15 @@ import {
   ATTR_VALUE_PROP_NAME,
 } from './patterns';
 import { AttributeValidationError } from '../../errors';
-// @ts-ignore
-const attributeValidation = (attr) => {
+import { AttributeObject } from '../../models/attribute-set';
+
+const attributeValidation = (attr: unknown) => {
   const isObject = typeof attr === 'object';
   if (!isObject) {
     throw new AttributeValidationError(`attribute should be an object`);
   }
 
-  const { attribute } = attr;
+  const { attribute } = attr as Record<string, unknown>;
   const isString = typeof attribute === 'string';
   if (!isString) {
     throw new AttributeValidationError(`attribute prop should be a string`);
@@ -38,13 +39,13 @@ const attributeValidation = (attr) => {
 
   return true;
 };
-// @ts-ignore
-const runAttributesValidation = (attributes) => {
+function runAttributesValidation(attributes: unknown[]): attributes is AttributeObject[] {
   if (!Array.isArray(attributes)) {
     throw new AttributeValidationError('Attributes should be of type Array');
   }
 
   attributes.forEach(attributeValidation);
-};
+  return true;
+}
 
 export { runAttributesValidation };

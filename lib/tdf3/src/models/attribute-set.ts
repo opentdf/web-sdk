@@ -2,10 +2,10 @@ import { Validator } from 'jsonschema';
 
 const verbose = false;
 
-type AttributeObject = {
+export type AttributeObject = {
   attribute: string;
-  kasUrl: string;
-  pubKey: string;
+  kasUrl?: string;
+  pubKey?: string;
   displayName?: string;
   isDefault?: boolean;
   jwt?: string;
@@ -28,15 +28,14 @@ const ATTRIBUTE_OBJECT_SCHEMA = {
 
 const validator = new Validator();
 
-class AttributeSet {
+export class AttributeSet {
   attributes: AttributeObject[];
 
   defaultAttribute?: AttributeObject;
 
   constructor() {
     this.attributes = [];
-    // @ts-ignore
-    this.defaultAttribute = null;
+    this.defaultAttribute;
   }
 
   /**
@@ -74,8 +73,7 @@ class AttributeSet {
    * @return default attribute in object form or null
    */
   getDefault(): AttributeObject | null {
-    // @ts-ignore
-    return this.defaultAttribute;
+    return this.defaultAttribute || null;
   }
 
   /**
@@ -147,5 +145,3 @@ class AttributeSet {
       .filter((x) => x);
   }
 }
-
-export { AttributeSet, AttributeObject };
