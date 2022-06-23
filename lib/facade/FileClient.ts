@@ -37,7 +37,7 @@ export class FileClient {
     params: EncryptParamsBuilder | DecryptParamsBuilder
   ) {
     // @ts-ignore
-    if (source.pipe !== undefined) {
+    if (source.pipe !== undefined || source instanceof ReadableStream) {
       // @ts-ignore
       params.setStreamSource(source);
     }
