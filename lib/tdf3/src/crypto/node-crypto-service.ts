@@ -138,7 +138,11 @@ function _doStreamingCrypt(
   });
 }
 
-function _doStreamingGcmEncrypt(stream: ReadableStream, key: Binary, iv: Binary): Promise<EncryptResult> {
+function _doStreamingGcmEncrypt(
+  stream: ReadableStream,
+  key: Binary,
+  iv: Binary
+): Promise<EncryptResult> {
   // @ts-ignore
   const cryptoStream = crypto.createCipheriv('aes-256-gcm', key.asBuffer(), iv.asBuffer());
 

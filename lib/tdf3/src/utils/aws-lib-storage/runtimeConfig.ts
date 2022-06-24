@@ -1,12 +1,12 @@
-import { lstatSync } from "fs";
+import { lstatSync } from 'fs';
 
-import { ClientSharedValues } from "./runtimeConfig.shared";
+import { ClientSharedValues } from './runtimeConfig.shared';
 
 /**
  * @internal
  */
 export const ClientDefaultValues = {
   ...ClientSharedValues,
-  runtime: "node",
+  runtime: 'node',
   lstatSync,
 };

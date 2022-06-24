@@ -1,4 +1,4 @@
-import { PutObjectCommandInput, S3Client, Tag } from "@aws-sdk/client-s3";
+import { PutObjectCommandInput, S3Client, Tag } from '@aws-sdk/client-s3';
 
 export interface Progress {
   loaded?: number;
@@ -9,7 +9,7 @@ export interface Progress {
 }
 
 // string | Uint8Array | Buffer | Readable | ReadableStream | Blob.
-export type BodyDataTypes = PutObjectCommandInput["Body"];
+export type BodyDataTypes = PutObjectCommandInput['Body'];
 
 /**
  * @deprecated redundant, use {@link S3Client} directly.

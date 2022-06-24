@@ -1,4 +1,3 @@
-
 export { ZipReader, readUInt64LE } from './zip-reader';
 export { ZipWriter } from './zip-writer';
 export { keySplit, keyMerge } from './keysplit';
@@ -11,9 +10,7 @@ export function inBrowser(): boolean {
 
 // @ts-ignore
 export async function streamToBuffer(stream) {
-  return await PlaintextStream.toBuffer(
-    stream
-  );
+  return await PlaintextStream.toBuffer(stream);
 }
 
 export function base64ToBuffer(b64: string): Buffer | Uint8Array {

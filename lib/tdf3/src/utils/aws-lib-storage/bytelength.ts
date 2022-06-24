@@ -1,16 +1,16 @@
 // @ts-ignore
-import { ClientDefaultValues } from "@runtimeConfig"; // check alias in webpack.config
+import { ClientDefaultValues } from '@runtimeConfig'; // check alias in webpack.config
 
 export const byteLength = (input: any) => {
   if (input === null || input === undefined) return 0;
-  if (typeof input === "string") input = Buffer.from(input);
-  if (typeof input.byteLength === "number") {
+  if (typeof input === 'string') input = Buffer.from(input);
+  if (typeof input.byteLength === 'number') {
     return input.byteLength;
-  } else if (typeof input.length === "number") {
+  } else if (typeof input.length === 'number') {
     return input.length;
-  } else if (typeof input.size === "number") {
+  } else if (typeof input.size === 'number') {
     return input.size;
-  } else if (typeof input.path === "string") {
+  } else if (typeof input.path === 'string') {
     try {
       return ClientDefaultValues.lstatSync(input.path).size;
     } catch (error) {

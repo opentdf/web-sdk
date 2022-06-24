@@ -1,9 +1,9 @@
-import { ClientSharedValues } from "./runtimeConfig.shared";
+import { ClientSharedValues } from './runtimeConfig.shared';
 
 /**
  * @internal
  */
 export const ClientDefaultValues = {
   ...ClientSharedValues,
-  runtime: "browser",
+  runtime: 'browser',
 };

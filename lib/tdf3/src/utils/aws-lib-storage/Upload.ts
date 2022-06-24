@@ -1,4 +1,4 @@
-import { AbortController, AbortSignal } from "@aws-sdk/abort-controller";
+import { AbortController, AbortSignal } from '@aws-sdk/abort-controller';
 import {
   AbortMultipartUploadCommandOutput,
   CompletedPart,
@@ -12,13 +12,13 @@ import {
   S3Client,
   Tag,
   UploadPartCommand,
-} from "@aws-sdk/client-s3";
-import { extendedEncodeURIComponent } from "@aws-sdk/smithy-client";
-import { EventEmitter } from "events";
+} from '@aws-sdk/client-s3';
+import { extendedEncodeURIComponent } from '@aws-sdk/smithy-client';
+import { EventEmitter } from 'events';
 
-import { byteLength } from "./bytelength";
-import { getChunk } from "./chunker";
-import { BodyDataTypes, Options, Progress } from "./types";
+import { byteLength } from './bytelength';
+import { getChunk } from './chunker';
+import { BodyDataTypes, Options, Progress } from './types';
 
 export interface RawDataPart {
   partNumber: number;
@@ -87,11 +87,16 @@ export class Upload extends EventEmitter {
     this.abortController.abort();
   }
 
-  public async done(): Promise<CompleteMultipartUploadCommandOutput | AbortMultipartUploadCommandOutput> {
-    return await Promise.race([this.__doMultipartUpload(), this.__abortTimeout(this.abortController.signal)]);
+  public async done(): Promise<
+    CompleteMultipartUploadCommandOutput | AbortMultipartUploadCommandOutput
+  > {
+    return await Promise.race([
+      this.__doMultipartUpload(),
+      this.__abortTimeout(this.abortController.signal),
+    ]);
   }
 
-  public on(event: "httpUploadProgress", listener: (progress: Progress) => void): this {
+  public on(event: 'httpUploadProgress', listener: (progress: Progress) => void): this {
     this.uploadEvent = event;
     return super.on(event, listener);
   }
@@ -105,9 +110,9 @@ export class Upload extends EventEmitter {
     ]);
 
     const locationKey = this.params
-      .Key!.split("/")
+      .Key!.split('/')
       .map((segment) => extendedEncodeURIComponent(segment))
-      .join("/");
+      .join('/');
     const locationBucket = extendedEncodeURIComponent(this.params.Bucket!);
 
     const Location: string = this.client.config.forcePathStyle
@@ -133,13 +138,17 @@ export class Upload extends EventEmitter {
   private async __createMultipartUpload(): Promise<void> {
     if (!this.createMultiPartPromise) {
       const createCommandParams = { ...this.params, Body: undefined };
-      this.createMultiPartPromise = this.client.send(new CreateMultipartUploadCommand(createCommandParams));
+      this.createMultiPartPromise = this.client.send(
+        new CreateMultipartUploadCommand(createCommandParams)
+      );
     }
     const createMultipartUploadResult = await this.createMultiPartPromise;
     this.uploadId = createMultipartUploadResult.UploadId;
   }
 
-  private async __doConcurrentUpload(dataFeeder: AsyncGenerator<RawDataPart, void, undefined>): Promise<void> {
+  private async __doConcurrentUpload(
+    dataFeeder: AsyncGenerator<RawDataPart, void, undefined>
+  ): Promise<void> {
     for await (const dataPart of dataFeeder) {
       if (this.uploadedParts.length > this.MAX_PARTS) {
         throw new Error(
@@ -221,7 +230,7 @@ export class Upload extends EventEmitter {
     // Create and start concurrent uploads.
     await Promise.all(this.concurrentUploaders);
     if (this.abortController.signal.aborted) {
-      throw Object.assign(new Error("Upload aborted."), { name: "AbortError" });
+      throw Object.assign(new Error('Upload aborted.'), { name: 'AbortError' });
     }
 
     let result;
@@ -262,11 +271,13 @@ export class Upload extends EventEmitter {
     }
   }
 
-  private async __abortTimeout(abortSignal: AbortSignal): Promise<AbortMultipartUploadCommandOutput> {
+  private async __abortTimeout(
+    abortSignal: AbortSignal
+  ): Promise<AbortMultipartUploadCommandOutput> {
     return new Promise((resolve, reject) => {
       abortSignal.onabort = () => {
-        const abortError = new Error("Upload aborted.");
-        abortError.name = "AbortError";
+        const abortError = new Error('Upload aborted.');
+        abortError.name = 'AbortError';
         reject(abortError);
       };
     });
