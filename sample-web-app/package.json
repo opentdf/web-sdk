@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@opentdf/client": "file:../opentdf-client-0.2.2.tgz",
+    "process": "^0.11.10",
     "react": "^18.0.0",
     "react-dom": "^18.0.0"
   },
