@@ -1,6 +1,5 @@
 import { Client as ClientTdf3 } from '../tdf3/src/client';
 import { DecryptParamsBuilder, EncryptParamsBuilder } from '../tdf3/src/client/builders';
-import { TDFCiphertextStream } from '../tdf3/src/client/tdf-cipher-text-stream';
 import { PlaintextStream } from '../tdf3/src/client/tdf-stream';
 
 interface FileClientConfig {
@@ -34,11 +33,11 @@ export class FileClient {
   }
 
   private static setSource(
-    source: ReadableStream | TDFCiphertextStream | Buffer | string | ArrayBuffer,
+    source: ReadableStream | Buffer | string | ArrayBuffer,
     params: EncryptParamsBuilder | DecryptParamsBuilder
   ) {
     // @ts-ignore
-    if (source.pipe !== undefined) {
+    if (source.pipe !== undefined || source instanceof ReadableStream) {
       // @ts-ignore
       params.setStreamSource(source);
     }
@@ -59,7 +58,7 @@ export class FileClient {
     source: ReadableStream | Buffer | string | ArrayBuffer = '',
     users: string[] = [],
     params?: any
-  ): Promise<TDFCiphertextStream> {
+  ): Promise<PlaintextStream> {
     const encryptParams = new EncryptParamsBuilder().withOffline().withUsersWithAccess(users);
 
     if (params) {
