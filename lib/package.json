@@ -57,6 +57,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.75.0",
     "axios": "^0.26.1",
+    "browser-fs-access": "^0.30.2",
     "buffer-crc32": "^0.2.13",
     "events": "^3.3.0",
     "jose": "^4.8.1",
