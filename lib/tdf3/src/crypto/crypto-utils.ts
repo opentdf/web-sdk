@@ -3,7 +3,7 @@
  * @param size in bits requested
  * @param minSize in bits allowed
  */
-export const isValidAsymmetricKeySize = (size: number, minSize: number): boolean => {
+export const isValidAsymmetricKeySize = (size: number | undefined, minSize: number): boolean => {
   // No size specified is fine because the minSize will be used
   if (size === undefined) {
     return true;

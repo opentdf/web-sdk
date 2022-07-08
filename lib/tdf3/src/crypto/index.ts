@@ -1,4 +1,3 @@
-/* globals msCrypto */
 /**
  * This file is for using native crypto in the browser.
  *
@@ -13,43 +12,21 @@ import {
   MIN_ASYMMETRIC_KEY_SIZE_BITS,
   PemKeyPair,
 } from './declarations';
-import IENativeShim from './ie-native-shim';
 import { TdfDecryptError } from '../errors';
 import { formatAsPem, isValidAsymmetricKeySize, removePemFormatting } from './crypto-utils';
+import { encodeArrayBuffer as hexEncode } from '../../../src/encodings/hex';
+import {
+  decodeArrayBuffer as base64Decode,
+  encodeArrayBuffer as base64Encode,
+} from '../../../src/encodings/base64';
 
 // Used to pass into native crypto functions
 const METHODS: KeyUsage[] = ['encrypt', 'decrypt'];
 
-let nativeCrypto: Crypto;
-let subtle: SubtleCrypto;
-// let subtle: { importKey: any; encrypt: any; decrypt: any; generateKey?: any; exportKey?: any; digest?: any; sign?: any; };
+export const isSupported = crypto !== undefined;
 
-if (typeof crypto !== 'undefined') {
-  // eslint-disable-next-line
-  // @ts-ignore: support older safari
-  subtle = crypto.subtle || crypto.webkitSubtle;
-  nativeCrypto = crypto;
-} else {
-  // eslint-disable-next-line
-  // @ts-ignore: support IE11
-  if (typeof msCrypto !== 'undefined') {
-    // eslint-disable-next-line
-    // @ts-ignore: support IE11
-    subtle = IENativeShim;
-    // eslint-disable-next-line
-    // @ts-ignore: support IE11
-    nativeCrypto = msCrypto;
-  }
-}
-
-// These are the required functions we need to support using the native crypto
-// @ts-ignore
-if (!nativeCrypto || !subtle || !subtle.importKey || !subtle.encrypt || !subtle.decrypt) {
-  // @ts-ignore
-  nativeCrypto = undefined;
-  // @ts-ignore
-  subtle = undefined;
-}
+export const method = 'http://www.w3.org/2001/04/xmlenc#aes256-cbc';
+export const name = 'BrowserNativeCryptoService';
 
 const RSA_IMPORT_PARAMS: RsaHashedImportParams = {
   name: 'RSA-OAEP',
@@ -61,14 +38,11 @@ const RSA_IMPORT_PARAMS: RsaHashedImportParams = {
 /**
  * Get a DOMString representing the algorithm to use for an
  * asymmetric key generation.
- * @param isGenerate (only used for subtle.generateKey())
- * @param size
- * @return {DOMString} Algorithm to use
  */
-function getRsaHashedKeyGenParams(size?: number): RsaHashedKeyGenParams {
+function getRsaHashedKeyGenParams(modulusLength: number): RsaHashedKeyGenParams {
   return {
     ...RSA_IMPORT_PARAMS,
-    modulusLength: size || MIN_ASYMMETRIC_KEY_SIZE_BITS,
+    modulusLength,
     publicExponent: new Uint8Array([0x01, 0x00, 0x01]), // 24 bit representation of 65537
   };
 }
@@ -77,7 +51,7 @@ function getRsaHashedKeyGenParams(size?: number): RsaHashedKeyGenParams {
  * Generate a random hex key
  * @return New key as a hex string
  */
-function generateKey(length?: number): string {
+export function generateKey(length?: number): string {
   return randomBytesAsHex(length || 32);
 }
 
@@ -86,24 +60,22 @@ function generateKey(length?: number): string {
  * @see    {@link https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/generateKey}
  * @param  size in bits
  */
-async function generateKeyPair(size: number): Promise<PemKeyPair> {
+export async function generateKeyPair(size?: number): Promise<PemKeyPair> {
   const minKeySize = MIN_ASYMMETRIC_KEY_SIZE_BITS;
 
   if (!isValidAsymmetricKeySize(size, minKeySize)) {
     throw new Error('Invalid key size requested');
   }
 
-  const algoDomString = getRsaHashedKeyGenParams(size);
+  const algoDomString = getRsaHashedKeyGenParams(size || MIN_ASYMMETRIC_KEY_SIZE_BITS);
 
-  const keys = await subtle.generateKey(algoDomString, true, METHODS);
+  const keys = await crypto.subtle.generateKey(algoDomString, true, METHODS);
   const [exPublic, exPrivate] = await Promise.all([
-    // @ts-ignore
-    subtle.exportKey('spki', keys.publicKey),
-    // @ts-ignore
-    subtle.exportKey('pkcs8', keys.privateKey),
+    crypto.subtle.exportKey('spki', keys.publicKey),
+    crypto.subtle.exportKey('pkcs8', keys.privateKey),
   ]);
-  const publicBase64String = Binary.fromArrayBuffer(exPublic).asBuffer().toString('base64');
-  const privateBase64String = Binary.fromArrayBuffer(exPrivate).asBuffer().toString('base64');
+  const publicBase64String = base64Encode(exPublic);
+  const privateBase64String = base64Encode(exPrivate);
   return {
     publicKey: formatAsPem(publicBase64String, 'PUBLIC KEY'),
     privateKey: formatAsPem(privateBase64String, 'PRIVATE KEY'),
@@ -116,7 +88,7 @@ async function generateKeyPair(size: number): Promise<PemKeyPair> {
  * @param publicKey PEM formatted public key
  * @return Encrypted payload
  */
-async function encryptWithPublicKey(payload: Binary, publicKey: string): Promise<Binary> {
+export async function encryptWithPublicKey(payload: Binary, publicKey: string): Promise<Binary> {
   console.assert(typeof payload === 'object');
   console.assert(typeof publicKey === 'string');
 
@@ -125,18 +97,29 @@ async function encryptWithPublicKey(payload: Binary, publicKey: string): Promise
   // Web Crypto APIs don't work with PEM formatted strings
   publicKey = removePemFormatting(publicKey);
 
-  const keyBuffer = Buffer.from(publicKey, 'base64').buffer;
-  const cryptoKey = await subtle.importKey('spki', keyBuffer, algoDomString, false, ['encrypt']);
-  const result = await subtle.encrypt({ name: 'RSA-OAEP' }, cryptoKey, payload.asArrayBuffer());
+  const keyBuffer = base64Decode(publicKey);
+  const cryptoKey = await crypto.subtle.importKey('spki', keyBuffer, algoDomString, false, [
+    'encrypt',
+  ]);
+  const result = await crypto.subtle.encrypt(
+    { name: 'RSA-OAEP' },
+    cryptoKey,
+    payload.asArrayBuffer()
+  );
   return Binary.fromArrayBuffer(result);
 }
 
 /**
  * Generate a 16-byte initialization vector
- * @return {String}
  */
-function generateInitializationVector(length?: number): string {
+export function generateInitializationVector(length?: number): string {
   return randomBytesAsHex(length || 16);
+}
+
+export function randomBytes(length: number): Uint8Array {
+  const r = new Uint8Array(length);
+  crypto.getRandomValues(r);
+  return r;
 }
 
 /**
@@ -149,34 +132,20 @@ function generateInitializationVector(length?: number): string {
  *
  * @returns The hex string.
  */
-function randomBytesAsHex(length: number): string {
+export function randomBytesAsHex(length: number): string {
   // Create a typed array of the correct length to fill
-  const random = new Uint8Array(length);
-  nativeCrypto.getRandomValues(random);
-
-  const binary = Binary.fromArrayBuffer(random.buffer);
-
-  // Convert the byte array to a hex string
-  let key = '';
-  const arr = binary.asByteArray();
-  for (let i = 0; i < length; i++) {
-    let str = arr[i].toString(16);
-    if (str.length === 1) {
-      str = `0${str}`;
-    }
-    key += str;
-  }
-
-  return key;
+  const r = new Uint8Array(length);
+  crypto.getRandomValues(r);
+  return hexEncode(r.buffer);
 }
 
 /**
  * Decrypt a public-key encrypted payload with a private key
  * @param  encryptedPayload  Payload to decrypt
- * @param  privateKey        PEM formatted private key
+ * @param  privateKey        PEM formatted private keynpmv
  * @return Decrypted payload
  */
-async function decryptWithPrivateKey(
+export async function decryptWithPrivateKey(
   encryptedPayload: Binary,
   privateKey: string
 ): Promise<Binary> {
@@ -187,10 +156,14 @@ async function decryptWithPrivateKey(
 
   // Web Crypto APIs don't work with PEM formatted strings
   const keyDataString = removePemFormatting(privateKey);
-  const keyData = Buffer.from(keyDataString, 'base64').buffer;
+  const keyData = base64Decode(keyDataString);
 
-  const key = await subtle.importKey('pkcs8', keyData, algoDomString, false, ['decrypt']);
-  const payload = await subtle.decrypt({ name: 'RSA-OAEP' }, key, encryptedPayload.asArrayBuffer());
+  const key = await crypto.subtle.importKey('pkcs8', keyData, algoDomString, false, ['decrypt']);
+  const payload = await crypto.subtle.decrypt(
+    { name: 'RSA-OAEP' },
+    key,
+    encryptedPayload.asArrayBuffer()
+  );
   const bufferView = new Uint8Array(payload);
   return Binary.fromArrayBuffer(bufferView.buffer);
 }
@@ -203,7 +176,7 @@ async function decryptWithPrivateKey(
  * @param algorithm The algorithm to use for encryption
  * @param authTag The authentication tag for authenticated crypto.
  */
-function decrypt(
+export function decrypt(
   payload: Binary,
   key: Binary,
   iv: Binary,
@@ -220,7 +193,7 @@ function decrypt(
  * @param iv        The initialization vector
  * @param algorithm The algorithm to use for encryption
  */
-function encrypt(
+export function encrypt(
   payload: Binary,
   key: Binary,
   iv: Binary,
@@ -244,7 +217,7 @@ async function _doEncrypt(
   const algoDomString = getSymmetricAlgoDomString(iv, algorithm);
 
   const importedKey = await _importKey(key, algoDomString);
-  const encrypted = await subtle.encrypt(algoDomString, importedKey, payloadBuffer);
+  const encrypted = await crypto.subtle.encrypt(algoDomString, importedKey, payloadBuffer);
   if (algoDomString.name === 'AES-GCM') {
     return {
       payload: Binary.fromArrayBuffer(encrypted.slice(0, -16)),
@@ -283,7 +256,7 @@ async function _doDecrypt(
   const importedKey = await _importKey(key, algoDomString);
   algoDomString.iv = iv.asArrayBuffer();
 
-  const decrypted = await subtle
+  const decrypted = await crypto.subtle
     .decrypt(algoDomString, importedKey, payloadBuffer)
     // Catching this error so we can specifically check for OperationError
     .catch((err) => {
@@ -297,7 +270,7 @@ async function _doDecrypt(
 }
 
 function _importKey(key: Binary, algorithm: AesCbcParams | AesGcmParams) {
-  return subtle.importKey('raw', key.asArrayBuffer(), algorithm, true, METHODS);
+  return crypto.subtle.importKey('raw', key.asArrayBuffer(), algorithm, true, METHODS);
 }
 
 /**
@@ -324,10 +297,10 @@ function getSymmetricAlgoDomString(iv: Binary, algorithm?: string): AesCbcParams
  * @param  content  String content
  * @return Hex hash
  */
-async function sha256(content: string): Promise<string> {
+export async function sha256(content: string): Promise<string> {
   const buffer = new TextEncoder().encode(content);
-  const hashBuffer = await subtle.digest('SHA-256', buffer);
-  return Buffer.from(new Uint8Array(hashBuffer)).toString('hex');
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+  return hexEncode(hashBuffer);
 }
 
 /**
@@ -336,10 +309,10 @@ async function sha256(content: string): Promise<string> {
  * @param  content Content string
  * @return Hex hash
  */
-async function hmac(key: string, content: string): Promise<string> {
+export async function hmac(key: string, content: string): Promise<string> {
   const contentBuffer = new TextEncoder().encode(content);
   const keyBuffer = hex2Ab(key);
-  const cryptoKey = await subtle.importKey(
+  const cryptoKey = await crypto.subtle.importKey(
     'raw',
     keyBuffer,
     {
@@ -349,8 +322,8 @@ async function hmac(key: string, content: string): Promise<string> {
     true,
     ['sign', 'verify']
   );
-  const hashBuffer = await subtle.sign('HMAC', cryptoKey, contentBuffer);
-  return Buffer.from(new Uint8Array(hashBuffer)).toString('hex');
+  const hashBuffer = await crypto.subtle.sign('HMAC', cryptoKey, contentBuffer);
+  return hexEncode(hashBuffer);
 }
 
 /**
@@ -358,7 +331,7 @@ async function hmac(key: string, content: string): Promise<string> {
  * https://developers.google.com/web/updates/2012/06/How-to-convert-ArrayBuffer-to-and-from-String?hl=en
  * @param  hex - Hex string
  */
-function hex2Ab(hex: string): ArrayBuffer {
+export function hex2Ab(hex: string): ArrayBuffer {
   const buffer = new ArrayBuffer(hex.length / 2);
   const bufferView = new Uint8Array(buffer);
 
@@ -368,19 +341,3 @@ function hex2Ab(hex: string): ArrayBuffer {
 
   return buffer;
 }
-
-export default {
-  decrypt,
-  decryptWithPrivateKey,
-  encrypt,
-  encryptWithPublicKey,
-  generateInitializationVector,
-  generateKey,
-  generateKeyPair,
-  hex2Ab,
-  hmac,
-  isSupported: nativeCrypto !== undefined,
-  method: 'http://www.w3.org/2001/04/xmlenc#aes256-cbc',
-  name: 'BrowserNativeCryptoService',
-  sha256,
-};

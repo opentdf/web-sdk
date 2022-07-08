@@ -1,6 +1,6 @@
 import { Binary } from '../binary';
 import { base64, hex } from '../../../src/encodings';
-import { cryptoService } from '../crypto';
+import * as cryptoService from '../crypto';
 import { Policy } from './policy';
 
 export type KeyAccessType = 'remote' | 'wrapped';
