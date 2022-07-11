@@ -63,7 +63,6 @@
     "jose": "^4.8.1",
     "jsonschema": "^1.4.0",
     "node-forge": "^1.3.1",
-    "sjcl": "^1.0.8",
     "ua-parser-js": "^1.0.2",
     "uuid": "~8.3.2",
     "web-streams-node": "^0.4.0"
@@ -86,7 +85,6 @@
     "@types/mocha": "~9.1.0",
     "@types/node-forge": "^1.0.2",
     "@types/sinon": "~10.0.11",
-    "@types/sjcl": "^1.0.30",
     "@types/uuid": "~8.3.4",
     "@typescript-eslint/eslint-plugin": "^5.18.0",
     "@typescript-eslint/parser": "^5.18.0",
