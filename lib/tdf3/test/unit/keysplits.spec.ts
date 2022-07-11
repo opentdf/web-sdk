@@ -1,5 +1,4 @@
 import { expect } from 'chai';
-import { randomBytes } from 'crypto';
 
 import { bxor, keySplit, keyMerge } from '../../src/utils/keysplit';
 import { generateKey } from '../../src/crypto';
@@ -13,14 +12,14 @@ describe('keysplits', () => {
   });
 
   it('should return the original byte array with split set to one part', () => {
-    const expected = randomBytes(4);
+    const expected = new Uint8Array([1, 2, 3, 4]);
     const splits = keySplit(expected, 1);
     expect(splits[0]).to.eql(expected);
     expect(keyMerge(splits)).to.eql(expected);
   });
 
   it('should return the original byte array with split set to three parts', () => {
-    const expected = randomBytes(4);
+    const expected = new Uint8Array([1, 2, 3, 4]);
     const splits = keySplit(expected, 3);
     expect(expected).to.not.be.oneOf(splits);
     expect(keyMerge(splits)).to.eql(expected);
