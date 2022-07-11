@@ -14,7 +14,7 @@ import {
   sha256,
 } from '../../../src/crypto';
 import { Binary } from '../../../src/binary';
-import { decodeArrayBuffer } from '../../../../src/encodings/base64';
+import { decodeArrayBuffer, encodeArrayBuffer } from '../../../../src/encodings/base64';
 
 describe('Crypto Service', () => {
   describe('hmac', () => {
@@ -168,16 +168,19 @@ describe('Crypto Service', () => {
 
   it('should encrypt file', async () => {
     const rawData = '1';
-    const key = 'key';
-    const binaryKey = Binary.fromString(key);
+    const binaryKey = Binary.fromArrayBuffer(
+      // crypto.scryptSync('test', 'salt', 32) =>
+      decodeArrayBuffer('cvR6X2vLG5ap13ssLxRjOV1KOjJfraYpD8D+97zdtY4=')
+    );
     const algorithm = Algorithms.AES_256_GCM;
     const payload = Binary.fromString(rawData);
-    const iv = generateInitializationVector(1);
+    const iv = '0'.repeat(32);
     const binaryIV = Binary.fromString(iv);
 
     const encrypted = await encrypt(payload, binaryKey, binaryIV, algorithm);
+    expect(encodeArrayBuffer(encrypted.payload.asArrayBuffer())).to.eql('8Q==');
     // @ts-ignore
-    expect(encrypted).to.be.okay;
+    expect(encodeArrayBuffer(encrypted.authTag.asArrayBuffer())).to.eql('d0HF3e42QRxb5nnvFl57ZQ==');
   });
 
   it('should encrypt with pub key and decrypt with private', async () => {

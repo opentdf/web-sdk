@@ -53,10 +53,9 @@ export const formatAsPem = (base64KeyString: string, label: string): string => {
  * @return String with formatting removed
  */
 export const removePemFormatting = (input: string): string => {
-  let output = input.replace(/\n/g, '');
-  output = output.replace(
-    /-----(?:BEGIN|END)\s(?:RSA\s)?(?:PUBLIC|PRIVATE|CERTIFICATE)\sKEY-----/g,
+  const oneLiner = input.replace(/[\n\r]/g, '');
+  return oneLiner.replace(
+    /-----+(?:BEGIN|END)\s(?:RSA\s)?(?:PUBLIC|PRIVATE|CERTIFICATE)\sKEY-----+/g,
     ''
   );
-  return output;
 };
