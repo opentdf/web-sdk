@@ -3,7 +3,7 @@
  * @param size in bits requested
  * @param minSize in bits allowed
  */
-export const isValidAsymmetricKeySize = (size: number, minSize: number): boolean => {
+export const isValidAsymmetricKeySize = (size: number | undefined, minSize: number): boolean => {
   // No size specified is fine because the minSize will be used
   if (size === undefined) {
     return true;
@@ -53,10 +53,9 @@ export const formatAsPem = (base64KeyString: string, label: string): string => {
  * @return String with formatting removed
  */
 export const removePemFormatting = (input: string): string => {
-  let output = input.replace(/\n/g, '');
-  output = output.replace(
-    /-----(?:BEGIN|END)\s(?:RSA\s)?(?:PUBLIC|PRIVATE|CERTIFICATE)\sKEY-----/g,
+  const oneLiner = input.replace(/[\n\r]/g, '');
+  return oneLiner.replace(
+    /-----+(?:BEGIN|END)\s(?:RSA\s)?(?:PUBLIC|PRIVATE|CERTIFICATE)\sKEY-----+/g,
     ''
   );
-  return output;
 };

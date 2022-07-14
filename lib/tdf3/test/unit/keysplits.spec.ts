@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { randomBytes } from 'crypto';
 
 import { bxor, keySplit, keyMerge } from '../../src/utils/keysplit';
-import { NodeCryptoService, BrowserJsCryptoService } from '../../src/crypto';
+import { generateKey } from '../../src/crypto';
 import { hex } from '../../../src/encodings';
 import { Binary } from '../../src/binary';
 
@@ -26,14 +26,12 @@ describe('keysplits', () => {
     expect(keyMerge(splits)).to.eql(expected);
   });
 
-  [NodeCryptoService, BrowserJsCryptoService].forEach((aCryptoService) => {
-    it(`should serialize hex key into Binary and back w/ ${aCryptoService.name}`, () => {
-      const key = aCryptoService.generateKey(4);
+  it(`should serialize hex key into Binary and back`, () => {
+    const key = generateKey(4);
 
-      const unwrappedKeyBinary = Binary.fromString(hex.decode(key));
-      const splits = keySplit(unwrappedKeyBinary.asBuffer(), 1);
+    const unwrappedKeyBinary = Binary.fromString(hex.decode(key));
+    const splits = keySplit(unwrappedKeyBinary.asBuffer(), 1);
 
-      expect(hex.encodeArrayBuffer(splits[0])).to.eql(key);
-    });
+    expect(hex.encodeArrayBuffer(splits[0])).to.eql(key);
   });
 });
