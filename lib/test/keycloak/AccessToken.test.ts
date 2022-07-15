@@ -1,6 +1,6 @@
-import { expect } from '@esm-bundle/chai';
+import { assert, expect } from '@esm-bundle/chai';
 import { fake } from 'sinon';
-import { AccessToken } from '../../src/keycloak/AccessToken.js';
+import { AccessToken, type AccessTokenResponse } from '../../src/keycloak/AccessToken.js';
 
 // // const qsparse = (s: string) => Object.fromEntries(new URLSearchParams(s));
 const qsparse = (s: string) =>
@@ -15,10 +15,17 @@ const ok = {
   url: 'about:none',
 } as Awaited<ReturnType<typeof fetch>>;
 
-function mockFetch(r: unknown = { hello: 'world' }) {
+function mockFetch(
+  r: Partial<AccessTokenResponse> = {},
+  {
+    ok = true,
+    status = 200,
+    statusText = 'OK',
+  }: { ok?: boolean; status?: number; statusText?: string } = {}
+) {
   const json = fake.resolves(r);
-  const response = fake.resolves({ json });
-  return response;
+  const text = fake.resolves(JSON.stringify(r));
+  return fake.resolves({ json, ok, status, statusText, text });
 }
 
 // Due to Jest mocks not working with ESModules currently,
@@ -31,14 +38,32 @@ describe('AccessToken', () => {
         client_id: 'yoo',
         realm: 'yeet',
       };
-      const mf = mockFetch();
+      const mf = mockFetch({ access_token: 'fdfsdffsdf' });
       const accessToken = new AccessToken(cfg, mf);
       const res = await accessToken.info('fakeToken');
-      expect(res).to.have.property('hello', 'world');
+      expect(res).to.have.property('access_token', 'fdfsdffsdf');
       expect(mf.lastCall.firstArg).to.match(
         /\/auth\/realms\/yeet\/protocol\/openid-connect\/userinfo$/
       );
       expect(mf).to.have.nested.property('lastArg.headers.Authorization', 'Bearer fakeToken');
+    });
+    it('error causes errors', async () => {
+      const cfg = {
+        auth_server_url: 'http://auth.invalid',
+        client_id: 'yoo',
+        realm: 'yeet',
+      };
+      const mf = mockFetch(
+        { access_token: 'fdfsdffsdf' },
+        { ok: false, status: 401, statusText: 'Unauthorized' }
+      );
+      const accessToken = new AccessToken(cfg, mf);
+      try {
+        await accessToken.info('fakeToken');
+        assert.fail();
+      } catch (e) {
+        expect(e.message).to.match(/Unauthorized/);
+      }
     });
   });
 
