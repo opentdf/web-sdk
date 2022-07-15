@@ -114,6 +114,11 @@ export class NanoTDFClient extends Client {
 
     if (!this.kasPubKey) {
       const kasPubKeyResponse = await fetch(`${this.kasUrl}/kas_public_key?algorithm=ec:secp256r1`);
+      if (!kasPubKeyResponse.ok) {
+        throw new Error(
+          `Unable to validate KAS [${this.kasUrl}]. Received [${kasPubKeyResponse.status}:${kasPubKeyResponse.statusText}]`
+        );
+      }
       this.kasPubKey = await kasPubKeyResponse.json();
     }
 
