@@ -51,6 +51,10 @@ export class AccessToken {
         Authorization: `Bearer ${accessToken}`,
       },
     });
+    if (!response.ok) {
+      console.error(await response.text());
+      throw new Error(`${response.status} ${response.statusText}`);
+    }
 
     return (await response.json()) as unknown;
   }
@@ -89,7 +93,10 @@ export class AccessToken {
       cfg.realm
     )}/protocol/openid-connect/token`;
     const response = await this.doPost(url, args);
-
+    if (!response.ok) {
+      console.error(await response.text());
+      throw new Error(`${response.status} ${response.statusText}`);
+    }
     this.data = await response.json();
     return this.data?.access_token as string;
   }
@@ -110,6 +117,10 @@ export class AccessToken {
     };
 
     const response = await this.doPost(url, args);
+    if (!response.ok) {
+      console.error(await response.text());
+      throw new Error(`${response.status} ${response.statusText}`);
+    }
     this.data = await response.json();
     return this.data?.access_token as string;
   }
@@ -145,6 +156,10 @@ export class AccessToken {
         client_id: cfg.client_id,
         client_secret: cfg.client_secret,
       });
+      if (!response.ok) {
+        console.error(await response.text());
+        throw new Error(`${response.status} ${response.statusText}`);
+      }
       const tokenResponse = await response.json();
       this.data = tokenResponse;
       return tokenResponse.access_token;
