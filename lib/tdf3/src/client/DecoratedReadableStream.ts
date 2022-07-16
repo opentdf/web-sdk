@@ -1,15 +1,20 @@
-import { get } from 'axios';
-import { S3Client } from '@aws-sdk/client-s3';
+import { S3Client, type S3ClientConfig } from '@aws-sdk/client-s3';
 import { Upload } from '../utils/aws-lib-storage';
 import { isSafari } from '../../../src/utils';
 import { EventEmitter } from 'events';
 
-class DecoratedReadableStream extends ReadableStream {
-  constructor(byteLimit, underlyingSource) {
+export class DecoratedReadableStream extends ReadableStream {
+  metadata?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  on: (eventName: string | symbol, listener: (...args: any[]) => void) => EventEmitter;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  emit: (eventName: string | symbol, ...args: any[]) => boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  constructor(byteLimit?: number, underlyingSource?: UnderlyingSource<any> | undefined) {
     super(underlyingSource, { highWaterMark: byteLimit });
     const ee = new EventEmitter();
-    this.on = ee.on;
-    this.emit = ee.emit;
+    this.on = (eventName, listener) => ee.on(eventName, listener);
+    this.emit = (eventName, ...args) => ee.emit(eventName, ...args);
 
     if (isSafari()) {
       // workaround for safari https://stackoverflow.com/questions/58471434/problem-extending-native-es6-classes-in-safari
@@ -26,7 +31,14 @@ class DecoratedReadableStream extends ReadableStream {
    * @param {string} [credentialURL] - the url to request remote storage credentials from.
    * @return {RemoteUploadResponse} - an object containing metadata for the uploaded file.
    */
-  async toRemoteStore(fileName, config, credentialURL) {
+  async toRemoteStore(
+    fileName: string,
+    config?: S3ClientConfig & {
+      // TODO Remove to parameter
+      Bucket?: string;
+    },
+    credentialURL?: string
+  ) {
     // State
     const CONCURRENT_UPLOADS = 6;
     const MAX_UPLOAD_PART_SIZE = 1024 * 1024 * 5; // 5MB
@@ -34,9 +46,12 @@ class DecoratedReadableStream extends ReadableStream {
     let virtruTempS3Credentials;
 
     // Param validation
-    if (!config) {
+    if (!config && credentialURL) {
       try {
-        virtruTempS3Credentials = await get(credentialURL);
+        const credsResponse = await fetch(credentialURL);
+        if (credsResponse.ok) {
+          virtruTempS3Credentials = await credsResponse.json();
+        }
       } catch (e) {
         console.error(e);
       }
@@ -49,14 +64,9 @@ class DecoratedReadableStream extends ReadableStream {
           accessKeyId: virtruTempS3Credentials.data.fields.AWSAccessKeyId,
           secretAccessKey: virtruTempS3Credentials.data.fields.AWSSecretAccessKey,
           sessionToken: virtruTempS3Credentials.data.fields.AWSSessionToken,
-          policy: virtruTempS3Credentials.data.fields.policy,
-          signature: virtruTempS3Credentials.data.fields.signature,
-          key: virtruTempS3Credentials.data.fields.key,
         },
         region: virtruTempS3Credentials.data.url.split('.')[1],
-        signatureVersion: 'v4',
-        s3ForcePathStyle: false,
-        maxRetries: 3,
+        forcePathStyle: false,
         useAccelerateEndpoint: true,
       };
     } else {
@@ -112,13 +122,11 @@ class DecoratedReadableStream extends ReadableStream {
         resolve(this.metadata);
       } else {
         this.on('error', reject);
-        this.on('rewrap', (rewrapResponse) => {
-          this.metadata = rewrapResponse;
+        this.on('rewrap', (rewrapResponse: unknown) => {
+          this.metadata = rewrapResponse as string;
           resolve(rewrapResponse);
         });
       }
     });
   }
 }
-
-export default DecoratedReadableStream;

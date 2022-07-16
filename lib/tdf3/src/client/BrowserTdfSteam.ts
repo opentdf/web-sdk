@@ -1,10 +1,11 @@
-import ReadableStream from './DecoratedReadableStream';
+import { DecoratedReadableStream } from './DecoratedReadableStream';
 import streamSaver from 'streamsaver';
 import { fileSave } from 'browser-fs-access';
 import { isSafari, isFirefox } from '../../../src/utils';
 
-class BrowserTdfStream extends ReadableStream {
-  constructor(...props) {
+class BrowserTdfStream extends DecoratedReadableStream {
+  contentLength?: number;
+  constructor(...props: any) {
     super(...props);
     // workaround for safari https://stackoverflow.com/questions/58471434/problem-extending-native-es6-classes-in-safari
     if (isSafari()) {
@@ -33,7 +34,7 @@ class BrowserTdfStream extends ReadableStream {
     return await BrowserTdfStream.toBuffer(this);
   }
 
-  static async toBuffer(stream) {
+  static async toBuffer(stream: ReadableStream) {
     const reader = stream.getReader();
     let accumulator = new Uint8Array();
     let done = false;
@@ -57,7 +58,7 @@ class BrowserTdfStream extends ReadableStream {
    *
    * @param {string} filepath - the path of the local file to write plaintext to.
    */
-  async toFile(filepath) {
+  async toFile(filepath: string) {
     const fileName = filepath || 'download.tdf';
 
     if (isFirefox()) {
@@ -78,11 +79,25 @@ class BrowserTdfStream extends ReadableStream {
     // Write (pipe) manually
     const writer = fileStream.getWriter();
     const reader = this.getReader();
-    const pump = () =>
-      reader
-        .read()
-        .then((res) => (res.done ? writer.close() : writer.write(res.value).then(pump)));
-    pump();
+    return new Promise((resolve: (value: void) => void, reject) => {
+      function pump() {
+        reader
+          .read()
+          .then((res) => {
+            if (res.done) {
+              writer.close();
+              resolve();
+              return;
+            }
+            writer.write(res.value).then(pump).catch(reject);
+          })
+          .catch((e) => {
+            writer.close();
+            reject(e);
+          });
+      }
+      pump();
+    });
   }
 }
 
