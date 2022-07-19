@@ -1,4 +1,4 @@
-import { randomBytes } from 'crypto';
+import { randomBytes } from '../crypto';
 
 export function bxor(b1: Uint8Array, b2: Uint8Array): Uint8Array {
   const result = new Uint8Array(b1.length);
