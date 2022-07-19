@@ -5,4 +5,3 @@ blacklisted-licenses:
 whitelisted-modules:
   - jszip@3.7.1
   - node-forge@1.2.1
-  - ua-parser-js@0.7.9
