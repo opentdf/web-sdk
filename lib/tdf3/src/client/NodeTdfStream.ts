@@ -58,4 +58,6 @@ class NodeTdfStream extends DecoratedReadableStream {
   }
 }
 
+export type NodeTdfStreamInterface = typeof NodeTdfStream;
+
 export default NodeTdfStream;

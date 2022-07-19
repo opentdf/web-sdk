@@ -101,4 +101,5 @@ class BrowserTdfStream extends DecoratedReadableStream {
   }
 }
 
+export type BrowserTdfStreamInterface = typeof BrowserTdfStream;
 export default BrowserTdfStream;

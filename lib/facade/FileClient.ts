@@ -58,7 +58,7 @@ export class FileClient {
     source: ReadableStream | Buffer | string | ArrayBuffer = '',
     users: string[] = [],
     params?: any
-  ): Promise<PlaintextStream> {
+  ): Promise<typeof PlaintextStream> {
     const encryptParams = new EncryptParamsBuilder().withOffline().withUsersWithAccess(users);
 
     if (params) {
@@ -71,7 +71,7 @@ export class FileClient {
   async decrypt(
     source: ReadableStream | Buffer | string | ArrayBuffer = '',
     params?: any
-  ): Promise<PlaintextStream> {
+  ): Promise<typeof PlaintextStream> {
     const decryptParams = new DecryptParamsBuilder();
 
     if (params) {
