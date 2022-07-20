@@ -15,6 +15,7 @@ _configure_app() {
       npm uninstall @opentdf/cli && npm ci && npm i "../../../cli/opentdf-cli-${cli_version}.tgz"
     )
   else
+    echo "npm i all by itself"
     npm i
   fi
 }

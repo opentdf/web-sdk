@@ -1,23 +1,26 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-import { AccessToken, AccessTokenConfig } from '../keycloak/AccessToken';
+import { AccessToken, AccessTokenConfig } from './AccessToken';
 import { IVirtruOIDC } from '../nanotdf/interfaces/OIDCInterface';
 
 /**
  * Class that provides OIDC functionality to auth providers.
  *
- * Note that this class itself is not a provider - providers implement `../auth.js#AuthProvider`
- * and make use of this class.
+ * Note that this class itself is not a provider - providers implement
+ * `AuthProvider` and make use of this class.
  *
- * Both browser and non-browser flows use OIDC, but the supported OIDC auth mechanisms differ between
- * public (e.g. browser) clients, and confidential (e.g. Node) clients.
+ * Both browser and non-browser flows use OIDC, but the supported OIDC auth
+ * mechanisms differ between  public (e.g. browser) clients, and confidential
+ * (e.g. Node) clients.
  *
- * The non-browser flow just expects a clientId and clientSecret to be provided in the clientConfig, and will use that
- * to grant tokens via the OIDC clientCredentials flow.
+ * The non-browser flow just expects a `clientId` and `clientSecret` to be
+ * provided in the `clientConfig`, and will use that
+ * to grant tokens via the OIDC `clientCredentials` flow.
  *
- * For either kind of client, the client's public key must be set in all OIDC token requests in order to recieve a token
- * with valid TDF claims. The public key may be passed to this provider's constructor, or supplied post-construction by
- * calling @see updateClientPublicKey which will force an explicit token refresh
- *
+ * For either kind of client, the client's public key must be set in all OIDC
+ * token requests in order to recieve a token with valid TDF claims. The public
+ * key may be passed to this provider's constructor, or supplied
+ * post-construction by calling @see updateClientPublicKey, which forces an
+ * explicit token refresh
  */
 export default class VirtruOIDC {
   protected authMode: 'browser' | 'credentials';
@@ -30,21 +33,12 @@ export default class VirtruOIDC {
    *
    * If clientId and clientSecret are not provided, browser mode will be assumed, and @see refreshTokenWithVirtruClaims must be
    * manually called during object initialization to do a token exchange.
-   * @param {string} organizationName - the organization the calling user belongs to (in Keycloak, this is the Realm). Required.
-   * @param {string} [clientPubKey] - the client's public key, base64 encoded. Will be bound to the OIDC token. Optional. If not set in the constructor,
-   * MUST be set via @see updateClientPublicKey after the fact, before calling other functions.
-   * @param {string} clientId - If using client credentials mode, the client ID. Optional, used for non-browser contexts.
-   * @param {string} [clientSecret] - If using client credentials mode, the client secret. Optional, used for non-browser contexts.
-   * @param {string} oidcOrigin - The endpoint of the OIDC IdP to authenticate against, ex. 'https://virtru.com/auth'
    */
-  constructor({ organizationName, clientPubKey, clientId, clientSecret, oidcOrigin }: IVirtruOIDC) {
-    if (!organizationName || !clientId) {
-      throw new Error(
-        'To use any OIDC auth mode you must supply your organizationName and clientId, at a minimum'
-      );
+  constructor({ clientPubKey, clientId, clientSecret, oidcOrigin }: IVirtruOIDC) {
+    if (!clientId) {
+      throw new Error('To use any OIDC auth mode you must supply your clientId, at a minimum');
     }
     let keycloakConfig: AccessTokenConfig = {
-      realm: organizationName,
       client_id: clientId,
       auth_server_url: oidcOrigin,
       // pubkey may be `null` at this point, that's fine - it can be set later by the caller

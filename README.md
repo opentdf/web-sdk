@@ -18,8 +18,7 @@ Start a local, blank cluster. See [Integrate](https://github.com/opentdf/opentdf
     clientId: keycloakClientId,
     exchange: 'refresh',
     oidcRefreshToken: refreshToken,
-    oidcOrigin: keycloakUrl,
-    organizationName: keycloakRealm
+    oidcOrigin: keycloakUrlWithRealm,
   }
   const authProvider = await AuthProviders.refreshAuthProvider(oidcCredentials);
   const client = new NanoTDFClient(authProvider, access);

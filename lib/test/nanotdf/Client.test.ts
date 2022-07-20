@@ -6,7 +6,6 @@ describe('nanotdf client', () => {
   it('Can create a client with a mock EAS', async () => {
     const kasUrl = 'https://etheria.local/kas';
     const authProvider = await clientAuthProvider({
-      organizationName: 'string',
       clientId: 'string',
       oidcOrigin: 'string',
       exchange: 'client',

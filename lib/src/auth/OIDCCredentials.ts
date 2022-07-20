@@ -2,8 +2,6 @@
  * Common fields used by all OIDC credentialing flows.
  */
 export type CommonCredentials = {
-  /** The organization the calling user belongs to (in Keycloak, this is the Realm) */
-  organizationName: string;
   /** The OIDC client ID used for token issuance and exchange flows */
   clientId: string;
   /** The endpoint of the OIDC IdP to authenticate against, ex. 'https://virtru.com/auth' */

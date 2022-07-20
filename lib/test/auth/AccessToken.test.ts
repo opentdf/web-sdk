@@ -1,6 +1,6 @@
 import { assert, expect } from '@esm-bundle/chai';
 import { fake } from 'sinon';
-import { AccessToken, type AccessTokenResponse } from '../../src/keycloak/AccessToken.js';
+import { AccessToken, type AccessTokenResponse } from '../../src/auth/AccessToken.js';
 
 // // const qsparse = (s: string) => Object.fromEntries(new URLSearchParams(s));
 const qsparse = (s: string) =>
@@ -34,9 +34,8 @@ describe('AccessToken', () => {
   describe('userinfo endpoint', () => {
     it('appends Auth header and calls userinfo', async () => {
       const cfg = {
-        auth_server_url: 'http://auth.invalid',
+        auth_server_url: 'http://auth.invalid/auth/realms/yeet',
         client_id: 'yoo',
-        realm: 'yeet',
       };
       const mf = mockFetch({ access_token: 'fdfsdffsdf' });
       const accessToken = new AccessToken(cfg, mf);
@@ -51,7 +50,6 @@ describe('AccessToken', () => {
       const cfg = {
         auth_server_url: 'http://auth.invalid',
         client_id: 'yoo',
-        realm: 'yeet',
       };
       const mf = mockFetch(
         { access_token: 'fdfsdffsdf' },
@@ -74,8 +72,7 @@ describe('AccessToken', () => {
         const accessToken = new AccessToken(
           {
             auth_mode: 'credentials',
-            auth_server_url: 'http://auth.invalid',
-            realm: 'yeet',
+            auth_server_url: 'http://auth.invalid/auth/realms/yeet/',
             client_id: 'myid',
             client_secret: 'mysecret',
           },
@@ -102,7 +99,6 @@ describe('AccessToken', () => {
         const mf = mockFetch({ access_token: 'fake_token' });
         const accessToken = new AccessToken(
           {
-            realm: 'yeet',
             auth_server_url: 'http://auth.invalid',
             auth_mode: 'browser',
             client_id: 'browserclient',
@@ -111,9 +107,7 @@ describe('AccessToken', () => {
         );
         const res = await accessToken.refresh('fakeRefreshToken');
         expect(res).to.eql('fake_token');
-        expect(mf.lastCall.firstArg).to.match(
-          /\/auth\/realms\/yeet\/protocol\/openid-connect\/token$/
-        );
+        expect(mf.lastCall.firstArg).to.match(/\/protocol\/openid-connect\/token$/);
         const body = qsparse(mf.lastCall.lastArg.body);
         expect(body).to.eql({
           grant_type: 'refresh_token',
@@ -130,8 +124,7 @@ describe('AccessToken', () => {
         const mf = mockFetch({ access_token: 'fake_token' });
         const accessToken = new AccessToken(
           {
-            realm: 'yeet',
-            auth_server_url: 'http://auth.invalid',
+            auth_server_url: 'http://auth.invalid//',
             client_id: 'myid',
             client_secret: 'mysecret',
             auth_mode: 'credentials',
@@ -140,9 +133,7 @@ describe('AccessToken', () => {
         );
         const res = await accessToken.exchangeJwt('subject.token');
         expect(res).to.eql('fake_token');
-        expect(mf.lastCall.firstArg).to.match(
-          /\/auth\/realms\/yeet\/protocol\/openid-connect\/token$/
-        );
+        expect(mf.lastCall.firstArg).to.match(/\/protocol\/openid-connect\/token$/);
         const body = qsparse(mf.lastCall.lastArg.body);
         expect(body).to.eql({
           audience: 'myid',
@@ -160,7 +151,6 @@ describe('AccessToken', () => {
         const mf = mockFetch({ access_token: 'fake_token' });
         const accessToken = new AccessToken(
           {
-            realm: 'yeet',
             auth_mode: 'browser',
             auth_server_url: 'http://auth.invalid',
             client_id: 'browserclient',
@@ -171,9 +161,7 @@ describe('AccessToken', () => {
         const jwtToken = 'fdfsdffsdf';
         const res = await accessToken.exchangeJwt(jwtToken);
         expect(res).to.eql('fake_token');
-        expect(mf.lastCall.firstArg).to.match(
-          /\/auth\/realms\/yeet\/protocol\/openid-connect\/token$/
-        );
+        expect(mf.lastCall.firstArg).to.match(/\/protocol\/openid-connect\/token$/);
         const body = qsparse(mf.lastCall.lastArg.body);
         expect(body).to.eql({
           audience: 'browserclient',
@@ -191,7 +179,6 @@ describe('AccessToken', () => {
       const mf = mockFetch({ access_token: 'sure', refresh_token: 'aieeee' });
       const accessToken = new AccessToken(
         {
-          realm: 'yeet',
           auth_mode: 'browser',
           auth_server_url: 'http://auth.invalid',
           client_id: 'browserclient',
@@ -203,9 +190,7 @@ describe('AccessToken', () => {
       const res = await accessToken.refresh('fdfsdffsdf');
       expect(res).to.eql('sure');
       expect(accessToken.data?.refresh_token).to.eql('aieeee');
-      expect(mf.lastCall.firstArg).to.match(
-        /\/auth\/realms\/yeet\/protocol\/openid-connect\/token$/
-      );
+      expect(mf.lastCall.firstArg).to.match(/\/protocol\/openid-connect\/token$/);
       const body = qsparse(mf.lastCall.lastArg.body);
       expect(body).to.eql({
         client_id: 'browserclient',
@@ -217,9 +202,7 @@ describe('AccessToken', () => {
       const forceRes = await accessToken.forceRefresh();
       expect(mf.callCount).to.eql(2);
       expect(forceRes).to.eql('sure');
-      expect(mf.lastCall.firstArg).to.match(
-        /\/auth\/realms\/yeet\/protocol\/openid-connect\/token$/
-      );
+      expect(mf.lastCall.firstArg).to.match(/\/auth\.invalid\/protocol\/openid-connect\/token$/);
       const parseForceArgs = qsparse(mf.lastCall.lastArg.body);
       expect(parseForceArgs).to.have.property('grant_type', 'refresh_token');
       expect(parseForceArgs).to.have.property('refresh_token', 'aieeee');
@@ -229,7 +212,6 @@ describe('AccessToken', () => {
       const mf = mockFetch({ access_token: 'sure', refresh_token: 'aieeee' });
       const accessToken = new AccessToken(
         {
-          realm: 'yeet',
           auth_mode: 'browser',
           auth_server_url: 'http://auth.invalid',
           client_id: 'browserclient',
@@ -254,8 +236,7 @@ describe('AccessToken', () => {
         const mf = mockFetch({ access_token: 'notreal' });
         const accessTokenClient = new AccessToken(
           {
-            realm: 'yeet',
-            auth_server_url: 'http://auth.invalid',
+            auth_server_url: 'http://auth.invalid/',
             client_id: 'myid',
             client_secret: 'mysecret',
             auth_mode: 'credentials',
@@ -265,9 +246,7 @@ describe('AccessToken', () => {
         // Do a refresh to cache tokenset
         const atr = await accessTokenClient.get();
         expect(atr).to.eql('notreal');
-        expect(mf.lastCall.firstArg).to.eql(
-          'http://auth.invalid/auth/realms/yeet/protocol/openid-connect/token'
-        );
+        expect(mf.lastCall.firstArg).to.eql('http://auth.invalid/protocol/openid-connect/token');
         const parseArgs = qsparse(mf.lastCall.lastArg.body);
         expect(parseArgs).to.have.property('grant_type', 'client_credentials');
         expect(parseArgs).to.have.property('client_id', 'myid');
@@ -279,7 +258,6 @@ describe('AccessToken', () => {
         try {
           const accessTokenClient = new AccessToken(
             {
-              realm: 'yeet',
               auth_server_url: 'http://auth.invalid',
               auth_mode: 'credentials',
               client_id: '',
@@ -300,7 +278,6 @@ describe('AccessToken', () => {
       const mf = mockFetch({ access_token: 'notreal' });
       const accessTokenClient = new AccessToken(
         {
-          realm: 'yeet',
           auth_server_url: 'http://auth.invalid',
           client_id: 'myid',
           client_secret: 'mysecret',
@@ -331,7 +308,6 @@ describe('AccessToken', () => {
       });
       const accessTokenClient = new AccessToken(
         {
-          realm: 'yeet',
           auth_server_url: 'http://auth.invalid',
           client_id: 'myid',
           client_secret: 'mysecret',

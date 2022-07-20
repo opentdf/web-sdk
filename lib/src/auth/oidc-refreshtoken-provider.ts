@@ -8,21 +8,19 @@ export class OIDCRefreshTokenProvider implements AuthProvider {
   protected externalRefreshToken?: string;
 
   constructor({
-    organizationName,
     clientPubKey,
     clientId,
     externalRefreshToken,
     oidcOrigin,
     clientSecret,
   }: IOIDCRefreshTokenProvider) {
-    if (!organizationName || !clientId || !externalRefreshToken) {
+    if (!clientId || !externalRefreshToken) {
       throw new Error(
-        'To use this browser-only provider you must supply organizationName/clientId/valid OIDC refresh token'
+        'To use this browser-only provider you must supply clientId/valid OIDC refresh token'
       );
     }
 
     this.oidcAuth = new VirtruOIDC({
-      organizationName,
       clientPubKey,
       clientId,
       clientSecret,

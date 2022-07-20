@@ -6,21 +6,14 @@ export class OIDCExternalJwtProvider implements AuthProvider {
   oidcAuth: VirtruOIDC;
   externalJwt?: string;
 
-  constructor({
-    organizationName,
-    clientPubKey,
-    clientId,
-    externalJwt,
-    oidcOrigin,
-  }: IOIDCExternalJwtProvider) {
-    if (!organizationName || !clientId || !externalJwt) {
+  constructor({ clientPubKey, clientId, externalJwt, oidcOrigin }: IOIDCExternalJwtProvider) {
+    if (!clientId || !externalJwt) {
       throw new Error(
-        'To use this browser-only provider you must supply organizationName/clientId/JWT from trusted external IdP'
+        'To use this browser-only provider you must supply clientId/JWT from trusted external IdP'
       );
     }
 
     this.oidcAuth = new VirtruOIDC({
-      organizationName,
       clientPubKey,
       clientId,
       oidcOrigin,
