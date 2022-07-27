@@ -1,5 +1,5 @@
 /* eslint-disable max-classes-per-file */
-import { inBrowser } from './utils';
+// import { inBrowser } from './utils';
 
 /**
  * Provides a binary type that can be initialized with many different forms of
@@ -106,9 +106,6 @@ class ArrayBufferBinary extends Binary {
   }
 
   asString(): string {
-    if (!inBrowser()) {
-      return Buffer.from(this.value).toString();
-    }
     const uint8Array = new Uint8Array(this.value);
     let str = '';
     for (let i = 0; i < uint8Array.length; i++) {
@@ -170,15 +167,7 @@ class BufferBinary extends Binary {
   }
 
   asString(): string {
-    if (!inBrowser()) {
-      return this.value.toString('binary');
-    }
-    const uint8Array = new Uint8Array(this.value);
-    let str = '';
-    for (let i = 0; i < uint8Array.length; i++) {
-      str = str + String.fromCharCode(uint8Array[i]);
-    }
-    return str;
+    return this.value.toString('binary');
   }
 
   isBuffer(): boolean {
@@ -217,15 +206,7 @@ class ByteArrayBinary extends Binary {
   }
 
   asString(): string {
-    if (!inBrowser()) {
-      return Buffer.from(this.value).toString();
-    }
-    const uint8Array = new Uint8Array(this.value);
-    let str = '';
-    for (let i = 0; i < uint8Array.length; i++) {
-      str = str + String.fromCharCode(uint8Array[i]);
-    }
-    return str;
+    return Buffer.from(this.value).toString();
   }
 
   isByteArray(): boolean {
