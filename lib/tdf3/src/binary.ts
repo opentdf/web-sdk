@@ -1,4 +1,5 @@
 /* eslint-disable max-classes-per-file */
+// import { inBrowser } from './utils';
 
 /**
  * Provides a binary type that can be initialized with many different forms of
