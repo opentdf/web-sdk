@@ -36,57 +36,48 @@ describe('Slice method', function () {
       it('Start 0, end undefined', () => {
         const actual = bin.slice(0);
         expect(actual.length()).to.equal(10);
-        // @ts-ignore
-        expect(actuate(actual)).to.deep.eql(expectorate(range(10)));
+        expect(actuate(actual)).to.deep.equal(expectorate(range(10)));
       });
       it('Start 5, end undefined', () => {
         const actual = bin.slice(5);
         expect(actual.length()).to.equal(5);
-        // @ts-ignore
-        expect(actuate(actual)).to.deep.eql(expectorate(range(5, 10)));
+        expect(actuate(actual)).to.deep.equal(expectorate(range(5, 10)));
       });
       it('Start -1, end undefined', () => {
         const actual = bin.slice(-1);
         expect(actual.length()).to.equal(1);
-        // @ts-ignore
-        expect(actuate(actual)).to.deep.eql(expectorate([9]));
+        expect(actuate(actual)).to.deep.equal(expectorate([9]));
       });
       it('Start 1, end 1', () => {
         const actual = bin.slice(1, 1);
         expect(actual.length()).to.equal(0);
-        // @ts-ignore
-        expect(actuate(actual)).to.deep.eql(expectorate([]));
+        expect(actuate(actual)).to.deep.equal(expectorate([]));
       });
       it('Start 0, end 10', () => {
         const actual = bin.slice(0, 10);
         expect(actual.length()).to.equal(10);
-        // @ts-ignore
-        expect(actuate(actual)).to.deep.eql(expectorate(range(10)));
+        expect(actuate(actual)).to.deep.equal(expectorate(range(10)));
       });
       it('Start 5, end 10', () => {
         const actual = bin.slice(5, 10);
         expect(actual.length()).to.equal(5);
-        // @ts-ignore
-        expect(actuate(actual)).to.deep.eql(expectorate(range(5, 10)));
+        expect(actuate(actual)).to.deep.equal(expectorate(range(5, 10)));
       });
       it('Start -5, end 7', () => {
         const actual = bin.slice(-5, 7);
         expect(actual.length()).to.equal(2);
-        // @ts-ignore
-        expect(actuate(actual)).to.deep.eql(expectorate([5, 6]));
+        expect(actuate(actual)).to.deep.equal(expectorate([5, 6]));
       });
 
       it('Start -5, end -2', () => {
         const actual = bin.slice(-5, -2);
         expect(actual.length()).to.equal(3);
-        // @ts-ignore
-        expect(actuate(actual)).to.deep.eql(expectorate([5, 6, 7]));
+        expect(actuate(actual)).to.deep.equal(expectorate([5, 6, 7]));
       });
       it('Start 0, end 100', () => {
         const actual = bin.slice(0, 100);
         expect(actual.length()).to.equal(10);
-        // @ts-ignore
-        expect(actuate(actual)).to.deep.eql(expectorate(range(10)));
+        expect(actuate(actual)).to.deep.equal(expectorate(range(10)));
       });
     });
   }
@@ -100,14 +91,12 @@ describe('Slice method', function () {
         // This demonstrates
         const actual = bin.slice(0);
         expect(actual.length()).to.equal(256);
-        // @ts-ignore
-        expect(actuate(actual)).to.deep.eql(expectorate(range(256)));
+        expect(actuate(actual)).to.deep.equal(expectorate(range(256)));
       });
       it.skip('Start 128, end undefined', () => {
         const actual = bin.slice(128);
         expect(actual.length()).to.equal(128);
-        // @ts-ignore
-        expect(actuate(actual)).to.deep.eql(expectorate(range(128, 256)));
+        expect(actuate(actual)).to.deep.equal(expectorate(range(128, 256)));
       });
     });
   }

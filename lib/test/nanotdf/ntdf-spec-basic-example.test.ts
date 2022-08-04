@@ -4,16 +4,16 @@ import { expect } from '@esm-bundle/chai';
 import { NanoTDF } from '../../src/nanotdf/index.js';
 import PolicyTypeEnum from '../../src/nanotdf/enum/PolicyTypeEnum.js';
 import bufferToHex from './helpers/bufferToHex.js';
-import * as remoteFixture from '../../src/__fixtures__/nanotdf-spec-remote-example.js';
 
-import * as embeddedFixture from '../../src/__fixtures__/nanotdf-spec-embedded-example.js';
-import * as plainEmbeddedFixture from '../../src/__fixtures__/nanotdf-spec-plain-embedded-example.js';
+import * as remoteFixture from '../../src/__fixtures__/nanotdf-spec-remote-example';
+import * as embeddedFixture from '../../src/__fixtures__/nanotdf-spec-embedded-example';
+import * as plainEmbeddedFixture from '../../src/__fixtures__/nanotdf-spec-plain-embedded-example';
 
 describe('NanoTDF', () => {
   for (const { policyType, fixture } of [
-    { policyType: 'remote', fixture: remoteFixture },
-    { policyType: 'embedded', fixture: embeddedFixture },
-    { policyType: 'plain-embedded', fixture: plainEmbeddedFixture },
+    { policyType: PolicyTypeEnum.Remote, fixture: remoteFixture },
+    { policyType: PolicyTypeEnum.EmbeddedText, fixture: embeddedFixture },
+    { policyType: PolicyTypeEnum.EmbeddedEncrypted, fixture: plainEmbeddedFixture },
   ]) {
     const { nanotdf, header, payload, signature } = fixture;
     it(`should parse the header from ${policyType} policy`, () => {
@@ -41,20 +41,17 @@ describe('NanoTDF', () => {
       let policyProtocol;
       let policyUrn;
       let policyContent;
+
       switch (header.policy.type) {
         case PolicyTypeEnum.Remote:
-          // @ts-ignore
-          policyProtocol = header.policy.remotePolicy.protocol;
-          // @ts-ignore
-          policyUrn = header.policy.remotePolicy.body;
+          policyProtocol = (header as remoteFixture.Header).policy.remotePolicy.protocol;
+          policyUrn = (header as remoteFixture.Header).policy.remotePolicy.body;
           break;
         case PolicyTypeEnum.EmbeddedEncrypted:
-          // @ts-ignore
-          policyContent = header.policy.content;
+          policyContent = (header as plainEmbeddedFixture.Header).policy.content;
           break;
         case PolicyTypeEnum.EmbeddedText:
-          // @ts-ignore
-          policyContent = header.policy.content;
+          policyContent = (header as embeddedFixture.Header).policy.content;
           break;
       }
 

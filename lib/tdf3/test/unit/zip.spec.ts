@@ -39,13 +39,11 @@ describe('zip utilities', () => {
   describe('readUInt64LE', () => {
     it('one', () => {
       const b0 = Buffer.alloc(8);
-      // @ts-ignore
       new DataView(b0.buffer).setBigUint64(0, 1n, true);
       expect(readUInt64LE(b0, 0)).to.equal(1);
     });
     it('unsafe ints throw', () => {
       const b0 = Buffer.alloc(8);
-      // @ts-ignore
       new DataView(b0.buffer).setBigUint64(0, 9007199254740992n, true);
       expect(() => readUInt64LE(b0, 0)).to.throw(/exceeds/);
     });

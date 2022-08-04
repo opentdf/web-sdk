@@ -4,8 +4,6 @@ export function isBrowser() {
 
 export const isSafari = (): boolean =>
   /constructor/i.test(String(globalThis.HTMLElement)) ||
-  // @ts-ignore
-  globalThis?.safari?.pushNotification?.toString() === '[object SafariRemoteNotification]';
+  window?.safari?.pushNotification?.toString() === '[object SafariRemoteNotification]';
 
-// @ts-ignore
-export const isFirefox = (): boolean => typeof InstallTrigger !== 'undefined';
+export const isFirefox = (): boolean => typeof window.InstallTrigger !== 'undefined';
