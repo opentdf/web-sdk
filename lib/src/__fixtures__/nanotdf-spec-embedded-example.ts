@@ -19,6 +19,7 @@
 
 import PolicyTypeEnum from '../nanotdf/enum/PolicyTypeEnum';
 import hexArrayTag from '../../test/nanotdf/helpers/hexArrayTag';
+import { EmbeddedHeader } from '../types';
 
 // 6.1.5 nanotdf
 export const nanotdf = `
@@ -28,31 +29,7 @@ GtnSAeLvGsARKzdyTF9PpArXAc9AbC7VnbVyA7OMpPF0YFQDQHcAwtHIyzVZNSzarQdcChszFMezBVRf
 3egvvoM+IgjYoK1C
 `;
 
-export interface Header {
-  magicNumberVersion: string[];
-  kas: {
-    protocol: number;
-    length: number;
-    body: string;
-  };
-  eccBindingMode: {
-    useECDSABinding: boolean;
-    ephemeralCurveName: number;
-  };
-  symmetricPayloadConfig: {
-    hasSignature: false;
-    signatureCurveName: 0x00;
-    symmetricCipher: 0x00;
-  };
-  policy: {
-    type: PolicyTypeEnum;
-    content: string[];
-    binding: string[];
-  };
-  ephemeralPublicKey: string[];
-}
-
-export const header: Header = {
+export const header: EmbeddedHeader = {
   magicNumberVersion: hexArrayTag`4c 31 4c`, // L1L
   kas: {
     protocol: 0x01, // Https
