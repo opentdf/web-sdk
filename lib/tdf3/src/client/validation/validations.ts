@@ -8,7 +8,7 @@ import {
 import { AttributeValidationError } from '../../errors';
 import { AttributeObject } from '../../models/attribute-set';
 
-const sageGetMatch = (match: RegExpMatchArray | null) => match ? match[0] : null;
+const sageGetMatch = (match: RegExpMatchArray | null) => (match ? match[0] : null);
 
 const attributeValidation = (attr: unknown) => {
   const isObject = typeof attr === 'object';
