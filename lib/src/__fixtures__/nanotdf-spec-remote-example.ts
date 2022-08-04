@@ -19,6 +19,7 @@
 
 import PolicyTypeEnum from '../nanotdf/enum/PolicyTypeEnum';
 import hexArrayTag from '../../test/nanotdf/helpers/hexArrayTag';
+import { RemoteHeader } from '../types';
 
 // 6.1.2 nanotdf Creator's DER encoded Private Key (base64)
 export const creatorPrivateKey = `
@@ -48,35 +49,7 @@ wu4W0Ft4NAOX4q4HHS6dm4rjMO9wI+pWmbUgS7x9Vo3/+j/6U1fh/NKQ8xrR72LORvDZXfQxa8rzco1P
 dc0VlQEL8gQgdKyU3il2ugLz
 `;
 
-export interface Header {
-  magicNumberVersion: string[];
-  kas: {
-    protocol: number;
-    length: number;
-    body: string;
-  };
-  eccBindingMode: {
-    useECDSABinding: boolean;
-    ephemeralCurveName: number;
-  };
-  symmetricPayloadConfig: {
-    hasSignature: boolean;
-    signatureCurveName: number;
-    symmetricCipher: number;
-  };
-  policy: {
-    type: PolicyTypeEnum;
-    remotePolicy: {
-      protocol: number;
-      length: number;
-      body: string;
-    };
-    binding: string[];
-  };
-  ephemeralPublicKey: string[];
-}
-
-export const header: Header = {
+export const header: RemoteHeader = {
   magicNumberVersion: hexArrayTag`4c 31 4c`, // L1L
   kas: {
     protocol: 0x01, // Https

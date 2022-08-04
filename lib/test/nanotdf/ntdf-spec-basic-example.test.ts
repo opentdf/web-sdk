@@ -8,6 +8,7 @@ import bufferToHex from './helpers/bufferToHex.js';
 import * as remoteFixture from '../../src/__fixtures__/nanotdf-spec-remote-example';
 import * as embeddedFixture from '../../src/__fixtures__/nanotdf-spec-embedded-example';
 import * as plainEmbeddedFixture from '../../src/__fixtures__/nanotdf-spec-plain-embedded-example';
+import { EmbeddedHeader, PlainEmbeddedHeader, RemoteHeader } from '../../src/types';
 
 describe('NanoTDF', () => {
   for (const { policyType, fixture } of [
@@ -44,14 +45,14 @@ describe('NanoTDF', () => {
 
       switch (header.policy.type) {
         case PolicyTypeEnum.Remote:
-          policyProtocol = (header as remoteFixture.Header).policy.remotePolicy.protocol;
-          policyUrn = (header as remoteFixture.Header).policy.remotePolicy.body;
+          policyProtocol = (header as RemoteHeader).policy.remotePolicy.protocol;
+          policyUrn = (header as RemoteHeader).policy.remotePolicy.body;
           break;
         case PolicyTypeEnum.EmbeddedEncrypted:
-          policyContent = (header as plainEmbeddedFixture.Header).policy.content;
+          policyContent = (header as PlainEmbeddedHeader).policy.content;
           break;
         case PolicyTypeEnum.EmbeddedText:
-          policyContent = (header as embeddedFixture.Header).policy.content;
+          policyContent = (header as EmbeddedHeader).policy.content;
           break;
       }
 

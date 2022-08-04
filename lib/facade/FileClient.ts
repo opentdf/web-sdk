@@ -1,6 +1,7 @@
 import { Client as ClientTdf3 } from '../tdf3/src/client';
 import { DecryptParamsBuilder, EncryptParamsBuilder } from '../tdf3/src/client/builders';
 import { PlaintextStream } from '../tdf3/src/client/tdf-stream';
+import { InputSource } from '../src/types';
 
 interface FileClientConfig {
   clientId: string;
@@ -33,7 +34,7 @@ export class FileClient {
   }
 
   private static setSource(
-    source: ReadableStream | Buffer | string | ArrayBuffer,
+    source: InputSource,
     params: EncryptParamsBuilder | DecryptParamsBuilder
   ) {
     if (Object.prototype.hasOwnProperty.call(source, 'pipe') || source instanceof ReadableStream) {
@@ -53,7 +54,7 @@ export class FileClient {
   }
 
   async encrypt(
-    source: ReadableStream | Buffer | string | ArrayBuffer = '',
+    source: InputSource = '',
     users: string[] = [],
     params?: any
   ): Promise<PlaintextStream> {
@@ -65,10 +66,7 @@ export class FileClient {
     return await this.client.encrypt(FileClient.setSource(source, encryptParams));
   }
 
-  async decrypt(
-    source: ReadableStream | Buffer | string | ArrayBuffer = '',
-    params?: any
-  ): Promise<PlaintextStream> {
+  async decrypt(source: InputSource = '', params?: any): Promise<PlaintextStream> {
     const decryptParams = new DecryptParamsBuilder();
 
     if (params) {
