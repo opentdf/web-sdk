@@ -19,7 +19,7 @@ export class AesCbcCipher extends SymmetricCipher {
     return this.cryptoService.encrypt(payload, key, iv, Algorithms.AES_256_CBC);
   }
 
-  override async decrypt(payload: Binary, key: Binary, iv: Binary): Promise<DecryptResult> {
+  override async decrypt(payload: Buffer, key: Binary, iv: Binary): Promise<DecryptResult> {
     return this.cryptoService.decrypt(payload, key, iv, Algorithms.AES_256_CBC);
   }
 }

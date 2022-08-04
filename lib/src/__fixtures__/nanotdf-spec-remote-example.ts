@@ -48,7 +48,35 @@ wu4W0Ft4NAOX4q4HHS6dm4rjMO9wI+pWmbUgS7x9Vo3/+j/6U1fh/NKQ8xrR72LORvDZXfQxa8rzco1P
 dc0VlQEL8gQgdKyU3il2ugLz
 `;
 
-export const header = {
+export interface Header {
+  magicNumberVersion: string[];
+  kas: {
+    protocol: number;
+    length: number;
+    body: string;
+  };
+  eccBindingMode: {
+    useECDSABinding: boolean;
+    ephemeralCurveName: number;
+  };
+  symmetricPayloadConfig: {
+    hasSignature: boolean;
+    signatureCurveName: number;
+    symmetricCipher: number;
+  };
+  policy: {
+    type: PolicyTypeEnum;
+    remotePolicy: {
+      protocol: number;
+      length: number;
+      body: string;
+    };
+    binding: string[];
+  };
+  ephemeralPublicKey: string[];
+}
+
+export const header: Header = {
   magicNumberVersion: hexArrayTag`4c 31 4c`, // L1L
   kas: {
     protocol: 0x01, // Https
@@ -65,7 +93,7 @@ export const header = {
     symmetricCipher: 0x00, // AES_256_GCM_64
   },
   policy: {
-    type: PolicyTypeEnum.Remote,
+    type: PolicyTypeEnum.Remote as PolicyTypeEnum,
     remotePolicy: {
       protocol: 0x01, // Https
       length: 21, // length of "kas.virtru.com"

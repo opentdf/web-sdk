@@ -64,7 +64,7 @@ export class SplitKey {
     return this.cipher.encrypt(contentBinary, keyBinary, ivBinary);
   }
 
-  async decrypt(content: Binary, keyBinary: Binary): Promise<DecryptResult> {
+  async decrypt(content: Buffer, keyBinary: Binary): Promise<DecryptResult> {
     return this.cipher.decrypt(content, keyBinary);
   }
 

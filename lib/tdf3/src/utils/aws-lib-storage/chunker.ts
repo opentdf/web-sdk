@@ -7,9 +7,7 @@ import { BodyDataTypes } from './types';
 export const getChunk = (data: BodyDataTypes, partSize: number) => {
   if (data instanceof Buffer) {
     return getChunkBuffer(data, partSize);
-    // @ts-ignore
-  } else if (data.pipe) {
-    // @ts-ignore
+  } else if (Object.prototype.hasOwnProperty.call(data, 'pipe')) {
     return getChunkStream<any>(data, partSize, getDataReadable);
   } else if (data instanceof String || typeof data === 'string' || data instanceof Uint8Array) {
     // chunk Strings, Uint8Array.

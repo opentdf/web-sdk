@@ -36,9 +36,7 @@ export class FileClient {
     source: ReadableStream | Buffer | string | ArrayBuffer,
     params: EncryptParamsBuilder | DecryptParamsBuilder
   ) {
-    // @ts-ignore
-    if (source.pipe !== undefined || source instanceof ReadableStream) {
-      // @ts-ignore
+    if (Object.prototype.hasOwnProperty.call(source, 'pipe') || source instanceof ReadableStream) {
       params.setStreamSource(source);
     }
     if (Buffer && Buffer.isBuffer(source)) {
@@ -64,7 +62,6 @@ export class FileClient {
     if (params) {
       return await this.client.encrypt(params);
     }
-    // @ts-ignore
     return await this.client.encrypt(FileClient.setSource(source, encryptParams));
   }
 
@@ -77,7 +74,6 @@ export class FileClient {
     if (params) {
       return await this.client.decrypt(params);
     }
-    // @ts-ignore
     return await this.client.decrypt(FileClient.setSource(source, decryptParams));
   }
 }

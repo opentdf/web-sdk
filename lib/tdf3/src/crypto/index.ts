@@ -199,7 +199,6 @@ export function encrypt(
   iv: Binary,
   algorithm?: string
 ): Promise<EncryptResult> {
-  // @ts-ignore
   return _doEncrypt(payload, key, iv, algorithm);
 }
 
@@ -207,7 +206,7 @@ async function _doEncrypt(
   payload: Binary,
   key: Binary,
   iv: Binary,
-  algorithm: string
+  algorithm?: string
 ): Promise<EncryptResult> {
   console.assert(payload != null);
   console.assert(key != null);
