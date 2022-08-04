@@ -1,7 +1,7 @@
 import yargs from 'yargs';
 import { readFile, stat, writeFile } from 'fs/promises';
 import { hideBin } from 'yargs/helpers';
-import { NanoTDFClient, AuthProviders, version } from '@opentdf/client/nano-node-esm';
+import { NanoTDFClient, AuthProviders, version } from '@opentdf/client';
 
 import { CLIError, Level, log } from './logger.js';
 
