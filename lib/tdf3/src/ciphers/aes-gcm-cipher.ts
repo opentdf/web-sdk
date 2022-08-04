@@ -15,7 +15,7 @@ function processGcmPayload(buffer: Buffer) {
   const payloadAuthTag = Binary.fromBuffer(buffer.slice(-16));
 
   return {
-    payload: Buffer.from(buffer.slice(12, -16)),
+    payload: Binary.fromBuffer(buffer.slice(12, -16)) as unknown as Buffer,
     payloadIv,
     payloadAuthTag,
   };
