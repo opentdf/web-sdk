@@ -50,6 +50,7 @@ jobs:
         with:
           node-version: '16'
           cache: 'npm'
+          cache-dependency-path: './cli/package-lock.json'
       - uses: actions/download-artifact@v2
         with:
           name: opentdf-client-lib
