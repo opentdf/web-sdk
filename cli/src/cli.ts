@@ -1,7 +1,8 @@
 import yargs from 'yargs';
 import { readFile, stat, writeFile } from 'fs/promises';
 import { hideBin } from 'yargs/helpers';
-import { NanoTDFClient, AuthProviders, version } from '@opentdf/client';
+import OpenTDFClient from '@opentdf/client';
+const { NanoTDFClient, AuthProviders, version } = OpenTDFClient;
 
 import { CLIError, Level, log } from './logger.js';
 
