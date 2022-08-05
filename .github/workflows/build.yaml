@@ -55,6 +55,7 @@ jobs:
         with:
           name: opentdf-client-lib
       - run: npm uninstall @opentdf/client && npm ci && npm i ../opentdf-client-*.tgz
+      - run: npm install
       - run: npm test
       - run: npm audit
       - run: npm run license-check
