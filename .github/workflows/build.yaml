@@ -50,12 +50,10 @@ jobs:
         with:
           node-version: '16'
           cache: 'npm'
-          cache-dependency-path: './cli/package-lock.json'
       - uses: actions/download-artifact@v2
         with:
           name: opentdf-client-lib
       - run: npm uninstall @opentdf/client && npm ci && npm i ../opentdf-client-*.tgz
-      - run: npm install
       - run: npm test
       - run: npm audit
       - run: npm run license-check
