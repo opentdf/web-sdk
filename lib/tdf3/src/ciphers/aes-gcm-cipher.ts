@@ -12,6 +12,7 @@ function processGcmPayload(buffer: Buffer): {
   payloadIv: Binary;
   payloadAuthTag: Binary;
 } {
+function processGcmPayload(buffer: Buffer) {
   // Read the 12 byte IV from the beginning of the stream
   const payloadIv = Binary.fromBuffer(buffer.slice(0, 12));
 
@@ -19,7 +20,7 @@ function processGcmPayload(buffer: Buffer): {
   const payloadAuthTag = Binary.fromBuffer(buffer.slice(-16));
 
   return {
-    payload: Binary.fromBuffer(buffer.slice(12, -16)),
+    payload: Buffer.from(buffer.slice(12, -16)),
     payloadIv,
     payloadAuthTag,
   };

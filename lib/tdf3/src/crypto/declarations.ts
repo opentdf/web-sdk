@@ -33,7 +33,7 @@ export type CryptoService = {
    * most failure, if auth tagging is implemented for example.
    */
   decrypt: (
-    payload: Binary,
+    payload: Buffer,
     key: Binary,
     iv: Binary,
     algorithm?: string,
