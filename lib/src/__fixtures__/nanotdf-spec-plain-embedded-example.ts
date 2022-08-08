@@ -17,6 +17,7 @@
  */
 
 import PolicyTypeEnum from '../nanotdf/enum/PolicyTypeEnum';
+import ProtocolEnum from '../nanotdf/enum/ProtocolEnum';
 import hexArrayTag from '../../test/nanotdf/helpers/hexArrayTag';
 import { PlainEmbeddedHeader } from '../types';
 
@@ -32,7 +33,7 @@ eO9leyauC42VKckiAm5GJxs=
 export const header: PlainEmbeddedHeader = {
   magicNumberVersion: hexArrayTag`4c 31 4c`, // L1L
   kas: {
-    protocol: 0x01, // Https
+    protocol: ProtocolEnum.Https, // Https
     length: 17, // length of "etheria.local/kas"
     body: 'etheria.local/kas',
   },
