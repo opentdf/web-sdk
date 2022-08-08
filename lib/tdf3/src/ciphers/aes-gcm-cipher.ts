@@ -6,12 +6,14 @@ import type { CryptoService, DecryptResult, EncryptResult } from '../crypto/decl
 
 const KEY_LENGTH = 32;
 const IV_LENGTH = 12;
-// Should this be a Binary, Buffer, or... both?
-function processGcmPayload(buffer: Buffer): {
+
+type ProcessGcmPayload = {
   payload: Binary;
   payloadIv: Binary;
   payloadAuthTag: Binary;
-} {
+};
+// Should this be a Binary, Buffer, or... both?
+function processGcmPayload(buffer: Buffer): ProcessGcmPayload {
   // Read the 12 byte IV from the beginning of the stream
   const payloadIv = Binary.fromBuffer(buffer.slice(0, 12));
 
