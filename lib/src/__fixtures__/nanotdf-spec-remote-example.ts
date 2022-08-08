@@ -18,6 +18,7 @@
  */
 
 import PolicyTypeEnum from '../nanotdf/enum/PolicyTypeEnum';
+import ProtocolEnum from '../nanotdf/enum/ProtocolEnum';
 import hexArrayTag from '../../test/nanotdf/helpers/hexArrayTag';
 import { RemoteHeader } from '../types';
 
@@ -52,7 +53,7 @@ dc0VlQEL8gQgdKyU3il2ugLz
 export const header: RemoteHeader = {
   magicNumberVersion: hexArrayTag`4c 31 4c`, // L1L
   kas: {
-    protocol: 0x01, // Https
+    protocol: ProtocolEnum.Https, // Https
     length: 14, // length of "kas.virtru.com"
     body: 'kas.virtru.com',
   },

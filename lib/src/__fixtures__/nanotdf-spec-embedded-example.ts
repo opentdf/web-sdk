@@ -18,6 +18,7 @@
  */
 
 import PolicyTypeEnum from '../nanotdf/enum/PolicyTypeEnum';
+import ProtocolEnum from '../nanotdf/enum/ProtocolEnum';
 import hexArrayTag from '../../test/nanotdf/helpers/hexArrayTag';
 import { EmbeddedHeader } from '../types';
 
@@ -32,7 +33,7 @@ GtnSAeLvGsARKzdyTF9PpArXAc9AbC7VnbVyA7OMpPF0YFQDQHcAwtHIyzVZNSzarQdcChszFMezBVRf
 export const header: EmbeddedHeader = {
   magicNumberVersion: hexArrayTag`4c 31 4c`, // L1L
   kas: {
-    protocol: 0x01, // Https
+    protocol: ProtocolEnum.Https, // Https
     length: 15, // length of "kas.virtru.com"
     body: 'kas.eternos.xyz',
   },

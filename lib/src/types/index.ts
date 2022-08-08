@@ -21,7 +21,7 @@ type Header = {
   ephemeralPublicKey: string[];
 };
 
-type Policy = {
+type HeaderPolicy = {
   type: PolicyTypeEnum;
   content: string[];
   binding: string[];
@@ -34,11 +34,11 @@ type RemotePolicy = {
 };
 
 export type PlainEmbeddedHeader = Header & {
-  policy: Policy;
+  policy: HeaderPolicy;
 };
 
 export type EmbeddedHeader = Header & {
-  policy: Policy;
+  policy: HeaderPolicy;
 };
 
 export type RemoteHeader = Header & {
