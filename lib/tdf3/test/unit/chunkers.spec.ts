@@ -1,8 +1,7 @@
 import { expect } from 'chai';
 import fs from 'fs';
-import { createSandbox } from 'sinon';
-import { createServer } from 'http';
-// @ts-ignore
+import { createSandbox, SinonSandbox } from 'sinon';
+import { createServer, Server } from 'http';
 import send from 'send';
 import { chunker, fromBuffer, fromNodeFile, fromUrl } from '../../src/utils/chunkers';
 
@@ -17,13 +16,12 @@ function range(a: number, b?: number): number[] {
   }
   return r;
 }
-// @ts-ignore
-let box;
+
+let box: SinonSandbox;
 beforeEach(() => {
   box = createSandbox();
 });
 afterEach(() => {
-  // @ts-ignore
   box.restore();
 });
 type ByteRange = {
@@ -37,41 +35,32 @@ describe('chunkers', () => {
     const b = new Uint8Array(r);
     it('all', async () => {
       const all = await fromBuffer(b)();
-      // @ts-ignore
-      expect(all).to.deep.eql(b);
-      // @ts-ignore
-      expect(Array.from(all)).to.deep.eql(r);
+      expect(all).to.deep.equal(b);
+      expect(Array.from(all)).to.deep.equal(r);
     });
     it('one', async () => {
       const one = await fromBuffer(b)(1, 2);
-      // @ts-ignore
-      expect(one).to.deep.eql(b.slice(1, 2));
-      // @ts-ignore
-      expect(Array.from(one)).to.deep.eql([1]);
+      expect(one).to.deep.equal(b.slice(1, 2));
+      expect(Array.from(one)).to.deep.equal([1]);
     });
     it('negative one', async () => {
       const twofiftyfive = await fromBuffer(b)(-1);
-      // @ts-ignore
-      expect(twofiftyfive).to.deep.eql(b.slice(255));
-      // @ts-ignore
-      expect(Array.from(twofiftyfive)).to.deep.eql([255]);
+      expect(twofiftyfive).to.deep.equal(b.slice(255));
+      expect(Array.from(twofiftyfive)).to.deep.equal([255]);
     });
     it('negative two', async () => {
       const twofiftyfour = await fromBuffer(b)(-2);
-      // @ts-ignore
-      expect(twofiftyfour).to.deep.eql(b.slice(254));
-      // @ts-ignore
-      expect(Array.from(twofiftyfour)).to.deep.eql([254, 255]);
+      expect(twofiftyfour).to.deep.equal(b.slice(254));
+      expect(Array.from(twofiftyfour)).to.deep.equal([254, 255]);
     });
     it('negative three to negative 2', async () => {
       const twofiftyfour = await fromBuffer(b)(-3, -2);
-      // @ts-ignore
-      expect(twofiftyfour).to.deep.eql(b.slice(253, 254));
-      // @ts-ignore
-      expect(Array.from(twofiftyfour)).to.deep.eql([253]);
+      expect(twofiftyfour).to.deep.equal(b.slice(253, 254));
+      expect(Array.from(twofiftyfour)).to.deep.equal([253]);
     });
   });
 
+  // path: PathLike, options?: StatSyncOptions | undefined) => Stats | BigIntStats | undefined'
   describe('fromNodeFile', () => {
     const r = range(256);
     const b = new Uint8Array(r);
@@ -92,25 +81,20 @@ describe('chunkers', () => {
       });
 
       const readFileOriginal = fs.readFile;
-      // @ts-ignore
       box
-        .stub(fs, 'readFile')
-        .callsFake((p: string, f: (err: NodeJS.ErrnoException, data: Buffer) => void) => {
+        .stub(fs, 'readFile') // @ts-ignore
+        .callsFake((p: string, f: (err?: unknown, data?: Buffer) => void) => {
           switch (p) {
             case 'file://local/file':
-              // @ts-ignore
               f(undefined, Buffer.from(range(256)));
               break;
             case 'file://fails':
-              // @ts-ignore
               f(new Error('I/O Error'), undefined);
               break;
             case 'file://not/found':
-              // @ts-ignore
               f(new Error('File not found'), undefined);
               break;
             default:
-              // @ts-ignore
               readFileOriginal(path, f);
           }
         });
@@ -175,32 +159,24 @@ describe('chunkers', () => {
     it('all', async () => {
       const c: chunker = fromNodeFile(path);
       const all: Uint8Array = await c();
-      // @ts-ignore
-      expect(all).to.deep.eql(b);
-      // @ts-ignore
-      expect(Array.from(all)).to.deep.eql(r);
+      expect(all).to.deep.equal(b);
+      expect(Array.from(all)).to.deep.equal(r);
     });
     it('one', async () => {
       const c: chunker = fromNodeFile(path);
       const one: Uint8Array = await c(1, 2);
-      // @ts-ignore
-      expect(one).to.deep.eql(b.slice(1, 2));
-      // @ts-ignore
-      expect(Array.from(one)).to.deep.eql([1]);
+      expect(one).to.deep.equal(b.slice(1, 2));
+      expect(Array.from(one)).to.deep.equal([1]);
     });
     it('negative one', async () => {
       const twofiftyfive: Uint8Array = await fromNodeFile(path)(-1);
-      // @ts-ignore
-      expect(twofiftyfive).to.deep.eql(b.slice(255));
-      // @ts-ignore
-      expect(Array.from(twofiftyfive)).to.deep.eql([255]);
+      expect(twofiftyfive).to.deep.equal(b.slice(255));
+      expect(Array.from(twofiftyfive)).to.deep.equal([255]);
     });
     it('negative two', async () => {
       const twofiftyfour: Uint8Array = await fromNodeFile(path)(-2, -1);
-      // @ts-ignore
-      expect(twofiftyfour).to.deep.eql(b.slice(254, 255));
-      // @ts-ignore
-      expect(Array.from(twofiftyfour)).to.deep.eql([254]);
+      expect(twofiftyfour).to.deep.equal(b.slice(254, 255));
+      expect(Array.from(twofiftyfour)).to.deep.equal([254]);
     });
     it('missing', async () => {
       try {
@@ -237,8 +213,7 @@ describe('chunkers', () => {
     const testFile = `${baseDir}/${path}`;
     const r = range(256);
     const b = new Uint8Array(r);
-    // @ts-ignore
-    let server;
+    let server: Server;
     before(async () => {
       await fs.promises.mkdir(baseDir, { recursive: true });
       fs.writeFileSync(testFile, b);
@@ -246,8 +221,8 @@ describe('chunkers', () => {
       server = createServer((req, res) => {
         // @ts-ignore
         if (req.url.endsWith('error')) {
+          // @ts-ignore
           send(req, req.url)
-            // @ts-ignore
             .on('stream', (stream) => {
               stream.on('open', () => {
                 stream.emit('error', new Error('Something 500-worthy'));
@@ -261,9 +236,7 @@ describe('chunkers', () => {
       return server.listen();
     });
     after(async () => {
-      // @ts-ignore
       return server.close(() => {
-        // @ts-ignore
         server.unref();
       });
     });
@@ -272,25 +245,19 @@ describe('chunkers', () => {
     it('all', async () => {
       const c: chunker = fromUrl(urlFor(path));
       const all: Uint8Array = await c();
-      // @ts-ignore
-      expect(all).to.deep.eql(b);
-      // @ts-ignore
-      expect(Array.from(all)).to.deep.eql(r);
+      expect(all).to.deep.equal(b);
+      expect(Array.from(all)).to.deep.equal(r);
     });
     it('one', async () => {
       const c: chunker = fromUrl(urlFor(path));
       const one: Uint8Array = await c(1, 2);
-      // @ts-ignore
-      expect(one).to.deep.eql(b.slice(1, 2));
-      // @ts-ignore
-      expect(Array.from(one)).to.deep.eql([1]);
+      expect(one).to.deep.equal(b.slice(1, 2));
+      expect(Array.from(one)).to.deep.eq([1]);
     });
     it('negative one', async () => {
       const twofiftyfive: Uint8Array = await fromUrl(urlFor(path))(-1);
-      // @ts-ignore
-      expect(twofiftyfive).to.deep.eql(b.slice(255));
-      // @ts-ignore
-      expect(Array.from(twofiftyfive)).to.deep.eql([255]);
+      expect(twofiftyfive).to.deep.equal(b.slice(255));
+      expect(Array.from(twofiftyfive)).to.deep.equal([255]);
     });
     it('negative two', async () => {
       try {

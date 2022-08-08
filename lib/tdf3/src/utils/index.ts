@@ -8,8 +8,7 @@ export function inBrowser(): boolean {
   return typeof window !== 'undefined';
 }
 
-// @ts-ignore
-export async function streamToBuffer(stream) {
+export async function streamToBuffer(stream: any) {
   return await PlaintextStream.toBuffer(stream);
 }
 

@@ -84,8 +84,6 @@ export async function keyAgreement(
     throw new TypeError('Expected input of publicKey to be a CryptoKey of type public');
   }
 
-  // // @ts-ignore Property 'namedCurve' does not exist on type 'KeyAlgorithm', see https://developer.mozilla.org/en-US/docs/Web/API/EcKeyGenParams
-  // const { namedCurve } = publicKey.algorithm;
   const {
     bitLength = 256,
     hkdfHash = HashType.Sha256,

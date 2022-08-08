@@ -113,7 +113,7 @@ export const fromUrl = (location: string): chunker => {
 type sourcetype = 'buffer' | 'file-browser' | 'file-node' | 'remote' | 'stream';
 type DataSource = {
   type: sourcetype;
-  location: unknown;
+  location: PlaintextStream | Uint8Array | Blob | string;
 };
 
 export const fromDataSource = async ({ type, location }: DataSource) => {
@@ -142,7 +142,6 @@ export const fromDataSource = async ({ type, location }: DataSource) => {
       if (!(location instanceof PlaintextStream)) {
         throw new Error('Invalid data source; must be PlaintextStream');
       }
-      // @ts-ignore
       return fromBuffer(await location.toBuffer());
     default:
       throw new Error(`Data source type not defined, or not supported: ${type}}`);

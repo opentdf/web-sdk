@@ -30,5 +30,5 @@ export abstract class SymmetricCipher {
 
   abstract encrypt(payload: Binary, key: Binary, iv: Binary): Promise<EncryptResult>;
 
-  abstract decrypt(payload: Binary, key: Binary, iv?: Binary): Promise<DecryptResult>;
+  abstract decrypt(payload: Buffer, key: Binary, iv?: Binary): Promise<DecryptResult>;
 }

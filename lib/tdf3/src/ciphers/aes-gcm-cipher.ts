@@ -6,9 +6,14 @@ import type { CryptoService, DecryptResult, EncryptResult } from '../crypto/decl
 
 const KEY_LENGTH = 32;
 const IV_LENGTH = 12;
+
+type ProcessGcmPayload = {
+  payload: Binary;
+  payloadIv: Binary;
+  payloadAuthTag: Binary;
+};
 // Should this be a Binary, Buffer, or... both?
-// @ts-ignore
-function processGcmPayload(buffer) {
+function processGcmPayload(buffer: Buffer): ProcessGcmPayload {
   // Read the 12 byte IV from the beginning of the stream
   const payloadIv = Binary.fromBuffer(buffer.slice(0, 12));
 
@@ -22,7 +27,7 @@ function processGcmPayload(buffer) {
   };
 }
 
-class AesGcmCipher extends SymmetricCipher {
+export class AesGcmCipher extends SymmetricCipher {
   constructor(cryptoService: CryptoService) {
     super(cryptoService);
     this.name = 'AES-256-GCM';
@@ -52,8 +57,8 @@ class AesGcmCipher extends SymmetricCipher {
    * @returns
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  override async decrypt(binary: Binary, key: Binary, iv?: Binary): Promise<DecryptResult> {
-    const { payload, payloadIv, payloadAuthTag } = processGcmPayload(binary);
+  override async decrypt(buffer: Buffer, key: Binary, iv?: Binary): Promise<DecryptResult> {
+    const { payload, payloadIv, payloadAuthTag } = processGcmPayload(buffer);
 
     return this.cryptoService.decrypt(
       payload,
@@ -64,5 +69,3 @@ class AesGcmCipher extends SymmetricCipher {
     );
   }
 }
-
-export { AesGcmCipher };

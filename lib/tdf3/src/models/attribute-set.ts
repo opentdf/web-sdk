@@ -48,10 +48,7 @@ export class AttributeSet {
     // array as the data structure. This is OK-ish only because the
     // expected size of the data structure is small
     // console.log(">>> ----- Has Attribute" + attribute);
-    // @ts-ignore
-    return this.attributes.reduce((acc, attrObj) => {
-      return acc || attrObj.attribute === attribute;
-    }, false);
+    return !!this.attributes.find((attrObj) => attrObj.attribute === attribute);
   }
 
   /**
@@ -136,8 +133,7 @@ export class AttributeSet {
    * @param  easPublicKey EAS public key for decrypting the JWTs
    * @return list of attribute objects
    */
-  addAttributes(attributes: AttributeObject[] = []): AttributeObject[] {
-    // @ts-ignore
+  addAttributes(attributes: AttributeObject[] = []): (AttributeObject | null)[] {
     return attributes
       .map((attrObj) => {
         return this.addAttribute(attrObj); // Returns promise

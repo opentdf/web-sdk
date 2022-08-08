@@ -1,12 +1,9 @@
 import { NanoTDFClient, NanoTDFDatasetClient, AuthProviders, version, clientType } from './index';
 import fetch from 'node-fetch';
-// @ts-ignore
 import crypto from 'crypto';
 
-// @ts-ignore
-globalThis.crypto = crypto;
-// @ts-ignore
-global.fetch = fetch;
+globalThis.crypto = crypto as unknown as Crypto;
+globalThis.fetch = fetch as typeof globalThis.fetch;
 
 export { NanoTDFClient, NanoTDFDatasetClient, AuthProviders, version, clientType };
 // for cjs webpack build default export needed

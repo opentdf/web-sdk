@@ -18,7 +18,9 @@
  */
 
 import PolicyTypeEnum from '../nanotdf/enum/PolicyTypeEnum';
+import ProtocolEnum from '../nanotdf/enum/ProtocolEnum';
 import hexArrayTag from '../../test/nanotdf/helpers/hexArrayTag';
+import { EmbeddedHeader } from '../types';
 
 // 6.1.5 nanotdf
 export const nanotdf = `
@@ -28,10 +30,10 @@ GtnSAeLvGsARKzdyTF9PpArXAc9AbC7VnbVyA7OMpPF0YFQDQHcAwtHIyzVZNSzarQdcChszFMezBVRf
 3egvvoM+IgjYoK1C
 `;
 
-export const header = {
+export const header: EmbeddedHeader = {
   magicNumberVersion: hexArrayTag`4c 31 4c`, // L1L
   kas: {
-    protocol: 0x01, // Https
+    protocol: ProtocolEnum.Https, // Https
     length: 15, // length of "kas.virtru.com"
     body: 'kas.eternos.xyz',
   },
@@ -45,7 +47,7 @@ export const header = {
     symmetricCipher: 0x00, // AES_256_GCM_64
   },
   policy: {
-    type: PolicyTypeEnum.EmbeddedEncrypted,
+    type: PolicyTypeEnum.EmbeddedEncrypted as PolicyTypeEnum,
     content: hexArrayTag`
       5F 14 E7 49 CD 6A C0 2D 7E 39 1E E6 51 AD E3 75 E2 87 E2 C3
       7C 69 1F 76 11 5A CE 53 A3 F8 49 AC 9F B7 6B 0F 1C FB 7B E0
