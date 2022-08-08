@@ -78,6 +78,7 @@
     "@babel/runtime-corejs3": "^7.18.3",
     "@babel/types": "^7.18.4",
     "@esm-bundle/chai": "~4.3.4-fix.0",
+    "@types/buffer-crc32": "^0.2.0",
     "@types/chai": "~4.3.0",
     "@types/expect": "^24.3.0",
     "@types/jsonwebtoken": "~8.5.8",
