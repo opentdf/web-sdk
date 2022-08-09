@@ -593,7 +593,7 @@ class EncryptParamsBuilder {
   }
 }
 
-type DecryptSource =
+export type DecryptSource =
   | null
   | { type: 'buffer'; location: Buffer }
   | { type: 'remote'; location: string }

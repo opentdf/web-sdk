@@ -7,9 +7,9 @@ import { PlaintextStream } from '../client/tdf-stream';
  * @param byteStart First byte to read. If negative, reads from the end. If absent, reads everything
  * @param byteEnd Index after last byte to read (exclusive)
  */
-export type chunker = (byteStart?: number, byteEnd?: number) => Promise<Uint8Array>;
+export type Chunker = (byteStart?: number, byteEnd?: number) => Promise<Uint8Array>;
 
-export const fromBrowserFile = (fileRef: Blob): chunker => {
+export const fromBrowserFile = (fileRef: Blob): Chunker => {
   return async (byteStart?: number, byteEnd?: number): Promise<Uint8Array> => {
     const chunkBlob = fileRef.slice(byteStart, byteEnd);
     const arrayBuffer = await new Response(chunkBlob).arrayBuffer();
@@ -17,13 +17,13 @@ export const fromBrowserFile = (fileRef: Blob): chunker => {
   };
 };
 
-export const fromBuffer = (buffer: Uint8Array): chunker => {
+export const fromBuffer = (buffer: Uint8Array): Chunker => {
   return (byteStart?: number, byteEnd?: number) => {
     return Promise.resolve(buffer.slice(byteStart, byteEnd));
   };
 };
 
-export const fromNodeFile = (filePath: string): chunker => {
+export const fromNodeFile = (filePath: string): Chunker => {
   const fileSize = statSync(filePath).size;
 
   return (byteStart?: number, byteEnd?: number): Promise<Uint8Array> => {
@@ -70,7 +70,7 @@ export const fromNodeFile = (filePath: string): chunker => {
   };
 };
 
-export const fromUrl = (location: string): chunker => {
+export const fromUrl = (location: string): Chunker => {
   async function getRemoteChunk(url: string, range?: string): Promise<Uint8Array> {
     try {
       const res: AxiosResponse<Uint8Array> = await axios.get(url, {
