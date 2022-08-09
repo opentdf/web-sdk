@@ -317,8 +317,7 @@ class EncryptParamsBuilder {
   }
 
   /**
-   * @param {Object} attributes
-   * @param {String} attributes.attribute URI of the form `<authority namespace>/attr/<name>/value/<value>`
+   * @param {{ attribute: string }[]} attributes URI of the form `<authority namespace>/attr/<name>/value/<value>`
    */
   setAttributes(attributes: EncryptParams['scope']['attributes']) {
     AttributeValidator(attributes);

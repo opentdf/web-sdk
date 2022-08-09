@@ -8,6 +8,8 @@ import {
 import { AttributeValidationError } from '../../errors';
 import { AttributeObject } from '../../models/attribute-set';
 
+const sageGetMatch = (match: RegExpMatchArray | null) => (match ? match[0] : null);
+
 const attributeValidation = (attr: unknown) => {
   const isObject = typeof attr === 'object';
   if (!isObject) {
@@ -26,10 +28,17 @@ const attributeValidation = (attr: unknown) => {
 
   const ATTR_NAME_PREFIX = `/${ATTR_NAME_PROP_NAME}/`;
   const ATTR_VALUE_PREFIX = `/${ATTR_VALUE_PROP_NAME}/`;
-  // @ts-ignore
-  const attrNameMatch = attribute.match(ATTR_NAME)[0];
-  // @ts-ignore
-  const attrValueMatch = attribute.match(ATTR_VALUE)[0];
+  const attrNameMatch = sageGetMatch(attribute.match(ATTR_NAME));
+  const attrValueMatch = sageGetMatch(attribute.match(ATTR_VALUE));
+
+  if (!attrNameMatch) {
+    throw new AttributeValidationError(`attribute name matching error`);
+  }
+
+  if (!attrValueMatch) {
+    throw new AttributeValidationError(`attribute value matching error`);
+  }
+
   const attributeName = attrNameMatch.slice(ATTR_NAME_PREFIX.length);
   const attributeValue = attrValueMatch.slice(ATTR_VALUE_PREFIX.length);
 
@@ -39,7 +48,10 @@ const attributeValidation = (attr: unknown) => {
 
   return true;
 };
-function runAttributesValidation(attributes: unknown[]): attributes is AttributeObject[] {
+
+type Attribute = { attribute: string };
+
+function runAttributesValidation(attributes: Attribute[]): attributes is AttributeObject[] {
   if (!Array.isArray(attributes)) {
     throw new AttributeValidationError('Attributes should be of type Array');
   }

@@ -1,7 +1,9 @@
 import { runAttributesValidation } from './validations';
 import { AttributeValidationError, IllegalArgumentError } from '../../errors';
-// @ts-ignore
-const AttributeValidator = (attributes) => {
+
+type Attribute = { attribute: string };
+
+const AttributeValidator = (attributes: Attribute[]) => {
   try {
     runAttributesValidation(attributes);
   } catch (err) {

@@ -22,8 +22,7 @@ import {
 
 // Used to pass into native crypto functions
 const METHODS: KeyUsage[] = ['encrypt', 'decrypt'];
-
-export const isSupported = crypto !== undefined;
+export const isSupported = globalThis.crypto !== undefined;
 
 export const method = 'http://www.w3.org/2001/04/xmlenc#aes256-cbc';
 export const name = 'BrowserNativeCryptoService';
@@ -199,7 +198,6 @@ export function encrypt(
   iv: Binary,
   algorithm?: string
 ): Promise<EncryptResult> {
-  // @ts-ignore
   return _doEncrypt(payload, key, iv, algorithm);
 }
 
@@ -207,7 +205,7 @@ async function _doEncrypt(
   payload: Binary,
   key: Binary,
   iv: Binary,
-  algorithm: string
+  algorithm?: string
 ): Promise<EncryptResult> {
   console.assert(payload != null);
   console.assert(key != null);

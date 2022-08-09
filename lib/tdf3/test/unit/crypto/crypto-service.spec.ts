@@ -179,8 +179,8 @@ describe('Crypto Service', () => {
 
     const encrypted = await encrypt(payload, binaryKey, binaryIV, algorithm);
     expect(encodeArrayBuffer(encrypted.payload.asArrayBuffer())).to.eql('8Q==');
-    // @ts-ignore
-    expect(encodeArrayBuffer(encrypted.authTag.asArrayBuffer())).to.eql('d0HF3e42QRxb5nnvFl57ZQ==');
+    const expectArrayBuffer = (encrypted.authTag as Binary).asArrayBuffer();
+    expect(encodeArrayBuffer(expectArrayBuffer)).to.eql('d0HF3e42QRxb5nnvFl57ZQ==');
   });
 
   it('should encrypt with pub key and decrypt with private', async () => {

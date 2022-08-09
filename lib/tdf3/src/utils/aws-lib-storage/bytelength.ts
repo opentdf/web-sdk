@@ -1,5 +1,4 @@
-// @ts-ignore
-import { ClientDefaultValues } from '@runtimeConfig'; // check alias in webpack.config
+import { ClientDefaultValues } from './runtimeConfig'; // check alias in webpack.config
 
 export const byteLength = (input: any) => {
   if (input === null || input === undefined) return 0;

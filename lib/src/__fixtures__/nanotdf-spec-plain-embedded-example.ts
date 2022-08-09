@@ -17,7 +17,9 @@
  */
 
 import PolicyTypeEnum from '../nanotdf/enum/PolicyTypeEnum';
+import ProtocolEnum from '../nanotdf/enum/ProtocolEnum';
 import hexArrayTag from '../../test/nanotdf/helpers/hexArrayTag';
+import { PlainEmbeddedHeader } from '../types';
 
 // 6.1.5 nanotdf
 export const nanotdf = `
@@ -28,10 +30,10 @@ LWExNjctZWY5OGQyY2NmNjdhIn2avSz7nTV08u+z0lNoOax2ZSWlNtycmvQLS4zHNJn/2i8E1p+KGUx+
 eO9leyauC42VKckiAm5GJxs=
 `;
 
-export const header = {
+export const header: PlainEmbeddedHeader = {
   magicNumberVersion: hexArrayTag`4c 31 4c`, // L1L
   kas: {
-    protocol: 0x01, // Https
+    protocol: ProtocolEnum.Https, // Https
     length: 17, // length of "etheria.local/kas"
     body: 'etheria.local/kas',
   },
@@ -45,7 +47,7 @@ export const header = {
     symmetricCipher: 0x00, // AES_256_GCM_64
   },
   policy: {
-    type: PolicyTypeEnum.EmbeddedText,
+    type: PolicyTypeEnum.EmbeddedText as PolicyTypeEnum,
     content: hexArrayTag`
       7b 22 62 6f 64 79 22 3a 7b 22 64 61 74 61 41 74 74 72 69 62
       75 74 65 73 22 3a 5b 5d 2c 22 64 69 73 73 65 6d 22 3a 5b 22

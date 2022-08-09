@@ -9,11 +9,8 @@
 export class MockStream {
   streamContent: Uint8Array[];
   totalBytes: number;
-  // @ts-ignore
   readStreamEndCallback: () => void;
-  // @ts-ignore
   writeStreamFinishCallback: () => void;
-  // @ts-ignore
   dataCallback: (chunk: Uint8Array) => void;
 
   constructor(streamContent?: Uint8Array) {
@@ -25,8 +22,9 @@ export class MockStream {
     if (this.streamContent.length) {
       const rel = this.streamContent.pop();
       // relinquish a bit of data
-      // @ts-ignore
-      callback(rel);
+      if (rel) {
+        callback(rel);
+      }
       if (!this.streamContent.length) {
         this.readStreamEnd();
       }

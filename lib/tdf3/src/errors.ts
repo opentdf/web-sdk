@@ -1,5 +1,4 @@
 export class TdfError extends Error {
-  // @ts-ignore
   message: string;
 
   err?: Error;
