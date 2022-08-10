@@ -1,5 +1,5 @@
 import { Manifest } from '../models';
-import { chunker } from './chunkers';
+import { Chunker } from './chunkers';
 
 // TODO: Better document what these constants are
 // TODO: Document each function please
@@ -57,9 +57,9 @@ export type CentralDirectoryVariableLengthItems = {
  * or request specific important chunks like the 'manifest', or 'payload'.
  */
 export class ZipReader {
-  getChunk: chunker;
+  getChunk: Chunker;
 
-  constructor(getChunk: chunker) {
+  constructor(getChunk: Chunker) {
     this.getChunk = getChunk;
   }
 

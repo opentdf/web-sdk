@@ -19,7 +19,7 @@ import {
 } from './models';
 import { base64 } from '../../src/encodings';
 import * as cryptoService from './crypto';
-import { base64ToBuffer, fromUrl, keyMerge, ZipReader, ZipWriter } from './utils';
+import { base64ToBuffer, fromUrl, keyMerge, ZipReader, ZipWriter, Chunker } from './utils';
 import { Binary } from './binary';
 import {
   KasDecryptError,
@@ -38,6 +38,7 @@ import { htmlWrapperTemplate } from './templates';
 import { AesGcmCipher } from './ciphers';
 import { PemKeyPair } from './crypto/declarations';
 import { AuthProvider } from '../../src/auth/auth';
+import PolicyObject from '../../src/tdf/PolicyObject';
 
 // TODO: input validation on manifest JSON
 const DEFAULT_SEGMENT_SIZE = 1024 * 1024;
@@ -47,12 +48,26 @@ type Options = {
   cipher: string;
 };
 
+type RcaParams = {
+  pu: string;
+  wu: string;
+  wk: string;
+  al: string;
+};
+
+type Metadata = {
+  connectOptions: {
+    testUrl: string;
+  };
+  policyObject: PolicyObject;
+};
+
 type AddKeyAccess = {
   type: 'wrapped' | 'remote';
   url: string;
   publicKey: string;
   attributeUrl: string;
-  metadata: any;
+  metadata: Metadata | null;
 };
 
 type Segment = {
@@ -234,11 +249,16 @@ class TDF extends EventEmitter {
    * @return {<TDF>}- this instance
    */
 
-  addKeyAccess({ type, url, publicKey, attributeUrl, metadata = '' }: AddKeyAccess) {
+  addKeyAccess({ type, url, publicKey, attributeUrl, metadata = null }: AddKeyAccess) {
     // TODO - run down metadata parameter. Clean it out if it isn't used this way anymore.
 
     /** Internal function to keep it DRY */
-    function createKeyAccess(type: string, kasUrl: string, pubKey: string, metadata: any) {
+    function createKeyAccess(
+      type: string,
+      kasUrl: string,
+      pubKey: string,
+      metadata: Metadata | null
+    ) {
       switch (type) {
         case 'wrapped':
           return new KeyAccessWrapped(kasUrl, pubKey, metadata);
@@ -376,14 +396,14 @@ class TDF extends EventEmitter {
     };
   }
 
-  async getSignature(unwrappedKeyBinary: any, payloadBinary: any, algorithmType: any) {
+  async getSignature(unwrappedKeyBinary: Binary, payloadBinary: Binary, algorithmType: string) {
     switch (algorithmType.toLowerCase()) {
       case 'hs256':
       default:
         // simple hmac is the default
         return await cryptoService.hmac(
           unwrappedKeyBinary.asBuffer().toString('hex'),
-          payloadBinary.asBuffer()
+          payloadBinary.asBuffer().toString()
         );
       case 'gmac':
         // use the auth tag baked into the encrypted payload
@@ -471,7 +491,7 @@ class TDF extends EventEmitter {
     );
   }
 
-  async writeStream(byteLimit: number, isRcaSource: any) {
+  async writeStream(byteLimit: number, isRcaSource: boolean) {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const segmentInfos: Segment[] = [];
     if (!byteLimit) {
@@ -693,6 +713,10 @@ class TDF extends EventEmitter {
         keyInfo.unwrappedKeyBinary
       );
       const payloadBuffer = encryptedResult?.payload.asBuffer();
+
+      if (!encryptedResult?.payload) {
+        throw new Error('Missed payload from encryptedResult');
+      }
       const payloadSigStr = await this.getSignature(
         keyInfo.unwrappedKeyBinary,
         encryptedResult?.payload,
@@ -719,7 +743,7 @@ class TDF extends EventEmitter {
   }
 
   // load the TDF as a stream in memory, for further use in reading and key syncing
-  async loadTDFStream(chunker: any) {
+  async loadTDFStream(chunker: Chunker) {
     const zipReader = new ZipReader(chunker);
     const centralDirectory = await zipReader.getCentralDirectory();
 
@@ -801,7 +825,7 @@ class TDF extends EventEmitter {
    * @param {Stream} outputStream - The writable stream we should put the new bits into
    * @param {Object} rcaParams - Optional field to specify if file is stored on S3
    */
-  async readStream(chunker: any, rcaParams: any) {
+  async readStream(chunker: Chunker, rcaParams: RcaParams | null) {
     const { zipReader, centralDirectory } = await this.loadTDFStream(chunker);
     if (!this.manifest) {
       throw new Error('Missing manifest data');
@@ -814,9 +838,8 @@ class TDF extends EventEmitter {
     if (rcaParams) {
       const { wk } = rcaParams;
       this.encryptionInformation = new SplitKey(TDF.createCipher());
-      const kekPayload = Binary.fromBuffer(Buffer.from(wk, 'base64'));
       const decodedReconstructedKeyBinary = await this.encryptionInformation.decrypt(
-        kekPayload,
+        Buffer.from(wk, 'base64'),
         reconstructedKeyBinary
       );
       reconstructedKeyBinary = decodedReconstructedKeyBinary.payload;
@@ -881,10 +904,7 @@ class TDF extends EventEmitter {
           let decryptedSegment;
 
           try {
-            decryptedSegment = await cipher.decrypt(
-              Binary.fromBuffer(encryptedChunk),
-              reconstructedKeyBinary
-            );
+            decryptedSegment = await cipher.decrypt(encryptedChunk, reconstructedKeyBinary);
           } catch (e) {
             throw new TdfDecryptError(
               'Error decrypting payload. This suggests the key used to decrypt the payload is not correct.',

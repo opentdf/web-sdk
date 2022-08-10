@@ -3,7 +3,7 @@ import fs from 'fs';
 import { createSandbox, SinonSandbox } from 'sinon';
 import { createServer, Server } from 'http';
 import send from 'send';
-import { chunker, fromBuffer, fromNodeFile, fromUrl } from '../../src/utils/chunkers';
+import { Chunker, fromBuffer, fromNodeFile, fromUrl } from '../../src/utils/chunkers';
 
 function range(a: number, b?: number): number[] {
   if (!b) {
@@ -157,13 +157,13 @@ describe('chunkers', () => {
       });
     });
     it('all', async () => {
-      const c: chunker = fromNodeFile(path);
+      const c: Chunker = fromNodeFile(path);
       const all: Uint8Array = await c();
       expect(all).to.deep.equal(b);
       expect(Array.from(all)).to.deep.equal(r);
     });
     it('one', async () => {
-      const c: chunker = fromNodeFile(path);
+      const c: Chunker = fromNodeFile(path);
       const one: Uint8Array = await c(1, 2);
       expect(one).to.deep.equal(b.slice(1, 2));
       expect(Array.from(one)).to.deep.equal([1]);
@@ -180,7 +180,7 @@ describe('chunkers', () => {
     });
     it('missing', async () => {
       try {
-        const c: chunker = fromNodeFile('file://not/found');
+        const c: Chunker = fromNodeFile('file://not/found');
         await c();
         expect.fail();
       } catch (e) {
@@ -189,7 +189,7 @@ describe('chunkers', () => {
     });
     it('broken stream all', async () => {
       try {
-        const c: chunker = fromNodeFile('file://fails');
+        const c: Chunker = fromNodeFile('file://fails');
         await c();
         expect.fail();
       } catch (e) {
@@ -198,7 +198,7 @@ describe('chunkers', () => {
     });
     it('broken stream some', async () => {
       try {
-        const c: chunker = fromNodeFile('file://fails');
+        const c: Chunker = fromNodeFile('file://fails');
         await c(1);
         expect.fail();
       } catch (e) {
@@ -223,7 +223,7 @@ describe('chunkers', () => {
         if (req.url.endsWith('error')) {
           // @ts-ignore
           send(req, req.url)
-            .on('stream', (stream) => {
+            .on('stream', (stream: any) => {
               stream.on('open', () => {
                 stream.emit('error', new Error('Something 500-worthy'));
               });
@@ -243,13 +243,13 @@ describe('chunkers', () => {
     // @ts-ignore
     const urlFor = (p) => `http://localhost:${server.address().port}/${p}`;
     it('all', async () => {
-      const c: chunker = fromUrl(urlFor(path));
+      const c: Chunker = fromUrl(urlFor(path));
       const all: Uint8Array = await c();
       expect(all).to.deep.equal(b);
       expect(Array.from(all)).to.deep.equal(r);
     });
     it('one', async () => {
-      const c: chunker = fromUrl(urlFor(path));
+      const c: Chunker = fromUrl(urlFor(path));
       const one: Uint8Array = await c(1, 2);
       expect(one).to.deep.equal(b.slice(1, 2));
       expect(Array.from(one)).to.deep.eq([1]);
@@ -277,7 +277,7 @@ describe('chunkers', () => {
     });
     it('broken stream all', async () => {
       try {
-        const c: chunker = fromUrl(urlFor('error'));
+        const c: Chunker = fromUrl(urlFor('error'));
         await c();
         expect.fail();
       } catch (e) {
@@ -286,7 +286,7 @@ describe('chunkers', () => {
     });
     it('broken stream some', async () => {
       try {
-        const c: chunker = fromUrl(urlFor('error'));
+        const c: Chunker = fromUrl(urlFor('error'));
         await c(1);
         expect.fail();
       } catch (e) {
