@@ -3,9 +3,10 @@ import axios from 'axios';
 import { createReadStream } from 'fs';
 import { arrayBufferToBuffer, inBrowser } from '../utils';
 import { AttributeValidator } from './validation';
-import { AttributeObject } from '../models';
+import { AttributeObject, Policy } from '../models';
 
 import { IllegalArgumentError, IllegalEnvError } from '../errors';
+import { PemKeyPair } from '../crypto/declarations';
 
 const { get } = axios;
 
@@ -122,11 +123,14 @@ async function setRemoteStoreAsStream(
 interface Scope {
   dissem: string[];
   policyId?: string;
+  policyObject?: Policy;
   attributes: AttributeObject[];
 }
 
-interface EncryptParams {
+export interface EncryptParams {
   source: null | ReadableStream | NodeJS.ReadableStream;
+  opts?: { keypair: PemKeyPair };
+  output?: NodeJS.WriteStream;
   scope: Scope;
   metadata: object;
   keypair?: CryptoKeyPair;
@@ -601,7 +605,6 @@ export type DecryptSource =
 
 type DecryptParams = {
   source: DecryptSource;
-  opts?: object;
   rcaSource?: boolean;
 } & Pick<EncryptParams, 'contentLength' | 'keypair'>;
 

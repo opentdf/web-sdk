@@ -16,6 +16,7 @@ import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-pr
 import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider';
 import { PemKeyPair } from '../crypto/declarations';
 import { AuthProvider } from '../../../src/auth/auth';
+import { EncryptParams } from './builders';
 
 import {
   DEFAULT_SEGMENT_SIZE,
@@ -23,8 +24,7 @@ import {
   EncryptParamsBuilder,
   DecryptSource,
 } from './builders';
-import PolicyObject from '../../../src/tdf/PolicyObject';
-import { AttributeObject } from '../models';
+import { Policy } from '../models';
 
 const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
 const HTML_BYTE_LIMIT = 100 * 1000 * 1000; // 100 MB, see WS-9476.
@@ -95,20 +95,10 @@ interface ClientConfig {
   keyUpsertEndpoint?: string;
   clientSecret?: string;
   oidcRefreshToken?: string;
+  kasPublicKey?: string;
   oidcOrigin?: string;
   externalJwt?: string;
   authProvider?: AuthProvider;
-}
-
-interface EncryptScope {
-  policyObject?: PolicyObject;
-  policyId?: string;
-  attributes?: AttributeObject[];
-  dissem?: string[];
-}
-
-interface EncryptConfig {
-  scope: EncryptScope;
 }
 
 export class Client {
@@ -223,16 +213,16 @@ export class Client {
     source,
     asHtml = false,
     metadata = {},
-    opts = {},
-    mimeType = null,
+    opts,
+    mimeType,
     offline = false,
-    output = null,
-    rcaSource = null,
+    output,
+    rcaSource = false,
     windowSize = DEFAULT_SEGMENT_SIZE,
-  }: EncryptConfig) {
+  }: EncryptParams) {
     if (rcaSource && asHtml) throw new Error('rca links should be used only with zip format');
 
-    const keypair = await this._getOrCreateKeypair(opts);
+    const keypair: PemKeyPair = await this._getOrCreateKeypair(opts);
     const policyObject = await this._createPolicyObject(scope);
     const kasPublicKey = await this._getOrFetchKasPubKey();
 
@@ -248,7 +238,7 @@ export class Client {
         type: offline ? 'wrapped' : 'remote',
         url: this.clientConfig.kasEndpoint,
         publicKey: kasPublicKey,
-        metadata: metadata,
+        metadata,
       })
       .setDefaultSegmentSize(windowSize)
       // set root sig and segment types
@@ -335,7 +325,7 @@ export class Client {
   /*
    * Create a policy object for an encrypt operation.
    */
-  async _createPolicyObject(scope) {
+  async _createPolicyObject(scope: EncryptParams['scope']): Promise<Policy> {
     if (scope.policyObject) {
       // use the client override if provided
       return scope.policyObject;
@@ -356,7 +346,7 @@ export class Client {
    *
    * Additionally, update the auth injector with the (potentially new) pubkey
    */
-  async _getOrCreateKeypair(opts) {
+  async _getOrCreateKeypair(opts: undefined | { keypair: PemKeyPair }): Promise<PemKeyPair> {
     //If clientconfig has keypair, assume auth provider was already set up with pubkey and bail
     if (this.clientConfig.keypair) {
       return this.clientConfig.keypair;
@@ -364,8 +354,8 @@ export class Client {
 
     //If a keypair is being dynamically provided, then we've gotta (re)register
     // the pubkey with the auth provider
-    let keypair = {};
-    if (opts.keypair && opts.keypair.publicKey && opts.keypair.privateKey) {
+    let keypair: PemKeyPair;
+    if (opts) {
       keypair = opts.keypair;
     } else {
       //We have to generate and store a new keypair
@@ -379,7 +369,7 @@ export class Client {
     // a formatted raw PEM string isn't a valid header value and sending it raw makes keycloak's
     // header parser barf. There are more subtle ways to solve this, but this works for now.
 
-    await this.clientConfig.authProvider.updateClientPublicKey(base64.encode(keypair.publicKey));
+    await this.clientConfig?.authProvider?.updateClientPublicKey(base64.encode(keypair.publicKey));
     return keypair;
   }
 
