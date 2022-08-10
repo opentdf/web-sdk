@@ -4,7 +4,7 @@ import { AttributeObject } from './attribute-set';
 export const CURRENT_VERSION = '1.1.0';
 
 export type PolicyBody = {
-  dataAttributesList: AttributeObject[];
+  dataAttributes: AttributeObject[];
   dissem: string[];
 };
 
