@@ -553,6 +553,54 @@ class TDF extends EventEmitter {
     entryInfos[0].filename = '0.payload';
     entryInfos[0].offset = totalByteCount;
     const sourceReader = this.contentStream?.getReader();
+    // nested helper fn's
+    function getHeader(filename: string) {
+      return zipWriter.getLocalFileHeader(filename, 0, 0, 0);
+    }
+
+    function _countChunk(chunk: Buffer) {
+      totalByteCount += chunk.length;
+      if (totalByteCount > byteLimit) {
+        throw new Error(`Safe byte limit (${byteLimit}) exceeded`);
+      }
+      crcCounter = crc32.unsigned(chunk);
+      fileByteCount += chunk.length;
+    }
+
+    const _encryptAndCountSegment = async (chunk: Buffer) => {
+      // Don't pass in an IV here. The encrypt function will generate one for you, ensuring that each segment has a unique IV.
+      const encryptedResult = await this.encryptionInformation?.encrypt(
+        Binary.fromBuffer(chunk),
+        keyInfo.unwrappedKeyBinary
+      );
+      const payloadBuffer = encryptedResult?.payload.asBuffer();
+
+      if (!encryptedResult?.payload) {
+        throw new Error('Missed payload from encryptedResult');
+      }
+      const payloadSigStr = await this.getSignature(
+        keyInfo.unwrappedKeyBinary,
+        encryptedResult?.payload,
+        this.segmentIntegrityAlgorithm
+      );
+
+      // combined string of all hashes for root signature
+      aggregateHash += payloadSigStr;
+
+      segmentInfos.push({
+        hash: base64.encode(payloadSigStr),
+        segmentSize: chunk.length === segmentSizeDefault ? undefined : chunk.length,
+        encryptedSegmentSize:
+          payloadBuffer?.length === encryptedSegmentSizeDefault ? undefined : payloadBuffer?.length,
+      });
+      const result = encryptedResult?.payload.asBuffer();
+
+      if (result) {
+        _countChunk(result);
+      }
+
+      return result;
+    };
 
     if (!sourceReader) {
       throw new Error('Missing sourceReader');
@@ -566,14 +614,14 @@ class TDF extends EventEmitter {
       have been defined, thus not requiring the handlers to be wrapped in a promise.
     */
     const underlingSource = {
-      start(controller: any) {
+      start: (controller: ReadableStreamDefaultController) => {
         controller.enqueue(getHeader(entryInfos[0].filename));
         _countChunk(getHeader(entryInfos[0].filename));
         crcCounter = 0;
         fileByteCount = 0;
       },
 
-      pull: async (controller: any) => {
+      pull: async (controller: ReadableStreamDefaultController) => {
         let isDone;
 
         while (currentBuffer.length < segmentSizeDefault && !isDone) {
@@ -584,7 +632,11 @@ class TDF extends EventEmitter {
           }
         }
 
-        while (currentBuffer.length >= segmentSizeDefault && controller.desiredSize > 0) {
+        while (
+          currentBuffer.length >= segmentSizeDefault &&
+          !!controller.desiredSize &&
+          controller.desiredSize > 0
+        ) {
           const segment = currentBuffer.slice(0, segmentSizeDefault);
           const encryptedSegment = await _encryptAndCountSegment(segment);
           controller.enqueue(encryptedSegment);
@@ -691,55 +743,6 @@ class TDF extends EventEmitter {
     }
 
     return plaintextStream;
-
-    // nested helper fn's
-    function getHeader(filename: string) {
-      return zipWriter.getLocalFileHeader(filename, 0, 0, 0);
-    }
-
-    function _countChunk(chunk: Buffer) {
-      totalByteCount += chunk.length;
-      if (totalByteCount > byteLimit) {
-        throw new Error(`Safe byte limit (${byteLimit}) exceeded`);
-      }
-      crcCounter = crc32.unsigned(chunk);
-      fileByteCount += chunk.length;
-    }
-
-    const _encryptAndCountSegment = async (chunk: Buffer) => {
-      // Don't pass in an IV here. The encrypt function will generate one for you, ensuring that each segment has a unique IV.
-      const encryptedResult = await this.encryptionInformation?.encrypt(
-        Binary.fromBuffer(chunk),
-        keyInfo.unwrappedKeyBinary
-      );
-      const payloadBuffer = encryptedResult?.payload.asBuffer();
-
-      if (!encryptedResult?.payload) {
-        throw new Error('Missed payload from encryptedResult');
-      }
-      const payloadSigStr = await this.getSignature(
-        keyInfo.unwrappedKeyBinary,
-        encryptedResult?.payload,
-        this.segmentIntegrityAlgorithm
-      );
-
-      // combined string of all hashes for root signature
-      aggregateHash += payloadSigStr;
-
-      segmentInfos.push({
-        hash: base64.encode(payloadSigStr),
-        segmentSize: chunk.length === segmentSizeDefault ? undefined : chunk.length,
-        encryptedSegmentSize:
-          payloadBuffer?.length === encryptedSegmentSizeDefault ? undefined : payloadBuffer?.length,
-      });
-      const result = encryptedResult?.payload.asBuffer();
-
-      if (result) {
-        _countChunk(result);
-      }
-
-      return result;
-    };
   }
 
   // load the TDF as a stream in memory, for further use in reading and key syncing
@@ -876,8 +879,8 @@ class TDF extends EventEmitter {
     let encryptedOffset = 0;
 
     const outputStream = new PlaintextStream(this.segmentSizeDefault, {
-      async pull(controller: any) {
-        while (segments.length && controller.desiredSize >= 0) {
+      async pull(controller: ReadableStreamDefaultController) {
+        while (segments.length && !!controller.desiredSize && controller.desiredSize >= 0) {
           const segment = segments.shift();
           const encryptedSegmentSize = segment?.encryptedSegmentSize || encryptedSegmentSizeDefault;
           const encryptedChunk = await zipReader.getPayloadSegment(
