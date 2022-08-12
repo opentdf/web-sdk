@@ -4,9 +4,11 @@ import { createReadStream } from 'fs';
 import { arrayBufferToBuffer, inBrowser } from '../utils';
 import { AttributeValidator } from './validation';
 import { AttributeObject, Policy } from '../models';
+import { RcaParams } from '../tdf';
 
 import { IllegalArgumentError, IllegalEnvError } from '../errors';
 import { PemKeyPair } from '../crypto/declarations';
+import PolicyObject from '../../../src/tdf/PolicyObject';
 
 const { get } = axios;
 
@@ -127,12 +129,19 @@ interface Scope {
   attributes: AttributeObject[];
 }
 
+type Metadata = {
+  connectOptions: {
+    testUrl: string;
+  };
+  policyObject: PolicyObject;
+};
+
 export interface EncryptParams {
   source: null | ReadableStream | NodeJS.ReadableStream;
   opts?: { keypair: PemKeyPair };
   output?: NodeJS.WriteStream;
   scope: Scope;
-  metadata: object;
+  metadata: Metadata | null;
   keypair?: CryptoKeyPair;
   contentLength?: number;
   offline: boolean;
@@ -143,10 +152,12 @@ export interface EncryptParams {
   mimeType?: string;
 }
 
+// 'Readonly<EncryptParams>': scope, metadata, offline, windowSize, asHtml
+
 // deep copy is expensive, could be faster is Immer used, but to keep SDK work
 // stable we can just make this object readonly
 function freeze<Type>(obj: Type): Readonly<Type> {
-  return Object.freeze(obj);
+  return Object.freeze<Type>(obj);
 }
 
 /**
@@ -163,7 +174,7 @@ class EncryptParamsBuilder {
         dissem: [],
         attributes: [],
       },
-      metadata: {},
+      metadata: null,
       keypair: undefined,
       offline: false,
       windowSize: DEFAULT_SEGMENT_SIZE,
@@ -189,7 +200,7 @@ class EncryptParamsBuilder {
    * Specify the content to encrypt, in stream form.
    * @param {Readable} readStream - a Readable Stream to encrypt.
    */
-  setStreamSource(readStream: ReadableStream) {
+  setStreamSource(readStream: ReadableStream | NodeJS.ReadableStream) {
     this._params.source = readStream;
   }
 
@@ -591,7 +602,7 @@ class EncryptParamsBuilder {
    * <br/><br/>
    * Creates a deep copy to prevent tricky call-by-reference and async execution bugs.
    */
-  build() {
+  build(): Readonly<EncryptParams> {
     return this._deepCopy(this._params);
   }
 }
@@ -603,9 +614,10 @@ export type DecryptSource =
   | { type: 'stream'; location: ReadableStream | NodeJS.ReadableStream }
   | { type: 'file-browser' | 'file-node'; location: string };
 
-type DecryptParams = {
+export type DecryptParams = {
   source: DecryptSource;
-  rcaSource?: boolean;
+  opts?: { keypair: PemKeyPair };
+  rcaSource?: RcaParams;
 } & Pick<EncryptParams, 'contentLength' | 'keypair'>;
 
 /**
@@ -796,7 +808,7 @@ class DecryptParamsBuilder {
   /**
    * @param rcaParams
    */
-  setRcaSource(rcaParams: boolean) {
+  setRcaSource(rcaParams: RcaParams) {
     this._params.rcaSource = rcaParams;
   }
 
@@ -805,7 +817,7 @@ class DecryptParamsBuilder {
    * @param rcaParams
    * @returns {DecryptParamsBuilder}
    */
-  withRcaSource(rcaParams: boolean): DecryptParamsBuilder {
+  withRcaSource(rcaParams: RcaParams): DecryptParamsBuilder {
     this.setRcaSource(rcaParams);
     return this;
   }
@@ -819,7 +831,7 @@ class DecryptParamsBuilder {
    * <br/><br/>
    * Creates a deep copy to prevent tricky call-by-reference and async execution bugs.
    */
-  build() {
+  build(): Readonly<DecryptParams> {
     return this._deepCopy(this._params);
   }
 }

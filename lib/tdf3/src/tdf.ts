@@ -48,7 +48,7 @@ type Options = {
   cipher: string;
 };
 
-type RcaParams = {
+export type RcaParams = {
   pu: string;
   wu: string;
   wk: string;
@@ -64,9 +64,9 @@ type Metadata = {
 
 type AddKeyAccess = {
   type: 'wrapped' | 'remote';
-  url: string;
+  url?: string;
   publicKey: string;
-  attributeUrl: string;
+  attributeUrl?: string;
   metadata: Metadata | null;
 };
 
@@ -220,7 +220,10 @@ class TDF extends EventEmitter {
   // AuthProvider is a class that can be used to build a custom request body and headers
   // The builder must accept an object of the following (ob.body, ob.headers, ob.method, ob.url)
   // and mutate it in place.
-  setAuthProvider(authProvider: AuthProvider): TDF {
+  setAuthProvider(authProvider?: AuthProvider): TDF {
+    if (!authProvider) {
+      throw new Error('Missing authProvider in setAuthProvider');
+    }
     this.authProvider = authProvider;
     return this;
   }
@@ -346,7 +349,7 @@ class TDF extends EventEmitter {
     return this;
   }
 
-  addContentStream(contentStream: unknown, mimeType: string) {
+  addContentStream(contentStream: unknown, mimeType?: string) {
     this.contentStream =
       contentStream instanceof ReadableStream
         ? contentStream

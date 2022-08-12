@@ -16,7 +16,7 @@ import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-pr
 import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider';
 import { PemKeyPair } from '../crypto/declarations';
 import { AuthProvider } from '../../../src/auth/auth';
-import { EncryptParams } from './builders';
+import { EncryptParams, DecryptParams } from './builders';
 
 import {
   DEFAULT_SEGMENT_SIZE,
@@ -99,6 +99,7 @@ interface ClientConfig {
   oidcOrigin?: string;
   externalJwt?: string;
   authProvider?: AuthProvider;
+  readerUrl?: string;
 }
 
 export class Client {
@@ -212,7 +213,7 @@ export class Client {
     scope,
     source,
     asHtml = false,
-    metadata = {},
+    metadata = null,
     opts,
     mimeType,
     offline = false,
@@ -227,6 +228,7 @@ export class Client {
     const kasPublicKey = await this._getOrFetchKasPubKey();
 
     // TODO: Refactor underlying builder to remove some of this unnecessary config.
+
     const tdf = TDF.create()
       .setPrivateKey(keypair.privateKey)
       .setPublicKey(keypair.publicKey)
@@ -259,10 +261,13 @@ export class Client {
 
     // Wrap if it's html.
     // FIXME: Support streaming for html format.
+    if (!tdf.manifest) {
+      throw new Error('Missing manifest in encrypt function');
+    }
     const htmlBuf = TDF.wrapHtml(
       await stream.toBuffer(),
       tdf.manifest,
-      this.clientConfig.readerUrl
+      this.clientConfig.readerUrl || ''
     );
 
     if (output) {
@@ -272,7 +277,7 @@ export class Client {
     }
 
     return new PlaintextStream(windowSize, {
-      pull(controller) {
+      pull(controller: ReadableStreamDefaultController) {
         controller.enqueue(htmlBuf);
         controller.close();
       },
@@ -290,7 +295,7 @@ export class Client {
    * @return {PlaintextStream} - a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} stream containing the decrypted plaintext.
    * @see DecryptParamsBuilder
    */
-  async decrypt({ source, opts = {}, output = null, rcaSource = null }) {
+  async decrypt({ source, opts, rcaSource }: DecryptParams) {
     const keypair = await this._getOrCreateKeypair(opts);
     const tdf = TDF.create()
       .setPrivateKey(keypair.privateKey)
@@ -300,6 +305,9 @@ export class Client {
 
     // Await in order to catch any errors from this call.
     // TODO: Write error event to stream and don't await.
+    if (!rcaSource) {
+      throw new Error('Missing rcaSource');
+    }
     return await tdf.readStream(chunker, rcaSource);
   }
 
@@ -313,7 +321,7 @@ export class Client {
    * @return {string} - the unique policyId, which can be used for tracking purposes or policy management operations.
    * @see DecryptParamsBuilder
    */
-  async getPolicyId({ source }) {
+  async getPolicyId({ source }: any) {
     const chunker = await makeChunkable(source);
     const zipHelper = new ZipReader(chunker);
     const centralDirectory = await zipHelper.getCentralDirectory();

@@ -1,6 +1,7 @@
 import { Client as ClientTdf3 } from '../tdf3/src/client';
 import { DecryptParamsBuilder, EncryptParamsBuilder } from '../tdf3/src/client/builders';
 import { PlaintextStream } from '../tdf3/src/client/tdf-stream';
+import { EncryptParams, DecryptParams } from '../tdf3/src/client/builders';
 import { InputSource } from '../src/types';
 
 interface FileClientConfig {
@@ -10,6 +11,10 @@ interface FileClientConfig {
   kasEndpoint: string;
   clientSecret?: string;
   oidcRefreshToken?: string;
+}
+
+function isNodeStream(source: InputSource): source is NodeJS.ReadableStream {
+  return Object.prototype.hasOwnProperty.call(source, 'pipe');
 }
 
 export class FileClient {
@@ -37,9 +42,6 @@ export class FileClient {
     source: InputSource,
     params: EncryptParamsBuilder | DecryptParamsBuilder
   ) {
-    if (Object.prototype.hasOwnProperty.call(source, 'pipe') || source instanceof ReadableStream) {
-      params.setStreamSource(source);
-    }
     if (Buffer && Buffer.isBuffer(source)) {
       params.setBufferSource(source);
     }
@@ -50,28 +52,34 @@ export class FileClient {
     if (source instanceof ArrayBuffer) {
       params.setArrayBufferSource(source);
     }
+
+    if (isNodeStream(source) || source instanceof ReadableStream) {
+      params.setStreamSource(source);
+    }
     return params.build();
   }
 
   async encrypt(
     source: InputSource = '',
     users: string[] = [],
-    params?: any
+    params?: EncryptParams
   ): Promise<PlaintextStream> {
     const encryptParams = new EncryptParamsBuilder().withOffline().withUsersWithAccess(users);
 
     if (params) {
       return await this.client.encrypt(params);
     }
-    return await this.client.encrypt(FileClient.setSource(source, encryptParams));
+    const result = FileClient.setSource(source, encryptParams);
+    return await this.client.encrypt(<EncryptParams>result);
   }
 
-  async decrypt(source: InputSource = '', params?: any): Promise<PlaintextStream> {
+  async decrypt(source: InputSource = '', params?: DecryptParams): Promise<PlaintextStream> {
     const decryptParams = new DecryptParamsBuilder();
 
     if (params) {
       return await this.client.decrypt(params);
     }
-    return await this.client.decrypt(FileClient.setSource(source, decryptParams));
+    const result = FileClient.setSource(source, decryptParams);
+    return await this.client.decrypt(<DecryptParams>result);
   }
 }

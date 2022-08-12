@@ -1,9 +1,12 @@
 import ReadableStream from './DecoratedReadableStream';
+// @ts-ignore
 import streamSaver from 'streamsaver';
 import { fileSave } from 'browser-fs-access';
 import { isFirefox } from '../../../src/utils';
+import { ReadableStreamDefaultReadResult } from 'stream/web';
 
 class BrowserTdfStream extends ReadableStream {
+  contentLength = 0;
   static convertToWebStream() {
     throw new Error('Please use Web Streams in browser environment');
   }
@@ -25,7 +28,7 @@ class BrowserTdfStream extends ReadableStream {
     return await BrowserTdfStream.toBuffer(this.stream);
   }
 
-  static async toBuffer(stream) {
+  static async toBuffer(stream: any) {
     const reader = stream.getReader();
     let accumulator = new Uint8Array();
     let done = false;
@@ -49,7 +52,7 @@ class BrowserTdfStream extends ReadableStream {
    *
    * @param {string} filepath - the path of the local file to write plaintext to.
    */
-  async toFile(filepath) {
+  async toFile(filepath: string) {
     const fileName = filepath || 'download.tdf';
 
     if (isFirefox()) {
@@ -73,9 +76,11 @@ class BrowserTdfStream extends ReadableStream {
     const pump = () =>
       reader
         .read()
-        .then((res) => (res.done ? writer.close() : writer.write(res.value).then(pump)));
+        .then((res: ReadableStreamDefaultReadResult<void>) =>
+          res.done ? writer.close() : writer.write(res.value).then(pump)
+        );
     pump();
   }
 }
 
-export default BrowserTdfStream
+export default BrowserTdfStream;
