@@ -63,7 +63,7 @@ export class FileClient {
     source: InputSource = '',
     users: string[] = [],
     params?: EncryptParams
-  ): Promise<PlaintextStream> {
+  ): Promise<PlaintextStream | NodeJS.WriteStream> {
     const encryptParams = new EncryptParamsBuilder().withOffline().withUsersWithAccess(users);
 
     if (params) {

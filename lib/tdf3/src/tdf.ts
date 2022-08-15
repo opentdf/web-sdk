@@ -148,7 +148,7 @@ class TDF extends EventEmitter {
     return Buffer.from(fullHtmlString);
   }
 
-  static unwrapHtml(htmlPayload: Buffer) {
+  static unwrapHtml(htmlPayload: Buffer | Uint8Array) {
     const html = htmlPayload.toString();
     const payloadRe = /<input id=['"]?data-input['"]?[^>]*value=['"]?([a-zA-Z0-9+/=]+)['"]?/;
     try {
@@ -350,10 +350,11 @@ class TDF extends EventEmitter {
   }
 
   addContentStream(contentStream: unknown, mimeType?: string) {
-    this.contentStream =
-      contentStream instanceof ReadableStream
-        ? contentStream
-        : PlaintextStream.convertToWebStream(contentStream);
+    if (contentStream instanceof ReadableStream) {
+      this.contentStream = contentStream;
+    } else {
+      throw new Error('Please use Web Streams in browser environment');
+    }
     this.mimeType = mimeType;
     return this;
   }
@@ -739,7 +740,8 @@ class TDF extends EventEmitter {
     const plaintextStream = new PlaintextStream(segmentSizeDefault, underlingSource);
 
     if (upsertResponse) {
-      plaintextStream.upsertResponse = upsertResponse;
+      // Looks like unused code | stream.upsertResponse equals empty array
+      // plaintextStream.upsertResponse = upsertResponse;
       plaintextStream.tdfSize = totalByteCount;
       plaintextStream.KEK = kek.payload.asBuffer().toString('base64');
       plaintextStream.algorithm = this.manifest.encryptionInformation.method.algorithm;
@@ -882,7 +884,7 @@ class TDF extends EventEmitter {
     let encryptedOffset = 0;
 
     const outputStream = new PlaintextStream(this.segmentSizeDefault, {
-      async pull(controller: ReadableStreamDefaultController) {
+      pull: async (controller: ReadableStreamDefaultController) => {
         while (segments.length && !!controller.desiredSize && controller.desiredSize >= 0) {
           const segment = segments.shift();
           const encryptedSegmentSize = segment?.encryptedSegmentSize || encryptedSegmentSizeDefault;
@@ -896,7 +898,7 @@ class TDF extends EventEmitter {
 
           // use the segment alg type if provided, otherwise use the root sig alg
           const segmentIntegrityAlgorithmType =
-            this.manifest.encryptionInformation.integrityInformation.segmentHashAlg;
+            this.manifest?.encryptionInformation.integrityInformation.segmentHashAlg;
           const segmentHashStr = await this.getSignature(
             reconstructedKeyBinary,
             Binary.fromBuffer(encryptedChunk),

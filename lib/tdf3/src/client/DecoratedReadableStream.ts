@@ -11,13 +11,19 @@ import stream from '@readableStream';
 import Metadata from '../tdf';
 
 import { EventEmitter } from 'events';
+import { Manifest } from '../models';
 
 class DecoratedReadableStream {
+  KEK: string;
+  algorithm: string;
+  tdfSize: number;
   stream: ReadableStream;
   on: NodeJS.EventEmitter['on'];
   emit: NodeJS.EventEmitter['emit'];
   metadata?: Metadata;
   contentLength?: number;
+  manifest: Manifest;
+  // upsertResponse: void[];
 
   constructor(byteLimit: number, underlyingSource: UnderlyingSource) {
     this.stream = new stream.ReadableStream(underlyingSource, { highWaterMark: byteLimit });

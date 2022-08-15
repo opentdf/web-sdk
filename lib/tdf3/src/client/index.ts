@@ -32,6 +32,7 @@ const HTML_BYTE_LIMIT = 100 * 1000 * 1000; // 100 MB, see WS-9476.
 // No default config for now. Delegate to Virtru wrapper for endpoints.
 const defaultClientConfig = { oidcOrigin: '' };
 
+// @ts-ignore Declared but its value is never read.
 const uploadBinaryToS3 = async function (
   stream: ReadableStream,
   uploadUrl: string,
@@ -251,10 +252,11 @@ export class Client {
 
     const byteLimit = asHtml ? HTML_BYTE_LIMIT : GLOBAL_BYTE_LIMIT;
     const stream = await tdf.writeStream(byteLimit, rcaSource);
-    if (rcaSource) {
-      const url = stream.upsertResponse[0][0].storageLinks.payload.upload;
-      await uploadBinaryToS3(stream.stream, url, stream.tdfSize);
-    }
+    // Looks like invalid calls | stream.upsertResponse equals empty array?
+    // if (rcaSource) {
+    //   const url = stream.upsertResponse[0][0].storageLinks.payload.upload;
+    //   await uploadBinaryToS3(stream.stream, url, stream.tdfSize);
+    // }
     if (!asHtml) {
       return stream;
     }
