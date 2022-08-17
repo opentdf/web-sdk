@@ -4,7 +4,7 @@
     ["module-resolver", {
       "alias": {
         "@readableStream": "./tdf3/mocks/stream-web-node.js",
-        "@tdfStream": "./tdf3/src/client/NodeTdfStream.js",
+        "@tdfStream": "./tdf3/src/client/NodeTdfStream.ts",
         "@runtimeConfig": "./tdf3/src/utils/aws-lib-storage/runtimeConfig"
       }
     }]

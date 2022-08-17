@@ -5,7 +5,7 @@
     "baseUrl": "./",
     "paths": {
       "@readableStream": ["tdf3/mocks/stream-web.js", "tdf3/mocks/stream-web-node.js"],
-      "@tdfStream": ["tdf3/src/client/BrowserTdfSteam.js", "tdf3/src/client/NodeTdfStream.js"]
+      "@tdfStream": ["tdf3/src/client/BrowserTdfSteam.js", "tdf3/src/client/NodeTdfStream.ts"]
     },
     "composite": true,
     "declaration": true,
