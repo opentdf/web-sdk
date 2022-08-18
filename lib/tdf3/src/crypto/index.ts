@@ -22,7 +22,7 @@ import {
 
 // Used to pass into native crypto functions
 const METHODS: KeyUsage[] = ['encrypt', 'decrypt'];
-export const isSupported = globalThis.crypto !== undefined;
+export const isSupported = typeof globalThis.crypto !== 'undefined';
 
 export const method = 'http://www.w3.org/2001/04/xmlenc#aes256-cbc';
 export const name = 'BrowserNativeCryptoService';
