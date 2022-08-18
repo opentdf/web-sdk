@@ -307,9 +307,6 @@ export class Client {
 
     // Await in order to catch any errors from this call.
     // TODO: Write error event to stream and don't await.
-    if (!rcaSource) {
-      throw new Error('Missing rcaSource');
-    }
     return await tdf.readStream(chunker, rcaSource);
   }
 

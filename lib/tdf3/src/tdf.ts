@@ -1,4 +1,5 @@
 /* eslint-disable no-async-promise-executor */
+// @ts-nocheck
 import { EventEmitter } from 'events';
 import axios, { AxiosRequestConfig, Method } from 'axios';
 import crc32 from 'buffer-crc32';
@@ -115,15 +116,18 @@ class TDF extends EventEmitter {
     return new TDF();
   }
 
-  static createCipher() {
-    return new AesGcmCipher(cryptoService);
+  static createCipher(type) {
+    if (type === 'aes-256-gcm') {
+      return new AesGcmCipher(cryptoService);
+    }
+    throw new Error(`Unsupported cipher [${type}]`);
   }
 
   static async generateKeyPair(): Promise<PemKeyPair> {
     return await cryptoService.generateKeyPair();
   }
 
-  static generatePolicyUuid(): string {
+  static async generatePolicyUuid() {
     return v4();
   }
 
@@ -232,7 +236,7 @@ class TDF extends EventEmitter {
     switch (opts.type) {
       case 'split':
       default:
-        this.encryptionInformation = new SplitKey(TDF.createCipher());
+        this.encryptionInformation = new SplitKey(TDF.createCipher(opts.cipher || 'aes-256-gcm'));
         break;
     }
     return this;
@@ -251,8 +255,7 @@ class TDF extends EventEmitter {
    * @param  {String? Object?} options.metadata - Metadata. Appears to be dead code.
    * @return {<TDF>}- this instance
    */
-
-  addKeyAccess({ type, url, publicKey, attributeUrl, metadata = null }: AddKeyAccess) {
+  addKeyAccess({ type, url, publicKey, attributeUrl, metadata = '' }: AddKeyAccess) {
     // TODO - run down metadata parameter. Clean it out if it isn't used this way anymore.
 
     /** Internal function to keep it DRY */
@@ -349,12 +352,18 @@ class TDF extends EventEmitter {
     return this;
   }
 
+  // this must be binary!
+  addContent(content, mimeType) {
+    this.content = content;
+    this.mimeType = mimeType;
+    return this;
+  }
+
   addContentStream(contentStream: unknown, mimeType?: string) {
-    if (contentStream instanceof ReadableStream) {
-      this.contentStream = contentStream;
-    } else {
-      throw new Error('Please use Web Streams in browser environment');
-    }
+    this.contentStream =
+      contentStream instanceof ReadableStream
+        ? contentStream
+        : PlaintextStream.convertToWebStream(contentStream);
     this.mimeType = mimeType;
     return this;
   }
@@ -488,6 +497,7 @@ class TDF extends EventEmitter {
               JSON.stringify({ uuid: decodedPolicy.uuid })
             );
           }
+          return data;
         } catch (e) {
           throw new KasUpsertError('Unable to perform upsert operation on the KAS', e);
         }
@@ -497,6 +507,7 @@ class TDF extends EventEmitter {
 
   async writeStream(byteLimit: number, isRcaSource: boolean) {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const self = this;
     const segmentInfos: Segment[] = [];
     if (!byteLimit) {
       byteLimit = Number.MAX_SAFE_INTEGER;
@@ -556,59 +567,8 @@ class TDF extends EventEmitter {
     // start writing the content
     entryInfos[0].filename = '0.payload';
     entryInfos[0].offset = totalByteCount;
-    const sourceReader = this.contentStream?.getReader();
-    // nested helper fn's
-    function getHeader(filename: string) {
-      return zipWriter.getLocalFileHeader(filename, 0, 0, 0);
-    }
+    const sourceReader = this.contentStream.getReader();
 
-    function _countChunk(chunk: Buffer) {
-      totalByteCount += chunk.length;
-      if (totalByteCount > byteLimit) {
-        throw new Error(`Safe byte limit (${byteLimit}) exceeded`);
-      }
-      crcCounter = crc32.unsigned(chunk);
-      fileByteCount += chunk.length;
-    }
-
-    const _encryptAndCountSegment = async (chunk: Buffer) => {
-      // Don't pass in an IV here. The encrypt function will generate one for you, ensuring that each segment has a unique IV.
-      const encryptedResult = await this.encryptionInformation?.encrypt(
-        Binary.fromBuffer(chunk),
-        keyInfo.unwrappedKeyBinary
-      );
-      const payloadBuffer = encryptedResult?.payload.asBuffer();
-
-      if (!encryptedResult?.payload) {
-        throw new Error('Missed payload from encryptedResult');
-      }
-      const payloadSigStr = await this.getSignature(
-        keyInfo.unwrappedKeyBinary,
-        encryptedResult?.payload,
-        this.segmentIntegrityAlgorithm
-      );
-
-      // combined string of all hashes for root signature
-      aggregateHash += payloadSigStr;
-
-      segmentInfos.push({
-        hash: base64.encode(payloadSigStr),
-        segmentSize: chunk.length === segmentSizeDefault ? undefined : chunk.length,
-        encryptedSegmentSize:
-          payloadBuffer?.length === encryptedSegmentSizeDefault ? undefined : payloadBuffer?.length,
-      });
-      const result = encryptedResult?.payload.asBuffer();
-
-      if (result) {
-        _countChunk(result);
-      }
-
-      return result;
-    };
-
-    if (!sourceReader) {
-      throw new Error('Missing sourceReader');
-    }
     /*
     TODO: Code duplication should be addressed
     - RCA operations require that the write stream has already finished executing it's .on('end') handler before being returned,
@@ -672,29 +632,24 @@ class TDF extends EventEmitter {
           crcCounter = 0;
           fileByteCount = 0;
 
-          const { manifest } = this;
-
-          if (!manifest) {
-            throw new Error('Missing manifest data');
-          }
+          const { manifest } = self;
 
           // hash the concat of all hashes
-          const payloadSigStr = await this.getSignature(
+          const payloadSigStr = await self.getSignature(
             keyInfo.unwrappedKeyBinary,
             Binary.fromString(aggregateHash),
-            this.integrityAlgorithm
+            self.integrityAlgorithm
           );
           manifest.encryptionInformation.integrityInformation.rootSignature.sig =
             base64.encode(payloadSigStr);
           manifest.encryptionInformation.integrityInformation.rootSignature.alg =
-            this.integrityAlgorithm;
+            self.integrityAlgorithm;
 
-          manifest.encryptionInformation.integrityInformation.segmentSizeDefault =
-            segmentSizeDefault;
+          manifest.encryptionInformation.integrityInformation.segmentSizeDefault = segmentSizeDefault;
           manifest.encryptionInformation.integrityInformation.encryptedSegmentSizeDefault =
             encryptedSegmentSizeDefault;
           manifest.encryptionInformation.integrityInformation.segmentHashAlg =
-            this.segmentIntegrityAlgorithm;
+            self.segmentIntegrityAlgorithm;
           manifest.encryptionInformation.integrityInformation.segments = segmentInfos;
 
           manifest.encryptionInformation.method.isStreamable = true;
@@ -740,14 +695,55 @@ class TDF extends EventEmitter {
     const plaintextStream = new PlaintextStream(segmentSizeDefault, underlingSource);
 
     if (upsertResponse) {
-      // Looks like unused code | stream.upsertResponse equals empty array
-      // plaintextStream.upsertResponse = upsertResponse;
+      plaintextStream.upsertResponse = upsertResponse;
       plaintextStream.tdfSize = totalByteCount;
       plaintextStream.KEK = kek.payload.asBuffer().toString('base64');
       plaintextStream.algorithm = this.manifest.encryptionInformation.method.algorithm;
     }
 
     return plaintextStream;
+
+    // nested helper fn's
+    function getHeader(filename) {
+      return zipWriter.getLocalFileHeader(filename, 0, 0, 0);
+    }
+
+    function _countChunk(chunk) {
+      totalByteCount += chunk.length;
+      if (totalByteCount > byteLimit) {
+        throw new Error(`Safe byte limit (${byteLimit}) exceeded`);
+      }
+      crcCounter = crc32.unsigned(chunk, crcCounter);
+      fileByteCount += chunk.length;
+    }
+
+    async function _encryptAndCountSegment(chunk) {
+      // Don't pass in an IV here. The encrypt function will generate one for you, ensuring that each segment has a unique IV.
+      const encryptedResult = await self.encryptionInformation.encrypt(
+        Binary.fromBuffer(chunk),
+        keyInfo.unwrappedKeyBinary
+      );
+      const payloadBuffer = encryptedResult.payload.asBuffer();
+      const payloadSigStr = await self.getSignature(
+        keyInfo.unwrappedKeyBinary,
+        encryptedResult.payload,
+        self.segmentIntegrityAlgorithm
+      );
+
+      // combined string of all hashes for root signature
+      aggregateHash += payloadSigStr;
+
+      segmentInfos.push({
+        hash: base64.encode(payloadSigStr),
+        segmentSize: chunk.length === segmentSizeDefault ? undefined : chunk.length,
+        encryptedSegmentSize:
+          payloadBuffer.length === encryptedSegmentSizeDefault ? undefined : payloadBuffer.length,
+      });
+      const result = encryptedResult.payload.asBuffer();
+      _countChunk(result);
+
+      return result;
+    }
   }
 
   // load the TDF as a stream in memory, for further use in reading and key syncing
@@ -833,7 +829,7 @@ class TDF extends EventEmitter {
    * @param {Stream} outputStream - The writable stream we should put the new bits into
    * @param {Object} rcaParams - Optional field to specify if file is stored on S3
    */
-  async readStream(chunker: Chunker, rcaParams: RcaParams | null) {
+  async readStream(chunker: Chunker, rcaParams?: RcaParams) {
     const { zipReader, centralDirectory } = await this.loadTDFStream(chunker);
     if (!this.manifest) {
       throw new Error('Missing manifest data');
@@ -844,10 +840,11 @@ class TDF extends EventEmitter {
     let { reconstructedKeyBinary } = unwrapResult;
     const { metadata } = unwrapResult;
     if (rcaParams) {
-      const { wk } = rcaParams;
-      this.encryptionInformation = new SplitKey(TDF.createCipher());
+      const { wk, al } = rcaParams;
+      this.encryptionInformation = new SplitKey(TDF.createCipher(al.toLowerCase()));
+      const kekPayload = Binary.fromBuffer(Buffer.from(wk, 'base64'));
       const decodedReconstructedKeyBinary = await this.encryptionInformation.decrypt(
-        Buffer.from(wk, 'base64'),
+        kekPayload.asBuffer(),
         reconstructedKeyBinary
       );
       reconstructedKeyBinary = decodedReconstructedKeyBinary.payload;
@@ -870,24 +867,26 @@ class TDF extends EventEmitter {
     }
 
     // use the wrapped key to decrypt the payload
-    const cipher = TDF.createCipher();
+    const cipher = TDF.createCipher(
+      this.manifest.encryptionInformation.method.algorithm.toLowerCase()
+    );
 
     const encryptedSegmentSizeDefault =
       parseInt(
-        String(
-          this.manifest.encryptionInformation.integrityInformation.encryptedSegmentSizeDefault
-        ) || '0'
+        this.manifest.encryptionInformation.integrityInformation.encryptedSegmentSizeDefault
       ) || DEFAULT_SEGMENT_SIZE;
 
     // TODO: Don't await on each segment serially, instead use event-driven approach to prevent deadlock.
     // See: https://github.com/jherwitz/tdf3-js/blob/3ec3c8a3b8c5cecb6f6976b540d5ecde21183c8c/src/tdf.js#L739
     let encryptedOffset = 0;
 
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const that = this;
     const outputStream = new PlaintextStream(this.segmentSizeDefault, {
-      pull: async (controller: ReadableStreamDefaultController) => {
+      async pull(controller: ReadableStreamDefaultController) {
         while (segments.length && !!controller.desiredSize && controller.desiredSize >= 0) {
           const segment = segments.shift();
-          const encryptedSegmentSize = segment?.encryptedSegmentSize || encryptedSegmentSizeDefault;
+          const encryptedSegmentSize = segment.encryptedSegmentSize || encryptedSegmentSizeDefault;
           const encryptedChunk = await zipReader.getPayloadSegment(
             centralDirectory,
             '0.payload',
@@ -898,8 +897,8 @@ class TDF extends EventEmitter {
 
           // use the segment alg type if provided, otherwise use the root sig alg
           const segmentIntegrityAlgorithmType =
-            this.manifest?.encryptionInformation.integrityInformation.segmentHashAlg;
-          const segmentHashStr = await this.getSignature(
+            that.manifest?.encryptionInformation.integrityInformation.segmentHashAlg;
+          const segmentHashStr = await that.getSignature(
             reconstructedKeyBinary,
             Binary.fromBuffer(encryptedChunk),
             segmentIntegrityAlgorithmType || integrityAlgorithmType
