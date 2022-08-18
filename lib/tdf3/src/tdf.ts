@@ -645,7 +645,8 @@ class TDF extends EventEmitter {
           manifest.encryptionInformation.integrityInformation.rootSignature.alg =
             self.integrityAlgorithm;
 
-          manifest.encryptionInformation.integrityInformation.segmentSizeDefault = segmentSizeDefault;
+          manifest.encryptionInformation.integrityInformation.segmentSizeDefault =
+            segmentSizeDefault;
           manifest.encryptionInformation.integrityInformation.encryptedSegmentSizeDefault =
             encryptedSegmentSizeDefault;
           manifest.encryptionInformation.integrityInformation.segmentHashAlg =
