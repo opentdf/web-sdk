@@ -251,7 +251,7 @@ wwIDAQAB
     getMetadataObject() {
       const baseObject = {
         connectOptions: {
-          testUrl: 'http://testurl.com',
+          testUrl: 'http://testurl.com', // Sensitive
         },
         policyObject: {},
       };
@@ -281,7 +281,7 @@ wwIDAQAB
     },
 
     getKasUrl() {
-      return 'http://local.virtru.com:4000';
+      return 'http://local.virtru.com:4000'; // Sensitive
     },
   });
 }
