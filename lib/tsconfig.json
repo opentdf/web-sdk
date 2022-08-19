@@ -4,7 +4,7 @@
     "alwaysStrict": true,
     "baseUrl": "./",
     "paths": {
-      "@readableStream": ["tdf3/mocks/stream-web.js", "tdf3/mocks/stream-web-node.js"],
+      "@readableStream": ["tdf3/mocks/stream-web.js", "tdf3/mocks/stream-web-node.ts"],
       "@tdfStream": ["tdf3/src/client/BrowserTdfSteam.js", "tdf3/src/client/NodeTdfStream.ts"]
     },
     "composite": true,
