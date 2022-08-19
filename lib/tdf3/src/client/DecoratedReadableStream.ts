@@ -1,12 +1,25 @@
-import { get } from 'axios';
-import { S3Client } from '@aws-sdk/client-s3';
+import axios from 'axios';
+import {
+  AbortMultipartUploadCommandOutput,
+  CompleteMultipartUploadCommandOutput,
+  S3Client,
+} from '@aws-sdk/client-s3';
+import { VirtruS3Config, VirtruTempS3Credentials, VirtruCreds } from './builders';
 import { Upload } from '../utils/aws-lib-storage';
+import { Options } from '../utils/aws-lib-storage/types';
 import stream from '@readableStream';
+import Metadata from '../tdf';
 
 import { EventEmitter } from 'events';
 
 class DecoratedReadableStream {
-  constructor(byteLimit, underlyingSource) {
+  stream: ReadableStream;
+  on: NodeJS.EventEmitter['on'];
+  emit: NodeJS.EventEmitter['emit'];
+  metadata?: Metadata;
+  contentLength?: number;
+
+  constructor(byteLimit: number, underlyingSource: UnderlyingSource) {
     this.stream = new stream.ReadableStream(underlyingSource, { highWaterMark: byteLimit });
     const ee = new EventEmitter();
     this.on = ee.on;
@@ -22,17 +35,21 @@ class DecoratedReadableStream {
    * @param {string} [credentialURL] - the url to request remote storage credentials from.
    * @return {RemoteUploadResponse} - an object containing metadata for the uploaded file.
    */
-  async toRemoteStore(fileName, config, credentialURL) {
+  async toRemoteStore(
+    fileName: string,
+    config: VirtruS3Config,
+    credentialURL: string
+  ): Promise<CompleteMultipartUploadCommandOutput | AbortMultipartUploadCommandOutput> {
     // State
     const CONCURRENT_UPLOADS = 6;
     const MAX_UPLOAD_PART_SIZE = 1024 * 1024 * 5; // 5MB
-    let storageParams;
-    let virtruTempS3Credentials;
+    let storageParams: VirtruS3Config;
+    let virtruTempS3Credentials: VirtruTempS3Credentials | undefined;
 
     // Param validation
     if (!config) {
       try {
-        virtruTempS3Credentials = await get(credentialURL);
+        virtruTempS3Credentials = await axios.get(credentialURL);
       } catch (e) {
         console.error(e);
       }
@@ -40,15 +57,17 @@ class DecoratedReadableStream {
 
     // Build a storage config object from 'config' or 'virtruTempS3Credentials'
     if (virtruTempS3Credentials) {
+      const credentials: VirtruCreds = {
+        accessKeyId: virtruTempS3Credentials.data.fields.AWSAccessKeyId,
+        secretAccessKey: virtruTempS3Credentials.data.fields.AWSSecretAccessKey,
+        sessionToken: virtruTempS3Credentials.data.fields.AWSSessionToken,
+        policy: virtruTempS3Credentials.data.fields.policy,
+        signature: virtruTempS3Credentials.data.fields.signature,
+        key: virtruTempS3Credentials.data.fields.key,
+      };
+
       storageParams = {
-        credentials: {
-          accessKeyId: virtruTempS3Credentials.data.fields.AWSAccessKeyId,
-          secretAccessKey: virtruTempS3Credentials.data.fields.AWSSecretAccessKey,
-          sessionToken: virtruTempS3Credentials.data.fields.AWSSessionToken,
-          policy: virtruTempS3Credentials.data.fields.policy,
-          signature: virtruTempS3Credentials.data.fields.signature,
-          key: virtruTempS3Credentials.data.fields.key,
-        },
+        credentials,
         region: virtruTempS3Credentials.data.url.split('.')[1],
         signatureVersion: 'v4',
         s3ForcePathStyle: false,
@@ -56,30 +75,21 @@ class DecoratedReadableStream {
         useAccelerateEndpoint: true,
       };
     } else {
-      storageParams = {
-        ...config,
-      };
+      storageParams = config;
     }
 
-    let BUCKET_NAME;
-    if (config && config.Bucket) {
-      BUCKET_NAME = config.Bucket;
-    } else {
-      BUCKET_NAME =
-        virtruTempS3Credentials && virtruTempS3Credentials.data
-          ? virtruTempS3Credentials.data.bucket
-          : undefined;
-    }
+    const BUCKET_NAME: string | undefined =
+      config?.Bucket || virtruTempS3Credentials?.data?.bucket || undefined;
 
     const FILE_NAME = fileName || 'upload.tdf';
 
     const s3 = new S3Client(storageParams);
 
     // Managed Parallel Upload
-    const uploadParams = {
+    const uploadParams: Options['params'] = {
       Bucket: BUCKET_NAME,
       Key: FILE_NAME,
-      Body: this,
+      Body: this.stream,
     };
 
     try {
@@ -108,7 +118,7 @@ class DecoratedReadableStream {
         resolve(this.metadata);
       } else {
         this.on('error', reject);
-        this.on('rewrap', (rewrapResponse) => {
+        this.on('rewrap', (rewrapResponse: Metadata) => {
           this.metadata = rewrapResponse;
           resolve(rewrapResponse);
         });

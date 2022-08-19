@@ -13,14 +13,14 @@ import PolicyObject from '../../../src/tdf/PolicyObject';
 const { get } = axios;
 
 export const DEFAULT_SEGMENT_SIZE: number = 1000 * 1000;
-type VirtruS3Config = S3ClientConfig & {
+export type VirtruS3Config = S3ClientConfig & {
   Bucket?: string;
   signatureVersion: string;
   s3ForcePathStyle: boolean;
   maxRetries: number;
 };
 
-type VirtruCreds = S3ClientConfig['credentials'] & {
+export type VirtruCreds = S3ClientConfig['credentials'] & {
   policy: string;
   signature: string;
   key: string;
@@ -32,7 +32,7 @@ type FetchCreds = Pick<VirtruCreds, 'policy' | 'signature' | 'key'> & {
   AWSSessionToken: string;
 };
 
-interface VirtruTempS3Credentials {
+export interface VirtruTempS3Credentials {
   data: {
     bucket: string;
     fields: FetchCreds;
