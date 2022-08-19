@@ -412,15 +412,15 @@ class TDF extends EventEmitter {
   async getSignature(unwrappedKeyBinary: Binary, payloadBinary: Binary, algorithmType: string) {
     switch (algorithmType.toLowerCase()) {
       case 'hs256':
+      case 'gmac':
+        // use the auth tag baked into the encrypted payload
+        return payloadBinary.asBuffer().slice(-16).toString('hex');
       default:
         // simple hmac is the default
         return await cryptoService.hmac(
           unwrappedKeyBinary.asBuffer().toString('hex'),
           payloadBinary.asBuffer().toString()
         );
-      case 'gmac':
-        // use the auth tag baked into the encrypted payload
-        return payloadBinary.asBuffer().slice(-16).toString('hex');
     }
   }
 
