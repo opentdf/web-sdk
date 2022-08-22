@@ -79,6 +79,15 @@ export class FileClient {
     if (params) {
       return await this.client.decrypt(params);
     }
+
+    //@ts-ignore
+    const stream = source?.stream;
+
+    if (stream && stream instanceof ReadableStream) {
+      const result = FileClient.setSource(stream, decryptParams);
+      return await this.client.decrypt(<DecryptParams>result);
+    }
+
     const result = FileClient.setSource(source, decryptParams);
     return await this.client.decrypt(<DecryptParams>result);
   }
