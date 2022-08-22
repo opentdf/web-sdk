@@ -89,8 +89,6 @@ const DEFAULT_SEGMENT_SIZE = 1024 \* 1024;
 
 ------ Service Interfaces ---------
 
-#### addContent(content)
-
 #### addContentStream(contentStream)
 
 #### [PENDING] addToZip(fileObj)

@@ -3,6 +3,38 @@ import { v4 } from 'uuid';
 
 import { AttributeSet } from '../src/models';
 
+type CreateAttributePayload = {
+  attribute: string;
+  displayName: string;
+  pubKey: string;
+  kasUrl: string;
+  isDefault: string;
+};
+
+type CreateJwtAttributeContext = {
+  aaPrivateKey: string;
+  createAttribute: (prop: CreateAttributePayload) => CreateAttributePayload;
+};
+
+type createAttributeSetContext = {
+  createAttribute: (prop: CreateAttributePayload) => CreateAttributePayload;
+};
+
+type GetEntityObjectContext = {
+  aaPrivateKey: string;
+  entityPublicKey: string;
+  createJwtAttribute: (prop: CreateAttributePayload) => Promise<{ jwt?: string }>;
+  getUserId: () => string;
+};
+
+type GetPolicyObjectContext = {
+  getUserId: () => string;
+};
+
+type GetScopeContext = {
+  getUserId: () => string;
+};
+
 export default function getMocks() {
   return Object.create({
     // TODO: diff key then KAS
@@ -145,11 +177,11 @@ wwIDAQAB
 -----END PUBLIC KEY-----`,
     createAttribute({
       attribute = 'https://api.virtru.com/attr/default/value/default',
-      displayName = 'Default Attribute',
-      pubKey = this.kasPublicKey,
+      displayName = 'Default Attribute', // @ts-ignore
+      pubKey = this.kasPublicKey, // @ts-ignore
       kasUrl = this.getKasUrl(),
       isDefault = 'not set',
-    }) {
+    }: CreateAttributePayload) {
       if (isDefault === 'not set') {
         // If none of the options are specified this creates a default attribute
         return { attribute, displayName, pubKey, kasUrl };
@@ -157,7 +189,7 @@ wwIDAQAB
       return { attribute, displayName, pubKey, kasUrl, isDefault };
     },
 
-    async createJwtAttribute(options) {
+    async createJwtAttribute(this: CreateJwtAttributeContext, options: CreateAttributePayload) {
       // If none of the options are specified this creates a default attribute
       try {
         const attrObj = this.createAttribute(options);
@@ -165,7 +197,7 @@ wwIDAQAB
         const pkKeyLike = await importPKCS8(this.aaPrivateKey, 'RS256');
 
         const jwt = await new SignJWT(attrObj)
-          .setProtectedHeader({ alg: 'RS256'})
+          .setProtectedHeader({ alg: 'RS256' })
           .setIssuedAt()
           .setExpirationTime('2h')
           .sign(pkKeyLike);
@@ -178,14 +210,15 @@ wwIDAQAB
       }
     },
 
-    async createAttributeSet(arrayOfAttrOptions = []) {
+    async createAttributeSet(this: createAttributeSetContext, arrayOfAttrOptions = []) {
       const aSet = new AttributeSet();
       const attributes = arrayOfAttrOptions.forEach((options) => this.createAttribute(options));
+      // @ts-ignore
       aSet.addAttributes(attributes);
       return aSet;
     },
 
-    async getEntityObject(attributes = []) {
+    async getEntityObject(this: GetEntityObjectContext, attributes = []) {
       const jwtAttributes = await Promise.all(
         attributes.map(async (options) => {
           const attrJwt = await this.createJwtAttribute(options);
@@ -201,8 +234,9 @@ wwIDAQAB
 
       const pkKeyLike = await importPKCS8(this.aaPrivateKey, 'RS256');
 
+      // @ts-ignore
       baseObject.cert = await new SignJWT(baseObject)
-        .setProtectedHeader({ alg: 'RS256'})
+        .setProtectedHeader({ alg: 'RS256' })
         .setIssuedAt()
         .setExpirationTime('24h')
         .sign(pkKeyLike);
@@ -217,7 +251,7 @@ wwIDAQAB
     getMetadataObject() {
       const baseObject = {
         connectOptions: {
-          testUrl: 'http://testurl.com',
+          testUrl: 'http://testurl.com', // Sensitive
         },
         policyObject: {},
       };
@@ -225,7 +259,7 @@ wwIDAQAB
       return baseObject;
     },
 
-    getPolicyObject() {
+    getPolicyObject(this: GetPolicyObjectContext) {
       const userId = this.getUserId();
       const baseObject = {
         uuid: v4(),
@@ -238,7 +272,7 @@ wwIDAQAB
       return baseObject;
     },
 
-    getScope() {
+    getScope(this: GetScopeContext) {
       const userId = this.getUserId();
       return {
         attributes: [],
@@ -247,7 +281,7 @@ wwIDAQAB
     },
 
     getKasUrl() {
-      return 'http://local.virtru.com:4000';
+      return 'http://local.virtru.com:4000'; // Sensitive
     },
   });
 }
