@@ -1,9 +1,10 @@
-import ReadableStream from './DecoratedReadableStream';
+import DecoratedReadableStream from './DecoratedReadableStream';
+// @ts-ignore
 import streamSaver from 'streamsaver';
 import { fileSave } from 'browser-fs-access';
 import { isFirefox } from '../../../src/utils';
 
-class BrowserTdfStream extends ReadableStream {
+class BrowserTdfStream extends DecoratedReadableStream {
   static convertToWebStream() {
     throw new Error('Please use Web Streams in browser environment');
   }
@@ -25,7 +26,7 @@ class BrowserTdfStream extends ReadableStream {
     return await BrowserTdfStream.toBuffer(this.stream);
   }
 
-  static async toBuffer(stream) {
+  static async toBuffer(stream: ReadableStream) {
     const reader = stream.getReader();
     let accumulator = new Uint8Array();
     let done = false;
@@ -49,17 +50,16 @@ class BrowserTdfStream extends ReadableStream {
    *
    * @param {string} filepath - the path of the local file to write plaintext to.
    */
-  async toFile(filepath) {
-    const fileName = filepath || 'download.tdf';
-
+  async toFile(filepath = 'download.tdf'): Promise<void> {
     if (isFirefox()) {
-      return await fileSave(new Response(this.stream), {
-        fileName: fileName,
+      await fileSave(new Response(this.stream), {
+        fileName: filepath,
         extensions: [`.${filepath.split('.').pop()}`],
       });
+      return;
     }
 
-    const fileStream = streamSaver.createWriteStream(fileName, {
+    const fileStream = streamSaver.createWriteStream(filepath, {
       ...(this.contentLength && { size: this.contentLength }),
     });
 
@@ -70,12 +70,10 @@ class BrowserTdfStream extends ReadableStream {
     // Write (pipe) manually
     const writer = fileStream.getWriter();
     const reader = this.stream.getReader();
-    const pump = () =>
-      reader
-        .read()
-        .then((res) => (res.done ? writer.close() : writer.write(res.value).then(pump)));
+    const pump = (): Promise<void> =>
+      reader.read().then((res) => (res.done ? writer.close() : writer.write(res.value).then(pump)));
     pump();
   }
 }
 
-export default BrowserTdfStream
+export default BrowserTdfStream;

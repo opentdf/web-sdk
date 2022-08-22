@@ -24,21 +24,21 @@ export type EncryptionInformation = {
   readonly keyAccess: KeyAccessObject[];
   readonly integrityInformation: {
     readonly rootSignature: {
-      readonly alg: string;
-      readonly sig: string;
+      alg: string;
+      sig: string;
     };
     readonly segmentHash: string;
-    readonly segmentHashAlg: string;
-    readonly segments: Segment[];
-    readonly segmentSizeDefault?: number;
-    readonly encryptedSegmentSizeDefault?: number;
+    segmentHashAlg: string;
+    segments: Segment[];
+    segmentSizeDefault?: number;
+    encryptedSegmentSizeDefault?: number;
   };
   readonly method: {
     readonly algorithm: string;
-    readonly isStreamable: boolean;
+    isStreamable: boolean;
     readonly iv: string;
   };
-  readonly policy: string;
+  policy: string;
 };
 
 export class SplitKey {

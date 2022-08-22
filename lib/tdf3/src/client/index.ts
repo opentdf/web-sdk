@@ -1,30 +1,47 @@
 import { v4 } from 'uuid';
-import { put } from 'axios';
-import { ZipReader, inBrowser, fromBuffer, fromDataSource, streamToBuffer } from '../utils';
+import axios from 'axios';
+import {
+  ZipReader,
+  inBrowser,
+  fromBuffer,
+  fromDataSource,
+  streamToBuffer,
+  Chunker,
+} from '../utils';
 import { base64 } from '../../../src/encodings';
 import TDF from '../tdf';
 import { PlaintextStream } from './tdf-stream';
 import { OIDCClientCredentialsProvider } from '../../../src/auth/oidc-clientcredentials-provider';
 import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-provider';
 import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider';
+import { PemKeyPair } from '../crypto/declarations';
+import { AuthProvider } from '../../../src/auth/auth';
+import { EncryptParams, DecryptParams } from './builders';
 
-import { DEFAULT_SEGMENT_SIZE, DecryptParamsBuilder, EncryptParamsBuilder } from './builders';
+import {
+  DEFAULT_SEGMENT_SIZE,
+  DecryptParamsBuilder,
+  EncryptParamsBuilder,
+  DecryptSource,
+} from './builders';
+import { Policy } from '../models';
 
 const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
 const HTML_BYTE_LIMIT = 100 * 1000 * 1000; // 100 MB, see WS-9476.
 
 // No default config for now. Delegate to Virtru wrapper for endpoints.
-const defaultClientConfig = {};
+const defaultClientConfig = { oidcOrigin: '' };
 
-const uploadBinaryToS3 = async function (stream, uploadUrl, fileSize) {
+// @ts-ignore Declared but its value is never read.
+const uploadBinaryToS3 = async function (
+  stream: ReadableStream,
+  uploadUrl: string,
+  fileSize: number
+) {
   try {
-    if (inBrowser()) {
-      /* Buffer the stream in a browser context, stream browser uploads are unsupported
-         without a createPresignedPost url or via the aws-sdk using getFederationToken */
-      stream = await streamToBuffer(stream);
-    }
+    const body: Buffer | ReadableStream = inBrowser() ? await streamToBuffer(stream) : stream;
 
-    const res = await put(uploadUrl, stream, {
+    await axios.put(uploadUrl, body, {
       headers: {
         'Content-Length': fileSize,
         'content-type': 'application/zip',
@@ -32,20 +49,21 @@ const uploadBinaryToS3 = async function (stream, uploadUrl, fileSize) {
       },
       maxContentLength: Infinity,
       maxBodyLength: Infinity,
-      body: stream,
     });
-    return res.data;
   } catch (e) {
     console.error(e);
     throw e;
   }
 };
-const getFirstTwoBytes = async (chunker) => new TextDecoder().decode(await chunker(0, 2));
+const getFirstTwoBytes = async (chunker: Chunker) => new TextDecoder().decode(await chunker(0, 2));
 
-const makeChunkable = async (source) => {
+const makeChunkable = async (source: DecryptSource) => {
+  if (!source) {
+    throw new Error('Invalid source');
+  }
   // dump stream to buffer
   // we don't support streams anyways (see zipreader.js)
-  let initialChunker;
+  let initialChunker: Chunker;
   let buf = null;
   if (source.type === 'stream') {
     buf = await streamToBuffer(source.location);
@@ -57,7 +75,7 @@ const makeChunkable = async (source) => {
     initialChunker = await fromDataSource(source);
   }
 
-  const magic = await getFirstTwoBytes(initialChunker);
+  const magic: string = await getFirstTwoBytes(initialChunker);
   // Pull first two bytes from source.
   if (magic === 'PK') {
     return initialChunker;
@@ -69,7 +87,24 @@ const makeChunkable = async (source) => {
   return fromBuffer(zipBuf);
 };
 
+interface ClientConfig {
+  keypair?: PemKeyPair;
+  organizationName?: string;
+  clientId?: string;
+  kasEndpoint?: string;
+  keyRewrapEndpoint?: string;
+  keyUpsertEndpoint?: string;
+  clientSecret?: string;
+  oidcRefreshToken?: string;
+  kasPublicKey?: string;
+  oidcOrigin?: string;
+  externalJwt?: string;
+  authProvider?: AuthProvider;
+  readerUrl?: string;
+}
+
 export class Client {
+  clientConfig: ClientConfig;
   /**
    * An abstraction for protecting and accessing data using TDF3 services.
    * @param {Object} config - configuration parameters
@@ -83,10 +118,10 @@ export class Client {
    * @param {String} [config.externalJwt] - JWT from external authority (eg Google)
    * @param {String} [config.oidcOrigin] - Endpoint of authentication service
    */
-  constructor(config = {}) {
+  constructor(config: ClientConfig) {
     const clientConfig = { ...defaultClientConfig, ...config };
 
-    let pubKey = clientConfig.keypair ? clientConfig.keypair.publicKey : null;
+    const pubKey = clientConfig?.keypair?.publicKey;
 
     if (!clientConfig.organizationName) {
       throw new Error('Client Organization must be provided to constructor');
@@ -179,21 +214,22 @@ export class Client {
     scope,
     source,
     asHtml = false,
-    metadata = {},
-    opts = {},
-    mimeType = null,
+    metadata = null,
+    opts,
+    mimeType,
     offline = false,
-    output = null,
-    rcaSource = null,
+    output,
+    rcaSource = false,
     windowSize = DEFAULT_SEGMENT_SIZE,
-  }) {
+  }: EncryptParams) {
     if (rcaSource && asHtml) throw new Error('rca links should be used only with zip format');
 
-    const keypair = await this._getOrCreateKeypair(opts);
+    const keypair: PemKeyPair = await this._getOrCreateKeypair(opts);
     const policyObject = await this._createPolicyObject(scope);
     const kasPublicKey = await this._getOrFetchKasPubKey();
 
     // TODO: Refactor underlying builder to remove some of this unnecessary config.
+
     const tdf = TDF.create()
       .setPrivateKey(keypair.privateKey)
       .setPublicKey(keypair.publicKey)
@@ -205,7 +241,7 @@ export class Client {
         type: offline ? 'wrapped' : 'remote',
         url: this.clientConfig.kasEndpoint,
         publicKey: kasPublicKey,
-        metadata: metadata,
+        metadata,
       })
       .setDefaultSegmentSize(windowSize)
       // set root sig and segment types
@@ -216,20 +252,24 @@ export class Client {
 
     const byteLimit = asHtml ? HTML_BYTE_LIMIT : GLOBAL_BYTE_LIMIT;
     const stream = await tdf.writeStream(byteLimit, rcaSource);
-    if (rcaSource) {
-      const url = stream.upsertResponse[0][0].storageLinks.payload.upload;
-      await uploadBinaryToS3(stream.stream, url, stream.tdfSize);
-    }
+    // Looks like invalid calls | stream.upsertResponse equals empty array?
+    // if (rcaSource) {
+    //   const url = stream.upsertResponse[0][0].storageLinks.payload.upload;
+    //   await uploadBinaryToS3(stream.stream, url, stream.tdfSize);
+    // }
     if (!asHtml) {
       return stream;
     }
 
     // Wrap if it's html.
     // FIXME: Support streaming for html format.
+    if (!tdf.manifest) {
+      throw new Error('Missing manifest in encrypt function');
+    }
     const htmlBuf = TDF.wrapHtml(
       await stream.toBuffer(),
-      JSON.stringify(tdf.manifest),
-      this.clientConfig.readerUrl
+      tdf.manifest,
+      this.clientConfig.readerUrl || ''
     );
 
     if (output) {
@@ -239,7 +279,7 @@ export class Client {
     }
 
     return new PlaintextStream(windowSize, {
-      pull(controller) {
+      pull(controller: ReadableStreamDefaultController) {
         controller.enqueue(htmlBuf);
         controller.close();
       },
@@ -257,7 +297,7 @@ export class Client {
    * @return {PlaintextStream} - a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} stream containing the decrypted plaintext.
    * @see DecryptParamsBuilder
    */
-  async decrypt({ source, opts = {}, output = null, rcaSource = null }) {
+  async decrypt({ source, opts, rcaSource }: DecryptParams) {
     const keypair = await this._getOrCreateKeypair(opts);
     const tdf = TDF.create()
       .setPrivateKey(keypair.privateKey)
@@ -280,7 +320,7 @@ export class Client {
    * @return {string} - the unique policyId, which can be used for tracking purposes or policy management operations.
    * @see DecryptParamsBuilder
    */
-  async getPolicyId({ source }) {
+  async getPolicyId({ source }: any) {
     const chunker = await makeChunkable(source);
     const zipHelper = new ZipReader(chunker);
     const centralDirectory = await zipHelper.getCentralDirectory();
@@ -292,7 +332,7 @@ export class Client {
   /*
    * Create a policy object for an encrypt operation.
    */
-  async _createPolicyObject(scope) {
+  async _createPolicyObject(scope: EncryptParams['scope']): Promise<Policy> {
     if (scope.policyObject) {
       // use the client override if provided
       return scope.policyObject;
@@ -313,7 +353,7 @@ export class Client {
    *
    * Additionally, update the auth injector with the (potentially new) pubkey
    */
-  async _getOrCreateKeypair(opts) {
+  async _getOrCreateKeypair(opts: undefined | { keypair: PemKeyPair }): Promise<PemKeyPair> {
     //If clientconfig has keypair, assume auth provider was already set up with pubkey and bail
     if (this.clientConfig.keypair) {
       return this.clientConfig.keypair;
@@ -321,8 +361,8 @@ export class Client {
 
     //If a keypair is being dynamically provided, then we've gotta (re)register
     // the pubkey with the auth provider
-    let keypair = {};
-    if (opts.keypair && opts.keypair.publicKey && opts.keypair.privateKey) {
+    let keypair: PemKeyPair;
+    if (opts) {
       keypair = opts.keypair;
     } else {
       //We have to generate and store a new keypair
@@ -336,7 +376,7 @@ export class Client {
     // a formatted raw PEM string isn't a valid header value and sending it raw makes keycloak's
     // header parser barf. There are more subtle ways to solve this, but this works for now.
 
-    await this.clientConfig.authProvider.updateClientPublicKey(base64.encode(keypair.publicKey));
+    await this.clientConfig?.authProvider?.updateClientPublicKey(base64.encode(keypair.publicKey));
     return keypair;
   }
 

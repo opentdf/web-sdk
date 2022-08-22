@@ -1,17 +1,53 @@
-import { S3Client, GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, GetObjectCommand, HeadObjectCommand, S3ClientConfig } from '@aws-sdk/client-s3';
 import axios from 'axios';
 import { createReadStream } from 'fs';
 import { arrayBufferToBuffer, inBrowser } from '../utils';
 import { AttributeValidator } from './validation';
+import { AttributeObject, Policy } from '../models';
+import { RcaParams } from '../tdf';
+
 import { IllegalArgumentError, IllegalEnvError } from '../errors';
+import { PemKeyPair } from '../crypto/declarations';
+import PolicyObject from '../../../src/tdf/PolicyObject';
 
 const { get } = axios;
 
-export const DEFAULT_SEGMENT_SIZE = 1000 * 1000;
+export const DEFAULT_SEGMENT_SIZE: number = 1000 * 1000;
+export type VirtruS3Config = S3ClientConfig & {
+  Bucket?: string;
+  signatureVersion: string;
+  s3ForcePathStyle: boolean;
+  maxRetries: number;
+};
 
-async function setRemoteStoreAsStream(fileName, config, credentialURL, builder) {
-  let virtruTempS3Credentials;
-  let storageParams;
+export type VirtruCreds = S3ClientConfig['credentials'] & {
+  policy: string;
+  signature: string;
+  key: string;
+};
+
+type FetchCreds = Pick<VirtruCreds, 'policy' | 'signature' | 'key'> & {
+  AWSAccessKeyId: string;
+  AWSSecretAccessKey: string;
+  AWSSessionToken: string;
+};
+
+export interface VirtruTempS3Credentials {
+  data: {
+    bucket: string;
+    fields: FetchCreds;
+    url: string;
+  };
+}
+
+async function setRemoteStoreAsStream(
+  fileName: string,
+  config: VirtruS3Config,
+  credentialURL: string,
+  builder: EncryptParamsBuilder | DecryptParamsBuilder
+): Promise<EncryptParams | DecryptParams> {
+  let virtruTempS3Credentials: VirtruTempS3Credentials | undefined;
+  let storageParams: VirtruS3Config;
 
   // Param validation
   if (!fileName) {
@@ -28,28 +64,24 @@ async function setRemoteStoreAsStream(fileName, config, credentialURL, builder) 
   }
 
   try {
-    let BUCKET_NAME;
-    if (config && config.Bucket) {
-      BUCKET_NAME = config.Bucket;
-    } else {
-      BUCKET_NAME =
-        virtruTempS3Credentials && virtruTempS3Credentials.data
-          ? virtruTempS3Credentials.data.bucket
-          : undefined;
-    }
-    const FILE_NAME = fileName;
+    const BUCKET_NAME: string | undefined =
+      config?.Bucket || virtruTempS3Credentials?.data?.bucket || undefined;
+
+    const FILE_NAME: string = fileName;
 
     // Build a storage config object from 'config' or 'virtruTempS3Credentials'
     if (virtruTempS3Credentials) {
+      const credentials: VirtruCreds = {
+        accessKeyId: virtruTempS3Credentials.data.fields.AWSAccessKeyId,
+        secretAccessKey: virtruTempS3Credentials.data.fields.AWSSecretAccessKey,
+        sessionToken: virtruTempS3Credentials.data.fields.AWSSessionToken,
+        policy: virtruTempS3Credentials.data.fields.policy,
+        signature: virtruTempS3Credentials.data.fields.signature,
+        key: virtruTempS3Credentials.data.fields.key,
+      };
+
       storageParams = {
-        credentials: {
-          accessKeyId: virtruTempS3Credentials.data.fields.AWSAccessKeyId,
-          secretAccessKey: virtruTempS3Credentials.data.fields.AWSSecretAccessKey,
-          sessionToken: virtruTempS3Credentials.data.fields.AWSSessionToken,
-          policy: virtruTempS3Credentials.data.fields.policy,
-          signature: virtruTempS3Credentials.data.fields.signature,
-          key: virtruTempS3Credentials.data.fields.key,
-        },
+        credentials,
         region: virtruTempS3Credentials.data.url.split('.')[1],
         signatureVersion: 'v4',
         s3ForcePathStyle: false,
@@ -57,9 +89,7 @@ async function setRemoteStoreAsStream(fileName, config, credentialURL, builder) 
         useAccelerateEndpoint: true,
       };
     } else {
-      storageParams = {
-        ...config,
-      };
+      storageParams = config;
     }
 
     const s3 = new S3Client(storageParams);
@@ -71,7 +101,9 @@ async function setRemoteStoreAsStream(fileName, config, credentialURL, builder) 
       })
     );
 
-    builder._params.contentLength = s3Metadata.ContentLength;
+    if (typeof s3Metadata.ContentLength === 'number') {
+      builder.setContentLength(s3Metadata.ContentLength);
+    }
 
     const s3download = await s3.send(
       new GetObjectCommand({
@@ -80,14 +112,52 @@ async function setRemoteStoreAsStream(fileName, config, credentialURL, builder) 
       })
     );
 
-    let s3Stream = s3download.Body;
+    const s3Stream = s3download.Body;
 
-    builder.setStreamSource(s3Stream);
-    return builder._deepCopy(builder._params);
+    builder.setStreamSource(s3Stream as ReadableStream);
+    return builder.build();
   } catch (e) {
     console.error(e);
     throw e;
   }
+}
+
+interface Scope {
+  dissem: string[];
+  policyId?: string;
+  policyObject?: Policy;
+  attributes: AttributeObject[];
+}
+
+type Metadata = {
+  connectOptions: {
+    testUrl: string;
+  };
+  policyObject: PolicyObject;
+};
+
+export interface EncryptParams {
+  source: null | ReadableStream | NodeJS.ReadableStream;
+  opts?: { keypair: PemKeyPair };
+  output?: NodeJS.WriteStream;
+  scope: Scope;
+  metadata: Metadata | null;
+  keypair?: CryptoKeyPair;
+  contentLength?: number;
+  offline: boolean;
+  windowSize: number;
+  asHtml: boolean;
+  rcaSource: boolean;
+  getPolicyId?: () => EncryptParams['scope']['policyId'];
+  mimeType?: string;
+}
+
+// 'Readonly<EncryptParams>': scope, metadata, offline, windowSize, asHtml
+
+// deep copy is expensive, could be faster is Immer used, but to keep SDK work
+// stable we can just make this object readonly
+function freeze<Type>(obj: Type): Readonly<Type> {
+  return Object.freeze<Type>(obj);
 }
 
 /**
@@ -95,15 +165,16 @@ async function setRemoteStoreAsStream(fileName, config, credentialURL, builder) 
  * {@link Client#encrypt|encrypt} operation. Must be built before use via the {@link EncryptParamsBuilder#build|build()} function.
  */
 class EncryptParamsBuilder {
+  private _params: EncryptParams;
+
   constructor() {
-    // TODO: Turn this into a read-only params object like Policy in the virtru wrapper.
     this._params = {
       source: null,
       scope: {
         dissem: [],
         attributes: [],
       },
-      metadata: {},
+      metadata: null,
       keypair: undefined,
       offline: false,
       windowSize: DEFAULT_SEGMENT_SIZE,
@@ -112,7 +183,16 @@ class EncryptParamsBuilder {
     };
   }
 
-  getStreamSource() {
+  setContentLength(contentLength: number) {
+    this._params.contentLength = contentLength;
+  }
+
+  withContentLength(contentLength: number) {
+    this.setContentLength(contentLength);
+    return this;
+  }
+
+  getStreamSource(): EncryptParams['source'] {
     return this._params.source;
   }
 
@@ -120,8 +200,7 @@ class EncryptParamsBuilder {
    * Specify the content to encrypt, in stream form.
    * @param {Readable} readStream - a Readable Stream to encrypt.
    */
-  setStreamSource(readStream) {
-    // TODO: Type check for ReadableStream.
+  setStreamSource(readStream: ReadableStream | NodeJS.ReadableStream) {
     this._params.source = readStream;
   }
 
@@ -130,7 +209,7 @@ class EncryptParamsBuilder {
    * @param {Readable} readStream - a Readable Stream to encrypt.
    * @return {EncryptParamsBuilder} - this object.
    */
-  withStreamSource(readStream) {
+  withStreamSource(readStream: ReadableStream): EncryptParamsBuilder {
     this.setStreamSource(readStream);
     return this;
   }
@@ -145,7 +224,11 @@ class EncryptParamsBuilder {
    * <br>Credentials can be generated using [GetFederationToken]{@link https://docs.aws.amazon.com/STS/latest/APIReference/API_GetFederationToken.html}
    * @return {EncryptParamsBuilder} - this object.
    */
-  async setRemoteStore(fileName, config, credentialURL) {
+  async setRemoteStore(
+    fileName: string,
+    config: VirtruS3Config,
+    credentialURL: string
+  ): Promise<EncryptParams | DecryptParams> {
     return setRemoteStoreAsStream(fileName, config, credentialURL, this);
   }
 
@@ -153,16 +236,12 @@ class EncryptParamsBuilder {
    * Specify the content to encrypt, in string form.
    * @param {string} string - a string to encrypt.
    */
-  setStringSource(string) {
-    if (typeof string !== 'string') {
-      throw new IllegalArgumentError('string source must be of type string');
-    }
-
+  setStringSource(string: string) {
     const stream = new ReadableStream({
       pull(controller) {
-        controller.enqueue(string)
+        controller.enqueue(string);
         controller.close();
-      }
+      },
     });
     this.setStreamSource(stream);
   }
@@ -172,7 +251,7 @@ class EncryptParamsBuilder {
    * @param {string} string - a string to encrypt.
    * @return {EncryptParamsBuilder} - this object.
    */
-  withStringSource(string) {
+  withStringSource(string: string): EncryptParamsBuilder {
     this.setStringSource(string);
     return this;
   }
@@ -181,12 +260,12 @@ class EncryptParamsBuilder {
    * Specify the content to encrypt, in buffer form.
    * @param {Buffer} buf - a buffer to encrypt.
    */
-  setBufferSource(buf) {
+  setBufferSource(buf: Buffer) {
     const stream = new ReadableStream({
       pull(controller) {
-        controller.enqueue(buf)
+        controller.enqueue(buf);
         controller.close();
-      }
+      },
     });
     this.setStreamSource(stream);
   }
@@ -196,7 +275,7 @@ class EncryptParamsBuilder {
    * @param {Buffer} buf - a buffer to encrypt
    * @return {EncryptParamsBuilder} - this object.
    */
-  withBufferSource(buf) {
+  withBufferSource(buf: Buffer) {
     this.setBufferSource(buf);
     return this;
   }
@@ -205,11 +284,7 @@ class EncryptParamsBuilder {
    * Specify the content to encrypt using a file reference. Only works with node.
    * @param {string} filepath - the location on disk of the file to encrypt.
    */
-  setFileSource(filepath) {
-    if (typeof filepath !== 'string') {
-      throw new IllegalArgumentError('file source filepath must be of type string');
-    }
-    // TODO: Support browser files.
+  setFileSource(filepath: string) {
     this._params.source = createReadStream(filepath);
   }
 
@@ -219,7 +294,7 @@ class EncryptParamsBuilder {
    * @param {string} filepath - the location on disk of the file to encrypt.
    * @return {EncryptParamsBuilder} - this object.
    */
-  withFileSource(filepath) {
+  withFileSource(filepath: string): EncryptParamsBuilder {
     this.setFileSource(filepath);
     return this;
   }
@@ -233,7 +308,7 @@ class EncryptParamsBuilder {
    * @param {ArrayBuffer} arraybuffer - the array buffer containing the file to encrypt.
    * @return {EncryptParamsBuilder} - this object
    */
-  setArrayBufferSource(arraybuffer) {
+  setArrayBufferSource(arraybuffer: ArrayBuffer) {
     if (!inBrowser()) {
       throw new IllegalEnvError("must be in a browser context to use 'withArrayBufferSource'");
     }
@@ -247,19 +322,19 @@ class EncryptParamsBuilder {
    * @param  {ArrayBuffer} arraybuffer - the ArrayBuffer used to load file content from a browser
    * @return {EncryptParamsBuilder} - this object.
    */
-  withArrayBufferSource(arraybuffer) {
+  withArrayBufferSource(arraybuffer: ArrayBuffer): EncryptParamsBuilder {
     this.setArrayBufferSource(arraybuffer);
     return this;
   }
 
-  getAttributes() {
+  getAttributes(): EncryptParams['scope']['attributes'] {
     return this._params.scope.attributes;
   }
 
   /**
    * @param {{ attribute: string }[]} attributes URI of the form `<authority namespace>/attr/<name>/value/<value>`
    */
-  setAttributes(attributes) {
+  setAttributes(attributes: EncryptParams['scope']['attributes']) {
     AttributeValidator(attributes);
     this._params.scope.attributes = attributes;
   }
@@ -269,7 +344,7 @@ class EncryptParamsBuilder {
    * @param {String} attributes.attribute URI of the form `<authority namespace>/attr/<name>/value/<value>`
    * @returns {EncryptParamsBuilder} with attributes set
    */
-  withAttributes(attributes) {
+  withAttributes(attributes: EncryptParams['scope']['attributes']): EncryptParamsBuilder {
     this.setAttributes(attributes);
     return this;
   }
@@ -278,7 +353,7 @@ class EncryptParamsBuilder {
    * Get the users configured to access (decrypt) the encrypted data.
    * @return {array} - array of users (e.g., email addresses).
    */
-  getUsersWithAccess() {
+  getUsersWithAccess(): EncryptParams['scope']['dissem'] {
     return this._params.scope.dissem;
   }
 
@@ -286,10 +361,7 @@ class EncryptParamsBuilder {
    * Specify the full list of users configured to access (decrypt) the encrypted data.
    * @param {array} users - varargs or array of users (e.g., email addresses).
    */
-  setUsersWithAccess(users) {
-    if (!Array.isArray(users)) {
-      throw new IllegalArgumentError('users must be an array');
-    }
+  setUsersWithAccess(users: string[]) {
     this._params.scope.dissem = users;
   }
 
@@ -299,7 +371,7 @@ class EncryptParamsBuilder {
    * @param {array} users - varargs or array of users (e.g., email addresses).
    * @return {EncryptParamsBuilder} - this object.
    */
-  withUsersWithAccess(users) {
+  withUsersWithAccess(users: string[]): EncryptParamsBuilder {
     this.setUsersWithAccess(users);
     return this;
   }
@@ -310,8 +382,7 @@ class EncryptParamsBuilder {
    * This metadata is encrypted alongside the content and stored in the TDF ciphertext.
    * @return {object} - object containing metadata as key-value pairs.
    */
-  getMetadata() {
-    // TODO: Return deep copy?
+  getMetadata(): EncryptParams['metadata'] {
     return this._params.metadata;
   }
 
@@ -321,10 +392,7 @@ class EncryptParamsBuilder {
    * This metadata is encrypted alongside the content and stored in the TDF ciphertext.
    * @param {object} metadata - object containing metadata as key-value pairs.
    */
-  setMetadata(metadata) {
-    if (typeof metadata !== 'object') {
-      throw new IllegalArgumentError('metadata must be an object');
-    }
+  setMetadata(metadata: EncryptParams['metadata']) {
     this._params.metadata = metadata;
   }
 
@@ -336,25 +404,25 @@ class EncryptParamsBuilder {
    * @param {object} metadata - object containing metadata as key-value pairs.
    * @return {EncryptParamsBuilder} - this object.
    */
-  withMetadata(metadata) {
+  withMetadata(metadata: EncryptParams['metadata']) {
     this.setMetadata(metadata);
     return this;
   }
 
-  getPolicyId() {
+  getPolicyId(): string | undefined {
     return this._params.scope.policyId;
   }
 
-  setPolicyId(policyId) {
+  setPolicyId(policyId: string) {
     this._params.scope.policyId = policyId;
   }
 
-  withPolicyId(policyId) {
+  withPolicyId(policyId: string): EncryptParamsBuilder {
     this.setPolicyId(policyId);
     return this;
   }
 
-  isOnline() {
+  isOnline(): boolean {
     return !this._params.offline;
   }
 
@@ -366,12 +434,12 @@ class EncryptParamsBuilder {
     this._params.offline = true;
   }
 
-  withOffline() {
+  withOffline(): EncryptParamsBuilder {
     this.setOffline();
     return this;
   }
 
-  withOnline() {
+  withOnline(): EncryptParamsBuilder {
     this.setOnline();
     return this;
   }
@@ -385,7 +453,7 @@ class EncryptParamsBuilder {
    * will result in more compact ciphertext.
    * @return {number} The sliding window size, in bytes (1MB by default).
    */
-  getStreamWindowSize() {
+  getStreamWindowSize(): number {
     return this._params.windowSize;
   }
 
@@ -396,10 +464,10 @@ class EncryptParamsBuilder {
    * This window will match the "segment size" defined in the
    * <a href="https://github.com/virtru/tdf3-spec">TDF spec</a>, so a larger window
    * will result in more compact ciphertext.
-   * @param {number} The sliding window size, in bytes (1MB by default).
+   * @param {number} numBytes sliding window size, in bytes (1MB by default).
    */
-  setStreamWindowSize(numBytes) {
-    if (!numBytes || numBytes <= 0) {
+  setStreamWindowSize(numBytes: number) {
+    if (numBytes <= 0) {
       throw new Error('Stream window size must be positive');
     }
     this._params.windowSize = numBytes;
@@ -412,10 +480,10 @@ class EncryptParamsBuilder {
    * This window will match the "segment size" defined in the
    * <a href="https://github.com/virtru/tdf3-spec">TDF spec</a>, so a larger window
    * will result in more compact ciphertext.
-   * @param {number} The sliding window size, in bytes (1MB by default).
+   * @param {number} numBytes sliding window size, in bytes (1MB by default).
    * @return {EncryptParamsBuilder} - this object.
    */
-  withStreamWindowSize(numBytes) {
+  withStreamWindowSize(numBytes: number): EncryptParamsBuilder {
     this.setStreamWindowSize(numBytes);
     return this;
   }
@@ -427,7 +495,7 @@ class EncryptParamsBuilder {
    * This is enabled by default.
    * @return {boolean} true if the encrypted data will be in html format.
    */
-  hasHtmlFormat() {
+  hasHtmlFormat(): boolean {
     return this._params.asHtml;
   }
 
@@ -449,7 +517,7 @@ class EncryptParamsBuilder {
    * This is enabled by default.
    * @return {EncryptParamsBuilder} - this object.
    */
-  withHtmlFormat() {
+  withHtmlFormat(): EncryptParamsBuilder {
     this.setHtmlFormat();
     return this;
   }
@@ -461,7 +529,7 @@ class EncryptParamsBuilder {
    * This is disabled by default (html is enabled by default).
    * @return {boolean} true if the encrypted data will be in zip format.
    */
-  hasZipFormat() {
+  hasZipFormat(): boolean {
     return !this._params.asHtml;
   }
 
@@ -482,7 +550,7 @@ class EncryptParamsBuilder {
    * This is disabled by default (html is enabled by default).
    * @return {EncryptParamsBuilder} - this object.
    */
-  withZipFormat() {
+  withZipFormat(): EncryptParamsBuilder {
     this.setZipFormat();
     return this;
   }
@@ -490,11 +558,11 @@ class EncryptParamsBuilder {
   /**
    * @param isRcaSource{boolean}
    */
-  setRcaSource(isRcaSource) {
+  setRcaSource(isRcaSource: boolean) {
     this._params.rcaSource = isRcaSource;
   }
 
-  withRcaSource() {
+  withRcaSource(): EncryptParamsBuilder {
     this.setRcaSource(true);
     return this;
   }
@@ -502,7 +570,7 @@ class EncryptParamsBuilder {
   /**
    * Gets the (consumer provided) mime type of the file to be protected
    */
-  getMimeType() {
+  getMimeType(): string | undefined {
     return this._params.mimeType;
   }
 
@@ -511,7 +579,7 @@ class EncryptParamsBuilder {
    * @param {string} mimeType - the content type string to be applied during decrypt
    * @return {EncryptParamsBuilder} - this object.
    */
-  setMimeType(mimeType) {
+  setMimeType(mimeType: string) {
     this._params.mimeType = mimeType;
   }
 
@@ -520,37 +588,13 @@ class EncryptParamsBuilder {
    * @param {string} mimeType - the content type string to be applied during decrypt
    * @return {EncryptParamsBuilder} - this object.
    */
-  withMimeType(mimeType) {
+  withMimeType(mimeType: string): EncryptParamsBuilder {
     this.setMimeType(mimeType);
     return this;
   }
 
-  // Create a deep copy of the provided parameters object.
-  _deepCopy(_params) {
-    // TODO: static?
-    const params = {
-      source: _params.source,
-      scope: {
-        policyId: _params.scope.policyId,
-        dissem: _params.scope.dissem.slice(0),
-        attributes: _params.scope.attributes.slice(0),
-      },
-      metadata: { ..._params.metadata },
-      ...(_params.mimeType && { mimeType: _params.mimeType }),
-      ...(_params.contentLength && { contentLength: _params.contentLength }),
-    };
-    if (_params.keypair) {
-      params.keypair = { ..._params.keypair };
-    }
-    params.offline = _params.offline;
-    params.windowSize = _params.windowSize;
-    params.asHtml = _params.asHtml;
-    params.rcaSource = _params.rcaSource;
-    // add a simple helper function for folks to grab uuids during/after encrypt.
-    params.getPolicyId = () => {
-      return params.scope.policyId;
-    };
-    return params;
+  _deepCopy(_params: EncryptParams) {
+    return freeze({ ..._params, getPolicyId: () => _params.scope.policyId });
   }
 
   /**
@@ -558,56 +602,77 @@ class EncryptParamsBuilder {
    * <br/><br/>
    * Creates a deep copy to prevent tricky call-by-reference and async execution bugs.
    */
-  build() {
+  build(): Readonly<EncryptParams> {
     return this._deepCopy(this._params);
   }
 }
 
-/**
-* A builder capable of constructing the necessary parameters object for a
-* <code>{@link Client#decrypt|decrypt}</code> operation. Must be built using the <code>{@link DecryptParamsBuilder#build|build()}</code> function.
-* <br/><br/>
-* Decrypt does not currently allow for setting a {@link EncryptParamsBuilder#getStreamWindowSize|stream window size}. Support for this configuration will be added in the near future.
-* <br/><br/>
-* Example usage:
-* <pre>
-  // Configure the parameters to decrypt a local file.
-  const decryptParams = new Virtru.DecryptParamsBuilder()
-    .withFileSource("encrypted.html")
-    .build();
+export type DecryptSource =
+  | null
+  | { type: 'buffer'; location: Buffer }
+  | { type: 'remote'; location: string }
+  | { type: 'stream'; location: ReadableStream | NodeJS.ReadableStream }
+  | { type: 'file-browser' | 'file-node'; location: string };
 
-  // Run the decrypt and write the result to stdout (node-style).
-  (await client.decrypt(decryptParams)).pipe(process.stdout);
-  </pre>
-*/
+export type DecryptParams = {
+  source: DecryptSource;
+  opts?: { keypair: PemKeyPair };
+  rcaSource?: RcaParams;
+} & Pick<EncryptParams, 'contentLength' | 'keypair'>;
+
+/**
+ * A builder capable of constructing the necessary parameters object for a
+ * <code>{@link Client#decrypt|decrypt}</code> operation. Must be built using the <code>{@link DecryptParamsBuilder#build|build()}</code> function.
+ * <br/><br/>
+ * Decrypt does not currently allow for setting a {@link EncryptParamsBuilder#getStreamWindowSize|stream window size}. Support for this configuration will be added in the near future.
+ * <br/><br/>
+ * Example usage:
+ * <pre>
+ // Configure the parameters to decrypt a local file.
+ const decryptParams = new Virtru.DecryptParamsBuilder()
+ .withFileSource("encrypted.html")
+ .build();
+
+ // Run the decrypt and write the result to stdout (node-style).
+ (await client.decrypt(decryptParams)).pipe(process.stdout);
+ </pre>
+ */
 class DecryptParamsBuilder {
+  private _params: DecryptParams;
+
   constructor() {
     this._params = {
       source: null,
     };
   }
 
-  getStreamSource() {
+  setContentLength(contentLength: number) {
+    this._params.contentLength = contentLength;
+  }
+
+  withContentLength(contentLength: number) {
+    this.setContentLength(contentLength);
+    return this;
+  }
+
+  getStreamSource(): DecryptSource {
     return this._params.source;
   }
 
   /**
    * Set the TDF ciphertext to decrypt, in buffer form.
-   * @param {Buffer} buf - a buffer to decrypt.
+   * @param {Buffer} buffer - a buffer to decrypt.
    */
-  setBufferSource(buffer) {
-    if (typeof buffer !== 'object') {
-      throw new IllegalArgumentError(`buffer source must be of type object, was: ${buffer}`);
-    }
+  setBufferSource(buffer: Buffer) {
     this._params.source = { type: 'buffer', location: buffer };
   }
 
   /**
    * Set the TDF ciphertext to decrypt, in buffer form. Returns this object for method chaining.
-   * @param {Buffer} buf - a buffer to decrypt.
+   * @param {Buffer} buffer - a buffer to decrypt.
    * @return {DecryptParamsBuilder} - this object.
    */
-  withBufferSource(buffer) {
+  withBufferSource(buffer: Buffer): DecryptParamsBuilder {
     this.setBufferSource(buffer);
     return this;
   }
@@ -617,7 +682,7 @@ class DecryptParamsBuilder {
    * TODO: add support for TDF.html encoding
    * @param {string} url - a url pointing to a tdf3 file
    */
-  setUrlSource(url) {
+  setUrlSource(url: string) {
     if (!/^https?/.exec(url)) {
       throw new IllegalArgumentError(`stream source must be a web url, not [${url}]`);
     }
@@ -629,7 +694,7 @@ class DecryptParamsBuilder {
    * @param {string} url - a tdf3 remote URL.
    * @return {DecryptParamsBuilder} - this object.
    */
-  withUrlSource(url) {
+  withUrlSource(url: string): DecryptParamsBuilder {
     this.setUrlSource(url);
     return this;
   }
@@ -638,10 +703,7 @@ class DecryptParamsBuilder {
    * Specify the TDF ciphertext to decrypt, in stream form.
    * @param {Readable} stream - a Readable stream to decrypt.
    */
-  setStreamSource(stream) {
-    if (typeof stream !== 'object') {
-      throw new IllegalArgumentError(`stream source must be of type object, was: ${stream}`);
-    }
+  setStreamSource(stream: ReadableStream | NodeJS.ReadableStream) {
     this._params.source = { type: 'stream', location: stream };
   }
 
@@ -650,7 +712,7 @@ class DecryptParamsBuilder {
    * @param {Readable} stream - a Readable stream to decrypt.
    * @return {DecryptParamsBuilder} - this object.
    */
-  withStreamSource(stream) {
+  withStreamSource(stream: ReadableStream | NodeJS.ReadableStream) {
     this.setStreamSource(stream);
     return this;
   }
@@ -665,7 +727,11 @@ class DecryptParamsBuilder {
    * <br>Credentials can be generated using [GetFederationToken]{@link https://docs.aws.amazon.com/STS/latest/APIReference/API_GetFederationToken.html}
    * @return {DecryptParamsBuilder} - this object.
    */
-  async setRemoteStore(fileName, config, credentialURL) {
+  async setRemoteStore(
+    fileName: string,
+    config: VirtruS3Config,
+    credentialURL: string
+  ): Promise<DecryptParams | EncryptParams> {
     return setRemoteStoreAsStream(fileName, config, credentialURL, this);
   }
 
@@ -673,7 +739,7 @@ class DecryptParamsBuilder {
    * Specify the TDF ciphertext to decrypt, in string form.
    * @param {string} string - a string to decrypt.
    */
-  setStringSource(string) {
+  setStringSource(string: string) {
     this.setBufferSource(Buffer.from(string, 'binary'));
   }
 
@@ -682,7 +748,7 @@ class DecryptParamsBuilder {
    * @param {string} string - a string to decrypt.
    * @return {DecryptParamsBuilder} - this object.
    */
-  withStringSource(string) {
+  withStringSource(string: string): DecryptParamsBuilder {
     this.setStringSource(string);
     return this;
   }
@@ -692,10 +758,7 @@ class DecryptParamsBuilder {
    * Only works with node.
    * @param {string} filepath - the path of the local file to decrypt.
    */
-  setFileSource(filepath) {
-    if (typeof filepath !== 'string') {
-      throw new IllegalArgumentError('file source filepath must be of type string');
-    }
+  setFileSource(filepath: string) {
     if (typeof window !== 'undefined') {
       this._params.source = { type: 'file-browser', location: filepath };
     } else {
@@ -709,7 +772,7 @@ class DecryptParamsBuilder {
    * @param {string} filepath - the path of the local file to decrypt.
    * @return {DecryptParamsBuilder} - this object.
    */
-  withFileSource(filepath) {
+  withFileSource(filepath: string): DecryptParamsBuilder {
     this.setFileSource(filepath);
     return this;
   }
@@ -723,7 +786,7 @@ class DecryptParamsBuilder {
    * @param {ArrayBuffer} arraybuffer - the array buffer containing the file to decrypt.
    * @return {DecryptParamsBuilder} - this object
    */
-  setArrayBufferSource(arraybuffer) {
+  setArrayBufferSource(arraybuffer: ArrayBuffer) {
     if (!inBrowser()) {
       throw new IllegalEnvError("must be in a browser context to use 'withArrayBufferSource'");
     }
@@ -737,7 +800,7 @@ class DecryptParamsBuilder {
    * @param  {ArrayBuffer} arraybuffer - the ArrayBuffer used to load file content from a browser
    * @return {DecryptParamsBuilder} - this object.
    */
-  withArrayBufferSource(arraybuffer) {
+  withArrayBufferSource(arraybuffer: ArrayBuffer): DecryptParamsBuilder {
     this.setArrayBufferSource(arraybuffer);
     return this;
   }
@@ -745,7 +808,7 @@ class DecryptParamsBuilder {
   /**
    * @param rcaParams
    */
-  setRcaSource(rcaParams) {
+  setRcaSource(rcaParams: RcaParams) {
     this._params.rcaSource = rcaParams;
   }
 
@@ -754,24 +817,13 @@ class DecryptParamsBuilder {
    * @param rcaParams
    * @returns {DecryptParamsBuilder}
    */
-  withRcaSource(rcaParams) {
+  withRcaSource(rcaParams: RcaParams): DecryptParamsBuilder {
     this.setRcaSource(rcaParams);
     return this;
   }
 
-  // Create a deep copy of the provided parameters object.
-  _deepCopy(_params) {
-    // TODO: static?
-    const params = {
-      source: _params.source,
-      opts: {},
-      ...(_params.contentLength && { contentLength: _params.contentLength }),
-    };
-    if (_params.keypair) {
-      params.keypair = { ..._params.keypair };
-    }
-    params.rcaSource = _params.rcaSource;
-    return params;
+  _deepCopy(_params: DecryptParams) {
+    return freeze({ ..._params });
   }
 
   /**
@@ -779,7 +831,7 @@ class DecryptParamsBuilder {
    * <br/><br/>
    * Creates a deep copy to prevent tricky call-by-reference and async execution bugs.
    */
-  build() {
+  build(): Readonly<DecryptParams> {
     return this._deepCopy(this._params);
   }
 }
