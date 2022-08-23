@@ -28,7 +28,6 @@
  */
 
 import * as base64 from '../encodings/base64';
-import getCryptoLib from './getCryptoLib';
 import removeLines from './helpers/removeLines';
 import { importX509 } from 'jose';
 import type { KeyObject } from 'crypto';
@@ -121,8 +120,6 @@ export default async function pemPublicToCrypto(
     isExtractable: true,
   }
 ): Promise<CryptoKey> {
-  const crypto = getCryptoLib();
-
   pem = pem.replace('-----BEGIN PUBLIC KEY-----', '');
   pem = pem.replace('-----END PUBLIC KEY-----', '');
   const b64 = removeLines(pem);
@@ -133,7 +130,7 @@ export default async function pemPublicToCrypto(
   const keyUsages = guessKeyUsages(algorithmName, options.usages);
 
   if (algorithmName === ECDH || algorithmName === ECDSA) {
-    return crypto.importKey(
+    return crypto.subtle.importKey(
       SPKI,
       arrayBuffer,
       {
@@ -144,7 +141,7 @@ export default async function pemPublicToCrypto(
       keyUsages
     );
   } else if (algorithmName === RSA_OAEP || algorithmName === RSA_PSS) {
-    return crypto.importKey(
+    return crypto.subtle.importKey(
       SPKI,
       arrayBuffer,
       {
@@ -210,7 +207,6 @@ export async function extractPublicFromCertToCrypto(
   const hex = hexEncodeArrayBuffer(arrayBuffer);
   const jwsAlg = toJwsAlg(hex);
   const keylike = await importX509(pem, jwsAlg, { extractable: options.isExtractable });
-  const crypto = getCryptoLib();
   const { type } = keylike;
   if (type !== 'public') {
     throw new Error('Unpublic');
@@ -223,7 +219,7 @@ export async function extractPublicFromCertToCrypto(
     const subtleAlg = toSubtleAlg(hex);
     const keyUsages = guessKeyUsages(subtleAlg.name, options.usages);
     console.log({ jwsAlg, subtleAlg });
-    const subtleKey = await crypto.importKey(
+    const subtleKey = await crypto.subtle.importKey(
       'jwk',
       keyObject.export({ format: 'jwk' }),
       subtleAlg,
