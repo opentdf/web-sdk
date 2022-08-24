@@ -15,18 +15,11 @@ const { get } = axios;
 export const DEFAULT_SEGMENT_SIZE: number = 1000 * 1000;
 export type VirtruS3Config = S3ClientConfig & {
   Bucket?: string;
-  signatureVersion: string;
-  s3ForcePathStyle: boolean;
-  maxRetries: number;
 };
 
-export type VirtruCreds = S3ClientConfig['credentials'] & {
-  policy: string;
-  signature: string;
-  key: string;
-};
+export type VirtruCreds = S3ClientConfig['credentials'];
 
-type FetchCreds = Pick<VirtruCreds, 'policy' | 'signature' | 'key'> & {
+export type FetchCreds = {
   AWSAccessKeyId: string;
   AWSSecretAccessKey: string;
   AWSSessionToken: string;
@@ -75,17 +68,13 @@ async function setRemoteStoreAsStream(
         accessKeyId: virtruTempS3Credentials.data.fields.AWSAccessKeyId,
         secretAccessKey: virtruTempS3Credentials.data.fields.AWSSecretAccessKey,
         sessionToken: virtruTempS3Credentials.data.fields.AWSSessionToken,
-        policy: virtruTempS3Credentials.data.fields.policy,
-        signature: virtruTempS3Credentials.data.fields.signature,
-        key: virtruTempS3Credentials.data.fields.key,
       };
 
       storageParams = {
         credentials,
         region: virtruTempS3Credentials.data.url.split('.')[1],
-        signatureVersion: 'v4',
-        s3ForcePathStyle: false,
-        maxRetries: 3,
+        forcePathStyle: false,
+        maxAttempts: 3,
         useAccelerateEndpoint: true,
       };
     } else {
