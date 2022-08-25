@@ -15,5 +15,5 @@ export default async function generateKeyPair(
     isExtractable: true,
   }
 ): Promise<CryptoKeyPair | never> {
-  return await crypto.subtle.generateKey({ name, namedCurve }, isExtractable, keyUsages);
+  return crypto.subtle.generateKey({ name, namedCurve }, isExtractable, keyUsages);
 }
