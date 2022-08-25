@@ -14,7 +14,8 @@ interface FileClientConfig {
 }
 
 function isNodeStream(source: InputSource): source is NodeJS.ReadableStream {
-  return Object.prototype.hasOwnProperty.call(source, 'pipe');
+  // @ts-ignore
+  return typeof source?.pipe === 'function';
 }
 
 export class FileClient {
