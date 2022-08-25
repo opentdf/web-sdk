@@ -11,5 +11,5 @@ export default function getCryptoLib(): SubtleCrypto {
     return subtleCrypto;
   }
 
-  return globalThis.crypto.webcrypto.subtle;
+  return globalThis.crypto.subtle;
 }
