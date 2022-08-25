@@ -27,7 +27,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-import getCryptoLib from './getCryptoLib';
 import { AlgorithmName, CipherType, HashType, KeyFormat, KeyType, KeyUsageType } from './enums';
 
 const KEY_USAGE_DERIVE_KEY = 'deriveKey';
@@ -100,8 +99,7 @@ export async function keyAgreement(
     ],
   } = options;
 
-  const crypto = getCryptoLib();
-  const derivedBits = await crypto.deriveBits(
+  const derivedBits = await crypto.subtle.deriveBits(
     {
       name: AlgorithmName.ECDH,
       public: publicKey,
@@ -110,7 +108,7 @@ export async function keyAgreement(
     bitLength
   );
 
-  const derivedKey = await crypto.importKey(
+  const derivedKey = await crypto.subtle.importKey(
     KeyFormat.Raw,
     derivedBits,
     {
@@ -120,7 +118,7 @@ export async function keyAgreement(
     [KEY_USAGE_DERIVE_KEY]
   );
 
-  const symmetricKey = await crypto.deriveKey(
+  const symmetricKey = await crypto.subtle.deriveKey(
     {
       name: AlgorithmName.HKDF,
       hash: hkdfHash,
