@@ -320,7 +320,7 @@ describe('AccessToken', () => {
     });
     it('should attempt to refresh token if userinfo call throws error', async () => {
       const json = fake.resolves({ access_token: 'a' });
-      const mf = fake((url: RequestInfo, init?: RequestInit): Promise<Response> => {
+      const mf = fake((url: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
         if (!init) {
           return Promise.reject('No init found');
         }

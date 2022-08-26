@@ -45,7 +45,7 @@ class NodeTdfStream extends DecoratedReadableStream {
       const pump = () =>
         reader
           .read()
-          .then((res: ReadableStreamDefaultReadResult<unknown>) => {
+          .then((res) => {
             if (res.done) {
               file.end();
               resolve();
