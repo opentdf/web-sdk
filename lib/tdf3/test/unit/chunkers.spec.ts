@@ -272,7 +272,7 @@ describe('chunkers', () => {
         await fromUrl(urlFor(path))(12, 5);
         expect.fail();
       } catch (e) {
-        expect(e).to.be.an('error');
+        expect(e.message).to.include('416');
       }
     });
     it('broken stream all', async () => {
@@ -281,7 +281,7 @@ describe('chunkers', () => {
         await c();
         expect.fail();
       } catch (e) {
-        expect(e).to.be.an('error');
+        expect(e.message).to.include('404');
       }
     });
     it('broken stream some', async () => {
@@ -290,7 +290,7 @@ describe('chunkers', () => {
         await c(1);
         expect.fail();
       } catch (e) {
-        expect(e).to.be.an('error');
+        expect(e.message).to.include('404');
       }
     });
   });
