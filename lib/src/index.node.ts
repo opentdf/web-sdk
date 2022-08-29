@@ -1,4 +1,5 @@
 import { NanoTDFClient, NanoTDFDatasetClient, AuthProviders, version, clientType } from './index';
+// @ts-ignore
 import fetch from 'node-fetch';
 import { webcrypto as crypto } from 'node:crypto';
 
