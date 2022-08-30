@@ -51,7 +51,7 @@
     "prepack": "npm run build",
     "test": "npm run clean && tsc -p tsconfig-esm.json && web-test-runner && npm run test:tdf3",
     "test:watch": "web-test-runner --watch",
-    "test:tdf3": "nyc mocha --file tdf3/test/setup.js --require @babel/register --timeout 300000",
+    "test:tdf3": "c8 mocha --file tdf3/test/setup.js --require @babel/register --timeout 300000",
     "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))"
   },
   "dependencies": {
@@ -100,6 +100,7 @@
     "babel-loader": "^8.2.5",
     "babel-plugin-module-resolver": "^4.1.0",
     "buffer": "^6.0.3",
+    "c8": "^7.12.0",
     "chai": "^4.3.6",
     "chai-as-promised": "^7.1.1",
     "colors": "^1.4.0",
@@ -111,7 +112,6 @@
     "jszip": "^3.10.1",
     "license-checker": "^25.0.1",
     "mocha": "^10.0.0",
-    "nyc": "^15.1.0",
     "prettier": "^2.7.1",
     "process": "^0.11.10",
     "rimraf": "^3.0.2",
