@@ -1,0 +1,45 @@
+name: '🤖 🎨'
+on:
+  pull_request:
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '16'
+          cache: 'npm'
+          cache-dependency-path: './lib/package-lock.json'
+      - run: make format
+      - name: ignore package-lock changes
+        run: git checkout -- {cli,sample-web-app}/package-lock.json
+      - name: Commit changes
+        id: auto-commit
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: |-
+            🤖 🎨 Autoformat
+
+      - name: Suggest user signoff
+        if: steps.auto-commit.outputs.changes_detected == 'true'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const body = `If these changes look good, signoff on them with:
+            \`\`\`
+            git pull && git commit --amend --signoff && git push --force-with-lease origin
+            \`\`\`
+
+            If they aren't any good, please remove them with:
+            \`\`\`
+            git pull && git reset --hard HEAD~1 && git push --force-with-lease origin
+            \`\`\`
+            `;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            });

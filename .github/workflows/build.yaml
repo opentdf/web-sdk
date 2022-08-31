@@ -115,54 +115,9 @@ jobs:
           docker run --rm -v "$PWD:/mnt" --workdir "/mnt" "koalaman/shellcheck:v0.8.0"
           --color=always *.sh
 
-  format:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && github.ref != 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          ref: ${{ github.head_ref }}
-      - uses: actions/setup-node@v2
-        with:
-          node-version: '16'
-          cache: 'npm'
-          cache-dependency-path: './lib/package-lock.json'
-      - run: make format
-      - name: ignore package-lock changes
-        run: git checkout -- {cli,sample-web-app}/package-lock.json
-      - name: Commit changes
-        id: auto-commit
-        uses: stefanzweifel/git-auto-commit-action@v4
-        with:
-          commit_message: |-
-            🤖 🎨 Autoformat
-            
-      - name: Suggest user signoff
-        if: steps.auto-commit.outputs.changes_detected == 'true'
-        uses: actions/github-script@v6
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const body = `If these changes look good, signoff on them with:
-            \`\`\`
-            git pull && git commit --amend --signoff && git push --force-with-lease origin
-            \`\`\`
-
-            If they aren't any good, please remove them with:
-            \`\`\`
-            git pull && git reset --hard HEAD~1 && git push --force-with-lease origin
-            \`\`\`
-            `;
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body,
-            });
-  
   backend-roundtrip:
     needs:
-        - cli
+      - cli
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -181,7 +136,7 @@ jobs:
       - uses: actions/download-artifact@v2
         with:
           name: opentdf-cli
-      - name: Git clone backend 
+      - name: Git clone backend
         run: |
           git clone https://github.com/opentdf/opentdf.git
       - uses: yokawasa/action-setup-kube-tools@v0.7.1
@@ -191,9 +146,9 @@ jobs:
             helm
             tilt
           # This should be in sync with the minikube-deployed kube version below
-          kubectl: "1.23.1"
-          helm: "3.8.0"
-          tilt: "0.26.2"
+          kubectl: '1.23.1'
+          helm: '3.8.0'
+          tilt: '0.26.2'
       - run: |
           kubectl version --client
           kustomize version
@@ -242,7 +197,7 @@ jobs:
       - name: trigger xtest
         run: |
           curl -XPOST -u "virtru-cloudnative:${{secrets.PERSONAL_ACCESS_TOKEN}}" -H "Accept: application/vnd.github.everest-preview+json" -H "Content-Type: application/json" "https://api.github.com/repos/opentdf/backend/dispatches" --data '{"event_type": "xtest", "client_payload": {"version":"'$(BUILD_META="" .github/workflows/gh-semver.sh)'"}}'
-      - name: 
+      - name: Publish documentation to gh-pages
         uses: JamesIves/github-pages-deploy-action@v4.3.3
         with:
           branch: gh-pages
