@@ -114,10 +114,10 @@ jobs:
         run: >-
           docker run --rm -v "$PWD:/mnt" --workdir "/mnt" "koalaman/shellcheck:v0.8.0"
           --color=always *.sh
- 
+
   backend-roundtrip:
     needs:
-        - cli
+      - cli
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -136,7 +136,7 @@ jobs:
       - uses: actions/download-artifact@v2
         with:
           name: opentdf-cli
-      - name: Git clone backend 
+      - name: Git clone backend
         run: |
           git clone https://github.com/opentdf/opentdf.git
       - uses: yokawasa/action-setup-kube-tools@v0.7.1
@@ -146,9 +146,9 @@ jobs:
             helm
             tilt
           # This should be in sync with the minikube-deployed kube version below
-          kubectl: "1.23.1"
-          helm: "3.8.0"
-          tilt: "0.26.2"
+          kubectl: '1.23.1'
+          helm: '3.8.0'
+          tilt: '0.26.2'
       - run: |
           kubectl version --client
           kustomize version
@@ -197,7 +197,7 @@ jobs:
       - name: trigger xtest
         run: |
           curl -XPOST -u "virtru-cloudnative:${{secrets.PERSONAL_ACCESS_TOKEN}}" -H "Accept: application/vnd.github.everest-preview+json" -H "Content-Type: application/json" "https://api.github.com/repos/opentdf/backend/dispatches" --data '{"event_type": "xtest", "client_payload": {"version":"'$(BUILD_META="" .github/workflows/gh-semver.sh)'"}}'
-      - name: 
+      - name: Publish documentation to gh-pages
         uses: JamesIves/github-pages-deploy-action@v4.3.3
         with:
           branch: gh-pages

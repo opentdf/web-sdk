@@ -1,4 +1,4 @@
-name: "🤖 🎨"
+name: '🤖 🎨'
 on:
   pull_request:
 jobs:
@@ -20,7 +20,7 @@ jobs:
         with:
           commit_message: |-
             🤖 🎨 Autoformat
-            
+
       - name: Suggest user signoff
         if: steps.auto-commit.outputs.changes_detected == 'true'
         uses: actions/github-script@v6
