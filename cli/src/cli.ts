@@ -26,7 +26,7 @@ async function processAuth({
     log('DEBUG', 'Processing an auth string');
     const authParts = auth.split(':');
     if (authParts.length !== 2) {
-      throw new CLIError('CRITICAL', 'Auth expects <clientId>:<clientSecret>');
+      throw new CLIError('CRITICAL', `Auth expects <clientId>:<clientSecret>, received ${auth}`);
     }
 
     [clientId, clientSecret] = authParts;

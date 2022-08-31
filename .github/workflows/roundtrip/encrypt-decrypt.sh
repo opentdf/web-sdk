@@ -13,7 +13,7 @@ npx @opentdf/cli --log-level DEBUG \
 npx @opentdf/cli --log-level DEBUG \
   --kasEndpoint http://localhost:65432/api/kas \
   --oidcEndpoint http://localhost:65432 \
-  --auth tdf:tdf-client:123-456 \
+  --auth tdf-client:123-456 \
   --output sample_out.txt decrypt sample.txt.tdf
 
 diff sample.txt sample_out.txt
