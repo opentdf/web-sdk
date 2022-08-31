@@ -42,7 +42,6 @@ export class AccessToken {
   }
 
   async info(accessToken: string): Promise<unknown> {
-    // TODO make sure realm is uri encoded
     const url = `${this.baseUrl}/protocol/openid-connect/userinfo`;
     const response = await (this.request || fetch)(url, {
       headers: {
