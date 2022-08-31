@@ -34,7 +34,7 @@ describe('AccessToken', () => {
   describe('userinfo endpoint', () => {
     it('appends Auth header and calls userinfo', async () => {
       const cfg = {
-        auth_server_url: 'http://auth.invalid/auth/realms/yeet',
+        auth_server_url: 'https://auth.invalid/auth/realms/yeet',
         client_id: 'yoo',
       };
       const mf = mockFetch({ access_token: 'fdfsdffsdf' });
@@ -48,7 +48,7 @@ describe('AccessToken', () => {
     });
     it('error causes errors', async () => {
       const cfg = {
-        auth_server_url: 'http://auth.invalid',
+        auth_server_url: 'https://auth.invalid',
         client_id: 'yoo',
       };
       const mf = mockFetch(
@@ -72,7 +72,7 @@ describe('AccessToken', () => {
         const accessToken = new AccessToken(
           {
             auth_mode: 'credentials',
-            auth_server_url: 'http://auth.invalid/auth/realms/yeet/',
+            auth_server_url: 'https://auth.invalid/auth/realms/yeet/',
             client_id: 'myid',
             client_secret: 'mysecret',
           },
@@ -99,7 +99,7 @@ describe('AccessToken', () => {
         const mf = mockFetch({ access_token: 'fake_token' });
         const accessToken = new AccessToken(
           {
-            auth_server_url: 'http://auth.invalid',
+            auth_server_url: 'https://auth.invalid',
             auth_mode: 'browser',
             client_id: 'browserclient',
           },
@@ -124,7 +124,7 @@ describe('AccessToken', () => {
         const mf = mockFetch({ access_token: 'fake_token' });
         const accessToken = new AccessToken(
           {
-            auth_server_url: 'http://auth.invalid//',
+            auth_server_url: 'https://auth.invalid//',
             client_id: 'myid',
             client_secret: 'mysecret',
             auth_mode: 'credentials',
@@ -152,7 +152,7 @@ describe('AccessToken', () => {
         const accessToken = new AccessToken(
           {
             auth_mode: 'browser',
-            auth_server_url: 'http://auth.invalid',
+            auth_server_url: 'https://auth.invalid',
             client_id: 'browserclient',
           },
           mf
@@ -180,7 +180,7 @@ describe('AccessToken', () => {
       const accessToken = new AccessToken(
         {
           auth_mode: 'browser',
-          auth_server_url: 'http://auth.invalid',
+          auth_server_url: 'https://auth.invalid',
           client_id: 'browserclient',
         },
         mf
@@ -213,7 +213,7 @@ describe('AccessToken', () => {
       const accessToken = new AccessToken(
         {
           auth_mode: 'browser',
-          auth_server_url: 'http://auth.invalid',
+          auth_server_url: 'https://auth.invalid',
           client_id: 'browserclient',
         },
         mf
@@ -236,7 +236,7 @@ describe('AccessToken', () => {
         const mf = mockFetch({ access_token: 'notreal' });
         const accessTokenClient = new AccessToken(
           {
-            auth_server_url: 'http://auth.invalid/',
+            auth_server_url: 'https://auth.invalid/',
             client_id: 'myid',
             client_secret: 'mysecret',
             auth_mode: 'credentials',
@@ -246,7 +246,7 @@ describe('AccessToken', () => {
         // Do a refresh to cache tokenset
         const atr = await accessTokenClient.get();
         expect(atr).to.eql('notreal');
-        expect(mf.lastCall.firstArg).to.eql('http://auth.invalid/protocol/openid-connect/token');
+        expect(mf.lastCall.firstArg).to.eql('https://auth.invalid/protocol/openid-connect/token');
         const parseArgs = qsparse(mf.lastCall.lastArg.body);
         expect(parseArgs).to.have.property('grant_type', 'client_credentials');
         expect(parseArgs).to.have.property('client_id', 'myid');
@@ -258,7 +258,7 @@ describe('AccessToken', () => {
         try {
           const accessTokenClient = new AccessToken(
             {
-              auth_server_url: 'http://auth.invalid',
+              auth_server_url: 'https://auth.invalid',
               auth_mode: 'credentials',
               client_id: '',
             },
@@ -278,7 +278,7 @@ describe('AccessToken', () => {
       const mf = mockFetch({ access_token: 'notreal' });
       const accessTokenClient = new AccessToken(
         {
-          auth_server_url: 'http://auth.invalid',
+          auth_server_url: 'https://auth.invalid',
           client_id: 'myid',
           client_secret: 'mysecret',
           auth_mode: 'credentials',
@@ -308,7 +308,7 @@ describe('AccessToken', () => {
       });
       const accessTokenClient = new AccessToken(
         {
-          auth_server_url: 'http://auth.invalid',
+          auth_server_url: 'https://auth.invalid',
           client_id: 'myid',
           client_secret: 'mysecret',
           auth_mode: 'credentials',

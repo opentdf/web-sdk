@@ -37,9 +37,9 @@ describe('rstrip', () => {
     });
     it('leftovers with stuff in front', () => {
       expect(rstrip('///hey.you', '/')).to.eql('///hey.you');
-      expect(rstrip('http://hey.you', '/')).to.eql('http://hey.you');
-      expect(rstrip('http://hey.you/', '/')).to.eql('http://hey.you');
-      expect(rstrip('http://hey.you//', '/')).to.eql('http://hey.you');
+      expect(rstrip('https://hey.you', '/')).to.eql('https://hey.you');
+      expect(rstrip('https://hey.you/', '/')).to.eql('https://hey.you');
+      expect(rstrip('https://hey.you//', '/')).to.eql('https://hey.you');
     });
   });
 });
