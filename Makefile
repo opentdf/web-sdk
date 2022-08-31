@@ -1,11 +1,11 @@
 
 version=0.3.0
-pkgs=lib cli sample-web-app
+pkgs=lib cli web-app
 
 .PHONY: all audit license-check lint test ci i start format clean
 
 start: all
-	(cd sample-web-app && npm run start)
+	(cd web-app && npm run start)
 
 clean:
 	rm -f *.tgz
@@ -13,19 +13,19 @@ clean:
 	rm -rf */node_modules
 
 ci: opentdf-client-$(version).tgz
-	for x in cli sample-web-app; do (cd $$x && npm uninstall @opentdf/client && npm ci && npm i ../opentdf-client-$(version).tgz) || exit 1; done
+	for x in cli web-app; do (cd $$x && npm uninstall @opentdf/client && npm ci && npm i ../opentdf-client-$(version).tgz) || exit 1; done
 
 i:
 	(cd lib && npm i && npm pack --pack-destination ../)
-	for x in cli sample-web-app; do (cd $$x && npm uninstall @opentdf/client && npm i && npm i ../opentdf-client-$(version).tgz) || exit 1; done
+	for x in cli web-app; do (cd $$x && npm uninstall @opentdf/client && npm i && npm i ../opentdf-client-$(version).tgz) || exit 1; done
 
-all: ci opentdf-client-$(version).tgz opentdf-cli-$(version).tgz opentdf-sample-web-app-$(version).tgz
+all: ci opentdf-client-$(version).tgz opentdf-cli-$(version).tgz opentdf-web-app-$(version).tgz
 
 opentdf-cli-$(version).tgz: opentdf-client-$(version).tgz $(shell find cli -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
 	(cd cli && npm ci ../opentdf-client-$(version).tgz && npm pack --pack-destination ../)
 
-opentdf-sample-web-app-$(version).tgz: opentdf-client-$(version).tgz $(shell find sample-web-app -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
-	(cd sample-web-app && npm ci ../opentdf-client-$(version).tgz && npm pack --pack-destination ../)
+opentdf-web-app-$(version).tgz: opentdf-client-$(version).tgz $(shell find web-app -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
+	(cd web-app && npm ci ../opentdf-client-$(version).tgz && npm pack --pack-destination ../)
 
 opentdf-client-$(version).tgz: $(shell find lib -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
 	(cd lib && npm ci --including=dev && npm pack --pack-destination ../)
