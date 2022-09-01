@@ -6,7 +6,6 @@ import { InputSource } from '../src/types';
 
 interface FileClientConfig {
   clientId: string;
-  organizationName: string;
   oidcOrigin: string;
   kasEndpoint: string;
   clientSecret?: string;
@@ -24,13 +23,11 @@ export class FileClient {
     clientId,
     clientSecret,
     oidcRefreshToken,
-    organizationName,
     oidcOrigin,
     kasEndpoint,
   }: FileClientConfig) {
     this.client = new ClientTdf3({
       clientId,
-      organizationName,
       clientSecret,
       oidcRefreshToken,
       kasEndpoint,

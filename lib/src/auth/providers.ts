@@ -33,7 +33,6 @@ export const clientSecretAuthProvider = async (
   clientPubKey?: string
 ): Promise<AuthProvider> => {
   return new OIDCClientCredentialsProvider({
-    organizationName: clientConfig.organizationName,
     clientPubKey: clientPubKey,
     clientId: clientConfig.clientId,
     clientSecret: clientConfig.clientSecret,
@@ -62,7 +61,6 @@ export const externalAuthProvider = async (
   clientPubKey?: string
 ): Promise<AuthProvider> => {
   return new OIDCExternalJwtProvider({
-    organizationName: clientConfig.organizationName,
     clientPubKey: clientPubKey,
     clientId: clientConfig.clientId,
     externalJwt: clientConfig.externalJwt,
@@ -89,7 +87,6 @@ export const refreshAuthProvider = async (
   clientPubKey?: string
 ): Promise<AuthProvider> => {
   return new OIDCRefreshTokenProvider({
-    organizationName: clientConfig.organizationName,
     clientPubKey: clientPubKey,
     clientId: clientConfig.clientId,
     externalRefreshToken: clientConfig.oidcRefreshToken,
@@ -107,10 +104,6 @@ export const clientAuthProvider = async (
   clientConfig: OIDCCredentials,
   clientPubKey?: string
 ): Promise<AuthProvider> => {
-  if (!clientConfig.organizationName) {
-    throw new Error('Client Organization must be provided to constructor');
-  }
-
   if (!clientConfig.clientId) {
     throw new Error('Client ID must be provided to constructor');
   }

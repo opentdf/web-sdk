@@ -6,20 +6,18 @@ export class OIDCClientCredentialsProvider implements AuthProvider {
   oidcAuth: VirtruOIDC;
 
   constructor({
-    organizationName,
     clientPubKey,
     clientId,
     clientSecret,
     oidcOrigin,
   }: IOIDCClientCredentialsProvider) {
-    if (!organizationName || !clientId || !clientSecret) {
+    if (!clientId || !clientSecret) {
       throw new Error(
-        'To use this nonbrowser-only provider you must supply organizationName/clientId/clientSecret'
+        'To use this nonbrowser-only provider you must supply clientId & clientSecret'
       );
     }
 
     this.oidcAuth = new VirtruOIDC({
-      organizationName,
       clientPubKey,
       clientId,
       clientSecret,

@@ -12,7 +12,6 @@ TDF3 with JSON envelopes.
     exchange: 'refresh',
     oidcRefreshToken: refreshToken,
     oidcOrigin: keycloakUrl,
-    organizationName: keycloakRealm
   }
   const authProvider = await AuthProviders.refreshAuthProvider(oidcCredentials);
   const client = new NanoTDFClient(authProvider, access);

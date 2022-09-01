@@ -40,9 +40,8 @@ const { Client } = require("tdf3-js");
 (async function() {
   const client = new Client.Client({
     clientId: "tdf-client",
-    organizationName: 'tdf', // realm
     kasEndpoint: 'http://localhost/kas',
-    clientSecret: 'someSecret', // nodeJS realm
+    clientSecret: 'someSecret',
     oidcOrigin: 'http://localhost/oidc',
   });
   const encryptParams = new Client.EncryptParamsBuilder()
@@ -65,7 +64,6 @@ const { Client } = require("tdf3-js");
 ```js
   const client = new Client.Client({
     clientId: "tdf-client",
-    organizationName: 'tdf',
     kasEndpoint: 'http://localhost/kas',
     oidcRefreshToken: 'token', // Here is only difference in usage, browser build needs oidc tocken
     oidcOrigin: 'http://localhost/oidc',

@@ -1,8 +1,9 @@
+import { rstrip } from '../utils';
+
 const qstringify = (obj: Record<string, string>) => new URLSearchParams(obj).toString();
 
 export type AccessTokenConfig = {
   auth_mode?: 'browser' | 'credentials';
-  realm: string;
   client_id: string;
   client_secret?: string;
   auth_server_url: string;
@@ -36,15 +37,12 @@ export class AccessToken {
     }
     this.config = cfg;
     this.request = request;
-    this.baseUrl = cfg.auth_server_url;
+    this.baseUrl = rstrip(cfg.auth_server_url, '/');
     this.virtru_client_pubkey = cfg.virtru_client_pubkey;
   }
 
   async info(accessToken: string): Promise<unknown> {
-    // TODO make sure realm is uri encoded
-    const url = `${this.baseUrl}/auth/realms/${encodeURIComponent(
-      this.config.realm
-    )}/protocol/openid-connect/userinfo`;
+    const url = `${this.baseUrl}/protocol/openid-connect/userinfo`;
     const response = await (this.request || fetch)(url, {
       headers: {
         ...this.extraHeaders,
@@ -89,9 +87,7 @@ export class AccessToken {
         cfg.client_secret && { client_secret: cfg.client_secret }),
     };
 
-    const url = `${this.baseUrl}/auth/realms/${encodeURIComponent(
-      cfg.realm
-    )}/protocol/openid-connect/token`;
+    const url = `${this.baseUrl}/protocol/openid-connect/token`;
     const response = await this.doPost(url, args);
     if (!response.ok) {
       console.error(await response.text());
@@ -103,9 +99,7 @@ export class AccessToken {
 
   async exchangeJwt(jwtToken: string): Promise<string> {
     const cfg = this.config;
-    const url = `${this.baseUrl}/auth/realms/${encodeURIComponent(
-      cfg.realm
-    )}/protocol/openid-connect/token`;
+    const url = `${this.baseUrl}/protocol/openid-connect/token`;
 
     const args = {
       grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
@@ -148,9 +142,7 @@ export class AccessToken {
         throw new Error(`to call get(), either client credentials must be provided in the config,
                           or a cached tokenset from a token refresh from a previous call to refresh() must exist`);
       }
-      const url = `${this.baseUrl}/auth/realms/${encodeURIComponent(
-        cfg.realm
-      )}/protocol/openid-connect/token`;
+      const url = `${this.baseUrl}/protocol/openid-connect/token`;
       const response = await this.doPost(url, {
         grant_type: 'client_credentials',
         client_id: cfg.client_id,

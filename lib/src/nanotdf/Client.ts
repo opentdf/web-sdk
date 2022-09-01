@@ -28,14 +28,13 @@ const { KeyUsageType, AlgorithmName, NamedCurve } = cryptoEnums;
  * @example
  * import { Client, clientAuthProvider, decrypt, encrypt } from '@opentdf/client/nanotdf`
  *
- * const OIDC_ENDPOINT = 'http://localhost:65432/keycloak/';
+ * const OIDC_ENDPOINT = 'http://localhost:65432/auth/';
  * const KAS_URL = 'http://localhost:65432/kas';
  *
  * let client = new Client(
  *    await clientAuthProvider({
  *      clientId: 'tdf-client',
  *      clientSecret: '123-456',
- *      organizationName: 'tdf',
  *      oidcOrigin: OIDC_ENDPOINT,
  *    }),
  *    KAS_URL
@@ -73,11 +72,6 @@ export default class Client {
    * The Ephemeral Key Pair can either be provided or will be generate when fetching the entity object. Once set it
    * cannot be changed. If a new ephemeral key is desired it a new client should be initialized.
    * There is no performance impact for creating a new client IFF the ephemeral key pair is provided.
-   *
-   * @param clientConfig OIDC client credentials
-   * @param kasUrl Key access service URL
-   * @param ephemeralKeyPair (optional) ephemeral key pair to use
-   * @param clientPubKey Client identification
    */
   constructor(
     authProvider: AuthProvider,

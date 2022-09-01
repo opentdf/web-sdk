@@ -1,11 +1,16 @@
 export interface IVirtruOIDCBase {
-  organizationName: string;
+  /** the client's public key, base64 encoded. Will be bound to the OIDC token. Optional. If not set in the constructor, */
   clientPubKey?: string;
+
+  /**If using client credentials mode, the client ID. Optional, used for non-browser contexts. */
   clientId: string;
+
+  /** The endpoint of the OIDC IdP to authenticate against, ex. 'https://virtru.com/auth/realms/demo' */
   oidcOrigin: string;
 }
 
 export interface IVirtruOIDC extends IVirtruOIDCBase {
+  /** If using client credentials mode, the client secret. Optional, used for non-browser contexts. */
   clientSecret?: string;
 }
 

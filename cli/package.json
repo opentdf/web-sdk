@@ -1,6 +1,6 @@
 {
   "name": "@opentdf/cli",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Node based CLI for opentdf",
   "repository": {
     "type": "git",
@@ -31,14 +31,14 @@
   "devDependencies": {
     "@esm-bundle/chai": "4.3.4-fix.0",
     "@types/mocha": "9.1.1",
-    "@types/node": "^18.7.13",
+    "@types/node": "^18.7.14",
     "@types/readable-stream": "^2.3.14",
     "@types/sinon": "^10.0.13",
-    "@types/yargs": "^17.0.11",
-    "@typescript-eslint/eslint-plugin": "^5.35.1",
-    "@typescript-eslint/parser": "^5.35.1",
+    "@types/yargs": "^17.0.12",
+    "@typescript-eslint/eslint-plugin": "^5.36.1",
+    "@typescript-eslint/parser": "^5.36.1",
     "chai": "^4.3.6",
-    "eslint": "^8.22.0",
+    "eslint": "^8.23.0",
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-prettier": "^4.2.1",
     "license-checker": "^25.0.1",
@@ -49,7 +49,7 @@
     "typescript": "^4.8.2"
   },
   "dependencies": {
-    "@opentdf/client": "file:../opentdf-client-0.2.2.tgz",
+    "@opentdf/client": "file:../opentdf-client-0.3.0.tgz",
     "node-fetch": "^3.2.10",
     "yargs": "^17.5.1"
   }

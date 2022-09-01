@@ -8,7 +8,6 @@ import { CLIError, Level, log } from './logger.js';
 
 type AuthToProcess = {
   auth?: string;
-  orgName?: string;
   clientId?: string;
   clientSecret?: string;
   kasEndpoint: string;
@@ -17,7 +16,6 @@ type AuthToProcess = {
 
 async function processAuth({
   auth,
-  orgName,
   clientId,
   clientSecret,
   kasEndpoint,
@@ -27,22 +25,21 @@ async function processAuth({
   if (auth) {
     log('DEBUG', 'Processing an auth string');
     const authParts = auth.split(':');
-    if (authParts.length !== 3) {
-      throw new CLIError('CRITICAL', 'Auth expects <orgName>:<clientId>:<clientSecret>');
+    if (authParts.length !== 2) {
+      throw new CLIError('CRITICAL', `Auth expects <clientId>:<clientSecret>, received ${auth}`);
     }
 
-    [orgName, clientId, clientSecret] = authParts;
-  } else if (!orgName || !clientId || !clientSecret) {
+    [clientId, clientSecret] = authParts;
+  } else if (!clientId || !clientSecret) {
     throw new CLIError(
       'CRITICAL',
-      'Auth expects orgName, clientId, and clientSecret, or combined auth param'
+      'Auth expects clientId and clientSecret, or combined auth param'
     );
   }
 
-  log('DEBUG', `Building Virtru client for [${clientId}@${orgName}], via [${oidcEndpoint}]`);
+  log('DEBUG', `Building Virtru client for [${clientId}, via [${oidcEndpoint}]`);
   return new NanoTDFClient(
     await AuthProviders.clientSecretAuthProvider({
-      organizationName: orgName,
       clientId,
       oidcOrigin: oidcEndpoint,
       exchange: 'client',
@@ -103,20 +100,10 @@ export const handleArgs = (args: string[]) => {
       .option('auth', {
         group: 'Authentication:',
         type: 'string',
-        description: 'Authentication string (<orgName>:<clientId>:<clientSecret>)',
+        description: 'Authentication string (<clientId>:<clientSecret>)',
       })
-      .implies('auth', '--no-org')
       .implies('auth', '--no-clientId')
       .implies('auth', '--no-clientSecret')
-
-      .option('orgName', {
-        group: 'OIDC client credentials',
-        alias: 'org',
-        type: 'string',
-        description: 'OIDC realm/org',
-      })
-      .implies('orgName', 'clientId')
-      .implies('orgName', 'clientSecret')
 
       .option('clientId', {
         group: 'OIDC client credentials',
@@ -125,7 +112,6 @@ export const handleArgs = (args: string[]) => {
         description: 'IdP-issued Client ID',
       })
       .implies('clientId', 'clientSecret')
-      .implies('clientId', 'orgName')
 
       .option('clientSecret', {
         group: 'OIDC client credentials',
@@ -134,7 +120,6 @@ export const handleArgs = (args: string[]) => {
         description: 'IdP-issued Client Secret',
       })
       .implies('clientSecret', 'clientId')
-      .implies('clientSecret', 'orgName')
 
       .option('exchangeToken', {
         group: 'Token from trusted external IdP to exchange for Virtru auth',
@@ -143,15 +128,11 @@ export const handleArgs = (args: string[]) => {
         description: 'Token issued by trusted external IdP',
       })
       .implies('exchangeToken', 'clientId')
-      .implies('exchangeToken', 'orgName')
 
       // Examples
-      .example('$0 --auth MyOrg:ClientID123:Cli3nt$ecret', '# OIDC client credentials')
+      .example('$0 --auth ClientID123:Cli3nt$ecret', '# OIDC client credentials')
 
-      .example(
-        '$0 --orgName MyOrg --clientId ClientID123 --clientSecret Cli3nt$ecret',
-        '# OIDC client credentials'
-      )
+      .example('$0 --clientId ClientID123 --clientSecret Cli3nt$ecret', '# OIDC client credentials')
 
       // POLICY
       .options({

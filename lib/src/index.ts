@@ -10,6 +10,7 @@ import {
 } from './nanotdf/index';
 import { keyAgreement, extractPublicFromCertToCrypto } from './nanotdf-crypto/index';
 import { TypedArray, createAttribute, Policy } from './tdf/index';
+import { AuthProvider } from './auth/auth';
 
 async function fetchKasPubKey(kasUrl: string): Promise<string> {
   const kasPubKeyResponse = await fetch(`${kasUrl}/kas_public_key?algorithm=ec:secp256r1`);
@@ -28,7 +29,7 @@ async function fetchKasPubKey(kasUrl: string): Promise<string> {
  * ```
  * import { clientSecretAuthProvider, NanoTDFClient } from '@opentdf/client';
  *
- * const OIDC_ENDPOINT = 'http://localhost:65432/auth/';
+ * const OIDC_ENDPOINT = 'http://localhost:65432/auth/realms/opentdf-demo';
  * const KAS_URL = 'http://localhost:65432/api/kas/';
  *
  * const ciphertext = '...';
@@ -36,7 +37,6 @@ async function fetchKasPubKey(kasUrl: string): Promise<string> {
  *   await clientSecretAuthProvider({
  *     clientId: 'tdf-client',
  *     clientSecret: '123-456',
- *     organizationName: 'tdf',
  *     oidcOrigin: OIDC_ENDPOINT,
  *   }),
  *   KAS_URL
@@ -177,7 +177,7 @@ export class NanoTDFClient extends Client {
  * ```
  * import { clientSecretAuthProvider, NanoTDFDatasetClient } from '@opentdf/client';
  *
- * const OIDC_ENDPOINT = 'http://localhost:65432/auth/';
+ * const OIDC_ENDPOINT = 'http://localhost:65432/auth/realms/tdf';
  * const KAS_URL = 'http://localhost:65432/api/kas/';
  *
  * const ciphertext = '...';
@@ -185,7 +185,6 @@ export class NanoTDFClient extends Client {
  *   await clientSecretAuthProvider({
  *     clientId: 'tdf-client',
  *     clientSecret: '123-456',
- *     organizationName: 'tdf',
  *     exchange: 'client',
  *     oidcOrigin: OIDC_ENDPOINT,
  *   }),
@@ -234,17 +233,16 @@ export class NanoTDFDatasetClient extends Client {
    * @param maxKeyIterations Max iteration to performe without a key rotation
    */
   constructor(
-    clientConfig: any, // Can contain: organizationName, clientId, clientSecret, oidcRefreshToken, oidcOrigin, externalJwt
+    authProvider: AuthProvider,
     kasUrl: string,
-    ephemeralKeyPair?: CryptoKeyPair,
-    clientPubKey?: string,
-    maxKeyIterations: number = NanoTDFDatasetClient.NTDF_MAX_KEY_ITERATIONS
+    maxKeyIterations: number = NanoTDFDatasetClient.NTDF_MAX_KEY_ITERATIONS,
+    ephemeralKeyPair?: Required<Readonly<CryptoKeyPair>>
   ) {
     if (maxKeyIterations > NanoTDFDatasetClient.NTDF_MAX_KEY_ITERATIONS) {
       throw new Error('Key iteration exceeds max iterations(8388606)');
     }
 
-    super(clientConfig, kasUrl);
+    super(authProvider, kasUrl, ephemeralKeyPair);
 
     this.maxKeyIteration = maxKeyIterations;
     this.keyIterationCount = 0;
