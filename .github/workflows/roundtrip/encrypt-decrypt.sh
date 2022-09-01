@@ -12,7 +12,7 @@ npx @opentdf/cli --log-level DEBUG \
 
 npx @opentdf/cli --log-level DEBUG \
   --kasEndpoint http://localhost:65432/api/kas \
-  --oidcEndpoint http://localhost:65432 \
+  --oidcEndpoint http://localhost:65432/auth/realms/tdf \
   --auth tdf-client:123-456 \
   --output sample_out.txt decrypt sample.txt.tdf
 
