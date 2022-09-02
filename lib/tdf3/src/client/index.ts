@@ -46,7 +46,7 @@ const uploadBinaryToS3 = async function (
         'Content-Length': fileSize,
         'content-type': 'application/zip',
         'cache-control': 'no-store',
-    },
+      },
       maxContentLength: Infinity,
       maxBodyLength: Infinity,
     });
@@ -134,11 +134,10 @@ export class Client {
     const clientConfig = { ...defaultClientConfig, ...config };
 
     const pubKey = clientConfig?.keypair?.publicKey;
-    this.readerUrl = clientConfig.readerUrl;
 
-    if (!clientConfig.clientId) {
-      throw new Error('Client ID must be provided to constructor');
-    }
+    clientConfig.keypair && (this.keypair = clientConfig.keypair);
+    clientConfig.kasPublicKey && (this.kasPublicKey = clientConfig.kasPublicKey);
+    clientConfig.readerUrl && (this.readerUrl = clientConfig.readerUrl);
 
     if (clientConfig.kasEndpoint) {
       this.kasEndpoint = clientConfig.kasEndpoint;
@@ -150,9 +149,15 @@ export class Client {
       this.kasEndpoint = clientConfig.keyRewrapEndpoint.replace(/\/rewrap$/, '');
     }
 
-    if (config.authProvider) {
+    if (clientConfig.authProvider) {
       this.authProvider = config.authProvider;
-    } else if (inBrowser()) {
+      return;
+    }
+    if (!clientConfig.clientId) {
+      throw new Error('Client ID or custom AuthProvider must be defined');
+    }
+
+    if (inBrowser()) {
       //If you're in a browser and passing client secrets, you're Doing It Wrong.
       if (clientConfig.clientSecret) {
         throw new Error('Client credentials not supported in a browser context');
@@ -238,18 +243,18 @@ export class Client {
         type: 'split',
         cipher: 'aes-256-gcm',
       })
-      .addKeyAccess({
-        type: offline ? 'wrapped' : 'remote',
-        url: this.kasEndpoint,
-        publicKey: kasPublicKey,
-        metadata,
-      })
       .setDefaultSegmentSize(windowSize)
       // set root sig and segment types
       .setIntegrityAlgorithm('hs256', 'gmac')
       .addContentStream(source, mimeType)
       .setPolicy(policyObject)
       .setAuthProvider(this.authProvider);
+    await tdf.addKeyAccess({
+      type: offline ? 'wrapped' : 'remote',
+      url: this.kasEndpoint,
+      publicKey: kasPublicKey,
+      metadata,
+    });
 
     const byteLimit = asHtml ? HTML_BYTE_LIMIT : GLOBAL_BYTE_LIMIT;
     const stream = await tdf.writeStream(byteLimit, rcaSource);
@@ -267,11 +272,7 @@ export class Client {
     if (!tdf.manifest) {
       throw new Error('Missing manifest in encrypt function');
     }
-    const htmlBuf = TDF.wrapHtml(
-      await stream.toBuffer(),
-      tdf.manifest,
-      this.readerUrl || ''
-    );
+    const htmlBuf = TDF.wrapHtml(await stream.toBuffer(), tdf.manifest, this.readerUrl || '');
 
     if (output) {
       output.push(htmlBuf);
@@ -384,7 +385,7 @@ export class Client {
   /*
    * If we have KAS url but not public key we can fetch it from KAS
    */
-  async _getOrFetchKasPubKey() {
+  async _getOrFetchKasPubKey(): Promise<string> {
     //If clientconfig has keypair, assume auth provider was already set up with pubkey and bail
     if (this.kasPublicKey) {
       return this.kasPublicKey;

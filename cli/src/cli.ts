@@ -6,7 +6,7 @@ import {
   NanoTDFDatasetClient,
   AuthProviders,
   version,
-//@ts-ignore
+  //@ts-ignore
 } from '@opentdf/client/nano-node-esm';
 //@ts-ignore
 import { FileClient } from '@opentdf/client/tdf3';
@@ -50,10 +50,13 @@ async function processAuth({ auth, clientId, clientSecret, oidcEndpoint }: AuthT
 async function processClient(auth: AuthProvider, kasEndpoint: string, type: ContainerType) {
   switch (type) {
     case 'nano':
+      log('DEBUG', `Nano Client`);
       return new NanoTDFClient(auth, kasEndpoint);
     case 'dataset':
+      log('DEBUG', `Dataset Client`);
       return new NanoTDFDatasetClient(auth, kasEndpoint);
     case 'tdf3':
+      log('DEBUG', `TDF3 Client`);
       return new FileClient({ authProvider: auth, kasEndpoint });
   }
 }
@@ -143,7 +146,7 @@ export const handleArgs = (args: string[]) => {
         alias: 't',
         choices: containerTypes,
         description: 'Container format',
-        default: 'tdf3',
+        default: 'nano',
       })
 
       // Examples
@@ -200,17 +203,34 @@ export const handleArgs = (args: string[]) => {
           try {
             log('DEBUG', 'Running decrypt command');
             const authProvider = await processAuth(argv);
-            const client = await processClient(authProvider, argv.kasEndpoint, argv.containerType as ContainerType);
-            const buffer = await processDataIn(argv.file as string);
+            log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
+            const client = await processClient(
+              authProvider,
+              argv.kasEndpoint,
+              argv.containerType as ContainerType
+            );
+            log('DEBUG', `Initialized client ${JSON.stringify(client)}`);
 
-            log('DEBUG', 'Decrypt data.');
-            const plaintext = await client.decrypt(buffer);
-
-            log('DEBUG', 'Handle output.');
-            if (argv.output) {
-              await writeFile(argv.output, Buffer.from(plaintext));
+            log('DEBUG', `About to decrypt [${argv.file}]`);
+            if ('tdf3' === argv.containerType) {
+              const ct = await client.decrypt(argv.file);
+              if (argv.output) {
+                await ct.toFile(argv.output);
+              } else {
+                console.log(await ct.toString());
+              }
             } else {
-              console.log(Buffer.from(plaintext).toString('utf8'));
+              const buffer = await processDataIn(argv.file as string);
+
+              log('DEBUG', 'Decrypt data.');
+              const plaintext = await client.decrypt(buffer);
+
+              log('DEBUG', 'Handle output.');
+              if (argv.output) {
+                await writeFile(argv.output, Buffer.from(plaintext));
+              } else {
+                console.log(Buffer.from(plaintext).toString('utf8'));
+              }
             }
           } catch (e) {
             log(e);
@@ -231,24 +251,44 @@ export const handleArgs = (args: string[]) => {
           try {
             log('DEBUG', 'Running encrypt command');
             const authProvider = await processAuth(argv);
-            const client = await processClient(authProvider, argv.kasEndpoint, argv.containerType as ContainerType);
+            log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
+            const client = await processClient(
+              authProvider,
+              argv.kasEndpoint,
+              argv.containerType as ContainerType
+            );
 
-            log('SILLY', 'Build encrypt params');
+            log('SILLY', `Initialized client ${JSON.stringify(client)}`);
+
             if (argv.attributes?.length) {
               client.dataAttributes = argv.attributes.split(',');
             }
             if (argv['users-with-access']?.length) {
               client.dissems = argv['users-with-access'].split(',');
             }
+            log(
+              'SILLY',
+              `Built encrypt params dissems: ${client.dissems}, attrs: ${client.dataAttributes}`
+            );
             log('DEBUG', 'Encrypting data');
-            const buffer = await processDataIn(argv.file as string);
-            const cyphertext = await client.encrypt(buffer);
 
-            log('DEBUG', 'Handle cyphertext output');
-            if (argv.output) {
-              await writeFile(argv.output, Buffer.from(cyphertext));
+            if ('tdf3' === argv.containerType) {
+              const ct = await client.encrypt(argv.file);
+              if (argv.output) {
+                await ct.toFile(argv.output);
+              } else {
+                console.log(await ct.toString());
+              }
             } else {
-              console.log(Buffer.from(cyphertext).toString('base64'));
+              const buffer = await processDataIn(argv.file as string);
+              const cyphertext = await client.encrypt(buffer);
+
+              log('DEBUG', `Handle cyphertext output ${JSON.stringify(cyphertext)}`);
+              if (argv.output) {
+                await writeFile(argv.output, Buffer.from(cyphertext));
+              } else {
+                console.log(Buffer.from(cyphertext).toString('base64'));
+              }
             }
           } catch (e) {
             log(e);

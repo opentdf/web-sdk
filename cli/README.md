@@ -16,13 +16,14 @@ bin/opentdf.mjs encrypt \
   --kasEndpoint http://localhost:65432/api/kas \
   --oidcEndpoint http://localhost:65432/auth/realms/tdf \
   --auth tdf-client:123-456 \
-  --type nano \
+  --containerType tdf3 \
   --output sample.tdf \
   sample.txt
 bin/opentdf.mjs \
   --kasEndpoint http://localhost:65432/api/kas \
   --oidcEndpoint http://localhost:65432/auth/realms/tdf \
   --auth tdf-client:123-456 \
+  --containerType tdf3 \
   decrypt sample.tdf
 ```
 

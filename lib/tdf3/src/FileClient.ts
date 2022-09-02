@@ -6,7 +6,7 @@ import { type InputSource } from '../../src/types';
 import { type AuthProvider } from 'src/auth/auth';
 
 interface FileClientConfig {
-  authProvider?: AuthProvider,
+  authProvider?: AuthProvider;
   clientId: string;
   oidcOrigin: string;
   kasEndpoint: string;

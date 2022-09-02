@@ -28,22 +28,22 @@
   "types": "./dist/types/src/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/types/src/index.d.ts",
       "import": "./dist/client/client-web.js",
-      "require": "./dist/server/node.cjs.js",
-      "types": "./dist/types/src/index.d.ts"
+      "require": "./dist/server/node.cjs.js"
     },
     "./nano": {
+      "types": "./dist/types/src/index.d.ts",
       "import": "./dist/esm/src/index.js",
-      "require": "./dist/server/node-nano.cjs.js",
-      "types": "./dist/types/src/index.d.ts"
+      "require": "./dist/server/node-nano.cjs.js"
     },
     "./nano-node-esm": {
-      "import": "./dist/esm/src/index.node.js",
-      "types": "./dist/types/src/index.d.ts"
+      "types": "./dist/types/src/index.d.ts",
+      "import": "./dist/esm/src/index.node.js"
     },
     "./tdf3": {
-      "import": "./dist/esm/tdf3/index.js",
-      "types": "./dist/types/tdf3/index.d.ts"
+      "types": "./dist/types/tdf3/index.d.ts",
+      "import": "./dist/esm/tdf3/index.js"
     },
     "./tdf3-web-esm": {
       "import": "./dist/esm/tdf3/index-web.js",
@@ -72,7 +72,6 @@
     "jose": "^4.9.1",
     "jsonschema": "^1.4.1",
     "node-fetch": "^3.2.10",
-    "node-forge": "^1.3.1",
     "uuid": "~8.3.2",
     "web-streams-node": "^0.4.0",
     "yargs": "^17.5.1"
@@ -95,7 +94,6 @@
     "@types/jsonwebtoken": "~8.5.9",
     "@types/mocha": "~9.1.1",
     "@types/node": "^18.7.14",
-    "@types/node-forge": "^1.0.4",
     "@types/send": "^0.17.1",
     "@types/sinon": "~10.0.13",
     "@types/streamsaver": "^2.0.1",
