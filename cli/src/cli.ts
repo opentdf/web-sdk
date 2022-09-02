@@ -1,13 +1,14 @@
 import yargs from 'yargs';
 import { readFile, stat, writeFile } from 'fs/promises';
 import { hideBin } from 'yargs/helpers';
-//@ts-ignore
 import {
   NanoTDFClient,
   NanoTDFDatasetClient,
   AuthProviders,
   version,
+//@ts-ignore
 } from '@opentdf/client/nano-node-esm';
+//@ts-ignore
 import { FileClient } from '@opentdf/client/tdf3';
 import { CLIError, Level, log } from './logger.js';
 import { type AuthProvider } from '@opentdf/client/dist/types/src/auth/auth.js';
