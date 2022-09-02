@@ -21,6 +21,7 @@ async function fetchKasPubKey(kasUrl: string): Promise<string> {
   }
   return kasPubKeyResponse.json();
 }
+const THROTTLE_DELAY_FAILURE_REWRAP_KEY = 1000 * 5;
 
 /**
  * NanoTDF SDK Client
@@ -199,6 +200,7 @@ export class NanoTDFDatasetClient extends Client {
   // IV starts from 1 since the 0 IV is reserved for policy encryption
   static readonly NTDF_MAX_KEY_ITERATIONS = 8388606;
 
+  private isRewrapFailed: boolean;
   private maxKeyIteration: number;
   private keyIterationCount: number;
   private cachedEphemeralKey?: Uint8Array;
@@ -246,6 +248,7 @@ export class NanoTDFDatasetClient extends Client {
 
     this.maxKeyIteration = maxKeyIterations;
     this.keyIterationCount = 0;
+    this.isRewrapFailed = false;
   }
 
   /**
@@ -368,13 +371,26 @@ export class NanoTDFDatasetClient extends Client {
 
     const version = '0.0.1';
     // Rewrap key on every request
+    if (this.isRewrapFailed) {
+      throw new Error('Key rewrap failure');
+    }
+
+    const throttlingOnCatch = () => {
+      this.isRewrapFailed = true;
+
+      setTimeout(() => {
+        this.isRewrapFailed = false;
+      }, THROTTLE_DELAY_FAILURE_REWRAP_KEY);
+    };
+
     const ukey = await this.rewrapKey(
       nanotdf.header.toBuffer(),
       nanotdf.header.getKasRewrapUrl(),
       nanotdf.header.magicNumberVersion,
       version,
       nanotdf.header.authTagLength
-    );
+    ).catch(throttlingOnCatch);
+
     if (!ukey) {
       throw new Error('Key rewrap failure');
     }
