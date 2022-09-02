@@ -4,7 +4,7 @@
  * @private
  */
 
-import { Algorithms } from '../ciphers';
+import { Algorithms } from '../ciphers/index';
 import { Binary } from '../binary';
 import {
   DecryptResult,

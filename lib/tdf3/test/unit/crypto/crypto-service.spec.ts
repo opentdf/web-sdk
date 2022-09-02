@@ -1,5 +1,5 @@
 import { assert, expect } from 'chai';
-import { Algorithms } from '../../../src/ciphers';
+import { Algorithms } from '../../../src/ciphers/index';
 import {
   decrypt,
   decryptWithPrivateKey,
@@ -12,7 +12,7 @@ import {
   hmac,
   randomBytesAsHex,
   sha256,
-} from '../../../src/crypto';
+} from '../../../src/crypto/index';
 import { Binary } from '../../../src/binary';
 import { decodeArrayBuffer, encodeArrayBuffer } from '../../../../src/encodings/base64';
 

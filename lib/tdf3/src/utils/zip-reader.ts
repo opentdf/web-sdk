@@ -1,4 +1,4 @@
-import { Manifest } from '../models';
+import { Manifest } from '../models/index';
 import { Chunker } from './chunkers';
 
 // TODO: Better document what these constants are

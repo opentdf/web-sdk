@@ -1,9 +1,9 @@
 import { S3Client, GetObjectCommand, HeadObjectCommand, S3ClientConfig } from '@aws-sdk/client-s3';
 import axios from 'axios';
 import { createReadStream } from 'fs';
-import { arrayBufferToBuffer, inBrowser } from '../utils';
-import { AttributeValidator } from './validation';
-import { AttributeObject, Policy } from '../models';
+import { arrayBufferToBuffer, inBrowser } from '../utils/index';
+import { AttributeValidator } from './validation/index';
+import { AttributeObject, Policy } from '../models/index';
 import { RcaParams } from '../tdf';
 
 import { IllegalArgumentError, IllegalEnvError } from '../errors';

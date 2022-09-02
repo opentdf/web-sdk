@@ -2,25 +2,27 @@ import yargs from 'yargs';
 import { readFile, stat, writeFile } from 'fs/promises';
 import { hideBin } from 'yargs/helpers';
 //@ts-ignore
-import { NanoTDFClient, AuthProviders, version } from '@opentdf/client/nano-node-esm';
-
+import {
+  NanoTDFClient,
+  NanoTDFDatasetClient,
+  AuthProviders,
+  version,
+} from '@opentdf/client/nano-node-esm';
+import { FileClient } from '@opentdf/client/tdf3';
 import { CLIError, Level, log } from './logger.js';
+import { type AuthProvider } from '@opentdf/client/dist/types/src/auth/auth.js';
 
 type AuthToProcess = {
   auth?: string;
   clientId?: string;
   clientSecret?: string;
-  kasEndpoint: string;
   oidcEndpoint: string;
 };
 
-async function processAuth({
-  auth,
-  clientId,
-  clientSecret,
-  kasEndpoint,
-  oidcEndpoint,
-}: AuthToProcess) {
+const containerTypes = ['tdf3', 'nano', 'dataset'] as const;
+type ContainerType = typeof containerTypes[number];
+
+async function processAuth({ auth, clientId, clientSecret, oidcEndpoint }: AuthToProcess) {
   log('DEBUG', 'Processing auth params');
   if (auth) {
     log('DEBUG', 'Processing an auth string');
@@ -36,17 +38,23 @@ async function processAuth({
       'Auth expects clientId and clientSecret, or combined auth param'
     );
   }
+  return await AuthProviders.clientSecretAuthProvider({
+    clientId,
+    oidcOrigin: oidcEndpoint,
+    exchange: 'client',
+    clientSecret,
+  });
+}
 
-  log('DEBUG', `Building Virtru client for [${clientId}, via [${oidcEndpoint}]`);
-  return new NanoTDFClient(
-    await AuthProviders.clientSecretAuthProvider({
-      clientId,
-      oidcOrigin: oidcEndpoint,
-      exchange: 'client',
-      clientSecret,
-    }),
-    kasEndpoint
-  );
+async function processClient(auth: AuthProvider, kasEndpoint: string, type: ContainerType) {
+  switch (type) {
+    case 'nano':
+      return new NanoTDFClient(auth, kasEndpoint);
+    case 'dataset':
+      return new NanoTDFDatasetClient(auth, kasEndpoint);
+    case 'tdf3':
+      return new FileClient({ authProvider: auth, kasEndpoint });
+  }
 }
 
 async function processDataIn(file: string) {
@@ -129,6 +137,14 @@ export const handleArgs = (args: string[]) => {
       })
       .implies('exchangeToken', 'clientId')
 
+      .option('containerType', {
+        group: 'TDF Settings',
+        alias: 't',
+        choices: containerTypes,
+        description: 'Container format',
+        default: 'tdf3',
+      })
+
       // Examples
       .example('$0 --auth ClientID123:Cli3nt$ecret', '# OIDC client credentials')
 
@@ -182,7 +198,8 @@ export const handleArgs = (args: string[]) => {
         async (argv) => {
           try {
             log('DEBUG', 'Running decrypt command');
-            const client = await processAuth(argv);
+            const authProvider = await processAuth(argv);
+            const client = await processClient(authProvider, argv.kasEndpoint, argv.containerType as ContainerType);
             const buffer = await processDataIn(argv.file as string);
 
             log('DEBUG', 'Decrypt data.');
@@ -212,7 +229,8 @@ export const handleArgs = (args: string[]) => {
         async (argv) => {
           try {
             log('DEBUG', 'Running encrypt command');
-            const client = await processAuth(argv);
+            const authProvider = await processAuth(argv);
+            const client = await processClient(authProvider, argv.kasEndpoint, argv.containerType as ContainerType);
 
             log('SILLY', 'Build encrypt params');
             if (argv.attributes?.length) {

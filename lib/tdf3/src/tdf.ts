@@ -17,10 +17,10 @@ import {
   Remote as KeyAccessRemote,
   SplitKey,
   Wrapped as KeyAccessWrapped,
-} from './models';
-import { base64 } from '../../src/encodings';
-import * as cryptoService from './crypto';
-import { base64ToBuffer, fromUrl, keyMerge, ZipReader, ZipWriter, Chunker } from './utils';
+} from './models/index';
+import { base64 } from '../../src/encodings/index';
+import * as cryptoService from './crypto/index';
+import { base64ToBuffer, fromUrl, keyMerge, ZipReader, ZipWriter, Chunker } from './utils/index';
 import { Binary } from './binary';
 import {
   KasDecryptError,
@@ -32,11 +32,11 @@ import {
   TdfDecryptError,
   TdfPayloadExtractionError,
 } from './errors';
-import { htmlWrapperTemplate } from './templates';
+import { htmlWrapperTemplate } from './templates/index';
 
 // configurable
 // TODO: remove dependencies from ciphers so that we can open-source instead of relying on other Virtru libs
-import { AesGcmCipher } from './ciphers';
+import { AesGcmCipher } from './ciphers/index';
 import { PemKeyPair } from './crypto/declarations';
 import { AuthProvider } from '../../src/auth/auth';
 import PolicyObject from '../../src/tdf/PolicyObject';

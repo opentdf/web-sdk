@@ -25,7 +25,6 @@
   "author": "Virtru",
   "browser": "./dist/client/client-web.js",
   "main": "./dist/server/node.cjs.js",
-  "module": "./dist/esm/src/index.node.js",
   "types": "./dist/types/src/index.d.ts",
   "exports": {
     ".": {
@@ -55,7 +54,7 @@
     "build": "npm run clean && webpack && tsc -p tsconfig-esm.json && node prepareNodeESM.js && ../scripts/add-module-types.sh esm && ../scripts/fill-version.sh",
     "clean": "rm -rf {build,dist}",
     "doc": "typedoc --out dist/docs src/index.ts",
-    "format": "prettier --write \"{facade,src,tdf3,test}/**/*.ts\"",
+    "format": "prettier --write \"{src,tdf3,test}/**/*.ts\"",
     "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; CC-BY-4.0; ISC; MIT'",
     "lint": "eslint ./{src,test}/**/*.ts",
     "prepack": "npm run build",

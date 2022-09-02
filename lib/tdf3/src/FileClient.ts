@@ -1,10 +1,12 @@
-import { Client as ClientTdf3 } from '../tdf3/src/client';
-import { DecryptParamsBuilder, EncryptParamsBuilder } from '../tdf3/src/client/builders';
-import { PlaintextStream } from '../tdf3/src/client/tdf-stream';
-import { EncryptParams, DecryptParams } from '../tdf3/src/client/builders';
-import { InputSource } from '../src/types';
+import { Client as ClientTdf3 } from './client/index';
+import { DecryptParamsBuilder, EncryptParamsBuilder } from './client/builders';
+import { PlaintextStream } from './client/tdf-stream';
+import { type EncryptParams, type DecryptParams } from './client/builders';
+import { type InputSource } from '../../src/types';
+import { type AuthProvider } from 'src/auth/auth';
 
 interface FileClientConfig {
+  authProvider?: AuthProvider,
   clientId: string;
   oidcOrigin: string;
   kasEndpoint: string;
@@ -17,6 +19,8 @@ function isNodeStream(source: InputSource): source is NodeJS.ReadableStream {
 }
 
 export class FileClient {
+  dissems: string[] = [];
+  dataAttributes: string[] = [];
   private client: ClientTdf3;
 
   constructor({
@@ -25,8 +29,10 @@ export class FileClient {
     oidcRefreshToken,
     oidcOrigin,
     kasEndpoint,
+    authProvider,
   }: FileClientConfig) {
     this.client = new ClientTdf3({
+      authProvider,
       clientId,
       clientSecret,
       oidcRefreshToken,
@@ -58,10 +64,17 @@ export class FileClient {
 
   async encrypt(
     source: InputSource = '',
-    users: string[] = [],
+    users?: string[],
     params?: EncryptParams
   ): Promise<PlaintextStream | NodeJS.WriteStream> {
-    const encryptParams = new EncryptParamsBuilder().withOffline().withUsersWithAccess(users);
+    const encryptParams = new EncryptParamsBuilder()
+      .withOffline()
+      .withUsersWithAccess(users || this.dissems)
+      .withAttributes(
+        this.dataAttributes.map((attribute) => {
+          return { attribute };
+        })
+      );
 
     if (params) {
       return await this.client.encrypt(params);
@@ -78,5 +91,14 @@ export class FileClient {
     }
     const result = FileClient.setSource(source, decryptParams);
     return await this.client.decrypt(<DecryptParams>result);
+  }
+
+  /**
+   * Add attribute to the TDF file/data
+   *
+   * @param attribute The attribute that decides the access control of the TDF.
+   */
+  addAttribute(attribute: string): void {
+    this.dataAttributes.push(attribute);
   }
 }
