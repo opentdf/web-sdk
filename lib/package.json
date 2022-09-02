@@ -10,8 +10,10 @@
     "dist/*/package.json",
     "dist/client/*",
     "dist/esm/src/**",
+    "dist/esm/tdf3/**",
     "dist/server/*",
     "dist/types/src/**",
+    "dist/types/tdf3/**",
     "README.md"
   ],
   "repository": {
@@ -39,6 +41,10 @@
     "./nano-node-esm": {
       "import": "./dist/esm/src/index.node.js",
       "types": "./dist/types/src/index.d.ts"
+    },
+    "./tdf3": {
+      "import": "./dist/esm/tdf3/index.js",
+      "types": "./dist/types/tdf3/index.d.ts"
     }
   },
   "scripts": {
