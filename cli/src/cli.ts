@@ -2,16 +2,13 @@ import yargs from 'yargs';
 import { readFile, stat, writeFile } from 'fs/promises';
 import { hideBin } from 'yargs/helpers';
 import {
+  FileClient,
   NanoTDFClient,
   NanoTDFDatasetClient,
   AuthProviders,
   version,
-  //@ts-ignore
-} from '@opentdf/client/nano-node-esm';
-//@ts-ignore
-import { FileClient } from '@opentdf/client/tdf3';
+} from '@opentdf/client';
 import { CLIError, Level, log } from './logger.js';
-import { type AuthProvider } from '@opentdf/client/dist/types/src/auth/auth.js';
 
 type AuthToProcess = {
   auth?: string;
@@ -21,7 +18,6 @@ type AuthToProcess = {
 };
 
 const containerTypes = ['tdf3', 'nano', 'dataset'] as const;
-type ContainerType = typeof containerTypes[number];
 
 async function processAuth({ auth, clientId, clientSecret, oidcEndpoint }: AuthToProcess) {
   log('DEBUG', 'Processing auth params');
@@ -47,18 +43,16 @@ async function processAuth({ auth, clientId, clientSecret, oidcEndpoint }: AuthT
   });
 }
 
-async function processClient(auth: AuthProvider, kasEndpoint: string, type: ContainerType) {
-  switch (type) {
-    case 'nano':
-      log('DEBUG', `Nano Client`);
-      return new NanoTDFClient(auth, kasEndpoint);
-    case 'dataset':
-      log('DEBUG', `Dataset Client`);
-      return new NanoTDFDatasetClient(auth, kasEndpoint);
-    case 'tdf3':
-      log('DEBUG', `TDF3 Client`);
-      return new FileClient({ authProvider: auth, kasEndpoint });
+type AnyClient = FileClient | NanoTDFClient | NanoTDFDatasetClient;
+
+function addParams(client: AnyClient, argv: Partial<mainArgs>) {
+  if (argv.attributes?.length) {
+    client.dataAttributes = argv.attributes.split(',');
   }
+  if (argv['users-with-access']?.length) {
+    client.dissems = argv['users-with-access'].split(',');
+  }
+  log('SILLY', `Built encrypt params dissems: ${client.dissems}, attrs: ${client.dataAttributes}`);
 }
 
 async function processDataIn(file: string) {
@@ -200,40 +194,38 @@ export const handleArgs = (args: string[]) => {
           });
         },
         async (argv) => {
-          try {
-            log('DEBUG', 'Running decrypt command');
-            const authProvider = await processAuth(argv);
-            log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
-            const client = await processClient(
-              authProvider,
-              argv.kasEndpoint,
-              argv.containerType as ContainerType
-            );
-            log('DEBUG', `Initialized client ${JSON.stringify(client)}`);
+          log('DEBUG', 'Running decrypt command');
+          const authProvider = await processAuth(argv);
+          log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
 
+          const kasEndpoint = argv.kasEndpoint;
+          if (argv.containerType === 'tdf3') {
+            log('DEBUG', `TDF3 Client`);
+            const client = new FileClient({ authProvider, kasEndpoint });
+            log('SILLY', `Initialized client ${JSON.stringify(client)}`);
             log('DEBUG', `About to decrypt [${argv.file}]`);
-            if ('tdf3' === argv.containerType) {
-              const ct = await client.decrypt(argv.file);
-              if (argv.output) {
-                await ct.toFile(argv.output);
-              } else {
-                console.log(await ct.toString());
-              }
+            const ct = await client.decrypt(argv.file as string);
+            if (argv.output) {
+              await ct.toFile(argv.output);
             } else {
-              const buffer = await processDataIn(argv.file as string);
-
-              log('DEBUG', 'Decrypt data.');
-              const plaintext = await client.decrypt(buffer);
-
-              log('DEBUG', 'Handle output.');
-              if (argv.output) {
-                await writeFile(argv.output, Buffer.from(plaintext));
-              } else {
-                console.log(Buffer.from(plaintext).toString('utf8'));
-              }
+              console.log(await ct.toString());
             }
-          } catch (e) {
-            log(e);
+          } else {
+            const client =
+              argv.containerType === 'nano'
+                ? new NanoTDFClient(authProvider, kasEndpoint)
+                : new NanoTDFDatasetClient(authProvider, kasEndpoint);
+            const buffer = await processDataIn(argv.file as string);
+
+            log('DEBUG', 'Decrypt data.');
+            const plaintext = await client.decrypt(buffer);
+
+            log('DEBUG', 'Handle output.');
+            if (argv.output) {
+              await writeFile(argv.output, Buffer.from(plaintext));
+            } else {
+              console.log(Buffer.from(plaintext).toString('utf8'));
+            }
           }
         }
       )
@@ -248,50 +240,42 @@ export const handleArgs = (args: string[]) => {
           });
         },
         async (argv) => {
-          try {
-            log('DEBUG', 'Running encrypt command');
-            const authProvider = await processAuth(argv);
-            log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
-            const client = await processClient(
-              authProvider,
-              argv.kasEndpoint,
-              argv.containerType as ContainerType
-            );
+          log('DEBUG', 'Running encrypt command');
+          const authProvider = await processAuth(argv);
+          log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
+          const kasEndpoint = argv.kasEndpoint;
 
+          if ('tdf3' === argv.containerType) {
+            log('DEBUG', `TDF3 Client`);
+            const client = new FileClient({ authProvider, kasEndpoint });
             log('SILLY', `Initialized client ${JSON.stringify(client)}`);
-
-            if (argv.attributes?.length) {
-              client.dataAttributes = argv.attributes.split(',');
-            }
-            if (argv['users-with-access']?.length) {
-              client.dissems = argv['users-with-access'].split(',');
-            }
-            log(
-              'SILLY',
-              `Built encrypt params dissems: ${client.dissems}, attrs: ${client.dataAttributes}`
-            );
-            log('DEBUG', 'Encrypting data');
-
-            if ('tdf3' === argv.containerType) {
-              const ct = await client.encrypt(argv.file);
-              if (argv.output) {
-                await ct.toFile(argv.output);
-              } else {
-                console.log(await ct.toString());
+            addParams(client, argv);
+            const ct = await client.encrypt(argv.file as string);
+            if (argv.output) {
+              if (ct.toFile) {
+                await ct.toFile(argv.output as string);
               }
             } else {
-              const buffer = await processDataIn(argv.file as string);
-              const cyphertext = await client.encrypt(buffer);
-
-              log('DEBUG', `Handle cyphertext output ${JSON.stringify(cyphertext)}`);
-              if (argv.output) {
-                await writeFile(argv.output, Buffer.from(cyphertext));
-              } else {
-                console.log(Buffer.from(cyphertext).toString('base64'));
-              }
+              console.log(await ct.toString());
             }
-          } catch (e) {
-            log(e);
+          } else {
+            const client =
+              argv.containerType === 'nano'
+                ? new NanoTDFClient(authProvider, kasEndpoint)
+                : new NanoTDFDatasetClient(authProvider, kasEndpoint);
+            log('SILLY', `Initialized client ${JSON.stringify(client)}`);
+
+            addParams(client, argv);
+
+            const buffer = await processDataIn(argv.file as string);
+            const cyphertext = await client.encrypt(buffer);
+
+            log('DEBUG', `Handle cyphertext output ${JSON.stringify(cyphertext)}`);
+            if (argv.output) {
+              await writeFile(argv.output, Buffer.from(cyphertext));
+            } else {
+              console.log(Buffer.from(cyphertext).toString('base64'));
+            }
           }
         }
       )
@@ -319,13 +303,13 @@ export const handleArgs = (args: string[]) => {
   );
 };
 
-export type mainArgs = ReturnType<typeof handleArgs>;
+export type mainArgs = Awaited<ReturnType<typeof handleArgs>>;
 export const main = async (argsPromise: mainArgs) => {
-  await argsPromise;
+  argsPromise;
 };
 
-const a = handleArgs(hideBin(process.argv));
-main(a)
+handleArgs(hideBin(process.argv))
+  .then(main)
   .then(() => {
     // Nothing;
   })

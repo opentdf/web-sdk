@@ -6,12 +6,14 @@ import { type InputSource } from '../../src/types';
 import { type AuthProvider } from 'src/auth/auth';
 
 interface FileClientConfig {
-  authProvider?: AuthProvider;
-  clientId: string;
-  oidcOrigin: string;
-  kasEndpoint: string;
+  clientId?: string;
+  oidcOrigin?: string;
   clientSecret?: string;
   oidcRefreshToken?: string;
+
+  authProvider?: AuthProvider;
+
+  kasEndpoint?: string;
 }
 
 function isNodeStream(source: InputSource): source is NodeJS.ReadableStream {
