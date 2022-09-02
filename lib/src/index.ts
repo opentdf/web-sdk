@@ -372,7 +372,7 @@ export class NanoTDFDatasetClient extends Client {
     const version = '0.0.1';
     // Rewrap key on every request
     if (this.isRewrapFailed) {
-      throw new Error('Key rewrap failure');
+      throw new Error('Key rewrap throttled');
     }
 
     const throttlingOnCatch = () => {
