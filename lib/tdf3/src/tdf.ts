@@ -4,8 +4,7 @@ import { EventEmitter } from 'events';
 import axios, { AxiosRequestConfig, Method } from 'axios';
 import crc32 from 'buffer-crc32';
 import { v4 } from 'uuid';
-import { pki } from 'node-forge';
-import { importPKCS8, SignJWT } from 'jose';
+import { importPKCS8, importX509, SignJWT } from 'jose';
 import { PlaintextStream } from './client/tdf-stream';
 
 import {
@@ -19,6 +18,7 @@ import {
   Wrapped as KeyAccessWrapped,
 } from './models/index';
 import { base64 } from '../../src/encodings/index';
+import cryptoPublicToPem from '../../src/nanotdf-crypto/cryptoPublicToPem';
 import * as cryptoService from './crypto/index';
 import { base64ToBuffer, fromUrl, keyMerge, ZipReader, ZipWriter, Chunker } from './utils/index';
 import { Binary } from './binary';
@@ -189,8 +189,8 @@ class TDF extends EventEmitter {
     // Skip the public key extraction if we find that the KAS url provides a
     // PEM-encoded key instead of certificate
     if (keyString.includes('CERTIFICATE')) {
-      const cert: pki.Certificate = pki.certificateFromPem(keyString);
-      pem = pki.publicKeyToPem(cert.publicKey);
+      const cert = importX509(keyString);
+      pem = cryptoPublicToPem(cert.publicKey);
     }
 
     return pem;
