@@ -30,19 +30,12 @@
 import * as base64 from '../encodings/base64';
 import addNewLines from './helpers/addNewLines';
 
-const EXPORT_KEY_TYPE = 'spki';
-const PUBLIC_KEY_STRING = 'public';
-const CRYPTO_KEY_OBJECT_STRING = '[object CryptoKey]';
-
 export default async function cryptoPublicToPem(publicKey: CryptoKey): Promise<string> {
-  if (
-    Object.prototype.toString.call(publicKey) !== CRYPTO_KEY_OBJECT_STRING &&
-    publicKey.type !== PUBLIC_KEY_STRING
-  ) {
-    throw new TypeError('Expected input to be a CryptoKey Object');
+  if (publicKey.type !== 'public') {
+    throw new TypeError('Incorrect key type');
   }
 
-  const exportedPublicKey = await crypto.subtle.exportKey(EXPORT_KEY_TYPE, publicKey);
+  const exportedPublicKey = await crypto.subtle.exportKey('spki', publicKey);
   const b64 = base64.encodeArrayBuffer(exportedPublicKey);
   const pem = addNewLines(b64);
   return `-----BEGIN PUBLIC KEY-----\r\n${pem}-----END PUBLIC KEY-----`;
