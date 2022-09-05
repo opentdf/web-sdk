@@ -10,8 +10,10 @@
     "dist/*/package.json",
     "dist/client/*",
     "dist/esm/src/**",
+    "dist/esm/tdf3/**",
     "dist/server/*",
     "dist/types/src/**",
+    "dist/types/tdf3/**",
     "README.md"
   ],
   "repository": {
@@ -23,29 +25,38 @@
   "author": "Virtru",
   "browser": "./dist/client/client-web.js",
   "main": "./dist/server/node.cjs.js",
-  "module": "./dist/esm/src/index.node.js",
-  "types": "./dist/types/src/index.d.ts",
+  "types": "./dist/types/tdf3/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/client/client-web.js",
-      "require": "./dist/server/node.cjs.js",
-      "types": "./dist/types/src/index.d.ts"
+      "node": {
+        "types": "./dist/types/tdf3/index.d.ts",
+        "import": "./dist/esm/tdf3/index.js",
+        "require": "./dist/server/tdf3.node.js"
+      },
+      "default": {
+        "types": "./dist/types/tdf3/index.d.ts",
+        "import": "./dist/esm/tdf3/index-web.js",
+        "require": "./dist/client/tdf3.web.js"
+      }
     },
     "./nano": {
-      "import": "./dist/esm/src/index.js",
-      "require": "./dist/server/node-nano.cjs.js",
-      "types": "./dist/types/src/index.d.ts"
-    },
-    "./nano-node-esm": {
-      "import": "./dist/esm/src/index.node.js",
-      "types": "./dist/types/src/index.d.ts"
+      "node": {
+        "types": "./dist/types/src/index.d.ts",
+        "import": "./dist/esm/src/index.node.js",
+        "require": "./dist/server/nano.node.js"
+      },
+      "default": {
+        "types": "./dist/types/src/index.d.ts",
+        "import": "./dist/esm/src/index.js",
+        "require": "./dist/client/nano.web.js"
+      }
     }
   },
   "scripts": {
     "build": "npm run clean && webpack && tsc -p tsconfig-esm.json && node prepareNodeESM.js && ../scripts/add-module-types.sh esm && ../scripts/fill-version.sh",
     "clean": "rm -rf {build,dist}",
     "doc": "typedoc --out dist/docs src/index.ts",
-    "format": "prettier --write \"{facade,src,tdf3,test}/**/*.ts\"",
+    "format": "prettier --write \"{src,tdf3,test}/**/*.ts\"",
     "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; CC-BY-4.0; ISC; MIT'",
     "lint": "eslint ./{src,test}/**/*.ts",
     "prepack": "npm run build",
@@ -63,7 +74,6 @@
     "jose": "^4.9.1",
     "jsonschema": "^1.4.1",
     "node-fetch": "^3.2.10",
-    "node-forge": "^1.3.1",
     "uuid": "~8.3.2",
     "web-streams-node": "^0.4.0",
     "yargs": "^17.5.1"
@@ -86,7 +96,6 @@
     "@types/jsonwebtoken": "~8.5.9",
     "@types/mocha": "~9.1.1",
     "@types/node": "^18.7.14",
-    "@types/node-forge": "^1.0.4",
     "@types/send": "^0.17.1",
     "@types/sinon": "~10.0.13",
     "@types/streamsaver": "^2.0.1",

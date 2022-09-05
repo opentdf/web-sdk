@@ -5,13 +5,13 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 import { VirtruS3Config, VirtruTempS3Credentials, VirtruCreds } from './builders';
-import { Upload } from '../utils/aws-lib-storage';
+import { Upload } from '../utils/aws-lib-storage/index';
 import { Options } from '../utils/aws-lib-storage/types';
 import stream from '@readableStream';
 import Metadata from '../tdf';
 
 import { EventEmitter } from 'events';
-import { Manifest } from '../models';
+import { Manifest } from '../models/index';
 
 class DecoratedReadableStream {
   KEK: string;
