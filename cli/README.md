@@ -1,5 +1,7 @@
 # OpenTDF command line tool (for node)
 
+A sample application using node & ESM to import and test a project
+
 ## Usage
 
 ```
@@ -12,14 +14,16 @@ For example, to use the quickstart test, we should do something like:
 echo hello-world >sample.txt
 bin/opentdf.mjs encrypt \
   --kasEndpoint http://localhost:65432/api/kas \
-  --oidcEndpoint http://localhost:65432 \
-  --auth tdf:tdf-client:123-456 \
+  --oidcEndpoint http://localhost:65432/auth/realms/tdf \
+  --auth tdf-client:123-456 \
+  --containerType tdf3 \
   --output sample.tdf \
   sample.txt
 bin/opentdf.mjs \
   --kasEndpoint http://localhost:65432/api/kas \
-  --oidcEndpoint http://localhost:65432 \
-  --auth tdf:tdf-client:123-456 \
+  --oidcEndpoint http://localhost:65432/auth/realms/tdf \
+  --auth tdf-client:123-456 \
+  --containerType tdf3 \
   decrypt sample.tdf
 ```
 

@@ -50,7 +50,6 @@
   },
   "dependencies": {
     "@opentdf/client": "file:../opentdf-client-0.3.0.tgz",
-    "node-fetch": "^3.2.10",
     "yargs": "^17.5.1"
   }
 }

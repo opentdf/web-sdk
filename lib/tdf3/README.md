@@ -156,7 +156,7 @@ The type of cipher to use for encryption. Available options are `'aes-256-gcm'` 
 Adds a [Key Access Object](https://developer.virtru.com/docs/keyaccessobject) to a TDF instance.
 
 ```js
-tdfInstance.addKeyAccess(keyAccessObject);
+await tdfInstance.addKeyAccess(keyAccessObject);
 ```
 
 ### setPolicy(policyObject)

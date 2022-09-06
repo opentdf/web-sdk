@@ -1,5 +1,5 @@
-import { keySplit } from '../utils';
-import { base64, hex } from '../../../src/encodings';
+import { keySplit } from '../utils/index';
+import { base64, hex } from '../../../src/encodings/index';
 import { Binary } from '../binary';
 import { SymmetricCipher } from '../ciphers/symmetric-cipher-base';
 import { KeyAccess, KeyAccessObject } from './key-access';

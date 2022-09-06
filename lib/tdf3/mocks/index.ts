@@ -1,7 +1,6 @@
 import { SignJWT, importPKCS8 } from 'jose';
+import { AttributeSet } from '../src/models/attribute-set';
 import { v4 } from 'uuid';
-
-import { AttributeSet } from '../src/models';
 
 type CreateAttributePayload = {
   attribute: string;

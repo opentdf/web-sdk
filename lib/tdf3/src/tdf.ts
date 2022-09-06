@@ -4,8 +4,7 @@ import { EventEmitter } from 'events';
 import axios, { AxiosRequestConfig, Method } from 'axios';
 import crc32 from 'buffer-crc32';
 import { v4 } from 'uuid';
-import { pki } from 'node-forge';
-import { importPKCS8, SignJWT } from 'jose';
+import { exportSPKI, importPKCS8, importX509, SignJWT } from 'jose';
 import { PlaintextStream } from './client/tdf-stream';
 
 import {
@@ -17,10 +16,10 @@ import {
   Remote as KeyAccessRemote,
   SplitKey,
   Wrapped as KeyAccessWrapped,
-} from './models';
-import { base64 } from '../../src/encodings';
-import * as cryptoService from './crypto';
-import { base64ToBuffer, fromUrl, keyMerge, ZipReader, ZipWriter, Chunker } from './utils';
+} from './models/index';
+import { base64 } from '../../src/encodings/index';
+import * as cryptoService from './crypto/index';
+import { base64ToBuffer, fromUrl, keyMerge, ZipReader, ZipWriter, Chunker } from './utils/index';
 import { Binary } from './binary';
 import {
   KasDecryptError,
@@ -32,11 +31,11 @@ import {
   TdfDecryptError,
   TdfPayloadExtractionError,
 } from './errors';
-import { htmlWrapperTemplate } from './templates';
+import { htmlWrapperTemplate } from './templates/index';
 
 // configurable
 // TODO: remove dependencies from ciphers so that we can open-source instead of relying on other Virtru libs
-import { AesGcmCipher } from './ciphers';
+import { AesGcmCipher } from './ciphers/index';
 import { PemKeyPair } from './crypto/declarations';
 import { AuthProvider } from '../../src/auth/auth';
 import PolicyObject from '../../src/tdf/PolicyObject';
@@ -168,7 +167,7 @@ class TDF extends EventEmitter {
   }
 
   // return a PEM-encoded string from the provided KAS server
-  static async getPublicKeyFromKeyAccessServer(url: string) {
+  static async getPublicKeyFromKeyAccessServer(url: string): Promise<string> {
     const httpsRegex = /^https:/;
     if (
       url.startsWith('http://localhost') ||
@@ -183,14 +182,14 @@ class TDF extends EventEmitter {
     throw Error('Public key must be requested over a secure channel');
   }
 
-  static extractPemFromKeyString(keyString: string): string {
+  static async extractPemFromKeyString(keyString: string): Promise<string> {
     let pem: string = keyString;
 
     // Skip the public key extraction if we find that the KAS url provides a
     // PEM-encoded key instead of certificate
     if (keyString.includes('CERTIFICATE')) {
-      const cert: pki.Certificate = pki.certificateFromPem(keyString);
-      pem = pki.publicKeyToPem(cert.publicKey);
+      const cert = await importX509(keyString);
+      pem = await exportSPKI(cert);
     }
 
     return pem;
@@ -255,7 +254,7 @@ class TDF extends EventEmitter {
    * @param  {String? Object?} options.metadata - Metadata. Appears to be dead code.
    * @return {<TDF>}- this instance
    */
-  addKeyAccess({ type, url, publicKey, attributeUrl, metadata = '' }: AddKeyAccess) {
+  async addKeyAccess({ type, url, publicKey, attributeUrl, metadata = '' }: AddKeyAccess) {
     // TODO - run down metadata parameter. Clean it out if it isn't used this way anymore.
 
     /** Internal function to keep it DRY */
@@ -302,7 +301,7 @@ class TDF extends EventEmitter {
     if (url && publicKey) {
       loadKeyAccess(
         this.encryptionInformation,
-        createKeyAccess(type, url, TDF.extractPemFromKeyString(publicKey), metadata)
+        createKeyAccess(type, url, await TDF.extractPemFromKeyString(publicKey), metadata)
       );
       return this;
     }
@@ -314,7 +313,7 @@ class TDF extends EventEmitter {
       if (pubKey && kasUrl) {
         loadKeyAccess(
           this.encryptionInformation,
-          createKeyAccess(type, kasUrl, TDF.extractPemFromKeyString(pubKey), metadata)
+          createKeyAccess(type, kasUrl, await TDF.extractPemFromKeyString(pubKey), metadata)
         );
         return this;
       }

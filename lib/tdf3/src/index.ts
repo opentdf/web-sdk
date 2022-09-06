@@ -1,4 +1,4 @@
-export { default as Client } from './client';
+export { default as Client } from './client/index';
 export * as Errors from './errors';
 export { default as TDF } from './tdf';
 export { version, clientType } from './version';

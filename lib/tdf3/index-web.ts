@@ -1,4 +1,4 @@
-import { TDF, Client } from './src';
+import { TDF, Client } from './src/index';
 import {
   NanoTDFClient,
   NanoTDFDatasetClient,
@@ -6,7 +6,7 @@ import {
   version,
   clientType,
 } from '../src/index';
-import { FileClient } from '../facade/FileClient';
+import { FileClient } from './src/FileClient';
 
 window.TDF = TDF;
 
