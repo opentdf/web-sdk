@@ -71,13 +71,13 @@ jobs:
           name: opentdf-cli
           path: ./cli/opentdf-cli-*.tgz
 
-  sample-web-app:
+  web-app:
     needs:
       - lib
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./sample-web-app
+        working-directory: ./web-app
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v2
@@ -85,7 +85,7 @@ jobs:
         with:
           node-version: '16'
           cache: 'npm'
-          cache-dependency-path: './sample-web-app/package-lock.json'
+          cache-dependency-path: './web-app/package-lock.json'
       - uses: actions/download-artifact@v2
         with:
           name: opentdf-client-lib
@@ -168,7 +168,7 @@ jobs:
           tilt ci --file opentdf/quickstart/Tiltfile
 
   deliver-ghp:
-    needs: [lib, cli, sample-web-app, scripts]
+    needs: [lib, cli, web-app, scripts]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     # To publish from a release or feature branch, remove the ref == condition below

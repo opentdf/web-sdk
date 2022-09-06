@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useState, type ChangeEvent } from 'react';
 import './App.css';
-
 import { NanoTDFClient } from '@opentdf/client/nano';
 
 function toHex(a: Uint8Array) {
@@ -8,39 +7,35 @@ function toHex(a: Uint8Array) {
 }
 
 function App() {
-  const [selectedFile, setSelectedFile] = useState<File | undefined>();
+  const [count, setCount] = useState(0);
   const [isFilePicked, setIsFilePicked] = useState(false);
   const [segments, setSegments] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | undefined>();
 
-  const changeHandler = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const changeHandler = (event: ChangeEvent<HTMLInputElement>) => {
     const target = event.target as HTMLInputElement;
     if (target.files?.length) {
       const [file] = target.files;
       setSelectedFile(file);
       setIsFilePicked(true);
+      setSegments('');
     }
   };
 
   const handleSubmission = async () => {
     if (!selectedFile) {
+      setSegments('PLEASE SELECT FILE');
       return false;
     }
-    setSegments('[THINKING]');
+    setSegments(`[THINKING about ${selectedFile.name}]`);
+    const size = selectedFile.size;
     const arrayBuffer = await selectedFile.arrayBuffer();
-    const buf = new Uint8Array(arrayBuffer);
+    const buf = new Uint8Array(arrayBuffer.slice(0, Math.min(32, size)));
     console.log('Success:', buf);
-    setSegments(`found: ${toHex(buf)}`);
+    setSegments(`Starting file bytes: ${toHex(buf)}`);
     return false;
   };
 
-  // Create the count state.
-  const [count, setCount] = useState(0);
-  // Create the counter (+1 every second).
-  useEffect(() => {
-    const timer = setTimeout(() => setCount(count + 1), 1000);
-    return () => clearTimeout(timer);
-  }, [count, setCount]);
-  // Return the App component.
   return (
     <div className="App">
       <header className="App-header">
@@ -54,7 +49,7 @@ function App() {
         <label htmlFor="file-selector">Select file:</label>
         <input type="file" name="file" id="file-selector" onChange={changeHandler} />
         {selectedFile ? (
-          <div>
+          <div id="details">
             <h2>{selectedFile.name}</h2>
             <div>Content Type: {selectedFile.type}</div>
             <div>Last Modified: {new Date(selectedFile.lastModified).toLocaleString()}</div>
@@ -64,14 +59,20 @@ function App() {
           <p>Select a file to show details</p>
         )}
         {segments.length ? (
-          <h3>{segments}</h3>
+          <h3 id="segments">{segments}</h3>
         ) : (
           <div>
-            <button disabled={!isFilePicked} onClick={handleSubmission}>
+            <button id="process" disabled={!isFilePicked} onClick={handleSubmission}>
               Process
             </button>
           </div>
         )}
+      </div>
+      <h1>Vite + React</h1>
+      <div className="card">
+        <button id="clicker" onClick={() => setCount((count) => count + 1)}>
+          Click count is {count}
+        </button>
       </div>
     </div>
   );
