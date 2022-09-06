@@ -8,14 +8,18 @@ lib_version="$(cd lib && node -p "require('./package.json').version")"
 expected_version="${1:-$lib_version}"
 
 if ! grep -Fxq "version=${expected_version}" "Makefile"; then
-  echo "Makefile missing version line [version=${expected_version}]"
+  echo "::error file=Makefile::Makefile missing version line [version=${expected_version}]"
   exit 1
 fi
 
 for x in lib cli web-app; do
   sub_version="$(cd $x && node -p "require('./package.json').version")"
   if [[ $expected_version != "$sub_version" ]]; then
-    echo "${x} has incorrect version  [${sub_version}], expected [${expected_version}]"
+    echo "::error file=${x}/package.json::Incorrect version  [${sub_version}], expected [${expected_version}]"
     exit 1
   fi
 done
+
+if [[ "${GITHUB_ACTION}" ]]; then
+  echo "::set-output name=TARGET_VERSION::$expected_version"
+fi
