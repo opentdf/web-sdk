@@ -8,7 +8,7 @@ t="${2}"
 
 cd lib
 npm --no-git-tag-version --allow-same-version version "$v" --tag "$t"
-npm publish
+npm publish --access public
 
 sleep 5
 
