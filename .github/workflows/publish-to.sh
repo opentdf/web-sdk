@@ -20,5 +20,5 @@ npm install "@opentdf/client@$v"
 npm publish --access public
 
 if [[ "$GITHUB_STEP_SUMMARY" ]]; then
-  echo "### Published ${v}" >>$GITHUB_STEP_SUMMARY
+  echo "### Published ${v}" >>"$GITHUB_STEP_SUMMARY"
 fi
