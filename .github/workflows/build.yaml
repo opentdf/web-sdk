@@ -172,14 +172,23 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     # To publish from a release or feature branch, remove the ref == condition below
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+      || (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/'))
+      || (github.event_name == 'release' && startsWith(github.ref, 'refs/tags/'))
+    outputs:
+      FULL_VERSION: ${{ steps.guess-build-metadata.outputs.FULL_VERSION }}
+      DIST_TAG: ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
+      TARGET_VERSION: ${{ steps.check-version.outputs.TARGET_VERSION }}
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2
         with:
           node-version: '16.x'
           registry-url: https://npm.pkg.github.com
-      - run: |-
+      - name: Check version number is same between tag, library, and/or release
+        id: check-version
+        run: |-
           if [[ ${{ github.ref }} = refs/heads/release/* ]]; then
             scripts/check-version-is.sh "${GITHUB_REF##*release/}"
           elif [[ ${{ github.ref }} = refs/tags/v* ]]; then
@@ -187,11 +196,17 @@ jobs:
           else
             scripts/check-version-is.sh
           fi
+      - name: Check version number is same between tag, library, and/or release
+        id: guess-build-metadata
+        run: |-
+          echo "::set-output name=FULL_VERSION::$(.github/workflows/gh-semver.sh)"
+          echo "::set-output name=DIST_TAG::$(.github/workflows/guess-dist-tag.sh)"
       - run: make test
       - run: make doc
-      - run:
-          .github/workflows/publish-to.sh $(.github/workflows/gh-semver.sh)
-          $(.github/workflows/guess-dist-tag.sh)
+      - run: echo "::notice file=lib/package.json::Will be published to GitHub Packages as $(.github/workflows/guess-dist-tag.sh) with version=[$(.github/workflows/guess-dist-tag.sh)]"
+      - run: >-
+          .github/workflows/publish-to.sh ${{ steps.guess-build-metadata.outputs.FULL_VERSION }}
+          ${{ steps.guess-build-metadata.outputs.FULL_VERSION }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: trigger xtest
@@ -207,28 +222,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     environment: npmjs
+    needs: deliver-ghp
     if: >-
       (github.event_name == 'push' && github.ref == 'refs/heads/main')
       || (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/'))
       || (github.event_name == 'release' && startsWith(github.ref, 'refs/tags/'))
-    needs: deliver-ghp
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2
         with:
           node-version: '16.x'
           registry-url: 'https://registry.npmjs.org'
-      - run: |-
-          if [[ ${{ github.ref }} = refs/heads/release/* ]]; then
-            scripts/check-version-is.sh "${GITHUB_REF##*release/}"
-          elif [[ ${{ github.ref }} = refs/tags/v* ]]; then
-            scripts/check-version-is.sh "${GITHUB_REF_NAME#v}"
-          else
-            scripts/check-version-is.sh
-          fi
-      - run: make test
-      - run:
-          .github/workflows/publish-to.sh $(.github/workflows/gh-semver.sh)
-          $(.github/workflows/guess-dist-tag.sh)
+      - run: >-
+          .github/workflows/publish-to.sh ${{ needs.deliver-ghp.outputs.FULL_VERSION }}
+          ${{ needs.deliver-ghp.outputs.FULL_VERSION }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
