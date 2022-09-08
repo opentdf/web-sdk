@@ -36,7 +36,10 @@ export async function fetchWrappedKey(
   });
 
   if (!response.ok) {
-    return Promise.reject({ status: response.status, message: `${response.status} ${response.statusText}` });
+    return Promise.reject({
+      status: response.status,
+      message: `${response.status} ${response.statusText}`,
+    });
   }
 
   return response.json();

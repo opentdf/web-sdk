@@ -229,7 +229,7 @@ export default class Client {
         clientVersion
       ).catch((err) => {
         console.error(err.message);
-        if (err.status  === HTTP_UNAUTHORIZED || err.status  === HTTP_FORBIDDEN) {
+        if (err.status === HTTP_UNAUTHORIZED || err.status === HTTP_FORBIDDEN) {
           this.failureTokenList.push(authHeader);
         }
         return null;
