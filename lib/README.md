@@ -22,3 +22,16 @@ TDF3 with JSON envelopes.
 ### Examples
 
 Review examples to see how to integrate. See [Examples](https://github.com/opentdf/opentdf/tree/main/examples)
+
+### Simple 2 steps if you wanna install @opentdf/client package locally for development
+
+1. Run and input your password cause command requires access for instaling it as globall package
+
+```
+npm run updateLink
+```
+
+2. Go to project you want to install package and run 
+```
+npm link @opentdf/client
+```
