@@ -46,6 +46,10 @@ const { KeyUsageType, AlgorithmName, NamedCurve } = cryptoEnums;
  * nanoTDFDecrypted.toString() // 'some string'
  *
  */
+
+const HTTP_UNAUTHORIZED = 401;
+const HTTP_FORBIDDEN = 403;
+
 export default class Client {
   static readonly KEY_ACCESS_REMOTE = 'remote';
   static readonly KAS_PROTOCOL = 'kas';
@@ -223,8 +227,11 @@ export default class Client {
         requestBody,
         authHeader,
         clientVersion
-      ).catch(() => {
-        this.failureTokenList.push(authHeader);
+      ).catch((err) => {
+        console.error(err.message);
+        if (err.status  === HTTP_UNAUTHORIZED || err.status  === HTTP_FORBIDDEN) {
+          this.failureTokenList.push(authHeader);
+        }
         return null;
       });
 
