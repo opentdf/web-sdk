@@ -375,7 +375,7 @@ export class NanoTDFDatasetClient extends Client {
       nanotdf.header.magicNumberVersion,
       version,
       nanotdf.header.authTagLength
-    )
+    );
 
     if (!ukey) {
       throw new Error('Key rewrap failure');
