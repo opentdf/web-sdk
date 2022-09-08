@@ -65,6 +65,7 @@ export default class Client {
   protected ephemeralKeyPair?: Required<Readonly<CryptoKeyPair>>;
   protected requestSignerKeyPair?: Required<Readonly<CryptoKeyPair>>;
   protected iv?: number;
+  private failureTokenList: string[] = [];
 
   /**
    * Create new NanoTDF Client
@@ -213,15 +214,24 @@ export default class Client {
 
       const authHeader = await this.authProvider.authorization(); // authHeader is a string of the form "Bearer token"
 
+      if (this.failureTokenList.includes(authHeader)) {
+        throw new Error('Token invalid error');
+      }
       // Wrapped
       const wrappedKey = await fetchWrappedKey(
         kasRewrapUrl,
         requestBody,
         authHeader,
         clientVersion
-      );
+      ).catch(() => {
+        this.failureTokenList.push(authHeader);
+        return null;
+      });
 
       // Extract the iv and ciphertext
+      if (!wrappedKey) {
+        throw new Error('Fetching wrapped key error');
+      }
       const entityWrappedKey = new Uint8Array(
         base64.decodeArrayBuffer(wrappedKey.entityWrappedKey)
       );
