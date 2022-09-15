@@ -39,7 +39,6 @@ const NO_COMPRESSION = 0;
 const DATA_DESCRIPTOR_SIZE = 16;
 const ZIP64_DATA_DESCRIPTOR_SIZE = 24;
 
-const EMPTY_BUFFER = Buffer.alloc(0);
 const END_OF_CENTRAL_DIRECTORY_RECORD_SIZE = 22;
 const ZIP64_END_OF_CENTRAL_DIRECTORY_RECORD_SIZE = 56;
 const ZIP64_END_OF_CENTRAL_DIRECTORY_LOCATOR_SIZE = 20;
@@ -142,7 +141,7 @@ export class ZipWriter {
     // file name length                2 bytes
     fixedSizeStuff.writeUInt16LE(filenameBuffer.length, 26);
 
-    let zeiefBuffer = EMPTY_BUFFER;
+    let zeiefBuffer = Buffer.alloc(0);
     if (this.zip64) {
       // ZIP64 extended information extra field
       zeiefBuffer = Buffer.alloc(ZIP64_EXTENDED_INFORMATION_EXTRA_FIELD_SIZE);
@@ -221,7 +220,7 @@ export class ZipWriter {
     let normalUncompressedSize = uncompressedSize;
     let normalRelativeOffsetOfLocalHeader = relativeOffsetOfLocalHeader;
     let versionNeededToExtract = VERSION_NEEDED_TO_EXTRACT_UTF8;
-    let zeiefBuffer = EMPTY_BUFFER;
+    let zeiefBuffer = Buffer.alloc(0);
 
     if (this.zip64) {
       versionNeededToExtract = VERSION_NEEDED_TO_EXTRACT_ZIP64;

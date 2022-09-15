@@ -2,7 +2,7 @@ import { assert } from 'chai';
 import { Binary } from '../src/binary';
 
 describe('Binary Stress Tests', function () {
-  const MB_1 = new Buffer(1 << 20);
+  const MB_1 = Buffer.alloc(1 << 20);
 
   describe('Converts with a 1 MB buffer', function () {
     it('converts to String', function () {
