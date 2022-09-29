@@ -47,9 +47,6 @@ const { KeyUsageType, AlgorithmName, NamedCurve } = cryptoEnums;
  *
  */
 
-const HTTP_UNAUTHORIZED = 401;
-const HTTP_FORBIDDEN = 403;
-
 export default class Client {
   static readonly KEY_ACCESS_REMOTE = 'remote';
   static readonly KAS_PROTOCOL = 'kas';
@@ -69,8 +66,6 @@ export default class Client {
   protected ephemeralKeyPair?: Required<Readonly<CryptoKeyPair>>;
   protected requestSignerKeyPair?: Required<Readonly<CryptoKeyPair>>;
   protected iv?: number;
-  private failureTokenList: string[] = [];
-
   /**
    * Create new NanoTDF Client
    *
@@ -218,22 +213,13 @@ export default class Client {
 
       const authHeader = await this.authProvider.authorization(); // authHeader is a string of the form "Bearer token"
 
-      if (this.failureTokenList.includes(authHeader)) {
-        throw new Error('Token invalid error');
-      }
       // Wrapped
       const wrappedKey = await fetchWrappedKey(
         kasRewrapUrl,
         requestBody,
         authHeader,
         clientVersion
-      ).catch((err) => {
-        console.error(err.message);
-        if (err.status  === HTTP_UNAUTHORIZED || err.status  === HTTP_FORBIDDEN) {
-          this.failureTokenList.push(authHeader);
-        }
-        return null;
-      });
+      );
 
       // Extract the iv and ciphertext
       if (!wrappedKey) {

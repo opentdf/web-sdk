@@ -368,7 +368,6 @@ export class NanoTDFDatasetClient extends Client {
 
     const version = '0.0.1';
     // Rewrap key on every request
-
     const ukey = await this.rewrapKey(
       nanotdf.header.toBuffer(),
       nanotdf.header.getKasRewrapUrl(),
@@ -376,7 +375,6 @@ export class NanoTDFDatasetClient extends Client {
       version,
       nanotdf.header.authTagLength
     );
-
     if (!ukey) {
       throw new Error('Key rewrap failure');
     }
