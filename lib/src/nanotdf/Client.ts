@@ -46,7 +46,6 @@ const { KeyUsageType, AlgorithmName, NamedCurve } = cryptoEnums;
  * nanoTDFDecrypted.toString() // 'some string'
  *
  */
-
 export default class Client {
   static readonly KEY_ACCESS_REMOTE = 'remote';
   static readonly KAS_PROTOCOL = 'kas';
@@ -66,6 +65,7 @@ export default class Client {
   protected ephemeralKeyPair?: Required<Readonly<CryptoKeyPair>>;
   protected requestSignerKeyPair?: Required<Readonly<CryptoKeyPair>>;
   protected iv?: number;
+
   /**
    * Create new NanoTDF Client
    *
@@ -222,9 +222,6 @@ export default class Client {
       );
 
       // Extract the iv and ciphertext
-      if (!wrappedKey) {
-        throw new Error('Fetching wrapped key error');
-      }
       const entityWrappedKey = new Uint8Array(
         base64.decodeArrayBuffer(wrappedKey.entityWrappedKey)
       );
