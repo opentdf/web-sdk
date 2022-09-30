@@ -203,8 +203,7 @@ wwIDAQAB
 
         return { jwt };
       } catch (e) {
-        console.log('Mocks.createJwtAttribute failed');
-        console.log(e);
+        console.log('Mocks.createJwtAttribute failed', e);
         return {};
       }
     },

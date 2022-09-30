@@ -8,7 +8,6 @@ import {
 } from '../src/index';
 import { FileClient } from './src/FileClient';
 
-// @ts-ignore
 import fetch from 'node-fetch';
 import { webcrypto as crypto } from 'node:crypto';
 
