@@ -218,7 +218,6 @@ export async function extractPublicFromCertToCrypto(
     const keyObject = keylike as KeyObject;
     const subtleAlg = toSubtleAlg(hex);
     const keyUsages = guessKeyUsages(subtleAlg.name, options.usages);
-    console.log({ jwsAlg, subtleAlg });
     const subtleKey = await crypto.subtle.importKey(
       'jwk',
       keyObject.export({ format: 'jwk' }),

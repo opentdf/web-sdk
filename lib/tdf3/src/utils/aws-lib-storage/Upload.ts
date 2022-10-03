@@ -16,7 +16,6 @@ import {
 import { extendedEncodeURIComponent } from '@aws-sdk/smithy-client';
 import { EventEmitter } from 'events';
 
-import { byteLength } from './bytelength';
 import { getChunk } from './chunker';
 import { BodyDataTypes, Options, Progress } from './types';
 
@@ -27,6 +26,30 @@ export interface RawDataPart {
 }
 
 const MIN_PART_SIZE = 1024 * 1024 * 5;
+
+export const byteLength = (input: RawDataPart['data'] | PutObjectCommandInput['Body']) => {
+  if (input === null || input === undefined) {
+    return 0;
+  }
+  if (typeof input === 'string') {
+    // number of utf-8 encoded bytes in a string
+    return Buffer.from(input).byteLength;
+  }
+  if ('byteLength' in input && typeof input.byteLength === 'number') {
+    return input.byteLength;
+  } else if ('length' in input && typeof input.length === 'number') {
+    return input.length;
+  } else if ('size' in input && typeof input.size === 'number') {
+    return input.size;
+    // } else if ('path' in input && typeof input.path === 'string') {
+    //   try {
+    //     return ClientDefaultValues.lstatSync(input.path).size;
+    //   } catch (error) {
+    //     return undefined;
+    //   }
+  }
+  throw new Error(`Unsupported type [${input}]`);
+};
 
 export class Upload extends EventEmitter {
   /**

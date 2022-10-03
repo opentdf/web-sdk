@@ -4,4 +4,3 @@ blacklisted-licenses:
 
 whitelisted-modules:
   - jszip@3.7.1
-  - node-forge@1.2.1

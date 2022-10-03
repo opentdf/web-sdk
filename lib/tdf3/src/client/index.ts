@@ -32,7 +32,6 @@ const HTML_BYTE_LIMIT = 100 * 1000 * 1000; // 100 MB, see WS-9476.
 // No default config for now. Delegate to Virtru wrapper for endpoints.
 const defaultClientConfig = { oidcOrigin: '' };
 
-// @ts-ignore Declared but its value is never read.
 const uploadBinaryToS3 = async function (
   stream: ReadableStream,
   uploadUrl: string,
@@ -410,4 +409,5 @@ export default {
   Client,
   DecryptParamsBuilder,
   EncryptParamsBuilder,
+  uploadBinaryToS3,
 };

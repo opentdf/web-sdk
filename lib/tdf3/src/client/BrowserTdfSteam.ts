@@ -1,5 +1,4 @@
 import DecoratedReadableStream from './DecoratedReadableStream';
-// @ts-ignore
 import streamSaver from 'streamsaver';
 import { fileSave } from 'browser-fs-access';
 import { isFirefox } from '../../../src/utils';
