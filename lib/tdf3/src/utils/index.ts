@@ -1,7 +1,7 @@
 export { ZipReader, readUInt64LE } from './zip-reader';
 export { ZipWriter } from './zip-writer';
 export { keySplit, keyMerge } from './keysplit';
-import { PlaintextStream } from '../client/tdf-stream';
+import { TdfStream } from '../client/tdf-stream';
 export * from './chunkers';
 
 export function inBrowser(): boolean {
@@ -9,7 +9,7 @@ export function inBrowser(): boolean {
 }
 
 export async function streamToBuffer(stream: any) {
-  return await PlaintextStream.toBuffer(stream);
+  return await TdfStream.toBuffer(stream);
 }
 
 export function base64ToBuffer(b64: string): Buffer | Uint8Array {

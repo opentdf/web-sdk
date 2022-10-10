@@ -1,9 +1,9 @@
 import { Client as ClientTdf3 } from './client/index';
 import { DecryptParamsBuilder, EncryptParamsBuilder } from './client/builders';
-import { PlaintextStream } from './client/tdf-stream';
+import { type AnyTdfStream } from './client/tdf-stream';
 import { type EncryptParams, type DecryptParams } from './client/builders';
 import { type InputSource } from '../../src/types';
-import { type AuthProvider } from 'src/auth/auth';
+import { type AuthProvider } from '../../src/auth/auth';
 
 interface FileClientConfig {
   clientId?: string;
@@ -68,7 +68,7 @@ export class FileClient {
     source: InputSource = '',
     users?: string[],
     params?: EncryptParams
-  ): Promise<PlaintextStream | NodeJS.WriteStream> {
+  ): Promise<AnyTdfStream> {
     const encryptParams = new EncryptParamsBuilder()
       .withOffline()
       .withUsersWithAccess(users || this.dissems)
@@ -85,7 +85,7 @@ export class FileClient {
     return await this.client.encrypt(<EncryptParams>result);
   }
 
-  async decrypt(source: InputSource = '', params?: DecryptParams): Promise<PlaintextStream> {
+  async decrypt(source: InputSource = '', params?: DecryptParams): Promise<AnyTdfStream> {
     const decryptParams = new DecryptParamsBuilder();
 
     if (params) {
