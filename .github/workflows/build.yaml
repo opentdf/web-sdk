@@ -43,15 +43,18 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./cli
+        working-directory: ./cli${{ matrix.module }}
     timeout-minutes: 5
+    strategy:
+      matrix:
+        module: ['', '-commonjs']
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2
         with:
           node-version: '16'
           cache: 'npm'
-          cache-dependency-path: './cli/package-lock.json'
+          cache-dependency-path: './cli${{ matrix.module }}/package-lock.json'
       - uses: actions/download-artifact@v2
         with:
           name: opentdf-client-lib
@@ -68,8 +71,8 @@ jobs:
       - run: bats bin/opentdf.bats
       - uses: actions/upload-artifact@v2
         with:
-          name: opentdf-cli
-          path: ./cli/opentdf-cli-*.tgz
+          name: opentdf-cli${{ matrix.module }}
+          path: ./cli${{ matrix.module }}/opentdf-cli-*.tgz
 
   web-app:
     needs:
