@@ -73,7 +73,6 @@
     "events": "^3.3.0",
     "jose": "^4.9.3",
     "jsonschema": "^1.4.1",
-    "node-fetch": "^3.2.10",
     "uuid": "~9.0.0",
     "web-streams-node": "^0.4.0",
     "yargs": "^17.5.1"
