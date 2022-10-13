@@ -224,7 +224,7 @@ export const handleArgs = (args: string[]) => {
             if (argv.output) {
               await writeFile(argv.output, Buffer.from(plaintext));
             } else {
-              console.log(Buffer.from(plaintext).toString('utf8'));
+              console.log(await plaintext.toString());
             }
           }
         }

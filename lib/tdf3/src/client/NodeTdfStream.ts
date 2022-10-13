@@ -1,5 +1,5 @@
 import { createWriteStream } from 'fs';
-import { buffer, text } from 'node:stream/consumers';
+import { buffer } from 'node:stream/consumers';
 import DecoratedReadableStream from './DecoratedReadableStream';
 import { toWebReadableStream } from 'web-streams-node';
 
@@ -10,20 +10,18 @@ class NodeTdfStream extends DecoratedReadableStream {
 
   /**
    * Dump the stream content to a string. This will consume the stream.
-   * @return {string} - the plaintext in string form.
+   * @return the plaintext in string form.
    */
-  async toString() {
-    // @types/node has actuall error when its expecting consumers to receive Node stream when in documentation its for webStream
-    // https://nodejs.org/dist/latest-v16.x/docs/api/webstreams.html#utility-consumers
-    // @ts-ignore
-    return await text(this.stream);
+  async toString(encoding: BufferEncoding = 'binary'): Promise<string> {
+    const results = await this.toBuffer();
+    return results.toString(encoding);
   }
 
   /**
    * Dump the stream content to a buffer. This will consume the stream.
-   * @return {Buffer} - the plaintext in Buffer form.
+   * @return the plaintext in Buffer form.
    */
-  async toBuffer() {
+  async toBuffer(): Promise<Buffer> {
     return await NodeTdfStream.toBuffer(this.stream);
   }
 

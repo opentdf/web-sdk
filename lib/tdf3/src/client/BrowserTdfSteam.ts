@@ -12,9 +12,9 @@ class BrowserTdfStream extends DecoratedReadableStream {
    * Dump the stream content to a string. This will consume the stream.
    * @return {string} - the plaintext in string form.
    */
-  async toString() {
+  async toString(encoding: BufferEncoding = 'binary') {
     const results = await this.toBuffer();
-    return results.toString('utf8');
+    return results.toString(encoding);
   }
 
   /**
