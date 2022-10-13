@@ -10,7 +10,7 @@ import {
 } from '../utils/index';
 import { base64 } from '../../../src/encodings/index';
 import TDF from '../tdf';
-import { PlaintextStream } from './tdf-stream';
+import { type AnyTdfStream, TdfStream } from './tdf-stream';
 import { OIDCClientCredentialsProvider } from '../../../src/auth/oidc-clientcredentials-provider';
 import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-provider';
 import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider';
@@ -212,9 +212,20 @@ export class Client {
    * @param {object} [output] - output stream. Created and returned if not passed in
    * @param {object} [rcaSource] - RCA source information
    * @param {number} [windowSize] - segment size in bytes
-   * @return a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} stream containing the TDF ciphertext.
+   * @return a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} a new stream containing the TDF ciphertext, if output is not passed in as a paramter
    * @see EncryptParamsBuilder
    */
+   async encrypt({
+    scope,
+    source,
+    asHtml = false,
+    metadata = null,
+    opts,
+    mimeType,
+    offline = false,
+    rcaSource = false,
+    windowSize = DEFAULT_SEGMENT_SIZE,
+  }: EncryptParams): Promise<AnyTdfStream>;
   async encrypt({
     scope,
     source,
@@ -226,7 +237,7 @@ export class Client {
     output,
     rcaSource = false,
     windowSize = DEFAULT_SEGMENT_SIZE,
-  }: EncryptParams) {
+  }: EncryptParams): Promise<AnyTdfStream | null> {
     if (rcaSource && asHtml) throw new Error('rca links should be used only with zip format');
 
     const keypair: PemKeyPair = await this._getOrCreateKeypair(opts);
@@ -276,10 +287,10 @@ export class Client {
     if (output) {
       output.push(htmlBuf);
       output.push(null);
-      return output;
+      return null;
     }
 
-    return new PlaintextStream(windowSize, {
+    return new TdfStream(windowSize, {
       pull(controller: ReadableStreamDefaultController) {
         controller.enqueue(htmlBuf);
         controller.close();
@@ -295,7 +306,7 @@ export class Client {
    * @param {object} opts - object with keypair
    * @param {object} [output] - A node Writeable; if not found will create and return one.
    * @param {object} [rcaSource] - RCA source information
-   * @return {PlaintextStream} - a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} stream containing the decrypted plaintext.
+   * @return {TdfStream} - a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} stream containing the decrypted plaintext.
    * @see DecryptParamsBuilder
    */
   async decrypt({ source, opts, rcaSource }: DecryptParams) {

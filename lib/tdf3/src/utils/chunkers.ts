@@ -1,6 +1,6 @@
 import axios, { AxiosResponse } from 'axios';
 import { createReadStream, readFile, statSync } from 'fs';
-import { PlaintextStream } from '../client/tdf-stream';
+import { type AnyTdfStream, isAnyTdfStream } from '../client/tdf-stream';
 
 /**
  * Read data from a seekable stream.
@@ -113,7 +113,7 @@ export const fromUrl = (location: string): Chunker => {
 type sourcetype = 'buffer' | 'file-browser' | 'file-node' | 'remote' | 'stream';
 type DataSource = {
   type: sourcetype;
-  location: PlaintextStream | Uint8Array | Blob | string;
+  location: AnyTdfStream | Uint8Array | Blob | string;
 };
 
 export const fromDataSource = async ({ type, location }: DataSource) => {
@@ -139,8 +139,8 @@ export const fromDataSource = async ({ type, location }: DataSource) => {
       }
       return fromUrl(location);
     case 'stream':
-      if (!(location instanceof PlaintextStream)) {
-        throw new Error('Invalid data source; must be PlaintextStream');
+      if (!isAnyTdfStream(location)) {
+        throw new Error('Invalid data source; must be TdfStream');
       }
       return fromBuffer(await location.toBuffer());
     default:
