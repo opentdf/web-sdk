@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig-common.json",
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "node16",
+    "outDir": "dist/cjs/web",
+    "paths": {
+      "@readableStream": ["tdf3/mocks/stream-web.ts"],
+      "@tdfStream": ["tdf3/src/client/BrowserTdfSteam.ts"]
+    }
+  }
+}

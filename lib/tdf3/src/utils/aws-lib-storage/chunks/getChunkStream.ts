@@ -1,4 +1,4 @@
-import { RawDataPart } from '../Upload';
+import { RawDataPart } from '../Upload.js';
 
 interface Buffers {
   chunks: Buffer[];

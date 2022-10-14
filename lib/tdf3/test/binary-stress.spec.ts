@@ -1,5 +1,5 @@
 import { assert } from 'chai';
-import { Binary } from '../src/binary';
+import { Binary } from '../src/binary.js';
 
 describe('Binary Stress Tests', function () {
   const MB_1 = Buffer.alloc(1 << 20);

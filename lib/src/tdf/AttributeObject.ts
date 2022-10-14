@@ -1,4 +1,4 @@
-export default interface AttributeObject {
+export interface AttributeObject {
   readonly attribute: string;
   readonly isDefault?: boolean;
   readonly displayName?: string;

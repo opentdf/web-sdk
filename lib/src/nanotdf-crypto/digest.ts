@@ -1,4 +1,4 @@
-import { TypedArray } from '../tdf/index';
+import { TypedArray } from '../tdf/index.js';
 
 export default function digest(
   hashType: AlgorithmIdentifier,

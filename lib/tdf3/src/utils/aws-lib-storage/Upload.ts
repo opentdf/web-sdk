@@ -16,8 +16,8 @@ import {
 import { extendedEncodeURIComponent } from '@aws-sdk/smithy-client';
 import { EventEmitter } from 'events';
 
-import { getChunk } from './chunker';
-import { BodyDataTypes, Options, Progress } from './types';
+import { getChunk } from './chunker.js';
+import { BodyDataTypes, Options, Progress } from './types.js';
 
 export interface RawDataPart {
   partNumber: number;

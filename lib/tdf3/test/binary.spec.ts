@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Binary } from '../src/binary';
+import { Binary } from '../src/binary.js';
 
 describe('Binary', () => {
   describe('factory methods', () => {

@@ -1,7 +1,7 @@
 import { expect } from 'chai';
-import { parseCDBuffer, readUInt64LE } from '../../src/utils/zip-reader';
+import { parseCDBuffer, readUInt64LE } from '../../src/utils/zip-reader.js';
 
-import { ZipWriter, dateToDosDateTime, writeUInt64LE } from '../../src/utils/zip-writer';
+import { ZipWriter, dateToDosDateTime, writeUInt64LE } from '../../src/utils/zip-writer.js';
 
 describe('zip utilities', () => {
   describe('dateToDos', () => {

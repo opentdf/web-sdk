@@ -1,4 +1,4 @@
-import { Binary } from '../binary';
+import { Binary } from '../binary.js';
 
 export type EncryptResult = {
   /** Encrypted payload. */

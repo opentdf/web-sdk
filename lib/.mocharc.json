@@ -1,5 +1,7 @@
 {
   "extension": ["ts"],
-  "spec": ["tdf3/test/**/*.spec.+(js|ts)"],
-  "require": "tdf3/test/babel-register.js"
+  "node-option": [
+    "loader=ts-node/esm"
+  ],
+  "spec": ["tdf3/test/**/*.spec.+(js|ts)"]
 }

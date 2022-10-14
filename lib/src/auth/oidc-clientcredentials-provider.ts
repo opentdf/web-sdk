@@ -1,6 +1,6 @@
-import { AuthProvider } from './auth';
-import { IOIDCClientCredentialsProvider } from '../nanotdf/interfaces/OIDCInterface';
-import VirtruOIDC from './virtru-oidc';
+import { AuthProvider } from './auth.js';
+import { IOIDCClientCredentialsProvider } from '../nanotdf/interfaces/OIDCInterface.js';
+import VirtruOIDC from './virtru-oidc.js';
 
 export class OIDCClientCredentialsProvider implements AuthProvider {
   oidcAuth: VirtruOIDC;

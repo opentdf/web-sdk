@@ -1,12 +1,16 @@
 import { createReadStream } from 'fs';
 import { Readable } from 'stream';
 
-import { Client as ClientTdf3 } from './client/index';
-import { DecryptParamsBuilder, EncryptParamsBuilder } from './client/builders';
-import { type EncryptParams, type DecryptParams } from './client/builders';
-import { type InputSource } from '../../src/types';
-import { type AuthProvider } from '../../src/auth/auth';
-import { AnyTdfStream } from './client/tdf-stream';
+import { Client as ClientTdf3 } from './client/index.js';
+import {
+  type DecryptParams,
+  DecryptParamsBuilder,
+  type EncryptParams,
+  EncryptParamsBuilder,
+} from './client/builders.js';
+import { type InputSource } from '../../src/types/index.js';
+import { type AuthProvider } from '../../src/auth/auth.js';
+import { type AnyTdfStream } from './client/tdf-stream.js';
 
 interface FileClientConfig {
   clientId?: string;

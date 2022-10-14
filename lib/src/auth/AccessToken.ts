@@ -1,4 +1,4 @@
-import { rstrip } from '../utils';
+import { rstrip } from '../utils.js';
 
 const qstringify = (obj: Record<string, string>) => new URLSearchParams(obj).toString();
 

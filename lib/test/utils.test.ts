@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import { rstrip } from '../src/utils';
+import { rstrip } from '../src/utils.js';
 
 describe('rstrip', () => {
   describe('default', () => {

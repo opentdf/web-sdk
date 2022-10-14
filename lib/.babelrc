@@ -1,14 +1,12 @@
 {
-  "plugins": [
-    ["@babel/plugin-transform-runtime", { "corejs": 3, "proposals": true }]
-  ],
   "ignore": ["**/*.html"],
+  "include": ["**/*.ts"],
   "presets": [
     [
       "@babel/preset-env",
       {
         "targets": {
-          "ie": "11"
+          "chrome": "100"
         }
       }
     ],

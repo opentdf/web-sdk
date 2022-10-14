@@ -17,10 +17,10 @@
  * @link https://github.com/virtru/nanotdf/blob/master/spec/index.md#61-basic-example
  */
 
-import PolicyTypeEnum from '../nanotdf/enum/PolicyTypeEnum';
-import ProtocolEnum from '../nanotdf/enum/ProtocolEnum';
-import hexArrayTag from '../../test/nanotdf/helpers/hexArrayTag';
-import { EmbeddedHeader } from '../types';
+import PolicyTypeEnum from '../nanotdf/enum/PolicyTypeEnum.js';
+import ProtocolEnum from '../nanotdf/enum/ProtocolEnum.js';
+import hexArrayTag from '../../test/nanotdf/helpers/hexArrayTag.js';
+import { EmbeddedHeader } from '../types/index.js';
 
 // 6.1.5 nanotdf
 export const nanotdf = `

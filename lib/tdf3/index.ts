@@ -1,18 +1,17 @@
-import { TDF, Client } from './src/index';
+import { TDF, Client, FileClient } from './src/index.js';
 import {
   NanoTDFClient,
   NanoTDFDatasetClient,
   AuthProviders,
   version,
   clientType,
-} from '../src/index';
-import { FileClient } from './src/FileClient';
+} from '../src/index.js';
 
 import { webcrypto as crypto } from 'crypto';
 import { ReadableStream } from 'stream/web';
 
-import { registerModuleType } from './src/client/tdf-stream';
-import { NodeTdfStream } from './src/client/NodeTdfStream';
+import { registerModuleType } from './src/client/tdf-stream.js';
+import { NodeTdfStream } from './src/client/NodeTdfStream.js';
 
 globalThis.crypto ??= crypto as unknown as Crypto;
 globalThis.ReadableStream ??= ReadableStream;

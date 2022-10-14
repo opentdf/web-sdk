@@ -7,10 +7,10 @@ import {
   encryptDataset,
   getHkdfSalt,
   DefaultParams,
-} from './nanotdf/index';
-import { keyAgreement, extractPublicFromCertToCrypto } from './nanotdf-crypto/index';
-import { TypedArray, createAttribute, Policy } from './tdf/index';
-import { AuthProvider } from './auth/auth';
+} from './nanotdf/index.js';
+import { keyAgreement, extractPublicFromCertToCrypto } from './nanotdf-crypto/index.js';
+import { TypedArray, createAttribute, Policy } from './tdf/index.js';
+import { AuthProvider } from './auth/auth.js';
 
 async function fetchKasPubKey(kasUrl: string): Promise<string> {
   const kasPubKeyResponse = await fetch(`${kasUrl}/kas_public_key?algorithm=ec:secp256r1`);
@@ -422,5 +422,5 @@ export class NanoTDFDatasetClient extends Client {
  * Authorization for connecting authZ tokens to
  * remote requests.
  */
-export * as AuthProviders from './auth/providers';
-export { version, clientType } from './version';
+export * as AuthProviders from './auth/providers.js';
+export { version, clientType } from './version.js';

@@ -1,6 +1,6 @@
-import { type BrowserTdfStream } from './BrowserTdfSteam';
-import { DecoratedReadableStream } from './DecoratedReadableStream';
-import { type NodeTdfStream } from './NodeTdfStream';
+import { type BrowserTdfStream } from './BrowserTdfSteam.js';
+import { DecoratedReadableStream } from './DecoratedReadableStream.js';
+import { type NodeTdfStream } from './NodeTdfStream.js';
 
 export type AnyTdfStream = BrowserTdfStream | NodeTdfStream;
 export type AnyTdfStreamCtor = typeof BrowserTdfStream | typeof NodeTdfStream;

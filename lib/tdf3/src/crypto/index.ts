@@ -4,21 +4,21 @@
  * @private
  */
 
-import { Algorithms } from '../ciphers/index';
-import { Binary } from '../binary';
+import { Algorithms } from '../ciphers/index.js';
+import { Binary } from '../binary.js';
 import {
   DecryptResult,
   EncryptResult,
   MIN_ASYMMETRIC_KEY_SIZE_BITS,
   PemKeyPair,
-} from './declarations';
-import { TdfDecryptError } from '../errors';
-import { formatAsPem, isValidAsymmetricKeySize, removePemFormatting } from './crypto-utils';
-import { encodeArrayBuffer as hexEncode } from '../../../src/encodings/hex';
+} from './declarations.js';
+import { TdfDecryptError } from '../errors.js';
+import { formatAsPem, isValidAsymmetricKeySize, removePemFormatting } from './crypto-utils.js';
+import { encodeArrayBuffer as hexEncode } from '../../../src/encodings/hex.js';
 import {
   decodeArrayBuffer as base64Decode,
   encodeArrayBuffer as base64Encode,
-} from '../../../src/encodings/base64';
+} from '../../../src/encodings/base64.js';
 
 // Used to pass into native crypto functions
 const METHODS: KeyUsage[] = ['encrypt', 'decrypt'];

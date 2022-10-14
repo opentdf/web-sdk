@@ -12,7 +12,7 @@ describe('NanoTDF work with various sizes', async () => {
   it('should decrypt files larger than a few bytes ', async () => {
     // NOTE readFile only supports strings :-/
     const nanotdfWideString = await readFile({
-      path: '../../../../src/__fixtures__/dummy.txt.ntdf',
+      path: '../../src/__fixtures__/dummy.txt.ntdf',
       encoding: 'binary',
     });
     if (!nanotdfWideString) {

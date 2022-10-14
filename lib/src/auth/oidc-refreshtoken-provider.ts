@@ -1,6 +1,6 @@
-import VirtruOIDC from './virtru-oidc';
-import { IOIDCRefreshTokenProvider } from '../nanotdf/interfaces/OIDCInterface';
-import { AuthProvider } from './auth';
+import VirtruOIDC from './virtru-oidc.js';
+import { IOIDCRefreshTokenProvider } from '../nanotdf/interfaces/OIDCInterface.js';
+import { AuthProvider } from './auth.js';
 
 export class OIDCRefreshTokenProvider implements AuthProvider {
   protected oidcAuth: VirtruOIDC;

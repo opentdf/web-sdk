@@ -12,7 +12,7 @@
     "isolatedModules": true,
     "lib": ["dom", "dom.iterable", "es2020"],
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "node16",
     "noImplicitAny": true,
     "noImplicitReturns": true,
     "noImplicitThis": true,

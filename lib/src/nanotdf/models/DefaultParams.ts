@@ -1,6 +1,6 @@
-import CipherEnum from '../enum/CipherEnum';
-import CurveNameEnum from '../enum/CurveNameEnum';
-import PolicyTypeEnum from '../enum/PolicyTypeEnum';
+import CipherEnum from '../enum/CipherEnum.js';
+import CurveNameEnum from '../enum/CurveNameEnum.js';
+import PolicyTypeEnum from '../enum/PolicyTypeEnum.js';
 
 const enc = new TextEncoder();
 

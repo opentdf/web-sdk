@@ -7,24 +7,24 @@ import {
   fromDataSource,
   streamToBuffer,
   Chunker,
-} from '../utils/index';
-import { base64 } from '../../../src/encodings/index';
-import TDF from '../tdf';
-import { type AnyTdfStream, makeStream } from './tdf-stream';
-import { OIDCClientCredentialsProvider } from '../../../src/auth/oidc-clientcredentials-provider';
-import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-provider';
-import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider';
-import { PemKeyPair } from '../crypto/declarations';
-import { AuthProvider } from '../../../src/auth/auth';
-import { EncryptParams, DecryptParams } from './builders';
+} from '../utils/index.js';
+import { base64 } from '../../../src/encodings/index.js';
+import TDF from '../tdf.js';
+import { type AnyTdfStream, makeStream } from './tdf-stream.js';
+import { OIDCClientCredentialsProvider } from '../../../src/auth/oidc-clientcredentials-provider.js';
+import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-provider.js';
+import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider.js';
+import { PemKeyPair } from '../crypto/declarations.js';
+import { AuthProvider } from '../../../src/auth/auth.js';
+import { EncryptParams, DecryptParams } from './builders.js';
 
 import {
   DEFAULT_SEGMENT_SIZE,
   DecryptParamsBuilder,
   EncryptParamsBuilder,
   DecryptSource,
-} from './builders';
-import { Policy } from '../models/index';
+} from './builders.js';
+import { Policy } from '../models/index.js';
 
 const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
 const HTML_BYTE_LIMIT = 100 * 1000 * 1000; // 100 MB, see WS-9476.

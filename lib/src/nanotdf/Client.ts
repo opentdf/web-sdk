@@ -1,5 +1,5 @@
-import type { TypedArray } from '../tdf/index';
-import * as base64 from '../encodings/base64';
+import type { TypedArray } from '../tdf/index.js';
+import * as base64 from '../encodings/base64.js';
 import {
   authToken,
   cryptoPublicToPem,
@@ -9,11 +9,11 @@ import {
   importRawKey,
   keyAgreement,
   pemPublicToCrypto,
-} from '../nanotdf-crypto/index';
-import getHkdfSalt from './helpers/getHkdfSalt';
-import DefaultParams from './models/DefaultParams';
-import { fetchWrappedKey } from '../kas';
-import { AuthProvider } from '../auth/providers';
+} from '../nanotdf-crypto/index.js';
+import getHkdfSalt from './helpers/getHkdfSalt.js';
+import DefaultParams from './models/DefaultParams.js';
+import { fetchWrappedKey } from '../kas.js';
+import { AuthProvider } from '../auth/providers.js';
 
 const { KeyUsageType, AlgorithmName, NamedCurve } = cryptoEnums;
 

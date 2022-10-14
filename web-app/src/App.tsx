@@ -39,7 +39,7 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <p>client {`${new NanoTDFClient({})}`}</p>
+        {/* <p>client {`${new NanoTDFClient(null, 'http://localhost:65432/api/kas')}`}</p> */}
         <p>
           Page has been open for <code>{count}</code> seconds.
         </p>
