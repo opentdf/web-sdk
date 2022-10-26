@@ -6,13 +6,14 @@ ROOT_DIR="$(cd "${APP_DIR}/../../.." >/dev/null && pwd)"
 APP="${APP_DIR}/encrypt-decrypt.sh"
 
 _configure_app() {
-  cli_version=$(cd "${ROOT_DIR}/cli" && node -p "require('./package.json').version")
-  if [ -f "${ROOT_DIR}/opentdf-cli-${cli_version}.tgz" ]; then
+  app_name="$1"
+  app_version=$(cd "${ROOT_DIR}/${app_name}" && node -p "require('./package.json').version")
+  if [ -f "${ROOT_DIR}/opentdf-${app_name}-${app_version}.tgz" ]; then
     echo "installing tgz"
-    cp "${ROOT_DIR}/opentdf-cli-${cli_version}.tgz" "${ROOT_DIR}/cli/"
+    cp "${ROOT_DIR}/opentdf-${app_name}-${app_version}.tgz" "${ROOT_DIR}/${app_name}/"
     (
       cd "${APP_DIR}" || exit 1
-      npm uninstall @opentdf/cli && npm ci && npm i "../../../cli/opentdf-cli-${cli_version}.tgz"
+      npm uninstall @opentdf/${app_name} && npm ci && npm i "../../../${app_name}/opentdf-${app_name}-${app_version}.tgz"
     )
   else
     echo "npm i all by itself"
@@ -39,5 +40,7 @@ _wait-for() {
   exit 1
 }
 
-_configure_app
+_configure_app cli
+_configure_app cli-commonjs
+
 _wait-for

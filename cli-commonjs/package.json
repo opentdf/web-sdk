@@ -18,7 +18,7 @@
     "build": "tsc",
     "build:watch": "tsc --watch",
     "prepack": "npm run build",
-    "test": "npm run build && mocha dist/**/*.spec.js",
+    "test": "echo TODO",
     "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))",
     "format": "prettier --write \"{src,test}/**/*.ts\"",
     "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; CC-BY-4.0; ISC; MIT'",

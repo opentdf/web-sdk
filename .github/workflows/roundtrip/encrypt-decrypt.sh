@@ -3,41 +3,51 @@ set -e
 
 echo "Hello World" >./sample.txt
 
-npx @opentdf/cli --log-level DEBUG \
-  --kasEndpoint http://localhost:65432/api/kas \
-  --oidcEndpoint http://localhost:65432/auth/realms/tdf \
-  --auth tdf-client:123-456 \
-  --output sample.txt.ntdf \
-  encrypt sample.txt \
-  --attributes https://example.com/attr/Classification/value/S,https://example.com/attr/COI/value/PRX
+_nano_test() {
+  npx "$1" --log-level DEBUG \
+    --kasEndpoint http://localhost:65432/api/kas \
+    --oidcEndpoint http://localhost:65432/auth/realms/tdf \
+    --auth tdf-client:123-456 \
+    --output sample.txt.ntdf \
+    encrypt sample.txt \
+    --attributes https://example.com/attr/Classification/value/S,https://example.com/attr/COI/value/PRX
 
-npx @opentdf/cli --log-level DEBUG \
-  --kasEndpoint http://localhost:65432/api/kas \
-  --oidcEndpoint http://localhost:65432/auth/realms/tdf \
-  --auth tdf-client:123-456 \
-  --output sample_out.txt \
-  decrypt sample.txt.ntdf
+  npx "$2" --log-level DEBUG \
+    --kasEndpoint http://localhost:65432/api/kas \
+    --oidcEndpoint http://localhost:65432/auth/realms/tdf \
+    --auth tdf-client:123-456 \
+    --output sample_out.txt \
+    decrypt sample.txt.ntdf
 
-diff sample.txt sample_out.txt
+  diff sample.txt sample_out.txt
 
-echo "Roundtrip nanotdf successful!"
+  echo "Roundtrip nanotdf $1 -> $2 successful!"
+}
 
-npx @opentdf/cli --log-level DEBUG \
-  --kasEndpoint http://localhost:65432/api/kas \
-  --oidcEndpoint http://localhost:65432/auth/realms/tdf \
-  --auth tdf-client:123-456 \
-  --output sample.txt.tdf \
-  encrypt sample.txt \
-  --containerType tdf3 \
-  --attributes https://example.com/attr/Classification/value/S,https://example.com/attr/COI/value/PRX
+_nano_test @opentdf/cli-commonjs @opentdf/cli
+_nano_test @opentdf/cli @opentdf/cli-commonjs
 
-npx @opentdf/cli --log-level DEBUG \
-  --kasEndpoint http://localhost:65432/api/kas \
-  --oidcEndpoint http://localhost:65432/auth/realms/tdf \
-  --auth tdf-client:123-456 \
-  --output sample_out.txt \
-  decrypt sample.txt.tdf
+_tdf3_test() {
+  npx "$1" --log-level DEBUG \
+    --kasEndpoint http://localhost:65432/api/kas \
+    --oidcEndpoint http://localhost:65432/auth/realms/tdf \
+    --auth tdf-client:123-456 \
+    --output sample.txt.tdf \
+    encrypt sample.txt \
+    --containerType tdf3 \
+    --attributes https://example.com/attr/Classification/value/S,https://example.com/attr/COI/value/PRX
 
-diff sample.txt sample_out.txt
+  npx "$2" --log-level DEBUG \
+    --kasEndpoint http://localhost:65432/api/kas \
+    --oidcEndpoint http://localhost:65432/auth/realms/tdf \
+    --auth tdf-client:123-456 \
+    --output sample_out.txt \
+    decrypt sample.txt.tdf
 
-echo "Roundtrip tdf3 successful!"
+  diff sample.txt sample_out.txt
+
+  echo "Roundtrip tdf3 $1 -> $2 successful!"
+}
+
+_tdf3_test @opentdf/cli-commonjs @opentdf/cli
+_tdf3_test @opentdf/cli @opentdf/cli-commonjs
