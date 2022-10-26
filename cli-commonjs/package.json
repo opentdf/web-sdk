@@ -29,26 +29,26 @@
   },
   "devDependencies": {
     "@esm-bundle/chai": "4.3.4-fix.0",
-    "@types/mocha": "9.1.1",
-    "@types/node": "^18.7.18",
+    "@types/mocha": "10.0.0",
+    "@types/node": "^18.11.6",
     "@types/readable-stream": "^2.3.14",
     "@types/sinon": "^10.0.13",
-    "@types/yargs": "^17.0.12",
-    "@typescript-eslint/eslint-plugin": "^5.38.0",
-    "@typescript-eslint/parser": "^5.38.0",
+    "@types/yargs": "^17.0.13",
+    "@typescript-eslint/eslint-plugin": "^5.41.0",
+    "@typescript-eslint/parser": "^5.41.0",
     "chai": "^4.3.6",
-    "eslint": "^8.23.1",
+    "eslint": "^8.26.0",
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-prettier": "^4.2.1",
     "license-checker": "^25.0.1",
-    "mocha": "^10.0.0",
+    "mocha": "^10.1.0",
     "prettier": "^2.7.1",
-    "sinon": "^14.0.0",
+    "sinon": "^14.0.1",
     "ts-node": "^10.9.1",
-    "typescript": "^4.8.3"
+    "typescript": "^4.8.4"
   },
   "dependencies": {
     "@opentdf/client": "file:../opentdf-client-0.3.0.tgz",
-    "yargs": "^17.5.1"
+    "yargs": "^17.6.0"
   }
 }
