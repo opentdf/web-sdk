@@ -1,6 +1,6 @@
 {
   "name": "@opentdf/cli-commonjs",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Node based CLI for opentdf, based on commonjs",
   "repository": {
     "type": "git",
@@ -48,7 +48,7 @@
     "typescript": "^4.8.4"
   },
   "dependencies": {
-    "@opentdf/client": "file:../opentdf-client-0.3.0.tgz",
+    "@opentdf/client": "file:../opentdf-client-0.3.1.tgz",
     "yargs": "^17.6.0"
   }
 }

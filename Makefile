@@ -1,5 +1,5 @@
 
-version=0.3.0
+version=0.3.1
 pkgs=lib cli cli-commonjs web-app
 
 .PHONY: all audit license-check lint test ci i start format clean
