@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -x
+
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null && pwd)"
 ROOT_DIR="$(cd "${APP_DIR}/../../.." >/dev/null && pwd)"
 
