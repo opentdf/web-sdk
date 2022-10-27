@@ -16,15 +16,15 @@ jobs:
         working-directory: ./lib
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: '18'
           cache: 'npm'
           cache-dependency-path: './lib/package-lock.json'
       - run: npm ci
       - run: npm test
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: coverage
           path: lib/coverage/
@@ -32,7 +32,7 @@ jobs:
       - run: npm run license-check
       - run: npm run lint
       - run: npm pack
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: opentdf-client-lib
           path: ./lib/opentdf-client-*.tgz
@@ -49,13 +49,13 @@ jobs:
       matrix:
         module: ['', '-commonjs']
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: '18'
           cache: 'npm'
           cache-dependency-path: './cli${{ matrix.module }}/package-lock.json'
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: opentdf-client-lib
       - run: npm uninstall @opentdf/client && npm ci && npm i ../opentdf-client-*.tgz
@@ -69,7 +69,7 @@ jobs:
         with:
           bats-version: 1.2.1
       - run: bats bin/opentdf.bats
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: opentdf-cli${{ matrix.module }}
           path: ./cli${{ matrix.module }}/opentdf-cli-*.tgz
@@ -83,13 +83,13 @@ jobs:
         working-directory: ./web-app
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: '18'
           cache: 'npm'
           cache-dependency-path: './web-app/package-lock.json'
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: opentdf-client-lib
       - run: npm uninstall @opentdf/client && npm ci && npm i ../opentdf-client-*.tgz
@@ -107,7 +107,7 @@ jobs:
         working-directory: .github/workflows
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: mig4/setup-bats@v1
         with:
           bats-version: 1.2.1
@@ -127,21 +127,24 @@ jobs:
         working-directory: .github/workflows/roundtrip
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: '18'
           cache: 'npm'
           cache-dependency-path: '.github/workflows/roundtrip/package-lock.json'
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: opentdf-client-lib
-      - uses: actions/download-artifact@v2
+          path: lib
+      - uses: actions/download-artifact@v3
         with:
           name: opentdf-cli
-      - uses: actions/download-artifact@v2
+          path: cli
+      - uses: actions/download-artifact@v3
         with:
           name: opentdf-cli-commonjs
+          path: cli-commonjs
       - run: |
           pwd && ls -la
           cd ..
@@ -149,11 +152,11 @@ jobs:
           cd ..
           pwd && ls -la
           cd ..
-          pwd && ls -la
+          pwd && ls -la && ls -la *
       - name: Git clone backend
         run: |
           git clone https://github.com/opentdf/opentdf.git
-      - uses: yokawasa/action-setup-kube-tools@v0.7.1
+      - uses: yokawasa/action-setup-kube-tools@v0.9.0
         with:
           setup-tools: |
             kubectl
@@ -180,7 +183,7 @@ jobs:
           TEST_SCRIPT: ../../wait-and-test.sh
         run: |-
           tilt ci --file opentdf/quickstart/Tiltfile
-
+wai
   deliver-ghp:
     needs: [lib, cli, web-app, scripts]
     runs-on: ubuntu-latest
@@ -195,8 +198,8 @@ jobs:
       DIST_TAG: ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
       TARGET_VERSION: ${{ steps.check-version.outputs.TARGET_VERSION }}
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: '18.x'
           registry-url: https://npm.pkg.github.com
@@ -229,7 +232,7 @@ jobs:
         run: |
           curl -XPOST -u "virtru-cloudnative:${{secrets.PERSONAL_ACCESS_TOKEN}}" -H "Accept: application/vnd.github.everest-preview+json" -H "Content-Type: application/json" "https://api.github.com/repos/opentdf/backend/dispatches" --data '{"event_type": "xtest", "client_payload": {"version":"'$(BUILD_META="" .github/workflows/gh-semver.sh)'"}}'
       - name: Publish documentation to gh-pages
-        uses: JamesIves/github-pages-deploy-action@v4.3.3
+        uses: JamesIves/github-pages-deploy-action@v4.4.1
         with:
           branch: gh-pages
           folder: lib/dist/docs
@@ -244,8 +247,8 @@ jobs:
       || (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/'))
       || (github.event_name == 'release' && startsWith(github.ref, 'refs/tags/'))
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: '18.x'
           registry-url: 'https://registry.npmjs.org'

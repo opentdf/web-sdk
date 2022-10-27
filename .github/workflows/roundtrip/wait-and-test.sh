@@ -13,7 +13,7 @@ _configure_app() {
   cd "${APP_DIR}" || exit 1
   npm uninstall @opentdf/cli{,-commonjs}
   npm ci
-  npm i "../../../opentdf-cli*-${app_version}.tgz"
+  npm i "../../../cli/opentdf-cli-${app_version}.tgz" "../../../cli-commonjs/opentdf-cli-commonjs-${app_version}.tgz"
 }
 
 _wait-for() {
