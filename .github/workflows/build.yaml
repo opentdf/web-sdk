@@ -142,7 +142,14 @@ jobs:
       - uses: actions/download-artifact@v2
         with:
           name: opentdf-cli-commonjs
-      - run: ls -la
+      - run: |
+          pwd && ls -la
+          cd ..
+          pwd && ls -la
+          cd ..
+          pwd && ls -la
+          cd ..
+          pwd && ls -la
       - name: Git clone backend
         run: |
           git clone https://github.com/opentdf/opentdf.git
