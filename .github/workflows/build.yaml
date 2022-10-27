@@ -147,14 +147,6 @@ jobs:
         with:
           name: opentdf-cli-commonjs
           path: cli-commonjs
-      - run: |
-          pwd && ls -la
-          cd ..
-          pwd && ls -la
-          cd ..
-          pwd && ls -la
-          cd ..
-          pwd && ls -la && ls -la *
       - name: Git clone backend
         run: |
           git clone https://github.com/opentdf/opentdf.git
