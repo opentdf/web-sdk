@@ -9,32 +9,33 @@ start: all
 
 clean:
 	rm -f *.tgz
+	rm -f */*.tgz
 	rm -rf */dist
 	rm -rf */node_modules
 
-ci: opentdf-client-$(version).tgz
-	for x in cli web-app; do (cd $$x && npm uninstall @opentdf/client && npm ci && npm i ../opentdf-client-$(version).tgz) || exit 1; done
+ci: lib/opentdf-client-$(version).tgz
+	for x in cli web-app; do (cd $$x && npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-$(version).tgz) || exit 1; done
 
 i:
-	(cd lib && npm i && npm pack --pack-destination ../)
-	for x in cli cli-commonjs web-app; do (cd $$x && npm uninstall @opentdf/client && npm i && npm i ../opentdf-client-$(version).tgz) || exit 1; done
+	(cd lib && npm i && npm pack)
+	for x in cli cli-commonjs web-app; do (cd $$x && npm uninstall @opentdf/client && npm i && npm i ../lib/opentdf-client-$(version).tgz) || exit 1; done
 
-all: ci opentdf-client-$(version).tgz opentdf-cli-$(version).tgz opentdf-cli-commonjs-$(version).tgz opentdf-web-app-$(version).tgz
+all: ci lib/opentdf-client-$(version).tgz cli/opentdf-cli-$(version).tgz cli-commonjs/opentdf-cli-commonjs-$(version).tgz web-app/opentdf-web-app-$(version).tgz
 
-opentdf-cli-$(version).tgz: opentdf-client-$(version).tgz $(shell find cli -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
-	(cd cli && npm ci ../opentdf-client-$(version).tgz && npm pack --pack-destination ../)
+cli/opentdf-cli-$(version).tgz: lib/opentdf-client-$(version).tgz $(shell find cli -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
+	(cd cli && npm ci ../lib/opentdf-client-$(version).tgz && npm pack)
 
-opentdf-cli-commonjs-$(version).tgz: opentdf-client-$(version).tgz $(shell find cli-commonjs -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
-	(cd cli-commonjs && npm ci ../opentdf-client-$(version).tgz && npm pack --pack-destination ../)
+cli-commonjs/opentdf-cli-commonjs-$(version).tgz: lib/opentdf-client-$(version).tgz $(shell find cli-commonjs -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
+	(cd cli-commonjs && npm ci ../lib/opentdf-client-$(version).tgz && npm pack)
 
-opentdf-web-app-$(version).tgz: opentdf-client-$(version).tgz $(shell find web-app -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
-	(cd web-app && npm ci ../opentdf-client-$(version).tgz && npm pack --pack-destination ../)
+web-app/opentdf-web-app-$(version).tgz: lib/opentdf-client-$(version).tgz $(shell find web-app -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
+	(cd web-app && npm ci ../lib/opentdf-client-$(version).tgz && npm pack)
 
-opentdf-client-$(version).tgz: $(shell find lib -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
-	(cd lib && npm ci --including=dev && npm pack --pack-destination ../)
+lib/opentdf-client-$(version).tgz: $(shell find lib -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
+	(cd lib && npm ci --including=dev && npm pack)
 
-dist: $(shell find lib -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
-	(cd lib && npm ci --including=dev && npm pack --pack-destination ../)
+dist: lib/opentdf-client-$(version).tgz
+	(cp lib/opentdf-client-$(version).tgz ./)
 
 audit:
 	for x in $(pkgs); do (cd $$x && npm audit) || exit 1; done

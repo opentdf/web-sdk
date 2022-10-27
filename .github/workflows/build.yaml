@@ -58,7 +58,8 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: opentdf-client-lib
-      - run: npm uninstall @opentdf/client && npm ci && npm i ../opentdf-client-*.tgz
+          path: lib/
+      - run: npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-*.tgz
       - run: npm test
       - run: npm audit
       - run: npm run license-check
@@ -92,7 +93,8 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: opentdf-client-lib
-      - run: npm uninstall @opentdf/client && npm ci && npm i ../opentdf-client-*.tgz
+          path: lib/
+      - run: npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-*.tgz
       - run: npm install
       - run: npm test
       - run: npm audit
@@ -136,7 +138,7 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: opentdf-client-lib
-          path: lib
+          path: lib/
       - uses: actions/download-artifact@v3
         with:
           name: opentdf-cli
