@@ -10,8 +10,8 @@ APP="${APP_DIR}/encrypt-decrypt.sh"
 _configure_app() {
   app_version=$(cd "${ROOT_DIR}/lib" && node -p "require('./package.json').version")
   echo "installing tgz"
-  npm uninstall @opentdf/cli{,-commonjs}
   cd "${APP_DIR}" || exit 1
+  npm uninstall @opentdf/cli{,-commonjs}
   npm ci
   npm i "../../../opentdf-cli*-${app_version}.tgz"
 }
