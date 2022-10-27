@@ -183,7 +183,7 @@ jobs:
           TEST_SCRIPT: ../../wait-and-test.sh
         run: |-
           tilt ci --file opentdf/quickstart/Tiltfile
-wai
+
   deliver-ghp:
     needs: [lib, cli, web-app, scripts]
     runs-on: ubuntu-latest
