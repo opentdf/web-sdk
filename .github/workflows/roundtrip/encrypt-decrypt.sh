@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -e
 
+APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null && pwd)"
+
+cd "$APP_DIR"
+
 echo "Hello World" >./sample.txt
 
 _nano_test() {
