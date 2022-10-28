@@ -1,23 +1,19 @@
 #!/usr/bin/env bash
 
+set -x
+
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null && pwd)"
 ROOT_DIR="$(cd "${APP_DIR}/../../.." >/dev/null && pwd)"
 
 APP="${APP_DIR}/encrypt-decrypt.sh"
 
 _configure_app() {
-  cli_version=$(cd "${ROOT_DIR}/cli" && node -p "require('./package.json').version")
-  if [ -f "${ROOT_DIR}/opentdf-cli-${cli_version}.tgz" ]; then
-    echo "installing tgz"
-    cp "${ROOT_DIR}/opentdf-cli-${cli_version}.tgz" "${ROOT_DIR}/cli/"
-    (
-      cd "${APP_DIR}" || exit 1
-      npm uninstall @opentdf/cli && npm ci && npm i "../../../cli/opentdf-cli-${cli_version}.tgz"
-    )
-  else
-    echo "npm i all by itself"
-    npm i
-  fi
+  app_version=$(cd "${ROOT_DIR}/lib" && node -p "require('./package.json').version")
+  echo "installing tgz"
+  cd "${APP_DIR}" || exit 1
+  npm uninstall @opentdf/cli{,-commonjs}
+  npm ci
+  npm i "../../../cli/opentdf-cli-${app_version}.tgz" "../../../cli-commonjs/opentdf-cli-commonjs-${app_version}.tgz"
 }
 
 _wait-for() {

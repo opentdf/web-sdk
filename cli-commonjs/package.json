@@ -1,32 +1,31 @@
 {
-  "name": "@opentdf/cli",
+  "name": "@opentdf/cli-commonjs",
   "version": "0.3.1",
-  "description": "Node based CLI for opentdf",
+  "description": "Node based CLI for opentdf, based on commonjs",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/opentdf/client-web.git",
-    "directory": "cli"
+    "directory": "cli-commonjs"
   },
   "license": "BSD-3-Clause-Clear",
   "author": "Virtru",
   "main": "dist/src/cli.js",
-  "type": "module",
   "files": [
     "dist/src/**",
-    "bin/opentdf.mjs"
+    "bin/opentdf.js"
   ],
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc --watch",
     "prepack": "npm run build",
-    "test": "npm run build && mocha dist/**/*.spec.js",
+    "test": "echo TODO",
     "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))",
     "format": "prettier --write \"{src,test}/**/*.ts\"",
     "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; CC-BY-4.0; ISC; MIT'",
-    "lint": "eslint ./{src,test}/**/*.ts"
+    "lint": "eslint ./src/**/*.ts"
   },
   "bin": {
-    "opentdf": "./bin/opentdf.mjs"
+    "opentdf": "./bin/opentdf.js"
   },
   "devDependencies": {
     "@esm-bundle/chai": "4.3.4-fix.0",

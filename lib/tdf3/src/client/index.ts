@@ -215,7 +215,7 @@ export class Client {
    * @return a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} a new stream containing the TDF ciphertext, if output is not passed in as a paramter
    * @see EncryptParamsBuilder
    */
-   async encrypt({
+  async encrypt({
     scope,
     source,
     asHtml = false,

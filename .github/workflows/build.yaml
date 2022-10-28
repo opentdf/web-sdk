@@ -16,15 +16,15 @@ jobs:
         working-directory: ./lib
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
-          node-version: '16'
+          node-version: '18'
           cache: 'npm'
           cache-dependency-path: './lib/package-lock.json'
       - run: npm ci
       - run: npm test
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: coverage
           path: lib/coverage/
@@ -32,7 +32,7 @@ jobs:
       - run: npm run license-check
       - run: npm run lint
       - run: npm pack
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: opentdf-client-lib
           path: ./lib/opentdf-client-*.tgz
@@ -43,19 +43,23 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./cli
+        working-directory: ./cli${{ matrix.module }}
     timeout-minutes: 5
+    strategy:
+      matrix:
+        module: ['', '-commonjs']
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
-          node-version: '16'
+          node-version: '18'
           cache: 'npm'
-          cache-dependency-path: './cli/package-lock.json'
-      - uses: actions/download-artifact@v2
+          cache-dependency-path: './cli${{ matrix.module }}/package-lock.json'
+      - uses: actions/download-artifact@v3
         with:
           name: opentdf-client-lib
-      - run: npm uninstall @opentdf/client && npm ci && npm i ../opentdf-client-*.tgz
+          path: lib/
+      - run: npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-*.tgz
       - run: npm test
       - run: npm audit
       - run: npm run license-check
@@ -66,10 +70,10 @@ jobs:
         with:
           bats-version: 1.2.1
       - run: bats bin/opentdf.bats
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
-          name: opentdf-cli
-          path: ./cli/opentdf-cli-*.tgz
+          name: opentdf-cli${{ matrix.module }}
+          path: ./cli${{ matrix.module }}/opentdf-cli-*.tgz
 
   web-app:
     needs:
@@ -80,16 +84,17 @@ jobs:
         working-directory: ./web-app
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
-          node-version: '16'
+          node-version: '18'
           cache: 'npm'
           cache-dependency-path: './web-app/package-lock.json'
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: opentdf-client-lib
-      - run: npm uninstall @opentdf/client && npm ci && npm i ../opentdf-client-*.tgz
+          path: lib/
+      - run: npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-*.tgz
       - run: npm install
       - run: npm test
       - run: npm audit
@@ -104,7 +109,7 @@ jobs:
         working-directory: .github/workflows
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: mig4/setup-bats@v1
         with:
           bats-version: 1.2.1
@@ -124,22 +129,28 @@ jobs:
         working-directory: .github/workflows/roundtrip
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
-          node-version: '16'
+          node-version: '18'
           cache: 'npm'
           cache-dependency-path: '.github/workflows/roundtrip/package-lock.json'
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: opentdf-client-lib
-      - uses: actions/download-artifact@v2
+          path: lib/
+      - uses: actions/download-artifact@v3
         with:
           name: opentdf-cli
+          path: cli
+      - uses: actions/download-artifact@v3
+        with:
+          name: opentdf-cli-commonjs
+          path: cli-commonjs
       - name: Git clone backend
         run: |
           git clone https://github.com/opentdf/opentdf.git
-      - uses: yokawasa/action-setup-kube-tools@v0.7.1
+      - uses: yokawasa/action-setup-kube-tools@v0.9.0
         with:
           setup-tools: |
             kubectl
@@ -181,10 +192,10 @@ jobs:
       DIST_TAG: ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
       TARGET_VERSION: ${{ steps.check-version.outputs.TARGET_VERSION }}
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
-          node-version: '16.x'
+          node-version: '18.x'
           registry-url: https://npm.pkg.github.com
       - name: Check version number is same between tag, library, and/or release
         id: check-version
@@ -215,7 +226,7 @@ jobs:
         run: |
           curl -XPOST -u "virtru-cloudnative:${{secrets.PERSONAL_ACCESS_TOKEN}}" -H "Accept: application/vnd.github.everest-preview+json" -H "Content-Type: application/json" "https://api.github.com/repos/opentdf/backend/dispatches" --data '{"event_type": "xtest", "client_payload": {"version":"'$(BUILD_META="" .github/workflows/gh-semver.sh)'"}}'
       - name: Publish documentation to gh-pages
-        uses: JamesIves/github-pages-deploy-action@v4.3.3
+        uses: JamesIves/github-pages-deploy-action@v4.4.1
         with:
           branch: gh-pages
           folder: lib/dist/docs
@@ -230,10 +241,10 @@ jobs:
       || (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/'))
       || (github.event_name == 'release' && startsWith(github.ref, 'refs/tags/'))
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
-          node-version: '16.x'
+          node-version: '18.x'
           registry-url: 'https://registry.npmjs.org'
       - run: make all
       - run: >-
