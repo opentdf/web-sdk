@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 
-import { TDF } from '../../../tdf3/src';
+import { TDF } from '../../../tdf3/src/index.js';
 
 describe('TDF', () => {
   it('constructs', () => {

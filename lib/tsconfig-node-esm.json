@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig-common.json",
+  "compilerOptions": {
+    "module": "ES2020",
+    "moduleResolution": "node16",
+    "outDir": "dist/esm/node"
+  },
+  "include": ["src", "test", "tdf3"]
+}

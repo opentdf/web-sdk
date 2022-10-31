@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-import { AccessToken, AccessTokenConfig } from './AccessToken';
-import { IVirtruOIDC } from '../nanotdf/interfaces/OIDCInterface';
-import { HttpRequest, withHeaders } from './auth';
+import { AccessToken, AccessTokenConfig } from './AccessToken.js';
+import { IVirtruOIDC } from '../nanotdf/interfaces/OIDCInterface.js';
+import { HttpRequest, withHeaders } from './auth.js';
 
 /**
  * Class that provides OIDC functionality to auth providers.

@@ -1,4 +1,4 @@
-import ProtocolEnum from '../enum/ProtocolEnum';
+import ProtocolEnum from '../enum/ProtocolEnum.js';
 
 /**
  *

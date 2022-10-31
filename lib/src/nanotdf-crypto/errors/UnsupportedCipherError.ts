@@ -1,4 +1,4 @@
-import { supportedCiphers } from '../ciphers';
+import { supportedCiphers } from '../ciphers.js';
 
 export default class UnsupportedCipherError extends Error {
   __proto__: Error;

@@ -1,4 +1,4 @@
-import type AttributeObject from './AttributeObject';
+import { type AttributeObject } from './AttributeObject.js';
 
 export interface PolicyObjectBody {
   readonly dataAttributes: AttributeObject[];

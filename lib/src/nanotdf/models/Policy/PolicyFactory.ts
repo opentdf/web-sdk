@@ -1,10 +1,10 @@
-import AbstractPolicy from './AbstractPolicy';
-import EmbeddedPolicy from './EmbeddedPolicy';
-import RemotePolicy from './RemotePolicy';
-import PolicyTypeEnum from '../../enum/PolicyTypeEnum';
-import { lengthOfBinding } from '../../helpers/calculateByCipher';
-import InvalidPolicyTypeError from '../../errors/InvalidPolicyTypeError';
-import CurveNameEnum from '../../enum/CurveNameEnum';
+import AbstractPolicy from './AbstractPolicy.js';
+import EmbeddedPolicy from './EmbeddedPolicy.js';
+import RemotePolicy from './RemotePolicy.js';
+import PolicyTypeEnum from '../../enum/PolicyTypeEnum.js';
+import { lengthOfBinding } from '../../helpers/calculateByCipher.js';
+import InvalidPolicyTypeError from '../../errors/InvalidPolicyTypeError.js';
+import CurveNameEnum from '../../enum/CurveNameEnum.js';
 
 function parse(
   buff: Uint8Array,

@@ -1,8 +1,8 @@
-import { Binary } from '../binary';
-import { Algorithms } from './algorithms';
-import { SymmetricCipher } from './symmetric-cipher-base';
+import { Binary } from '../binary.js';
+import { Algorithms } from './algorithms.js';
+import { SymmetricCipher } from './symmetric-cipher-base.js';
 
-import type { CryptoService, DecryptResult, EncryptResult } from '../crypto/declarations';
+import type { CryptoService, DecryptResult, EncryptResult } from '../crypto/declarations.js';
 
 const KEY_LENGTH = 32;
 const IV_LENGTH = 12;

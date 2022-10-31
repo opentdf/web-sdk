@@ -1,5 +1,5 @@
-import { runAttributesValidation } from './validations';
-import { AttributeValidationError, IllegalArgumentError } from '../../errors';
+import { runAttributesValidation } from './validations.js';
+import { AttributeValidationError, IllegalArgumentError } from '../../errors.js';
 
 type Attribute = { attribute: string };
 
