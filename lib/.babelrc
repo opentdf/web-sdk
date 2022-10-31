@@ -3,7 +3,6 @@
     ["@babel/plugin-transform-runtime", { "corejs": 3, "proposals": true }],
     ["module-resolver", {
       "alias": {
-        "@readableStream": "./tdf3/src/client/stream-web-node.ts",
         "@tdfStream": "./tdf3/src/client/NodeTdfStream.ts",
         "@runtimeConfig": "./tdf3/src/utils/aws-lib-storage/runtimeConfig"
       }

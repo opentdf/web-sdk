@@ -7,7 +7,6 @@ import {
 import { VirtruS3Config, VirtruTempS3Credentials, VirtruCreds } from './builders';
 import { Upload } from '../utils/aws-lib-storage/index';
 import { Options } from '../utils/aws-lib-storage/types';
-import stream from '@readableStream';
 import Metadata from '../tdf';
 
 import { EventEmitter } from 'events';
@@ -26,7 +25,7 @@ class DecoratedReadableStream {
   // upsertResponse: void[];
 
   constructor(byteLimit: number, underlyingSource: UnderlyingSource) {
-    this.stream = new stream.ReadableStream(underlyingSource, { highWaterMark: byteLimit });
+    this.stream = new ReadableStream(underlyingSource, { highWaterMark: byteLimit });
     const ee = new EventEmitter();
     this.on = ee.on;
     this.emit = ee.emit;

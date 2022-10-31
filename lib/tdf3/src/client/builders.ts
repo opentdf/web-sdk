@@ -126,7 +126,7 @@ type Metadata = {
 };
 
 export interface EncryptParams {
-  source: null | ReadableStream | NodeJS.ReadableStream;
+  source: null | ReadableStream;
   opts?: { keypair: PemKeyPair };
   output?: NodeJS.WriteStream;
   scope: Scope;
@@ -189,7 +189,7 @@ class EncryptParamsBuilder {
    * Specify the content to encrypt, in stream form.
    * @param {Readable} readStream - a Readable Stream to encrypt.
    */
-  setStreamSource(readStream: ReadableStream | NodeJS.ReadableStream) {
+  setStreamSource(readStream: ReadableStream) {
     this._params.source = readStream;
   }
 
@@ -600,7 +600,7 @@ export type DecryptSource =
   | null
   | { type: 'buffer'; location: Buffer }
   | { type: 'remote'; location: string }
-  | { type: 'stream'; location: ReadableStream | NodeJS.ReadableStream }
+  | { type: 'stream'; location: ReadableStream }
   | { type: 'file-browser' | 'file-node'; location: string };
 
 export type DecryptParams = {
@@ -692,7 +692,7 @@ class DecryptParamsBuilder {
    * Specify the TDF ciphertext to decrypt, in stream form.
    * @param {Readable} stream - a Readable stream to decrypt.
    */
-  setStreamSource(stream: ReadableStream | NodeJS.ReadableStream) {
+  setStreamSource(stream: ReadableStream) {
     this._params.source = { type: 'stream', location: stream };
   }
 
@@ -701,7 +701,7 @@ class DecryptParamsBuilder {
    * @param {Readable} stream - a Readable stream to decrypt.
    * @return {DecryptParamsBuilder} - this object.
    */
-  withStreamSource(stream: ReadableStream | NodeJS.ReadableStream) {
+  withStreamSource(stream: ReadableStream) {
     this.setStreamSource(stream);
     return this;
   }

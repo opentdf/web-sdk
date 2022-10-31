@@ -9,8 +9,10 @@ import {
 import { FileClient } from './src/FileClient';
 
 import { webcrypto as crypto } from 'node:crypto';
+import { ReadableStream } from 'node:stream/web';
 
 globalThis.crypto ??= crypto as unknown as Crypto;
+globalThis.ReadableStream ??= ReadableStream;
 
 export {
   TDF,

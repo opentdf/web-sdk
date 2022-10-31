@@ -16,10 +16,6 @@ interface FileClientConfig {
   kasEndpoint?: string;
 }
 
-function isNodeStream(source: InputSource): source is NodeJS.ReadableStream {
-  return typeof (source as NodeJS.ReadableStream)?.pipe === 'function';
-}
-
 export class FileClient {
   dissems: string[] = [];
   dataAttributes: string[] = [];

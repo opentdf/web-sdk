@@ -1,6 +1,6 @@
 import PolicyTypeEnum from '../nanotdf/enum/PolicyTypeEnum';
 
-export type InputSource = ReadableStream | Buffer | string | ArrayBuffer | NodeJS.ReadableStream;
+export type InputSource = ReadableStream | Buffer | string | ArrayBuffer;
 
 type Header = {
   magicNumberVersion: string[];
