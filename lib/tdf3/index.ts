@@ -14,9 +14,6 @@ import { ReadableStream } from 'stream/web';
 import { registerModuleType } from './src/client/tdf-stream';
 import { NodeTdfStream } from './src/client/NodeTdfStream';
 
-import { registerModuleType } from './src/client/tdf-stream';
-import { NodeTdfStream } from './src/client/NodeTdfStream';
-
 globalThis.crypto ??= crypto as unknown as Crypto;
 globalThis.ReadableStream ??= ReadableStream;
 registerModuleType(NodeTdfStream);

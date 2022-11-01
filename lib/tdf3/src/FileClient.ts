@@ -69,7 +69,7 @@ export class FileClient {
     if (source instanceof ReadableStream) {
       params.setStreamSource(source);
     }
-    return { dispose, ...params.build() };
+    return params.build();
   }
 
   async encrypt(
