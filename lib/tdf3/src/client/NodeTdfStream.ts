@@ -1,35 +1,20 @@
 import { createWriteStream } from 'fs';
-import { buffer, text } from 'node:stream/consumers';
-import DecoratedReadableStream from './DecoratedReadableStream';
-import { toWebReadableStream } from 'web-streams-node';
+import { buffer, text } from 'stream/consumers';
+import { DecoratedReadableStream } from './DecoratedReadableStream';
 
-class NodeTdfStream extends DecoratedReadableStream {
-  static convertToWebStream(stream: ReadableStream) {
-    return toWebReadableStream(stream);
-  }
-
-  /**
-   * Dump the stream content to a string. This will consume the stream.
-   * @return {string} - the plaintext in string form.
-   */
-  async toString() {
+export class NodeTdfStream extends DecoratedReadableStream {
+  override async toString() {
     // @types/node has actuall error when its expecting consumers to receive Node stream when in documentation its for webStream
     // https://nodejs.org/dist/latest-v16.x/docs/api/webstreams.html#utility-consumers
     // @ts-ignore
-    return await text(this.stream);
+    return text(this.stream);
   }
 
-  /**
-   * Dump the stream content to a buffer. This will consume the stream.
-   * @return {Buffer} - the plaintext in Buffer form.
-   */
-  async toBuffer() {
-    return await NodeTdfStream.toBuffer(this.stream);
-  }
-
-  static async toBuffer(stream: ReadableStream) {
+  override async toBuffer() {
+    // @types/node has actuall error when its expecting consumers to receive Node stream when in documentation its for webStream
+    // https://nodejs.org/dist/latest-v16.x/docs/api/webstreams.html#utility-consumers
     // @ts-ignore
-    return await buffer(stream);
+    return buffer(this.stream);
   }
 
   /**
@@ -58,5 +43,3 @@ class NodeTdfStream extends DecoratedReadableStream {
     });
   }
 }
-
-export default NodeTdfStream;

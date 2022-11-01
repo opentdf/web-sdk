@@ -140,7 +140,7 @@ export const fromDataSource = async ({ type, location }: DataSource) => {
       return fromUrl(location);
     case 'stream':
       if (!isAnyTdfStream(location)) {
-        throw new Error('Invalid data source; must be TdfStream');
+        throw new Error('Invalid data source; must be DecoratedTdfStream');
       }
       return fromBuffer(await location.toBuffer());
     default:

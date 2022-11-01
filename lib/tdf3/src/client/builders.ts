@@ -1,6 +1,5 @@
 import { S3Client, GetObjectCommand, HeadObjectCommand, S3ClientConfig } from '@aws-sdk/client-s3';
 import axios from 'axios';
-import { createReadStream } from 'fs';
 import { arrayBufferToBuffer, inBrowser } from '../utils/index';
 import { AttributeValidator } from './validation/index';
 import { AttributeObject, Policy } from '../models/index';
@@ -126,7 +125,7 @@ type Metadata = {
 };
 
 export interface EncryptParams {
-  source: null | ReadableStream;
+  source: ReadableStream<Uint8Array>;
   opts?: { keypair: PemKeyPair };
   output?: NodeJS.WriteStream;
   scope: Scope;
@@ -154,11 +153,10 @@ function freeze<Type>(obj: Type): Readonly<Type> {
  * {@link Client#encrypt|encrypt} operation. Must be built before use via the {@link EncryptParamsBuilder#build|build()} function.
  */
 class EncryptParamsBuilder {
-  private _params: EncryptParams;
+  private _params: Partial<EncryptParams>;
 
   constructor() {
     this._params = {
-      source: null,
       scope: {
         dissem: [],
         attributes: [],
@@ -181,7 +179,7 @@ class EncryptParamsBuilder {
     return this;
   }
 
-  getStreamSource(): EncryptParams['source'] {
+  getStreamSource(): EncryptParams['source'] | undefined {
     return this._params.source;
   }
 
@@ -270,25 +268,6 @@ class EncryptParamsBuilder {
   }
 
   /**
-   * Specify the content to encrypt using a file reference. Only works with node.
-   * @param {string} filepath - the location on disk of the file to encrypt.
-   */
-  setFileSource(filepath: string) {
-    this._params.source = createReadStream(filepath);
-  }
-
-  /**
-   * Specify the content to encrypt using a file reference. Only works with node.
-   * Returns this object for method chaining.
-   * @param {string} filepath - the location on disk of the file to encrypt.
-   * @return {EncryptParamsBuilder} - this object.
-   */
-  withFileSource(filepath: string): EncryptParamsBuilder {
-    this.setFileSource(filepath);
-    return this;
-  }
-
-  /**
    * Specify the content to encrypt using an ArrayBuffer reference, which must have already
    * loaded the file content. Using the below linked example, e.target.result is the ArrayBuffer.
    * <br/><br/>
@@ -317,7 +296,7 @@ class EncryptParamsBuilder {
   }
 
   getAttributes(): EncryptParams['scope']['attributes'] {
-    return this._params.scope.attributes;
+    return this._params?.scope?.attributes || [];
   }
 
   /**
@@ -325,7 +304,11 @@ class EncryptParamsBuilder {
    */
   setAttributes(attributes: EncryptParams['scope']['attributes']) {
     AttributeValidator(attributes);
-    this._params.scope.attributes = attributes;
+    if (this._params.scope) {
+      this._params.scope.attributes = attributes;
+    } else {
+      this._params.scope = { attributes, dissem: [] };
+    }
   }
 
   /**
@@ -343,7 +326,7 @@ class EncryptParamsBuilder {
    * @return {array} - array of users (e.g., email addresses).
    */
   getUsersWithAccess(): EncryptParams['scope']['dissem'] {
-    return this._params.scope.dissem;
+    return this._params?.scope?.dissem || [];
   }
 
   /**
@@ -351,7 +334,11 @@ class EncryptParamsBuilder {
    * @param {array} users - varargs or array of users (e.g., email addresses).
    */
   setUsersWithAccess(users: string[]) {
-    this._params.scope.dissem = users;
+    if (this._params.scope) {
+      this._params.scope.dissem = users;
+    } else {
+      this._params.scope = { attributes: [], dissem: users };
+    }
   }
 
   /**
@@ -372,7 +359,7 @@ class EncryptParamsBuilder {
    * @return {object} - object containing metadata as key-value pairs.
    */
   getMetadata(): EncryptParams['metadata'] {
-    return this._params.metadata;
+    return this._params.metadata as Metadata;
   }
 
   /**
@@ -399,11 +386,15 @@ class EncryptParamsBuilder {
   }
 
   getPolicyId(): string | undefined {
-    return this._params.scope.policyId;
+    return this._params.scope?.policyId;
   }
 
   setPolicyId(policyId: string) {
-    this._params.scope.policyId = policyId;
+    if (this._params.scope) {
+      this._params.scope.policyId = policyId;
+    } else {
+      this._params.scope = { attributes: [], dissem: [], policyId };
+    }
   }
 
   withPolicyId(policyId: string): EncryptParamsBuilder {
@@ -442,7 +433,7 @@ class EncryptParamsBuilder {
    * will result in more compact ciphertext.
    * @return {number} The sliding window size, in bytes (1MB by default).
    */
-  getStreamWindowSize(): number {
+  getStreamWindowSize(): number | undefined {
     return this._params.windowSize;
   }
 
@@ -485,7 +476,7 @@ class EncryptParamsBuilder {
    * @return {boolean} true if the encrypted data will be in html format.
    */
   hasHtmlFormat(): boolean {
-    return this._params.asHtml;
+    return !!this._params.asHtml;
   }
 
   /**
@@ -592,7 +583,7 @@ class EncryptParamsBuilder {
    * Creates a deep copy to prevent tricky call-by-reference and async execution bugs.
    */
   build(): Readonly<EncryptParams> {
-    return this._deepCopy(this._params);
+    return this._deepCopy(this._params as EncryptParams);
   }
 }
 

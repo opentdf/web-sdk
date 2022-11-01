@@ -1,15 +1,11 @@
 export { ZipReader, readUInt64LE } from './zip-reader';
 export { ZipWriter } from './zip-writer';
 export { keySplit, keyMerge } from './keysplit';
-import { TdfStream } from '../client/tdf-stream';
+export { streamToBuffer } from '../client/DecoratedReadableStream';
 export * from './chunkers';
 
 export function inBrowser(): boolean {
   return typeof window !== 'undefined';
-}
-
-export async function streamToBuffer(stream: any) {
-  return await TdfStream.toBuffer(stream);
 }
 
 export function base64ToBuffer(b64: string): Buffer | Uint8Array {
