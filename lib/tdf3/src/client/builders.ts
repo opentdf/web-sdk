@@ -591,7 +591,7 @@ export type DecryptSource =
   | null
   | { type: 'buffer'; location: Buffer }
   | { type: 'remote'; location: string }
-  | { type: 'stream'; location: ReadableStream }
+  | { type: 'stream'; location: ReadableStream<Uint8Array> }
   | { type: 'file-browser' | 'file-node'; location: string };
 
 export type DecryptParams = {
