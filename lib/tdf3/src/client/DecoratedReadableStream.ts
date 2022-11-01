@@ -35,7 +35,7 @@ export abstract class DecoratedReadableStream {
   KEK: string;
   algorithm: string;
   tdfSize: number;
-  stream: ReadableStream;
+  stream: ReadableStream<Uint8Array>;
   on: NodeJS.EventEmitter['on'];
   emit: NodeJS.EventEmitter['emit'];
   metadata?: Metadata;
@@ -150,9 +150,9 @@ export abstract class DecoratedReadableStream {
    * Dump the stream content to a buffer. This will consume the stream.
    * @return the plaintext in Buffer form.
    */
-   abstract toBuffer(): Promise<Buffer>;
+  abstract toBuffer(): Promise<Buffer>;
 
-   /**
+  /**
    * Dump the stream content to a string. This will consume the stream.
    * @return the plaintext in string form.
    */
@@ -163,5 +163,5 @@ export abstract class DecoratedReadableStream {
    *
    * @param filepath - the path of the local file to write plaintext to.
    */
-   abstract toFile(filepath: string, encoding: BufferEncoding): Promise<void>;
+  abstract toFile(filepath: string, encoding: BufferEncoding): Promise<void>;
 }

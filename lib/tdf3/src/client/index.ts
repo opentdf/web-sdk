@@ -33,12 +33,14 @@ const HTML_BYTE_LIMIT = 100 * 1000 * 1000; // 100 MB, see WS-9476.
 const defaultClientConfig = { oidcOrigin: '' };
 
 const uploadBinaryToS3 = async function (
-  stream: ReadableStream,
+  stream: ReadableStream<Uint8Array>,
   uploadUrl: string,
   fileSize: number
 ) {
   try {
-    const body: Buffer | ReadableStream = inBrowser() ? await streamToBuffer(stream) : stream;
+    const body: Buffer | ReadableStream<Uint8Array> = inBrowser()
+      ? await streamToBuffer(stream)
+      : stream;
 
     await axios.put(uploadUrl, body, {
       headers: {

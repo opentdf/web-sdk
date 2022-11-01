@@ -1,20 +1,14 @@
 import { createWriteStream } from 'fs';
-import { buffer, text } from 'stream/consumers';
 import { DecoratedReadableStream } from './DecoratedReadableStream';
 
 export class NodeTdfStream extends DecoratedReadableStream {
   override async toString() {
-    // @types/node has actuall error when its expecting consumers to receive Node stream when in documentation its for webStream
-    // https://nodejs.org/dist/latest-v16.x/docs/api/webstreams.html#utility-consumers
-    // @ts-ignore
-    return text(this.stream);
+    return new Response(this.stream).text();
   }
 
   override async toBuffer() {
-    // @types/node has actuall error when its expecting consumers to receive Node stream when in documentation its for webStream
-    // https://nodejs.org/dist/latest-v16.x/docs/api/webstreams.html#utility-consumers
-    // @ts-ignore
-    return buffer(this.stream);
+    const arrayBuffer = await new Response(this.stream).arrayBuffer();
+    return Buffer.from(arrayBuffer);
   }
 
   /**

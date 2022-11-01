@@ -102,7 +102,7 @@ async function setRemoteStoreAsStream(
 
     const s3Stream = s3download.Body;
 
-    builder.setStreamSource(s3Stream as ReadableStream);
+    builder.setStreamSource(s3Stream as ReadableStream<Uint8Array>);
     return builder.build();
   } catch (e) {
     console.error(e);
@@ -187,7 +187,7 @@ class EncryptParamsBuilder {
    * Specify the content to encrypt, in stream form.
    * @param {Readable} readStream - a Readable Stream to encrypt.
    */
-  setStreamSource(readStream: ReadableStream) {
+  setStreamSource(readStream: ReadableStream<Uint8Array>) {
     this._params.source = readStream;
   }
 
@@ -196,7 +196,7 @@ class EncryptParamsBuilder {
    * @param {Readable} readStream - a Readable Stream to encrypt.
    * @return {EncryptParamsBuilder} - this object.
    */
-  withStreamSource(readStream: ReadableStream): EncryptParamsBuilder {
+  withStreamSource(readStream: ReadableStream<Uint8Array>): EncryptParamsBuilder {
     this.setStreamSource(readStream);
     return this;
   }
@@ -683,7 +683,7 @@ class DecryptParamsBuilder {
    * Specify the TDF ciphertext to decrypt, in stream form.
    * @param {Readable} stream - a Readable stream to decrypt.
    */
-  setStreamSource(stream: ReadableStream) {
+  setStreamSource(stream: ReadableStream<Uint8Array>) {
     this._params.source = { type: 'stream', location: stream };
   }
 
@@ -692,7 +692,7 @@ class DecryptParamsBuilder {
    * @param {Readable} stream - a Readable stream to decrypt.
    * @return {DecryptParamsBuilder} - this object.
    */
-  withStreamSource(stream: ReadableStream) {
+  withStreamSource(stream: ReadableStream<Uint8Array>) {
     this.setStreamSource(stream);
     return this;
   }
