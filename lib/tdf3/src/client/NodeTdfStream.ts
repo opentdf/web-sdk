@@ -1,4 +1,4 @@
-import { createWriteStream } from 'fs';
+import { createWriteStream } from 'node:fs';
 import { DecoratedReadableStream } from './DecoratedReadableStream';
 
 export class NodeTdfStream extends DecoratedReadableStream {

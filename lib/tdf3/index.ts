@@ -8,8 +8,11 @@ import {
 } from '../src/index';
 import { FileClient } from './src/FileClient';
 
-import { webcrypto as crypto } from 'node:crypto';
-import { ReadableStream } from 'node:stream/web';
+import { webcrypto as crypto } from 'crypto';
+import { ReadableStream } from 'stream/web';
+
+import { registerModuleType } from './src/client/tdf-stream';
+import { NodeTdfStream } from './src/client/NodeTdfStream';
 
 import { registerModuleType } from './src/client/tdf-stream';
 import { NodeTdfStream } from './src/client/NodeTdfStream';
