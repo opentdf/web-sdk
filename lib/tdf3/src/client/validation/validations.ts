@@ -23,7 +23,7 @@ const attributeValidation = (attr: unknown) => {
   }
 
   if (!attribute.match(ATTR_ATTRIBUTE_PATTERN)) {
-    throw new AttributeValidationError(`attribute is in invalid format`);
+    throw new AttributeValidationError(`attribute is in invalid format [${attribute}]`);
   }
 
   const ATTR_NAME_PREFIX = `/${ATTR_NAME_PROP_NAME}/`;
