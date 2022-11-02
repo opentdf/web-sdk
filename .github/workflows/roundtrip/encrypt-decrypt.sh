@@ -5,9 +5,11 @@ APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null && pwd)"
 
 cd "$APP_DIR"
 
-echo "Hello World" >./sample.txt
+counter=0
 
 _nano_test() {
+  var=$((counter + 1))
+  echo "Hello World ${counter}" >./sample.txt
   npx "$1" --log-level DEBUG \
     --kasEndpoint http://localhost:65432/api/kas \
     --oidcEndpoint http://localhost:65432/auth/realms/tdf \
@@ -28,13 +30,15 @@ _nano_test() {
   [ -f sample_out.txt ] && diff sample.txt sample_out.txt
 
   echo "Roundtrip nanotdf $1 -> $2 successful!"
-  rm sample.txt.ntdf sample_out.txt
+  rm -f sample.txt sample.txt.ntdf sample_out.txt
 }
 
 _nano_test @opentdf/cli-commonjs @opentdf/cli
 _nano_test @opentdf/cli @opentdf/cli-commonjs
 
 _tdf3_test() {
+  var=$((counter + 1))
+  echo "Hello World ${counter}" >./sample.txt
   npx "$1" --log-level DEBUG \
     --kasEndpoint http://localhost:65432/api/kas \
     --oidcEndpoint http://localhost:65432/auth/realms/tdf \
@@ -57,7 +61,7 @@ _tdf3_test() {
   [ -f sample_out.txt ] && diff sample.txt sample_out.txt
 
   echo "Roundtrip tdf3 $1 -> $2 successful!"
-  rm sample.txt.tdf sample_out.txt
+  rm -f sample.txt sample.txt.tdf sample_out.txt
 }
 
 _tdf3_test @opentdf/cli-commonjs @opentdf/cli
