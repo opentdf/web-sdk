@@ -13,22 +13,8 @@ import { EventEmitter } from 'events';
 import { Manifest } from '../models/index';
 
 export async function streamToBuffer(stream: ReadableStream<Uint8Array>): Promise<Buffer> {
-  const reader = stream.getReader();
-  let accumulator = new Uint8Array();
-  let done = false;
-
-  while (!done) {
-    const result = await reader.read();
-    if (result.value) {
-      const chunk = new Uint8Array(accumulator.byteLength + result.value.byteLength);
-      chunk.set(new Uint8Array(accumulator), 0);
-      chunk.set(new Uint8Array(result.value), accumulator.byteLength);
-      accumulator = chunk;
-    }
-    done = result.done;
-  }
-
-  return Buffer.from(accumulator.buffer);
+  const accumulator = await new Response(stream).arrayBuffer();
+  return Buffer.from(accumulator);
 }
 
 export abstract class DecoratedReadableStream {
@@ -150,18 +136,23 @@ export abstract class DecoratedReadableStream {
    * Dump the stream content to a buffer. This will consume the stream.
    * @return the plaintext in Buffer form.
    */
-  abstract toBuffer(): Promise<Buffer>;
+  async toBuffer(): Promise<Buffer> {
+    return streamToBuffer(this.stream);
+  }
 
   /**
    * Dump the stream content to a string. This will consume the stream.
    * @return the plaintext in string form.
    */
-  abstract toString(): Promise<string>;
+  async toString(): Promise<string> {
+    return new Response(this.stream).text();
+  }
 
   /**
    * Dump the stream content to a local file. This will consume the stream.
    *
-   * @param filepath - the path of the local file to write plaintext to.
+   * @param filepath The path of the local file to write plaintext to.
+   * @param encoding The charset encoding to use. Defaults to utf-8.
    */
   abstract toFile(filepath: string, encoding: BufferEncoding): Promise<void>;
 }

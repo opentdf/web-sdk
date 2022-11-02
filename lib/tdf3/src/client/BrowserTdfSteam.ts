@@ -1,18 +1,9 @@
-import { DecoratedReadableStream, streamToBuffer } from './DecoratedReadableStream';
+import { DecoratedReadableStream } from './DecoratedReadableStream';
 import streamSaver from 'streamsaver';
 import { fileSave } from 'browser-fs-access';
 import { isFirefox } from '../../../src/utils';
 
 export class BrowserTdfStream extends DecoratedReadableStream {
-  override async toString(): Promise<string> {
-    const results = await this.toBuffer();
-    return results.toString('utf8');
-  }
-
-  override async toBuffer(): Promise<Buffer> {
-    return await streamToBuffer(this.stream);
-  }
-
   override async toFile(filepath = 'download.tdf'): Promise<void> {
     if (isFirefox()) {
       await fileSave(new Response(this.stream), {
