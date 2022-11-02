@@ -51,6 +51,7 @@ _tdf3_test() {
     --oidcEndpoint http://localhost:65432/auth/realms/tdf \
     --auth tdf-client:123-456 \
     --output sample_out.txt \
+    --containerType tdf3 \
     decrypt sample.txt.tdf
 
   [ -f sample_out.txt ] && diff sample.txt sample_out.txt
