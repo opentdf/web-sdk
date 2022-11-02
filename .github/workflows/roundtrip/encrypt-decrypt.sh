@@ -16,6 +16,8 @@ _nano_test() {
     encrypt sample.txt \
     --attributes https://example.com/attr/Classification/value/S,https://example.com/attr/COI/value/PRX
 
+  [ -f sample.txt.ntdf ]
+
   npx "$2" --log-level DEBUG \
     --kasEndpoint http://localhost:65432/api/kas \
     --oidcEndpoint http://localhost:65432/auth/realms/tdf \
@@ -23,9 +25,10 @@ _nano_test() {
     --output sample_out.txt \
     decrypt sample.txt.ntdf
 
-  diff sample.txt sample_out.txt
+  [ -f sample_out.txt ] && diff sample.txt sample_out.txt
 
   echo "Roundtrip nanotdf $1 -> $2 successful!"
+  rm sample.txt.ntdf sample_out.txt
 }
 
 _nano_test @opentdf/cli-commonjs @opentdf/cli
@@ -41,6 +44,8 @@ _tdf3_test() {
     --containerType tdf3 \
     --attributes https://example.com/attr/Classification/value/S,https://example.com/attr/COI/value/PRX
 
+  [ -f sample.txt.tdf ]
+
   npx "$2" --log-level DEBUG \
     --kasEndpoint http://localhost:65432/api/kas \
     --oidcEndpoint http://localhost:65432/auth/realms/tdf \
@@ -48,9 +53,10 @@ _tdf3_test() {
     --output sample_out.txt \
     decrypt sample.txt.tdf
 
-  diff sample.txt sample_out.txt
+  [ -f sample_out.txt ] && diff sample.txt sample_out.txt
 
   echo "Roundtrip tdf3 $1 -> $2 successful!"
+  rm sample.txt.tdf sample_out.txt
 }
 
 _tdf3_test @opentdf/cli-commonjs @opentdf/cli
