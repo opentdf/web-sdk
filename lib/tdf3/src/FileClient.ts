@@ -1,8 +1,8 @@
-import { open } from 'fs/promises';
+import { createReadStream } from 'fs';
+import { Readable } from 'stream';
 
 import { Client as ClientTdf3 } from './client/index';
 import { DecryptParamsBuilder, EncryptParamsBuilder } from './client/builders';
-import { type Disposable } from './utils/using';
 import { type EncryptParams, type DecryptParams } from './client/builders';
 import { type InputSource } from '../../src/types';
 import { type AuthProvider } from '../../src/auth/auth';
@@ -45,15 +45,15 @@ export class FileClient {
   private static setSource(
     source: InputSource,
     params: DecryptParamsBuilder
-  ): Promise<DecryptParams & Disposable>;
+  ): Promise<DecryptParams>;
   private static setSource(
     source: InputSource,
     params: EncryptParamsBuilder
-  ): Promise<EncryptParams & Disposable>;
+  ): Promise<EncryptParams>;
   private static async setSource(
     source: InputSource,
     params: DecryptParamsBuilder | EncryptParamsBuilder
-  ): Promise<(EncryptParams | DecryptParams) & Disposable> {
+  ): Promise<EncryptParams | DecryptParams> {
     if (Buffer && Buffer.isBuffer(source)) {
       params.setBufferSource(source);
     }
@@ -63,16 +63,13 @@ export class FileClient {
     if (source instanceof Promise) {
       source = await source;
     }
-    let dispose = undefined;
     if (typeof source === 'string' && params instanceof EncryptParamsBuilder) {
-      const file = await open(source);
-      source = file.readableWebStream();
-      dispose = () => file.close().catch((e) => console.error(e));
+      source = Readable.toWeb(createReadStream(source));
     }
     if (source instanceof ReadableStream) {
       params.setStreamSource(source);
     }
-    return { dispose, ...params.build() };
+    return params.build();
   }
 
   async encrypt(
