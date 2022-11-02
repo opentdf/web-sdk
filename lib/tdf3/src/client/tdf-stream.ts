@@ -20,11 +20,11 @@ export function registerModuleType(factory: AnyTdfStreamCtor) {
 }
 
 export function makeStream(
-  byteLimit: number,
-  underlyingSource: UnderlyingSource
+  a: ConstructorParameters<AnyTdfStreamCtor>[0],
+  b: ConstructorParameters<AnyTdfStreamCtor>[1]
 ): DecoratedReadableStream {
   if (!_stream.factory) {
     throw Error('Stream factory misconfigured');
   }
-  return new _stream.factory(byteLimit, underlyingSource);
+  return new _stream.factory(a, b);
 }
