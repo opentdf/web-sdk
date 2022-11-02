@@ -3,7 +3,9 @@ import fs from 'fs';
 import { createSandbox, SinonSandbox } from 'sinon';
 import { createServer, Server } from 'http';
 import send from 'send';
-import { Chunker, fromBuffer, fromNodeFile, fromUrl } from '../../src/utils/chunkers.js';
+import { type Chunker } from '../../src/utils/chunkers.js';
+import { AddressInfo } from 'net';
+
 
 function range(a: number, b?: number): number[] {
   if (!b) {
@@ -30,7 +32,9 @@ type ByteRange = {
 };
 
 describe('chunkers', () => {
-  describe('fromBuffer', () => {
+  describe('fromBuffer', async () => {
+    const { fromBuffer } = await import('../../src/utils/chunkers.js');
+
     const r = range(256);
     const b = new Uint8Array(r);
     it('all', async () => {
@@ -157,28 +161,33 @@ describe('chunkers', () => {
       });
     });
     it('all', async () => {
+      const { fromNodeFile } = await import('../../src/utils/chunkers.js');
       const c: Chunker = fromNodeFile(path);
       const all: Uint8Array = await c();
       expect(all).to.deep.equal(b);
       expect(Array.from(all)).to.deep.equal(r);
     });
     it('one', async () => {
+      const { fromNodeFile } = await import('../../src/utils/chunkers.js');
       const c: Chunker = fromNodeFile(path);
       const one: Uint8Array = await c(1, 2);
       expect(one).to.deep.equal(b.slice(1, 2));
       expect(Array.from(one)).to.deep.equal([1]);
     });
     it('negative one', async () => {
+      const { fromNodeFile } = await import('../../src/utils/chunkers.js');
       const twofiftyfive: Uint8Array = await fromNodeFile(path)(-1);
       expect(twofiftyfive).to.deep.equal(b.slice(255));
       expect(Array.from(twofiftyfive)).to.deep.equal([255]);
     });
     it('negative two', async () => {
+      const { fromNodeFile } = await import('../../src/utils/chunkers.js');
       const twofiftyfour: Uint8Array = await fromNodeFile(path)(-2, -1);
       expect(twofiftyfour).to.deep.equal(b.slice(254, 255));
       expect(Array.from(twofiftyfour)).to.deep.equal([254]);
     });
     it('missing', async () => {
+      const { fromNodeFile } = await import('../../src/utils/chunkers.js');
       try {
         const c: Chunker = fromNodeFile('file://not/found');
         await c();
@@ -188,6 +197,7 @@ describe('chunkers', () => {
       }
     });
     it('broken stream all', async () => {
+      const { fromNodeFile } = await import('../../src/utils/chunkers.js');
       try {
         const c: Chunker = fromNodeFile('file://fails');
         await c();
@@ -197,6 +207,7 @@ describe('chunkers', () => {
       }
     });
     it('broken stream some', async () => {
+      const { fromNodeFile } = await import('../../src/utils/chunkers.js');
       try {
         const c: Chunker = fromNodeFile('file://fails');
         await c(1);
@@ -207,7 +218,8 @@ describe('chunkers', () => {
     });
   });
 
-  describe('fromUrl', () => {
+  describe('fromUrl', async () => {
+    const __dirname = new URL('.', import.meta.url).pathname;
     const baseDir = `${__dirname}/temp/artifacts`;
     const path = 'testfile.bin';
     const testFile = `${baseDir}/${path}`;
@@ -240,8 +252,9 @@ describe('chunkers', () => {
         server.unref();
       });
     });
-    // @ts-ignore
-    const urlFor = (p) => `http://localhost:${server.address().port}/${p}`;
+
+    const urlFor = (p: string) => `http://localhost:${(server.address() as AddressInfo).port}/${p}`;
+    const { fromUrl } = await import('../../src/utils/chunkers.js');
     it('all', async () => {
       const c: Chunker = fromUrl(urlFor(path));
       const all: Uint8Array = await c();

@@ -12,5 +12,5 @@ globalThis.crypto ??= crypto as unknown as Crypto;
 globalThis.ReadableStream ??= ReadableStream;
 
 export { NanoTDFClient, NanoTDFDatasetClient, AuthProviders, version, clientType };
-// for cjs webpack build default export needed
+// for cjs build a default export is needed
 export default { NanoTDFClient, NanoTDFDatasetClient, AuthProviders, version, clientType };
