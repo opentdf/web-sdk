@@ -7,5 +7,6 @@
       "@readableStream": ["tdf3/src/client/stream-web-node.ts"],
       "@tdfStream": ["tdf3/src/client/NodeTdfStream.ts"]
     },
+    "types": ["mocha", "node"]
   }
 }
