@@ -1,6 +1,6 @@
 {
   "name": "web-app",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "license": "BSD-3-Clause-Clear",
   "type": "module",
   "scripts": {
@@ -15,7 +15,7 @@
     "test:ui": "vite build && vitest --ui"
   },
   "dependencies": {
-    "@opentdf/client": "file:../lib/opentdf-client-0.3.1.tgz",
+    "@opentdf/client": "file:../lib/opentdf-client-0.4.0.tgz",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
