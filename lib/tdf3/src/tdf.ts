@@ -28,6 +28,7 @@ import {
   KeySyncError,
   ManifestIntegrityError,
   PolicyIntegrityError,
+  TdfCorruptError,
   TdfDecryptError,
   TdfPayloadExtractionError,
 } from './errors';
@@ -414,12 +415,13 @@ class TDF extends EventEmitter {
         // use the auth tag baked into the encrypted payload
         return payloadBinary.asBuffer().slice(-16).toString('hex');
       case 'hs256':
-      default:
         // simple hmac is the default
         return await cryptoService.hmac(
           unwrappedKeyBinary.asBuffer().toString('hex'),
           payloadBinary.asBuffer().toString()
         );
+      default:
+        throw new TdfCorruptError(`TDF.addKeyAccess: Key access type ${type} is unknown`);
     }
   }
 
