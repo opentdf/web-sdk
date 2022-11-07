@@ -28,6 +28,7 @@ import {
   KeySyncError,
   ManifestIntegrityError,
   PolicyIntegrityError,
+  TdfCorruptError,
   TdfDecryptError,
   TdfPayloadExtractionError,
 } from './errors';
@@ -410,16 +411,17 @@ class TDF extends EventEmitter {
 
   async getSignature(unwrappedKeyBinary: Binary, payloadBinary: Binary, algorithmType: string) {
     switch (algorithmType.toLowerCase()) {
-      case 'hs256':
       case 'gmac':
         // use the auth tag baked into the encrypted payload
         return payloadBinary.asBuffer().slice(-16).toString('hex');
-      default:
+      case 'hs256':
         // simple hmac is the default
         return await cryptoService.hmac(
           unwrappedKeyBinary.asBuffer().toString('hex'),
           payloadBinary.asBuffer().toString()
         );
+      default:
+        throw new TdfCorruptError(`Unsupported signature alg [${algorithmType}]`);
     }
   }
 
