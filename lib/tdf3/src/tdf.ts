@@ -421,7 +421,7 @@ class TDF extends EventEmitter {
           payloadBinary.asBuffer().toString()
         );
       default:
-        throw new TdfCorruptError(`TDF.addKeyAccess: Key access type ${type} is unknown`);
+        throw new TdfCorruptError(`Unsupported signature alg [${algorithmType}]`);
     }
   }
 
