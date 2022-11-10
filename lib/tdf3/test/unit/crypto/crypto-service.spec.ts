@@ -152,16 +152,12 @@ describe('Crypto Service', () => {
   });
 
   it('should encrypt with publicKey', async () => {
-    console.log('should encrypt with publicKey: A');
     const { publicKey, privateKey } = await generateKeyPair(2048);
     const rawData = '1';
     const payload = Binary.fromString(rawData);
-    console.log('should encrypt with publicKey: B');
 
     const encrypted = await encryptWithPublicKey(payload, publicKey);
-    console.log('should encrypt with publicKey: C');
     const decrypted = await decryptWithPrivateKey(encrypted, privateKey);
-    console.log('should encrypt with publicKey: D');
 
     expect(decrypted.asString()).to.equal(rawData);
   });

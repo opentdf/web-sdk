@@ -1,6 +1,6 @@
 import { expect } from 'chai';
+import esmock from 'esmock';
 import fs from 'node:fs';
-import { createSandbox, SinonSandbox } from 'sinon';
 import { createServer, Server } from 'node:http';
 import send from 'send';
 import { type Chunker } from '../../src/utils/chunkers.js';
@@ -19,13 +19,6 @@ function range(a: number, b?: number): number[] {
   return r;
 }
 
-let box: SinonSandbox;
-beforeEach(() => {
-  box = createSandbox();
-});
-afterEach(() => {
-  box.restore();
-});
 type ByteRange = {
   start?: number;
   end?: number;
@@ -72,25 +65,20 @@ describe('chunkers', () => {
     const r = range(256);
     const b = new Uint8Array(r);
     const path = 'file://local/file';
-    beforeEach(() => {
-      const statSyncOriginal = fs.statSync;
-      // @ts-ignore
-      box.stub(fs, 'statSync').callsFake((p: string) => {
-        switch (p) {
-          case 'file://local/file':
-          case 'file://fails':
-            return { size: 256 };
-          case 'file://not/found':
-            throw new Error('File not found');
-          default:
-            return statSyncOriginal(path);
-        }
-      });
-
-      const readFileOriginal = fs.readFile;
-      box
-        .stub(fs, 'readFile') // @ts-ignore
-        .callsFake((p: string, f: (err?: unknown, data?: Buffer) => void) => {
+    let mocks = {
+      fs: {
+        statSync: (p: string) => {
+          switch (p) {
+            case 'file://local/file':
+            case 'file://fails':
+              return { size: 256 };
+            case 'file://not/found':
+              throw new Error('File not found');
+            default:
+              return fs.statSync(path);
+          }
+        },
+        readFile: (p: string, f: (err?: unknown, data?: Buffer) => void) => {
           switch (p) {
             case 'file://local/file':
               f(undefined, Buffer.from(range(256)));
@@ -102,95 +90,93 @@ describe('chunkers', () => {
               f(new Error('File not found'), undefined);
               break;
             default:
-              readFileOriginal(path, f);
+              fs.readFile(path, f);
           }
-        });
-
-      const createReadStreamOriginal = fs.createReadStream;
-      // @ts-ignore
-      box.stub(fs, 'createReadStream').callsFake((p: string, rg?: ByteRange) => {
-        let { start, end } = rg || { start: undefined, end: undefined };
-        switch (p) {
-          case 'file://local/file':
-            if (!start && start !== 0) {
-              start = 0;
-            }
-            if (!end) {
-              end = 256;
-            } else {
-              // createReadStream end is inclusive
-              end += 1;
-            }
-            return {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              on: (e: string, f: (...args: any[]) => void) => {
-                switch (e) {
-                  case 'data':
-                    // @ts-ignore
-                    f(Buffer.from(range(start, end)));
-                    return this;
-                  case 'end':
-                    f();
-                    return this;
-                  case 'error':
-                    return this;
-                  default:
-                    throw new Error();
-                }
-              },
-            };
-          case 'file://fails':
-            return {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              on: (e: string, f: (...args: any[]) => void) => {
-                switch (e) {
-                  case 'data':
-                    return this;
-                  case 'end':
-                    return this;
-                  case 'error':
-                    f(new Error('I/O Error'));
-                    return this;
-                  default:
-                    throw new Error();
-                }
-              },
-            };
-          case 'file://not/found':
-            throw new Error('File not found');
-          default:
-            createReadStreamOriginal(path, rg);
-        }
-      });
-    });
+        },
+        createReadStream: (p: string, rg?: ByteRange) => {
+          let { start, end } = rg || { start: undefined, end: undefined };
+          switch (p) {
+            case 'file://local/file':
+              if (!start && start !== 0) {
+                start = 0;
+              }
+              if (!end) {
+                end = 256;
+              } else {
+                // createReadStream end is inclusive
+                end += 1;
+              }
+              return {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                on: (e: string, f: (...args: any[]) => void) => {
+                  switch (e) {
+                    case 'data':
+                      // @ts-ignore
+                      f(Buffer.from(range(start, end)));
+                      return this;
+                    case 'end':
+                      f();
+                      return this;
+                    case 'error':
+                      return this;
+                    default:
+                      throw new Error();
+                  }
+                },
+              };
+            case 'file://fails':
+              return {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                on: (e: string, f: (...args: any[]) => void) => {
+                  switch (e) {
+                    case 'data':
+                      return this;
+                    case 'end':
+                      return this;
+                    case 'error':
+                      f(new Error('I/O Error'));
+                      return this;
+                    default:
+                      throw new Error();
+                  }
+                },
+              };
+            case 'file://not/found':
+              throw new Error('File not found');
+            default:
+              return fs.createReadStream(path, rg);
+          }
+        },
+      },
+    };
     it('all', async () => {
-      const { fromNodeFile } = await import('../../src/utils/chunkers.js');
+      const { fromNodeFile } = await esmock('../../src/utils/chunkers.ts', mocks);
       const c: Chunker = fromNodeFile(path);
       const all: Uint8Array = await c();
       expect(all).to.deep.equal(b);
       expect(Array.from(all)).to.deep.equal(r);
     });
     it('one', async () => {
-      const { fromNodeFile } = await import('../../src/utils/chunkers.js');
+      const { fromNodeFile } = await esmock('../../src/utils/chunkers.ts', mocks);
       const c: Chunker = fromNodeFile(path);
       const one: Uint8Array = await c(1, 2);
       expect(one).to.deep.equal(b.slice(1, 2));
       expect(Array.from(one)).to.deep.equal([1]);
     });
     it('negative one', async () => {
-      const { fromNodeFile } = await import('../../src/utils/chunkers.js');
+      const { fromNodeFile } = await esmock('../../src/utils/chunkers.ts', mocks);
       const twofiftyfive: Uint8Array = await fromNodeFile(path)(-1);
       expect(twofiftyfive).to.deep.equal(b.slice(255));
       expect(Array.from(twofiftyfive)).to.deep.equal([255]);
     });
     it('negative two', async () => {
-      const { fromNodeFile } = await import('../../src/utils/chunkers.js');
+      const { fromNodeFile } = await esmock('../../src/utils/chunkers.ts', mocks);
       const twofiftyfour: Uint8Array = await fromNodeFile(path)(-2, -1);
       expect(twofiftyfour).to.deep.equal(b.slice(254, 255));
       expect(Array.from(twofiftyfour)).to.deep.equal([254]);
     });
     it('missing', async () => {
-      const { fromNodeFile } = await import('../../src/utils/chunkers.js');
+      const { fromNodeFile } = await esmock('../../src/utils/chunkers.ts', mocks);
       try {
         const c: Chunker = fromNodeFile('file://not/found');
         await c();
@@ -200,7 +186,7 @@ describe('chunkers', () => {
       }
     });
     it('broken stream all', async () => {
-      const { fromNodeFile } = await import('../../src/utils/chunkers.js');
+      const { fromNodeFile } = await esmock('../../src/utils/chunkers.ts', mocks);
       try {
         const c: Chunker = fromNodeFile('file://fails');
         await c();
@@ -210,7 +196,7 @@ describe('chunkers', () => {
       }
     });
     it('broken stream some', async () => {
-      const { fromNodeFile } = await import('../../src/utils/chunkers.js');
+      const { fromNodeFile } = await esmock('../../src/utils/chunkers.ts', mocks);
       try {
         const c: Chunker = fromNodeFile('file://fails');
         await c(1);
@@ -230,11 +216,9 @@ describe('chunkers', () => {
     const b = new Uint8Array(r);
     let server: Server;
     before(async function startServer() {
-      console.error('mkdir time');
       await fs.promises.mkdir(baseDir, { recursive: true });
       fs.writeFileSync(testFile, b);
       // response to all requests with this tdf file
-      console.error('createServer time');
       server = createServer((req, res) => {
         if (req.url?.endsWith('error')) {
           send(req, req.url)
@@ -249,7 +233,6 @@ describe('chunkers', () => {
         }
       });
       server.listen();
-      console.error('server listening');
     });
     after(function closeServer(done) {
       server.close((err) => {

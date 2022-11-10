@@ -407,8 +407,7 @@ export class Client {
       try {
         this.kasPublicKey = await TDF.getPublicKeyFromKeyAccessServer(this.kasEndpoint);
       } catch (e) {
-        console.error('Retrieving KAS public key has failed');
-        throw new Error(e.message);
+        throw new Error(`Retrieving KAS public key has failed with error [${e.message}]`);
       }
 
       return this.kasPublicKey;
