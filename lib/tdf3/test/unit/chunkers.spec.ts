@@ -1,11 +1,12 @@
 import { expect } from 'chai';
-import fs from 'fs';
+import fs from 'node:fs';
 import { createSandbox, SinonSandbox } from 'sinon';
-import { createServer, Server } from 'http';
+import { createServer, Server } from 'node:http';
 import send from 'send';
 import { type Chunker } from '../../src/utils/chunkers.js';
-import { AddressInfo } from 'net';
-
+import { type AddressInfo } from 'node:net';
+import type EventEmitter from 'node:events';
+import { promisify } from 'node:util';
 
 function range(a: number, b?: number): number[] {
   if (!b) {
@@ -226,16 +227,16 @@ describe('chunkers', () => {
     const r = range(256);
     const b = new Uint8Array(r);
     let server: Server;
-    before(async () => {
+    before(async function startServer() {
+      console.error('mkdir time');
       await fs.promises.mkdir(baseDir, { recursive: true });
       fs.writeFileSync(testFile, b);
       // response to all requests with this tdf file
+      console.error('createServer time');
       server = createServer((req, res) => {
-        // @ts-ignore
-        if (req.url.endsWith('error')) {
-          // @ts-ignore
+        if (req.url?.endsWith('error')) {
           send(req, req.url)
-            .on('stream', (stream: any) => {
+            .on('stream', (stream: EventEmitter) => {
               stream.on('open', () => {
                 stream.emit('error', new Error('Something 500-worthy'));
               });
@@ -245,12 +246,19 @@ describe('chunkers', () => {
           send(req, `${baseDir}${req.url}`).pipe(res);
         }
       });
-      return server.listen();
+      server.listen();
+      console.error('server listening');
     });
-    after(async () => {
-      return server.close(() => {
-        server.unref();
-      });
+    after(async function closeServer() {
+      return promisify((callback) =>
+        server.close((err) => {
+          server.unref();
+          if (err) {
+            console.error(err);
+          }
+          callback(err, undefined);
+        })
+      );
     });
 
     const urlFor = (p: string) => `http://localhost:${(server.address() as AddressInfo).port}/${p}`;

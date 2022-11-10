@@ -1,6 +1,6 @@
 import { createWriteStream } from 'node:fs';
-import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 import { type ReadableStream } from 'node:stream/web';
+import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 
 type ReaderType = ReturnType<ReadableStream<Uint8Array>['getReader']>;
 type ChunkType = Awaited<ReturnType<ReaderType['read']>>;
