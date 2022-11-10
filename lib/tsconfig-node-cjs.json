@@ -1,12 +1,9 @@
 {
   "extends": "./tsconfig-common.json",
   "compilerOptions": {
-    "module": "esnext",
+    "module": "CommonJS",
     "moduleResolution": "node16",
-    "outDir": "dist/cjs/node",
-    "paths": {
-      "@readableStream": ["tdf3/src/client/stream-web-node.ts"],
-      "@tdfStream": ["tdf3/src/client/NodeTdfStream.ts"]
-    },
-  }
+    "outDir": "dist/cjs/node"
+  },
+  "exclude": ["lib/src/__fixtures__/**"]
 }

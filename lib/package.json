@@ -54,7 +54,7 @@
     }
   },
   "scripts": {
-    "build": "npm run clean && tsc -p tsconfig-node-esm.json && ../scripts/add-module-types.sh esm && ../scripts/fill-version.sh",
+    "build": "npm run clean && tsc -p tsconfig-node-cjs.json && tsc -p tsconfig-node-esm.json && tsc -p tsconfig-web-cjs.json && tsc -p tsconfig-web-esm.json && ../scripts/add-module-types.sh esm && ../scripts/fill-version.sh",
     "clean": "rm -rf {build,dist}",
     "doc": "typedoc --out dist/docs src/index.ts",
     "format": "prettier --write \"{src,tdf3,test}/**/*.ts\"",

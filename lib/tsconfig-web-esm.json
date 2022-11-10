@@ -1,12 +1,9 @@
 {
   "extends": "./tsconfig-common.json",
   "compilerOptions": {
-    "module": "esnext",
+    "module": "ES2020",
     "moduleResolution": "node16",
-    "outDir": "dist/cjs/web",
-    "paths": {
-      "@readableStream": ["tdf3/mocks/stream-web.ts"],
-      "@tdfStream": ["tdf3/src/client/BrowserTdfSteam.ts"]
-    }
-  }
+    "outDir": "dist/esm/web"
+  },
+  "include": ["src", "test", "tdf3"]
 }

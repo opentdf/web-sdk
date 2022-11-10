@@ -2,10 +2,8 @@
   "extends": "./tsconfig-common.json",
   "compilerOptions": {
     "module": "ES2020",
-    "outDir": "dist/esm/node",
-    "paths": {
-      "@readableStream": ["tdf3/src/client/stream-web-node.ts"],
-      "@tdfStream": ["tdf3/src/client/NodeTdfStream.ts"]
-    }
-  }
+    "moduleResolution": "node16",
+    "outDir": "dist/esm/node"
+  },
+  "include": ["src", "test", "tdf3"]
 }
