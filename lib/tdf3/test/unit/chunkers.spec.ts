@@ -33,32 +33,35 @@ type ByteRange = {
 };
 
 describe('chunkers', () => {
-  describe('fromBuffer', async () => {
-    const { fromBuffer } = await import('../../src/utils/chunkers.js');
-
+  describe('fromBuffer', () => {
     const r = range(256);
     const b = new Uint8Array(r);
     it('all', async () => {
+      const { fromBuffer } = await import('../../src/utils/chunkers.js');
       const all = await fromBuffer(b)();
       expect(all).to.deep.equal(b);
       expect(Array.from(all)).to.deep.equal(r);
     });
     it('one', async () => {
+      const { fromBuffer } = await import('../../src/utils/chunkers.js');
       const one = await fromBuffer(b)(1, 2);
       expect(one).to.deep.equal(b.slice(1, 2));
       expect(Array.from(one)).to.deep.equal([1]);
     });
     it('negative one', async () => {
+      const { fromBuffer } = await import('../../src/utils/chunkers.js');
       const twofiftyfive = await fromBuffer(b)(-1);
       expect(twofiftyfive).to.deep.equal(b.slice(255));
       expect(Array.from(twofiftyfive)).to.deep.equal([255]);
     });
     it('negative two', async () => {
+      const { fromBuffer } = await import('../../src/utils/chunkers.js');
       const twofiftyfour = await fromBuffer(b)(-2);
       expect(twofiftyfour).to.deep.equal(b.slice(254));
       expect(Array.from(twofiftyfour)).to.deep.equal([254, 255]);
     });
     it('negative three to negative 2', async () => {
+      const { fromBuffer } = await import('../../src/utils/chunkers.js');
       const twofiftyfour = await fromBuffer(b)(-3, -2);
       expect(twofiftyfour).to.deep.equal(b.slice(253, 254));
       expect(Array.from(twofiftyfour)).to.deep.equal([253]);
@@ -219,7 +222,7 @@ describe('chunkers', () => {
     });
   });
 
-  describe('fromUrl', async () => {
+  describe('fromUrl', () => {
     const __dirname = new URL('.', import.meta.url).pathname;
     const baseDir = `${__dirname}/temp/artifacts`;
     const path = 'testfile.bin';
@@ -250,37 +253,44 @@ describe('chunkers', () => {
       console.error('server listening');
     });
     after(async function closeServer() {
-      return promisify((callback) =>
+      console.error('closeServer');
+      return promisify((callback) => {
+        console.error('time to server.close');
         server.close((err) => {
+          console.error('server unref');
           server.unref();
           if (err) {
             console.error(err);
           }
+          console.error('server callback time');
           callback(err, undefined);
-        })
-      );
+        });
+      });
     });
 
     const urlFor = (p: string) => `http://localhost:${(server.address() as AddressInfo).port}/${p}`;
-    const { fromUrl } = await import('../../src/utils/chunkers.js');
     it('all', async () => {
+      const { fromUrl } = await import('../../src/utils/chunkers.js');
       const c: Chunker = fromUrl(urlFor(path));
       const all: Uint8Array = await c();
       expect(all).to.deep.equal(b);
       expect(Array.from(all)).to.deep.equal(r);
     });
     it('one', async () => {
+      const { fromUrl } = await import('../../src/utils/chunkers.js');
       const c: Chunker = fromUrl(urlFor(path));
       const one: Uint8Array = await c(1, 2);
       expect(one).to.deep.equal(b.slice(1, 2));
       expect(Array.from(one)).to.deep.eq([1]);
     });
     it('negative one', async () => {
+      const { fromUrl } = await import('../../src/utils/chunkers.js');
       const twofiftyfive: Uint8Array = await fromUrl(urlFor(path))(-1);
       expect(twofiftyfive).to.deep.equal(b.slice(255));
       expect(Array.from(twofiftyfive)).to.deep.equal([255]);
     });
     it('negative two', async () => {
+      const { fromUrl } = await import('../../src/utils/chunkers.js');
       try {
         await fromUrl(urlFor(path))(-2, -1);
         expect.fail();
@@ -289,6 +299,7 @@ describe('chunkers', () => {
       }
     });
     it('unsatisiable', async () => {
+      const { fromUrl } = await import('../../src/utils/chunkers.js');
       try {
         await fromUrl(urlFor(path))(12, 5);
         expect.fail();
@@ -297,6 +308,7 @@ describe('chunkers', () => {
       }
     });
     it('broken stream all', async () => {
+      const { fromUrl } = await import('../../src/utils/chunkers.js');
       try {
         const c: Chunker = fromUrl(urlFor('error'));
         await c();
@@ -306,6 +318,7 @@ describe('chunkers', () => {
       }
     });
     it('broken stream some', async () => {
+      const { fromUrl } = await import('../../src/utils/chunkers.js');
       try {
         const c: Chunker = fromUrl(urlFor('error'));
         await c(1);

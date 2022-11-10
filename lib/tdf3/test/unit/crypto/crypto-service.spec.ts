@@ -44,7 +44,7 @@ describe('Crypto Service', () => {
     expect(ab).to.have.property('byteLength');
   });
 
-  describe('sha256', async () => {
+  describe('sha256', () => {
     it('a', async () => {
       const hash = await sha256('a');
       assert.equal(hash, 'ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb');
