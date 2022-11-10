@@ -12,7 +12,7 @@
     "tdf3/src/**/*.ts"
   ],
   "exclude": [
-    "tdf3/test/**/*.spec.*"
+    "test/mocha/**/*.spec.*"
   ],
   "require": [
     "ts-node/register"

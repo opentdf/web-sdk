@@ -1,5 +1,5 @@
 import { SignJWT, importPKCS8 } from 'jose';
-import { AttributeSet } from '../src/models/attribute-set.js';
+import { AttributeSet } from '../../../tdf3/src/models/attribute-set.js';
 import { v4 } from 'uuid';
 
 type CreateAttributePayload = {

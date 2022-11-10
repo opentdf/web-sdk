@@ -4,6 +4,5 @@
     "module": "CommonJS",
     "moduleResolution": "node16",
     "outDir": "dist/cjs/web"
-  },
-  "exclude": ["lib/src/__fixtures__/**"]
+  }
 }

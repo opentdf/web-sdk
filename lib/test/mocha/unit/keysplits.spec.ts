@@ -1,9 +1,9 @@
 import { expect } from 'chai';
 
-import { bxor, keySplit, keyMerge } from '../../src/utils/keysplit.js';
-import { generateKey } from '../../src/crypto/index.js';
+import { bxor, keySplit, keyMerge } from '../../../tdf3/src/utils/keysplit.js';
+import { generateKey } from '../../../tdf3/src/crypto/index.js';
 import { hex } from '../../../src/encodings/index.js';
-import { Binary } from '../../src/binary.js';
+import { Binary } from '../../../tdf3/src/binary.js';
 
 describe('keysplits', () => {
   it('binary xor', () => {

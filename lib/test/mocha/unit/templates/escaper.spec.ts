@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { escHtml, escJavaScript } from '../../../src/templates/index.js';
+import { escHtml, escJavaScript } from '../../../../tdf3/src/templates/index.js';
 
 describe('Validate html escaping', () => {
   it('esc no op', () => {

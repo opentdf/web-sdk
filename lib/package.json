@@ -63,7 +63,7 @@
     "prepack": "npm run build",
     "test": "npm run build && web-test-runner && npm run test:tdf3",
     "test:watch": "web-test-runner --watch",
-    "test:tdf3": "TS_NODE_PROJECT='./tsconfig-node-esm.json' c8 mocha --file tdf3/test/setup.js --timeout 300000",
+    "test:tdf3": "TS_NODE_PROJECT='./tsconfig-node-esm.json' c8 mocha --file test/mocha/setup.js --timeout 300000",
     "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))"
   },
   "dependencies": {

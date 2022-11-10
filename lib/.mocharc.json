@@ -5,5 +5,5 @@
     "loader=esmock"
   ],
   "require": "ts-node/register",
-  "spec": ["tdf3/test/**/*.spec.+(js|ts)"]
+  "spec": ["test/mocha/**/*.spec.+(js|ts)"]
 }
