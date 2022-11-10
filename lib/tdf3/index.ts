@@ -8,9 +8,15 @@ import {
 } from '../src/index';
 import { FileClient } from './src/FileClient';
 
-import { webcrypto as crypto } from 'node:crypto';
+import { webcrypto as crypto } from 'crypto';
+import { ReadableStream } from 'stream/web';
+
+import { registerModuleType } from './src/client/tdf-stream';
+import { NodeTdfStream } from './src/client/NodeTdfStream';
 
 globalThis.crypto ??= crypto as unknown as Crypto;
+globalThis.ReadableStream ??= ReadableStream;
+registerModuleType(NodeTdfStream);
 
 export {
   TDF,

@@ -1,9 +1,12 @@
+import { createReadStream } from 'fs';
+import { Readable } from 'stream';
+
 import { Client as ClientTdf3 } from './client/index';
 import { DecryptParamsBuilder, EncryptParamsBuilder } from './client/builders';
-import { type AnyTdfStream } from './client/tdf-stream';
 import { type EncryptParams, type DecryptParams } from './client/builders';
 import { type InputSource } from '../../src/types';
 import { type AuthProvider } from '../../src/auth/auth';
+import { AnyTdfStream } from './client/tdf-stream';
 
 interface FileClientConfig {
   clientId?: string;
@@ -14,10 +17,6 @@ interface FileClientConfig {
   authProvider?: AuthProvider;
 
   kasEndpoint?: string;
-}
-
-function isNodeStream(source: InputSource): source is NodeJS.ReadableStream {
-  return typeof (source as NodeJS.ReadableStream)?.pipe === 'function';
 }
 
 export class FileClient {
@@ -45,20 +44,29 @@ export class FileClient {
 
   private static setSource(
     source: InputSource,
-    params: EncryptParamsBuilder | DecryptParamsBuilder
-  ) {
+    params: DecryptParamsBuilder
+  ): Promise<DecryptParams>;
+  private static setSource(
+    source: InputSource,
+    params: EncryptParamsBuilder
+  ): Promise<EncryptParams>;
+  private static async setSource(
+    source: InputSource,
+    params: DecryptParamsBuilder | EncryptParamsBuilder
+  ): Promise<EncryptParams | DecryptParams> {
     if (Buffer && Buffer.isBuffer(source)) {
       params.setBufferSource(source);
-    }
-    if (typeof source === 'string') {
-      // there is not point to used tdf3.js withStringSource, after merging we have nanoTdf for that
-      params.setFileSource(source);
     }
     if (source instanceof ArrayBuffer) {
       params.setArrayBufferSource(source);
     }
-
-    if (isNodeStream(source) || source instanceof ReadableStream) {
+    if (source instanceof Promise) {
+      source = await source;
+    }
+    if (typeof source === 'string' && params instanceof EncryptParamsBuilder) {
+      source = Readable.toWeb(createReadStream(source));
+    }
+    if (source instanceof ReadableStream) {
       params.setStreamSource(source);
     }
     return params.build();
@@ -81,8 +89,9 @@ export class FileClient {
     if (params) {
       return await this.client.encrypt(params);
     }
-    const result = FileClient.setSource(source, encryptParams);
-    return await this.client.encrypt(<EncryptParams>result);
+
+    const result = await FileClient.setSource(source, encryptParams);
+    return await this.client.encrypt(result);
   }
 
   async decrypt(source: InputSource = '', params?: DecryptParams): Promise<AnyTdfStream> {
@@ -91,8 +100,8 @@ export class FileClient {
     if (params) {
       return await this.client.decrypt(params);
     }
-    const result = FileClient.setSource(source, decryptParams);
-    return await this.client.decrypt(<DecryptParams>result);
+    const result = await FileClient.setSource(source, decryptParams);
+    return await this.client.decrypt(result);
   }
 
   /**

@@ -7,17 +7,21 @@ import {
 import { VirtruS3Config, VirtruTempS3Credentials, VirtruCreds } from './builders';
 import { Upload } from '../utils/aws-lib-storage/index';
 import { Options } from '../utils/aws-lib-storage/types';
-import stream from '@readableStream';
 import Metadata from '../tdf';
 
 import { EventEmitter } from 'events';
 import { Manifest } from '../models/index';
 
-class DecoratedReadableStream {
+export async function streamToBuffer(stream: ReadableStream<Uint8Array>): Promise<Buffer> {
+  const accumulator = await new Response(stream).arrayBuffer();
+  return Buffer.from(accumulator);
+}
+
+export abstract class DecoratedReadableStream {
   KEK: string;
   algorithm: string;
   tdfSize: number;
-  stream: ReadableStream;
+  stream: ReadableStream<Uint8Array>;
   on: NodeJS.EventEmitter['on'];
   emit: NodeJS.EventEmitter['emit'];
   metadata?: Metadata;
@@ -26,7 +30,7 @@ class DecoratedReadableStream {
   // upsertResponse: void[];
 
   constructor(byteLimit: number, underlyingSource: UnderlyingSource) {
-    this.stream = new stream.ReadableStream(underlyingSource, { highWaterMark: byteLimit });
+    this.stream = new ReadableStream(underlyingSource, { highWaterMark: byteLimit });
     const ee = new EventEmitter();
     this.on = ee.on;
     this.emit = ee.emit;
@@ -127,6 +131,28 @@ class DecoratedReadableStream {
       }
     });
   }
-}
 
-export default DecoratedReadableStream;
+  /**
+   * Dump the stream content to a buffer. This will consume the stream.
+   * @return the plaintext in Buffer form.
+   */
+  async toBuffer(): Promise<Buffer> {
+    return streamToBuffer(this.stream);
+  }
+
+  /**
+   * Dump the stream content to a string. This will consume the stream.
+   * @return the plaintext in string form.
+   */
+  async toString(): Promise<string> {
+    return new Response(this.stream).text();
+  }
+
+  /**
+   * Dump the stream content to a local file. This will consume the stream.
+   *
+   * @param filepath The path of the local file to write plaintext to.
+   * @param encoding The charset encoding to use. Defaults to utf-8.
+   */
+  abstract toFile(filepath: string, encoding: BufferEncoding): Promise<void>;
+}

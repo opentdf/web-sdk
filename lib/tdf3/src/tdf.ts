@@ -5,7 +5,7 @@ import axios, { AxiosRequestConfig, Method } from 'axios';
 import crc32 from 'buffer-crc32';
 import { v4 } from 'uuid';
 import { exportSPKI, importPKCS8, importX509, SignJWT } from 'jose';
-import { AnyTdfStream, TdfStream } from './client/tdf-stream';
+import { AnyTdfStream, makeStream } from './client/tdf-stream';
 
 import {
   AttributeSet,
@@ -88,7 +88,7 @@ type EntryInfo = {
 class TDF extends EventEmitter {
   policy?: Policy;
   mimeType?: string;
-  contentStream?: ReadableStream;
+  contentStream?: ReadableStream<Uint8Array>;
   manifest?: Manifest;
   encryptionInformation?: SplitKey;
   htmlTransferUrl?: string;
@@ -359,11 +359,8 @@ class TDF extends EventEmitter {
     return this;
   }
 
-  addContentStream(contentStream: unknown, mimeType?: string) {
-    this.contentStream =
-      contentStream instanceof ReadableStream
-        ? contentStream
-        : TdfStream.convertToWebStream(contentStream);
+  addContentStream(contentStream: ReadableStream<Uint8Array>, mimeType?: string) {
+    this.contentStream = contentStream;
     this.mimeType = mimeType;
     return this;
   }
@@ -694,7 +691,7 @@ class TDF extends EventEmitter {
       },
     };
 
-    const plaintextStream = new TdfStream(segmentSizeDefault, underlingSource);
+    const plaintextStream = makeStream(segmentSizeDefault, underlingSource);
 
     if (upsertResponse) {
       plaintextStream.upsertResponse = upsertResponse;
@@ -884,7 +881,7 @@ class TDF extends EventEmitter {
 
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const that = this;
-    const outputStream = new TdfStream(this.segmentSizeDefault, {
+    const outputStream = makeStream(this.segmentSizeDefault, {
       async pull(controller: ReadableStreamDefaultController) {
         while (segments.length && !!controller.desiredSize && controller.desiredSize >= 0) {
           const segment = segments.shift();

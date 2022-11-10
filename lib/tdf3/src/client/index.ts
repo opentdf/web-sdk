@@ -10,7 +10,7 @@ import {
 } from '../utils/index';
 import { base64 } from '../../../src/encodings/index';
 import TDF from '../tdf';
-import { type AnyTdfStream, TdfStream } from './tdf-stream';
+import { type AnyTdfStream, makeStream } from './tdf-stream';
 import { OIDCClientCredentialsProvider } from '../../../src/auth/oidc-clientcredentials-provider';
 import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-provider';
 import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider';
@@ -33,12 +33,14 @@ const HTML_BYTE_LIMIT = 100 * 1000 * 1000; // 100 MB, see WS-9476.
 const defaultClientConfig = { oidcOrigin: '' };
 
 const uploadBinaryToS3 = async function (
-  stream: ReadableStream,
+  stream: ReadableStream<Uint8Array>,
   uploadUrl: string,
   fileSize: number
 ) {
   try {
-    const body: Buffer | ReadableStream = inBrowser() ? await streamToBuffer(stream) : stream;
+    const body: Buffer | ReadableStream<Uint8Array> = inBrowser()
+      ? await streamToBuffer(stream)
+      : stream;
 
     await axios.put(uploadUrl, body, {
       headers: {
@@ -290,7 +292,7 @@ export class Client {
       return null;
     }
 
-    return new TdfStream(windowSize, {
+    return makeStream(windowSize, {
       pull(controller: ReadableStreamDefaultController) {
         controller.enqueue(htmlBuf);
         controller.close();
@@ -306,7 +308,7 @@ export class Client {
    * @param {object} opts - object with keypair
    * @param {object} [output] - A node Writeable; if not found will create and return one.
    * @param {object} [rcaSource] - RCA source information
-   * @return {TdfStream} - a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} stream containing the decrypted plaintext.
+   * @return {DecoratedTdfStream} - a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} stream containing the decrypted plaintext.
    * @see DecryptParamsBuilder
    */
   async decrypt({ source, opts, rcaSource }: DecryptParams) {
