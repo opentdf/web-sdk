@@ -6,7 +6,6 @@ import send from 'send';
 import { type Chunker } from '../../src/utils/chunkers.js';
 import { type AddressInfo } from 'node:net';
 import type EventEmitter from 'node:events';
-import { promisify } from 'node:util';
 
 function range(a: number, b?: number): number[] {
   if (!b) {
@@ -252,19 +251,10 @@ describe('chunkers', () => {
       server.listen();
       console.error('server listening');
     });
-    after(async function closeServer() {
-      console.error('closeServer');
-      return promisify((callback) => {
-        console.error('time to server.close');
-        server.close((err) => {
-          console.error('server unref');
-          server.unref();
-          if (err) {
-            console.error(err);
-          }
-          console.error('server callback time');
-          callback(err, undefined);
-        });
+    after(function closeServer(done) {
+      server.close((err) => {
+        server.unref();
+        done(err);
       });
     });
 
