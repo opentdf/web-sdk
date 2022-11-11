@@ -155,8 +155,8 @@ function freeze<Type>(obj: Type): Readonly<Type> {
 class EncryptParamsBuilder {
   private _params: Partial<EncryptParams>;
 
-  constructor() {
-    this._params = {
+  constructor(
+    params: Partial<EncryptParams> = {
       scope: {
         dissem: [],
         attributes: [],
@@ -167,7 +167,9 @@ class EncryptParamsBuilder {
       windowSize: DEFAULT_SEGMENT_SIZE,
       asHtml: false,
       rcaSource: false,
-    };
+    }
+  ) {
+    this._params = structuredClone(params);
   }
 
   setContentLength(contentLength: number) {
@@ -620,9 +622,9 @@ export type DecryptParams = {
 class DecryptParamsBuilder {
   private _params: DecryptParams;
 
-  constructor() {
+  constructor(to_copy: DecryptParams = { source: null }) {
     this._params = {
-      source: null,
+      ...to_copy,
     };
   }
 

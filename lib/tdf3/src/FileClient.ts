@@ -53,7 +53,7 @@ export class FileClient {
   private static async setSource(
     source: InputSource,
     params: DecryptParamsBuilder | EncryptParamsBuilder
-  ): Promise<EncryptParams | DecryptParams> {
+  ): Promise<void> {
     if (Buffer && Buffer.isBuffer(source)) {
       params.setBufferSource(source);
     }
@@ -69,7 +69,6 @@ export class FileClient {
     if (source instanceof ReadableStream) {
       params.setStreamSource(source);
     }
-    return params.build();
   }
 
   async encrypt(
@@ -77,7 +76,7 @@ export class FileClient {
     users?: string[],
     params?: EncryptParams
   ): Promise<AnyTdfStream> {
-    const encryptParams = new EncryptParamsBuilder()
+    const encryptParams = new EncryptParamsBuilder(params)
       .withOffline()
       .withUsersWithAccess(users || this.dissems)
       .withAttributes(
@@ -85,23 +84,18 @@ export class FileClient {
           return { attribute };
         })
       );
-
-    if (params) {
-      return await this.client.encrypt(params);
+    if (source) {
+      await FileClient.setSource(source, encryptParams);
     }
-
-    const result = await FileClient.setSource(source, encryptParams);
-    return await this.client.encrypt(result);
+    return await this.client.encrypt(encryptParams.build());
   }
 
   async decrypt(source: InputSource = '', params?: DecryptParams): Promise<AnyTdfStream> {
-    const decryptParams = new DecryptParamsBuilder();
-
-    if (params) {
-      return await this.client.decrypt(params);
+    const decryptParams = new DecryptParamsBuilder(params);
+    if (source) {
+      await FileClient.setSource(source, decryptParams);
     }
-    const result = await FileClient.setSource(source, decryptParams);
-    return await this.client.decrypt(result);
+    return await this.client.decrypt(decryptParams.build());
   }
 
   /**
