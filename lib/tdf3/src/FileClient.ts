@@ -19,37 +19,29 @@ interface FileClientConfig {
   kasEndpoint?: string;
 }
 
+function isClientTdf3(c: unknown): c is ClientTdf3 {
+  if (typeof c !== 'object') {
+    return false;
+  }
+  return !!((c as ClientTdf3).encrypt && (c as ClientTdf3).decrypt);
+}
+
 export class FileClient {
   dissems: string[] = [];
   dataAttributes: string[] = [];
   private client: ClientTdf3;
 
-  constructor({
-    clientId,
-    clientSecret,
-    oidcRefreshToken,
-    oidcOrigin,
-    kasEndpoint,
-    authProvider,
-  }: FileClientConfig) {
-    this.client = new ClientTdf3({
-      authProvider,
-      clientId,
-      clientSecret,
-      oidcRefreshToken,
-      kasEndpoint,
-      oidcOrigin,
-    });
+  constructor(opts: FileClientConfig | ClientTdf3) {
+    // I'm using a duck type check here to make it easier to mock.
+    if (isClientTdf3(opts)) {
+      this.client = opts;
+    } else {
+      this.client = new ClientTdf3(opts);
+    }
   }
 
-  private static setSource(
-    source: InputSource,
-    params: DecryptParamsBuilder
-  ): Promise<DecryptParams>;
-  private static setSource(
-    source: InputSource,
-    params: EncryptParamsBuilder
-  ): Promise<EncryptParams>;
+  private static setSource(source: InputSource, params: DecryptParamsBuilder): Promise<void>;
+  private static setSource(source: InputSource, params: EncryptParamsBuilder): Promise<void>;
   private static async setSource(
     source: InputSource,
     params: DecryptParamsBuilder | EncryptParamsBuilder
@@ -79,7 +71,9 @@ export class FileClient {
         if (url) {
           const response = await fetch(url);
           if (!response.ok) {
-            console.warn(`${response.status} Error while fetching [${url}]: [${response.statusText}]`)
+            console.warn(
+              `${response.status} Error while fetching [${url}]: [${response.statusText}]`
+            );
             throw new Error(response.statusText);
           }
           if (!response.body) {
@@ -106,7 +100,8 @@ export class FileClient {
     users?: string[],
     params?: EncryptParams
   ): Promise<AnyTdfStream> {
-    const defaultParams = (params && structuredClone(params)) ||
+    const defaultParams =
+      params ||
       new EncryptParamsBuilder()
         .withOffline()
         .withUsersWithAccess(this.dissems)

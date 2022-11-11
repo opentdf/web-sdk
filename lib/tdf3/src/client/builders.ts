@@ -169,7 +169,7 @@ class EncryptParamsBuilder {
       rcaSource: false,
     }
   ) {
-    this._params = structuredClone(params);
+    this._params = { ...params };
   }
 
   setContentLength(contentLength: number) {
