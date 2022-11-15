@@ -220,8 +220,8 @@ jobs:
           ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: echo "- [Client Library](https://github.com/opentdf/client-web/pkgs/npm/client) >>$GITHUB_STEP_SUMMARY"
-      - run: echo "- [Command Line Tool](https://github.com/opentdf/client-web/pkgs/npm/cli) >>$GITHUB_STEP_SUMMARY"
+      - run: echo "- [Client Library](https://github.com/opentdf/client-web/pkgs/npm/client)">>$GITHUB_STEP_SUMMARY
+      - run: echo "- [Command Line Tool](https://github.com/opentdf/client-web/pkgs/npm/cli)">>$GITHUB_STEP_SUMMARY
       - name: trigger xtest
         run: |
           curl -XPOST -u "virtru-cloudnative:${{secrets.PERSONAL_ACCESS_TOKEN}}" -H "Accept: application/vnd.github.everest-preview+json" -H "Content-Type: application/json" "https://api.github.com/repos/opentdf/backend/dispatches" --data '{"event_type": "xtest", "client_payload": {"version":"'$(BUILD_META="" .github/workflows/gh-semver.sh)'"}}'
@@ -252,6 +252,6 @@ jobs:
           ${{ needs.deliver-ghp.outputs.DIST_TAG }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - run: echo "- [Client Library](https://www.npmjs.com/package/@opentdf/client/v/${{ needs.deliver-ghp.outputs.FULL_VERSION }}) >>$GITHUB_STEP_SUMMARY"
-      - run: echo "- [Command Line Tool](https://www.npmjs.com/package/@opentdf/cli/v/${{ needs.deliver-ghp.outputs.FULL_VERSION }}) >>$GITHUB_STEP_SUMMARY"
-      - run: echo "- [unpkg](https://unpkg.com/browse/@opentdf/client@${{ needs.deliver-ghp.outputs.FULL_VERSION }}) >>$GITHUB_STEP_SUMMARY"
+      - run: echo "- [Client Library](https://www.npmjs.com/package/@opentdf/client/v/${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
+      - run: echo "- [Command Line Tool](https://www.npmjs.com/package/@opentdf/cli/v/${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
+      - run: echo "- [unpkg](https://unpkg.com/browse/@opentdf/client@${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
