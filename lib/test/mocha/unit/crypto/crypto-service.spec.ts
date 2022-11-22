@@ -1,5 +1,5 @@
 import { assert, expect } from 'chai';
-import { Algorithms } from '../../../src/ciphers/index';
+import { Algorithms } from '../../../../tdf3/src/ciphers/index';
 import {
   decrypt,
   decryptWithPrivateKey,
@@ -12,8 +12,8 @@ import {
   hmac,
   randomBytesAsHex,
   sha256,
-} from '../../../src/crypto/index';
-import { Binary } from '../../../src/binary';
+} from '../../../../tdf3/src/crypto/index';
+import { Binary } from '../../../../tdf3/src/binary';
 import { decodeArrayBuffer, encodeArrayBuffer } from '../../../../src/encodings/base64';
 
 describe('Crypto Service', () => {

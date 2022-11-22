@@ -3,7 +3,7 @@ import fs from 'fs';
 import { createSandbox, SinonSandbox } from 'sinon';
 import { createServer, Server } from 'http';
 import send from 'send';
-import { Chunker, fromBuffer, fromNodeFile, fromUrl } from '../../src/utils/chunkers';
+import { Chunker, fromBuffer, fromNodeFile, fromUrl } from '../../../tdf3/src/utils/chunkers';
 
 function range(a: number, b?: number): number[] {
   if (!b) {

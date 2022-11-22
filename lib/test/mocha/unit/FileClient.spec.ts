@@ -5,9 +5,9 @@ import { expect } from 'chai';
 // import send from 'send';
 import { createSandbox, type SinonSpy, type SinonSandbox } from 'sinon';
 
-import { FileClient } from '../../src/FileClient';
-import { Client as ClientTdf3 } from '../../src/client/index';
-import { EncryptParamsBuilder } from '../../src/client/builders';
+import { FileClient } from '../../../tdf3/src/FileClient';
+import { Client as ClientTdf3 } from '../../../tdf3/src/client/index';
+import { EncryptParamsBuilder } from '../../../tdf3/src/client/builders';
 
 describe('FileClient', () => {
   let box: SinonSandbox;
