@@ -26,10 +26,10 @@ describe('crypto-utils', () => {
   });
 
   it('is valid asymmetric key size', () => {
-    expect(isValidAsymmetricKeySize(undefined)).to.be.true;
+    expect(isValidAsymmetricKeySize(undefined, 20)).to.be.true;
     expect(isValidAsymmetricKeySize(1)).to.be.true;
     expect(isValidAsymmetricKeySize(1, 2)).to.be.false;
-    expect(isValidAsymmetricKeySize('null')).to.be.false;
+    expect(isValidAsymmetricKeySize(undefined)).to.be.false;
   });
 
   it('should format as pem', () => {

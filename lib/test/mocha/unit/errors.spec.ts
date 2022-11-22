@@ -12,7 +12,7 @@ import {
 } from '../../../tdf3/src/errors';
 
 describe('Errors', () => {
-  const errorClasses = {
+  const errorClasses: Record<string, typeof TdfError> = {
     KasDecryptError,
     KasUpsertError,
     KeyAccessError,

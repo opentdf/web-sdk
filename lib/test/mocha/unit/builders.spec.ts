@@ -1,4 +1,5 @@
 import { expect, assert } from 'chai';
+import { AttributeObject } from 'src/tdf';
 import { EncryptParamsBuilder } from '../../../tdf3/src/client/builders';
 
 describe('EncyptParamsBuilder', () => {
@@ -24,10 +25,9 @@ describe('EncyptParamsBuilder', () => {
     it('should not accept empty attributes', () => {
       const paramsBuilder = new EncryptParamsBuilder();
       const emptyAttribute = {};
-      expect(() => paramsBuilder.withAttributes([emptyAttribute]).build()).to.throw(
-        Error,
-        /attribute prop should be a string/
-      );
+      expect(() =>
+        paramsBuilder.withAttributes([emptyAttribute as AttributeObject]).build()
+      ).to.throw(Error, /attribute prop should be a string/);
     });
 
     it('should check attrName uniq with attrVal', () => {
