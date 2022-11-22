@@ -19,7 +19,7 @@
 
 import PolicyTypeEnum from '../nanotdf/enum/PolicyTypeEnum';
 import ProtocolEnum from '../nanotdf/enum/ProtocolEnum';
-import hexArrayTag from '../../test/nanotdf/helpers/hexArrayTag';
+import hexArrayTag from '../../test/web/nanotdf/helpers/hexArrayTag';
 import { EmbeddedHeader } from '../types';
 
 // 6.1.5 nanotdf
