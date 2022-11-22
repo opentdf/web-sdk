@@ -5,9 +5,9 @@ import { NanoTDF } from '../../../src/nanotdf/index.js';
 import PolicyTypeEnum from '../../../src/nanotdf/enum/PolicyTypeEnum.js';
 import bufferToHex from './helpers/bufferToHex.js';
 
-import * as remoteFixture from '../../../src/__fixtures__/nanotdf-spec-remote-example';
-import * as embeddedFixture from '../../../src/__fixtures__/nanotdf-spec-embedded-example';
-import * as plainEmbeddedFixture from '../../../src/__fixtures__/nanotdf-spec-plain-embedded-example';
+import * as remoteFixture from '../../__fixtures__/nanotdf-spec-remote-example';
+import * as embeddedFixture from '../../__fixtures__/nanotdf-spec-embedded-example';
+import * as plainEmbeddedFixture from '../../__fixtures__/nanotdf-spec-plain-embedded-example';
 import { EmbeddedHeader, PlainEmbeddedHeader, RemoteHeader } from '../../../src/types';
 
 describe('NanoTDF', () => {
