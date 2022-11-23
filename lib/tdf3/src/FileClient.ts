@@ -1,6 +1,6 @@
 import { createReadStream } from 'fs';
 import { Readable } from 'stream';
-
+import axios from 'axios';
 import { Client as ClientTdf3 } from './client/index';
 import { DecryptParamsBuilder, EncryptParamsBuilder } from './client/builders';
 import { type EncryptParams, type DecryptParams } from './client/builders';
@@ -58,7 +58,7 @@ export class FileClient {
       return;
     }
     if (typeof source === 'string') {
-      let url;
+      let url: URL | undefined;
       try {
         url = new URL(source);
         if (!['http', 'https'].includes(url.protocol)) {
@@ -68,18 +68,24 @@ export class FileClient {
         // Not a url
       }
       if (params instanceof EncryptParamsBuilder) {
-        if (url) {
-          const response = await fetch(url);
-          if (!response.ok) {
-            console.warn(
-              `${response.status} Error while fetching [${url}]: [${response.statusText}]`
-            );
-            throw new Error(response.statusText);
+        if (url && url.href) {
+          try {
+            const response = await axios.get(url.href);
+            if (!response.data) {
+              throw new Error(`${response.status}: No body returned.`);
+            }
+            source = response.data;
+          } catch (e) {
+            if (e.response) { // if axios error
+              console.warn(
+                `${e.response.status} Error while fetching [${url.href}]: [${e.response.statusText}]`
+              );
+              throw new Error(e.response.statusText);
+            }
+            if (e.message) {
+              throw new Error(e.message);
+            }
           }
-          if (!response.body) {
-            throw new Error(`${response.status}: No body returned.`);
-          }
-          source = response.body;
         } else {
           source = Readable.toWeb(createReadStream(source));
         }
