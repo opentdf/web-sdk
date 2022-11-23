@@ -5,7 +5,7 @@ import { AuthProvider } from '../../src/auth/auth.js';
 import { NanoTDFClient } from '../../src/index.js';
 
 const authProvider = <AuthProvider>{
-  updateClientPublicKey: async (clientPubKey) => {
+  updateClientPublicKey: async () => {
     /* mocked function */
   },
   authorization: async () =>
