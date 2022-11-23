@@ -76,7 +76,8 @@ export class FileClient {
             }
             source = Readable.toWeb(response.data);
           } catch (e) {
-            if (e.response) { // if axios error
+            if (e.response) {
+              // if axios error
               console.warn(
                 `${e.response.status} Error while fetching [${url.href}]: [${e.response.statusText}]`
               );
