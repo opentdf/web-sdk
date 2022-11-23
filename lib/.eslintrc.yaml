@@ -2,7 +2,6 @@ env:
   browser: true
 rules:
   "@typescript-eslint/ban-ts-comment": off
-  strict: off
 extends:
   - eslint:recommended
   - plugin:@typescript-eslint/recommended
