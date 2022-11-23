@@ -70,11 +70,11 @@ export class FileClient {
       if (params instanceof EncryptParamsBuilder) {
         if (url && url.href) {
           try {
-            const response = await axios.get(url.href);
+            const response = await axios.get(url.href, { responseType: 'stream' });
             if (!response.data) {
               throw new Error(`${response.status}: No body returned.`);
             }
-            source = response.data;
+            source = Readable.toWeb(response.data);
           } catch (e) {
             if (e.response) { // if axios error
               console.warn(
@@ -89,7 +89,7 @@ export class FileClient {
         } else {
           source = Readable.toWeb(createReadStream(source));
         }
-        params.setStreamSource(source);
+        params.setStreamSource(source as ReadableStream<Uint8Array>);
       } else {
         // params instanceof DecryptParamsBuilder
         if (url) {
