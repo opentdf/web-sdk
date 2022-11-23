@@ -14,7 +14,7 @@ clean:
 	rm -rf */node_modules
 
 ci: lib/opentdf-client-$(version).tgz
-	for x in cli web-app; do (cd $$x && npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-$(version).tgz) || exit 1; done
+	for x in cli cli-commonjs web-app; do (cd $$x && npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-$(version).tgz) || exit 1; done
 
 i:
 	(cd lib && npm i && npm pack)
