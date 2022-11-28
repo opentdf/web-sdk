@@ -138,9 +138,10 @@ class TDF extends EventEmitter {
    * @param {String} transferUrl
    * @return {Buffer}
    */
-  static wrapHtml(payload: Buffer, manifest: Manifest, transferUrl: string): Buffer {
+  static wrapHtml(payload: Buffer, manifest: Manifest | string, transferUrl: string): Buffer {
     const { origin } = new URL(transferUrl);
-    const exportManifest: string = JSON.stringify(manifest);
+    const exportManifest: string =
+      typeof manifest === 'string' ? manifest : JSON.stringify(manifest);
 
     const fullHtmlString = htmlWrapperTemplate({
       transferUrl,
