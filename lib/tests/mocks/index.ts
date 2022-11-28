@@ -1,6 +1,7 @@
-import { SignJWT, importPKCS8 } from 'jose';
+import { SignJWT, importPKCS8, JWTPayload } from 'jose';
 import { AttributeSet } from '../../tdf3/src/models/attribute-set';
 import { v4 } from 'uuid';
+import AttributeObject from '../../src/tdf/AttributeObject';
 
 type CreateAttributePayload = {
   attribute: string;
@@ -12,11 +13,11 @@ type CreateAttributePayload = {
 
 type CreateJwtAttributeContext = {
   aaPrivateKey: string;
-  createAttribute: (prop: CreateAttributePayload) => CreateAttributePayload;
+  createAttribute: (prop: CreateAttributePayload) => JWTPayload;
 };
 
 type createAttributeSetContext = {
-  createAttribute: (prop: CreateAttributePayload) => CreateAttributePayload;
+  createAttribute: (prop: CreateAttributePayload) => AttributeObject;
 };
 
 type GetEntityObjectContext = {
@@ -33,6 +34,33 @@ type GetPolicyObjectContext = {
 type GetScopeContext = {
   getUserId: () => string;
 };
+
+function getKasUrl() {
+  return 'http://local.virtru.com:4000'; // Sensitive
+}
+
+const kasPublicKey = `-----BEGIN CERTIFICATE-----
+MIIDsTCCApmgAwIBAgIJAONESzw+N+3SMA0GCSqGSIb3DQEBDAUAMHUxCzAJBgNV
+BAYTAlVTMQswCQYDVQQIDAJEQzETMBEGA1UEBwwKV2FzaGluZ3RvbjEPMA0GA1UE
+CgwGVmlydHJ1MREwDwYDVQQDDAhhY2NvdW50czEgMB4GCSqGSIb3DQEJARYRZGV2
+b3BzQHZpcnRydS5jb20wIBcNMTgxMDE4MTY1MjIxWhgPMzAxODAyMTgxNjUyMjFa
+MHUxCzAJBgNVBAYTAlVTMQswCQYDVQQIDAJEQzETMBEGA1UEBwwKV2FzaGluZ3Rv
+bjEPMA0GA1UECgwGVmlydHJ1MREwDwYDVQQDDAhhY2NvdW50czEgMB4GCSqGSIb3
+DQEJARYRZGV2b3BzQHZpcnRydS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAw
+ggEKAoIBAQC3GdLoh0BHjsu9doR2D3+MekHB9VR/cmqV7v6R7xEWZJkuymrJzPy8
+reKSLK7yDhUEZNA9jslVReMpQHaR0/ND0fevJZ0yoo8IXGSIYv+prX6wZbqp4Ykc
+ahWMx5nFzpCDSJfd2ZBnCvnsz4x95eX8jme9qNYcELFDEkeLFCushNLXdg8NKrWh
+/Ew8VEZGf4hmtb30J11Uj5P2cv6zgATpa6xqjpg8hUarQYTyQi01DTKZ9iR8Kw/x
+AH+ocXtbJdy046bMb9uMpeJ/LlMpELSN5pqamVJis/NkWJOVRdwD//p7WQdz9T4T
+GzvvrO8KUQoORYERf0EtwBtufv5SDpNhAgMBAAGjQjBAMB0GA1UdDgQWBBTVPQ3Y
+oYYXHWbZfK2sonPrOE7nszAfBgNVHSMEGDAWgBTVPQ3YoYYXHWbZfK2sonPrOE7n
+szANBgkqhkiG9w0BAQwFAAOCAQEAT2ZjAJPQSf0tME0vbAqHzB8iIhR5KniGgJMJ
+mRrXbTl2HBH6WnRwfgY1Ok1X224ph4uBGaAUGs8ONBKli0673jE+IgVob7TCu2yV
+gHaKcybDegK4esVNRdsDmOWT+eTxGYAzejdIgdFo6R7Xvs87RbqwM4Cko4xoWGVF
+ghWsBqUmyg/rZoggL5H1V166hvoLPKU7SrCInZ8Wd6x4rsNDaxNiC9El102pKXu4
+wCiqJZ0XwklGkH9X0Z5x0txc68tqmSlE/z4i/96oxMp0C2thWfy90ub85f5FrB9m
+tN5S0umLPkMUJ6zBIxh1RQK1ZYjfuKij+EEimbqtte9rYyQr3Q==
+-----END CERTIFICATE-----`;
 
 export default function getMocks() {
   return Object.create({
@@ -65,28 +93,7 @@ BK7+TM6jTOpG5CmxyHhalOdGc56l67NPw10FIZx7zGihAzYbyRv4IBUj2R3nTASb
 7uDr0bAL0hHapZgRGzQPG0WX3ifFcfJ+LZoRklm/jHMxYGC/XrCtCfL3ROBL8rcF
 3JkIg040ZMZ8wNzpy8zgA7D3KA==
 -----END PRIVATE KEY-----`,
-    kasPublicKey: `-----BEGIN CERTIFICATE-----
-MIIDsTCCApmgAwIBAgIJAONESzw+N+3SMA0GCSqGSIb3DQEBDAUAMHUxCzAJBgNV
-BAYTAlVTMQswCQYDVQQIDAJEQzETMBEGA1UEBwwKV2FzaGluZ3RvbjEPMA0GA1UE
-CgwGVmlydHJ1MREwDwYDVQQDDAhhY2NvdW50czEgMB4GCSqGSIb3DQEJARYRZGV2
-b3BzQHZpcnRydS5jb20wIBcNMTgxMDE4MTY1MjIxWhgPMzAxODAyMTgxNjUyMjFa
-MHUxCzAJBgNVBAYTAlVTMQswCQYDVQQIDAJEQzETMBEGA1UEBwwKV2FzaGluZ3Rv
-bjEPMA0GA1UECgwGVmlydHJ1MREwDwYDVQQDDAhhY2NvdW50czEgMB4GCSqGSIb3
-DQEJARYRZGV2b3BzQHZpcnRydS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAw
-ggEKAoIBAQC3GdLoh0BHjsu9doR2D3+MekHB9VR/cmqV7v6R7xEWZJkuymrJzPy8
-reKSLK7yDhUEZNA9jslVReMpQHaR0/ND0fevJZ0yoo8IXGSIYv+prX6wZbqp4Ykc
-ahWMx5nFzpCDSJfd2ZBnCvnsz4x95eX8jme9qNYcELFDEkeLFCushNLXdg8NKrWh
-/Ew8VEZGf4hmtb30J11Uj5P2cv6zgATpa6xqjpg8hUarQYTyQi01DTKZ9iR8Kw/x
-AH+ocXtbJdy046bMb9uMpeJ/LlMpELSN5pqamVJis/NkWJOVRdwD//p7WQdz9T4T
-GzvvrO8KUQoORYERf0EtwBtufv5SDpNhAgMBAAGjQjBAMB0GA1UdDgQWBBTVPQ3Y
-oYYXHWbZfK2sonPrOE7nszAfBgNVHSMEGDAWgBTVPQ3YoYYXHWbZfK2sonPrOE7n
-szANBgkqhkiG9w0BAQwFAAOCAQEAT2ZjAJPQSf0tME0vbAqHzB8iIhR5KniGgJMJ
-mRrXbTl2HBH6WnRwfgY1Ok1X224ph4uBGaAUGs8ONBKli0673jE+IgVob7TCu2yV
-gHaKcybDegK4esVNRdsDmOWT+eTxGYAzejdIgdFo6R7Xvs87RbqwM4Cko4xoWGVF
-ghWsBqUmyg/rZoggL5H1V166hvoLPKU7SrCInZ8Wd6x4rsNDaxNiC9El102pKXu4
-wCiqJZ0XwklGkH9X0Z5x0txc68tqmSlE/z4i/96oxMp0C2thWfy90ub85f5FrB9m
-tN5S0umLPkMUJ6zBIxh1RQK1ZYjfuKij+EEimbqtte9rYyQr3Q==
------END CERTIFICATE-----`,
+    kasPublicKey,
     aaPrivateKey: `-----BEGIN PRIVATE KEY-----
 MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQC3GdLoh0BHjsu9
 doR2D3+MekHB9VR/cmqV7v6R7xEWZJkuymrJzPy8reKSLK7yDhUEZNA9jslVReMp
@@ -176,9 +183,9 @@ wwIDAQAB
 -----END PUBLIC KEY-----`,
     createAttribute({
       attribute = 'https://api.virtru.com/attr/default/value/default',
-      displayName = 'Default Attribute', // @ts-ignore
-      pubKey = this.kasPublicKey, // @ts-ignore
-      kasUrl = this.getKasUrl(),
+      displayName = 'Default Attribute',
+      pubKey = kasPublicKey,
+      kasUrl = getKasUrl(),
       isDefault = 'not set',
     }: CreateAttributePayload) {
       if (isDefault === 'not set') {
@@ -208,10 +215,12 @@ wwIDAQAB
       }
     },
 
-    async createAttributeSet(this: createAttributeSetContext, arrayOfAttrOptions = []) {
+    async createAttributeSet(
+      this: createAttributeSetContext,
+      arrayOfAttrOptions: CreateAttributePayload[] = []
+    ) {
       const aSet = new AttributeSet();
-      const attributes = arrayOfAttrOptions.forEach((options) => this.createAttribute(options));
-      // @ts-ignore
+      const attributes = arrayOfAttrOptions.map((options) => this.createAttribute(options));
       aSet.addAttributes(attributes);
       return aSet;
     },
@@ -228,11 +237,11 @@ wwIDAQAB
         aliases: [],
         attributes: jwtAttributes,
         publicKey: this.entityPublicKey,
+        cert: {},
       };
 
       const pkKeyLike = await importPKCS8(this.aaPrivateKey, 'RS256');
 
-      // @ts-ignore
       baseObject.cert = await new SignJWT(baseObject)
         .setProtectedHeader({ alg: 'RS256' })
         .setIssuedAt()
@@ -278,8 +287,6 @@ wwIDAQAB
       };
     },
 
-    getKasUrl() {
-      return 'http://local.virtru.com:4000'; // Sensitive
-    },
+    getKasUrl,
   });
 }
