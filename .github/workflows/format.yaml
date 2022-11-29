@@ -14,6 +14,8 @@ jobs:
       - run: make format
       - name: ignore package-lock changes
         run: git restore "*/package-lock.json"
+      - run: git diff
+      - run: git diff-files --ignore-submodules
       - name: Check that files have been formatted before PR submission
         run: git diff-files --quiet --ignore-submodules
         if: ${{ github.event.pull_request.head.repo.full_name != 'opentdf/client-web' }}
