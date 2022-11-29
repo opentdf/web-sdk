@@ -14,8 +14,12 @@ jobs:
       - run: make format
       - name: ignore package-lock changes
         run: git checkout -- {cli,web-app}/package-lock.json
+      - name: Check that files have been formatted before PR submission
+        run: git diff-files --quiet --ignore-submodules
+        if: ${{ github.event.pull_request.head.repo.full_name != 'opentdf/client-web' }}
       - name: Commit changes
         id: auto-commit
+        if: ${{ github.event.pull_request.head.repo.full_name == 'opentdf/client-web' }}
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_message: |-
