@@ -4,7 +4,7 @@ import { rstrip } from '../../src/utils';
 describe('rstrip', () => {
   describe('default', () => {
     it('undefined', () => {
-      // @ts-ignore
+      // @ts-expect-error rstrip requires parameters
       expect(rstrip()).to.be.undefined;
     });
     it('empty', () => {
