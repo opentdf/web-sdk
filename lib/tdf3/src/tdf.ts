@@ -190,8 +190,6 @@ class TDF extends EventEmitter {
     // Skip the public key extraction if we find that the KAS url provides a
     // PEM-encoded key instead of certificate
     if (keyString.includes('CERTIFICATE')) {
-      // FIXME Must match hash size of public key. We can (probably) guess by
-      // length? See: https://developer.mozilla.org/en-US/docs/Web/API/RsaHashedImportParams
       const cert = await importX509(keyString, 'RS256');
       pem = await exportSPKI(cert);
     }
