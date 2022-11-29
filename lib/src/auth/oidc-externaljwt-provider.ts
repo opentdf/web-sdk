@@ -6,7 +6,7 @@ export class OIDCExternalJwtProvider implements AuthProvider {
   oidcAuth: VirtruOIDC;
   externalJwt?: string;
 
-  constructor({ clientPubKey, clientId, externalJwt, oidcOrigin }: IOIDCExternalJwtProvider) {
+  constructor({ signingKey, clientId, externalJwt, oidcOrigin }: IOIDCExternalJwtProvider) {
     if (!clientId || !externalJwt) {
       throw new Error(
         'To use this browser-only provider you must supply clientId/JWT from trusted external IdP'
@@ -14,7 +14,7 @@ export class OIDCExternalJwtProvider implements AuthProvider {
     }
 
     this.oidcAuth = new VirtruOIDC({
-      clientPubKey,
+      signingKey,
       clientId,
       oidcOrigin,
     });
@@ -22,8 +22,8 @@ export class OIDCExternalJwtProvider implements AuthProvider {
     this.externalJwt = externalJwt;
   }
 
-  async updateClientPublicKey(clientPubKey: string): Promise<void> {
-    this.oidcAuth.refreshTokenClaimsWithClientPubkeyIfNeeded(clientPubKey);
+  async updateClientPublicKey(signingKey: CryptoKeyPair): Promise<void> {
+    this.oidcAuth.refreshTokenClaimsWithClientPubkeyIfNeeded(signingKey);
   }
 
   async authorization(): Promise<string> {

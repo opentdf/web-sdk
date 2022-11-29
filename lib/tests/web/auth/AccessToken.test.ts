@@ -1,6 +1,8 @@
 import { assert, expect } from '@esm-bundle/chai';
 import { fake } from 'sinon';
+import { generateKeyPair } from '../../../src/nanotdf-crypto';
 import { AccessToken, type AccessTokenResponse } from '../../../src/auth/AccessToken.js';
+import cryptoPublicToPem from '../../../src/nanotdf-crypto/cryptoPublicToPem.js';
 
 // // const qsparse = (s: string) => Object.fromEntries(new URLSearchParams(s));
 const qsparse = (s: string) =>
@@ -68,6 +70,8 @@ describe('AccessToken', () => {
   describe('exchanging refresh token for token with TDF claims', () => {
     describe('using client credentials', () => {
       it('passes client creds with refresh grant type to token endpoint', async () => {
+        const mockKeyPair = await generateKeyPair();
+        const mockPublicKey = await cryptoPublicToPem(mockKeyPair.publicKey);
         const mf = mockFetch({ access_token: 'fdfsdffsdf' });
         const accessToken = new AccessToken(
           {
@@ -78,7 +82,8 @@ describe('AccessToken', () => {
           },
           mf
         );
-        accessToken.virtru_client_pubkey = 'fake-pub-key';
+
+        accessToken.signing_key = mockKeyPair;
         const res = await accessToken.refresh('refresh');
         expect(res).to.equal('fdfsdffsdf');
         expect(mf.lastCall.firstArg).to.match(
@@ -91,7 +96,7 @@ describe('AccessToken', () => {
           client_secret: 'mysecret',
           refresh_token: 'refresh',
         });
-        expect(mf.lastCall.lastArg.headers).to.have.property('X-VirtruPubKey', 'fake-pub-key');
+        expect(mf.lastCall.lastArg.headers).to.have.property('X-VirtruPubKey', mockPublicKey);
       });
     });
     describe('using browser flow', () => {

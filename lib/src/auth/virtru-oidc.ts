@@ -24,7 +24,7 @@ import { IVirtruOIDC } from '../nanotdf/interfaces/OIDCInterface';
  */
 export default class VirtruOIDC {
   protected authMode: 'browser' | 'credentials';
-  protected clientPubKey?: string;
+  protected signingKey?: CryptoKeyPair;
   protected accessTokenGetter: AccessToken;
   protected currentAccessToken?: string;
 
@@ -34,7 +34,7 @@ export default class VirtruOIDC {
    * If clientId and clientSecret are not provided, browser mode will be assumed, and @see refreshTokenWithVirtruClaims must be
    * manually called during object initialization to do a token exchange.
    */
-  constructor({ clientPubKey, clientId, clientSecret, oidcOrigin }: IVirtruOIDC) {
+  constructor({ signingKey, clientId, clientSecret, oidcOrigin }: IVirtruOIDC) {
     if (!clientId) {
       throw new Error('To use any OIDC auth mode you must supply your clientId, at a minimum');
     }
@@ -43,7 +43,7 @@ export default class VirtruOIDC {
       auth_server_url: oidcOrigin,
       // pubkey may be `null` at this point, that's fine - it can be set later by the caller
       // via `refreshTokenClaimsWithClientPubkey()` - it just has to be in place before we try to get a token from Keycloak.
-      virtru_client_pubkey: clientPubKey,
+      signing_key: signingKey,
     };
 
     //If we have a client secret, we must be using client credentials, and this is not
@@ -62,7 +62,7 @@ export default class VirtruOIDC {
       };
     }
     this.authMode = keycloakConfig.auth_mode || 'browser';
-    this.clientPubKey = clientPubKey;
+    this.signingKey = signingKey;
     this.accessTokenGetter = new AccessToken(keycloakConfig);
   }
 
@@ -72,21 +72,21 @@ export default class VirtruOIDC {
    *
    * Calling this function will trigger a forcible token refresh using the cached refresh token, and contact the auth server.
    *
-   * @param {string} clientPubKey - the client's public key, base64 encoded. Will be bound to the OIDC token. Optional. If not set in the constructor,
+   * @param signingKey the client's key pair for signing requests
    */
-  async refreshTokenClaimsWithClientPubkeyIfNeeded(clientPubKey: string): Promise<void> {
+  async refreshTokenClaimsWithClientPubkeyIfNeeded(signingKey: CryptoKeyPair): Promise<void> {
     // If we already have a token, and the pubkey changes,
     // we need to force a refresh now - otherwise
     // we can wait until we create the token for the first time
-    if (this.currentAccessToken && clientPubKey === this.accessTokenGetter.virtru_client_pubkey) {
+    if (this.signingKey && signingKey === this.accessTokenGetter.signing_key) {
       return;
     }
-    this.accessTokenGetter.virtru_client_pubkey = clientPubKey;
-    this.clientPubKey = clientPubKey;
+    this.accessTokenGetter.signing_key = signingKey;
+    this.signingKey = signingKey;
   }
 
   async getCurrentAccessToken(): Promise<string> {
-    if (!this.clientPubKey) {
+    if (!this.signingKey) {
       throw new Error(
         'Client public key was not set via `updateClientPublicKey` or passed in via constructor, cannot fetch OIDC token with valid Virtru claims'
       );

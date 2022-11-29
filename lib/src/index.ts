@@ -216,7 +216,7 @@ export class NanoTDFDatasetClient extends Client {
    * @param clientConfig OIDC client credentials
    * @param kasUrl Key access service URL
    * @param ephemeralKeyPair (optional) ephemeral key pair to use
-   * @param clientPubKey Client identification
+   * @param signingKey Client identification
    */
 
   /**
@@ -229,7 +229,7 @@ export class NanoTDFDatasetClient extends Client {
    * @param clientConfig OIDC client credentials
    * @param kasUrl Key access service URL
    * @param ephemeralKeyPair (optional) ephemeral key pair to use
-   * @param clientPubKey Client identification
+   * @param signingKey Client identification
    * @param maxKeyIterations Max iteration to performe without a key rotation
    */
   constructor(

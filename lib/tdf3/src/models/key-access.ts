@@ -15,7 +15,7 @@ export class Wrapped {
 
   constructor(
     public readonly url: string,
-    public readonly publicKey: string,
+    public readonly publicKey: CryptoKey,
     public readonly metadata: unknown
   ) {}
 
@@ -57,7 +57,7 @@ export class Remote {
 
   constructor(
     public readonly url: string,
-    public readonly publicKey: string,
+    public readonly publicKey: CryptoKey,
     public readonly metadata: unknown
   ) {}
 

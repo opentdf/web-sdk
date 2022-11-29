@@ -6,19 +6,10 @@
 
 import { Algorithms } from '../ciphers/index';
 import { Binary } from '../binary';
-import {
-  DecryptResult,
-  EncryptResult,
-  MIN_ASYMMETRIC_KEY_SIZE_BITS,
-  PemKeyPair,
-} from './declarations';
+import { DecryptResult, EncryptResult, MIN_ASYMMETRIC_KEY_SIZE_BITS } from './declarations';
 import { TdfDecryptError } from '../errors';
-import { formatAsPem, isValidAsymmetricKeySize, removePemFormatting } from './crypto-utils';
+import { isValidAsymmetricKeySize } from './crypto-utils';
 import { encodeArrayBuffer as hexEncode } from '../../../src/encodings/hex';
-import {
-  decodeArrayBuffer as base64Decode,
-  encodeArrayBuffer as base64Encode,
-} from '../../../src/encodings/base64';
 
 // Used to pass into native crypto functions
 const METHODS: KeyUsage[] = ['encrypt', 'decrypt'];
@@ -30,7 +21,7 @@ export const name = 'BrowserNativeCryptoService';
 const RSA_IMPORT_PARAMS: RsaHashedImportParams = {
   name: 'RSA-OAEP',
   hash: {
-    name: 'SHA-1',
+    name: 'SHA-256',
   },
 };
 
@@ -59,7 +50,7 @@ export function generateKey(length?: number): string {
  * @see    {@link https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/generateKey}
  * @param  size in bits
  */
-export async function generateKeyPair(size?: number): Promise<PemKeyPair> {
+export async function generateKeyPair(size?: number): Promise<CryptoKeyPair> {
   const minKeySize = MIN_ASYMMETRIC_KEY_SIZE_BITS;
 
   if (!isValidAsymmetricKeySize(size, minKeySize)) {
@@ -68,17 +59,7 @@ export async function generateKeyPair(size?: number): Promise<PemKeyPair> {
 
   const algoDomString = getRsaHashedKeyGenParams(size || MIN_ASYMMETRIC_KEY_SIZE_BITS);
 
-  const keys = await crypto.subtle.generateKey(algoDomString, true, METHODS);
-  const [exPublic, exPrivate] = await Promise.all([
-    crypto.subtle.exportKey('spki', keys.publicKey),
-    crypto.subtle.exportKey('pkcs8', keys.privateKey),
-  ]);
-  const publicBase64String = base64Encode(exPublic);
-  const privateBase64String = base64Encode(exPrivate);
-  return {
-    publicKey: formatAsPem(publicBase64String, 'PUBLIC KEY'),
-    privateKey: formatAsPem(privateBase64String, 'PRIVATE KEY'),
-  };
+  return crypto.subtle.generateKey(algoDomString, true, METHODS);
 }
 
 /**
@@ -87,24 +68,10 @@ export async function generateKeyPair(size?: number): Promise<PemKeyPair> {
  * @param publicKey PEM formatted public key
  * @return Encrypted payload
  */
-export async function encryptWithPublicKey(payload: Binary, publicKey: string): Promise<Binary> {
+export async function encryptWithPublicKey(payload: Binary, key: CryptoKey): Promise<Binary> {
   console.assert(typeof payload === 'object');
-  console.assert(typeof publicKey === 'string');
-
-  const algoDomString = RSA_IMPORT_PARAMS;
-
   // Web Crypto APIs don't work with PEM formatted strings
-  publicKey = removePemFormatting(publicKey);
-
-  const keyBuffer = base64Decode(publicKey);
-  const cryptoKey = await crypto.subtle.importKey('spki', keyBuffer, algoDomString, false, [
-    'encrypt',
-  ]);
-  const result = await crypto.subtle.encrypt(
-    { name: 'RSA-OAEP' },
-    cryptoKey,
-    payload.asArrayBuffer()
-  );
+  const result = await crypto.subtle.encrypt({ name: 'RSA-OAEP' }, key, payload.asArrayBuffer());
   return Binary.fromArrayBuffer(result);
 }
 
@@ -146,21 +113,14 @@ export function randomBytesAsHex(length: number): string {
  */
 export async function decryptWithPrivateKey(
   encryptedPayload: Binary,
-  privateKey: string
+  privateKey: CryptoKey
 ): Promise<Binary> {
   console.assert(typeof encryptedPayload === 'object');
   console.assert(typeof privateKey === 'string');
 
-  const algoDomString = RSA_IMPORT_PARAMS;
-
-  // Web Crypto APIs don't work with PEM formatted strings
-  const keyDataString = removePemFormatting(privateKey);
-  const keyData = base64Decode(keyDataString);
-
-  const key = await crypto.subtle.importKey('pkcs8', keyData, algoDomString, false, ['decrypt']);
   const payload = await crypto.subtle.decrypt(
     { name: 'RSA-OAEP' },
-    key,
+    privateKey,
     encryptedPayload.asArrayBuffer()
   );
   const bufferView = new Uint8Array(payload);

@@ -11,11 +11,6 @@ export type DecryptResult = {
   payload: Binary;
 };
 
-export type PemKeyPair = {
-  publicKey: string;
-  privateKey: string;
-};
-
 /**
  * The minimum acceptable asymetric key size, currently 2^11.
  */
@@ -40,14 +35,14 @@ export type CryptoService = {
     authTag?: Binary
   ) => Promise<DecryptResult>;
 
-  decryptWithPrivateKey: (encryptedPayload: Binary, privateKey: string) => Promise<Binary>;
+  decryptWithPrivateKey: (encryptedPayload: Binary, privateKey: CryptoKey) => Promise<Binary>;
 
   /**
    * Encrypt content with the default or handed algorithm.
    */
   encrypt: (payload: Binary, key: Binary, iv: Binary, algorithm?: string) => Promise<EncryptResult>;
 
-  encryptWithPublicKey: (payload: Binary, publicKey: string) => Promise<Binary>;
+  encryptWithPublicKey: (payload: Binary, publicKey: CryptoKey) => Promise<Binary>;
 
   /** Get length random bytes as a hex-encoded string. */
   generateInitializationVector: (length: number) => string;
@@ -59,7 +54,7 @@ export type CryptoService = {
    * Generate an RSA key pair
    * @param size in bits, defaults to a reasonable size for the default method
    */
-  generateKeyPair: (size?: number) => Promise<PemKeyPair>;
+  generateKeyPair: (size?: number) => Promise<CryptoKeyPair>;
 
   /**
    * Create an HMAC SHA256 hash

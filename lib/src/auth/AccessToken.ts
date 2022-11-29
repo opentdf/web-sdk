@@ -1,3 +1,4 @@
+import cryptoPublicToPem from '../nanotdf-crypto/cryptoPublicToPem';
 import { rstrip } from '../utils';
 
 const qstringify = (obj: Record<string, string>) => new URLSearchParams(obj).toString();
@@ -7,7 +8,7 @@ export type AccessTokenConfig = {
   client_id: string;
   client_secret?: string;
   auth_server_url: string;
-  virtru_client_pubkey?: string;
+  signing_key?: CryptoKeyPair;
 };
 
 export type AccessTokenResponse = {
@@ -24,7 +25,7 @@ export class AccessToken {
 
   baseUrl: string;
 
-  virtru_client_pubkey?: string;
+  signing_key?: CryptoKeyPair;
 
   extraHeaders: Record<string, string> = {};
 
@@ -38,7 +39,7 @@ export class AccessToken {
     this.config = cfg;
     this.request = request;
     this.baseUrl = rstrip(cfg.auth_server_url, '/');
-    this.virtru_client_pubkey = cfg.virtru_client_pubkey;
+    this.signing_key = cfg.signing_key;
   }
 
   async info(accessToken: string): Promise<unknown> {
@@ -124,8 +125,8 @@ export class AccessToken {
       'Content-Type': 'application/x-www-form-urlencoded',
       Accept: 'application/json',
     };
-    if (this.virtru_client_pubkey) {
-      headers['X-VirtruPubKey'] = this.virtru_client_pubkey;
+    if (this.signing_key) {
+      headers['X-VirtruPubKey'] = await cryptoPublicToPem(this.signing_key.publicKey);
     }
     return (this.request || fetch)(url, {
       method: 'POST',

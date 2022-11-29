@@ -18,9 +18,9 @@ export interface AuthProvider {
    * using the cached refresh token, and update the auth server config with the
    * current key.
    *
-   * @param clientPubkey the client's public key, base64 encoded. Will be bound to the OIDC token.
+   * @param signingKey the client's public key, base64 encoded. Will be bound to the OIDC token.
    */
-  updateClientPublicKey(clientPubkey: string): Promise<void>;
+  updateClientPublicKey(signingKey: CryptoKeyPair): Promise<void>;
 
   /**
    * Compute an auth header value for an http request, to associate the session with the current entity

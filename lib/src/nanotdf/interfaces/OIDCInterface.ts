@@ -1,6 +1,6 @@
 export interface IVirtruOIDCBase {
   /** the client's public key, base64 encoded. Will be bound to the OIDC token. Optional. If not set in the constructor, */
-  clientPubKey?: string;
+  signingKey?: CryptoKeyPair;
 
   /**If using client credentials mode, the client ID. Optional, used for non-browser contexts. */
   clientId: string;

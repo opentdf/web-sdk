@@ -15,7 +15,6 @@ import { type AnyTdfStream, makeStream } from './tdf-stream';
 import { OIDCClientCredentialsProvider } from '../../../src/auth/oidc-clientcredentials-provider';
 import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-provider';
 import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider';
-import { PemKeyPair } from '../crypto/declarations';
 import { AuthProvider, AppIdAuthProvider } from '../../../src/auth/auth';
 import EAS from '../../../src/auth/Eas';
 import EntityObject from '../../../../lib/src/tdf/EntityObject';
@@ -29,6 +28,7 @@ import {
   DecryptSource,
 } from './builders';
 import { Policy } from '../models/index';
+import { cryptoPublicToPem } from '../../../src/nanotdf-crypto';
 
 const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
 const HTML_BYTE_LIMIT = 100 * 1000 * 1000; // 100 MB, see WS-9476.
@@ -93,7 +93,7 @@ const makeChunkable = async (source: DecryptSource) => {
 };
 
 export interface ClientConfig {
-  keypair?: PemKeyPair;
+  keypair?: CryptoKeyPair;
   organizationName?: string;
   clientId?: string;
   kasEndpoint?: string;
@@ -126,7 +126,7 @@ export class Client {
 
   readerUrl?: string;
 
-  keypair?: PemKeyPair;
+  keypair?: CryptoKeyPair;
 
   eas?: EAS;
 
@@ -143,8 +143,6 @@ export class Client {
    */
   constructor(config: ClientConfig) {
     const clientConfig = { ...defaultClientConfig, ...config };
-
-    const pubKey = clientConfig?.keypair?.publicKey;
 
     clientConfig.keypair && (this.keypair = clientConfig.keypair);
     clientConfig.kasPublicKey && (this.kasPublicKey = clientConfig.kasPublicKey);
@@ -190,7 +188,7 @@ export class Client {
       //and provide us with a valid refresh token/clientId obtained from that process.
       if (clientConfig.oidcRefreshToken) {
         clientConfig.authProvider = new OIDCRefreshTokenProvider({
-          clientPubKey: pubKey,
+          signingKey: this.keypair,
           clientId: clientConfig.clientId,
           externalRefreshToken: clientConfig.oidcRefreshToken,
           oidcOrigin: clientConfig.oidcOrigin,
@@ -198,7 +196,7 @@ export class Client {
       } else if (clientConfig.externalJwt) {
         //Are we exchanging a JWT previously issued by a trusted external entity (e.g. Google) for a bearer token?
         clientConfig.authProvider = new OIDCExternalJwtProvider({
-          clientPubKey: pubKey,
+          signingKey: this.keypair,
           clientId: clientConfig.clientId,
           externalJwt: clientConfig.externalJwt,
           oidcOrigin: clientConfig.oidcOrigin,
@@ -214,7 +212,7 @@ export class Client {
         );
       }
       this.authProvider = new OIDCClientCredentialsProvider({
-        clientPubKey: pubKey,
+        signingKey: this.keypair,
         clientId: clientConfig.clientId,
         clientSecret: clientConfig.clientSecret,
         oidcOrigin: clientConfig.oidcOrigin,
@@ -264,21 +262,22 @@ export class Client {
     if (rcaSource && asHtml) throw new Error('rca links should be used only with zip format');
     let entityObject: EntityObject | undefined;
 
-    const keypair: PemKeyPair = await this._getOrCreateKeypair(opts);
+    const keypair = await this._getOrCreateKeypair(opts);
     const policyObject = await this._createPolicyObject(scope);
     const kasPublicKey = await this._getOrFetchKasPubKey();
 
     if (this.eas) {
+      const publicKey = await cryptoPublicToPem(keypair.publicKey);
       entityObject = await this.eas.fetchEntityObject({
-        publicKey: keypair.publicKey,
+        publicKey,
       });
     }
 
     // TODO: Refactor underlying builder to remove some of this unnecessary config.
 
     const tdf = TDF.create()
-      .setPrivateKey(keypair.privateKey)
-      .setPublicKey(keypair.publicKey)
+      .setEncryptionKey(keypair)
+      .setSigningKey(keypair)
       .setEncryption({
         type: 'split',
         cipher: 'aes-256-gcm',
@@ -345,13 +344,14 @@ export class Client {
     const keypair = await this._getOrCreateKeypair(opts);
     let entityObject;
     if (this.eas) {
+      const publicKey = await cryptoPublicToPem(keypair.publicKey);
       entityObject = await this.eas.fetchEntityObject({
-        publicKey: keypair.publicKey,
+        publicKey,
       });
     }
     const tdf = TDF.create()
-      .setPrivateKey(keypair.privateKey)
-      .setPublicKey(keypair.publicKey)
+      .setEncryptionKey(keypair)
+      .setSigningKey(keypair)
       .setAuthProvider(this.authProvider);
     if (entityObject) {
       tdf.setEntity(entityObject);
@@ -406,7 +406,7 @@ export class Client {
    *
    * Additionally, update the auth injector with the (potentially new) pubkey
    */
-  async _getOrCreateKeypair(opts: undefined | { keypair: PemKeyPair }): Promise<PemKeyPair> {
+  async _getOrCreateKeypair(opts: undefined | { keypair: CryptoKeyPair }): Promise<CryptoKeyPair> {
     //If clientconfig has keypair, assume auth provider was already set up with pubkey and bail
     if (this.keypair) {
       return this.keypair;
@@ -414,7 +414,7 @@ export class Client {
 
     //If a keypair is being dynamically provided, then we've gotta (re)register
     // the pubkey with the auth provider
-    let keypair: PemKeyPair;
+    let keypair: CryptoKeyPair;
     if (opts) {
       keypair = opts.keypair;
     } else {
@@ -430,7 +430,7 @@ export class Client {
     // header parser barf. There are more subtle ways to solve this, but this works for now.
 
     if (this.authProvider && !isAppIdProviderCheck(this.authProvider)) {
-      await this.authProvider?.updateClientPublicKey(base64.encode(keypair.publicKey));
+      await this.authProvider?.updateClientPublicKey(keypair);
     }
     return keypair;
   }

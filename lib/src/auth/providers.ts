@@ -30,10 +30,10 @@ import { isBrowser } from '../utils';
  */
 export const clientSecretAuthProvider = async (
   clientConfig: ClientSecretCredentials,
-  clientPubKey?: string
+  signingKey?: CryptoKeyPair
 ): Promise<AuthProvider> => {
   return new OIDCClientCredentialsProvider({
-    clientPubKey: clientPubKey,
+    signingKey: signingKey,
     clientId: clientConfig.clientId,
     clientSecret: clientConfig.clientSecret,
     oidcOrigin: clientConfig.oidcOrigin,
@@ -58,10 +58,10 @@ export const clientSecretAuthProvider = async (
  */
 export const externalAuthProvider = async (
   clientConfig: ExternalJwtCredentials,
-  clientPubKey?: string
+  signingKey?: CryptoKeyPair
 ): Promise<AuthProvider> => {
   return new OIDCExternalJwtProvider({
-    clientPubKey: clientPubKey,
+    signingKey,
     clientId: clientConfig.clientId,
     externalJwt: clientConfig.externalJwt,
     oidcOrigin: clientConfig.oidcOrigin,
@@ -84,10 +84,10 @@ export const externalAuthProvider = async (
  */
 export const refreshAuthProvider = async (
   clientConfig: RefreshTokenCredentials,
-  clientPubKey?: string
+  signingKey?: CryptoKeyPair
 ): Promise<AuthProvider> => {
   return new OIDCRefreshTokenProvider({
-    clientPubKey: clientPubKey,
+    signingKey,
     clientId: clientConfig.clientId,
     externalRefreshToken: clientConfig.oidcRefreshToken,
     oidcOrigin: clientConfig.oidcOrigin,
@@ -97,12 +97,12 @@ export const refreshAuthProvider = async (
 /**
  * Generate an auth provder.
  * @param clientConfig OIDC client credentials
- * @param clientPubKey Client identification
+ * @param signingKey Client identification
  * @returns a promise for a new auth provider with the requested excahnge type
  */
 export const clientAuthProvider = async (
   clientConfig: OIDCCredentials,
-  clientPubKey?: string
+  signingKey?: CryptoKeyPair
 ): Promise<AuthProvider> => {
   if (!clientConfig.clientId) {
     throw new Error('Client ID must be provided to constructor');
@@ -119,13 +119,13 @@ export const clientAuthProvider = async (
     //and provide us with a valid refresh token/clientId obtained from that process.
     switch (clientConfig.exchange) {
       case 'refresh': {
-        return refreshAuthProvider(clientConfig, clientPubKey);
+        return refreshAuthProvider(clientConfig, signingKey);
       }
       case 'external': {
-        return externalAuthProvider(clientConfig, clientPubKey);
+        return externalAuthProvider(clientConfig, signingKey);
       }
       case 'client': {
-        return clientSecretAuthProvider(clientConfig, clientPubKey);
+        return clientSecretAuthProvider(clientConfig, signingKey);
       }
       default:
         throw new Error(`Unsupported client type`);
@@ -139,7 +139,7 @@ export const clientAuthProvider = async (
       'If using client credentials, must supply both client ID and client secret to constructor'
     );
   }
-  return clientSecretAuthProvider(clientConfig, clientPubKey);
+  return clientSecretAuthProvider(clientConfig, signingKey);
 };
 
 export * from './auth';

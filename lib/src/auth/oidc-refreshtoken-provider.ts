@@ -4,11 +4,11 @@ import { AuthProvider } from './auth';
 
 export class OIDCRefreshTokenProvider implements AuthProvider {
   protected oidcAuth: VirtruOIDC;
-  protected clientPubKey?: string;
+  protected signingKey?: CryptoKeyPair;
   protected externalRefreshToken?: string;
 
   constructor({
-    clientPubKey,
+    signingKey,
     clientId,
     externalRefreshToken,
     oidcOrigin,
@@ -21,17 +21,17 @@ export class OIDCRefreshTokenProvider implements AuthProvider {
     }
 
     this.oidcAuth = new VirtruOIDC({
-      clientPubKey,
+      signingKey,
       clientId,
       clientSecret,
       oidcOrigin,
     });
-    this.clientPubKey = clientPubKey;
+    this.signingKey = signingKey;
     this.externalRefreshToken = externalRefreshToken;
   }
 
-  async updateClientPublicKey(clientPubkey: string): Promise<void> {
-    await this.oidcAuth.refreshTokenClaimsWithClientPubkeyIfNeeded(clientPubkey);
+  async updateClientPublicKey(signingKey: CryptoKeyPair): Promise<void> {
+    await this.oidcAuth.refreshTokenClaimsWithClientPubkeyIfNeeded(signingKey);
   }
 
   async authorization(): Promise<string> {

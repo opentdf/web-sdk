@@ -160,8 +160,7 @@ export default class Client {
       throw new Error('Unexpected state');
     }
 
-    const signerPubKey = await cryptoPublicToPem(signer.publicKey);
-    await this.authProvider.updateClientPublicKey(base64.encode(signerPubKey));
+    await this.authProvider.updateClientPublicKey(signer);
   }
 
   /**

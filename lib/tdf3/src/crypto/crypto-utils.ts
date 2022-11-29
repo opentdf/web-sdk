@@ -1,3 +1,6 @@
+import { importX509 } from 'jose';
+import { base64 } from '../../../src/encodings';
+
 /**
  * Validates a specified key size
  * @param size in bits requested
@@ -43,6 +46,42 @@ export const formatAsPem = (base64KeyString: string, label: string): string => {
   }
   pemCert += `-----END ${label}-----\n`;
   return pemCert;
+};
+
+export const rsaPemAsCryptoKey = async (pem: string): Promise<CryptoKey> => {
+  const algoDomString = {
+    name: 'RSA-OAEP',
+    hash: {
+      name: 'SHA-256',
+    },
+  };
+
+  if (pem.includes('CERTIFICATE')) {
+    // FIXME Must match hash size of public key. We can (probably) guess by
+    // length? See: https://developer.mozilla.org/en-US/docs/Web/API/RsaHashedImportParams
+    return importX509(pem, 'RS256') as Promise<CryptoKey>;
+  }
+
+  // Web Crypto APIs don't work with PEM formatted strings
+  const publicKey = removePemFormatting(pem);
+
+  const keyBuffer = base64.decodeArrayBuffer(publicKey);
+  try {
+    return await crypto.subtle.importKey('spki', keyBuffer, algoDomString, false, ['encrypt']);
+  } catch (e) {
+    if (e.message && e.message.includes('ash')) {
+      const legacyAlgoDomString = {
+        name: 'RSA-OAEP',
+        hash: {
+          name: 'SHA-1',
+        },
+      };
+      return await crypto.subtle.importKey('spki', keyBuffer, legacyAlgoDomString, false, [
+        'encrypt',
+      ]);
+    }
+    throw e;
+  }
 };
 
 /**

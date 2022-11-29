@@ -3,7 +3,7 @@ import { EventEmitter } from 'events';
 import axios, { AxiosRequestConfig, Method } from 'axios';
 import crc32 from 'buffer-crc32';
 import { v4 } from 'uuid';
-import { exportSPKI, importPKCS8, importX509, SignJWT } from 'jose';
+import { exportSPKI, importX509, SignJWT } from 'jose';
 import { AnyTdfStream, makeStream } from './client/tdf-stream';
 import EntityObject from '../../../lib/src/tdf/EntityObject';
 
@@ -46,9 +46,10 @@ import { htmlWrapperTemplate } from './templates/index';
 // configurable
 // TODO: remove dependencies from ciphers so that we can open-source instead of relying on other Virtru libs
 import { AesGcmCipher } from './ciphers/index';
-import { PemKeyPair } from './crypto/declarations';
 import { AuthProvider, AppIdAuthProvider } from '../../src/auth/auth';
 import PolicyObject from '../../src/tdf/PolicyObject';
+import cryptoPublicToPem from '../../src/nanotdf-crypto/cryptoPublicToPem';
+import { rsaPemAsCryptoKey } from './crypto/crypto-utils';
 
 // TODO: input validation on manifest JSON
 const DEFAULT_SEGMENT_SIZE = 1024 * 1024;
@@ -105,8 +106,8 @@ class TDF extends EventEmitter {
   authProvider?: AuthProvider | AppIdAuthProvider;
   integrityAlgorithm: string;
   segmentIntegrityAlgorithm: string;
-  publicKey: string;
-  privateKey: string;
+  signingKey?: CryptoKeyPair;
+  encryptionKey?: CryptoKeyPair;
   attributeSet: AttributeSet;
   segmentSizeDefault: number;
 
@@ -114,8 +115,6 @@ class TDF extends EventEmitter {
     super();
 
     this.attributeSet = new AttributeSet();
-    this.publicKey = '';
-    this.privateKey = '';
     this.integrityAlgorithm = 'HS256';
     this.segmentIntegrityAlgorithm = this.integrityAlgorithm;
     this.segmentSizeDefault = DEFAULT_SEGMENT_SIZE;
@@ -133,7 +132,7 @@ class TDF extends EventEmitter {
     throw new Error(`Unsupported cipher [${type}]`);
   }
 
-  static async generateKeyPair(): Promise<PemKeyPair> {
+  static async generateKeyPair(): Promise<CryptoKeyPair> {
     return await cryptoService.generateKeyPair();
   }
 
@@ -273,7 +272,7 @@ class TDF extends EventEmitter {
     function createKeyAccess(
       type: string,
       kasUrl: string,
-      pubKey: string,
+      pubKey: CryptoKey,
       metadata: Metadata | null
     ) {
       switch (type) {
@@ -301,9 +300,10 @@ class TDF extends EventEmitter {
     if (attributeUrl) {
       const attr = this.attributeSet.get(attributeUrl);
       if (attr && attr.kasUrl && attr.pubKey) {
+        const pubKey = await rsaPemAsCryptoKey(attr.pubKey);
         loadKeyAccess(
           this.encryptionInformation,
-          createKeyAccess(type, attr.kasUrl, attr.pubKey, metadata)
+          createKeyAccess(type, attr.kasUrl, pubKey, metadata)
         );
         return this;
       }
@@ -311,21 +311,19 @@ class TDF extends EventEmitter {
 
     // if url and pulicKey are specified load the key access object with them
     if (url && publicKey) {
-      loadKeyAccess(
-        this.encryptionInformation,
-        createKeyAccess(type, url, await TDF.extractPemFromKeyString(publicKey), metadata)
-      );
+      const pubKey = await rsaPemAsCryptoKey(publicKey);
+      loadKeyAccess(this.encryptionInformation, createKeyAccess(type, url, pubKey, metadata));
       return this;
     }
 
     // Assume the default attribute is the source for kasUrl and pubKey
     const defaultAttr = this.attributeSet.getDefault();
     if (defaultAttr) {
-      const { pubKey, kasUrl } = defaultAttr;
-      if (pubKey && kasUrl) {
+      if (defaultAttr.pubKey && defaultAttr.kasUrl) {
+        const pubKey = await rsaPemAsCryptoKey(defaultAttr.pubKey);
         loadKeyAccess(
           this.encryptionInformation,
-          createKeyAccess(type, kasUrl, await TDF.extractPemFromKeyString(pubKey), metadata)
+          createKeyAccess(type, defaultAttr.kasUrl, pubKey, metadata)
         );
         return this;
       }
@@ -340,8 +338,8 @@ class TDF extends EventEmitter {
     return this;
   }
 
-  setPublicKey(publicKey: string) {
-    this.publicKey = publicKey;
+  setSigningKey(signingKey: CryptoKeyPair) {
+    this.signingKey = signingKey;
     return this;
   }
 
@@ -359,8 +357,8 @@ class TDF extends EventEmitter {
     return this;
   }
 
-  setPrivateKey(privateKey: string) {
-    this.privateKey = privateKey;
+  setEncryptionKey(encryptionKey: CryptoKeyPair) {
+    this.encryptionKey = encryptionKey;
     return this;
   }
 
@@ -465,6 +463,10 @@ class TDF extends EventEmitter {
   // ignoreType if true skips the key access type check when syncing
   async upsert(unsavedManifest: Manifest, ignoreType = false): Promise<UpsertResponse> {
     const { keyAccess, policy } = unsavedManifest.encryptionInformation;
+    if (!this.signingKey) {
+      throw new IllegalArgumentError('No signing key configured');
+    }
+    const signingKey = this.signingKey;
     const isAppIdProvider = this.authProvider && isAppIdProviderCheck(this.authProvider);
     return Promise.all(
       keyAccess.map(async (keyAccessObject) => {
@@ -494,8 +496,6 @@ class TDF extends EventEmitter {
           httpReq.headers.Authorization = await this.authProvider.authorization();
         }
 
-        const pkKeyLike = await importPKCS8(this.privateKey, 'RS256');
-
         // Create a PoP token by signing the body so KAS knows we actually have a private key
         // Expires in 60 seconds
         httpReq.data[isAppIdProvider ? 'authToken' : 'clientPayloadSignature'] = await new SignJWT(
@@ -504,7 +504,7 @@ class TDF extends EventEmitter {
           .setProtectedHeader({ alg: 'RS256' })
           .setIssuedAt()
           .setExpirationTime('2h')
-          .sign(pkKeyLike);
+          .sign(signingKey.privateKey);
 
         try {
           const response = await axios.post(url, httpReq.data, { headers: httpReq.headers });
@@ -792,6 +792,11 @@ class TDF extends EventEmitter {
 
   async unwrapKey(manifest: Manifest) {
     const { keyAccess } = manifest.encryptionInformation;
+    if (!this.signingKey || !this.encryptionKey) {
+      throw new IllegalArgumentError('Encryption keys not configured');
+    }
+    const signingKey = this.signingKey;
+    const encryptionKey = this.encryptionKey;
     let responseMetadata;
     const isAppIdProvider = this.authProvider && isAppIdProviderCheck(this.authProvider);
     // Get key access information to know the KAS URLS
@@ -804,42 +809,42 @@ class TDF extends EventEmitter {
         }
         const url = `${keySplitInfo.url}/${isAppIdProvider ? '' : 'v2'}/rewrap`;
 
+        const encryptionPublicKey = await cryptoPublicToPem(encryptionKey.publicKey);
+
         const requestBodyStr = JSON.stringify({
           algorithm: 'RS256',
           keyAccess: keySplitInfo,
+          clientPublicKey: encryptionPublicKey,
           policy: manifest.encryptionInformation.policy,
-          clientPublicKey: this.publicKey,
         });
 
         const jwtPayload = { requestBody: requestBodyStr };
-        const pkKeyLike = await importPKCS8(this.privateKey, 'RS256');
-        const signedRequestToken = await new SignJWT(isAppIdProvider ? {} : jwtPayload)
+        const signedRequestToken = await new SignJWT(jwtPayload)
           .setProtectedHeader({ alg: 'RS256' })
           .setIssuedAt()
           .setExpirationTime('2h')
-          .sign(pkKeyLike);
+          .sign(signingKey.privateKey);
 
-        const requestBody = {
-          signedRequestToken,
-        };
+        let requestBody;
+        if (isAppIdProvider) {
+          requestBody = {
+            keyAccess: keySplitInfo,
+            policy: manifest.encryptionInformation.policy,
+            entity: {
+              ...this.entity,
+              publicKey: encryptionPublicKey,
+            },
+            authToken: signedRequestToken,
+          };
+        } else {
+          requestBody = {
+            signedRequestToken,
+          };
+        }
 
         // Create a PoP token by signing the body so KAS knows we actually have a private key
         // Expires in 60 seconds
-        const httpReq = this.buildRequest(
-          'POST',
-          url,
-          isAppIdProvider
-            ? {
-                keyAccess: keySplitInfo,
-                policy: manifest.encryptionInformation.policy,
-                entity: {
-                  ...this.entity,
-                  publicKey: this.publicKey,
-                },
-                authToken: signedRequestToken,
-              }
-            : requestBody
-        );
+        const httpReq = this.buildRequest('POST', url, requestBody);
 
         if (isAppIdProviderCheck(this.authProvider)) {
           await this.authProvider.injectAuth(httpReq);
@@ -856,7 +861,7 @@ class TDF extends EventEmitter {
           const key = Binary.fromString(base64.decode(entityWrappedKey));
           const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(
             key,
-            this.privateKey
+            encryptionKey.privateKey
           );
           this.emit('rewrap', metadata);
           return decryptedKeyBinary.asBuffer();
