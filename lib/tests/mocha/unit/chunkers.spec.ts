@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import fs from 'fs';
+import fs, { PathLike, ReadStream, Stats } from 'fs';
 import { createSandbox, SinonSandbox } from 'sinon';
 import { createServer, Server } from 'http';
 import send from 'send';
@@ -24,10 +24,6 @@ beforeEach(() => {
 afterEach(() => {
   box.restore();
 });
-type ByteRange = {
-  start?: number;
-  end?: number;
-};
 
 describe('chunkers', () => {
   describe('fromBuffer', () => {
@@ -67,12 +63,11 @@ describe('chunkers', () => {
     const path = 'file://local/file';
     beforeEach(() => {
       const statSyncOriginal = fs.statSync;
-      // @ts-ignore
-      box.stub(fs, 'statSync').callsFake((p: string) => {
+      box.stub(fs, 'statSync').callsFake((p: PathLike) => {
         switch (p) {
           case 'file://local/file':
           case 'file://fails':
-            return { size: 256 };
+            return { size: 256 } as Stats;
           case 'file://not/found':
             throw new Error('File not found');
           default:
@@ -81,31 +76,31 @@ describe('chunkers', () => {
       });
 
       const readFileOriginal = fs.readFile;
-      box
-        .stub(fs, 'readFile') // @ts-ignore
-        .callsFake((p: string, f: (err?: unknown, data?: Buffer) => void) => {
-          switch (p) {
-            case 'file://local/file':
-              f(undefined, Buffer.from(range(256)));
-              break;
-            case 'file://fails':
-              f(new Error('I/O Error'), undefined);
-              break;
-            case 'file://not/found':
-              f(new Error('File not found'), undefined);
-              break;
-            default:
-              readFileOriginal(path, f);
-          }
-        });
+      box.stub(fs, 'readFile').callsFake((path, callback) => {
+        switch (path) {
+          case 'file://local/file':
+            callback(null, Buffer.from(range(256)));
+            break;
+          case 'file://fails':
+            callback(new Error('I/O Error'), Buffer.alloc(0));
+            break;
+          case 'file://not/found':
+            callback(new Error('File not found'), Buffer.alloc(0));
+            break;
+          default:
+            readFileOriginal(path, callback);
+        }
+      });
 
       const createReadStreamOriginal = fs.createReadStream;
-      // @ts-ignore
-      box.stub(fs, 'createReadStream').callsFake((p: string, rg?: ByteRange) => {
-        let { start, end } = rg || { start: undefined, end: undefined };
+      box.stub(fs, 'createReadStream').callsFake((p, rg?) => {
+        if (typeof rg === 'string') {
+          throw new Error();
+        }
+        let { start = 0, end = 255 } = rg || { start: undefined, end: undefined };
         switch (p) {
           case 'file://local/file':
-            if (!start && start !== 0) {
+            if (!start) {
               start = 0;
             }
             if (!end) {
@@ -119,7 +114,6 @@ describe('chunkers', () => {
               on: (e: string, f: (...args: any[]) => void) => {
                 switch (e) {
                   case 'data':
-                    // @ts-ignore
                     f(Buffer.from(range(start, end)));
                     return this;
                   case 'end':
@@ -131,7 +125,7 @@ describe('chunkers', () => {
                     throw new Error();
                 }
               },
-            };
+            } as unknown as ReadStream;
           case 'file://fails':
             return {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -148,11 +142,11 @@ describe('chunkers', () => {
                     throw new Error();
                 }
               },
-            };
+            } as unknown as ReadStream;
           case 'file://not/found':
             throw new Error('File not found');
           default:
-            createReadStreamOriginal(path, rg);
+            return createReadStreamOriginal(path, rg);
         }
       });
     });
@@ -219,9 +213,7 @@ describe('chunkers', () => {
       fs.writeFileSync(testFile, b);
       // response to all requests with this tdf file
       server = createServer((req, res) => {
-        // @ts-ignore
-        if (req.url.endsWith('error')) {
-          // @ts-ignore
+        if (req.url?.endsWith('error')) {
           send(req, req.url)
             .on('stream', (stream: any) => {
               stream.on('open', () => {
@@ -240,8 +232,13 @@ describe('chunkers', () => {
         server.unref();
       });
     });
-    // @ts-ignore
-    const urlFor = (p) => `http://localhost:${server.address().port}/${p}`;
+    const urlFor = (p: string) => {
+      const address = server.address();
+      if (typeof address === 'string') {
+        return `${address}/${p}`;
+      }
+      return `http://localhost:${address?.port}/${p}`;
+    };
     it('all', async () => {
       const c: Chunker = fromUrl(urlFor(path));
       const all: Uint8Array = await c();

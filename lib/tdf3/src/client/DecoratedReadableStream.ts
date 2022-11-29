@@ -10,7 +10,7 @@ import { Options } from '../utils/aws-lib-storage/types';
 import Metadata from '../tdf';
 
 import { EventEmitter } from 'events';
-import { Manifest } from '../models/index';
+import { Manifest, UpsertResponse } from '../models/index';
 
 export async function streamToBuffer(stream: ReadableStream<Uint8Array>): Promise<Buffer> {
   const accumulator = await new Response(stream).arrayBuffer();
@@ -27,7 +27,7 @@ export abstract class DecoratedReadableStream {
   metadata?: Metadata;
   contentLength?: number;
   manifest: Manifest;
-  // upsertResponse: void[];
+  upsertResponse?: UpsertResponse;
 
   constructor(byteLimit: number, underlyingSource: UnderlyingSource) {
     this.stream = new ReadableStream(underlyingSource, { highWaterMark: byteLimit });

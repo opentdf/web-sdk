@@ -1,5 +1,4 @@
 /* eslint-disable no-async-promise-executor */
-// @ts-nocheck
 import { EventEmitter } from 'events';
 import axios, { AxiosRequestConfig, Method } from 'axios';
 import crc32 from 'buffer-crc32';
@@ -15,6 +14,7 @@ import {
   Policy,
   Remote as KeyAccessRemote,
   SplitKey,
+  UpsertResponse,
   Wrapped as KeyAccessWrapped,
 } from './models/index';
 import { base64 } from '../../src/encodings/index';
@@ -22,13 +22,13 @@ import * as cryptoService from './crypto/index';
 import { base64ToBuffer, fromUrl, keyMerge, ZipReader, ZipWriter, Chunker } from './utils/index';
 import { Binary } from './binary';
 import {
+  IllegalArgumentError,
   KasDecryptError,
   KasUpsertError,
   KeyAccessError,
   KeySyncError,
   ManifestIntegrityError,
   PolicyIntegrityError,
-  TdfCorruptError,
   TdfDecryptError,
   TdfPayloadExtractionError,
 } from './errors';
@@ -116,7 +116,7 @@ class TDF extends EventEmitter {
     return new TDF();
   }
 
-  static createCipher(type) {
+  static createCipher(type: string) {
     if (type === 'aes-256-gcm') {
       return new AesGcmCipher(cryptoService);
     }
@@ -190,7 +190,7 @@ class TDF extends EventEmitter {
     // Skip the public key extraction if we find that the KAS url provides a
     // PEM-encoded key instead of certificate
     if (keyString.includes('CERTIFICATE')) {
-      const cert = await importX509(keyString);
+      const cert = await importX509(keyString, 'RS256');
       pem = await exportSPKI(cert);
     }
 
@@ -256,7 +256,7 @@ class TDF extends EventEmitter {
    * @param  {String? Object?} options.metadata - Metadata. Appears to be dead code.
    * @return {<TDF>}- this instance
    */
-  async addKeyAccess({ type, url, publicKey, attributeUrl, metadata = '' }: AddKeyAccess) {
+  async addKeyAccess({ type, url, publicKey, attributeUrl, metadata = null }: AddKeyAccess) {
     // TODO - run down metadata parameter. Clean it out if it isn't used this way anymore.
 
     /** Internal function to keep it DRY */
@@ -353,13 +353,6 @@ class TDF extends EventEmitter {
     return this;
   }
 
-  // this must be binary!
-  addContent(content, mimeType) {
-    this.content = content;
-    this.mimeType = mimeType;
-    return this;
-  }
-
   addContentStream(contentStream: ReadableStream<Uint8Array>, mimeType?: string) {
     this.contentStream = contentStream;
     this.mimeType = mimeType;
@@ -419,7 +412,7 @@ class TDF extends EventEmitter {
           payloadBinary.asBuffer().toString()
         );
       default:
-        throw new TdfCorruptError(`Unsupported signature alg [${algorithmType}]`);
+        throw new IllegalArgumentError(`Unsupported signature alg [${algorithmType}]`);
     }
   }
 
@@ -446,7 +439,7 @@ class TDF extends EventEmitter {
 
   // Provide an upsert of key information via each KAS
   // ignoreType if true skips the key access type check when syncing
-  async upsert(unsavedManifest: Manifest, ignoreType = false) {
+  async upsert(unsavedManifest: Manifest, ignoreType = false): Promise<UpsertResponse> {
     const { keyAccess, policy } = unsavedManifest.encryptionInformation;
     return Promise.all(
       keyAccess.map(async (keyAccessObject) => {
@@ -481,7 +474,7 @@ class TDF extends EventEmitter {
           .sign(pkKeyLike);
 
         try {
-          await axios.post(url, httpReq.data, { headers: httpReq.headers });
+          const response = await axios.post(url, httpReq.data, { headers: httpReq.headers });
 
           // Remove additional properties which were needed to sync, but not that we want to save to
           // the manifest
@@ -496,7 +489,7 @@ class TDF extends EventEmitter {
               JSON.stringify({ uuid: decodedPolicy.uuid })
             );
           }
-          return data;
+          return response.data;
         } catch (e) {
           throw new KasUpsertError('Unable to perform upsert operation on the KAS', e);
         }
@@ -505,6 +498,13 @@ class TDF extends EventEmitter {
   }
 
   async writeStream(byteLimit: number, isRcaSource: boolean): Promise<AnyTdfStream> {
+    if (!this.contentStream) {
+      throw new IllegalArgumentError('No input stream defined');
+    }
+    if (!this.encryptionInformation) {
+      throw new IllegalArgumentError('No encryption type specified');
+    }
+    const encryptionInformation = this.encryptionInformation;
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this;
     const segmentInfos: Segment[] = [];
@@ -546,7 +546,8 @@ class TDF extends EventEmitter {
       kv.unwrappedKeyIvBinary
     );
 
-    this.manifest = await this._generateManifest(isRcaSource ? kv : keyInfo);
+    const manifest = await this._generateManifest(isRcaSource ? kv : keyInfo);
+    this.manifest = manifest;
 
     // For all remote key access objects, sync its policy
     if (!this.manifest) {
@@ -631,8 +632,6 @@ class TDF extends EventEmitter {
           crcCounter = 0;
           fileByteCount = 0;
 
-          const { manifest } = self;
-
           // hash the concat of all hashes
           const payloadSigStr = await self.getSignature(
             keyInfo.unwrappedKeyBinary,
@@ -698,28 +697,31 @@ class TDF extends EventEmitter {
       plaintextStream.upsertResponse = upsertResponse;
       plaintextStream.tdfSize = totalByteCount;
       plaintextStream.KEK = kek.payload.asBuffer().toString('base64');
-      plaintextStream.algorithm = this.manifest.encryptionInformation.method.algorithm;
+      plaintextStream.algorithm = manifest.encryptionInformation.method.algorithm;
     }
 
     return plaintextStream;
 
     // nested helper fn's
-    function getHeader(filename) {
+    function getHeader(filename: string) {
       return zipWriter.getLocalFileHeader(filename, 0, 0, 0);
     }
 
-    function _countChunk(chunk) {
+    function _countChunk(chunk: string | Buffer) {
       totalByteCount += chunk.length;
       if (totalByteCount > byteLimit) {
         throw new Error(`Safe byte limit (${byteLimit}) exceeded`);
       }
+      // NOTE: There is a bug in the type definitions for crc32 where they are missing
+      // the Partial. See https://github.com/DefinitelyTyped/DefinitelyTyped/pull/63411
+      // @ts-expect-error Error in type def.
       crcCounter = crc32.unsigned(chunk, crcCounter);
       fileByteCount += chunk.length;
     }
 
-    async function _encryptAndCountSegment(chunk) {
+    async function _encryptAndCountSegment(chunk: Buffer) {
       // Don't pass in an IV here. The encrypt function will generate one for you, ensuring that each segment has a unique IV.
-      const encryptedResult = await self.encryptionInformation.encrypt(
+      const encryptedResult = await encryptionInformation.encrypt(
         Binary.fromBuffer(chunk),
         keyInfo.unwrappedKeyBinary
       );
@@ -871,10 +873,9 @@ class TDF extends EventEmitter {
       this.manifest.encryptionInformation.method.algorithm.toLowerCase()
     );
 
-    const encryptedSegmentSizeDefault =
-      parseInt(
-        this.manifest.encryptionInformation.integrityInformation.encryptedSegmentSizeDefault
-      ) || DEFAULT_SEGMENT_SIZE;
+    const defaultSegmentSize =
+      this.manifest?.encryptionInformation?.integrityInformation?.encryptedSegmentSizeDefault || 0;
+    const encryptedSegmentSizeDefault = defaultSegmentSize || DEFAULT_SEGMENT_SIZE;
 
     // TODO: Don't await on each segment serially, instead use event-driven approach to prevent deadlock.
     // See: https://github.com/jherwitz/tdf3-js/blob/3ec3c8a3b8c5cecb6f6976b540d5ecde21183c8c/src/tdf.js#L739
@@ -884,8 +885,12 @@ class TDF extends EventEmitter {
     const that = this;
     const outputStream = makeStream(this.segmentSizeDefault, {
       async pull(controller: ReadableStreamDefaultController) {
-        while (segments.length && !!controller.desiredSize && controller.desiredSize >= 0) {
+        while (!!controller.desiredSize && controller.desiredSize >= 0) {
           const segment = segments.shift();
+          if (!segment) {
+            // Popped past the end
+            break;
+          }
           const encryptedSegmentSize = segment.encryptedSegmentSize || encryptedSegmentSizeDefault;
           const encryptedChunk = await zipReader.getPayloadSegment(
             centralDirectory,
