@@ -13,7 +13,7 @@ jobs:
           cache-dependency-path: './lib/package-lock.json'
       - run: make format
       - name: ignore package-lock changes
-        run: git checkout -- {cli,web-app}/package-lock.json
+        run: git restore "*/package-lock.json"
       - name: Check that files have been formatted before PR submission
         run: git diff-files --quiet --ignore-submodules
         if: ${{ github.event.pull_request.head.repo.full_name != 'opentdf/client-web' }}
