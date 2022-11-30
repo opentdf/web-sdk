@@ -25,7 +25,9 @@ export function arrayBufferToBuffer(ab: ArrayBuffer): Buffer {
   return buf;
 }
 
-export function isAppIdProviderCheck(provider: AuthProvider | AppIdAuthProvider): provider is AppIdAuthProvider {
+export function isAppIdProviderCheck(
+  provider: AuthProvider | AppIdAuthProvider
+): provider is AppIdAuthProvider {
   return (provider as AppIdAuthProvider).injectAuth !== undefined;
 }
 

@@ -165,7 +165,8 @@ export class Client {
     if (this.authProvider && isAppIdProviderCheck(this.authProvider)) {
       this.eas = new EAS({
         authProvider: this.authProvider,
-        endpoint: clientConfig.entityObjectEndpoint || `${clientConfig.easEndpoint}/api/entityobject`,
+        endpoint:
+          clientConfig.entityObjectEndpoint || `${clientConfig.easEndpoint}/api/entityobject`,
       });
     }
 
@@ -261,7 +262,7 @@ export class Client {
     windowSize = DEFAULT_SEGMENT_SIZE,
   }: EncryptParams): Promise<AnyTdfStream | null> {
     if (rcaSource && asHtml) throw new Error('rca links should be used only with zip format');
-    let entityObject : EntityObject | undefined;
+    let entityObject: EntityObject | undefined;
 
     const keypair: PemKeyPair = await this._getOrCreateKeypair(opts);
     const policyObject = await this._createPolicyObject(scope);
@@ -289,7 +290,7 @@ export class Client {
       .setPolicy(policyObject)
       .setAuthProvider(this.authProvider);
     if (entityObject) {
-      tdf.setEntity(entityObject)
+      tdf.setEntity(entityObject);
     }
     await tdf.addKeyAccess({
       type: offline ? 'wrapped' : 'remote',

@@ -147,7 +147,7 @@ export class AttributeSet {
    * @param  {Object} jwtAttribute - Attribute object in JWT form.
    * @return {Object} - Decrypted and added attribute object
    */
-  addJwtAttribute(jwtAttribute: { jwt: string }){
+  addJwtAttribute(jwtAttribute: { jwt: string }) {
     const { jwt: attrJwt } = jwtAttribute;
     // Can't verify the JWT because the client does not have the easPublicKey,
     // but the contents of the JWT can be decoded.

@@ -20,7 +20,15 @@ import {
 } from './models/index';
 import { base64 } from '../../src/encodings/index';
 import * as cryptoService from './crypto/index';
-import { base64ToBuffer, fromUrl, keyMerge, ZipReader, ZipWriter, Chunker, isAppIdProviderCheck } from './utils/index';
+import {
+  base64ToBuffer,
+  fromUrl,
+  keyMerge,
+  ZipReader,
+  ZipWriter,
+  Chunker,
+  isAppIdProviderCheck,
+} from './utils/index';
 import { Binary } from './binary';
 import {
   KasDecryptError,
@@ -475,7 +483,7 @@ class TDF extends EventEmitter {
           return;
         }
 
-        const url = `${keyAccessObject.url}/${isAppIdProvider? '' : 'v2'}/upsert`;
+        const url = `${keyAccessObject.url}/${isAppIdProvider ? '' : 'v2'}/upsert`;
 
         //TODO I dont' think we need a body at all for KAS requests
         // Do we need ANY of this if it's already embedded in the EO in the Bearer OIDC token?
@@ -496,7 +504,9 @@ class TDF extends EventEmitter {
 
         // Create a PoP token by signing the body so KAS knows we actually have a private key
         // Expires in 60 seconds
-        httpReq.data[isAppIdProvider ? 'authToken' : 'clientPayloadSignature'] = await new SignJWT(isAppIdProvider ? {} :httpReq.data)
+        httpReq.data[isAppIdProvider ? 'authToken' : 'clientPayloadSignature'] = await new SignJWT(
+          isAppIdProvider ? {} : httpReq.data
+        )
           .setProtectedHeader({ alg: 'RS256' })
           .setIssuedAt()
           .setExpirationTime('2h')
@@ -791,7 +801,7 @@ class TDF extends EventEmitter {
 
     const rewrappedKeys = await Promise.all(
       keyAccess.map(async (keySplitInfo) => {
-        const url = `${keySplitInfo.url}/${isAppIdProvider? '' : 'v2'}/rewrap`;
+        const url = `${keySplitInfo.url}/${isAppIdProvider ? '' : 'v2'}/rewrap`;
 
         const requestBodyStr = JSON.stringify({
           algorithm: 'RS256',
@@ -802,7 +812,7 @@ class TDF extends EventEmitter {
 
         const jwtPayload = { requestBody: requestBodyStr };
         const pkKeyLike = await importPKCS8(this.privateKey, 'RS256');
-        const signedRequestToken = await new SignJWT(isAppIdProvider? {} :jwtPayload)
+        const signedRequestToken = await new SignJWT(isAppIdProvider ? {} : jwtPayload)
           .setProtectedHeader({ alg: 'RS256' })
           .setIssuedAt()
           .setExpirationTime('2h')
@@ -819,14 +829,14 @@ class TDF extends EventEmitter {
           url,
           isAppIdProvider
             ? {
-              keyAccess: keySplitInfo,
-              policy: manifest.encryptionInformation.policy,
-              entity: {
-                ...this.entity,
-                publicKey: this.publicKey,
-              },
-              authToken: signedRequestToken,
-            }
+                keyAccess: keySplitInfo,
+                policy: manifest.encryptionInformation.policy,
+                entity: {
+                  ...this.entity,
+                  publicKey: this.publicKey,
+                },
+                authToken: signedRequestToken,
+              }
             : requestBody
         );
 
