@@ -1,6 +1,6 @@
 import VirtruOIDC from './virtru-oidc';
 import { IOIDCExternalJwtProvider } from '../nanotdf/interfaces/OIDCInterface';
-import { AuthProvider } from './auth';
+import { AuthProvider, HttpRequest, withHeaders } from './auth';
 
 export class OIDCExternalJwtProvider implements AuthProvider {
   oidcAuth: VirtruOIDC;
@@ -26,7 +26,7 @@ export class OIDCExternalJwtProvider implements AuthProvider {
     this.oidcAuth.refreshTokenClaimsWithClientPubkeyIfNeeded(signingKey);
   }
 
-  async authorization(): Promise<string> {
+  async injectAuth(httpReq: HttpRequest): Promise<HttpRequest> {
     //If we've been seeded with an externally-issued JWT, consume it
     //and exchange it for a Virtru bearer token.
     if (this.externalJwt) {
@@ -34,8 +34,6 @@ export class OIDCExternalJwtProvider implements AuthProvider {
       delete this.externalJwt;
     }
     const accessToken = this.oidcAuth.getCurrentAccessToken();
-
-    // NOTE It is generally best practice to keep headers under 8KB
-    return `Bearer ${accessToken}`;
+    return withHeaders(httpReq, { Authorization: `Bearer ${accessToken}` });
   }
 }

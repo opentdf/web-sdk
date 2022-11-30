@@ -210,13 +210,11 @@ export default class Client {
         signedRequestToken: await authToken(this.requestSignerKeyPair.privateKey, jwtPayload),
       };
 
-      const authHeader = await this.authProvider.authorization(); // authHeader is a string of the form "Bearer token"
-
       // Wrapped
       const wrappedKey = await fetchWrappedKey(
         kasRewrapUrl,
         requestBody,
-        authHeader,
+        this.authProvider,
         clientVersion
       );
 

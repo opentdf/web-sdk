@@ -1,4 +1,4 @@
-import { AuthProvider } from './auth';
+import { AuthProvider, HttpRequest, withHeaders } from './auth';
 import { IOIDCClientCredentialsProvider } from '../nanotdf/interfaces/OIDCInterface';
 import VirtruOIDC from './virtru-oidc';
 
@@ -20,14 +20,12 @@ export class OIDCClientCredentialsProvider implements AuthProvider {
     });
   }
 
-  async updateClientPublicKey(signingKey: CryptoKeyPair): Promise<void> {
-    await this.oidcAuth.refreshTokenClaimsWithClientPubkeyIfNeeded(signingKey);
+  async injectAuth(httpReq: HttpRequest): Promise<HttpRequest> {
+    const accessToken = await this.oidcAuth.getCurrentAccessToken();
+    return withHeaders(httpReq, { Authorization: `Bearer ${accessToken}` });
   }
 
-  async authorization(): Promise<string> {
-    const accessToken = await this.oidcAuth.getCurrentAccessToken();
-
-    // NOTE It is generally best practice to keep headers under 8KB
-    return `Bearer ${accessToken}`;
+  async updateClientPublicKey(signingKey: CryptoKeyPair): Promise<void> {
+    await this.oidcAuth.refreshTokenClaimsWithClientPubkeyIfNeeded(signingKey);
   }
 }

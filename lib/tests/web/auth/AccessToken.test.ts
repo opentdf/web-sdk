@@ -1,6 +1,5 @@
 import { assert, expect } from '@esm-bundle/chai';
 import { fake } from 'sinon';
-import { generateKeyPair } from '../../../src/nanotdf-crypto';
 import { AccessToken, type AccessTokenResponse } from '../../../src/auth/AccessToken.js';
 import cryptoPublicToPem from '../../../src/nanotdf-crypto/cryptoPublicToPem.js';
 
@@ -70,7 +69,11 @@ describe('AccessToken', () => {
   describe('exchanging refresh token for token with TDF claims', () => {
     describe('using client credentials', () => {
       it('passes client creds with refresh grant type to token endpoint', async () => {
-        const mockKeyPair = await generateKeyPair();
+        const mockKeyPair = await crypto.subtle.generateKey(
+          { name: 'ECDSA', namedCurve: 'P-256' },
+          true,
+          ['sign']
+        );
         const mockPublicKey = await cryptoPublicToPem(mockKeyPair.publicKey);
         const mf = mockFetch({ access_token: 'fdfsdffsdf' });
         const accessToken = new AccessToken(
