@@ -156,13 +156,11 @@ export class AttributeSet {
     // JWT payloads contain many things, incluing .iat and .exp. This
     // extraneous material should be stripped away before adding the
     // attribute to the attributeSet.
-    const { attribute, displayName, pubKey, kasUrl } = attrObjPayload;
-    const attrObj = { attribute, displayName, pubKey, kasUrl, jwt: attrJwt };
+    const { attribute, displayName, pubKey, kasUrl } = attrObjPayload as AttributeObject;
+    const attrObj: AttributeObject = { attribute, displayName, pubKey, kasUrl, jwt: attrJwt };
     if (attrObjPayload.isDefault) {
-      // @ts-ignore
-      attrObj.isDefault = attrObjPayload.isDefault;
+      attrObj.isDefault = !!attrObjPayload.isDefault;
     }
-    // @ts-ignore
     return this.addAttribute(attrObj);
   }
 }
