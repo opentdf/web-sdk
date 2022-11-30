@@ -21,5 +21,5 @@ for x in lib cli cli-commonjs web-app; do
 done
 
 if [[ "${GITHUB_ACTION}" ]]; then
-  echo "::set-output name=TARGET_VERSION::$expected_version"
+  echo "TARGET_VERSION=$expected_version" >> $GITHUB_OUTPUT
 fi

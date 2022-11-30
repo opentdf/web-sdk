@@ -1,5 +1,5 @@
 {
   "extension": ["ts"],
-  "spec": ["tdf3/test/**/*.spec.+(js|ts)"],
-  "require": "tdf3/test/babel-register.js"
+  "spec": ["tests/mocha/**/*.spec.+(js|ts)"],
+  "require": "tests/mocha/babel-register.js"
 }
