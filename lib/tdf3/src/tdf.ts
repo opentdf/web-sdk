@@ -355,7 +355,7 @@ class TDF extends EventEmitter {
     this.entity = entity;
     // Harvest the attributes from this entity object
     // Don't wait for this promise to resolve.
-    this.entity.attributes.map(this.attributeSet.addJwtAttribute);
+    this.entity.attributes.forEach(this.attributeSet.addJwtAttribute);
     return this;
   }
 
