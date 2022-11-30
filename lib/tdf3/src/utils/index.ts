@@ -28,7 +28,7 @@ export function arrayBufferToBuffer(ab: ArrayBuffer): Buffer {
 export function isAppIdProviderCheck(
   provider: AuthProvider | AppIdAuthProvider
 ): provider is AppIdAuthProvider {
-  return (provider as AppIdAuthProvider).injectAuth !== undefined;
+  return (provider as AppIdAuthProvider)._getName !== undefined;
 }
 
 export function bufferToArrayBuffer(buf: Buffer): ArrayBuffer {

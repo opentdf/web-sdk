@@ -35,7 +35,7 @@ class Eas {
     endpoint: string;
     requestFunctor?: RequestFunctor;
   }) {
-    this.authProvider = authProvider.injectAuth;
+    this.authProvider = authProvider.withCreds;
     this.endpoint = endpoint;
     this.requestFunctor = requestFunctor || request;
   }

@@ -68,7 +68,7 @@ export interface AuthProvider {
    *
    * @param httpReq - Required. An http request pre-populated with the data public key.
    */
-  injectAuth(httpReq: HttpRequest): Promise<HttpRequest>;
+  withCreds(httpReq: HttpRequest): Promise<HttpRequest>;
 }
 
 /**
@@ -94,7 +94,7 @@ export interface AppIdAuthProvider {
    *
    * @param httpReq - Required. An http request pre-populated with the data public key.
    */
-  injectAuth(httpReq: HttpRequest): Promise<HttpRequest>;
+  withCreds(httpReq: HttpRequest): Promise<HttpRequest>;
 
   _getName(): string;
 }

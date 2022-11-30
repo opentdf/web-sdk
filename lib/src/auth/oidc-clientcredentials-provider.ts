@@ -1,4 +1,4 @@
-import { AuthProvider, HttpRequest, withHeaders } from './auth';
+import { AuthProvider, HttpRequest } from './auth';
 import { IOIDCClientCredentialsProvider } from '../nanotdf/interfaces/OIDCInterface';
 import VirtruOIDC from './virtru-oidc';
 
@@ -20,9 +20,8 @@ export class OIDCClientCredentialsProvider implements AuthProvider {
     });
   }
 
-  async injectAuth(httpReq: HttpRequest): Promise<HttpRequest> {
-    const accessToken = await this.oidcAuth.getCurrentAccessToken();
-    return withHeaders(httpReq, { Authorization: `Bearer ${accessToken}` });
+  async withCreds(httpReq: HttpRequest): Promise<HttpRequest> {
+    return this.oidcAuth.withCreds(httpReq);
   }
 
   async updateClientPublicKey(signingKey: CryptoKeyPair): Promise<void> {

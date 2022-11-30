@@ -22,7 +22,7 @@ export async function fetchWrappedKey(
   authProvider: AuthProvider,
   clientVersion: string
 ): Promise<RewrapResponse> {
-  const req = await authProvider.injectAuth({
+  const req = await authProvider.withCreds({
     url,
     method: 'post',
     headers: {

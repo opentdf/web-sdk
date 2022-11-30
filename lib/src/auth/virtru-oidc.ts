@@ -1,6 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 import { AccessToken, AccessTokenConfig } from './AccessToken';
 import { IVirtruOIDC } from '../nanotdf/interfaces/OIDCInterface';
+import { HttpRequest, withHeaders } from './auth';
 
 /**
  * Class that provides OIDC functionality to auth providers.
@@ -128,5 +129,19 @@ export default class VirtruOIDC {
     const cat = await this.accessTokenGetter.exchangeJwt(externalJwt);
     this.currentAccessToken = cat;
     return cat;
+  }
+
+  async withCreds(httpReq: HttpRequest): Promise<HttpRequest> {
+    if (this.signingKey) {
+      const { default: dpopFn } = await import('dpop');
+      const [dpopToken, accessToken] = await Promise.all([
+        dpopFn(this.signingKey, httpReq.url, httpReq.method),
+        this.getCurrentAccessToken(),
+      ]);
+      // TODO: Consider: only set DPoP if cnf.jkt is present in access token?
+      return withHeaders(httpReq, { Authorization: `Bearer ${accessToken}`, DPoP: dpopToken });
+    }
+    const accessToken = await this.getCurrentAccessToken();
+    return withHeaders(httpReq, { Authorization: `Bearer ${accessToken}` });
   }
 }
