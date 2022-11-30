@@ -1,3 +1,5 @@
+import { AppIdAuthProvider, AuthProvider } from '../../../src/auth/auth';
+
 export { ZipReader, readUInt64LE } from './zip-reader';
 export { ZipWriter } from './zip-writer';
 export { keySplit, keyMerge } from './keysplit';
@@ -21,6 +23,12 @@ export function arrayBufferToBuffer(ab: ArrayBuffer): Buffer {
     buf[i] = view[i];
   }
   return buf;
+}
+
+export function isAppIdProviderCheck(
+  provider: AuthProvider | AppIdAuthProvider
+): provider is AppIdAuthProvider {
+  return (provider as AppIdAuthProvider).injectAuth !== undefined;
 }
 
 export function bufferToArrayBuffer(buf: Buffer): ArrayBuffer {
