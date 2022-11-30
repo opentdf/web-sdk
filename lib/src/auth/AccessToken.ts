@@ -1,3 +1,4 @@
+import dpop from 'dpop';
 import cryptoPublicToPem from '../nanotdf-crypto/cryptoPublicToPem';
 import { rstrip } from '../utils';
 
@@ -126,7 +127,10 @@ export class AccessToken {
       Accept: 'application/json',
     };
     if (this.signing_key) {
-      headers['X-VirtruPubKey'] = await cryptoPublicToPem(this.signing_key.publicKey);
+      [headers['DPoP'], headers['X-VirtruPubKey']] = await Promise.all([
+        dpop(this.signing_key, url, 'POST'),
+        cryptoPublicToPem(this.signing_key.publicKey),
+      ]);
     }
     return (this.request || fetch)(url, {
       method: 'POST',
