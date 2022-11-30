@@ -469,7 +469,7 @@ class TDF extends EventEmitter {
     return Promise.all(
       keyAccess.map(async (keyAccessObject) => {
         if (this.authProvider === undefined) {
-          throw new Error('Upsert can be done without auth provider');
+          throw new Error('Upsert cannot be done without auth provider');
         }
         // We only care about remote key access objects for the policy sync portion
         const isRemote = isRemoteKeyAccess(keyAccessObject);
