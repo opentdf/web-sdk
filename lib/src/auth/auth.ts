@@ -1,4 +1,4 @@
-import HttpRequest from './Http-request';
+import { AxiosRequestConfig } from 'axios';
 
 /**
  * A utility type for getting and updating a bearer token to associate with
@@ -52,7 +52,7 @@ export interface AppIdAuthProvider {
    *
    * @param httpReq - Required. An http request pre-populated with the data public key.
    */
-  injectAuth(httpReq: HttpRequest): Promise<void>;
+  injectAuth(httpReq: AxiosRequestConfig): Promise<void>;
 
   _getName(): string;
 }

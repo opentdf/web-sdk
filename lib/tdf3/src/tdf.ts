@@ -5,7 +5,7 @@ import crc32 from 'buffer-crc32';
 import { v4 } from 'uuid';
 import { exportSPKI, importPKCS8, importX509, SignJWT } from 'jose';
 import { AnyTdfStream, makeStream } from './client/tdf-stream';
-import EntityObject from '../../../../lib/src/tdf/EntityObject';
+import EntityObject from '../../../lib/src/tdf/EntityObject';
 
 import {
   AttributeSet,
@@ -351,7 +351,7 @@ class TDF extends EventEmitter {
    * @param  {Object} entity - EntityObject
    * @return {<TDF>}- this instance
    */
-  setEntity(entity) {
+  setEntity(entity: EntityObject) {
     this.entity = entity;
     // Harvest the attributes from this entity object
     // Don't wait for this promise to resolve.
@@ -465,12 +465,12 @@ class TDF extends EventEmitter {
   // ignoreType if true skips the key access type check when syncing
   async upsert(unsavedManifest: Manifest, ignoreType = false): Promise<UpsertResponse> {
     const { keyAccess, policy } = unsavedManifest.encryptionInformation;
-    if (!this.authProvider) {
-      throw new Error('Upsert can be done without auth provider');
-    }
     const isAppIdProvider = this.authProvider && isAppIdProviderCheck(this.authProvider);
     return Promise.all(
       keyAccess.map(async (keyAccessObject) => {
+        if (this.authProvider === undefined) {
+          throw new Error('Upsert can be done without auth provider');
+        }
         // We only care about remote key access objects for the policy sync portion
         const isRemote = isRemoteKeyAccess(keyAccessObject);
         if (!ignoreType && !isRemote) {
@@ -487,10 +487,10 @@ class TDF extends EventEmitter {
         };
 
         const httpReq = this.buildRequest('POST', url, body);
-        if (isAppIdProvider) {
+        if (isAppIdProviderCheck(this.authProvider)) {
           await this.authProvider.injectAuth(httpReq);
-          httpReq.data.entity = this.enity;
-        } else {
+          httpReq.data.entity = this.entity;
+        } else if (httpReq.headers) {
           httpReq.headers.Authorization = await this.authProvider.authorization();
         }
 
@@ -793,17 +793,15 @@ class TDF extends EventEmitter {
   async unwrapKey(manifest: Manifest) {
     const { keyAccess } = manifest.encryptionInformation;
     let responseMetadata;
-
-    if (!this.authProvider) {
-      throw new Error('Upsert can be done without auth provider');
-    }
-
-    const isAppIdProvider = isAppIdProviderCheck(this.authProvider);
+    const isAppIdProvider = this.authProvider && isAppIdProviderCheck(this.authProvider);
     // Get key access information to know the KAS URLS
     // TODO: logic that runs on multiple KAS's
 
     const rewrappedKeys = await Promise.all(
       keyAccess.map(async (keySplitInfo) => {
+        if (this.authProvider === undefined) {
+          throw new Error('Upsert can be done without auth provider');
+        }
         const url = `${keySplitInfo.url}/${isAppIdProvider ? '' : 'v2'}/rewrap`;
 
         const requestBodyStr = JSON.stringify({
@@ -843,9 +841,9 @@ class TDF extends EventEmitter {
             : requestBody
         );
 
-        if (isAppIdProvider) {
+        if (isAppIdProviderCheck(this.authProvider)) {
           await this.authProvider.injectAuth(httpReq);
-        } else {
+        } else if (httpReq.headers) {
           httpReq.headers.Authorization = await this.authProvider.authorization();
         }
 
