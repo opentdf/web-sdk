@@ -6,6 +6,7 @@ import {
   fromBuffer,
   fromDataSource,
   streamToBuffer,
+  isAppIdProviderCheck,
   Chunker,
 } from '../utils/index';
 import { base64 } from '../../../src/encodings/index';
@@ -15,7 +16,10 @@ import { OIDCClientCredentialsProvider } from '../../../src/auth/oidc-clientcred
 import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-provider';
 import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider';
 import { PemKeyPair } from '../crypto/declarations';
-import { AuthProvider } from '../../../src/auth/auth';
+import { AuthProvider, AppIdAuthProvider } from '../../../src/auth/auth';
+import EAS from '../../../src/auth/Eas';
+import EntityObject from '../../../../lib/src/tdf/EntityObject';
+
 import { EncryptParams, DecryptParams } from './builders';
 
 import {
@@ -102,8 +106,10 @@ export interface ClientConfig {
   kasPublicKey?: string;
   oidcOrigin?: string;
   externalJwt?: string;
-  authProvider?: AuthProvider;
+  authProvider?: AuthProvider | AppIdAuthProvider;
   readerUrl?: string;
+  easEndpoint?: string;
+  entityObjectEndpoint?: string;
 }
 
 export class Client {
@@ -114,11 +120,15 @@ export class Client {
 
   kasPublicKey?: string;
 
-  authProvider?: AuthProvider;
+  clientId?: string;
+
+  authProvider?: AuthProvider | AppIdAuthProvider;
 
   readerUrl?: string;
 
   keypair?: PemKeyPair;
+
+  eas?: EAS;
 
   /**
    * An abstraction for protecting and accessing data using TDF3 services.
@@ -150,13 +160,23 @@ export class Client {
       this.kasEndpoint = clientConfig.keyRewrapEndpoint.replace(/\/rewrap$/, '');
     }
 
-    if (clientConfig.authProvider) {
-      this.authProvider = config.authProvider;
+    this.authProvider = config.authProvider;
+
+    if (this.authProvider && isAppIdProviderCheck(this.authProvider)) {
+      this.eas = new EAS({
+        authProvider: this.authProvider,
+        endpoint: clientConfig.entityObjectEndpoint || `${clientConfig.easEndpoint}/api/entityobject`,
+      });
+    }
+
+    if (this.authProvider) {
       return;
     }
+
     if (!clientConfig.clientId) {
       throw new Error('Client ID or custom AuthProvider must be defined');
     }
+    this.clientId = clientConfig.clientId;
 
     if (inBrowser()) {
       //If you're in a browser and passing client secrets, you're Doing It Wrong.
@@ -241,10 +261,17 @@ export class Client {
     windowSize = DEFAULT_SEGMENT_SIZE,
   }: EncryptParams): Promise<AnyTdfStream | null> {
     if (rcaSource && asHtml) throw new Error('rca links should be used only with zip format');
+    let entityObject : EntityObject | undefined;
 
     const keypair: PemKeyPair = await this._getOrCreateKeypair(opts);
     const policyObject = await this._createPolicyObject(scope);
     const kasPublicKey = await this._getOrFetchKasPubKey();
+
+    if (this.eas) {
+      entityObject = await this.eas.fetchEntityObject({
+        publicKey: keypair.publicKey,
+      });
+    }
 
     // TODO: Refactor underlying builder to remove some of this unnecessary config.
 
@@ -261,6 +288,9 @@ export class Client {
       .addContentStream(source, mimeType)
       .setPolicy(policyObject)
       .setAuthProvider(this.authProvider);
+    if (entityObject) {
+      tdf.setEntity(entityObject)
+    }
     await tdf.addKeyAccess({
       type: offline ? 'wrapped' : 'remote',
       url: this.kasEndpoint,
@@ -306,17 +336,25 @@ export class Client {
    * @param {object} - Required. All parameters for the decrypt operation, generated using {@link DecryptParamsBuilder#build|DecryptParamsBuilder's build()}.
    * @param {object} source - A data stream object, one of remote, stream, buffer, etc. types.
    * @param {object} opts - object with keypair
-   * @param {object} [output] - A node Writeable; if not found will create and return one.
    * @param {object} [rcaSource] - RCA source information
    * @return {DecoratedTdfStream} - a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} stream containing the decrypted plaintext.
    * @see DecryptParamsBuilder
    */
   async decrypt({ source, opts, rcaSource }: DecryptParams) {
     const keypair = await this._getOrCreateKeypair(opts);
+    let entityObject;
+    if (this.eas) {
+      entityObject = await this.eas.fetchEntityObject({
+        publicKey: keypair.publicKey,
+      });
+    }
     const tdf = TDF.create()
       .setPrivateKey(keypair.privateKey)
       .setPublicKey(keypair.publicKey)
       .setAuthProvider(this.authProvider);
+    if (entityObject) {
+      tdf.setEntity(entityObject);
+    }
     const chunker = await makeChunkable(source);
 
     // Await in order to catch any errors from this call.
@@ -390,7 +428,9 @@ export class Client {
     // a formatted raw PEM string isn't a valid header value and sending it raw makes keycloak's
     // header parser barf. There are more subtle ways to solve this, but this works for now.
 
-    await this.authProvider?.updateClientPublicKey(base64.encode(keypair.publicKey));
+    if (this.authProvider && !isAppIdProviderCheck(this.authProvider)) {
+      await this.authProvider?.updateClientPublicKey(base64.encode(keypair.publicKey));
+    }
     return keypair;
   }
 

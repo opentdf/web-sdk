@@ -1,4 +1,5 @@
 import { Validator } from 'jsonschema';
+import { decodeJwt } from 'jose';
 
 const verbose = false;
 
@@ -139,5 +140,29 @@ export class AttributeSet {
         return this.addAttribute(attrObj); // Returns promise
       })
       .filter((x) => x);
+  }
+
+  /**
+   * Add an attribute in JWT form = { jwt: <string jwt> }
+   * @param  {Object} jwtAttribute - Attribute object in JWT form.
+   * @return {Object} - Decrypted and added attribute object
+   */
+  addJwtAttribute(jwtAttribute: { jwt: string }){
+    const { jwt: attrJwt } = jwtAttribute;
+    // Can't verify the JWT because the client does not have the easPublicKey,
+    // but the contents of the JWT can be decoded.
+    const attrObjPayload = decodeJwt(attrJwt);
+    if (!attrObjPayload) return null;
+    // JWT payloads contain many things, incluing .iat and .exp. This
+    // extraneous material should be stripped away before adding the
+    // attribute to the attributeSet.
+    const { attribute, displayName, pubKey, kasUrl } = attrObjPayload;
+    const attrObj = { attribute, displayName, pubKey, kasUrl, jwt: attrJwt };
+    if (attrObjPayload.isDefault) {
+      // @ts-ignore
+      attrObj.isDefault = attrObjPayload.isDefault;
+    }
+    // @ts-ignore
+    return this.addAttribute(attrObj);
   }
 }

@@ -6,6 +6,7 @@ import crc32 from 'buffer-crc32';
 import { v4 } from 'uuid';
 import { exportSPKI, importPKCS8, importX509, SignJWT } from 'jose';
 import { AnyTdfStream, makeStream } from './client/tdf-stream';
+import EntityObject from '../../../../lib/src/tdf/EntityObject';
 
 import {
   AttributeSet,
@@ -19,7 +20,7 @@ import {
 } from './models/index';
 import { base64 } from '../../src/encodings/index';
 import * as cryptoService from './crypto/index';
-import { base64ToBuffer, fromUrl, keyMerge, ZipReader, ZipWriter, Chunker } from './utils/index';
+import { base64ToBuffer, fromUrl, keyMerge, ZipReader, ZipWriter, Chunker, isAppIdProviderCheck } from './utils/index';
 import { Binary } from './binary';
 import {
   KasDecryptError,
@@ -38,7 +39,7 @@ import { htmlWrapperTemplate } from './templates/index';
 // TODO: remove dependencies from ciphers so that we can open-source instead of relying on other Virtru libs
 import { AesGcmCipher } from './ciphers/index';
 import { PemKeyPair } from './crypto/declarations';
-import { AuthProvider } from '../../src/auth/auth';
+import { AuthProvider, AppIdAuthProvider } from '../../src/auth/auth';
 import PolicyObject from '../../src/tdf/PolicyObject';
 
 // TODO: input validation on manifest JSON
@@ -90,9 +91,10 @@ class TDF extends EventEmitter {
   mimeType?: string;
   contentStream?: ReadableStream<Uint8Array>;
   manifest?: Manifest;
+  entity?: EntityObject;
   encryptionInformation?: SplitKey;
   htmlTransferUrl?: string;
-  authProvider?: AuthProvider;
+  authProvider?: AuthProvider | AppIdAuthProvider;
   integrityAlgorithm: string;
   segmentIntegrityAlgorithm: string;
   publicKey: string;
@@ -224,7 +226,7 @@ class TDF extends EventEmitter {
   // AuthProvider is a class that can be used to build a custom request body and headers
   // The builder must accept an object of the following (ob.body, ob.headers, ob.method, ob.url)
   // and mutate it in place.
-  setAuthProvider(authProvider?: AuthProvider): TDF {
+  setAuthProvider(authProvider?: AuthProvider | AppIdAuthProvider): TDF {
     if (!authProvider) {
       throw new Error('Missing authProvider in setAuthProvider');
     }
@@ -331,6 +333,20 @@ class TDF extends EventEmitter {
 
   setPublicKey(publicKey: string) {
     this.publicKey = publicKey;
+    return this;
+  }
+
+  /**
+   * Add an entity object. This contains attributes with public key info that
+   * is used to make splits and wrap object keys.
+   * @param  {Object} entity - EntityObject
+   * @return {<TDF>}- this instance
+   */
+  setEntity(entity) {
+    this.entity = entity;
+    // Harvest the attributes from this entity object
+    // Don't wait for this promise to resolve.
+    this.entity.attributes.map(this.attributeSet.addJwtAttribute);
     return this;
   }
 
@@ -447,6 +463,10 @@ class TDF extends EventEmitter {
   // ignoreType if true skips the key access type check when syncing
   async upsert(unsavedManifest: Manifest, ignoreType = false) {
     const { keyAccess, policy } = unsavedManifest.encryptionInformation;
+    if (!this.authProvider) {
+      throw new Error('Upsert can be done without auth provider');
+    }
+    const isAppIdProvider = this.authProvider && isAppIdProviderCheck(this.authProvider);
     return Promise.all(
       keyAccess.map(async (keyAccessObject) => {
         // We only care about remote key access objects for the policy sync portion
@@ -455,7 +475,7 @@ class TDF extends EventEmitter {
           return;
         }
 
-        const url = `${keyAccessObject.url}/v2/upsert`;
+        const url = `${keyAccessObject.url}/${isAppIdProvider? '' : 'v2'}/upsert`;
 
         //TODO I dont' think we need a body at all for KAS requests
         // Do we need ANY of this if it's already embedded in the EO in the Bearer OIDC token?
@@ -465,7 +485,10 @@ class TDF extends EventEmitter {
         };
 
         const httpReq = this.buildRequest('POST', url, body);
-        if (this.authProvider && httpReq.headers) {
+        if (isAppIdProvider) {
+          await this.authProvider.injectAuth(httpReq);
+          httpReq.data.entity = this.enity;
+        } else {
           httpReq.headers.Authorization = await this.authProvider.authorization();
         }
 
@@ -473,10 +496,10 @@ class TDF extends EventEmitter {
 
         // Create a PoP token by signing the body so KAS knows we actually have a private key
         // Expires in 60 seconds
-        httpReq.data.clientPayloadSignature = await new SignJWT(httpReq.data)
+        httpReq.data[isAppIdProvider ? 'authToken' : 'clientPayloadSignature'] = await new SignJWT(isAppIdProvider ? {} :httpReq.data)
           .setProtectedHeader({ alg: 'RS256' })
           .setIssuedAt()
-          .setExpirationTime('1m')
+          .setExpirationTime('2h')
           .sign(pkKeyLike);
 
         try {
@@ -758,26 +781,31 @@ class TDF extends EventEmitter {
     const { keyAccess } = manifest.encryptionInformation;
     let responseMetadata;
 
+    if (!this.authProvider) {
+      throw new Error('Upsert can be done without auth provider');
+    }
+
+    const isAppIdProvider = isAppIdProviderCheck(this.authProvider);
     // Get key access information to know the KAS URLS
     // TODO: logic that runs on multiple KAS's
 
     const rewrappedKeys = await Promise.all(
       keyAccess.map(async (keySplitInfo) => {
-        const url = `${keySplitInfo.url}/v2/rewrap`;
+        const url = `${keySplitInfo.url}/${isAppIdProvider? '' : 'v2'}/rewrap`;
 
         const requestBodyStr = JSON.stringify({
           algorithm: 'RS256',
           keyAccess: keySplitInfo,
-          clientPublicKey: this.publicKey,
           policy: manifest.encryptionInformation.policy,
+          clientPublicKey: this.publicKey,
         });
 
         const jwtPayload = { requestBody: requestBodyStr };
         const pkKeyLike = await importPKCS8(this.privateKey, 'RS256');
-        const signedRequestToken = await new SignJWT(jwtPayload)
+        const signedRequestToken = await new SignJWT(isAppIdProvider? {} :jwtPayload)
           .setProtectedHeader({ alg: 'RS256' })
           .setIssuedAt()
-          .setExpirationTime('1m')
+          .setExpirationTime('2h')
           .sign(pkKeyLike);
 
         const requestBody = {
@@ -786,9 +814,25 @@ class TDF extends EventEmitter {
 
         // Create a PoP token by signing the body so KAS knows we actually have a private key
         // Expires in 60 seconds
-        const httpReq = this.buildRequest('POST', url, requestBody);
+        const httpReq = this.buildRequest(
+          'POST',
+          url,
+          isAppIdProvider
+            ? {
+              keyAccess: keySplitInfo,
+              policy: manifest.encryptionInformation.policy,
+              entity: {
+                ...this.entity,
+                publicKey: this.publicKey,
+              },
+              authToken: signedRequestToken,
+            }
+            : requestBody
+        );
 
-        if (this.authProvider && httpReq.headers) {
+        if (isAppIdProvider) {
+          await this.authProvider.injectAuth(httpReq);
+        } else {
           httpReq.headers.Authorization = await this.authProvider.authorization();
         }
 
