@@ -28,7 +28,7 @@ import {
   DecryptSource,
 } from './builders';
 import { Policy } from '../models/index';
-import { cryptoPublicToPem } from '../../../src/nanotdf-crypto';
+import { cryptoPublicToPem } from '../../../src/nanotdf-crypto/index';
 
 const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
 const HTML_BYTE_LIMIT = 100 * 1000 * 1000; // 100 MB, see WS-9476.
@@ -448,8 +448,7 @@ export class Client {
       try {
         this.kasPublicKey = await TDF.getPublicKeyFromKeyAccessServer(this.kasEndpoint);
       } catch (e) {
-        console.error('Retrieving KAS public key has failed');
-        throw new Error(e.message);
+        throw new Error(`Unable to load KAS public key from ${this.kasEndpoint}: [${e.message}]`);
       }
 
       return this.kasPublicKey;

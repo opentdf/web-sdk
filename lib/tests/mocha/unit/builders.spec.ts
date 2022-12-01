@@ -1,5 +1,5 @@
 import { expect, assert } from 'chai';
-import { AttributeObject } from 'src/tdf';
+import { AttributeObject } from '../../../src/tdf';
 import { EncryptParamsBuilder } from '../../../tdf3/src/client/builders';
 
 describe('EncyptParamsBuilder', () => {

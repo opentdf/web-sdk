@@ -1,5 +1,5 @@
 import { importX509 } from 'jose';
-import { base64 } from '../../../src/encodings';
+import { base64 } from '../../../src/encodings/index';
 
 /**
  * Validates a specified key size

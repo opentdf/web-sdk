@@ -21,7 +21,7 @@ export const name = 'BrowserNativeCryptoService';
 const RSA_IMPORT_PARAMS: RsaHashedImportParams = {
   name: 'RSA-OAEP',
   hash: {
-    name: 'SHA-256',
+    name: 'SHA-1',
   },
 };
 

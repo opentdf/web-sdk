@@ -345,6 +345,11 @@ class TDF extends EventEmitter {
   }
 
   setSigningKey(signingKey: CryptoKeyPair) {
+    if (signingKey.privateKey.algorithm.name !== 'RSASSA-PKCS1-v1_5') {
+      throw new IllegalArgumentError(
+        `Unsupported signing key algorithm: [${signingKey.privateKey.algorithm.name}]`
+      );
+    }
     this.signingKey = signingKey;
     return this;
   }
