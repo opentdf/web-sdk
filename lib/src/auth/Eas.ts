@@ -1,12 +1,10 @@
-import axios from 'axios';
-import HttpRequest from './Http-request';
-import { AppIdAuthProvider } from './auth';
+import axios, { type AxiosResponse, type AxiosRequestConfig } from 'axios';
 
-import type { AxiosResponse, AxiosRequestConfig } from 'axios';
+import { AppIdAuthProvider, HttpRequest } from './auth';
 
 const { request } = axios;
 
-type AuthorizingFunction = (req: HttpRequest) => Promise<void>;
+type AuthorizingFunction = (req: HttpRequest) => Promise<HttpRequest>;
 type RequestFunctor = <T = any, R = AxiosResponse<T>>(config: AxiosRequestConfig) => Promise<R>;
 
 /**
@@ -37,7 +35,7 @@ class Eas {
     endpoint: string;
     requestFunctor?: RequestFunctor;
   }) {
-    this.authProvider = authProvider.injectAuth;
+    this.authProvider = authProvider.withCreds;
     this.endpoint = endpoint;
     this.requestFunctor = requestFunctor || request;
   }
@@ -50,14 +48,12 @@ class Eas {
    */
   async fetchEntityObject({ publicKey, ...etc }: { publicKey: string }) {
     // Create a skeleton http request for EAS.
-    const httpReq = new HttpRequest();
-    httpReq.headers['Content-Type'] = 'application/json';
-
-    // Connect the same ref to each name so authProvider can manipulate either.
-    // eslint-disable-next-line no-multi-assign
-    httpReq.body = httpReq.params = { publicKey, ...etc };
-    httpReq.url = this.endpoint;
-    httpReq.method = 'post';
+    const httpReq: HttpRequest = {
+      url: this.endpoint,
+      method: 'post',
+      headers: { 'Content-Type': 'application/json' },
+      body: { publicKey, ...etc },
+    };
 
     // Delegate modifications to the auth provider.
     // TODO: Handle various exception cases from interface docs.

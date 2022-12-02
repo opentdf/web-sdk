@@ -207,19 +207,6 @@ export class NanoTDFDatasetClient extends Client {
   private cachedHeader?: Header;
 
   /**
-   * Create new NanoTDF Client
-   *
-   * The Ephemeral Key Pair can either be provided or will be generate when fetching the entity object. Once set it
-   * cannot be changed. If a new ephemeral key is desired it a new client should be initialized.
-   * There is no performance impact for creating a new client IFF the ephemeral key pair is provided.
-   *
-   * @param clientConfig OIDC client credentials
-   * @param kasUrl Key access service URL
-   * @param ephemeralKeyPair (optional) ephemeral key pair to use
-   * @param clientPubKey Client identification
-   */
-
-  /**
    * Create new NanoTDF Dataset Client
    *
    * The Ephemeral Key Pair can either be provided or will be generate when fetching the entity object. Once set it

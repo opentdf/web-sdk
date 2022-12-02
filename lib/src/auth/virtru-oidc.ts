@@ -1,6 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 import { AccessToken, AccessTokenConfig } from './AccessToken';
 import { IVirtruOIDC } from '../nanotdf/interfaces/OIDCInterface';
+import { HttpRequest, withHeaders } from './auth';
 
 /**
  * Class that provides OIDC functionality to auth providers.
@@ -23,8 +24,6 @@ import { IVirtruOIDC } from '../nanotdf/interfaces/OIDCInterface';
  * explicit token refresh
  */
 export default class VirtruOIDC {
-  protected authMode: 'browser' | 'credentials';
-  protected clientPubKey?: string;
   protected accessTokenGetter: AccessToken;
   protected currentAccessToken?: string;
 
@@ -61,8 +60,6 @@ export default class VirtruOIDC {
         ...keycloakConfig,
       };
     }
-    this.authMode = keycloakConfig.auth_mode || 'browser';
-    this.clientPubKey = clientPubKey;
     this.accessTokenGetter = new AccessToken(keycloakConfig);
   }
 
@@ -82,11 +79,10 @@ export default class VirtruOIDC {
       return;
     }
     this.accessTokenGetter.virtru_client_pubkey = clientPubKey;
-    this.clientPubKey = clientPubKey;
   }
 
   async getCurrentAccessToken(): Promise<string> {
-    if (!this.clientPubKey) {
+    if (!this.accessTokenGetter.virtru_client_pubkey) {
       throw new Error(
         'Client public key was not set via `updateClientPublicKey` or passed in via constructor, cannot fetch OIDC token with valid Virtru claims'
       );
@@ -128,5 +124,10 @@ export default class VirtruOIDC {
     const cat = await this.accessTokenGetter.exchangeJwt(externalJwt);
     this.currentAccessToken = cat;
     return cat;
+  }
+
+  async withCreds(httpReq: HttpRequest): Promise<HttpRequest> {
+    const accessToken = await this.getCurrentAccessToken();
+    return withHeaders(httpReq, { Authorization: `Bearer ${accessToken}` });
   }
 }

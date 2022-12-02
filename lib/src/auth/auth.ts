@@ -1,4 +1,45 @@
-import { AxiosRequestConfig } from 'axios';
+import { JWTPayload, SignJWT } from 'jose';
+
+export type Method =
+  | 'get'
+  | 'head'
+  | 'post'
+  | 'put'
+  | 'delete'
+  | 'connect'
+  | 'options'
+  | 'trace'
+  | 'patch';
+
+/**
+ * Generic HTTP request interface used by AuthProvider implementers.
+ */
+export type HttpRequest = {
+  headers: Record<string, string>;
+
+  method: Method;
+
+  /** The resource to query */
+  url: string;
+
+  body?: BodyInit | null | unknown;
+};
+
+export function withHeaders(httpReq: HttpRequest, newHeaders: Record<string, string>): HttpRequest {
+  const headers = {
+    ...httpReq.headers,
+    ...newHeaders,
+  };
+  return { ...httpReq, headers };
+}
+
+export async function reqSignature(toSign: unknown, privateKey: CryptoKey) {
+  return new SignJWT(toSign as JWTPayload)
+    .setProtectedHeader({ alg: 'RS256' })
+    .setIssuedAt()
+    .setExpirationTime('2h')
+    .sign(privateKey);
+}
 
 /**
  * A utility type for getting and updating a bearer token to associate with
@@ -21,12 +62,12 @@ export interface AuthProvider {
    * @param clientPubkey the client's public key, base64 encoded. Will be bound to the OIDC token.
    */
   updateClientPublicKey(clientPubkey: string): Promise<void>;
-
   /**
-   * Compute an auth header value for an http request, to associate the session with the current entity
-   * @returns a value that will be attached as a bearer token in the `Authorization` header for requests to backend services
+   * Augment the provided http request with custom auth info to be used by backend services.
+   *
+   * @param httpReq - Required. An http request pre-populated with the data public key.
    */
-  authorization(): Promise<string>;
+  withCreds(httpReq: HttpRequest): Promise<HttpRequest>;
 }
 
 /**
@@ -52,9 +93,7 @@ export interface AppIdAuthProvider {
    *
    * @param httpReq - Required. An http request pre-populated with the data public key.
    */
-  injectAuth(httpReq: AxiosRequestConfig): Promise<void>;
+  withCreds(httpReq: HttpRequest): Promise<HttpRequest>;
 
   _getName(): string;
 }
-
-export default AppIdAuthProvider;

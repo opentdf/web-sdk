@@ -1,6 +1,6 @@
 /* eslint-disable no-async-promise-executor */
 import { EventEmitter } from 'events';
-import axios, { AxiosRequestConfig, Method } from 'axios';
+import axios from 'axios';
 import crc32 from 'buffer-crc32';
 import { v4 } from 'uuid';
 import { exportSPKI, importPKCS8, importX509, SignJWT } from 'jose';
@@ -47,7 +47,13 @@ import { htmlWrapperTemplate } from './templates/index';
 // TODO: remove dependencies from ciphers so that we can open-source instead of relying on other Virtru libs
 import { AesGcmCipher } from './ciphers/index';
 import { PemKeyPair } from './crypto/declarations';
-import { AuthProvider, AppIdAuthProvider } from '../../src/auth/auth';
+import {
+  AuthProvider,
+  AppIdAuthProvider,
+  HttpRequest,
+  Method,
+  reqSignature,
+} from '../../src/auth/auth';
 import PolicyObject from '../../src/tdf/PolicyObject';
 
 // TODO: input validation on manifest JSON
@@ -451,13 +457,12 @@ class TDF extends EventEmitter {
     }
   }
 
-  buildRequest(method: Method, url: string, body: unknown): AxiosRequestConfig {
+  buildRequest(method: Method, url: string, body: unknown): HttpRequest {
     return {
       headers: {},
-      params: {},
       method: method,
       url: url,
-      data: body,
+      body,
     };
   }
 
@@ -481,33 +486,24 @@ class TDF extends EventEmitter {
 
         //TODO I dont' think we need a body at all for KAS requests
         // Do we need ANY of this if it's already embedded in the EO in the Bearer OIDC token?
-        const body = {
+        const body: Record<string, unknown> = {
           keyAccess: keyAccessObject,
           policy: unsavedManifest.encryptionInformation.policy,
+          entity: isAppIdProviderCheck(this.authProvider) ? this.entity : undefined,
+          authToken: undefined,
+          clientPayloadSignature: undefined,
         };
 
-        const httpReq = this.buildRequest('POST', url, body);
+        const pkKeyLike = (await importPKCS8(this.privateKey, 'RS256')) as CryptoKey;
         if (isAppIdProviderCheck(this.authProvider)) {
-          await this.authProvider.injectAuth(httpReq);
-          httpReq.data.entity = this.entity;
-        } else if (httpReq.headers) {
-          httpReq.headers.Authorization = await this.authProvider.authorization();
+          body.authToken = await reqSignature({}, pkKeyLike);
+        } else {
+          body.clientPayloadSignature = await reqSignature(body, pkKeyLike);
         }
-
-        const pkKeyLike = await importPKCS8(this.privateKey, 'RS256');
-
-        // Create a PoP token by signing the body so KAS knows we actually have a private key
-        // Expires in 60 seconds
-        httpReq.data[isAppIdProvider ? 'authToken' : 'clientPayloadSignature'] = await new SignJWT(
-          isAppIdProvider ? {} : httpReq.data
-        )
-          .setProtectedHeader({ alg: 'RS256' })
-          .setIssuedAt()
-          .setExpirationTime('2h')
-          .sign(pkKeyLike);
+        const httpReq = await this.authProvider.withCreds(this.buildRequest('post', url, body));
 
         try {
-          const response = await axios.post(url, httpReq.data, { headers: httpReq.headers });
+          const response = await axios.post(url, httpReq.body, { headers: httpReq.headers });
 
           // Remove additional properties which were needed to sync, but not that we want to save to
           // the manifest
@@ -819,39 +815,34 @@ class TDF extends EventEmitter {
           .setExpirationTime('2h')
           .sign(pkKeyLike);
 
-        const requestBody = {
-          signedRequestToken,
-        };
+        let requestBody;
+        if (isAppIdProvider) {
+          requestBody = {
+            keyAccess: keySplitInfo,
+            policy: manifest.encryptionInformation.policy,
+            entity: {
+              ...this.entity,
+              publicKey: this.publicKey,
+            },
+            authToken: signedRequestToken,
+          };
+        } else {
+          requestBody = {
+            signedRequestToken,
+          };
+        }
 
         // Create a PoP token by signing the body so KAS knows we actually have a private key
         // Expires in 60 seconds
-        const httpReq = this.buildRequest(
-          'POST',
-          url,
-          isAppIdProvider
-            ? {
-                keyAccess: keySplitInfo,
-                policy: manifest.encryptionInformation.policy,
-                entity: {
-                  ...this.entity,
-                  publicKey: this.publicKey,
-                },
-                authToken: signedRequestToken,
-              }
-            : requestBody
+        const httpReq = await this.authProvider.withCreds(
+          this.buildRequest('post', url, requestBody)
         );
-
-        if (isAppIdProviderCheck(this.authProvider)) {
-          await this.authProvider.injectAuth(httpReq);
-        } else if (httpReq.headers) {
-          httpReq.headers.Authorization = await this.authProvider.authorization();
-        }
 
         try {
           // The response from KAS on a rewrap
           const {
             data: { entityWrappedKey, metadata },
-          } = await axios.post(url, httpReq.data, { headers: httpReq.headers });
+          } = await axios.post(url, httpReq.body, { headers: httpReq.headers });
           responseMetadata = metadata;
           const key = Binary.fromString(base64.decode(entityWrappedKey));
           const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(
