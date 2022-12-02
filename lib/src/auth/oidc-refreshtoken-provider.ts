@@ -26,8 +26,8 @@ export class OIDCRefreshTokenProvider implements AuthProvider {
     this.externalRefreshToken = externalRefreshToken;
   }
 
-  async updateClientPublicKey(clientPubkey: string): Promise<void> {
-    await this.oidcAuth.refreshTokenClaimsWithClientPubkeyIfNeeded(clientPubkey);
+  async updateClientPublicKey(clientPubkey: string, signingKey?: CryptoKeyPair): Promise<void> {
+    await this.oidcAuth.refreshTokenClaimsWithClientPubkeyIfNeeded(clientPubkey, signingKey);
   }
 
   async withCreds(httpReq: HttpRequest): Promise<HttpRequest> {
