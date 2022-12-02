@@ -59,9 +59,11 @@ export interface AuthProvider {
    * using the cached refresh token, and update the auth server config with the
    * current key.
    *
-   * @param clientPubkey the client's public key, base64 encoded. Will be bound to the OIDC token.
+   * @param signingKey the client's public key, base64 encoded. Will be bound
+   * to the OIDC token and require a DPoP header, when set.
    */
-  updateClientPublicKey(clientPubkey: string): Promise<void>;
+  updateClientPublicKey(clientPubkey: string, signingKey?: CryptoKeyPair): Promise<void>;
+
   /**
    * Augment the provided http request with custom auth info to be used by backend services.
    *

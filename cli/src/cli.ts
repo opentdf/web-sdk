@@ -126,6 +126,7 @@ export const handleArgs = (args: string[]) => {
         type: 'string',
         description: 'Authentication string (<clientId>:<clientSecret>)',
       })
+      .boolean('dpop')
       .implies('auth', '--no-clientId')
       .implies('auth', '--no-clientSecret')
 
@@ -219,7 +220,7 @@ export const handleArgs = (args: string[]) => {
           const kasEndpoint = argv.kasEndpoint;
           if (argv.containerType === 'tdf3') {
             log('DEBUG', `TDF3 Client`);
-            const client = new FileClient({ authProvider, kasEndpoint });
+            const client = new FileClient({ authProvider, kasEndpoint, dpopEnabled: argv.dpop });
             log('SILLY', `Initialized client ${JSON.stringify(client)}`);
             log('DEBUG', `About to decrypt [${argv.file}]`);
             const ct = await client.decrypt(argv.file as string);
@@ -231,8 +232,8 @@ export const handleArgs = (args: string[]) => {
           } else {
             const client =
               argv.containerType === 'nano'
-                ? new NanoTDFClient(authProvider, kasEndpoint)
-                : new NanoTDFDatasetClient(authProvider, kasEndpoint);
+                ? new NanoTDFClient(authProvider, kasEndpoint, undefined, argv.dpop)
+                : new NanoTDFDatasetClient(authProvider, kasEndpoint, undefined, argv.dpop);
             const buffer = await processDataIn(argv.file as string);
 
             log('DEBUG', 'Decrypt data.');
@@ -247,18 +248,26 @@ export const handleArgs = (args: string[]) => {
           }
           const lastRequest = authProvider.requestLog[authProvider.requestLog.length - 1];
           let accessToken = null;
+          let dpopToken = null;
           for (const h of Object.keys(lastRequest.headers)) {
             switch (h.toLowerCase()) {
+              case 'dpop':
+                console.assert(!dpopToken, 'Multiple dpop headers found');
+                dpopToken = parseJwtComplete(lastRequest.headers[h]);
+                log('INFO', `dpop: ${JSON.stringify(dpopToken)}`);
+                break;
               case 'authorization':
-                {
-                  console.assert(!accessToken, 'Multiple authorization headers found');
-                  accessToken = parseJwt(lastRequest.headers[h].split(' ')[1]);
-                  log('INFO', `Access Token: ${JSON.stringify(accessToken)}`);
+                console.assert(!accessToken, 'Multiple authorization headers found');
+                accessToken = parseJwt(lastRequest.headers[h].split(' ')[1]);
+                log('INFO', `Access Token: ${JSON.stringify(accessToken)}`);
+                if (argv.dpop) {
+                  console.assert(accessToken.cnf?.jkt, 'Access token must have a cnf.jkt');
                 }
                 break;
             }
           }
           console.assert(accessToken, 'No AccessToken found');
+          console.assert(!argv.dpop || dpopToken, 'DPoP requested but absent');
         }
       )
       .command(
@@ -279,7 +288,7 @@ export const handleArgs = (args: string[]) => {
 
           if ('tdf3' === argv.containerType) {
             log('DEBUG', `TDF3 Client`);
-            const client = new FileClient({ authProvider, kasEndpoint });
+            const client = new FileClient({ authProvider, kasEndpoint, dpopEnabled: argv.dpop });
             log('SILLY', `Initialized client ${JSON.stringify(client)}`);
             addParams(client, argv);
             const ct = await client.encrypt(argv.file as string);
@@ -293,8 +302,8 @@ export const handleArgs = (args: string[]) => {
           } else {
             const client =
               argv.containerType === 'nano'
-                ? new NanoTDFClient(authProvider, kasEndpoint)
-                : new NanoTDFDatasetClient(authProvider, kasEndpoint);
+                ? new NanoTDFClient(authProvider, kasEndpoint, undefined, argv.dpop)
+                : new NanoTDFDatasetClient(authProvider, kasEndpoint, undefined, argv.dpop);
             log('SILLY', `Initialized client ${JSON.stringify(client)}`);
 
             addParams(client, argv);

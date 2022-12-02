@@ -46,7 +46,6 @@ import { htmlWrapperTemplate } from './templates/index';
 // configurable
 // TODO: remove dependencies from ciphers so that we can open-source instead of relying on other Virtru libs
 import { AesGcmCipher } from './ciphers/index';
-import { PemKeyPair } from './crypto/declarations';
 import {
   AuthProvider,
   AppIdAuthProvider,
@@ -137,10 +136,6 @@ class TDF extends EventEmitter {
       return new AesGcmCipher(cryptoService);
     }
     throw new Error(`Unsupported cipher [${type}]`);
-  }
-
-  static async generateKeyPair(): Promise<PemKeyPair> {
-    return await cryptoService.generateKeyPair();
   }
 
   static async generatePolicyUuid() {

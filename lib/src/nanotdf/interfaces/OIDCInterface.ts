@@ -1,5 +1,5 @@
 export interface IVirtruOIDCBase {
-  /** the client's public key, base64 encoded. Will be bound to the OIDC token. Optional. If not set in the constructor, */
+  /** the client's public key, base64 encoded. Will be bound to the OIDC token. Deprecated. If not set in the constructor, */
   clientPubKey?: string;
 
   /**If using client credentials mode, the client ID. Optional, used for non-browser contexts. */
@@ -7,6 +7,9 @@ export interface IVirtruOIDCBase {
 
   /** The endpoint of the OIDC IdP to authenticate against, ex. 'https://virtru.com/auth/realms/demo' */
   oidcOrigin: string;
+
+  /** the client's public key, base64 encoded. Will be bound to the OIDC token. Deprecated. If not set in the constructor, */
+  signingKey?: string;
 }
 
 export interface IVirtruOIDC extends IVirtruOIDCBase {

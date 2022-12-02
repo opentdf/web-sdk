@@ -68,6 +68,11 @@ describe('AccessToken', () => {
   describe('exchanging refresh token for token with TDF claims', () => {
     describe('using client credentials', () => {
       it('passes client creds with refresh grant type to token endpoint', async () => {
+        const mockKeyPair = await crypto.subtle.generateKey(
+          { name: 'ECDSA', namedCurve: 'P-256' },
+          true,
+          ['sign']
+        );
         const mf = mockFetch({ access_token: 'fdfsdffsdf' });
         const accessToken = new AccessToken(
           {
@@ -75,6 +80,7 @@ describe('AccessToken', () => {
             auth_server_url: 'https://auth.invalid/auth/realms/yeet/',
             client_id: 'myid',
             client_secret: 'mysecret',
+            signing_key: mockKeyPair,
             virtru_client_pubkey: 'fake-pub-key',
           },
           mf
@@ -92,6 +98,7 @@ describe('AccessToken', () => {
           refresh_token: 'refresh',
         });
         expect(mf.lastCall.lastArg.headers).to.have.property('X-VirtruPubKey', 'fake-pub-key');
+        expect(mf.lastCall.lastArg.headers).to.have.property('DPoP');
       });
     });
     describe('using browser flow', () => {

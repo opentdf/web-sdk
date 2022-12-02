@@ -1,6 +1,7 @@
 import { assert, expect } from 'chai';
 import { Algorithms } from '../../../../tdf3/src/ciphers/index';
 import {
+  cryptoToPemPair,
   decrypt,
   decryptWithPrivateKey,
   encrypt,
@@ -100,9 +101,9 @@ describe('Crypto Service', () => {
     });
 
     describe('throws when', () => {
-      it('zero length', async () => {
+      it('short length', async () => {
         try {
-          await generateKeyPair(0);
+          await generateKeyPair(1);
           assert.fail();
         } catch (e) {
           expect(e.message).to.match(/Invalid key size requested/);
@@ -141,7 +142,8 @@ describe('Crypto Service', () => {
   });
 
   it('should encrypt with public key and decrypt with private key', async () => {
-    const { publicKey, privateKey } = await generateKeyPair(2056);
+    const ckp = await generateKeyPair(2056);
+    const { publicKey, privateKey } = await cryptoToPemPair(ckp);
     const rawData = '1';
     const payload = Binary.fromString(rawData);
 
@@ -153,7 +155,8 @@ describe('Crypto Service', () => {
 
   it('should encrypt with publicKey', async () => {
     console.log('should encrypt with publicKey: A');
-    const { publicKey, privateKey } = await generateKeyPair(2048);
+    const ckp = await generateKeyPair(2056);
+    const { publicKey, privateKey } = await cryptoToPemPair(ckp);
     const rawData = '1';
     const payload = Binary.fromString(rawData);
     console.log('should encrypt with publicKey: B');
@@ -184,7 +187,8 @@ describe('Crypto Service', () => {
   });
 
   it('should encrypt with pub key and decrypt with private', async () => {
-    const { publicKey, privateKey } = await generateKeyPair(2049);
+    const ckp = await generateKeyPair(2056);
+    const { publicKey, privateKey } = await cryptoToPemPair(ckp);
     const rawData = '1';
     const payload = Binary.fromString(rawData);
 

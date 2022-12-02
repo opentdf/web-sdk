@@ -19,8 +19,8 @@ export class OIDCClientCredentialsProvider implements AuthProvider {
     });
   }
 
-  async updateClientPublicKey(clientPubkey: string): Promise<void> {
-    await this.oidcAuth.refreshTokenClaimsWithClientPubkeyIfNeeded(clientPubkey);
+  async updateClientPublicKey(clientPubkey: string, signingKey?: CryptoKeyPair): Promise<void> {
+    await this.oidcAuth.refreshTokenClaimsWithClientPubkeyIfNeeded(clientPubkey, signingKey);
   }
 
   async withCreds(httpReq: HttpRequest): Promise<HttpRequest> {
