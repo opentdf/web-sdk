@@ -9,6 +9,12 @@ import {
   version,
 } from '@opentdf/client';
 import { CLIError, Level, log } from './logger.js';
+import { webcrypto } from 'node:crypto';
+
+//@ts-expect-error blind casts
+globalThis.CryptoKey ??= webcrypto.CryptoKey;
+// //@ts-expect-error blind casts
+// globalThis.CryptoKeyP ??= webcrypto.CryptoKey;
 
 type AuthToProcess = {
   auth?: string;

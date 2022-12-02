@@ -100,9 +100,9 @@ describe('Crypto Service', () => {
     });
 
     describe('throws when', () => {
-      it('zero length', async () => {
+      it('1 length', async () => {
         try {
-          await generateKeyPair(0);
+          await generateKeyPair(1);
           assert.fail();
         } catch (e) {
           expect(e.message).to.match(/Invalid key size requested/);

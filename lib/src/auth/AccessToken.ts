@@ -1,3 +1,4 @@
+import { base64 } from '../encodings/index';
 import cryptoPublicToPem from '../nanotdf-crypto/cryptoPublicToPem';
 import { rstrip } from '../utils';
 
@@ -128,10 +129,12 @@ export class AccessToken {
     if (this.signing_key) {
       // TODO: dpop does not have a CommonJS variant.
       const { default: dpop } = await import('dpop');
-      [headers['DPoP'], headers['X-VirtruPubKey']] = await Promise.all([
+      const [dpopValue, pem] = await Promise.all([
         dpop(this.signing_key, url, 'POST'),
         cryptoPublicToPem(this.signing_key.publicKey),
       ]);
+      headers['DPoP'] = dpopValue;
+      headers['X-VirtruPubKey'] = base64.encode(pem);
     }
     return (this.request || fetch)(url, {
       method: 'POST',

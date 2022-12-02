@@ -8,7 +8,6 @@ import { Algorithms } from '../ciphers/index';
 import { Binary } from '../binary';
 import { DecryptResult, EncryptResult, MIN_ASYMMETRIC_KEY_SIZE_BITS } from './declarations';
 import { TdfDecryptError } from '../errors';
-import { isValidAsymmetricKeySize } from './crypto-utils';
 import { encodeArrayBuffer as hexEncode } from '../../../src/encodings/hex';
 
 // Used to pass into native crypto functions
@@ -18,20 +17,37 @@ export const isSupported = typeof globalThis.crypto !== 'undefined';
 export const method = 'http://www.w3.org/2001/04/xmlenc#aes256-cbc';
 export const name = 'BrowserNativeCryptoService';
 
-const RSA_IMPORT_PARAMS: RsaHashedImportParams = {
-  name: 'RSA-OAEP',
-  hash: {
-    name: 'SHA-1',
-  },
-};
-
 /**
  * Get a DOMString representing the algorithm to use for an
  * asymmetric key generation.
  */
-function getRsaHashedKeyGenParams(modulusLength: number): RsaHashedKeyGenParams {
+export function rsaOaepSha1(
+  modulusLength: number = MIN_ASYMMETRIC_KEY_SIZE_BITS
+): RsaHashedKeyGenParams {
+  if (!modulusLength || modulusLength < MIN_ASYMMETRIC_KEY_SIZE_BITS) {
+    throw new Error('Invalid key size requested');
+  }
   return {
-    ...RSA_IMPORT_PARAMS,
+    name: 'RSA-OAEP',
+    hash: {
+      name: 'SHA-1',
+    },
+    modulusLength,
+    publicExponent: new Uint8Array([0x01, 0x00, 0x01]), // 24 bit representation of 65537
+  };
+}
+
+export function rsaPkcs1Sha256(
+  modulusLength: number = MIN_ASYMMETRIC_KEY_SIZE_BITS
+): RsaHashedKeyGenParams {
+  if (!modulusLength || modulusLength < MIN_ASYMMETRIC_KEY_SIZE_BITS) {
+    throw new Error('Invalid key size requested');
+  }
+  return {
+    name: 'RSASSA-PKCS1-v1_5',
+    hash: {
+      name: 'SHA-256',
+    },
     modulusLength,
     publicExponent: new Uint8Array([0x01, 0x00, 0x01]), // 24 bit representation of 65537
   };
@@ -51,14 +67,7 @@ export function generateKey(length?: number): string {
  * @param  size in bits
  */
 export async function generateKeyPair(size?: number): Promise<CryptoKeyPair> {
-  const minKeySize = MIN_ASYMMETRIC_KEY_SIZE_BITS;
-
-  if (!isValidAsymmetricKeySize(size, minKeySize)) {
-    throw new Error('Invalid key size requested');
-  }
-
-  const algoDomString = getRsaHashedKeyGenParams(size || MIN_ASYMMETRIC_KEY_SIZE_BITS);
-
+  const algoDomString = rsaOaepSha1(size || MIN_ASYMMETRIC_KEY_SIZE_BITS);
   return crypto.subtle.generateKey(algoDomString, true, METHODS);
 }
 

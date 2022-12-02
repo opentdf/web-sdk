@@ -138,10 +138,6 @@ class TDF extends EventEmitter {
     throw new Error(`Unsupported cipher [${type}]`);
   }
 
-  static async generateKeyPair(): Promise<CryptoKeyPair> {
-    return await cryptoService.generateKeyPair();
-  }
-
   static async generatePolicyUuid() {
     return v4();
   }
