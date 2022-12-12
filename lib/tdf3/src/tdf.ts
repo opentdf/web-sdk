@@ -530,7 +530,7 @@ class TDF extends EventEmitter {
     );
   }
 
-  async writeStream(byteLimit: number, isRcaSource: boolean): Promise<AnyTdfStream> {
+  async writeStream(byteLimit: number, isRcaSource: boolean, payloadKey?: Binary): Promise<AnyTdfStream> {
     if (!this.contentStream) {
       throw new IllegalArgumentError('No input stream defined');
     }
@@ -667,7 +667,7 @@ class TDF extends EventEmitter {
 
           // hash the concat of all hashes
           const payloadSigStr = await self.getSignature(
-            keyInfo.unwrappedKeyBinary,
+            payloadKey || keyInfo.unwrappedKeyBinary,
             Binary.fromString(aggregateHash),
             self.integrityAlgorithm
           );
@@ -756,11 +756,11 @@ class TDF extends EventEmitter {
       // Don't pass in an IV here. The encrypt function will generate one for you, ensuring that each segment has a unique IV.
       const encryptedResult = await encryptionInformation.encrypt(
         Binary.fromBuffer(chunk),
-        keyInfo.unwrappedKeyBinary
+        payloadKey || keyInfo.unwrappedKeyBinary
       );
       const payloadBuffer = encryptedResult.payload.asBuffer();
       const payloadSigStr = await self.getSignature(
-        keyInfo.unwrappedKeyBinary,
+        payloadKey || keyInfo.unwrappedKeyBinary,
         encryptedResult.payload,
         self.segmentIntegrityAlgorithm
       );

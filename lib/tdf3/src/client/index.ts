@@ -18,9 +18,10 @@ import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-prov
 import { PemKeyPair } from '../crypto/declarations';
 import { AuthProvider, AppIdAuthProvider } from '../../../src/auth/auth';
 import EAS from '../../../src/auth/Eas';
-import EntityObject from '../../../../lib/src/tdf/EntityObject';
 
 import { EncryptParams, DecryptParams } from './builders';
+import { Binary } from '../binary';
+import HttpRequest from '../../../src/auth/Http-request';
 
 import {
   DEFAULT_SEGMENT_SIZE,
@@ -235,6 +236,8 @@ export class Client {
    * @param {object} [output] - output stream. Created and returned if not passed in
    * @param {object} [rcaSource] - RCA source information
    * @param {number} [windowSize] - segment size in bytes
+   * @param {object} [eo] - entity object
+   * @param {Binary} [payloadKey] - Separate key for payload
    * @return a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} a new stream containing the TDF ciphertext, if output is not passed in as a paramter
    * @see EncryptParamsBuilder
    */
@@ -246,33 +249,17 @@ export class Client {
     opts,
     mimeType,
     offline = false,
-    rcaSource = false,
-    windowSize = DEFAULT_SEGMENT_SIZE,
-  }: EncryptParams): Promise<AnyTdfStream>;
-  async encrypt({
-    scope,
-    source,
-    asHtml = false,
-    metadata = null,
-    opts,
-    mimeType,
-    offline = false,
     output,
     rcaSource = false,
     windowSize = DEFAULT_SEGMENT_SIZE,
+    eo,
+    payloadKey,
   }: EncryptParams): Promise<AnyTdfStream | null> {
     if (rcaSource && asHtml) throw new Error('rca links should be used only with zip format');
-    let entityObject: EntityObject | undefined;
 
     const keypair: PemKeyPair = await this._getOrCreateKeypair(opts);
     const policyObject = await this._createPolicyObject(scope);
     const kasPublicKey = await this._getOrFetchKasPubKey();
-
-    if (this.eas) {
-      entityObject = await this.eas.fetchEntityObject({
-        publicKey: keypair.publicKey,
-      });
-    }
 
     // TODO: Refactor underlying builder to remove some of this unnecessary config.
 
@@ -289,8 +276,8 @@ export class Client {
       .addContentStream(source, mimeType)
       .setPolicy(policyObject)
       .setAuthProvider(this.authProvider);
-    if (entityObject) {
-      tdf.setEntity(entityObject);
+    if (eo) {
+      tdf.setEntity(eo);
     }
     await tdf.addKeyAccess({
       type: offline ? 'wrapped' : 'remote',
@@ -300,12 +287,12 @@ export class Client {
     });
 
     const byteLimit = asHtml ? HTML_BYTE_LIMIT : GLOBAL_BYTE_LIMIT;
-    const stream = await tdf.writeStream(byteLimit, rcaSource);
+    const stream = await tdf.writeStream(byteLimit, rcaSource, payloadKey);
     // Looks like invalid calls | stream.upsertResponse equals empty array?
-    // if (rcaSource) {
-    //   const url = stream.upsertResponse[0][0].storageLinks.payload.upload;
-    //   await uploadBinaryToS3(stream.stream, url, stream.tdfSize);
-    // }
+    if (rcaSource && stream.upsertResponse && stream.upsertResponse[0][0]?.storageLinks?.payload?.upload) {
+      const url = stream.upsertResponse[0][0].storageLinks.payload.upload;
+      await uploadBinaryToS3(stream.stream, url, stream.tdfSize);
+    }
     if (!asHtml) {
       return stream;
     }
@@ -341,20 +328,14 @@ export class Client {
    * @return {DecoratedTdfStream} - a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} stream containing the decrypted plaintext.
    * @see DecryptParamsBuilder
    */
-  async decrypt({ source, opts, rcaSource }: DecryptParams) {
+  async decrypt({ source, opts, rcaSource, eo }: DecryptParams) {
     const keypair = await this._getOrCreateKeypair(opts);
-    let entityObject;
-    if (this.eas) {
-      entityObject = await this.eas.fetchEntityObject({
-        publicKey: keypair.publicKey,
-      });
-    }
     const tdf = TDF.create()
       .setPrivateKey(keypair.privateKey)
       .setPublicKey(keypair.publicKey)
       .setAuthProvider(this.authProvider);
-    if (entityObject) {
-      tdf.setEntity(entityObject);
+    if (eo) {
+      tdf.setEntity(eo);
     }
     const chunker = await makeChunkable(source);
 
@@ -398,6 +379,11 @@ export class Client {
         dissem: scope.dissem,
       },
     };
+  }
+
+
+  binaryToB64(binary: Binary) : string  {
+    return base64.encode(binary.asString())
   }
 
   /*
@@ -464,4 +450,5 @@ export default {
   DecryptParamsBuilder,
   EncryptParamsBuilder,
   uploadBinaryToS3,
+  HttpRequest,
 };
