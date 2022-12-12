@@ -292,7 +292,11 @@ export class Client {
     const byteLimit = asHtml ? HTML_BYTE_LIMIT : GLOBAL_BYTE_LIMIT;
     const stream = await tdf.writeStream(byteLimit, rcaSource, payloadKey);
     // Looks like invalid calls | stream.upsertResponse equals empty array?
-    if (rcaSource && stream.upsertResponse && stream.upsertResponse[0][0]?.storageLinks?.payload?.upload) {
+    if (
+      rcaSource &&
+      stream.upsertResponse &&
+      stream.upsertResponse[0][0]?.storageLinks?.payload?.upload
+    ) {
       const url = stream.upsertResponse[0][0].storageLinks.payload.upload;
       await uploadBinaryToS3(stream.stream, url, stream.tdfSize);
     }

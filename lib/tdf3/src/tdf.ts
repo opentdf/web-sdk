@@ -531,7 +531,11 @@ class TDF extends EventEmitter {
     );
   }
 
-  async writeStream(byteLimit: number, isRcaSource: boolean, payloadKey?: Binary): Promise<AnyTdfStream> {
+  async writeStream(
+    byteLimit: number,
+    isRcaSource: boolean,
+    payloadKey?: Binary
+  ): Promise<AnyTdfStream> {
     if (!this.contentStream) {
       throw new IllegalArgumentError('No input stream defined');
     }
