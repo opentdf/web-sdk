@@ -24,8 +24,8 @@ import { HttpRequest, withHeaders } from './auth';
  * explicit token refresh
  */
 export default class VirtruOIDC {
-  protected accessTokenGetter: AccessToken;
-  protected currentAccessToken?: string;
+  readonly accessTokenGetter: AccessToken;
+  currentAccessToken?: string;
 
   /**
    * If clientId and clientSecret are provided, clientCredentials mode will be assumed.
@@ -33,16 +33,13 @@ export default class VirtruOIDC {
    * If clientId and clientSecret are not provided, browser mode will be assumed, and @see refreshTokenWithVirtruClaims must be
    * manually called during object initialization to do a token exchange.
    */
-  constructor({ clientPubKey, clientId, clientSecret, oidcOrigin }: IVirtruOIDC) {
+  constructor({ clientId, clientSecret, oidcOrigin }: IVirtruOIDC) {
     if (!clientId) {
       throw new Error('To use any OIDC auth mode you must supply your clientId, at a minimum');
     }
     let keycloakConfig: AccessTokenConfig = {
       client_id: clientId,
       auth_server_url: oidcOrigin,
-      // pubkey may be `null` at this point, that's fine - it can be set later by the caller
-      // via `refreshTokenClaimsWithClientPubkey()` - it just has to be in place before we try to get a token from Keycloak.
-      virtru_client_pubkey: clientPubKey,
     };
 
     //If we have a client secret, we must be using client credentials, and this is not

@@ -3,11 +3,10 @@ import { IOIDCRefreshTokenProvider } from '../nanotdf/interfaces/OIDCInterface';
 import { AuthProvider, HttpRequest } from './auth';
 
 export class OIDCRefreshTokenProvider implements AuthProvider {
-  protected oidcAuth: VirtruOIDC;
-  protected externalRefreshToken?: string;
+  oidcAuth: VirtruOIDC;
+  externalRefreshToken?: string;
 
   constructor({
-    clientPubKey,
     clientId,
     externalRefreshToken,
     oidcOrigin,
@@ -20,7 +19,6 @@ export class OIDCRefreshTokenProvider implements AuthProvider {
     }
 
     this.oidcAuth = new VirtruOIDC({
-      clientPubKey,
       clientId,
       clientSecret,
       oidcOrigin,
