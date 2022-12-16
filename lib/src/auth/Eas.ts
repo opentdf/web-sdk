@@ -50,7 +50,7 @@ class Eas {
     // Create a skeleton http request for EAS.
     const httpReq: HttpRequest = {
       url: this.endpoint,
-      method: 'post',
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: { publicKey, ...etc },
     };
@@ -68,7 +68,7 @@ class Eas {
       data: undefined,
     };
     // Allow the authProvider to change the method.
-    if (httpReq.method === 'post' || httpReq.method === 'patch' || httpReq.method === 'put') {
+    if (httpReq.method === 'POST' || httpReq.method === 'PATCH' || httpReq.method === 'PUT') {
       axiosParams.data = httpReq.body;
     } else {
       axiosParams.params = httpReq.body;

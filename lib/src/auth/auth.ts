@@ -1,15 +1,15 @@
 import { JWTPayload, SignJWT } from 'jose';
 
 export type Method =
-  | 'get'
-  | 'head'
-  | 'post'
-  | 'put'
-  | 'delete'
-  | 'connect'
-  | 'options'
-  | 'trace'
-  | 'patch';
+  | 'GET'
+  | 'HEAD'
+  | 'POST'
+  | 'PUT'
+  | 'DELETE'
+  | 'CONNECT'
+  | 'OPTIONS'
+  | 'TRACE'
+  | 'PATCH';
 
 /**
  * Generic HTTP request interface used by AuthProvider implementers.

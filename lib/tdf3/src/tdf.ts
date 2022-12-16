@@ -500,7 +500,7 @@ class TDF extends EventEmitter {
         } else {
           body.clientPayloadSignature = await reqSignature(body, pkKeyLike);
         }
-        const httpReq = await this.authProvider.withCreds(this.buildRequest('post', url, body));
+        const httpReq = await this.authProvider.withCreds(this.buildRequest('POST', url, body));
 
         try {
           const response = await axios.post(url, httpReq.body, { headers: httpReq.headers });
@@ -835,7 +835,7 @@ class TDF extends EventEmitter {
         // Create a PoP token by signing the body so KAS knows we actually have a private key
         // Expires in 60 seconds
         const httpReq = await this.authProvider.withCreds(
-          this.buildRequest('post', url, requestBody)
+          this.buildRequest('POST', url, requestBody)
         );
 
         try {

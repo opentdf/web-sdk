@@ -24,7 +24,7 @@ export async function fetchWrappedKey(
 ): Promise<RewrapResponse> {
   const req = await authProvider.withCreds({
     url,
-    method: 'post',
+    method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'virtru-ntdf-version': clientVersion,
