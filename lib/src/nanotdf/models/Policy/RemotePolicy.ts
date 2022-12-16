@@ -13,7 +13,10 @@ class RemotePolicy extends AbstractPolicy implements RemotePolicyInterface {
   override readonly type: PolicyTypeEnum = PolicyTypeEnum.Remote;
   readonly remotePolicy: ResourceLocator;
 
-  static override parse(buff: Uint8Array, bindingLength: number): { offset: number; policy: RemotePolicy } {
+  static override parse(
+    buff: Uint8Array,
+    bindingLength: number
+  ): { offset: number; policy: RemotePolicy } {
     let offset = 0;
     const resource = new ResourceLocator(buff);
     offset += resource.offset;
