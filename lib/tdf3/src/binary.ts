@@ -86,15 +86,15 @@ class ArrayBufferBinary extends Binary {
     this.value = value;
   }
 
-  asArrayBuffer(): ArrayBuffer {
+  override asArrayBuffer(): ArrayBuffer {
     return this.value;
   }
 
-  asBuffer(): Buffer {
+  override asBuffer(): Buffer {
     return Buffer.from(this.value);
   }
 
-  asByteArray(): number[] {
+  override asByteArray(): number[] {
     const uint8Array = new Uint8Array(this.value);
     // Initialize array
     const byteArray = new Array(uint8Array.length);
@@ -104,7 +104,7 @@ class ArrayBufferBinary extends Binary {
     return byteArray;
   }
 
-  asString(): string {
+  override asString(): string {
     const uint8Array = new Uint8Array(this.value);
     let str = '';
     for (let i = 0; i < uint8Array.length; i++) {
@@ -113,15 +113,15 @@ class ArrayBufferBinary extends Binary {
     return str;
   }
 
-  isArrayBuffer(): boolean {
+  override isArrayBuffer(): boolean {
     return true;
   }
 
-  length(): number {
+  override length(): number {
     return this.value.byteLength;
   }
 
-  slice(start: number, end?: number): Binary {
+  override slice(start: number, end?: number): Binary {
     const [s, e] = adjustSliceParams(this.value.byteLength, start, end);
     return new ArrayBufferBinary(this.value.slice(s, e));
   }
@@ -135,7 +135,7 @@ class BufferBinary extends Binary {
     this.value = value;
   }
 
-  asArrayBuffer(): ArrayBuffer {
+  override asArrayBuffer(): ArrayBuffer {
     if (this.value.buffer) {
       return this.value.buffer.slice(
         this.value.byteOffset,
@@ -151,11 +151,11 @@ class BufferBinary extends Binary {
     return arrayBuffer;
   }
 
-  asBuffer(): Buffer {
+  override asBuffer(): Buffer {
     return this.value;
   }
 
-  asByteArray(): number[] {
+  override asByteArray(): number[] {
     const byteArray = new Array(this.value.length);
 
     for (let i = 0; i < byteArray.length; i++) {
@@ -165,19 +165,19 @@ class BufferBinary extends Binary {
     return byteArray;
   }
 
-  asString(): string {
+  override asString(): string {
     return this.value.toString('binary');
   }
 
-  isBuffer(): boolean {
+  override isBuffer(): boolean {
     return true;
   }
 
-  length(): number {
+  override length(): number {
     return this.value.length;
   }
 
-  slice(start: number, end?: number): Binary {
+  override slice(start: number, end?: number): Binary {
     const [s, e] = adjustSliceParams(this.value.length, start, end);
     return new BufferBinary(this.value.slice(s, e));
   }
@@ -191,32 +191,32 @@ class ByteArrayBinary extends Binary {
     this.value = value;
   }
 
-  asArrayBuffer(): ArrayBuffer {
+  override asArrayBuffer(): ArrayBuffer {
     const buf = Buffer.from(this.value);
     return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
   }
 
-  asBuffer(): Buffer {
+  override asBuffer(): Buffer {
     return Buffer.from(this.value);
   }
 
-  asByteArray(): number[] {
+  override asByteArray(): number[] {
     return this.value;
   }
 
-  asString(): string {
+  override asString(): string {
     return Buffer.from(this.value).toString();
   }
 
-  isByteArray(): boolean {
+  override isByteArray(): boolean {
     return true;
   }
 
-  length(): number {
+  override length(): number {
     return this.value.length;
   }
 
-  slice(start: number, end?: number): Binary {
+  override slice(start: number, end?: number): Binary {
     const [s, e] = adjustSliceParams(this.length(), start, end);
     return new ByteArrayBinary(this.value.slice(s, e));
   }
@@ -256,7 +256,7 @@ class StringBinary extends Binary {
     return this.value;
   }
 
-  isString(): boolean {
+  override isString(): boolean {
     return true;
   }
 

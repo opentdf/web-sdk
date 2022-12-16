@@ -119,7 +119,7 @@ export class Upload extends EventEmitter {
     ]);
   }
 
-  public on(event: 'httpUploadProgress', listener: (progress: Progress) => void): this {
+  public override on(event: 'httpUploadProgress', listener: (progress: Progress) => void): this {
     this.uploadEvent = event;
     return super.on(event, listener);
   }
