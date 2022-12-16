@@ -9,7 +9,6 @@ import {
   version,
 } from '@opentdf/client';
 import { CLIError, Level, log } from './logger.js';
-import { webcrypto } from 'crypto';
 
 type AuthToProcess = {
   auth?: string;
@@ -22,9 +21,6 @@ const containerTypes = ['tdf3', 'nano', 'dataset'] as const;
 
 const parseJwt = (jwt: string, field = 1) => {
   return JSON.parse(Buffer.from(jwt.split('.')[field], 'base64').toString());
-};
-const parseJwtComplete = (jwt: string) => {
-  return { header: parseJwt(jwt, 0), payload: parseJwt(jwt) };
 };
 
 async function processAuth({ auth, clientId, clientSecret, oidcEndpoint }: AuthToProcess) {
@@ -52,9 +48,9 @@ async function processAuth({ auth, clientId, clientSecret, oidcEndpoint }: AuthT
   const requestLog: AuthProviders.HttpRequest[] = [];
   return {
     requestLog,
-    updateClientPublicKey: async (clientPubkey: string, signingKey: webcrypto.CryptoKeyPair) => {
-      actual.updateClientPublicKey(clientPubkey, signingKey);
-      log('DEBUG', `updateClientPublicKey: [${clientPubkey}] [${signingKey?.publicKey}]`);
+    updateClientPublicKey: async (clientPubkey: string) => {
+      actual.updateClientPublicKey(clientPubkey);
+      log('DEBUG', `updateClientPublicKey: [${clientPubkey}]`);
     },
     withCreds: async (httpReq: AuthProviders.HttpRequest) => {
       const creds = await actual.withCreds(httpReq);
