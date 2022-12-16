@@ -211,13 +211,11 @@ export default class Client {
         signedRequestToken: await authToken(this.requestSignerKeyPair.privateKey, jwtPayload),
       };
 
-      const authHeader = await this.authProvider.authorization(); // authHeader is a string of the form "Bearer token"
-
       // Wrapped
       const wrappedKey = await fetchWrappedKey(
         kasRewrapUrl,
         requestBody,
-        authHeader,
+        this.authProvider,
         clientVersion
       );
 
@@ -236,9 +234,10 @@ export default class Client {
       try {
         // Get session public key as crypto key
         publicKey = await pemPublicToCrypto(wrappedKey.sessionPublicKey);
-      } catch (e) {
+      } catch (cause) {
         throw new Error(
-          `PEM Public Key to crypto public key failed. Is PEM formatted correctly?\n Caused by: ${e.message}`
+          `PEM Public Key to crypto public key failed. Is PEM formatted correctly?\n Caused by: ${cause.message}`,
+          { cause }
         );
       }
 

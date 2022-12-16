@@ -1,3 +1,4 @@
+import { IllegalArgumentError } from '../../tdf3/src/errors';
 import { rstrip } from '../utils';
 
 const qstringify = (obj: Record<string, string>) => new URLSearchParams(obj).toString();
@@ -126,6 +127,8 @@ export class AccessToken {
     };
     if (this.virtru_client_pubkey) {
       headers['X-VirtruPubKey'] = this.virtru_client_pubkey;
+    } else {
+      throw new IllegalArgumentError('No signature configured');
     }
     return (this.request || fetch)(url, {
       method: 'POST',

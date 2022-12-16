@@ -6,7 +6,6 @@ import { AttributeObject, Policy } from '../models/index';
 import { RcaParams } from '../tdf';
 
 import { IllegalArgumentError, IllegalEnvError } from '../errors';
-import { PemKeyPair } from '../crypto/declarations';
 import PolicyObject from '../../../src/tdf/PolicyObject';
 
 const { get } = axios;
@@ -126,7 +125,6 @@ type Metadata = {
 
 export interface EncryptParams {
   source: ReadableStream<Uint8Array>;
-  opts?: { keypair: PemKeyPair };
   output?: NodeJS.WriteStream;
   scope: Scope;
   metadata: Metadata | null;
@@ -598,7 +596,6 @@ export type DecryptSource =
 
 export type DecryptParams = {
   source: DecryptSource;
-  opts?: { keypair: PemKeyPair };
   rcaSource?: RcaParams;
 } & Pick<EncryptParams, 'contentLength' | 'keypair'>;
 

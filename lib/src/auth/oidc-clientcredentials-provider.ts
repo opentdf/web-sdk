@@ -1,16 +1,11 @@
-import { AuthProvider } from './auth';
+import { AuthProvider, HttpRequest } from './auth';
 import { IOIDCClientCredentialsProvider } from '../nanotdf/interfaces/OIDCInterface';
 import VirtruOIDC from './virtru-oidc';
 
 export class OIDCClientCredentialsProvider implements AuthProvider {
   oidcAuth: VirtruOIDC;
 
-  constructor({
-    clientPubKey,
-    clientId,
-    clientSecret,
-    oidcOrigin,
-  }: IOIDCClientCredentialsProvider) {
+  constructor({ clientId, clientSecret, oidcOrigin }: IOIDCClientCredentialsProvider) {
     if (!clientId || !clientSecret) {
       throw new Error(
         'To use this nonbrowser-only provider you must supply clientId & clientSecret'
@@ -18,7 +13,6 @@ export class OIDCClientCredentialsProvider implements AuthProvider {
     }
 
     this.oidcAuth = new VirtruOIDC({
-      clientPubKey,
       clientId,
       clientSecret,
       oidcOrigin,
@@ -29,10 +23,7 @@ export class OIDCClientCredentialsProvider implements AuthProvider {
     await this.oidcAuth.refreshTokenClaimsWithClientPubkeyIfNeeded(clientPubkey);
   }
 
-  async authorization(): Promise<string> {
-    const accessToken = await this.oidcAuth.getCurrentAccessToken();
-
-    // NOTE It is generally best practice to keep headers under 8KB
-    return `Bearer ${accessToken}`;
+  async withCreds(httpReq: HttpRequest): Promise<HttpRequest> {
+    return this.oidcAuth.withCreds(httpReq);
   }
 }

@@ -21,6 +21,7 @@ import EAS from '../../../src/auth/Eas';
 import EntityObject from '../../../../lib/src/tdf/EntityObject';
 
 import { EncryptParams, DecryptParams } from './builders';
+import { type DecoratedReadableStream } from './DecoratedReadableStream';
 
 import {
   DEFAULT_SEGMENT_SIZE,
@@ -93,7 +94,6 @@ const makeChunkable = async (source: DecryptSource) => {
 };
 
 export interface ClientConfig {
-  keypair?: PemKeyPair;
   organizationName?: string;
   clientId?: string;
   kasEndpoint?: string;
@@ -144,9 +144,6 @@ export class Client {
   constructor(config: ClientConfig) {
     const clientConfig = { ...defaultClientConfig, ...config };
 
-    const pubKey = clientConfig?.keypair?.publicKey;
-
-    clientConfig.keypair && (this.keypair = clientConfig.keypair);
     clientConfig.kasPublicKey && (this.kasPublicKey = clientConfig.kasPublicKey);
     clientConfig.readerUrl && (this.readerUrl = clientConfig.readerUrl);
 
@@ -190,7 +187,6 @@ export class Client {
       //and provide us with a valid refresh token/clientId obtained from that process.
       if (clientConfig.oidcRefreshToken) {
         clientConfig.authProvider = new OIDCRefreshTokenProvider({
-          clientPubKey: pubKey,
           clientId: clientConfig.clientId,
           externalRefreshToken: clientConfig.oidcRefreshToken,
           oidcOrigin: clientConfig.oidcOrigin,
@@ -198,7 +194,6 @@ export class Client {
       } else if (clientConfig.externalJwt) {
         //Are we exchanging a JWT previously issued by a trusted external entity (e.g. Google) for a bearer token?
         clientConfig.authProvider = new OIDCExternalJwtProvider({
-          clientPubKey: pubKey,
           clientId: clientConfig.clientId,
           externalJwt: clientConfig.externalJwt,
           oidcOrigin: clientConfig.oidcOrigin,
@@ -214,7 +209,6 @@ export class Client {
         );
       }
       this.authProvider = new OIDCClientCredentialsProvider({
-        clientPubKey: pubKey,
         clientId: clientConfig.clientId,
         clientSecret: clientConfig.clientSecret,
         oidcOrigin: clientConfig.oidcOrigin,
@@ -229,7 +223,6 @@ export class Client {
    * @param {object} source - nodeJS source object of unencrypted data
    * @param {boolean} [asHtml] - If we should wrap the TDF data in a self-opening HTML wrapper
    * @param {object} [metadata] - additional non-secret data to store with the TDF
-   * @param {object} [opts] - object containing keypair
    * @param {string} [mimeType] - mime type of source
    * @param {boolean} [offline] - Where to store the policy
    * @param {object} [output] - output stream. Created and returned if not passed in
@@ -243,7 +236,6 @@ export class Client {
     source,
     asHtml = false,
     metadata = null,
-    opts,
     mimeType,
     offline = false,
     rcaSource = false,
@@ -254,7 +246,6 @@ export class Client {
     source,
     asHtml = false,
     metadata = null,
-    opts,
     mimeType,
     offline = false,
     output,
@@ -264,7 +255,7 @@ export class Client {
     if (rcaSource && asHtml) throw new Error('rca links should be used only with zip format');
     let entityObject: EntityObject | undefined;
 
-    const keypair: PemKeyPair = await this._getOrCreateKeypair(opts);
+    const keypair: PemKeyPair = await this._getOrCreateKeypair();
     const policyObject = await this._createPolicyObject(scope);
     const kasPublicKey = await this._getOrFetchKasPubKey();
 
@@ -336,13 +327,12 @@ export class Client {
    *
    * @param {object} - Required. All parameters for the decrypt operation, generated using {@link DecryptParamsBuilder#build|DecryptParamsBuilder's build()}.
    * @param {object} source - A data stream object, one of remote, stream, buffer, etc. types.
-   * @param {object} opts - object with keypair
    * @param {object} [rcaSource] - RCA source information
-   * @return {DecoratedTdfStream} - a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} stream containing the decrypted plaintext.
+   * @return a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} stream containing the decrypted plaintext.
    * @see DecryptParamsBuilder
    */
-  async decrypt({ source, opts, rcaSource }: DecryptParams) {
-    const keypair = await this._getOrCreateKeypair(opts);
+  async decrypt({ source, rcaSource }: DecryptParams): Promise<DecoratedReadableStream> {
+    const keypair = await this._getOrCreateKeypair();
     let entityObject;
     if (this.eas) {
       entityObject = await this.eas.fetchEntityObject({
@@ -360,7 +350,7 @@ export class Client {
 
     // Await in order to catch any errors from this call.
     // TODO: Write error event to stream and don't await.
-    return await tdf.readStream(chunker, rcaSource);
+    return tdf.readStream(chunker, rcaSource);
   }
 
   /**
@@ -406,7 +396,7 @@ export class Client {
    *
    * Additionally, update the auth injector with the (potentially new) pubkey
    */
-  async _getOrCreateKeypair(opts: undefined | { keypair: PemKeyPair }): Promise<PemKeyPair> {
+  async _getOrCreateKeypair(): Promise<PemKeyPair> {
     //If clientconfig has keypair, assume auth provider was already set up with pubkey and bail
     if (this.keypair) {
       return this.keypair;
@@ -414,14 +404,9 @@ export class Client {
 
     //If a keypair is being dynamically provided, then we've gotta (re)register
     // the pubkey with the auth provider
-    let keypair: PemKeyPair;
-    if (opts) {
-      keypair = opts.keypair;
-    } else {
-      //We have to generate and store a new keypair
-      keypair = await TDF.generateKeyPair();
-      this.keypair = keypair;
-    }
+    const keypair = await TDF.generateKeyPair();
+    //We have to generate and store a new keypair
+    this.keypair = keypair;
 
     // This will contact the auth server and forcibly refresh the auth token claims,
     // binding the token and the (new) pubkey together.

@@ -19,6 +19,10 @@ type AuthToProcess = {
 
 const containerTypes = ['tdf3', 'nano', 'dataset'] as const;
 
+const parseJwt = (jwt: string, field = 1) => {
+  return JSON.parse(Buffer.from(jwt.split('.')[field], 'base64').toString());
+};
+
 async function processAuth({ auth, clientId, clientSecret, oidcEndpoint }: AuthToProcess) {
   log('DEBUG', 'Processing auth params');
   if (auth) {
@@ -35,12 +39,26 @@ async function processAuth({ auth, clientId, clientSecret, oidcEndpoint }: AuthT
       'Auth expects clientId and clientSecret, or combined auth param'
     );
   }
-  return await AuthProviders.clientSecretAuthProvider({
+  const actual = await AuthProviders.clientSecretAuthProvider({
     clientId,
     oidcOrigin: oidcEndpoint,
     exchange: 'client',
     clientSecret,
   });
+  const requestLog: AuthProviders.HttpRequest[] = [];
+  return {
+    requestLog,
+    updateClientPublicKey: async (clientPubkey: string) => {
+      actual.updateClientPublicKey(clientPubkey);
+      log('DEBUG', `updateClientPublicKey: [${clientPubkey}]`);
+    },
+    withCreds: async (httpReq: AuthProviders.HttpRequest) => {
+      const creds = await actual.withCreds(httpReq);
+      log('DEBUG', `HTTP Requesting: ${JSON.stringify(creds)}`);
+      requestLog.push(creds);
+      return creds;
+    },
+  };
 }
 
 type AnyClient = FileClient | NanoTDFClient | NanoTDFDatasetClient;
@@ -227,6 +245,20 @@ export const handleArgs = (args: string[]) => {
               console.log(Buffer.from(plaintext).toString('utf8'));
             }
           }
+          const lastRequest = authProvider.requestLog[authProvider.requestLog.length - 1];
+          let accessToken = null;
+          for (const h of Object.keys(lastRequest.headers)) {
+            switch (h.toLowerCase()) {
+              case 'authorization':
+                {
+                  console.assert(!accessToken, 'Multiple authorization headers found');
+                  accessToken = parseJwt(lastRequest.headers[h].split(' ')[1]);
+                  log('INFO', `Access Token: ${JSON.stringify(accessToken)}`);
+                }
+                break;
+            }
+          }
+          console.assert(accessToken, 'No AccessToken found');
         }
       )
       .command(

@@ -75,10 +75,10 @@ describe('AccessToken', () => {
             auth_server_url: 'https://auth.invalid/auth/realms/yeet/',
             client_id: 'myid',
             client_secret: 'mysecret',
+            virtru_client_pubkey: 'fake-pub-key',
           },
           mf
         );
-        accessToken.virtru_client_pubkey = 'fake-pub-key';
         const res = await accessToken.refresh('refresh');
         expect(res).to.equal('fdfsdffsdf');
         expect(mf.lastCall.firstArg).to.match(
@@ -102,6 +102,7 @@ describe('AccessToken', () => {
             auth_server_url: 'https://auth.invalid',
             auth_mode: 'browser',
             client_id: 'browserclient',
+            virtru_client_pubkey: 'fake-pub-key',
           },
           mf
         );
@@ -128,6 +129,7 @@ describe('AccessToken', () => {
             client_id: 'myid',
             client_secret: 'mysecret',
             auth_mode: 'credentials',
+            virtru_client_pubkey: 'fake-pub-key',
           },
           mf
         );
@@ -154,6 +156,7 @@ describe('AccessToken', () => {
             auth_mode: 'browser',
             auth_server_url: 'https://auth.invalid',
             client_id: 'browserclient',
+            virtru_client_pubkey: 'fake-pub-key',
           },
           mf
         );
@@ -182,6 +185,7 @@ describe('AccessToken', () => {
           auth_mode: 'browser',
           auth_server_url: 'https://auth.invalid',
           client_id: 'browserclient',
+          virtru_client_pubkey: 'fake-pub-key',
         },
         mf
       );
@@ -215,6 +219,7 @@ describe('AccessToken', () => {
           auth_mode: 'browser',
           auth_server_url: 'https://auth.invalid',
           client_id: 'browserclient',
+          virtru_client_pubkey: 'fake-pub-key',
         },
         mf
       );
@@ -240,6 +245,7 @@ describe('AccessToken', () => {
             client_id: 'myid',
             client_secret: 'mysecret',
             auth_mode: 'credentials',
+            virtru_client_pubkey: 'fake-pub-key',
           },
           mf
         );
@@ -282,6 +288,7 @@ describe('AccessToken', () => {
           client_id: 'myid',
           client_secret: 'mysecret',
           auth_mode: 'credentials',
+          virtru_client_pubkey: 'fake-pub-key',
         },
         mf
       );
@@ -312,6 +319,7 @@ describe('AccessToken', () => {
           client_id: 'myid',
           client_secret: 'mysecret',
           auth_mode: 'credentials',
+          virtru_client_pubkey: 'fake-pub-key',
         },
         mf
       );
