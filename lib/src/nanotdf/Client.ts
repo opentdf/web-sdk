@@ -60,6 +60,7 @@ export default class Client {
   protected kasUrl: string;
   protected kasPubKey: string;
   readonly authProvider: AuthProvider;
+  readonly dpopEnabled: boolean;
   dissems: string[] = [];
   dataAttributes: string[] = [];
   protected ephemeralKeyPair?: Required<Readonly<CryptoKeyPair>>;
@@ -76,11 +77,13 @@ export default class Client {
   constructor(
     authProvider: AuthProvider,
     kasUrl: string,
-    ephemeralKeyPair?: Required<Readonly<CryptoKeyPair>>
+    ephemeralKeyPair?: Required<Readonly<CryptoKeyPair>>,
+    dpopEnabled = false
   ) {
     this.authProvider = authProvider;
     this.kasUrl = kasUrl;
     this.kasPubKey = '';
+    this.dpopEnabled = dpopEnabled;
 
     if (ephemeralKeyPair) {
       this.ephemeralKeyPair = ephemeralKeyPair;
@@ -161,7 +164,10 @@ export default class Client {
     }
 
     const signerPubKey = await cryptoPublicToPem(signer.publicKey);
-    await this.authProvider.updateClientPublicKey(base64.encode(signerPubKey));
+    await this.authProvider.updateClientPublicKey(
+      base64.encode(signerPubKey),
+      this.dpopEnabled ? signer : undefined
+    );
   }
 
   /**

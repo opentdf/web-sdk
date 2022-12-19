@@ -30,6 +30,7 @@ import {
   DecryptSource,
 } from './builders';
 import { Policy } from '../models/index';
+import { cryptoToPemPair, generateKeyPair, rsaPkcs1Sha256 } from '../crypto/index';
 
 const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
 const HTML_BYTE_LIMIT = 100 * 1000 * 1000; // 100 MB, see WS-9476.
@@ -96,6 +97,7 @@ const makeChunkable = async (source: DecryptSource) => {
 export interface ClientConfig {
   organizationName?: string;
   clientId?: string;
+  dpopEnabled?: boolean;
   kasEndpoint?: string;
   // DEPRECATED Ignored
   keyRewrapEndpoint?: string;
@@ -126,9 +128,13 @@ export class Client {
 
   readerUrl?: string;
 
-  keypair?: PemKeyPair;
+  keypairOld?: PemKeyPair;
+
+  signingKeys?: CryptoKeyPair;
 
   eas?: EAS;
+
+  readonly dpopEnabled: boolean;
 
   /**
    * An abstraction for protecting and accessing data using TDF3 services.
@@ -143,6 +149,7 @@ export class Client {
    */
   constructor(config: ClientConfig) {
     const clientConfig = { ...defaultClientConfig, ...config };
+    this.dpopEnabled = !!clientConfig.dpopEnabled;
 
     clientConfig.kasPublicKey && (this.kasPublicKey = clientConfig.kasPublicKey);
     clientConfig.readerUrl && (this.readerUrl = clientConfig.readerUrl);
@@ -398,15 +405,17 @@ export class Client {
    */
   async _getOrCreateKeypair(): Promise<PemKeyPair> {
     //If clientconfig has keypair, assume auth provider was already set up with pubkey and bail
-    if (this.keypair) {
-      return this.keypair;
+    if (this.keypairOld) {
+      return this.keypairOld;
     }
 
     //If a keypair is being dynamically provided, then we've gotta (re)register
     // the pubkey with the auth provider
-    const keypair = await TDF.generateKeyPair();
     //We have to generate and store a new keypair
-    this.keypair = keypair;
+    if (this.dpopEnabled) {
+      this.signingKeys = await crypto.subtle.generateKey(rsaPkcs1Sha256(), true, ['sign']);
+    }
+    this.keypairOld = await cryptoToPemPair(await generateKeyPair());
 
     // This will contact the auth server and forcibly refresh the auth token claims,
     // binding the token and the (new) pubkey together.
@@ -415,9 +424,12 @@ export class Client {
     // header parser barf. There are more subtle ways to solve this, but this works for now.
 
     if (this.authProvider && !isAppIdProviderCheck(this.authProvider)) {
-      await this.authProvider?.updateClientPublicKey(base64.encode(keypair.publicKey));
+      await this.authProvider?.updateClientPublicKey(
+        base64.encode(this.keypairOld.publicKey),
+        this.signingKeys
+      );
     }
-    return keypair;
+    return this.keypairOld;
   }
 
   /*

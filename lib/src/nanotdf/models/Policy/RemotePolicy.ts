@@ -10,10 +10,13 @@ import PolicyTypeEnum from '../../enum/PolicyTypeEnum';
  * used to describe the remote policy.
  */
 class RemotePolicy extends AbstractPolicy implements RemotePolicyInterface {
-  readonly type: PolicyTypeEnum = PolicyTypeEnum.Remote;
+  override readonly type: PolicyTypeEnum = PolicyTypeEnum.Remote;
   readonly remotePolicy: ResourceLocator;
 
-  static parse(buff: Uint8Array, bindingLength: number): { offset: number; policy: RemotePolicy } {
+  static override parse(
+    buff: Uint8Array,
+    bindingLength: number
+  ): { offset: number; policy: RemotePolicy } {
     let offset = 0;
     const resource = new ResourceLocator(buff);
     offset += resource.offset;
@@ -38,7 +41,7 @@ class RemotePolicy extends AbstractPolicy implements RemotePolicyInterface {
    *
    * @returns { number } length
    */
-  getLength(): number {
+  override getLength(): number {
     return (
       // Type length
       1 +
@@ -52,7 +55,7 @@ class RemotePolicy extends AbstractPolicy implements RemotePolicyInterface {
   /**
    * Return the content of the policy
    */
-  toBuffer(): Uint8Array {
+  override toBuffer(): Uint8Array {
     const buffer = new Uint8Array(this.getLength());
 
     buffer.set([PolicyTypeEnum.Remote], 0);

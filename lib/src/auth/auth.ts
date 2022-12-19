@@ -25,6 +25,13 @@ export type HttpRequest = {
   body?: BodyInit | null | unknown;
 };
 
+/**
+ * Appends the given `newHeaders` to the headers listed in HttpRequest, overwriting
+ * any with the same name. NOTE: Case sensitive.
+ * @param httpReq the source request
+ * @param newHeaders header name/value pairs
+ * @returns an updated variant of the request
+ */
 export function withHeaders(httpReq: HttpRequest, newHeaders: Record<string, string>): HttpRequest {
   const headers = {
     ...httpReq.headers,
@@ -33,6 +40,12 @@ export function withHeaders(httpReq: HttpRequest, newHeaders: Record<string, str
   return { ...httpReq, headers };
 }
 
+/**
+ * Generate a JWT (or JWS-ed object)
+ * @param toSign the data to sign. Interpreted as JWTPayload but AFAIK this isn't required
+ * @param privateKey an RSA key
+ * @returns the signed object, with a JWS header. This may be a JWT.
+ */
 export async function reqSignature(toSign: unknown, privateKey: CryptoKey) {
   return new SignJWT(toSign as JWTPayload)
     .setProtectedHeader({ alg: 'RS256' })
@@ -59,9 +72,12 @@ export interface AuthProvider {
    * using the cached refresh token, and update the auth server config with the
    * current key.
    *
-   * @param clientPubkey the client's public key, base64 encoded. Will be bound to the OIDC token.
+   * @param clientPubkey the client's public key, base64 encoded
+   * @param signingKey the client signing key pair. Will be bound
+   * to the OIDC token and require a DPoP header, when set.
    */
-  updateClientPublicKey(clientPubkey: string): Promise<void>;
+  updateClientPublicKey(clientPubkey: string, signingKey?: CryptoKeyPair): Promise<void>;
+
   /**
    * Augment the provided http request with custom auth info to be used by backend services.
    *

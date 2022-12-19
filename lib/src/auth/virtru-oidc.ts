@@ -65,10 +65,11 @@ export default class VirtruOIDC {
    * or wishes to set the keypair after creating the object.
    *
    * Calling this function will trigger a forcible token refresh using the cached refresh token, and contact the auth server.
-   *
-   * @param {string} clientPubKey - the client's public key, base64 encoded. Will be bound to the OIDC token. Optional. If not set in the constructor,
    */
-  async refreshTokenClaimsWithClientPubkeyIfNeeded(clientPubKey: string): Promise<void> {
+  async refreshTokenClaimsWithClientPubkeyIfNeeded(
+    clientPubKey: string,
+    signingKey?: CryptoKeyPair
+  ): Promise<void> {
     // If we already have a token, and the pubkey changes,
     // we need to force a refresh now - otherwise
     // we can wait until we create the token for the first time
@@ -76,10 +77,11 @@ export default class VirtruOIDC {
       return;
     }
     this.accessTokenGetter.virtru_client_pubkey = clientPubKey;
+    this.accessTokenGetter.signing_key = signingKey;
   }
 
   async getCurrentAccessToken(): Promise<string> {
-    if (!this.accessTokenGetter.virtru_client_pubkey) {
+    if (!this.accessTokenGetter.virtru_client_pubkey && !this.accessTokenGetter.signing_key) {
       throw new Error(
         'Client public key was not set via `updateClientPublicKey` or passed in via constructor, cannot fetch OIDC token with valid Virtru claims'
       );
@@ -125,6 +127,18 @@ export default class VirtruOIDC {
 
   async withCreds(httpReq: HttpRequest): Promise<HttpRequest> {
     const accessToken = await this.getCurrentAccessToken();
+    if (this.accessTokenGetter.signing_key) {
+      const { default: dpopFn } = await import('dpop');
+      const dpopToken = await dpopFn(
+        this.accessTokenGetter.signing_key,
+        httpReq.url,
+        httpReq.method,
+        /* nonce */ undefined,
+        accessToken
+      );
+      // TODO: Consider: only set DPoP if cnf.jkt is present in access token?
+      return withHeaders(httpReq, { Authorization: `Bearer ${accessToken}`, DPoP: dpopToken });
+    }
     return withHeaders(httpReq, { Authorization: `Bearer ${accessToken}` });
   }
 }
