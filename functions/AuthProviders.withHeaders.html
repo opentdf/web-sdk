@@ -20,16 +20,25 @@
 <ul class="tsd-signatures tsd-kind-function tsd-parent-kind-namespace">
 <li class="tsd-signature tsd-anchor-link" id="withHeaders">with<wbr/>Headers<span class="tsd-signature-symbol">(</span>httpReq<span class="tsd-signature-symbol">: </span><a href="../types/AuthProviders.HttpRequest.html" class="tsd-signature-type" data-tsd-kind="Type alias">HttpRequest</a>, newHeaders<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Record</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="../types/AuthProviders.HttpRequest.html" class="tsd-signature-type" data-tsd-kind="Type alias">HttpRequest</a><a href="#withHeaders" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" id="icon-anchor-a"></path><path d="M10 14a3.5 3.5 0 0 0 5 0l4 -4a3.5 3.5 0 0 0 -5 -5l-.5 .5" id="icon-anchor-b"></path><path d="M14 10a3.5 3.5 0 0 0 -5 0l-4 4a3.5 3.5 0 0 0 5 5l.5 -.5" id="icon-anchor-c"></path></svg></a></li>
 <li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Appends the given <code>newHeaders</code> to the headers listed in HttpRequest, overwriting
+any with the same name. NOTE: Case sensitive.</p>
+
+<h3>Returns</h3><p>an updated variant of the request</p>
+</div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
 <li>
-<h5>httpReq: <a href="../types/AuthProviders.HttpRequest.html" class="tsd-signature-type" data-tsd-kind="Type alias">HttpRequest</a></h5></li>
+<h5>httpReq: <a href="../types/AuthProviders.HttpRequest.html" class="tsd-signature-type" data-tsd-kind="Type alias">HttpRequest</a></h5>
+<div class="tsd-comment tsd-typography"><p>the source request</p>
+</div></li>
 <li>
-<h5>newHeaders: <span class="tsd-signature-type">Record</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">&gt;</span></h5></li></ul></div>
+<h5>newHeaders: <span class="tsd-signature-type">Record</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">&gt;</span></h5>
+<div class="tsd-comment tsd-typography"><p>header name/value pairs</p>
+</div></li></ul></div>
 <h4 class="tsd-returns-title">Returns <a href="../types/AuthProviders.HttpRequest.html" class="tsd-signature-type" data-tsd-kind="Type alias">HttpRequest</a></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/opentdf/client-web/blob/c8a8d6e/lib/src/auth/auth.ts#L28">auth/auth.ts:28</a></li></ul></aside></li></ul></section></div>
+<li>Defined in <a href="https://github.com/opentdf/client-web/blob/9a5cee1/lib/src/auth/auth.ts#L35">auth/auth.ts:35</a></li></ul></aside></li></ul></section></div>
 <div class="col-4 col-menu menu-sticky-wrap menu-highlight">
 <div class="tsd-navigation settings">
 <details class="tsd-index-accordion"><summary class="tsd-accordion-summary">
