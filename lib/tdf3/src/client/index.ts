@@ -262,6 +262,9 @@ export class Client {
     windowSize = DEFAULT_SEGMENT_SIZE,
   }: EncryptParams): Promise<AnyTdfStream | null> {
     if (rcaSource && asHtml) throw new Error('rca links should be used only with zip format');
+    if (rcaSource && !this.kasEndpoint)
+      throw new Error('rca links require a kasEndpoint url to be set');
+
     let entityObject: EntityObject | undefined;
 
     const keypair: PemKeyPair = await this._getOrCreateKeypair(opts);
@@ -302,10 +305,9 @@ export class Client {
     const byteLimit = asHtml ? HTML_BYTE_LIMIT : GLOBAL_BYTE_LIMIT;
     const stream = await tdf.writeStream(byteLimit, rcaSource);
     // Looks like invalid calls | stream.upsertResponse equals empty array?
-    // if (rcaSource) {
-    //   const url = stream.upsertResponse[0][0].storageLinks.payload.upload;
-    //   await uploadBinaryToS3(stream.stream, url, stream.tdfSize);
-    // }
+    if (rcaSource) {
+      stream.policyUuid = policyObject.uuid;
+    }
     if (!asHtml) {
       return stream;
     }

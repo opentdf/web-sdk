@@ -52,6 +52,7 @@ describe('zip utilities', () => {
   describe('localFileHeaders', () => {
     it('standard', async () => {
       const zipWriter = new ZipWriter();
+      zipWriter.zip64 = false;
       const headerBuffer = zipWriter.getLocalFileHeader(
         'Hey.txt',
         0x1337,
@@ -82,6 +83,7 @@ describe('zip utilities', () => {
   describe('dataDescriptors', () => {
     it('standard', async () => {
       const zipWriter = new ZipWriter();
+      zipWriter.zip64 = false;
       const descriptorBuffer = zipWriter.writeDataDescriptor(0x1337, 500);
       expect(descriptorBuffer.toString('base64')).to.equal('UEsHCDcTAAD0AQAA9AEAAA==');
     });
@@ -98,6 +100,7 @@ describe('zip utilities', () => {
   describe('centralDirectoryRecords', () => {
     it('standard', async () => {
       const zipWriter = new ZipWriter();
+      zipWriter.zip64 = false;
       const cdrBuffer = zipWriter.writeCentralDirectoryRecord(
         500,
         'Hey.txt',
@@ -150,6 +153,7 @@ describe('zip utilities', () => {
   describe('endOfentralDirectoryRecords', () => {
     it('standard', async () => {
       const zipWriter = new ZipWriter();
+      zipWriter.zip64 = false;
       const eocdrBuffer = zipWriter.writeEndOfCentralDirectoryRecord(2, 200, 2000);
       expect(eocdrBuffer.toString('base64')).to.equal('UEsFBgAAAAACAAIAyAAAANAHAAAAAA==');
     });

@@ -791,7 +791,24 @@ class DecryptParamsBuilder {
    * @param rcaParams
    */
   setRcaSource(rcaParams: RcaParams) {
-    this._params.rcaSource = rcaParams;
+    if (typeof rcaParams === 'object') {
+      this._params.rcaSource = rcaParams;
+    } else if (typeof rcaParams === 'string') {
+      try {
+        const rcaLink: URLSearchParams = new URLSearchParams(rcaParams);
+        const pu = rcaLink.get('pu');
+        const wu = rcaLink.get('wu'); // link for download
+        const wk = rcaLink.get('wk'); // split knowledge
+        const al = rcaLink.get('al');
+        if (!pu || !wu || !wk || !al) {
+          throw new Error('RCA link is not valid');
+        }
+        this._params.rcaSource = { pu, wu, wk, al };
+      } catch (e) {
+        console.error('RCA link is not valid', e);
+        throw new Error('RCA link is not valid');
+      }
+    }
   }
 
   /**
