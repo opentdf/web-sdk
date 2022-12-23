@@ -81,9 +81,13 @@ async function processDataIn(file: string) {
   if (!file) {
     throw new CLIError('CRITICAL', 'Must specify file or pipe');
   }
-  const stats = await stat(file);
-  if (!stats?.isFile()) {
-    throw new CLIError('CRITICAL', `File does not exist [${file}]`);
+  try {
+    const stats = await stat(file);
+    if (!stats?.isFile()) {
+      throw new CLIError('CRITICAL', `File does not exist [${file}]`);
+    }
+  } catch (e) {
+    throw new CLIError('CRITICAL', `File is not accessable [${file}]`);
   }
   log('DEBUG', `Using input from file [${file}]`);
   return readFile(file);
@@ -105,7 +109,8 @@ export const handleArgs = (args: string[]) => {
           log(err);
           process.exit(1);
         } else if (err) {
-          throw err;
+          log(err);
+          process.exit(2);
         } else {
           console.error(`${msg}\n\n${yargs.help()}`);
           process.exit(1);
@@ -152,7 +157,7 @@ export const handleArgs = (args: string[]) => {
 
       .option('exchangeToken', {
         group: 'Token from trusted external IdP to exchange for Virtru auth',
-        alias: 'et',
+        alias: 'et',  
         type: 'string',
         description: 'Token issued by trusted external IdP',
       })
@@ -326,7 +331,6 @@ export const handleArgs = (args: string[]) => {
       )
       .usage('openTDF CLI\n\nUsage: $0 [options]')
       .alias('help', 'h')
-      .showHelpOnFail(false, 'Something went wrong. Run with --help')
       .demandCommand()
       .recommendCommands()
       .help('help')

@@ -10,7 +10,7 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "inlineSourceMap": true,
-    "lib": ["es2020"],
+    "lib": ["es2020", "ES2022.Error"],
     "module": "commonjs",
     "moduleResolution": "node",
     "noImplicitAny": true,
