@@ -158,7 +158,7 @@ export const handleArgs = (args: string[]) => {
 
       .option('exchangeToken', {
         group: 'Token from trusted external IdP to exchange for Virtru auth',
-        alias: 'et',  
+        alias: 'et',
         type: 'string',
         description: 'Token issued by trusted external IdP',
       })
