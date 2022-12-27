@@ -3,12 +3,10 @@ export const Levels: Level[] = ['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG',
 
 export class CLIError extends Error {
   prefix: Level;
-  cause?: Error;
   constructor(prefix: Level, message: string, cause?: Error) {
-    super();
+    super(message, { cause });
     this.prefix = prefix;
     this.message = message;
-    this.cause = cause;
   }
 }
 

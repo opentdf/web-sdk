@@ -182,17 +182,20 @@ class TDF extends EventEmitter {
   // return a PEM-encoded string from the provided KAS server
   static async getPublicKeyFromKeyAccessServer(url: string): Promise<string> {
     const httpsRegex = /^https:/;
-    if (
-      url.startsWith('http://localhost') ||
+    if (url.startsWith('http://localhost') || url.startsWith('http://127.0.0.1')) {
+      console.warn(`Development KAS URL detected: [${url}]`);
+    } else if (
       /^http:\/\/[a-zA-Z.-]*[.]?svc\.cluster\.local($|\/)/.test(url) ||
-      url.startsWith('http://127.0.0.1') ||
-      httpsRegex.test(url)
+      /^http:\/\/[a-zA-Z.-]*[.]?internal($|\/)/.test(url)
     ) {
-      const kasPublicKeyRequest: { data: string } = await axios.get(`${url}/kas_public_key`);
-      return TDF.extractPemFromKeyString(kasPublicKeyRequest.data);
+      console.info(`Internal KAS URL detected: [${url}]`);
+    } else if (!httpsRegex.test(url)) {
+      console.error(
+        `Public key must be requested over a secure channel. Are you running in a secure environment? [${url}]`
+      );
     }
-
-    throw Error('Public key must be requested over a secure channel');
+    const kasPublicKeyRequest: { data: string } = await axios.get(`${url}/kas_public_key`);
+    return TDF.extractPemFromKeyString(kasPublicKeyRequest.data);
   }
 
   static async extractPemFromKeyString(keyString: string): Promise<string> {

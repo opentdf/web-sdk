@@ -81,9 +81,13 @@ async function processDataIn(file: string) {
   if (!file) {
     throw new CLIError('CRITICAL', 'Must specify file or pipe');
   }
-  const stats = await stat(file);
-  if (!stats?.isFile()) {
-    throw new CLIError('CRITICAL', `File does not exist [${file}]`);
+  try {
+    const stats = await stat(file);
+    if (!stats?.isFile()) {
+      throw new CLIError('CRITICAL', `File does not exist [${file}]`);
+    }
+  } catch (e) {
+    throw new CLIError('CRITICAL', `File is not accessable [${file}]`);
   }
   log('DEBUG', `Using input from file [${file}]`);
   return readFile(file);
@@ -105,7 +109,8 @@ export const handleArgs = (args: string[]) => {
           log(err);
           process.exit(1);
         } else if (err) {
-          throw err;
+          log(err);
+          process.exit(2);
         } else {
           console.error(`${msg}\n\n${yargs.help()}`);
           process.exit(1);
@@ -211,7 +216,7 @@ export const handleArgs = (args: string[]) => {
         'Decrypt TDF to string',
         // eslint-disable-next-line @typescript-eslint/no-empty-function
         (yargs) => {
-          yargs.positional('file', {
+          yargs.strict().positional('file', {
             describe: 'path to plain text file',
             type: 'string',
           });
@@ -279,7 +284,7 @@ export const handleArgs = (args: string[]) => {
         'Encrypt file or pipe to a TDF',
         // eslint-disable-next-line @typescript-eslint/no-empty-function
         (yargs) => {
-          yargs.positional('file', {
+          yargs.strict().positional('file', {
             describe: 'path to plain text file',
             type: 'string',
           });
@@ -326,7 +331,6 @@ export const handleArgs = (args: string[]) => {
       )
       .usage('openTDF CLI\n\nUsage: $0 [options]')
       .alias('help', 'h')
-      .showHelpOnFail(false, 'Something went wrong. Run with --help')
       .demandCommand()
       .recommendCommands()
       .help('help')
@@ -344,6 +348,7 @@ export const handleArgs = (args: string[]) => {
         })
       )
       .alias('version', 'V')
+      .strict()
       .parseAsync()
   );
 };
