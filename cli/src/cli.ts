@@ -96,7 +96,6 @@ async function processDataIn(file: string) {
 export const handleArgs = (args: string[]) => {
   return (
     yargs(args)
-      .strict()
       .middleware((argv) => {
         if (argv.silent) {
           log.level = 'CRITICAL';
@@ -217,7 +216,7 @@ export const handleArgs = (args: string[]) => {
         'Decrypt TDF to string',
         // eslint-disable-next-line @typescript-eslint/no-empty-function
         (yargs) => {
-          yargs.positional('file', {
+          yargs.strict().positional('file', {
             describe: 'path to plain text file',
             type: 'string',
           });
@@ -285,7 +284,7 @@ export const handleArgs = (args: string[]) => {
         'Encrypt file or pipe to a TDF',
         // eslint-disable-next-line @typescript-eslint/no-empty-function
         (yargs) => {
-          yargs.positional('file', {
+          yargs.strict().positional('file', {
             describe: 'path to plain text file',
             type: 'string',
           });
@@ -349,6 +348,7 @@ export const handleArgs = (args: string[]) => {
         })
       )
       .alias('version', 'V')
+      .strict()
       .parseAsync()
   );
 };

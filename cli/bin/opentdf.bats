@@ -12,7 +12,8 @@
 
 @test "fails with missing file arguments" {
   run $BATS_TEST_DIRNAME/opentdf.mjs --kasEndpoint https://invalid --oidcEndpoint http://invalid --auth b:c encrypt notafile
-  [[ $output == *"no such file or directory"* ]]
+  [ "$status" -eq 1 ]
+  [[ $output == *"File is not accessable"* ]]
 }
 
 @test "version command" {
