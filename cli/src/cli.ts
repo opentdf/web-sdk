@@ -96,6 +96,7 @@ async function processDataIn(file: string) {
 export const handleArgs = (args: string[]) => {
   return (
     yargs(args)
+      .strict()
       .middleware((argv) => {
         if (argv.silent) {
           log.level = 'CRITICAL';
