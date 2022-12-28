@@ -165,7 +165,6 @@ class EncryptParamsBuilder {
         dissem: [],
         attributes: [],
       },
-      metadata: null,
       keypair: undefined,
       offline: false,
       windowSize: DEFAULT_SEGMENT_SIZE,

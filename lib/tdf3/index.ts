@@ -1,4 +1,4 @@
-import { TDF, Client } from './src/index';
+import { TDF, Client, Errors } from './src/index';
 import {
   NanoTDFClient,
   NanoTDFDatasetClient,
@@ -20,6 +20,7 @@ registerModuleType(NodeTdfStream);
 
 export {
   TDF,
+  Errors,
   Client,
   version,
   clientType,
@@ -31,6 +32,7 @@ export {
 
 export default {
   TDF,
+  Errors,
   Client,
   version,
   clientType,

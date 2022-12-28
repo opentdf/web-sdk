@@ -8,7 +8,7 @@ import { AxiosRequestConfig } from 'axios';
  * ephemeral key, to be included in
  * [the claims object](https://github.com/opentdf/spec/blob/main/schema/ClaimsObject.md).
  */
-export interface AuthProvider {
+export abstract class AuthProvider {
   /**
    * This function should be called if the consumer of this auth provider
    * changes the client keypair, or wishes to set the keypair after creating
@@ -20,13 +20,13 @@ export interface AuthProvider {
    *
    * @param clientPubkey the client's public key, base64 encoded. Will be bound to the OIDC token.
    */
-  updateClientPublicKey(clientPubkey: string): Promise<void>;
+  abstract updateClientPublicKey(clientPubkey: string): Promise<void>;
 
   /**
    * Compute an auth header value for an http request, to associate the session with the current entity
    * @returns a value that will be attached as a bearer token in the `Authorization` header for requests to backend services
    */
-  authorization(): Promise<string>;
+  abstract authorization(): Promise<string>;
 }
 
 /**
@@ -46,15 +46,15 @@ export interface AuthProvider {
  * <li><a href="VirtruCredentialsAuthProvider.html">VirtruCredentialsAuthProvider</li>
  * </ul>
  */
-export interface AppIdAuthProvider {
+export abstract class AppIdAuthProvider {
   /**
    * Augment the provided http request with custom auth info to be used by backend services.
    *
    * @param httpReq - Required. An http request pre-populated with the data public key.
    */
-  injectAuth(httpReq: AxiosRequestConfig): Promise<void>;
+  abstract injectAuth(httpReq: AxiosRequestConfig): Promise<void>;
 
-  _getName(): string;
+  abstract _getName(): string;
 }
 
 export default AppIdAuthProvider;

@@ -6,14 +6,13 @@ import type { AxiosResponse, AxiosRequestConfig } from 'axios';
 
 const { request } = axios;
 
-type AuthorizingFunction = (req: HttpRequest) => Promise<void>;
 type RequestFunctor = <T = any, R = AxiosResponse<T>>(config: AxiosRequestConfig) => Promise<R>;
 
 /**
  * Client for EAS interaction, specifically fetching entity object.
  */
 class Eas {
-  authProvider: AuthorizingFunction;
+  authProvider: AppIdAuthProvider;
 
   endpoint: string;
 
@@ -37,7 +36,7 @@ class Eas {
     endpoint: string;
     requestFunctor?: RequestFunctor;
   }) {
-    this.authProvider = authProvider.injectAuth;
+    this.authProvider = authProvider;
     this.endpoint = endpoint;
     this.requestFunctor = requestFunctor || request;
   }
@@ -61,7 +60,7 @@ class Eas {
 
     // Delegate modifications to the auth provider.
     // TODO: Handle various exception cases from interface docs.
-    await this.authProvider(httpReq);
+    await this.authProvider.injectAuth(httpReq);
 
     // Execute the http request using axios.
     const axiosParams: AxiosRequestConfig = {
