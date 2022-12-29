@@ -17,7 +17,7 @@ class EmbeddedPolicy extends AbstractPolicy implements EmbeddedPolicyInterface {
   static MAX_POLICY_SIZE = 65535; // 2 bytes unsigned int.
   readonly content: Uint8Array;
 
-  static parse(
+  static override parse(
     buff: Uint8Array,
     bindingLength: number,
     type: PolicyTypes
@@ -51,7 +51,7 @@ class EmbeddedPolicy extends AbstractPolicy implements EmbeddedPolicyInterface {
    *
    * @returns { number } length
    */
-  getLength(): number {
+  override getLength(): number {
     return (
       // Type length
       1 +
@@ -67,7 +67,7 @@ class EmbeddedPolicy extends AbstractPolicy implements EmbeddedPolicyInterface {
   /**
    * Return the content of the policy
    */
-  toBuffer(): Uint8Array {
+  override toBuffer(): Uint8Array {
     const buffer = new Uint8Array(this.getLength());
 
     if (this.content.length > EmbeddedPolicy.MAX_POLICY_SIZE) {

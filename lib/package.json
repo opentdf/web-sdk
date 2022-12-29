@@ -70,6 +70,7 @@
     "axios": "^1.1.3",
     "browser-fs-access": "^0.31.1",
     "buffer-crc32": "^0.2.13",
+    "dpop": "^1.1.0",
     "events": "^3.3.0",
     "jose": "^4.10.3",
     "jsonschema": "^1.4.1",

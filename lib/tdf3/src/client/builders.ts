@@ -7,7 +7,6 @@ import { RcaParams } from '../tdf';
 import { Binary } from '../binary';
 
 import { IllegalArgumentError, IllegalEnvError } from '../errors';
-import { PemKeyPair } from '../crypto/declarations';
 import PolicyObject from '../../../src/tdf/PolicyObject';
 import EntityObject from '../../../src/tdf/EntityObject';
 
@@ -128,7 +127,6 @@ type Metadata = {
 
 export interface EncryptParams {
   source: ReadableStream<Uint8Array>;
-  opts?: { keypair: PemKeyPair };
   output?: NodeJS.WriteStream;
   scope: Scope;
   metadata: Metadata | null;
@@ -601,7 +599,6 @@ export type DecryptSource =
 
 export type DecryptParams = {
   source: DecryptSource;
-  opts?: { keypair: PemKeyPair };
   rcaSource?: RcaParams;
   eo?: EntityObject;
 } & Pick<EncryptParams, 'contentLength' | 'keypair'>;

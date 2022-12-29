@@ -29,7 +29,7 @@ function isClientTdf3(c: unknown): c is ClientTdf3 {
 export class FileClient {
   dissems: string[] = [];
   dataAttributes: string[] = [];
-  private client: ClientTdf3;
+  client: ClientTdf3;
 
   constructor(opts: FileClientConfig | ClientTdf3) {
     // I'm using a duck type check here to make it easier to mock.

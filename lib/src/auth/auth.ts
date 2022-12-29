@@ -1,4 +1,59 @@
+import { JWTPayload, SignJWT } from 'jose';
 import { AxiosRequestConfig } from 'axios';
+
+export type Method =
+  | 'GET'
+  | 'HEAD'
+  | 'POST'
+  | 'PUT'
+  | 'DELETE'
+  | 'CONNECT'
+  | 'OPTIONS'
+  | 'TRACE'
+  | 'PATCH';
+
+/**
+ * Generic HTTP request interface used by AuthProvider implementers.
+ */
+export type HttpRequest = {
+  headers: Record<string, string>;
+
+  method: Method;
+
+  /** The resource to query */
+  url: string;
+
+  body?: BodyInit | null | unknown;
+};
+
+/**
+ * Appends the given `newHeaders` to the headers listed in HttpRequest, overwriting
+ * any with the same name. NOTE: Case sensitive.
+ * @param httpReq the source request
+ * @param newHeaders header name/value pairs
+ * @returns an updated variant of the request
+ */
+export function withHeaders(httpReq: HttpRequest, newHeaders: Record<string, string>): HttpRequest {
+  const headers = {
+    ...httpReq.headers,
+    ...newHeaders,
+  };
+  return { ...httpReq, headers };
+}
+
+/**
+ * Generate a JWT (or JWS-ed object)
+ * @param toSign the data to sign. Interpreted as JWTPayload but AFAIK this isn't required
+ * @param privateKey an RSA key
+ * @returns the signed object, with a JWS header. This may be a JWT.
+ */
+export async function reqSignature(toSign: unknown, privateKey: CryptoKey) {
+  return new SignJWT(toSign as JWTPayload)
+    .setProtectedHeader({ alg: 'RS256' })
+    .setIssuedAt()
+    .setExpirationTime('2h')
+    .sign(privateKey);
+}
 
 /**
  * A utility type for getting and updating a bearer token to associate with
@@ -8,7 +63,7 @@ import { AxiosRequestConfig } from 'axios';
  * ephemeral key, to be included in
  * [the claims object](https://github.com/opentdf/spec/blob/main/schema/ClaimsObject.md).
  */
-export abstract class AuthProvider {
+export interface AuthProvider {
   /**
    * This function should be called if the consumer of this auth provider
    * changes the client keypair, or wishes to set the keypair after creating
@@ -18,15 +73,18 @@ export abstract class AuthProvider {
    * using the cached refresh token, and update the auth server config with the
    * current key.
    *
-   * @param clientPubkey the client's public key, base64 encoded. Will be bound to the OIDC token.
+   * @param clientPubkey the client's public key, base64 encoded
+   * @param signingKey the client signing key pair. Will be bound
+   * to the OIDC token and require a DPoP header, when set.
    */
-  abstract updateClientPublicKey(clientPubkey: string): Promise<void>;
+  updateClientPublicKey(clientPubkey: string, signingKey?: CryptoKeyPair): Promise<void>;
 
   /**
-   * Compute an auth header value for an http request, to associate the session with the current entity
-   * @returns a value that will be attached as a bearer token in the `Authorization` header for requests to backend services
+   * Augment the provided http request with custom auth info to be used by backend services.
+   *
+   * @param httpReq - Required. An http request pre-populated with the data public key.
    */
-  abstract authorization(): Promise<string>;
+  withCreds(httpReq: HttpRequest): Promise<HttpRequest>;
 }
 
 /**

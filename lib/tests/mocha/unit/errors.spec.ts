@@ -56,7 +56,7 @@ describe('Errors', () => {
       });
 
       it('should have an undefined err', () => {
-        assert.equal(err.err, undefined);
+        assert.equal(err.cause, undefined);
       });
     });
   });
