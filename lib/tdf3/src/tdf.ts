@@ -300,7 +300,7 @@ class TDF extends EventEmitter {
       }
       encryptionInformation.keyAccess.push(keyAccess);
     }
-    debugger;
+
     // If an attributeUrl is provided try to load with that first.
     if (attributeUrl) {
       const attr = this.attributeSet.get(attributeUrl);
