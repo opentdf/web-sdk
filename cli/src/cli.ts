@@ -302,7 +302,7 @@ export const handleArgs = (args: string[]) => {
             addParams(client, argv);
             const ct = await client.encrypt(argv.file as string);
             if (!ct) {
-              throw Error('Encrypt configuration error: No output?');
+              throw new CLIError('CRITICAL', 'Encrypt configuration error: No output?');
             }
             if (argv.output) {
               if (ct.toFile) {
