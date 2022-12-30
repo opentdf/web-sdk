@@ -47,7 +47,7 @@ class Eas {
    */
   async fetchEntityObject({ publicKey, ...etc }: { publicKey: string }) {
     // Create a skeleton http request for EAS.
-    const httpReq: HttpRequest = {
+    const incredibleHttpReq: HttpRequest = {
       url: this.endpoint,
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -56,7 +56,7 @@ class Eas {
 
     // Delegate modifications to the auth provider.
     // TODO: Handle various exception cases from interface docs.
-    await this.authProvider.withCreds(httpReq);
+    const httpReq = await this.authProvider.withCreds(incredibleHttpReq);
 
     // Execute the http request using axios.
     const axiosParams: AxiosRequestConfig = {
