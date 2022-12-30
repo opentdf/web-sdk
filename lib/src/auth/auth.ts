@@ -1,5 +1,4 @@
 import { JWTPayload, SignJWT } from 'jose';
-import { AxiosRequestConfig } from 'axios';
 
 export type Method =
   | 'GET'
@@ -15,16 +14,24 @@ export type Method =
 /**
  * Generic HTTP request interface used by AuthProvider implementers.
  */
-export type HttpRequest = {
+export class HttpRequest {
   headers: Record<string, string>;
 
   method: Method;
 
-  /** The resource to query */
+  params?: object;
+
   url: string;
 
   body?: BodyInit | null | unknown;
-};
+
+  constructor() {
+    this.headers = {};
+    this.params = {};
+    this.method = 'POST';
+    this.url = '';
+  }
+}
 
 /**
  * Appends the given `newHeaders` to the headers listed in HttpRequest, overwriting
@@ -63,7 +70,7 @@ export async function reqSignature(toSign: unknown, privateKey: CryptoKey) {
  * ephemeral key, to be included in
  * [the claims object](https://github.com/opentdf/spec/blob/main/schema/ClaimsObject.md).
  */
-export interface AuthProvider {
+export abstract class AuthProvider {
   /**
    * This function should be called if the consumer of this auth provider
    * changes the client keypair, or wishes to set the keypair after creating
@@ -77,14 +84,14 @@ export interface AuthProvider {
    * @param signingKey the client signing key pair. Will be bound
    * to the OIDC token and require a DPoP header, when set.
    */
-  updateClientPublicKey(clientPubkey: string, signingKey?: CryptoKeyPair): Promise<void>;
+  abstract updateClientPublicKey(clientPubkey: string, signingKey?: CryptoKeyPair): Promise<void>;
 
   /**
    * Augment the provided http request with custom auth info to be used by backend services.
    *
    * @param httpReq - Required. An http request pre-populated with the data public key.
    */
-  withCreds(httpReq: HttpRequest): Promise<HttpRequest>;
+  abstract withCreds(httpReq: HttpRequest): Promise<HttpRequest>;
 }
 
 /**
@@ -110,7 +117,7 @@ export abstract class AppIdAuthProvider {
    *
    * @param httpReq - Required. An http request pre-populated with the data public key.
    */
-  abstract injectAuth(httpReq: AxiosRequestConfig): Promise<void>;
+  abstract withCreds(httpReq: HttpRequest): Promise<HttpRequest>;
 
   abstract _getName(): string;
 }

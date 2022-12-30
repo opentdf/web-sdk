@@ -16,12 +16,11 @@ import { OIDCClientCredentialsProvider } from '../../../src/auth/oidc-clientcred
 import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-provider';
 import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider';
 import { PemKeyPair } from '../crypto/declarations';
-import { AuthProvider, AppIdAuthProvider } from '../../../src/auth/auth';
+import { AuthProvider, AppIdAuthProvider, HttpRequest } from '../../../src/auth/auth';
 import EAS from '../../../src/auth/Eas';
 
 import { EncryptParams, DecryptParams } from './builders';
 import { Binary } from '../binary';
-import HttpRequest from '../../../src/auth/Http-request';
 import { type DecoratedReadableStream } from './DecoratedReadableStream';
 
 import {
@@ -468,9 +467,10 @@ export class Client {
 
 export default {
   Client,
-  AuthProvider,
   DecryptParamsBuilder,
   EncryptParamsBuilder,
+  AuthProvider,
+  AppIdAuthProvider,
   uploadBinaryToS3,
   HttpRequest,
 };

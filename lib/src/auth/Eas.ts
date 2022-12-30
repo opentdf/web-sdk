@@ -56,7 +56,7 @@ class Eas {
 
     // Delegate modifications to the auth provider.
     // TODO: Handle various exception cases from interface docs.
-    await this.authProvider.injectAuth(httpReq);
+    await this.authProvider.withCreds(httpReq);
 
     // Execute the http request using axios.
     const axiosParams: AxiosRequestConfig = {
