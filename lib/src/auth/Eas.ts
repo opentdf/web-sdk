@@ -4,14 +4,13 @@ import { AppIdAuthProvider, HttpRequest } from './auth';
 
 const { request } = axios;
 
-type AuthorizingFunction = (req: HttpRequest) => Promise<HttpRequest>;
 type RequestFunctor = <T = any, R = AxiosResponse<T>>(config: AxiosRequestConfig) => Promise<R>;
 
 /**
  * Client for EAS interaction, specifically fetching entity object.
  */
 class Eas {
-  authProvider: AuthorizingFunction;
+  authProvider: AppIdAuthProvider;
 
   endpoint: string;
 
@@ -35,7 +34,7 @@ class Eas {
     endpoint: string;
     requestFunctor?: RequestFunctor;
   }) {
-    this.authProvider = authProvider.withCreds;
+    this.authProvider = authProvider;
     this.endpoint = endpoint;
     this.requestFunctor = requestFunctor || request;
   }
@@ -57,7 +56,7 @@ class Eas {
 
     // Delegate modifications to the auth provider.
     // TODO: Handle various exception cases from interface docs.
-    await this.authProvider(httpReq);
+    await this.authProvider.withCreds(httpReq);
 
     // Execute the http request using axios.
     const axiosParams: AxiosRequestConfig = {

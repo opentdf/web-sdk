@@ -204,7 +204,7 @@ class TDF extends EventEmitter {
     // Skip the public key extraction if we find that the KAS url provides a
     // PEM-encoded key instead of certificate
     if (keyString.includes('CERTIFICATE')) {
-      const cert = await importX509(keyString, 'RS256');
+      const cert = await importX509(keyString, 'RS256', { extractable: true });
       pem = await exportSPKI(cert);
     }
 
@@ -359,7 +359,8 @@ class TDF extends EventEmitter {
     this.entity = entity;
     // Harvest the attributes from this entity object
     // Don't wait for this promise to resolve.
-    this.entity.attributes.forEach(this.attributeSet.addJwtAttribute);
+    this.entity.attributes.forEach((attr) => this.attributeSet.addJwtAttribute(attr));
+
     return this;
   }
 
@@ -480,7 +481,7 @@ class TDF extends EventEmitter {
           return;
         }
 
-        const url = `${keyAccessObject.url}/${isAppIdProvider ? '' : 'v2'}/upsert`;
+        const url = `${keyAccessObject.url}/${isAppIdProvider ? '' : 'v2/'}upsert`;
 
         //TODO I dont' think we need a body at all for KAS requests
         // Do we need ANY of this if it's already embedded in the EO in the Bearer OIDC token?
@@ -524,7 +525,11 @@ class TDF extends EventEmitter {
     );
   }
 
-  async writeStream(byteLimit: number, isRcaSource: boolean): Promise<AnyTdfStream> {
+  async writeStream(
+    byteLimit: number,
+    isRcaSource: boolean,
+    payloadKey?: Binary
+  ): Promise<AnyTdfStream> {
     if (!this.contentStream) {
       throw new IllegalArgumentError('No input stream defined');
     }
@@ -573,7 +578,7 @@ class TDF extends EventEmitter {
       kv.unwrappedKeyIvBinary
     );
 
-    const manifest = await this._generateManifest(isRcaSource ? kv : keyInfo);
+    const manifest = await this._generateManifest(isRcaSource && !payloadKey ? kv : keyInfo);
     this.manifest = manifest;
 
     // For all remote key access objects, sync its policy
@@ -661,7 +666,7 @@ class TDF extends EventEmitter {
 
           // hash the concat of all hashes
           const payloadSigStr = await self.getSignature(
-            keyInfo.unwrappedKeyBinary,
+            payloadKey || keyInfo.unwrappedKeyBinary,
             Binary.fromString(aggregateHash),
             self.integrityAlgorithm
           );
@@ -723,7 +728,7 @@ class TDF extends EventEmitter {
     if (upsertResponse) {
       plaintextStream.upsertResponse = upsertResponse;
       plaintextStream.tdfSize = totalByteCount;
-      plaintextStream.KEK = kek.payload.asBuffer().toString('base64');
+      plaintextStream.KEK = payloadKey? null : kek.payload.asBuffer().toString('base64');
       plaintextStream.algorithm = manifest.encryptionInformation.method.algorithm;
     }
 
@@ -750,11 +755,11 @@ class TDF extends EventEmitter {
       // Don't pass in an IV here. The encrypt function will generate one for you, ensuring that each segment has a unique IV.
       const encryptedResult = await encryptionInformation.encrypt(
         Binary.fromBuffer(chunk),
-        keyInfo.unwrappedKeyBinary
+        payloadKey || keyInfo.unwrappedKeyBinary
       );
       const payloadBuffer = encryptedResult.payload.asBuffer();
       const payloadSigStr = await self.getSignature(
-        keyInfo.unwrappedKeyBinary,
+        payloadKey || keyInfo.unwrappedKeyBinary,
         encryptedResult.payload,
         self.segmentIntegrityAlgorithm
       );
@@ -882,7 +887,7 @@ class TDF extends EventEmitter {
     const unwrapResult = await this.unwrapKey(this.manifest);
     let { reconstructedKeyBinary } = unwrapResult;
     const { metadata } = unwrapResult;
-    if (rcaParams) {
+    if (rcaParams && rcaParams.wk) {
       const { wk, al } = rcaParams;
       this.encryptionInformation = new SplitKey(TDF.createCipher(al.toLowerCase()));
       const kekPayload = Binary.fromBuffer(Buffer.from(wk, 'base64'));
@@ -926,7 +931,8 @@ class TDF extends EventEmitter {
     const that = this;
     const outputStream = makeStream(this.segmentSizeDefault, {
       async pull(controller: ReadableStreamDefaultController) {
-        while (!!controller.desiredSize && controller.desiredSize >= 0) {
+        // @ts-ignore
+        while (segments.length && Number.isInteger(controller.desiredSize) && controller.desiredSize >= 0) {
           const segment = segments.shift();
           if (!segment) {
             // Popped past the end
@@ -950,7 +956,7 @@ class TDF extends EventEmitter {
             segmentIntegrityAlgorithmType || integrityAlgorithmType
           );
 
-          if (segment?.hash !== base64.encode(segmentHashStr)) {
+          if (segment.hash !== base64.encode(segmentHashStr)) {
             throw new ManifestIntegrityError('Failed integrity check on segment hash');
           }
 

@@ -99,7 +99,7 @@ export class FileClient {
     source: InputSource = '',
     users?: string[],
     params?: EncryptParams
-  ): Promise<AnyTdfStream> {
+  ): Promise<AnyTdfStream | null> {
     const defaultParams =
       params ||
       new EncryptParamsBuilder()

@@ -16,11 +16,11 @@ import { OIDCClientCredentialsProvider } from '../../../src/auth/oidc-clientcred
 import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-provider';
 import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider';
 import { PemKeyPair } from '../crypto/declarations';
-import { AuthProvider, AppIdAuthProvider } from '../../../src/auth/auth';
+import { AuthProvider, AppIdAuthProvider, HttpRequest } from '../../../src/auth/auth';
 import EAS from '../../../src/auth/Eas';
-import EntityObject from '../../../../lib/src/tdf/EntityObject';
 
 import { EncryptParams, DecryptParams } from './builders';
+import { Binary } from '../binary';
 import { type DecoratedReadableStream } from './DecoratedReadableStream';
 
 import {
@@ -95,6 +95,7 @@ const makeChunkable = async (source: DecryptSource) => {
 };
 
 export interface ClientConfig {
+  keypair?: PemKeyPair;
   organizationName?: string;
   clientId?: string;
   dpopEnabled?: boolean;
@@ -128,13 +129,15 @@ export class Client {
 
   readerUrl?: string;
 
-  keypairOld?: PemKeyPair;
+  keypair?: PemKeyPair;
 
   signingKeys?: CryptoKeyPair;
 
   eas?: EAS;
 
   readonly dpopEnabled: boolean;
+
+  clientConfig: ClientConfig;
 
   /**
    * An abstraction for protecting and accessing data using TDF3 services.
@@ -151,6 +154,7 @@ export class Client {
     const clientConfig = { ...defaultClientConfig, ...config };
     this.dpopEnabled = !!clientConfig.dpopEnabled;
 
+    clientConfig.keypair && (this.keypair = clientConfig.keypair);
     clientConfig.kasPublicKey && (this.kasPublicKey = clientConfig.kasPublicKey);
     clientConfig.readerUrl && (this.readerUrl = clientConfig.readerUrl);
 
@@ -165,6 +169,7 @@ export class Client {
     }
 
     this.authProvider = config.authProvider;
+    this.clientConfig = clientConfig;
 
     if (this.authProvider && isAppIdProviderCheck(this.authProvider)) {
       this.eas = new EAS({
@@ -230,11 +235,14 @@ export class Client {
    * @param {object} source - nodeJS source object of unencrypted data
    * @param {boolean} [asHtml] - If we should wrap the TDF data in a self-opening HTML wrapper
    * @param {object} [metadata] - additional non-secret data to store with the TDF
+   * @param {object} [opts] - object containing keypair
    * @param {string} [mimeType] - mime type of source
    * @param {boolean} [offline] - Where to store the policy
    * @param {object} [output] - output stream. Created and returned if not passed in
    * @param {object} [rcaSource] - RCA source information
    * @param {number} [windowSize] - segment size in bytes
+   * @param {object} [eo] - entity object
+   * @param {Binary} [payloadKey] - Separate key for payload
    * @return a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} a new stream containing the TDF ciphertext, if output is not passed in as a paramter
    * @see EncryptParamsBuilder
    */
@@ -243,34 +251,20 @@ export class Client {
     source,
     asHtml = false,
     metadata = null,
-    mimeType,
-    offline = false,
-    rcaSource = false,
-    windowSize = DEFAULT_SEGMENT_SIZE,
-  }: EncryptParams): Promise<AnyTdfStream>;
-  async encrypt({
-    scope,
-    source,
-    asHtml = false,
-    metadata = null,
+    opts,
     mimeType,
     offline = false,
     output,
     rcaSource = false,
     windowSize = DEFAULT_SEGMENT_SIZE,
+    eo,
+    payloadKey,
   }: EncryptParams): Promise<AnyTdfStream | null> {
     if (rcaSource && asHtml) throw new Error('rca links should be used only with zip format');
-    let entityObject: EntityObject | undefined;
 
-    const keypair: PemKeyPair = await this._getOrCreateKeypair();
+    const keypair: PemKeyPair = await this._getOrCreateKeypair(opts);
     const policyObject = await this._createPolicyObject(scope);
     const kasPublicKey = await this._getOrFetchKasPubKey();
-
-    if (this.eas) {
-      entityObject = await this.eas.fetchEntityObject({
-        publicKey: keypair.publicKey,
-      });
-    }
 
     // TODO: Refactor underlying builder to remove some of this unnecessary config.
 
@@ -287,8 +281,8 @@ export class Client {
       .addContentStream(source, mimeType)
       .setPolicy(policyObject)
       .setAuthProvider(this.authProvider);
-    if (entityObject) {
-      tdf.setEntity(entityObject);
+    if (eo) {
+      tdf.setEntity(eo);
     }
     await tdf.addKeyAccess({
       type: offline ? 'wrapped' : 'remote',
@@ -298,12 +292,16 @@ export class Client {
     });
 
     const byteLimit = asHtml ? HTML_BYTE_LIMIT : GLOBAL_BYTE_LIMIT;
-    const stream = await tdf.writeStream(byteLimit, rcaSource);
+    const stream = await tdf.writeStream(byteLimit, rcaSource, payloadKey);
     // Looks like invalid calls | stream.upsertResponse equals empty array?
-    // if (rcaSource) {
-    //   const url = stream.upsertResponse[0][0].storageLinks.payload.upload;
-    //   await uploadBinaryToS3(stream.stream, url, stream.tdfSize);
-    // }
+    if (
+      rcaSource &&
+      stream.upsertResponse &&
+      stream.upsertResponse[0][0]?.storageLinks?.payload?.upload
+    ) {
+      const url = stream.upsertResponse[0][0].storageLinks.payload.upload;
+      await uploadBinaryToS3(stream.stream, url, stream.tdfSize);
+    }
     if (!asHtml) {
       return stream;
     }
@@ -334,12 +332,13 @@ export class Client {
    *
    * @param {object} - Required. All parameters for the decrypt operation, generated using {@link DecryptParamsBuilder#build|DecryptParamsBuilder's build()}.
    * @param {object} source - A data stream object, one of remote, stream, buffer, etc. types.
+   * @param {object} opts - object with keypair
    * @param {object} [rcaSource] - RCA source information
    * @return a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} stream containing the decrypted plaintext.
    * @see DecryptParamsBuilder
    */
-  async decrypt({ source, rcaSource }: DecryptParams): Promise<DecoratedReadableStream> {
-    const keypair = await this._getOrCreateKeypair();
+  async decrypt({ source, opts, rcaSource }: DecryptParams): Promise<DecoratedReadableStream> {
+    const keypair = await this._getOrCreateKeypair(opts);
     let entityObject;
     if (this.eas) {
       entityObject = await this.eas.fetchEntityObject({
@@ -397,25 +396,35 @@ export class Client {
     };
   }
 
+
+  protected binaryToB64(binary: Binary) : string  {
+    return base64.encode(binary.asString())
+  }
+
   /*
    * Extract a keypair provided as part of the options dict.
    * Default to using the clientwide keypair, generating one if necessary.
    *
    * Additionally, update the auth injector with the (potentially new) pubkey
    */
-  async _getOrCreateKeypair(): Promise<PemKeyPair> {
+  async _getOrCreateKeypair(opts: undefined | { keypair: PemKeyPair }): Promise<PemKeyPair> {
     //If clientconfig has keypair, assume auth provider was already set up with pubkey and bail
-    if (this.keypairOld) {
-      return this.keypairOld;
+    if (this.keypair) {
+      return this.keypair;
     }
 
     //If a keypair is being dynamically provided, then we've gotta (re)register
     // the pubkey with the auth provider
-    //We have to generate and store a new keypair
+    if (opts) {
+      this.keypair = opts.keypair;
+    } else {
+      this.keypair = await cryptoToPemPair(await generateKeyPair());
+    }
+
     if (this.dpopEnabled) {
       this.signingKeys = await crypto.subtle.generateKey(rsaPkcs1Sha256(), true, ['sign']);
     }
-    this.keypairOld = await cryptoToPemPair(await generateKeyPair());
+
 
     // This will contact the auth server and forcibly refresh the auth token claims,
     // binding the token and the (new) pubkey together.
@@ -425,11 +434,11 @@ export class Client {
 
     if (this.authProvider && !isAppIdProviderCheck(this.authProvider)) {
       await this.authProvider?.updateClientPublicKey(
-        base64.encode(this.keypairOld.publicKey),
+        base64.encode(this.keypair.publicKey),
         this.signingKeys
       );
     }
-    return this.keypairOld;
+    return this.keypair;
   }
 
   /*
@@ -460,5 +469,8 @@ export default {
   Client,
   DecryptParamsBuilder,
   EncryptParamsBuilder,
+  AuthProvider,
+  AppIdAuthProvider,
   uploadBinaryToS3,
+  HttpRequest,
 };

@@ -18,7 +18,7 @@ export async function streamToBuffer(stream: ReadableStream<Uint8Array>): Promis
 }
 
 export abstract class DecoratedReadableStream {
-  KEK: string;
+  KEK: null | string;
   algorithm: string;
   tdfSize: number;
   stream: ReadableStream<Uint8Array>;
