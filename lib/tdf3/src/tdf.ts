@@ -728,7 +728,7 @@ class TDF extends EventEmitter {
     if (upsertResponse) {
       plaintextStream.upsertResponse = upsertResponse;
       plaintextStream.tdfSize = totalByteCount;
-      plaintextStream.KEK = payloadKey? null : kek.payload.asBuffer().toString('base64');
+      plaintextStream.KEK = payloadKey ? null : kek.payload.asBuffer().toString('base64');
       plaintextStream.algorithm = manifest.encryptionInformation.method.algorithm;
     }
 
@@ -744,9 +744,6 @@ class TDF extends EventEmitter {
       if (totalByteCount > byteLimit) {
         throw new Error(`Safe byte limit (${byteLimit}) exceeded`);
       }
-      // NOTE: There is a bug in the type definitions for crc32 where they are missing
-      // the Partial. See https://github.com/DefinitelyTyped/DefinitelyTyped/pull/63411
-      // @ts-expect-error Error in type def.
       crcCounter = crc32.unsigned(chunk, crcCounter);
       fileByteCount += chunk.length;
     }
@@ -931,8 +928,11 @@ class TDF extends EventEmitter {
     const that = this;
     const outputStream = makeStream(this.segmentSizeDefault, {
       async pull(controller: ReadableStreamDefaultController) {
-        // @ts-ignore
-        while (segments.length && Number.isInteger(controller.desiredSize) && controller.desiredSize >= 0) {
+        while (
+          segments.length &&
+          Number.isInteger(controller.desiredSize) &&
+          (!controller.desiredSize || controller.desiredSize > 0)
+        ) {
           const segment = segments.shift();
           if (!segment) {
             // Popped past the end

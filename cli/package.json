@@ -34,7 +34,7 @@
     "@types/node": "^18.11.18",
     "@types/readable-stream": "^2.3.15",
     "@types/sinon": "^10.0.13",
-    "@types/yargs": "^17.0.17",
+    "@types/yargs": "^17.0.18",
     "@typescript-eslint/eslint-plugin": "^5.47.1",
     "@typescript-eslint/parser": "^5.47.1",
     "chai": "^4.3.7",
