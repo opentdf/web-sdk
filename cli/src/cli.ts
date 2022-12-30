@@ -301,6 +301,9 @@ export const handleArgs = (args: string[]) => {
             log('SILLY', `Initialized client ${JSON.stringify(client)}`);
             addParams(client, argv);
             const ct = await client.encrypt(argv.file as string);
+            if (!ct) {
+              throw new CLIError('CRITICAL', 'Encrypt configuration error: No output?');
+            }
             if (argv.output) {
               if (ct.toFile) {
                 await ct.toFile(argv.output as string);

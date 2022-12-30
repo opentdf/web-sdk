@@ -3,6 +3,7 @@ import { webcrypto as crypto } from 'crypto';
 import { ReadableStream } from 'stream/web';
 
 globalThis.crypto ??= crypto as unknown as Crypto;
+// @ts-expect-error transform type incompatible
 globalThis.ReadableStream ??= ReadableStream;
 
 export { NanoTDFClient, NanoTDFDatasetClient, AuthProviders, version, clientType };

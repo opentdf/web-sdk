@@ -17,6 +17,7 @@ import { NodeTdfStream } from './src/client/NodeTdfStream';
 globalThis.crypto ??= crypto as unknown as Crypto;
 //@ts-expect-error assignment to any type
 globalThis.CryptoKey ??= crypto.CryptoKey;
+// @ts-expect-error transform type incompatible
 globalThis.ReadableStream ??= ReadableStream;
 registerModuleType(NodeTdfStream);
 
