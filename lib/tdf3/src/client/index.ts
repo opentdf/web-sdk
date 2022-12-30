@@ -396,9 +396,8 @@ export class Client {
     };
   }
 
-
-  protected binaryToB64(binary: Binary) : string  {
-    return base64.encode(binary.asString())
+  protected binaryToB64(binary: Binary): string {
+    return base64.encode(binary.asString());
   }
 
   /*
@@ -424,7 +423,6 @@ export class Client {
     if (this.dpopEnabled) {
       this.signingKeys = await crypto.subtle.generateKey(rsaPkcs1Sha256(), true, ['sign']);
     }
-
 
     // This will contact the auth server and forcibly refresh the auth token claims,
     // binding the token and the (new) pubkey together.
