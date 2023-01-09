@@ -7,6 +7,7 @@ import {
   clientType,
 } from '../src/index';
 import { FileClient } from './src/FileClient';
+import { AuthProvider, AppIdAuthProvider, HttpRequest } from '../src/auth/auth';
 import { registerModuleType } from './src/client/tdf-stream';
 import { BrowserTdfStream } from './src/client/BrowserTdfSteam';
 
@@ -24,4 +25,7 @@ export {
   NanoTDFDatasetClient,
   AuthProviders,
   FileClient,
+  AuthProvider,
+  AppIdAuthProvider,
+  HttpRequest
 };
