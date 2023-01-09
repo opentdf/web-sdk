@@ -7,6 +7,7 @@ import {
   clientType,
 } from '../src/index';
 import { FileClient } from './src/FileClient';
+import { AuthProvider, AppIdAuthProvider, HttpRequest } from '../src/auth/auth';
 
 import { webcrypto as crypto } from 'crypto';
 import { ReadableStream } from 'stream/web';
@@ -30,6 +31,9 @@ export {
   NanoTDFDatasetClient,
   AuthProviders,
   FileClient,
+  AuthProvider,
+  AppIdAuthProvider,
+  HttpRequest
 };
 
 export default {
@@ -42,4 +46,7 @@ export default {
   NanoTDFDatasetClient,
   AuthProviders,
   FileClient,
+  AuthProvider,
+  AppIdAuthProvider,
+  HttpRequest
 };
