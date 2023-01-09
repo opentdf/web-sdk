@@ -34,7 +34,7 @@ export {
   FileClient,
   AuthProvider,
   AppIdAuthProvider,
-  HttpRequest
+  HttpRequest,
 };
 
 export default {
@@ -49,5 +49,5 @@ export default {
   FileClient,
   AuthProvider,
   AppIdAuthProvider,
-  HttpRequest
+  HttpRequest,
 };

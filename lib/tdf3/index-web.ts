@@ -27,5 +27,5 @@ export {
   FileClient,
   AuthProvider,
   AppIdAuthProvider,
-  HttpRequest
+  HttpRequest,
 };
