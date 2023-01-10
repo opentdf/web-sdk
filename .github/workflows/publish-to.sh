@@ -7,6 +7,7 @@ v="${1%%+*}"
 t="${2}"
 
 cd lib
+sed -i '' "s/export const version = '[^']\{1,\}';\$/export const version = \'${v}\';/" lib{,/tdf3}/src/version.ts
 npm --no-git-tag-version --allow-same-version version "$v" --tag "$t"
 npm publish --access public
 
