@@ -264,8 +264,6 @@ export class Client {
     if (rcaSource && !this.kasEndpoint)
       throw new Error('rca links require a kasEndpoint url to be set');
 
-    let entityObject: EntityObject | undefined;
-
     const keypair: PemKeyPair = await this._getOrCreateKeypair(opts);
     const policyObject = await this._createPolicyObject(scope);
     const kasPublicKey = await this._getOrFetchKasPubKey();

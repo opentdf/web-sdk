@@ -3,7 +3,7 @@ import axios from 'axios';
 import { arrayBufferToBuffer, inBrowser } from '../utils/index';
 import { AttributeValidator } from './validation/index';
 import { AttributeObject, Policy } from '../models/index';
-import { RcaParams } from '../tdf';
+import { RcaParams, RcaLink } from '../tdf';
 import { Binary } from '../binary';
 
 import { IllegalArgumentError, IllegalEnvError } from '../errors';
@@ -794,7 +794,7 @@ class DecryptParamsBuilder {
   /**
    * @param rcaParams
    */
-  setRcaSource(rcaParams: RcaParams) {
+  setRcaSource(rcaParams: RcaParams | RcaLink) {
     if (typeof rcaParams === 'object') {
       this._params.rcaSource = rcaParams;
     } else if (typeof rcaParams === 'string') {

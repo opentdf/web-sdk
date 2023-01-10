@@ -70,6 +70,8 @@ export type RcaParams = {
   al: string;
 };
 
+export type RcaLink = string;
+
 type Metadata = {
   connectOptions: {
     testUrl: string;
