@@ -1,6 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 import { AccessToken, AccessTokenConfig } from './AccessToken';
 import { IVirtruOIDC } from '../nanotdf/interfaces/OIDCInterface';
+import { HttpRequest, withHeaders } from './auth';
 
 /**
  * Class that provides OIDC functionality to auth providers.
@@ -23,10 +24,8 @@ import { IVirtruOIDC } from '../nanotdf/interfaces/OIDCInterface';
  * explicit token refresh
  */
 export default class VirtruOIDC {
-  protected authMode: 'browser' | 'credentials';
-  protected clientPubKey?: string;
-  protected accessTokenGetter: AccessToken;
-  protected currentAccessToken?: string;
+  readonly accessTokenGetter: AccessToken;
+  currentAccessToken?: string;
 
   /**
    * If clientId and clientSecret are provided, clientCredentials mode will be assumed.
@@ -34,16 +33,13 @@ export default class VirtruOIDC {
    * If clientId and clientSecret are not provided, browser mode will be assumed, and @see refreshTokenWithVirtruClaims must be
    * manually called during object initialization to do a token exchange.
    */
-  constructor({ clientPubKey, clientId, clientSecret, oidcOrigin }: IVirtruOIDC) {
+  constructor({ clientId, clientSecret, oidcOrigin }: IVirtruOIDC) {
     if (!clientId) {
       throw new Error('To use any OIDC auth mode you must supply your clientId, at a minimum');
     }
     let keycloakConfig: AccessTokenConfig = {
       client_id: clientId,
       auth_server_url: oidcOrigin,
-      // pubkey may be `null` at this point, that's fine - it can be set later by the caller
-      // via `refreshTokenClaimsWithClientPubkey()` - it just has to be in place before we try to get a token from Keycloak.
-      virtru_client_pubkey: clientPubKey,
     };
 
     //If we have a client secret, we must be using client credentials, and this is not
@@ -61,8 +57,6 @@ export default class VirtruOIDC {
         ...keycloakConfig,
       };
     }
-    this.authMode = keycloakConfig.auth_mode || 'browser';
-    this.clientPubKey = clientPubKey;
     this.accessTokenGetter = new AccessToken(keycloakConfig);
   }
 
@@ -71,10 +65,11 @@ export default class VirtruOIDC {
    * or wishes to set the keypair after creating the object.
    *
    * Calling this function will trigger a forcible token refresh using the cached refresh token, and contact the auth server.
-   *
-   * @param {string} clientPubKey - the client's public key, base64 encoded. Will be bound to the OIDC token. Optional. If not set in the constructor,
    */
-  async refreshTokenClaimsWithClientPubkeyIfNeeded(clientPubKey: string): Promise<void> {
+  async refreshTokenClaimsWithClientPubkeyIfNeeded(
+    clientPubKey: string,
+    signingKey?: CryptoKeyPair
+  ): Promise<void> {
     // If we already have a token, and the pubkey changes,
     // we need to force a refresh now - otherwise
     // we can wait until we create the token for the first time
@@ -82,11 +77,11 @@ export default class VirtruOIDC {
       return;
     }
     this.accessTokenGetter.virtru_client_pubkey = clientPubKey;
-    this.clientPubKey = clientPubKey;
+    this.accessTokenGetter.signing_key = signingKey;
   }
 
   async getCurrentAccessToken(): Promise<string> {
-    if (!this.clientPubKey) {
+    if (!this.accessTokenGetter.virtru_client_pubkey && !this.accessTokenGetter.signing_key) {
       throw new Error(
         'Client public key was not set via `updateClientPublicKey` or passed in via constructor, cannot fetch OIDC token with valid Virtru claims'
       );
@@ -128,5 +123,22 @@ export default class VirtruOIDC {
     const cat = await this.accessTokenGetter.exchangeJwt(externalJwt);
     this.currentAccessToken = cat;
     return cat;
+  }
+
+  async withCreds(httpReq: HttpRequest): Promise<HttpRequest> {
+    const accessToken = await this.getCurrentAccessToken();
+    if (this.accessTokenGetter.signing_key) {
+      const { default: dpopFn } = await import('dpop');
+      const dpopToken = await dpopFn(
+        this.accessTokenGetter.signing_key,
+        httpReq.url,
+        httpReq.method,
+        /* nonce */ undefined,
+        accessToken
+      );
+      // TODO: Consider: only set DPoP if cnf.jkt is present in access token?
+      return withHeaders(httpReq, { Authorization: `Bearer ${accessToken}`, DPoP: dpopToken });
+    }
+    return withHeaders(httpReq, { Authorization: `Bearer ${accessToken}` });
   }
 }

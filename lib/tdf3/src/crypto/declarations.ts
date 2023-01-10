@@ -59,7 +59,7 @@ export type CryptoService = {
    * Generate an RSA key pair
    * @param size in bits, defaults to a reasonable size for the default method
    */
-  generateKeyPair: (size?: number) => Promise<PemKeyPair>;
+  generateKeyPair: (size?: number) => Promise<CryptoKeyPair>;
 
   /**
    * Create an HMAC SHA256 hash

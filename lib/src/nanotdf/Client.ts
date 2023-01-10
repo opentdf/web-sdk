@@ -60,6 +60,7 @@ export default class Client {
   protected kasUrl: string;
   protected kasPubKey: string;
   readonly authProvider: AuthProvider;
+  readonly dpopEnabled: boolean;
   dissems: string[] = [];
   dataAttributes: string[] = [];
   protected ephemeralKeyPair?: Required<Readonly<CryptoKeyPair>>;
@@ -76,11 +77,13 @@ export default class Client {
   constructor(
     authProvider: AuthProvider,
     kasUrl: string,
-    ephemeralKeyPair?: Required<Readonly<CryptoKeyPair>>
+    ephemeralKeyPair?: Required<Readonly<CryptoKeyPair>>,
+    dpopEnabled = false
   ) {
     this.authProvider = authProvider;
     this.kasUrl = kasUrl;
     this.kasPubKey = '';
+    this.dpopEnabled = dpopEnabled;
 
     if (ephemeralKeyPair) {
       this.ephemeralKeyPair = ephemeralKeyPair;
@@ -161,7 +164,10 @@ export default class Client {
     }
 
     const signerPubKey = await cryptoPublicToPem(signer.publicKey);
-    await this.authProvider.updateClientPublicKey(base64.encode(signerPubKey));
+    await this.authProvider.updateClientPublicKey(
+      base64.encode(signerPubKey),
+      this.dpopEnabled ? signer : undefined
+    );
   }
 
   /**
@@ -211,13 +217,11 @@ export default class Client {
         signedRequestToken: await authToken(this.requestSignerKeyPair.privateKey, jwtPayload),
       };
 
-      const authHeader = await this.authProvider.authorization(); // authHeader is a string of the form "Bearer token"
-
       // Wrapped
       const wrappedKey = await fetchWrappedKey(
         kasRewrapUrl,
         requestBody,
-        authHeader,
+        this.authProvider,
         clientVersion
       );
 
@@ -236,9 +240,10 @@ export default class Client {
       try {
         // Get session public key as crypto key
         publicKey = await pemPublicToCrypto(wrappedKey.sessionPublicKey);
-      } catch (e) {
+      } catch (cause) {
         throw new Error(
-          `PEM Public Key to crypto public key failed. Is PEM formatted correctly?\n Caused by: ${e.message}`
+          `PEM Public Key to crypto public key failed. Is PEM formatted correctly?\n Caused by: ${cause.message}`,
+          { cause }
         );
       }
 

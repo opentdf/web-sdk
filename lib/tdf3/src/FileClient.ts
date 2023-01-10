@@ -29,7 +29,7 @@ function isClientTdf3(c: unknown): c is ClientTdf3 {
 export class FileClient {
   dissems: string[] = [];
   dataAttributes: string[] = [];
-  private client: ClientTdf3;
+  client: ClientTdf3;
 
   constructor(opts: FileClientConfig | ClientTdf3) {
     // I'm using a duck type check here to make it easier to mock.
@@ -81,7 +81,7 @@ export class FileClient {
           }
           source = response.body;
         } else {
-          source = Readable.toWeb(createReadStream(source));
+          source = Readable.toWeb(createReadStream(source)) as ReadableStream<Uint8Array>;
         }
         params.setStreamSource(source);
       } else {
@@ -99,7 +99,7 @@ export class FileClient {
     source: InputSource = '',
     users?: string[],
     params?: EncryptParams
-  ): Promise<AnyTdfStream> {
+  ): Promise<AnyTdfStream | null> {
     const defaultParams =
       params ||
       new EncryptParamsBuilder()

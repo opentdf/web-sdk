@@ -9,7 +9,7 @@ class NanoTDFError extends Error {
     this.err = err;
   }
 
-  get stack(): string | undefined {
+  override get stack(): string | undefined {
     return this.err ? `${this.stack}\nCaused by: ${this.err?.stack}` : this.stack;
   }
 }

@@ -4,10 +4,12 @@ import { arrayBufferToBuffer, inBrowser } from '../utils/index';
 import { AttributeValidator } from './validation/index';
 import { AttributeObject, Policy } from '../models/index';
 import { RcaParams } from '../tdf';
+import { Binary } from '../binary';
 
 import { IllegalArgumentError, IllegalEnvError } from '../errors';
 import { PemKeyPair } from '../crypto/declarations';
 import PolicyObject from '../../../src/tdf/PolicyObject';
+import EntityObject from '../../../src/tdf/EntityObject';
 
 const { get } = axios;
 
@@ -138,6 +140,8 @@ export interface EncryptParams {
   rcaSource: boolean;
   getPolicyId?: () => EncryptParams['scope']['policyId'];
   mimeType?: string;
+  eo?: EntityObject;
+  payloadKey?: Binary;
 }
 
 // 'Readonly<EncryptParams>': scope, metadata, offline, windowSize, asHtml
@@ -161,7 +165,6 @@ class EncryptParamsBuilder {
         dissem: [],
         attributes: [],
       },
-      metadata: null,
       keypair: undefined,
       offline: false,
       windowSize: DEFAULT_SEGMENT_SIZE,
@@ -600,6 +603,7 @@ export type DecryptParams = {
   source: DecryptSource;
   opts?: { keypair: PemKeyPair };
   rcaSource?: RcaParams;
+  eo?: EntityObject;
 } & Pick<EncryptParams, 'contentLength' | 'keypair'>;
 
 /**

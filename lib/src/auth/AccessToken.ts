@@ -1,3 +1,4 @@
+import { IllegalArgumentError } from '../../tdf3/src/errors';
 import { rstrip } from '../utils';
 
 const qstringify = (obj: Record<string, string>) => new URLSearchParams(obj).toString();
@@ -8,6 +9,7 @@ export type AccessTokenConfig = {
   client_secret?: string;
   auth_server_url: string;
   virtru_client_pubkey?: string;
+  signing_key?: CryptoKeyPair;
 };
 
 export type AccessTokenResponse = {
@@ -24,6 +26,8 @@ export class AccessToken {
 
   baseUrl: string;
 
+  signing_key?: CryptoKeyPair;
+
   virtru_client_pubkey?: string;
 
   extraHeaders: Record<string, string> = {};
@@ -38,6 +42,7 @@ export class AccessToken {
     this.config = cfg;
     this.request = request;
     this.baseUrl = rstrip(cfg.auth_server_url, '/');
+    this.signing_key = cfg.signing_key;
     this.virtru_client_pubkey = cfg.virtru_client_pubkey;
   }
 
@@ -126,6 +131,16 @@ export class AccessToken {
     };
     if (this.virtru_client_pubkey) {
       headers['X-VirtruPubKey'] = this.virtru_client_pubkey;
+    } else {
+      throw new IllegalArgumentError('No signature configured');
+    }
+    if (this.signing_key) {
+      // TODO: dpop does not have a CommonJS variant.
+      const { default: dpopFn } = await import('dpop');
+      headers['DPoP'] = await dpopFn(this.signing_key, url, 'POST');
+    }
+    if (!this.virtru_client_pubkey && !this.signing_key) {
+      throw new IllegalArgumentError('No signature configured');
     }
     return (this.request || fetch)(url, {
       method: 'POST',

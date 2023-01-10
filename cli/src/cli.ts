@@ -9,6 +9,7 @@ import {
   version,
 } from '@opentdf/client';
 import { CLIError, Level, log } from './logger.js';
+import { webcrypto } from 'crypto';
 
 type AuthToProcess = {
   auth?: string;
@@ -18,6 +19,13 @@ type AuthToProcess = {
 };
 
 const containerTypes = ['tdf3', 'nano', 'dataset'] as const;
+
+const parseJwt = (jwt: string, field = 1) => {
+  return JSON.parse(Buffer.from(jwt.split('.')[field], 'base64').toString());
+};
+const parseJwtComplete = (jwt: string) => {
+  return { header: parseJwt(jwt, 0), payload: parseJwt(jwt) };
+};
 
 async function processAuth({ auth, clientId, clientSecret, oidcEndpoint }: AuthToProcess) {
   log('DEBUG', 'Processing auth params');
@@ -35,12 +43,26 @@ async function processAuth({ auth, clientId, clientSecret, oidcEndpoint }: AuthT
       'Auth expects clientId and clientSecret, or combined auth param'
     );
   }
-  return await AuthProviders.clientSecretAuthProvider({
+  const actual = await AuthProviders.clientSecretAuthProvider({
     clientId,
     oidcOrigin: oidcEndpoint,
     exchange: 'client',
     clientSecret,
   });
+  const requestLog: AuthProviders.HttpRequest[] = [];
+  return {
+    requestLog,
+    updateClientPublicKey: async (clientPubkey: string, signingKey: webcrypto.CryptoKeyPair) => {
+      actual.updateClientPublicKey(clientPubkey, signingKey);
+      log('DEBUG', `updateClientPublicKey: [${clientPubkey}] [${signingKey?.publicKey}]`);
+    },
+    withCreds: async (httpReq: AuthProviders.HttpRequest) => {
+      const creds = await actual.withCreds(httpReq);
+      log('DEBUG', `HTTP Requesting: ${JSON.stringify(creds)}`);
+      requestLog.push(creds);
+      return creds;
+    },
+  };
 }
 
 type AnyClient = FileClient | NanoTDFClient | NanoTDFDatasetClient;
@@ -59,9 +81,13 @@ async function processDataIn(file: string) {
   if (!file) {
     throw new CLIError('CRITICAL', 'Must specify file or pipe');
   }
-  const stats = await stat(file);
-  if (!stats?.isFile()) {
-    throw new CLIError('CRITICAL', `File does not exist [${file}]`);
+  try {
+    const stats = await stat(file);
+    if (!stats?.isFile()) {
+      throw new CLIError('CRITICAL', `File does not exist [${file}]`);
+    }
+  } catch (e) {
+    throw new CLIError('CRITICAL', `File is not accessable [${file}]`);
   }
   log('DEBUG', `Using input from file [${file}]`);
   return readFile(file);
@@ -83,7 +109,8 @@ export const handleArgs = (args: string[]) => {
           log(err);
           process.exit(1);
         } else if (err) {
-          throw err;
+          log(err);
+          process.exit(2);
         } else {
           console.error(`${msg}\n\n${yargs.help()}`);
           process.exit(1);
@@ -108,6 +135,7 @@ export const handleArgs = (args: string[]) => {
         type: 'string',
         description: 'Authentication string (<clientId>:<clientSecret>)',
       })
+      .boolean('dpop')
       .implies('auth', '--no-clientId')
       .implies('auth', '--no-clientSecret')
 
@@ -188,7 +216,7 @@ export const handleArgs = (args: string[]) => {
         'Decrypt TDF to string',
         // eslint-disable-next-line @typescript-eslint/no-empty-function
         (yargs) => {
-          yargs.positional('file', {
+          yargs.strict().positional('file', {
             describe: 'path to plain text file',
             type: 'string',
           });
@@ -201,7 +229,7 @@ export const handleArgs = (args: string[]) => {
           const kasEndpoint = argv.kasEndpoint;
           if (argv.containerType === 'tdf3') {
             log('DEBUG', `TDF3 Client`);
-            const client = new FileClient({ authProvider, kasEndpoint });
+            const client = new FileClient({ authProvider, kasEndpoint, dpopEnabled: argv.dpop });
             log('SILLY', `Initialized client ${JSON.stringify(client)}`);
             log('DEBUG', `About to decrypt [${argv.file}]`);
             const ct = await client.decrypt(argv.file as string);
@@ -213,8 +241,8 @@ export const handleArgs = (args: string[]) => {
           } else {
             const client =
               argv.containerType === 'nano'
-                ? new NanoTDFClient(authProvider, kasEndpoint)
-                : new NanoTDFDatasetClient(authProvider, kasEndpoint);
+                ? new NanoTDFClient(authProvider, kasEndpoint, undefined, argv.dpop)
+                : new NanoTDFDatasetClient(authProvider, kasEndpoint, undefined, argv.dpop);
             const buffer = await processDataIn(argv.file as string);
 
             log('DEBUG', 'Decrypt data.');
@@ -227,6 +255,28 @@ export const handleArgs = (args: string[]) => {
               console.log(Buffer.from(plaintext).toString('utf8'));
             }
           }
+          const lastRequest = authProvider.requestLog[authProvider.requestLog.length - 1];
+          let accessToken = null;
+          let dpopToken = null;
+          for (const h of Object.keys(lastRequest.headers)) {
+            switch (h.toLowerCase()) {
+              case 'dpop':
+                console.assert(!dpopToken, 'Multiple dpop headers found');
+                dpopToken = parseJwtComplete(lastRequest.headers[h]);
+                log('INFO', `dpop: ${JSON.stringify(dpopToken)}`);
+                break;
+              case 'authorization':
+                console.assert(!accessToken, 'Multiple authorization headers found');
+                accessToken = parseJwt(lastRequest.headers[h].split(' ')[1]);
+                log('INFO', `Access Token: ${JSON.stringify(accessToken)}`);
+                if (argv.dpop) {
+                  console.assert(accessToken.cnf?.jkt, 'Access token must have a cnf.jkt');
+                }
+                break;
+            }
+          }
+          console.assert(accessToken, 'No AccessToken found');
+          console.assert(!argv.dpop || dpopToken, 'DPoP requested but absent');
         }
       )
       .command(
@@ -234,7 +284,7 @@ export const handleArgs = (args: string[]) => {
         'Encrypt file or pipe to a TDF',
         // eslint-disable-next-line @typescript-eslint/no-empty-function
         (yargs) => {
-          yargs.positional('file', {
+          yargs.strict().positional('file', {
             describe: 'path to plain text file',
             type: 'string',
           });
@@ -247,10 +297,13 @@ export const handleArgs = (args: string[]) => {
 
           if ('tdf3' === argv.containerType) {
             log('DEBUG', `TDF3 Client`);
-            const client = new FileClient({ authProvider, kasEndpoint });
+            const client = new FileClient({ authProvider, kasEndpoint, dpopEnabled: argv.dpop });
             log('SILLY', `Initialized client ${JSON.stringify(client)}`);
             addParams(client, argv);
             const ct = await client.encrypt(argv.file as string);
+            if (!ct) {
+              throw new CLIError('CRITICAL', 'Encrypt configuration error: No output?');
+            }
             if (argv.output) {
               if (ct.toFile) {
                 await ct.toFile(argv.output as string);
@@ -261,8 +314,8 @@ export const handleArgs = (args: string[]) => {
           } else {
             const client =
               argv.containerType === 'nano'
-                ? new NanoTDFClient(authProvider, kasEndpoint)
-                : new NanoTDFDatasetClient(authProvider, kasEndpoint);
+                ? new NanoTDFClient(authProvider, kasEndpoint, undefined, argv.dpop)
+                : new NanoTDFDatasetClient(authProvider, kasEndpoint, undefined, argv.dpop);
             log('SILLY', `Initialized client ${JSON.stringify(client)}`);
 
             addParams(client, argv);
@@ -281,7 +334,6 @@ export const handleArgs = (args: string[]) => {
       )
       .usage('openTDF CLI\n\nUsage: $0 [options]')
       .alias('help', 'h')
-      .showHelpOnFail(false, 'Something went wrong. Run with --help')
       .demandCommand()
       .recommendCommands()
       .help('help')
@@ -299,6 +351,7 @@ export const handleArgs = (args: string[]) => {
         })
       )
       .alias('version', 'V')
+      .strict()
       .parseAsync()
   );
 };

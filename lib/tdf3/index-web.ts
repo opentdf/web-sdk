@@ -1,4 +1,4 @@
-import { TDF, Client } from './src/index';
+import { TDF, Client, Errors } from './src/index';
 import {
   NanoTDFClient,
   NanoTDFDatasetClient,
@@ -7,11 +7,17 @@ import {
   clientType,
 } from '../src/index';
 import { FileClient } from './src/FileClient';
+import { AuthProvider, AppIdAuthProvider, HttpRequest } from '../src/auth/auth';
+import { registerModuleType } from './src/client/tdf-stream';
+import { BrowserTdfStream } from './src/client/BrowserTdfSteam';
+
+registerModuleType(BrowserTdfStream);
 
 window.TDF = TDF;
 
 export {
   TDF,
+  Errors,
   Client,
   version,
   clientType,
@@ -19,4 +25,7 @@ export {
   NanoTDFDatasetClient,
   AuthProviders,
   FileClient,
+  AuthProvider,
+  AppIdAuthProvider,
+  HttpRequest,
 };
