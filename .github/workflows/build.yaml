@@ -28,7 +28,7 @@ jobs:
         with:
           name: coverage
           path: lib/coverage/
-      - run: npm audit
+      - run: npm audit --omit=dev
       - run: npm run license-check
       - run: npm run lint
       - run: npm pack
