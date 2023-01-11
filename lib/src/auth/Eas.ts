@@ -4,6 +4,8 @@ import { AppIdAuthProvider, HttpRequest } from './auth';
 
 const { request } = axios;
 
+// Required `any` below is to match type from axios library.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type RequestFunctor = <T = any, R = AxiosResponse<T>>(config: AxiosRequestConfig) => Promise<R>;
 
 /**
@@ -14,8 +16,6 @@ class Eas {
 
   endpoint: string;
 
-  // Required `any` below is to match type from axios library.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   requestFunctor: RequestFunctor;
 
   /**
