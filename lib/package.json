@@ -8,10 +8,8 @@
   },
   "files": [
     "dist/*/package.json",
-    "dist/client/*",
-    "dist/esm/src/**",
-    "dist/esm/tdf3/**",
-    "dist/server/*",
+    "dist/*/*/src/**",
+    "dist/*/*/tdf3/**",
     "dist/types/src/**",
     "dist/types/tdf3/**",
     "README.md"
@@ -31,25 +29,25 @@
     ".": {
       "node": {
         "types": "./dist/types/tdf3/index.d.ts",
-        "import": "./dist/esm/tdf3/index.js",
-        "require": "./dist/server/tdf3.node.js"
+        "import": "./dist/esm/node/tdf3/index.js",
+        "require": "./dist/cjs/node/tdf3.node.js"
       },
       "default": {
         "types": "./dist/types/tdf3/index.d.ts",
-        "import": "./dist/esm/tdf3/index-web.js",
-        "require": "./dist/client/tdf3.web.js"
+        "import": "./dist/esm/web/tdf3/index-web.js",
+        "require": "./dist/cjs/web/tdf3/index-web.js"
       }
     },
     "./nano": {
       "node": {
         "types": "./dist/types/src/index.d.ts",
-        "import": "./dist/esm/src/index.node.js",
-        "require": "./dist/server/nano.node.js"
+        "import": "./dist/esm/node/src/index.node.js",
+        "require": "./dist/cjs/node/src/index.node.js"
       },
       "default": {
         "types": "./dist/types/src/index.d.ts",
-        "import": "./dist/esm/src/index.js",
-        "require": "./dist/client/nano.web.js"
+        "import": "./dist/esm/web/src/index.js",
+        "require": "./dist/cjs/web/src/index.js"
       }
     }
   },
