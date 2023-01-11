@@ -12,6 +12,17 @@ if ! grep -Fxq "version=${expected_version}" "Makefile"; then
   exit 1
 fi
 
+for f in lib{,/tdf3}/src/version.ts; do
+  if ! grep -Fxq "export const version = '${expected_version}'" "$f"; then
+    if grep -Fxq "export const version" "$f"; then
+      echo "::error file=$f,line=$(sed -n  '/export const version/=' $f)::Incorrect version line, should be setting it to [${expected_version}]"
+      exit 1
+    else
+      echo "::error file=$f::Missing version line [version=${expected_version}]"
+    fi
+  fi
+done
+
 for x in lib cli cli-commonjs web-app; do
   sub_version="$(cd $x && node -p "require('./package.json').version")"
   if [[ $expected_version != "$sub_version" ]]; then
