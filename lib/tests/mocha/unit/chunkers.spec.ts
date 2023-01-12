@@ -38,8 +38,7 @@ function sourceDirectory() {
     if (__dirname) {
       return __dirname;
     }
-  } catch (e) {
-  }
+  } catch (e) {}
   // @ts-ignore: import meta only available in ESM mode
   return new URL('.', import.meta?.url).pathname;
 }

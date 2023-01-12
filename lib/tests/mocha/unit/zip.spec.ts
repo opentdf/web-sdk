@@ -3,7 +3,6 @@ import { expect } from 'chai';
 import { parseCDBuffer, readUInt64LE } from '../../../tdf3/src/utils/zip-reader.js';
 import { ZipWriter, dateToDosDateTime, writeUInt64LE } from '../../../tdf3/src/utils/zip-writer.js';
 
-
 describe('zip utilities', () => {
   describe('dateToDos', () => {
     it('zero', () => {
