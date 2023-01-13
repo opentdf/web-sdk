@@ -48,7 +48,7 @@ export default class NanoTDF {
     let offset = 0;
 
     // Header
-    const { header, offset: headerOffset } = Header.parse(dataView.subarray(offset), legacyTDF);
+    const { header, offset: headerOffset } = Header.parse(dataView.subarray(offset));
     offset += headerOffset;
 
     // Payload

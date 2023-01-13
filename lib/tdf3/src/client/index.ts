@@ -369,7 +369,7 @@ export class Client {
    * @return {string} - the unique policyId, which can be used for tracking purposes or policy management operations.
    * @see DecryptParamsBuilder
    */
-  async getPolicyId({ source }: any) {
+  async getPolicyId({ source }: { source: DecryptSource }) {
     const chunker = await makeChunkable(source);
     const zipHelper = new ZipReader(chunker);
     const centralDirectory = await zipHelper.getCentralDirectory();

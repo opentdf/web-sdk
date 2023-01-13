@@ -41,7 +41,7 @@
     "./nano": {
       "node": {
         "types": "./dist/types/src/index.d.ts",
-        "import": "./dist/esm/node/src/index.node.js",
+        "import": "./dist/esm/node/src/index.node. js",
         "require": "./dist/cjs/node/src/index.node.js"
       },
       "default": {
@@ -57,7 +57,7 @@
     "doc": "typedoc --out dist/docs src/index.ts",
     "format": "prettier --write \"{src,tdf3,tests}/**/*.ts\"",
     "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; CC-BY-4.0; ISC; MIT'",
-    "lint": "eslint ./{src,tdf3,tests}/**/*.ts",
+    "lint": "eslint ./src/**/*.ts ./tdf3/**/*.ts ./tests/**/*.ts",
     "prepack": "npm run build",
     "test": "npm run build && web-test-runner && npm run test:tdf3",
     "test:watch": "web-test-runner --watch",

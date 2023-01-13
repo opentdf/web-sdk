@@ -38,8 +38,9 @@ function sourceDirectory() {
     if (__dirname) {
       return __dirname;
     }
-  } catch (e) {}
-  // @ts-ignore: import meta only available in ESM mode
+  } catch (e) {
+    // this is expected to throw in import (ESM) code
+  }
   return new URL('.', import.meta?.url).pathname;
 }
 
@@ -84,7 +85,7 @@ describe('chunkers', () => {
     const r = range(256);
     const b = new Uint8Array(r);
     const path = 'file://local/file';
-    let mocks = {
+    const mocks = {
       fs: {
         statSync: (p: string) => {
           switch (p) {
@@ -130,8 +131,7 @@ describe('chunkers', () => {
                 on: (e: string, f: (...args: any[]) => void) => {
                   switch (e) {
                     case 'data':
-                      // @ts-ignore
-                      f(Buffer.from(range(start, end)));
+                      f(Buffer.from(range(start || 0, end)));
                       return this;
                     case 'end':
                       f();

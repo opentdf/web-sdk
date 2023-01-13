@@ -73,7 +73,7 @@ export default class Header {
   // Ephemeral Public Key
   public ephemeralPublicKey: Uint8Array;
 
-  static parse(buff: Uint8Array, legacyTDF = false) {
+  static parse(buff: Uint8Array) {
     let offset = 0;
 
     /**

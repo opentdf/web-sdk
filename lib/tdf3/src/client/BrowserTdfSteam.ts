@@ -1,6 +1,6 @@
 import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 import streamSaver from 'streamsaver';
-// @ts-ignore
+// @ts-expect-error: unable to find types
 import { fileSave } from 'browser-fs-access';
 import { isFirefox } from '../../../src/utils.js';
 

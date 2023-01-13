@@ -4,5 +4,6 @@
     "module": "CommonJS",
     "moduleResolution": "node16",
     "outDir": "dist/cjs/web"
-  }
+  },
+  "include": ["src", "tdf3"]
 }

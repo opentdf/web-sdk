@@ -120,7 +120,13 @@ export class NanoTDFClient extends Client {
    */
   async encrypt(data: string | TypedArray | ArrayBuffer): Promise<ArrayBuffer> {
     // For encrypt always generate the client ephemeralKeyPair
-    await this.generateEphemeralKeyPair();
+    const ephemeralKeyPair = await this.generateEphemeralKeyPair();
+
+    const initializationVector = this.iv;
+    if (typeof initializationVector !== 'number') {
+      throw new Error('NanoTDF clients are single use. Please generate a new client and keypair.');
+    }
+    delete this.iv;
 
     if (!this.kasPubKey) {
       this.kasPubKey = await fetchKasPubKey(this.kasUrl);
@@ -147,8 +153,7 @@ export class NanoTDFClient extends Client {
     // IV is always '1', since the new keypair is generated on encrypt
     // using the same key is fine.
     const lengthAsUint32 = new Uint32Array(1);
-    lengthAsUint32[0] = this.iv!;
-    delete this.iv;
+    lengthAsUint32[0] = initializationVector;
 
     const lengthAsUint24 = new Uint8Array(lengthAsUint32.buffer);
 
@@ -162,7 +167,7 @@ export class NanoTDFClient extends Client {
       policyObjectAsStr,
       this.kasPubKey,
       this.kasUrl,
-      this.ephemeralKeyPair!,
+      ephemeralKeyPair,
       payloadIV,
       data
     );
