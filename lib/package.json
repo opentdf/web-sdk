@@ -41,7 +41,7 @@
     "./nano": {
       "node": {
         "types": "./dist/types/src/index.d.ts",
-        "import": "./dist/esm/node/src/index.node. js",
+        "import": "./dist/esm/node/src/index.node.js",
         "require": "./dist/cjs/node/src/index.node.js"
       },
       "default": {
