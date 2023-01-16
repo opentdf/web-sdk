@@ -10,7 +10,7 @@ import {
 
 if (globalThis) {
   globalThis.crypto ??= crypto as unknown as Crypto;
-// @ts-expect-error transform type incompatible
+  // @ts-expect-error transform type incompatible
   globalThis.ReadableStream ??= ReadableStream;
 }
 

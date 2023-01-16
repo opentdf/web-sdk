@@ -16,9 +16,9 @@ import { NodeTdfStream } from './src/client/NodeTdfStream.js';
 
 if (globalThis) {
   globalThis.crypto ??= crypto as unknown as Crypto;
-//@ts-expect-error assignment to any type
+  //@ts-expect-error assignment to any type
   globalThis?.CryptoKey ??= crypto.CryptoKey;
-// @ts-expect-error transform type incompatible
+  // @ts-expect-error transform type incompatible
   globalThis?.ReadableStream ??= ReadableStream;
 }
 
