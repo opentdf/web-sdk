@@ -1,6 +1,6 @@
 import axios, { type AxiosResponse, type AxiosRequestConfig } from 'axios';
 
-import { AppIdAuthProvider, HttpRequest } from './auth';
+import { AppIdAuthProvider, HttpRequest } from './auth.js';
 
 const { request } = axios;
 

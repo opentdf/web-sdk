@@ -2,7 +2,7 @@ import { readFile } from '@web/test-runner-commands';
 import { expect } from '@esm-bundle/chai';
 import { NanoTDF } from '../../../src/nanotdf/index.js';
 
-describe('NanoTDF work with various sizes', async () => {
+describe('NanoTDF work with various sizes', () => {
   /**
    * This test came out of a discovery that there were miscalculations on the payload length and
    * the max payload length.
@@ -12,7 +12,7 @@ describe('NanoTDF work with various sizes', async () => {
   it('should decrypt files larger than a few bytes ', async () => {
     // NOTE readFile only supports strings :-/
     const nanotdfWideString = await readFile({
-      path: '../../../../../tests/__fixtures__/dummy.txt.ntdf',
+      path: '../../__fixtures__/dummy.txt.ntdf',
       encoding: 'binary',
     });
     if (!nanotdfWideString) {

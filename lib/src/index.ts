@@ -7,10 +7,10 @@ import {
   encryptDataset,
   getHkdfSalt,
   DefaultParams,
-} from './nanotdf/index';
-import { keyAgreement, extractPublicFromCertToCrypto } from './nanotdf-crypto/index';
-import { TypedArray, createAttribute, Policy } from './tdf/index';
-import { AuthProvider } from './auth/auth';
+} from './nanotdf/index.js';
+import { keyAgreement, extractPublicFromCertToCrypto } from './nanotdf-crypto/index.js';
+import { TypedArray, createAttribute, Policy } from './tdf/index.js';
+import { AuthProvider } from './auth/auth.js';
 
 async function fetchKasPubKey(kasUrl: string): Promise<string> {
   const kasPubKeyResponse = await fetch(`${kasUrl}/kas_public_key?algorithm=ec:secp256r1`);
@@ -120,7 +120,13 @@ export class NanoTDFClient extends Client {
    */
   async encrypt(data: string | TypedArray | ArrayBuffer): Promise<ArrayBuffer> {
     // For encrypt always generate the client ephemeralKeyPair
-    await this.generateEphemeralKeyPair();
+    const ephemeralKeyPair = await this.generateEphemeralKeyPair();
+
+    const initializationVector = this.iv;
+    if (typeof initializationVector !== 'number') {
+      throw new Error('NanoTDF clients are single use. Please generate a new client and keypair.');
+    }
+    delete this.iv;
 
     if (!this.kasPubKey) {
       this.kasPubKey = await fetchKasPubKey(this.kasUrl);
@@ -147,8 +153,7 @@ export class NanoTDFClient extends Client {
     // IV is always '1', since the new keypair is generated on encrypt
     // using the same key is fine.
     const lengthAsUint32 = new Uint32Array(1);
-    lengthAsUint32[0] = this.iv!;
-    delete this.iv;
+    lengthAsUint32[0] = initializationVector;
 
     const lengthAsUint24 = new Uint8Array(lengthAsUint32.buffer);
 
@@ -162,7 +167,7 @@ export class NanoTDFClient extends Client {
       policyObjectAsStr,
       this.kasPubKey,
       this.kasUrl,
-      this.ephemeralKeyPair!,
+      ephemeralKeyPair,
       payloadIV,
       data
     );
@@ -408,5 +413,5 @@ export class NanoTDFDatasetClient extends Client {
  * Authorization for connecting authZ tokens to
  * remote requests.
  */
-export * as AuthProviders from './auth/providers';
-export { version, clientType } from './version';
+export * as AuthProviders from './auth/providers.js';
+export { version, clientType } from './version.js';

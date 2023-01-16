@@ -1,7 +1,8 @@
-import { DecoratedReadableStream } from './DecoratedReadableStream';
+import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 import streamSaver from 'streamsaver';
+// @ts-expect-error: unable to find types
 import { fileSave } from 'browser-fs-access';
-import { isFirefox } from '../../../src/utils';
+import { isFirefox } from '../../../src/utils.js';
 
 export class BrowserTdfStream extends DecoratedReadableStream {
   override async toFile(filepath = 'download.tdf'): Promise<void> {

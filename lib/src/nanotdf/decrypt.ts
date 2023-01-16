@@ -1,5 +1,5 @@
-import { decrypt as cryptoDecrypt } from '../nanotdf-crypto/index';
-import type NanoTDF from './NanoTDF';
+import { decrypt as cryptoDecrypt } from '../nanotdf-crypto/index.js';
+import type NanoTDF from './NanoTDF.js';
 
 /**
  * Decrypt nanotdf with a crypto key

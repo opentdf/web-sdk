@@ -1,4 +1,4 @@
-import { AuthProvider } from './auth/auth';
+import { AuthProvider } from './auth/auth.js';
 
 export class RewrapRequest {
   signedRequestToken = '';

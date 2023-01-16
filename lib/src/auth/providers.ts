@@ -3,12 +3,12 @@ import {
   ExternalJwtCredentials,
   OIDCCredentials,
   RefreshTokenCredentials,
-} from './OIDCCredentials';
-import { OIDCClientCredentialsProvider } from './oidc-clientcredentials-provider';
-import { OIDCExternalJwtProvider } from './oidc-externaljwt-provider';
-import { AuthProvider } from './auth';
-import { OIDCRefreshTokenProvider } from './oidc-refreshtoken-provider';
-import { isBrowser } from '../utils';
+} from './OIDCCredentials.js';
+import { OIDCClientCredentialsProvider } from './oidc-clientcredentials-provider.js';
+import { OIDCExternalJwtProvider } from './oidc-externaljwt-provider.js';
+import { AuthProvider } from './auth.js';
+import { OIDCRefreshTokenProvider } from './oidc-refreshtoken-provider.js';
+import { isBrowser } from '../utils.js';
 
 /**
  * Creates an OIDC Client Credentials Provider for non-browser contexts.
@@ -133,8 +133,8 @@ export const clientAuthProvider = async (clientConfig: OIDCCredentials): Promise
   return clientSecretAuthProvider(clientConfig);
 };
 
-export * from './auth';
-export * from './OIDCCredentials';
-export { OIDCClientCredentialsProvider } from './oidc-clientcredentials-provider';
-export { OIDCExternalJwtProvider } from './oidc-externaljwt-provider';
-export { OIDCRefreshTokenProvider } from './oidc-refreshtoken-provider';
+export * from './auth.js';
+export * from './OIDCCredentials.js';
+export { OIDCClientCredentialsProvider } from './oidc-clientcredentials-provider.js';
+export { OIDCExternalJwtProvider } from './oidc-externaljwt-provider.js';
+export { OIDCRefreshTokenProvider } from './oidc-refreshtoken-provider.js';

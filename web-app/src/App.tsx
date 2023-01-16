@@ -1,6 +1,6 @@
 import { useState, type ChangeEvent } from 'react';
 import './App.css';
-import { NanoTDFClient } from '@opentdf/client/nano';
+import { AuthProviders, NanoTDFClient } from '@opentdf/client/nano';
 
 function toHex(a: Uint8Array) {
   return [...a].map((x) => x.toString(16).padStart(2, '0')).join('');
@@ -31,7 +31,15 @@ function App() {
     const size = selectedFile.size;
     const arrayBuffer = await selectedFile.arrayBuffer();
     const buf = new Uint8Array(arrayBuffer.slice(0, Math.min(32, size)));
+    const authProvider = await AuthProviders.refreshAuthProvider({
+      exchange: 'refresh',
+      clientId: 'tdf-client',
+      oidcOrigin: 'https://vitru.okta.com/TODO',
+      oidcRefreshToken: 'TODO',
+    });
     console.log('Success:', buf);
+    const nanoClient = new NanoTDFClient(authProvider, 'http://localhost:65432/api/kas');
+    console.log('allocated client', nanoClient);
     setSegments(`Starting file bytes: ${toHex(buf)}`);
     return false;
   };
@@ -39,7 +47,6 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <p>client {`${new NanoTDFClient({})}`}</p>
         <p>
           Page has been open for <code>{count}</code> seconds.
         </p>

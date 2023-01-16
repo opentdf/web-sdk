@@ -1,15 +1,16 @@
 import { S3Client, GetObjectCommand, HeadObjectCommand, S3ClientConfig } from '@aws-sdk/client-s3';
 import axios from 'axios';
-import { arrayBufferToBuffer, inBrowser } from '../utils/index';
-import { AttributeValidator } from './validation/index';
-import { AttributeObject, Policy } from '../models/index';
-import { RcaParams } from '../tdf';
-import { Binary } from '../binary';
 
-import { IllegalArgumentError, IllegalEnvError } from '../errors';
-import { PemKeyPair } from '../crypto/declarations';
-import PolicyObject from '../../../src/tdf/PolicyObject';
-import EntityObject from '../../../src/tdf/EntityObject';
+import { arrayBufferToBuffer, inBrowser } from '../utils/index.js';
+import { AttributeValidator } from './validation/index.js';
+import { AttributeObject, Policy } from '../models/index.js';
+import { RcaParams } from '../tdf.js';
+import { Binary } from '../binary.js';
+
+import { IllegalArgumentError, IllegalEnvError } from '../errors.js';
+import { PemKeyPair } from '../crypto/declarations.js';
+import PolicyObject from '../../../src/tdf/PolicyObject.js';
+import { type EntityObject } from '../../../src/tdf/EntityObject.js';
 
 const { get } = axios;
 

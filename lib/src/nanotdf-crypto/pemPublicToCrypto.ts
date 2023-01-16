@@ -27,11 +27,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-import * as base64 from '../encodings/base64';
-import removeLines from './helpers/removeLines';
+import * as base64 from '../encodings/base64.js';
+import removeLines from './helpers/removeLines.js';
 import { importX509 } from 'jose';
 import type { KeyObject } from 'crypto';
-import { encodeArrayBuffer as hexEncodeArrayBuffer } from '../encodings/hex';
+import { encodeArrayBuffer as hexEncodeArrayBuffer } from '../encodings/hex.js';
 
 const RSA_OID = '06092a864886f70d010101';
 const EC_OID = '06072a8648ce3d0201';

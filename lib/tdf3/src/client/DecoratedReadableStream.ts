@@ -1,16 +1,16 @@
-import axios from 'axios';
 import {
   AbortMultipartUploadCommandOutput,
   CompleteMultipartUploadCommandOutput,
   S3Client,
 } from '@aws-sdk/client-s3';
-import { VirtruS3Config, VirtruTempS3Credentials, VirtruCreds } from './builders';
-import { Upload } from '../utils/aws-lib-storage/index';
-import { Options } from '../utils/aws-lib-storage/types';
-import Metadata from '../tdf';
-
+import axios from 'axios';
 import { EventEmitter } from 'events';
-import { Manifest, UpsertResponse } from '../models/index';
+
+import { VirtruS3Config, VirtruTempS3Credentials, VirtruCreds } from './builders.js';
+import { Upload } from '../utils/aws-lib-storage/index.js';
+import { Options } from '../utils/aws-lib-storage/types.js';
+import Metadata from '../tdf.js';
+import { type Manifest, type UpsertResponse } from '../models/index.js';
 
 export async function streamToBuffer(stream: ReadableStream<Uint8Array>): Promise<Buffer> {
   const accumulator = await new Response(stream).arrayBuffer();

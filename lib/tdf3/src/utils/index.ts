@@ -1,10 +1,10 @@
-import { AppIdAuthProvider, AuthProvider } from '../../../src/auth/auth';
+import { AppIdAuthProvider, AuthProvider } from '../../../src/auth/auth.js';
 
-export { ZipReader, readUInt64LE } from './zip-reader';
-export { ZipWriter } from './zip-writer';
-export { keySplit, keyMerge } from './keysplit';
-export { streamToBuffer } from '../client/DecoratedReadableStream';
-export * from './chunkers';
+export { ZipReader, readUInt64LE } from './zip-reader.js';
+export { ZipWriter } from './zip-writer.js';
+export { keySplit, keyMerge } from './keysplit.js';
+export { streamToBuffer } from '../client/DecoratedReadableStream.js';
+export * from './chunkers.js';
 
 export function inBrowser(): boolean {
   return typeof window !== 'undefined';

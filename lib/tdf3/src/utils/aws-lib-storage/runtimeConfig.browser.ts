@@ -1,4 +1,4 @@
-import { ClientSharedValues } from './runtimeConfig.shared';
+import { ClientSharedValues } from './runtimeConfig.shared.js';
 
 /**
  * @internal

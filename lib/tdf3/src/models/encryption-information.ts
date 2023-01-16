@@ -1,10 +1,10 @@
-import { keySplit } from '../utils/index';
-import { base64, hex } from '../../../src/encodings/index';
-import { Binary } from '../binary';
-import { SymmetricCipher } from '../ciphers/symmetric-cipher-base';
-import { KeyAccess, KeyAccessObject } from './key-access';
-import { Policy } from './policy';
-import { DecryptResult, EncryptResult } from '../crypto/declarations';
+import { keySplit } from '../utils/index.js';
+import { base64, hex } from '../../../src/encodings/index.js';
+import { Binary } from '../binary.js';
+import { SymmetricCipher } from '../ciphers/symmetric-cipher-base.js';
+import { KeyAccess, KeyAccessObject } from './key-access.js';
+import { Policy } from './policy.js';
+import { DecryptResult, EncryptResult } from '../crypto/declarations.js';
 
 export type KeyInfo = {
   readonly unwrappedKeyBinary: Binary;

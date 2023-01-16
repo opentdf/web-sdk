@@ -1,19 +1,18 @@
-import { TDF, Client, Errors } from './src/index';
+import { webcrypto as crypto } from 'crypto';
+import { ReadableStream } from 'stream/web';
+
+import { TDF, Client, Errors } from './src/index.js';
 import {
   NanoTDFClient,
   NanoTDFDatasetClient,
   AuthProviders,
   version,
   clientType,
-} from '../src/index';
-import { FileClient } from './src/FileClient';
-import { AuthProvider, AppIdAuthProvider, HttpRequest } from '../src/auth/auth';
-
-import { webcrypto as crypto } from 'crypto';
-import { ReadableStream } from 'stream/web';
-
-import { registerModuleType } from './src/client/tdf-stream';
-import { NodeTdfStream } from './src/client/NodeTdfStream';
+} from '../src/index.js';
+import { FileClient } from './src/FileClient.js';
+import { AuthProvider, AppIdAuthProvider, HttpRequest } from '../src/auth/auth.js';
+import { registerModuleType } from './src/client/tdf-stream.js';
+import { NodeTdfStream } from './src/client/NodeTdfStream.js';
 
 globalThis.crypto ??= crypto as unknown as Crypto;
 //@ts-expect-error assignment to any type

@@ -5,7 +5,7 @@ import { chromium } from 'playwright';
 import type { Browser, Page } from 'playwright';
 import { expect } from '@playwright/test';
 
-describe('basic', async () => {
+describe('basic', () => {
   let server: PreviewServer;
   let browser: Browser;
   let page: Page;

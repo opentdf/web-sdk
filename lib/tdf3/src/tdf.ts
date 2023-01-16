@@ -4,8 +4,8 @@ import axios from 'axios';
 import crc32 from 'buffer-crc32';
 import { v4 } from 'uuid';
 import { exportSPKI, importPKCS8, importX509, SignJWT } from 'jose';
-import { AnyTdfStream, makeStream } from './client/tdf-stream';
-import EntityObject from '../../../lib/src/tdf/EntityObject';
+import { AnyTdfStream, makeStream } from './client/tdf-stream.js';
+import { EntityObject } from '../../../lib/src/tdf/EntityObject.js';
 
 import {
   AttributeSet,
@@ -17,9 +17,9 @@ import {
   SplitKey,
   UpsertResponse,
   Wrapped as KeyAccessWrapped,
-} from './models/index';
-import { base64 } from '../../src/encodings/index';
-import * as cryptoService from './crypto/index';
+} from './models/index.js';
+import { base64 } from '../../src/encodings/index.js';
+import * as cryptoService from './crypto/index.js';
 import {
   base64ToBuffer,
   fromUrl,
@@ -28,8 +28,8 @@ import {
   ZipWriter,
   Chunker,
   isAppIdProviderCheck,
-} from './utils/index';
-import { Binary } from './binary';
+} from './utils/index.js';
+import { Binary } from './binary.js';
 import {
   IllegalArgumentError,
   KasDecryptError,
@@ -40,20 +40,20 @@ import {
   PolicyIntegrityError,
   TdfDecryptError,
   TdfPayloadExtractionError,
-} from './errors';
-import { htmlWrapperTemplate } from './templates/index';
+} from './errors.js';
+import { htmlWrapperTemplate } from './templates/index.js';
 
 // configurable
 // TODO: remove dependencies from ciphers so that we can open-source instead of relying on other Virtru libs
-import { AesGcmCipher } from './ciphers/index';
+import { AesGcmCipher } from './ciphers/index.js';
 import {
   AuthProvider,
   AppIdAuthProvider,
   HttpRequest,
   Method,
   reqSignature,
-} from '../../src/auth/auth';
-import PolicyObject from '../../src/tdf/PolicyObject';
+} from '../../src/auth/auth.js';
+import PolicyObject from '../../src/tdf/PolicyObject.js';
 
 // TODO: input validation on manifest JSON
 const DEFAULT_SEGMENT_SIZE = 1024 * 1024;
