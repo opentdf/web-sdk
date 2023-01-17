@@ -54,7 +54,7 @@
   "scripts": {
     "build": "npm run clean && tsc -p tsconfig-node-cjs.json && tsc -p tsconfig-node-esm.json && tsc -p tsconfig-web-cjs.json && tsc -p tsconfig-web-esm.json && ../scripts/add-module-types.sh",
     "clean": "rm -rf {build,dist}",
-    "doc": "typedoc --out dist/docs src/index.ts",
+    "doc": "typedoc --tsconfig ./tsconfig-web-esm.json --out dist/docs src/index.ts",
     "format": "prettier --write \"{src,tdf3,tests}/**/*.ts\"",
     "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; CC-BY-4.0; ISC; MIT'",
     "lint": "eslint ./src/**/*.ts ./tdf3/**/*.ts ./tests/**/*.ts",
