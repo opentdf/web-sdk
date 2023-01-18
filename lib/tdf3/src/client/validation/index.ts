@@ -1,1 +1,1 @@
-export { AttributeValidator } from './validators';
+export { AttributeValidator } from './validators.js';

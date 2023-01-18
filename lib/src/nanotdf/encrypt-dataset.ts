@@ -1,10 +1,10 @@
-import NanoTDF from './NanoTDF';
-import Header from './models/Header';
-import DefaultParams from './models/DefaultParams';
-import Payload from './models/Payload';
-import { getBitLength as authTagLengthForCipher } from './models/Ciphers';
-import TypedArray from '../tdf/TypedArray';
-import encrypt from '../nanotdf-crypto/encrypt';
+import NanoTDF from './NanoTDF.js';
+import Header from './models/Header.js';
+import DefaultParams from './models/DefaultParams.js';
+import Payload from './models/Payload.js';
+import { getBitLength as authTagLengthForCipher } from './models/Ciphers.js';
+import TypedArray from '../tdf/TypedArray.js';
+import encrypt from '../nanotdf-crypto/encrypt.js';
 
 /**
  * Encrypt the plain data into nanotdf buffer

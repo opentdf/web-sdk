@@ -1,5 +1,5 @@
-import { Manifest } from '../models/index';
-import { Chunker } from './chunkers';
+import { Manifest } from '../models/index.js';
+import { Chunker } from './chunkers.js';
 
 // TODO: Better document what these constants are
 // TODO: Document each function please

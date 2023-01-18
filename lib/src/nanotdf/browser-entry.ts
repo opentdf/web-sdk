@@ -9,7 +9,7 @@
  * - es6 web development (use node modules)
  * - node applications
  */
-import { NanoTDF } from '.';
+import NanoTDF from './NanoTDF.js';
 
 declare global {
   interface Window {

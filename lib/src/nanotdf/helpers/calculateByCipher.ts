@@ -1,6 +1,6 @@
-import { GMAC_BINDING_LEN } from '../constants';
-import CurveNameEnum from '../enum/CurveNameEnum';
-import { lengthOfSignature } from './calculateByCurve';
+import { GMAC_BINDING_LEN } from '../constants.js';
+import CurveNameEnum from '../enum/CurveNameEnum.js';
+import { lengthOfSignature } from './calculateByCurve.js';
 
 /**
  * Length of binding in bytes

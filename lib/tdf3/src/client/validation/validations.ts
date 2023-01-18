@@ -4,9 +4,9 @@ import {
   ATTR_NAME_PROP_NAME,
   ATTR_VALUE,
   ATTR_VALUE_PROP_NAME,
-} from './patterns';
-import { AttributeValidationError } from '../../errors';
-import { AttributeObject } from '../../models/attribute-set';
+} from './patterns.js';
+import { AttributeValidationError } from '../../errors.js';
+import { AttributeObject } from '../../models/attribute-set.js';
 
 const sageGetMatch = (match: RegExpMatchArray | null) => (match ? match[0] : null);
 

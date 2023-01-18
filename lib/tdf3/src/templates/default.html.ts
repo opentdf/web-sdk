@@ -1,4 +1,4 @@
-import { escHtml, escJavaScript } from './escaper';
+import { escHtml, escJavaScript } from './escaper.js';
 export default ({
   manifest,
   payload,

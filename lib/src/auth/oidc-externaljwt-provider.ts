@@ -1,6 +1,6 @@
-import VirtruOIDC from './virtru-oidc';
-import { IOIDCExternalJwtProvider } from '../nanotdf/interfaces/OIDCInterface';
-import { AuthProvider, HttpRequest } from './auth';
+import VirtruOIDC from './virtru-oidc.js';
+import { IOIDCExternalJwtProvider } from '../nanotdf/interfaces/OIDCInterface.js';
+import { AuthProvider, HttpRequest } from './auth.js';
 
 export class OIDCExternalJwtProvider implements AuthProvider {
   oidcAuth: VirtruOIDC;

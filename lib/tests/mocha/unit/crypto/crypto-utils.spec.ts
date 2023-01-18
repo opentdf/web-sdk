@@ -4,7 +4,7 @@ import {
   formatAsPem,
   isValidAsymmetricKeySize,
   removePemFormatting,
-} from '../../../../tdf3/src/crypto/crypto-utils';
+} from '../../../../tdf3/src/crypto/crypto-utils.js';
 
 describe('crypto-utils', () => {
   it('should remove pem formatting', () => {

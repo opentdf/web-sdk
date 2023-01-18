@@ -1,8 +1,8 @@
-import { getChunkBuffer } from './chunks/getChunkBuffer';
-import { getChunkStream } from './chunks/getChunkStream';
-import { getDataReadable } from './chunks/getDataReadable';
-import { getDataReadableStream } from './chunks/getDataReadableStream';
-import { BodyDataTypes } from './types';
+import { getChunkBuffer } from './chunks/getChunkBuffer.js';
+import { getChunkStream } from './chunks/getChunkStream.js';
+import { getDataReadable } from './chunks/getDataReadable.js';
+import { getDataReadableStream } from './chunks/getDataReadableStream.js';
+import { BodyDataTypes } from './types.js';
 
 export const getChunk = (data: BodyDataTypes, partSize: number) => {
   if (data instanceof Buffer) {

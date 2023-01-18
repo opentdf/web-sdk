@@ -8,29 +8,29 @@ import {
   streamToBuffer,
   isAppIdProviderCheck,
   Chunker,
-} from '../utils/index';
-import { base64 } from '../../../src/encodings/index';
-import TDF from '../tdf';
-import { type AnyTdfStream, makeStream } from './tdf-stream';
-import { OIDCClientCredentialsProvider } from '../../../src/auth/oidc-clientcredentials-provider';
-import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-provider';
-import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider';
-import { PemKeyPair } from '../crypto/declarations';
-import { AuthProvider, AppIdAuthProvider, HttpRequest } from '../../../src/auth/auth';
-import EAS from '../../../src/auth/Eas';
+} from '../utils/index.js';
+import { base64 } from '../../../src/encodings/index.js';
+import TDF from '../tdf.js';
+import { type AnyTdfStream, makeStream } from './tdf-stream.js';
+import { OIDCClientCredentialsProvider } from '../../../src/auth/oidc-clientcredentials-provider.js';
+import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-provider.js';
+import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider.js';
+import { PemKeyPair } from '../crypto/declarations.js';
+import { AuthProvider, AppIdAuthProvider, HttpRequest } from '../../../src/auth/auth.js';
+import EAS from '../../../src/auth/Eas.js';
 
-import { EncryptParams, DecryptParams } from './builders';
-import { Binary } from '../binary';
-import { type DecoratedReadableStream } from './DecoratedReadableStream';
+import { EncryptParams, DecryptParams } from './builders.js';
+import { Binary } from '../binary.js';
+import { type DecoratedReadableStream } from './DecoratedReadableStream.js';
 
 import {
   DEFAULT_SEGMENT_SIZE,
   DecryptParamsBuilder,
   EncryptParamsBuilder,
   DecryptSource,
-} from './builders';
-import { Policy } from '../models/index';
-import { cryptoToPemPair, generateKeyPair, rsaPkcs1Sha256 } from '../crypto/index';
+} from './builders.js';
+import { Policy } from '../models/index.js';
+import { cryptoToPemPair, generateKeyPair, rsaPkcs1Sha256 } from '../crypto/index.js';
 
 const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
 const HTML_BYTE_LIMIT = 100 * 1000 * 1000; // 100 MB, see WS-9476.
@@ -366,7 +366,7 @@ export class Client {
    * @return {string} - the unique policyId, which can be used for tracking purposes or policy management operations.
    * @see DecryptParamsBuilder
    */
-  async getPolicyId({ source }: any) {
+  async getPolicyId({ source }: { source: DecryptSource }) {
     const chunker = await makeChunkable(source);
     const zipHelper = new ZipReader(chunker);
     const centralDirectory = await zipHelper.getCentralDirectory();
@@ -449,8 +449,7 @@ export class Client {
       try {
         this.kasPublicKey = await TDF.getPublicKeyFromKeyAccessServer(this.kasEndpoint);
       } catch (e) {
-        console.error('Retrieving KAS public key has failed');
-        throw new Error(e.message);
+        throw new Error(`Retrieving KAS public key has failed with error [${e.message}]`);
       }
 
       return this.kasPublicKey;

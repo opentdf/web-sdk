@@ -1,6 +1,6 @@
 import axios, { AxiosResponse } from 'axios';
 import { createReadStream, readFile, statSync } from 'fs';
-import { type AnyTdfStream, isAnyTdfStream } from '../client/tdf-stream';
+import { type AnyTdfStream, isAnyTdfStream } from '../client/tdf-stream.js';
 
 /**
  * Read data from a seekable stream.

@@ -1,5 +1,5 @@
-import { IllegalArgumentError } from '../../tdf3/src/errors';
-import { rstrip } from '../utils';
+import { IllegalArgumentError } from '../../tdf3/src/errors.js';
+import { rstrip } from '../utils.js';
 
 const qstringify = (obj: Record<string, string>) => new URLSearchParams(obj).toString();
 
