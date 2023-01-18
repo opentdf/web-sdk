@@ -11,9 +11,9 @@ _configure_app() {
   app_version=$(cd "${ROOT_DIR}/lib" && node -p "require('./package.json').version")
   echo "installing tgz"
   cd "${APP_DIR}" || exit 1
-  npm uninstall @opentdf/cli{,-commonjs}
+  npm uninstall @opentdf/cli
   npm ci
-  npm i "../../../cli/opentdf-cli-${app_version}.tgz" "../../../cli-commonjs/opentdf-cli-commonjs-${app_version}.tgz"
+  npm i "../../../cli/opentdf-cli-${app_version}.tgz"
 }
 
 _wait-for() {
