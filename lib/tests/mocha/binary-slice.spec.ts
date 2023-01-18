@@ -1,5 +1,5 @@
 import { assert, expect } from 'chai';
-import { Binary } from '../../tdf3/src/binary';
+import { Binary } from '../../tdf3/src/binary.js';
 
 function range(a: number, b?: number): number[] {
   if (!b) {

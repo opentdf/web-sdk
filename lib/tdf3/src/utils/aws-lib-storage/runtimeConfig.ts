@@ -1,6 +1,6 @@
-import { lstatSync } from 'fs';
+import { lstatSync } from 'node:fs';
 
-import { ClientSharedValues } from './runtimeConfig.shared';
+import { ClientSharedValues } from './runtimeConfig.shared.js';
 
 /**
  * @internal

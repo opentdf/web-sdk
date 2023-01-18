@@ -1,4 +1,4 @@
-import { RawDataPart } from '../Upload';
+import { RawDataPart } from '../Upload.js';
 
 export async function* getChunkBuffer(
   data: Buffer,

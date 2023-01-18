@@ -1,5 +1,5 @@
-import type { Binary } from '../binary';
-import type { CryptoService, DecryptResult, EncryptResult } from '../crypto/declarations';
+import type { Binary } from '../binary.js';
+import type { CryptoService, DecryptResult, EncryptResult } from '../crypto/declarations.js';
 
 export abstract class SymmetricCipher {
   cryptoService: CryptoService;

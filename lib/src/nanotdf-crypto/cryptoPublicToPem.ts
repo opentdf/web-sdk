@@ -27,8 +27,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-import * as base64 from '../encodings/base64';
-import addNewLines from './helpers/addNewLines';
+import * as base64 from '../encodings/base64.js';
+import addNewLines from './helpers/addNewLines.js';
 
 export default async function cryptoPublicToPem(publicKey: CryptoKey): Promise<string> {
   if (publicKey.type !== 'public') {

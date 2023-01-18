@@ -1,5 +1,5 @@
 {
-  "extends": "../lib/tsconfig-esm.json",
+  "extends": "../lib/tsconfig-node-cjs.json",
   "compilerOptions": {
     "alwaysStrict": true,
     "baseUrl": "./",

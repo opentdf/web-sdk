@@ -1,6 +1,7 @@
 import { expect, assert } from 'chai';
-import { AttributeObject } from 'src/tdf';
-import { EncryptParamsBuilder } from '../../../tdf3/src/client/builders';
+
+import { type AttributeObject } from '../../../src/tdf/index.js';
+import { EncryptParamsBuilder } from '../../../tdf3/src/client/builders.js';
 
 describe('EncyptParamsBuilder', () => {
   describe('setAttributes', () => {

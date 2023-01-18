@@ -1,4 +1,4 @@
-import { CipherType, KeyFormat, KeyUsageType } from './enums';
+import { CipherType, KeyFormat, KeyUsageType } from './enums.js';
 
 /**
  * Import raw key

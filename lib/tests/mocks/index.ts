@@ -1,7 +1,8 @@
 import { SignJWT, importPKCS8, JWTPayload } from 'jose';
-import { AttributeSet } from '../../tdf3/src/models/attribute-set';
 import { v4 } from 'uuid';
-import AttributeObject from '../../src/tdf/AttributeObject';
+
+import { AttributeSet } from '../../tdf3/src/models/attribute-set.js';
+import { AttributeObject } from '../../src/tdf/AttributeObject.js';
 
 type CreateAttributePayload = {
   attribute: string;

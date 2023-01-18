@@ -16,10 +16,10 @@
  * NOTE This uses the deprecated 3 byte iv.
  */
 
-import PolicyTypeEnum from '../../src/nanotdf/enum/PolicyTypeEnum';
-import ProtocolEnum from '../../src/nanotdf/enum/ProtocolEnum';
-import hexArrayTag from '../web/nanotdf/helpers/hexArrayTag';
-import { PlainEmbeddedHeader } from '../../src/types';
+import PolicyTypeEnum from '../../src/nanotdf/enum/PolicyTypeEnum.js';
+import ProtocolEnum from '../../src/nanotdf/enum/ProtocolEnum.js';
+import hexArrayTag from '../web/nanotdf/helpers/hexArrayTag.js';
+import { PlainEmbeddedHeader } from '../../src/types/index.js';
 
 // 6.1.5 nanotdf
 export const nanotdf = `

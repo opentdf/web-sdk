@@ -40,6 +40,16 @@ if ! sed -i '' "s/version=${old_version}/version=${new_version}/" "Makefile"; th
   exit 1
 fi
 
+if ! sed -i '' "s/export const version = '[^']\{1,\}';\$/export const version = \'${new_version}\';/" lib{,/tdf3}/src/version.ts; then
+  echo "Unable to change version in version files"
+  exit 1
+fi
+
+if ! sed -i '' "s/export const version = '[^']\{1,\}';\$/export const version = \'${new_version}\';/" lib{,/tdf3}/src/version.ts; then
+  echo "Unable to change version in version files"
+  exit 1
+fi
+
 if ! scripts/check-version-is.sh "${new_version}"; then
   echo "bump version script fail"
   exit 1

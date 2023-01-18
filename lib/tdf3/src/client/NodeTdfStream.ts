@@ -1,5 +1,5 @@
-import { createWriteStream } from 'fs';
-import { DecoratedReadableStream } from './DecoratedReadableStream';
+import { createWriteStream } from 'node:fs';
+import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 
 export class NodeTdfStream extends DecoratedReadableStream {
   override async toFile(filepath: string, encoding: BufferEncoding = 'utf-8'): Promise<void> {

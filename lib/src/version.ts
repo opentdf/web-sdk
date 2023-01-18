@@ -1,7 +1,7 @@
 /**
  * Exposes the released version number of the `@opentdf/client` package
  */
-export const version = typeof process === 'undefined' ? 'main' : process.env.PKG_VERSION;
+export const version = '0.4.0';
 
 /**
  * A string name used to label requests as coming from this library client.

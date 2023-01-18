@@ -1,5 +1,6 @@
 import { assert, expect } from 'chai';
-import { Algorithms } from '../../../../tdf3/src/ciphers/index';
+
+import { Algorithms } from '../../../../tdf3/src/ciphers/index.js';
 import {
   cryptoToPemPair,
   decrypt,
@@ -13,9 +14,9 @@ import {
   hmac,
   randomBytesAsHex,
   sha256,
-} from '../../../../tdf3/src/crypto/index';
-import { Binary } from '../../../../tdf3/src/binary';
-import { decodeArrayBuffer, encodeArrayBuffer } from '../../../../src/encodings/base64';
+} from '../../../../tdf3/src/crypto/index.js';
+import { Binary } from '../../../../tdf3/src/binary.js';
+import { decodeArrayBuffer, encodeArrayBuffer } from '../../../../src/encodings/base64.js';
 
 describe('Crypto Service', () => {
   describe('hmac', () => {
@@ -45,7 +46,7 @@ describe('Crypto Service', () => {
     expect(ab).to.have.property('byteLength');
   });
 
-  describe('sha256', async () => {
+  describe('sha256', () => {
     it('a', async () => {
       const hash = await sha256('a');
       assert.equal(hash, 'ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb');
@@ -154,17 +155,13 @@ describe('Crypto Service', () => {
   });
 
   it('should encrypt with publicKey', async () => {
-    console.log('should encrypt with publicKey: A');
     const ckp = await generateKeyPair(2056);
     const { publicKey, privateKey } = await cryptoToPemPair(ckp);
     const rawData = '1';
     const payload = Binary.fromString(rawData);
-    console.log('should encrypt with publicKey: B');
 
     const encrypted = await encryptWithPublicKey(payload, publicKey);
-    console.log('should encrypt with publicKey: C');
     const decrypted = await decryptWithPrivateKey(encrypted, privateKey);
-    console.log('should encrypt with publicKey: D');
 
     expect(decrypted.asString()).to.equal(rawData);
   });

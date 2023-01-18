@@ -1,7 +1,7 @@
 import { assert } from 'chai';
 
-import { AttributeSet } from '../../../tdf3/src/models';
-import getMocks from '../../mocks';
+import { AttributeSet } from '../../../tdf3/src/models/index.js';
+import getMocks from '../../mocks/index.js';
 
 const Mocks = getMocks();
 

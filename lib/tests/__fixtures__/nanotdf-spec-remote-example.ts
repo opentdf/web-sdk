@@ -17,10 +17,10 @@
  * @link https://github.com/virtru/nanotdf/blob/master/spec/index.md#61-basic-example
  */
 
-import PolicyTypeEnum from '../../src/nanotdf/enum/PolicyTypeEnum';
-import ProtocolEnum from '../../src/nanotdf/enum/ProtocolEnum';
-import hexArrayTag from '../web/nanotdf/helpers/hexArrayTag';
-import { RemoteHeader } from '../../src/types';
+import PolicyTypeEnum from '../../src/nanotdf/enum/PolicyTypeEnum.js';
+import ProtocolEnum from '../../src/nanotdf/enum/ProtocolEnum.js';
+import hexArrayTag from '../web/nanotdf/helpers/hexArrayTag.js';
+import { RemoteHeader } from '../../src/types/index.js';
 
 // 6.1.2 nanotdf Creator's DER encoded Private Key (base64)
 export const creatorPrivateKey = `

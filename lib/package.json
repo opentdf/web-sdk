@@ -8,10 +8,8 @@
   },
   "files": [
     "dist/*/package.json",
-    "dist/client/*",
-    "dist/esm/src/**",
-    "dist/esm/tdf3/**",
-    "dist/server/*",
+    "dist/*/*/src/**",
+    "dist/*/*/tdf3/**",
     "dist/types/src/**",
     "dist/types/tdf3/**",
     "README.md"
@@ -21,48 +19,49 @@
     "url": "git+https://github.com/opentdf/client-web.git",
     "directory": "lib"
   },
+  "type": "module",
   "license": "BSD-3-Clause-Clear",
   "author": "Virtru",
-  "browser": "./dist/client/client-web.js",
-  "main": "./dist/server/node.cjs.js",
+  "browser": "./dist/esm/web/tdf3/index-web.js",
+  "main": "./dist/cjs/node/tdf3/index.js",
   "types": "./dist/types/tdf3/index.d.ts",
   "exports": {
     ".": {
       "node": {
         "types": "./dist/types/tdf3/index.d.ts",
-        "import": "./dist/esm/tdf3/index.js",
-        "require": "./dist/server/tdf3.node.js"
+        "import": "./dist/esm/node/tdf3/index.js",
+        "require": "./dist/cjs/node/tdf3/index.js"
       },
       "default": {
         "types": "./dist/types/tdf3/index.d.ts",
-        "import": "./dist/esm/tdf3/index-web.js",
-        "require": "./dist/client/tdf3.web.js"
+        "import": "./dist/esm/web/tdf3/index-web.js",
+        "require": "./dist/cjs/web/tdf3/index-web.js"
       }
     },
     "./nano": {
       "node": {
         "types": "./dist/types/src/index.d.ts",
-        "import": "./dist/esm/src/index.node.js",
-        "require": "./dist/server/nano.node.js"
+        "import": "./dist/esm/node/src/index.node.js",
+        "require": "./dist/cjs/node/src/index.node.js"
       },
       "default": {
         "types": "./dist/types/src/index.d.ts",
-        "import": "./dist/esm/src/index.js",
-        "require": "./dist/client/nano.web.js"
+        "import": "./dist/esm/web/src/index.js",
+        "require": "./dist/cjs/web/src/index.js"
       }
     }
   },
   "scripts": {
-    "build": "npm run clean && webpack && tsc -p tsconfig-esm.json && node prepareNodeESM.js && ../scripts/add-module-types.sh esm && ../scripts/fill-version.sh",
+    "build": "npm run clean && tsc -p tsconfig-node-cjs.json && tsc -p tsconfig-node-esm.json && tsc -p tsconfig-web-cjs.json && tsc -p tsconfig-web-esm.json && ../scripts/add-module-types.sh",
     "clean": "rm -rf {build,dist}",
-    "doc": "typedoc --out dist/docs src/index.ts",
+    "doc": "typedoc --tsconfig ./tsconfig-web-esm.json --out dist/docs src/index.ts",
     "format": "prettier --write \"{src,tdf3,tests}/**/*.ts\"",
     "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; CC-BY-4.0; ISC; MIT'",
-    "lint": "eslint ./{src,tdf3,tests}/**/*.ts",
+    "lint": "eslint ./src/**/*.ts ./tdf3/**/*.ts ./tests/**/*.ts",
     "prepack": "npm run build",
-    "test": "npm run clean && tsc -p tsconfig-esm.json && web-test-runner && npm run test:tdf3",
+    "test": "npm run build && web-test-runner && npm run test:tdf3",
     "test:watch": "web-test-runner --watch",
-    "test:tdf3": "c8 mocha --file tests/mocha/setup.js --require @babel/register --timeout 300000",
+    "test:tdf3": "TS_NODE_PROJECT='./tsconfig-node-esm.json' c8 mocha --file tests/mocha/setup.js --timeout 300000",
     "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))"
   },
   "dependencies": {
@@ -72,23 +71,13 @@
     "buffer-crc32": "^0.2.13",
     "dpop": "^1.1.0",
     "events": "^3.3.0",
-    "jose": "^4.11.1",
+    "jose": "^4.11.2",
     "jsonschema": "^1.4.1",
     "streamsaver": "^2.0.6",
     "uuid": "~9.0.0",
     "web-streams-node": "^0.4.0"
   },
   "devDependencies": {
-    "@babel/cli": "^7.20.7",
-    "@babel/core": "^7.20.7",
-    "@babel/plugin-proposal-class-properties": "^7.18.6",
-    "@babel/plugin-syntax-dynamic-import": "^7.8.3",
-    "@babel/plugin-transform-runtime": "^7.19.6",
-    "@babel/preset-env": "^7.20.2",
-    "@babel/preset-typescript": "^7.18.6",
-    "@babel/register": "^7.18.9",
-    "@babel/runtime-corejs3": "^7.20.7",
-    "@babel/types": "^7.20.7",
     "@esm-bundle/chai": "~4.3.4-fix.0",
     "@types/buffer-crc32": "^0.2.2",
     "@types/chai": "~4.3.4",
@@ -99,38 +88,38 @@
     "@types/sinon": "~10.0.13",
     "@types/streamsaver": "^2.0.1",
     "@types/uuid": "~9.0.0",
-    "@typescript-eslint/eslint-plugin": "^5.47.1",
-    "@typescript-eslint/parser": "^5.47.1",
+    "@typescript-eslint/eslint-plugin": "^5.48.1",
+    "@typescript-eslint/parser": "^5.48.1",
+    "@web/dev-server-esbuild": "^0.3.3",
     "@web/dev-server-rollup": "~0.3.19",
     "@web/test-runner": "~0.15.0",
     "@web/test-runner-commands": "~0.6.5",
-    "audit-ci": "^6.4.1",
-    "babel-loader": "^9.1.0",
+    "audit-ci": "^6.6.0",
     "buffer": "^6.0.3",
     "c8": "^7.12.0",
     "chai": "^4.3.7",
     "chai-as-promised": "^7.1.1",
     "colors": "^1.4.0",
-    "eslint": "^8.30.0",
-    "eslint-config-prettier": "^8.5.0",
+    "eslint": "^8.31.0",
+    "eslint-config-prettier": "^8.6.0",
+    "eslint-plugin-import": "^2.26.0",
     "eslint-plugin-prettier": "^4.2.1",
-    "filehound": "^1.17.6",
+    "esmock": "^2.0.7",
     "jszip": "^3.10.1",
     "license-checker": "^25.0.1",
     "mocha": "^10.2.0",
-    "prettier": "^2.8.1",
+    "prettier": "^2.8.2",
     "process": "^0.11.10",
     "rimraf": "^3.0.2",
-    "rollup": "^3.9.0",
+    "rollup": "^3.9.1",
     "send": "^0.18.0",
     "sinon": "~15.0.1",
+    "streamsaver": "^2.0.6",
     "ts-loader": "^9.4.2",
     "ts-node": "^10.9.1",
+    "tsconfig-paths": "^4.1.0",
     "tsify": "^5.0.4",
-    "typedoc": "^0.23.23",
-    "typescript": "4.9.4",
-    "webpack": "^5.75.0",
-    "webpack-cli": "^5.0.1",
-    "webpack-node-externals": "^3.0.0"
+    "typedoc": "^0.23.24",
+    "typescript": "4.9.4"
   }
 }

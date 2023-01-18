@@ -1,6 +1,6 @@
-import { TypedArray } from '../../tdf/index';
+import { TypedArray } from '../../tdf/index.js';
 
-import { digest, enums } from '../../nanotdf-crypto/index';
+import { digest, enums } from '../../nanotdf-crypto/index.js';
 
 interface HkdfSalt {
   hkdfSalt: ArrayBuffer;

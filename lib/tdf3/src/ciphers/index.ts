@@ -1,2 +1,2 @@
-export { AesGcmCipher } from './aes-gcm-cipher';
-export { Algorithms } from './algorithms';
+export { AesGcmCipher } from './aes-gcm-cipher.js';
+export { Algorithms } from './algorithms.js';

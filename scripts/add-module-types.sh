@@ -34,7 +34,6 @@ if [[ $# -gt 0 ]]; then
     esac
   done
 else
-  fixup client commonjs
+  fixup cjs commonjs
   fixup esm module
-  fixup server commonjs
 fi
