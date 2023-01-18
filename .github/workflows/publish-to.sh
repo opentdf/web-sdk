@@ -7,7 +7,13 @@ v="${1%%+*}"
 t="${2}"
 
 cd lib
-sed -i '' "s/export const version = '[^']\{1,\}';\$/export const version = \'${v}\';/" {,tdf3/}src/version.ts
+for f in {,tdf3/}src/version.ts; do
+  if ! sed "s/export const version = \'[^']\{1,\}\';\$/export const version = \'${v}\';/" $f >${f}.tmp; then
+    echo "Failed to insert version [${v}] into file [$f]"
+    exit 1
+  fi
+  mv "${f}.tmp" "${f}"
+done
 npm --no-git-tag-version --allow-same-version version "$v" --tag "$t"
 npm publish --access public
 
