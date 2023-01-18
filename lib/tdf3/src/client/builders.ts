@@ -4,7 +4,7 @@ import { toWebReadableStream } from 'web-streams-node';
 import { arrayBufferToBuffer, inBrowser } from '../utils/index';
 import { AttributeValidator } from './validation/index';
 import { AttributeObject, Policy } from '../models/index';
-import { RcaParams, RcaLink } from '../tdf';
+import { type RcaParams, type RcaLink } from '../tdf';
 import { Binary } from '../binary';
 
 import { IllegalArgumentError, IllegalEnvError } from '../errors';
@@ -704,6 +704,10 @@ class DecryptParamsBuilder {
    * @return {DecryptParamsBuilder} - this object.
    */
   withStreamSource(stream: ReadableStream<Uint8Array>) {
+    if (!inBrowser() && !stream?.getReader) {
+      stream = toWebReadableStream(stream);
+    }
+
     this.setStreamSource(stream);
     return this;
   }
@@ -800,24 +804,23 @@ class DecryptParamsBuilder {
    * @param rcaParams
    */
   setRcaSource(rcaParams: RcaParams | RcaLink) {
+    let params;
+
     if (typeof rcaParams === 'object') {
-      this._params.rcaSource = rcaParams;
-    } else if (typeof rcaParams === 'string') {
-      try {
-        const rcaLink: URLSearchParams = new URLSearchParams(rcaParams);
-        const pu = rcaLink.get('pu');
-        const wu = rcaLink.get('wu'); // link for download
-        const wk = rcaLink.get('wk'); // split knowledge
-        const al = rcaLink.get('al');
-        if (!pu || !wu || !wk || !al) {
-          throw new Error('RCA link is not valid');
-        }
-        this._params.rcaSource = { pu, wu, wk, al };
-      } catch (e) {
-        console.error('RCA link is not valid', e);
-        throw new Error('RCA link is not valid');
-      }
+      params = {...rcaParams};
     }
+    else if (typeof rcaParams === 'string') {
+      params = Object.fromEntries(new URLSearchParams(rcaParams));
+    }
+
+    if (!params?.pu || !params?.wu || !params?.wk || !params?.al) {
+      throw new Error(`RCA link [${rcaParams}] is missing parameters!`);
+    }
+
+    const {pu, wu, wk, al} = params;
+
+    this._params.rcaSource = { pu, wu, wk, al };
+
   }
 
   /**
