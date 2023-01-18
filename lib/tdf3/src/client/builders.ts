@@ -807,9 +807,8 @@ class DecryptParamsBuilder {
     let params;
 
     if (typeof rcaParams === 'object') {
-      params = {...rcaParams};
-    }
-    else if (typeof rcaParams === 'string') {
+      params = { ...rcaParams };
+    } else if (typeof rcaParams === 'string') {
       params = Object.fromEntries(new URLSearchParams(rcaParams));
     }
 
@@ -817,10 +816,9 @@ class DecryptParamsBuilder {
       throw new Error(`RCA link [${rcaParams}] is missing parameters!`);
     }
 
-    const {pu, wu, wk, al} = params;
+    const { pu, wu, wk, al } = params;
 
     this._params.rcaSource = { pu, wu, wk, al };
-
   }
 
   /**
