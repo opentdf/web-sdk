@@ -7,11 +7,8 @@
     "url": "https://github.com/opentdf/client-web/issues"
   },
   "files": [
-    "dist/*/package.json",
-    "dist/*/*/src/**",
-    "dist/*/*/tdf3/**",
-    "dist/types/src/**",
-    "dist/types/tdf3/**",
+    "dist/*/src/**",
+    "dist/*/tdf3/**",
     "README.md"
   ],
   "repository": {
