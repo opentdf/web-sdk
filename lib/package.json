@@ -1,6 +1,6 @@
 {
   "name": "@opentdf/client",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Access and generate tdf protected content",
   "homepage": "https://github.com/opentdf/client-web",
   "bugs": {
@@ -23,38 +23,34 @@
   "license": "BSD-3-Clause-Clear",
   "author": "Virtru",
   "browser": "./dist/esm/web/tdf3/index-web.js",
-  "main": "./dist/cjs/node/tdf3/index.js",
+  "main": "./dist/esm/node/tdf3/index.js",
   "types": "./dist/types/tdf3/index.d.ts",
   "exports": {
     ".": {
       "node": {
         "types": "./dist/types/tdf3/index.d.ts",
-        "import": "./dist/esm/node/tdf3/index.js",
-        "require": "./dist/cjs/node/tdf3/index.js"
+        "import": "./dist/esm/node/tdf3/index.js"
       },
       "default": {
         "types": "./dist/types/tdf3/index.d.ts",
-        "import": "./dist/esm/web/tdf3/index-web.js",
-        "require": "./dist/cjs/web/tdf3/index-web.js"
+        "import": "./dist/esm/web/tdf3/index-web.js"
       }
     },
     "./nano": {
       "node": {
         "types": "./dist/types/src/index.d.ts",
-        "import": "./dist/esm/node/src/index.node.js",
-        "require": "./dist/cjs/node/src/index.node.js"
+        "import": "./dist/esm/node/src/index.node.js"
       },
       "default": {
         "types": "./dist/types/src/index.d.ts",
-        "import": "./dist/esm/web/src/index.js",
-        "require": "./dist/cjs/web/src/index.js"
+        "import": "./dist/esm/web/src/index.js"
       }
     }
   },
   "scripts": {
-    "build": "npm run clean && tsc -p tsconfig-node-cjs.json && tsc -p tsconfig-node-esm.json && tsc -p tsconfig-web-cjs.json && tsc -p tsconfig-web-esm.json && ../scripts/add-module-types.sh",
+    "build": "npm run clean && tsc -p tsconfig-node-esm.json && tsc -p tsconfig-web-esm.json && ../scripts/add-module-types.sh",
     "clean": "rm -rf {build,dist}",
-    "doc": "typedoc --out dist/docs src/index.ts",
+    "doc": "typedoc --tsconfig ./tsconfig-web-esm.json --out dist/docs src/index.ts",
     "format": "prettier --write \"{src,tdf3,tests}/**/*.ts\"",
     "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; CC-BY-4.0; ISC; MIT'",
     "lint": "eslint ./src/**/*.ts ./tdf3/**/*.ts ./tests/**/*.ts",
