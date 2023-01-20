@@ -27,19 +27,19 @@ export const creatorPrivateKey = `
 MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgcal1YrV0QohnYoBBlcBLrRETfJlqFOkG
 LSmUOKizW0KhRANCAATVz7l/VSTFkD9ic2IFkzaqcaTC7hbQW3g0A5firgcdLv4sj0OJHZ5zf8U0oUiy
 IrwNU28ahFSfjCTYvzw/bvPg
-`;
+`.replace(/\s/g, '');
 
 // 6.1.3 Recipient DER encoded Private Key (base64)
 export const recipientPrivateKey = `
 MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgRywXmrI1J07LZni8xaoKhXj8WbdDHdjd
 N62+tgxjdhihRANCAARon4RjqRNA40eEdBT172emATq3I2siKccLcXl07nTrbAu4enVDo9T4LfQ4eZ0y
 x/KkIX2HylxzkAEoBxzVpBLN
-`;
+`.replace(/\s/g, '');
 
 // 6.1.4 Recipient Compressed Public Key
 export const recipientPublicKey = `
 A2ifhGOpE0DjR4R0FPXvZ6YBOrcjayIpxwtxeXTudOts
-`;
+`.replace(/\s/g, '');
 
 // 6.1.5 nanotdf
 export const nanotdf = `
@@ -48,7 +48,7 @@ TDFMAQ5rYXMudmlydHJ1LmNvbYCAAAEVa2FzLnZpcnRydS5jb20vcG9saWN5teQTpgIR5fF7IjSgzT82
 94bhG3rt1w+JgPlIDH5nHLqrjiRQkgAAEJ69CRdSJo4D+f2AFK98ywYC1c+5f1UkxZA/YnNiBZM2qnGk
 wu4W0Ft4NAOX4q4HHS6dm4rjMO9wI+pWmbUgS7x9Vo3/+j/6U1fh/NKQ8xrR72LORvDZXfQxa8rzco1P
 dc0VlQEL8gQgdKyU3il2ugLz
-`;
+`.replace(/\s/g, '');
 
 export const header: RemoteHeader = {
   magicNumberVersion: hexArrayTag`4c 31 4c`, // L1L
