@@ -14,11 +14,14 @@ import { AuthProvider, AppIdAuthProvider, HttpRequest } from '../src/auth/auth.j
 import { registerModuleType } from './src/client/tdf-stream.js';
 import { NodeTdfStream } from './src/client/NodeTdfStream.js';
 
-globalThis.crypto ??= crypto as unknown as Crypto;
-//@ts-expect-error assignment to any type
-globalThis.CryptoKey ??= crypto.CryptoKey;
-// @ts-expect-error transform type incompatible
-globalThis.ReadableStream ??= ReadableStream;
+if (globalThis) {
+  globalThis.crypto ??= crypto as unknown as Crypto;
+  //@ts-expect-error assignment to any type
+  globalThis?.CryptoKey ??= crypto.CryptoKey;
+  // @ts-expect-error transform type incompatible
+  globalThis?.ReadableStream ??= ReadableStream;
+}
+
 registerModuleType(NodeTdfStream);
 
 export {

@@ -1,3 +1,4 @@
+import { default as dpopFn } from 'dpop';
 import { IllegalArgumentError } from '../../tdf3/src/errors.js';
 import { rstrip } from '../utils.js';
 
@@ -136,7 +137,6 @@ export class AccessToken {
     }
     if (this.signing_key) {
       // TODO: dpop does not have a CommonJS variant.
-      const { default: dpopFn } = await import('dpop');
       headers['DPoP'] = await dpopFn(this.signing_key, url, 'POST');
     }
     if (!this.virtru_client_pubkey && !this.signing_key) {

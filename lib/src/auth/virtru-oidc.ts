@@ -1,4 +1,5 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+import { default as dpopFn } from 'dpop';
 import { AccessToken, AccessTokenConfig } from './AccessToken.js';
 import { IVirtruOIDC } from '../nanotdf/interfaces/OIDCInterface.js';
 import { HttpRequest, withHeaders } from './auth.js';
@@ -128,7 +129,6 @@ export default class VirtruOIDC {
   async withCreds(httpReq: HttpRequest): Promise<HttpRequest> {
     const accessToken = await this.getCurrentAccessToken();
     if (this.accessTokenGetter.signing_key) {
-      const { default: dpopFn } = await import('dpop');
       const dpopToken = await dpopFn(
         this.accessTokenGetter.signing_key,
         httpReq.url,

@@ -14,7 +14,8 @@ Start a local, blank cluster. See [Integrate](https://github.com/opentdf/opentdf
 ### Usage
 
 ```typescript
-  const { AuthProviders, NanoTDFClient } = require('@opentdf/client');
+  // currently we support only ESM import
+  import { AuthProviders, NanoTDFClient } from '@opentdf/client';
 
   const oidcCredentials: RefreshTokenCredentials = {
     clientId: keycloakClientId,
@@ -29,7 +30,8 @@ Start a local, blank cluster. See [Integrate](https://github.com/opentdf/opentdf
 ```
 For files:
 ```typescript
-  const { FileClient } = require('@opentdf/client');
+  // currently we support only ESM import
+  import { FileClient } from '@opentdf/client';
 
   // for file Encryption
   const fileClient = new FileClient(
