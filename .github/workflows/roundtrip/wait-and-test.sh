@@ -35,5 +35,61 @@ _wait-for() {
   exit 1
 }
 
+_init_server()  
+{
+    output=$(mktemp)
+    npm run dev &> "$output" &
+    server_pid=$!
+    echo "Server pid: $server_pid"
+    echo "Output: $output"
+    echo "Wait:"
+    limit=5
+    for i in $(seq 1 $limit); do
+      if grep -q -i 'ready' "$output"; then
+        return 0
+      fi
+      if ! ps $server_pid > /dev/null; then
+        echo "The server died" >&2
+        exit 1
+      fi
+      if [[ $i == "$limit" ]]; then
+        echo "[WARN] Breaking _init_server loop after ${limit} iterations"
+        break
+      fi
+      sleep_for=$((5 + i * i * 2))
+      echo "[INFO] retrying in ${sleep_for} seconds... ( ${i} / $limit ) ..."
+      sleep ${sleep_for}
+    done
+}
+
+
 _configure_app
-_wait-for
+if ! _wait-for; then
+  exit 1
+fi
+
+if ! cd "../../../web-app"; then
+  echo "[ERROR] Couldn't cd to web-app"
+  exit 2
+fi
+
+if ! npm ci; then
+  echo "[ERROR] Couldn't ci web-app"
+  exit 2
+fi
+if ! _init_server; then
+  echo "[ERROR] Couldn't run web app server"
+  exit 2
+fi
+
+if ! cd tests; then 
+  echo "[ERROR] Couldn't open web integration tests folder"
+  exit 2
+fi
+
+if ! npm i; then
+  echo "[ERROR] Unable to install integration tests deps"
+  exit 2
+fi
+
+npm test
