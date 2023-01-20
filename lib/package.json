@@ -1,17 +1,14 @@
 {
   "name": "@opentdf/client",
-  "version": "0.4.1",
+  "version": "0.4.0",
   "description": "Access and generate tdf protected content",
   "homepage": "https://github.com/opentdf/client-web",
   "bugs": {
     "url": "https://github.com/opentdf/client-web/issues"
   },
   "files": [
-    "dist/*/package.json",
-    "dist/*/*/src/**",
-    "dist/*/*/tdf3/**",
-    "dist/types/src/**",
-    "dist/types/tdf3/**",
+    "dist/*/src/**",
+    "dist/*/tdf3/**",
     "README.md"
   ],
   "repository": {
@@ -22,33 +19,32 @@
   "type": "module",
   "license": "BSD-3-Clause-Clear",
   "author": "Virtru",
-  "browser": "./dist/esm/web/tdf3/index-web.js",
-  "main": "./dist/esm/node/tdf3/index.js",
+  "browser": "./dist/web/tdf3/index-web.js",
   "types": "./dist/types/tdf3/index.d.ts",
   "exports": {
     ".": {
       "node": {
         "types": "./dist/types/tdf3/index.d.ts",
-        "import": "./dist/esm/node/tdf3/index.js"
+        "import": "./dist/node/tdf3/index.js"
       },
       "default": {
         "types": "./dist/types/tdf3/index.d.ts",
-        "import": "./dist/esm/web/tdf3/index-web.js"
+        "import": "./dist/web/tdf3/index-web.js"
       }
     },
     "./nano": {
       "node": {
         "types": "./dist/types/src/index.d.ts",
-        "import": "./dist/esm/node/src/index.node.js"
+        "import": "./dist/node/src/index.node.js"
       },
       "default": {
         "types": "./dist/types/src/index.d.ts",
-        "import": "./dist/esm/web/src/index.js"
+        "import": "./dist/web/src/index.js"
       }
     }
   },
   "scripts": {
-    "build": "npm run clean && tsc -p tsconfig-node-esm.json && tsc -p tsconfig-web-esm.json && ../scripts/add-module-types.sh",
+    "build": "npm run clean && tsc -p tsconfig-node-esm.json && tsc -p tsconfig-web-esm.json",
     "clean": "rm -rf {build,dist}",
     "doc": "typedoc --tsconfig ./tsconfig-web-esm.json --out dist/docs src/index.ts",
     "format": "prettier --write \"{src,tdf3,tests}/**/*.ts\"",

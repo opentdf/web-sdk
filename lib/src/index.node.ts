@@ -15,5 +15,3 @@ if (globalThis) {
 }
 
 export { NanoTDFClient, NanoTDFDatasetClient, AuthProviders, version, clientType };
-// for cjs build a default export is needed
-export default { NanoTDFClient, NanoTDFDatasetClient, AuthProviders, version, clientType };
