@@ -8,16 +8,12 @@ import {
 } from '../../../src/encodings/base64.js';
 
 const asciiToBytes = (s: string) => {
-  const chars = [];
+  const chars: number[] = [];
   for (let i = 0; i < s.length; ++i) {
     chars.push(s.charCodeAt(i)); /*from  w  ww. j  a  v  a  2s.c o  m*/
   }
   return new Uint8Array(chars);
 };
-
-const toUrlSafe = (s: string) => {
-  s.replace('')
-}
 
 describe('Base64', function () {
   const tests = {

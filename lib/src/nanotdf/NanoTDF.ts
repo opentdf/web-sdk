@@ -31,7 +31,6 @@ export default class NanoTDF {
     let buffer;
     if (typeof content === 'string') {
       if (!encoding || encoding === EncodingEnum.Base64) {
-        console.log("decoding: " + content);
         buffer = base64.decodeArrayBuffer(content);
       } else {
         throw new InvalidDataTypeError();
