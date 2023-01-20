@@ -27,7 +27,7 @@ for f in lib{,/tdf3}/src/version.ts; do
   fi
 done
 
-for x in lib cli cli-commonjs web-app; do
+for x in lib cli web-app; do
   sub_version="$(cd $x && node -p "require('./package.json').version")"
   if [[ $expected_version != "$sub_version" ]]; then
     echo "::error file=${x}/package.json::Incorrect version  [${sub_version}], expected [${expected_version}]"
