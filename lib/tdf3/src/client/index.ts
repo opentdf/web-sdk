@@ -100,6 +100,7 @@ export interface ClientConfig {
   clientId?: string;
   dpopEnabled?: boolean;
   kasEndpoint?: string;
+  easEndpoint?: string;
   // DEPRECATED Ignored
   keyRewrapEndpoint?: string;
   // DEPRECATED Ignored
@@ -111,7 +112,6 @@ export interface ClientConfig {
   externalJwt?: string;
   authProvider?: AuthProvider | AppIdAuthProvider;
   readerUrl?: string;
-  easEndpoint?: string;
   entityObjectEndpoint?: string;
 }
 
@@ -122,6 +122,8 @@ export class Client {
   kasEndpoint?: string;
 
   kasPublicKey?: string;
+
+  easEndpoint?: string;
 
   clientId?: string;
 
