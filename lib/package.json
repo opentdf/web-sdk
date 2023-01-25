@@ -32,6 +32,12 @@
         "import": "./dist/web/tdf3/index-web.js"
       }
     },
+    "./encodings": {
+      "default": {
+        "types": "./dist/types/src/encodings/index.d.ts",
+        "import": "./dist/web/src/encodings/index.js"
+      }
+    },
     "./nano": {
       "node": {
         "types": "./dist/types/src/index.d.ts",
