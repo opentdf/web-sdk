@@ -28,7 +28,7 @@ TDFMAQ9rYXMuZXRlcm5vcy54eXqAAAIAYF8U50nNasAtfjke5lGt43Xih+LDfGkfdhFazlOj+Emsn7dr
 aafjBjLnhlprwcDptENx8ODEjfpeygQ1bWC8UdAlHrZmcXMppqKeioUSCQK5hBA/dswcZggy4LB8r5EfwVBtlVf5RDdUp3fU7+Bv
 GtnSAeLvGsARKzdyTF9PpArXAc9AbC7VnbVyA7OMpPF0YFQDQHcAwtHIyzVZNSzarQdcChszFMezBVRfN4XaSZ6Q/eAAABAedI5H
 3egvvoM+IgjYoK1C
-`;
+`.replace(/\s/g, '');
 
 export const header: EmbeddedHeader = {
   magicNumberVersion: hexArrayTag`4c 31 4c`, // L1L

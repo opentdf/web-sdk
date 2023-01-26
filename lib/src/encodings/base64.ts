@@ -1,7 +1,31 @@
-const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+const charsStandard = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+const charsUrlSafe = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
 
-// Use a lookup table to find the index.
-let lookup: Uint8Array;
+// Quick reference from encoded char to source 6 bits.
+let _lut: number[];
+let _padding: number;
+function lookup(i: number) {
+  if (!_lut) {
+    _lut = new Array(256);
+    for (let i = 0; i < 64; i++) {
+      _lut[charsStandard.charCodeAt(i)] = i;
+    }
+    for (let i = 62; i < 64; i++) {
+      _lut[charsUrlSafe.charCodeAt(i)] = i;
+    }
+    _padding = charsStandard.charCodeAt(64);
+  }
+  const r = _lut[i];
+  if (r === undefined) {
+    if (i === _padding) {
+      return -1;
+    } else if (Number.isNaN(i)) {
+      return 0;
+    }
+    throw new InvalidCharacterError();
+  }
+  return r;
+}
 
 class InvalidCharacterError extends Error {
   constructor(message?: string) {
@@ -12,9 +36,11 @@ class InvalidCharacterError extends Error {
 
 // encoder
 // [https://gist.github.com/999166] by [https://github.com/nignag]
-function encodeFallback(input: string): string {
+function encodeFallback(input: string, urlSafe?: boolean): string {
   let output = '';
+  const len = input.length;
 
+  const chars = urlSafe ? charsUrlSafe : charsStandard;
   for (
     // initialize result and counter
     let block = 0, charCode, idx = 0, map = chars;
@@ -31,6 +57,13 @@ function encodeFallback(input: string): string {
     }
     block = (block << 8) | charCode;
   }
+  if (urlSafe) {
+    if (len % 3 === 2) {
+      return output.substring(0, output.length - 1);
+    } else if (len % 3 === 1) {
+      return output.substring(0, output.length - 2);
+    }
+  }
   return output;
 }
 
@@ -41,9 +74,10 @@ function encodeFallback(input: string): string {
  * Copyright (c) 2012 Niklas von Hertzen
  * MIT License
  */
-function encodeArrayBuffer(arrayBuffer: ArrayBuffer): string {
+function encodeArrayBuffer(arrayBuffer: ArrayBuffer, urlSafe?: boolean): string {
   const bytes = new Uint8Array(arrayBuffer);
   const len = bytes.length;
+  const chars = urlSafe ? charsUrlSafe : charsStandard;
   let base64 = '';
 
   for (let i = 0; i < len; i += 3) {
@@ -55,13 +89,19 @@ function encodeArrayBuffer(arrayBuffer: ArrayBuffer): string {
     base64 += chars[bytes[i + 2] & 63];
   }
 
+  let padding = '';
   if (len % 3 === 2) {
-    base64 = base64.substring(0, base64.length - 1) + '=';
+    base64 = base64.substring(0, base64.length - 1);
+    if (!urlSafe) {
+      padding = '=';
+    }
   } else if (len % 3 === 1) {
-    base64 = base64.substring(0, base64.length - 2) + '==';
+    base64 = base64.substring(0, base64.length - 2);
+    if (!urlSafe) {
+      padding = '==';
+    }
   }
-
-  return base64;
+  return base64 + padding;
 }
 
 function decodeFallback(input: string): string {
@@ -72,9 +112,9 @@ function decodeFallback(input: string): string {
   let output = '';
   for (
     // initialize result and counters
-    let bc = 0, bs = 0, buffer, idx = 0;
+    let bc = 0, bs = 0, buffer: number, idx = 0;
     // get next character
-    (buffer = input.charAt(idx++));
+    (buffer = input.charCodeAt(idx++));
     // character found in table? initialize bit storage and add its ascii value;
     ~buffer &&
     ((bs = bc % 4 ? bs * 64 + buffer : buffer),
@@ -85,29 +125,26 @@ function decodeFallback(input: string): string {
       : 0
   ) {
     // try to find character in table (0-63, not found => -1)
-    buffer = chars.indexOf(buffer);
+    buffer = lookup(buffer);
   }
   return output;
 }
 
 function decodeArrayBuffer(base64: string): ArrayBuffer {
-  if (!lookup) {
-    lookup = new Uint8Array(256);
-    for (let i = 0; i < 64; i++) {
-      lookup[chars.charCodeAt(i)] = i;
-    }
-  }
   const strLength = base64.length;
   const paddingLength =
     (base64[strLength - 2] === '=' && 2) || (base64[strLength - 1] === '=' && 1) || 0;
+  if (strLength % 4 === 1 || base64[strLength - 3] === '=') {
+    throw new InvalidCharacterError('Invalid input.');
+  }
   const binLength = (strLength >> 1) + ((strLength + 1) >> 2) - paddingLength;
 
   const bytes = new Uint8Array(binLength);
   for (let i = 0, p = 0; i < strLength; i += 4, p += 3) {
-    const encoded1 = lookup[base64.charCodeAt(i)];
-    const encoded2 = lookup[base64.charCodeAt(i + 1)];
-    const encoded3 = lookup[base64.charCodeAt(i + 2)];
-    const encoded4 = lookup[base64.charCodeAt(i + 3)];
+    const encoded1 = lookup(base64.charCodeAt(i));
+    const encoded2 = lookup(base64.charCodeAt(i + 1));
+    const encoded3 = lookup(base64.charCodeAt(i + 2));
+    const encoded4 = lookup(base64.charCodeAt(i + 3));
 
     bytes[p] = (encoded1 << 2) | (encoded2 >> 4);
     bytes[p + 1] = ((encoded2 & 15) << 4) | (encoded3 >> 2);
