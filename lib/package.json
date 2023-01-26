@@ -41,6 +41,12 @@
 >>>>>>> 9e45542 (🔥 Remove CommonJS support (#134))
       }
     },
+    "./encodings": {
+      "default": {
+        "types": "./dist/types/src/encodings/index.d.ts",
+        "import": "./dist/web/src/encodings/index.js"
+      }
+    },
     "./nano": {
       "node": {
         "types": "./dist/types/src/index.d.ts",
