@@ -28,7 +28,6 @@
  */
 
 import * as base64 from '../encodings/base64.js';
-import removeLines from './helpers/removeLines.js';
 import { importX509 } from 'jose';
 import type { KeyObject } from 'crypto';
 import { encodeArrayBuffer as hexEncodeArrayBuffer } from '../encodings/hex.js';
@@ -122,7 +121,7 @@ export default async function pemPublicToCrypto(
 ): Promise<CryptoKey> {
   pem = pem.replace('-----BEGIN PUBLIC KEY-----', '');
   pem = pem.replace('-----END PUBLIC KEY-----', '');
-  const b64 = removeLines(pem);
+  const b64 = pem.replace(/\s/g, '');
   const arrayBuffer = base64.decodeArrayBuffer(b64);
   const hex = hexEncodeArrayBuffer(arrayBuffer);
 
@@ -202,7 +201,7 @@ export async function extractPublicFromCertToCrypto(
 ): Promise<CryptoKey> {
   let crt = pem.replace(CERT_BEGIN, '');
   crt = crt.replace(CERT_END, '');
-  const b64 = removeLines(crt);
+  const b64 = crt.replace(/\s/g, '');
   const arrayBuffer = base64.decodeArrayBuffer(b64);
   const hex = hexEncodeArrayBuffer(arrayBuffer);
   const jwsAlg = toJwsAlg(hex);

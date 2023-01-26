@@ -28,7 +28,7 @@ c2VtIjpbIkNoYXJsaWVfMTIzNCIsImJvYl81Njc4Il19LCJ1dWlkIjoiZTk1YzJlNTAtYzQ2NS00OGE1
 LWExNjctZWY5OGQyY2NmNjdhIn2avSz7nTV08u+z0lNoOax2ZSWlNtycmvQLS4zHNJn/2i8E1p+KGUx+
 3ld0YkJETK7FIztiXbh5ChaU8qgVm7jHA0H20+g4w6gHywRmOGHxK5s6b/oqoFIbc9pMHc/GI2IvAAAR
 eO9leyauC42VKckiAm5GJxs=
-`;
+`.replace(/\s/g, '');
 
 export const header: PlainEmbeddedHeader = {
   magicNumberVersion: hexArrayTag`4c 31 4c`, // L1L

@@ -7,53 +7,73 @@ import {
   encodeArrayBuffer,
 } from '../../../src/encodings/base64.js';
 
-const HELLO = 'hello';
-const HELLO_AS_B64 = 'aGVsbG8=';
-const FOO = 'foo';
-const FOO_AS_B64 = 'Zm9v';
-
 const asciiToBytes = (s: string) => {
-  const chars = [];
+  const chars: number[] = [];
   for (let i = 0; i < s.length; ++i) {
     chars.push(s.charCodeAt(i)); /*from  w  ww. j  a  v  a  2s.c o  m*/
   }
   return new Uint8Array(chars);
 };
 
-const tests = (decode: (i: string) => string, encode: (i: string) => string) => {
-  describe('encode', function () {
-    it('encodes bytes', function () {
-      expect(encodeArrayBuffer(asciiToBytes(HELLO))).to.eql(HELLO_AS_B64);
-      expect(encodeArrayBuffer(asciiToBytes(FOO))).to.eql(FOO_AS_B64);
+describe('Base64', function () {
+  const tests = {
+    '': '',
+    f: 'Zg==',
+    fo: 'Zm8=',
+    foo: 'Zm9v',
+    foob: 'Zm9vYg==',
+    fooba: 'Zm9vYmE=',
+    foobar: 'Zm9vYmFy',
+    // y with umlaut is Unicode 255
+    ÿ: '/w==',
+    ÿÿ: '//8=',
+    ÿÿÿ: '////',
+    ÿ: '/w==',
+    ÿï: '/+8=',
+    ÿïþ: '/+/+',
+  };
+
+  for (const [decoded, encoded] of Object.entries(tests)) {
+    const urlEncoded = encoded.replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+    it(`decode(${encoded})`, function () {
+      expect(decode(encoded)).to.eql(decoded);
+      expect(decode(urlEncoded)).to.eql(decoded);
     });
-    it('encodes strings', function () {
-      expect(encode(HELLO)).to.eql(HELLO_AS_B64);
-      expect(encode(FOO)).to.eql(FOO_AS_B64);
+    it(`decodeArrayBuffer(${encoded})`, function () {
+      expect(new Uint8Array(decodeArrayBuffer(encoded))).to.eql(asciiToBytes(decoded));
+      expect(new Uint8Array(decodeArrayBuffer(urlEncoded))).to.eql(asciiToBytes(decoded));
     });
-  });
-  describe('decode', function () {
-    it('decodes bytes', function () {
-      expect(new Uint8Array(decodeArrayBuffer(HELLO_AS_B64))).to.eql(asciiToBytes(HELLO));
-      expect(new Uint8Array(decodeArrayBuffer(FOO_AS_B64))).to.eql(asciiToBytes(FOO));
+    it(`encode(${decoded})`, function () {
+      expect(encode(decoded)).to.eql(encoded);
     });
-  });
-  describe('encodeAB', function () {
-    it('encodes strings', function () {
-      expect(encode(HELLO)).to.eql(HELLO_AS_B64);
-      expect(encode(FOO)).to.eql(FOO_AS_B64);
+    it(`encodeArrayBuffer(${decoded})`, function () {
+      expect(encodeArrayBuffer(asciiToBytes(decoded))).to.eql(encoded);
     });
-  });
-  describe('decode', function () {
-    it('decodes strings', function () {
-      expect(decode(HELLO_AS_B64)).to.eql(HELLO);
-      expect(decode(FOO_AS_B64)).to.eql(FOO);
+
+    it(`encode(${decoded}, true)`, function () {
+      expect(encode(decoded, true)).to.eql(urlEncoded);
     });
-  });
+    it(`encodeArrayBuffer(${decoded}, true)`, function () {
+      expect(encodeArrayBuffer(asciiToBytes(decoded), true)).to.eql(urlEncoded);
+    });
+  }
+
+  const invalidEncoded = {
+    _: 'input must not be congruent to 4 mod 1',
+    '_===': 'input must not be congruent to 4 mod 1',
+    '///~': 'unrecognized character',
+    じじ: 'high character',
+    '🔥🔥🔥🔥': 'higher character',
+    '╯°□°': 'more high characters',
+  };
+  for (const [invalid, message] of Object.entries(invalidEncoded)) {
+    it(`invalid decode(${invalid}) -- ${message}`, function () {
+      expect(() => decode(invalid), message).to.throw(/[Ii]nvalid/);
+      expect(() => new Uint8Array(decodeArrayBuffer(invalid))).to.throw(/[Ii]nvalid/);
+    });
+  }
 
   describe('Fail cases', function () {
-    it('fails on invalid input', function () {
-      expect(() => decode('a')).to.throw(/[Ii]nvalid/);
-    });
     it('TODO(PLAT-1106)', function () {
       // Encode currently assumes bytes are
       // incorrect, should either fail or throw on high chars:
@@ -69,8 +89,4 @@ const tests = (decode: (i: string) => string, encode: (i: string) => string) => 
       expect(decode('8J+kow==')).not.to.eql('🤣');
     });
   });
-};
-
-describe('Base64 Selected', function () {
-  tests(decode, encode);
 });

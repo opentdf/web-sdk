@@ -1,12 +1,11 @@
 import { TypedArray } from '../tdf/index.js';
+import { base64 } from '../encodings/index.js';
 import Header from './models/Header.js';
 import Payload from './models/Payload.js';
 import Signature from './models/Signature.js';
 import EncodingEnum from './enum/EncodingEnum.js';
 import InvalidDataTypeError from './errors/InvalidDataTypeError.js';
 import SignatureError from './errors/SignatureError.js';
-import decodeBase64ToArrayBuffer from './helpers/decodeBase64ToArrayBuffer.js';
-import encodeArrayBufferToBase64 from './helpers/encodeArrayBufferToBase64.js';
 
 // Defaults when none set during encryption
 
@@ -32,7 +31,7 @@ export default class NanoTDF {
     let buffer;
     if (typeof content === 'string') {
       if (!encoding || encoding === EncodingEnum.Base64) {
-        buffer = decodeBase64ToArrayBuffer(content);
+        buffer = base64.decodeArrayBuffer(content);
       } else {
         throw new InvalidDataTypeError();
       }
@@ -118,6 +117,6 @@ export default class NanoTDF {
    */
   toBase64(): string {
     const arrayBuffer = this.toBuffer();
-    return encodeArrayBufferToBase64(arrayBuffer);
+    return base64.encodeArrayBuffer(arrayBuffer);
   }
 }
