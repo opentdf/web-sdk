@@ -232,7 +232,7 @@ class EncryptParamsBuilder {
   setStringSource(string: string) {
     const stream = new ReadableStream({
       pull(controller) {
-        controller.enqueue(string);
+        controller.enqueue(new TextEncoder().encode(string));
         controller.close();
       },
     });
