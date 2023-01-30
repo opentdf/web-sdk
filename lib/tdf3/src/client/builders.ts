@@ -1,6 +1,5 @@
 import { S3Client, GetObjectCommand, HeadObjectCommand, S3ClientConfig } from '@aws-sdk/client-s3';
 import axios from 'axios';
-import { toWebReadableStream } from 'web-streams-node';
 import { arrayBufferToBuffer, inBrowser } from '../utils/index.js';
 import { AttributeValidator } from './validation/index.js';
 import { AttributeObject, Policy } from '../models/index.js';
@@ -203,8 +202,10 @@ class EncryptParamsBuilder {
    * @return {EncryptParamsBuilder} - this object.
    */
   withStreamSource(readStream: ReadableStream<Uint8Array>): EncryptParamsBuilder {
-    if (!inBrowser() && !readStream?.getReader) {
-      readStream = toWebReadableStream(readStream);
+    if (!readStream?.getReader) {
+      throw new Error(
+        `Source must be a WebReadableStream. Run node streams through streams.Readable.toWeb()`
+      );
     }
 
     this.setStreamSource(readStream);
@@ -704,8 +705,10 @@ class DecryptParamsBuilder {
    * @return {DecryptParamsBuilder} - this object.
    */
   withStreamSource(stream: ReadableStream<Uint8Array>) {
-    if (!inBrowser() && !stream?.getReader) {
-      stream = toWebReadableStream(stream);
+    if (!stream?.getReader) {
+      throw new Error(
+        `Source must be a WebReadableStream. Run node streams through streams.Readable.toWeb()`
+      );
     }
 
     this.setStreamSource(stream);
