@@ -48,6 +48,10 @@ _init_server()
       echo "[ERROR] unable to cd ${WEB_APP_DIR}"
       exit 2
     fi
+    if ! npm ci; then
+      echo "[ERROR] Couldn't ci web-app"
+      exit 2
+    fi
     npm run dev &> "$output" &
     server_pid=$!
     echo "Server pid: $server_pid"
@@ -91,11 +95,6 @@ fi
 
 if ! cd "${WEB_APP_DIR}"; then
   echo "[ERROR] Couldn't cd to web-app dir, [${WEB_APP_DIR}]"
-  exit 2
-fi
-
-if ! npm ci; then
-  echo "[ERROR] Couldn't ci web-app"
   exit 2
 fi
 
