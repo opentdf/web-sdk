@@ -13,32 +13,6 @@ const oidcClient = new OidcClient(
   'otdf-sample-web-app'
 );
 
-function click(node: HTMLElement) {
-  try {
-    node.dispatchEvent(new MouseEvent('click'));
-  } catch (e) {
-    const evt = document.createEvent('MouseEvents');
-    evt.initMouseEvent(
-      'click',
-      true,
-      true,
-      window,
-      0,
-      0,
-      0,
-      80,
-      20,
-      false,
-      false,
-      false,
-      false,
-      0,
-      null
-    );
-    node.dispatchEvent(evt);
-  }
-}
-
 function saver(blob: Blob, name: string) {
   const a = document.createElement('a');
   a.download = name;
@@ -47,7 +21,7 @@ function saver(blob: Blob, name: string) {
   setTimeout(function () {
     URL.revokeObjectURL(a.href);
   }, 4e4); // 40s
-  click(a);
+  a.dispatchEvent(new MouseEvent('click'));
 }
 
 function App() {
