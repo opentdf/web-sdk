@@ -12,8 +12,10 @@ _configure_app() {
   echo "installing tgz"
   cd "${APP_DIR}" || exit 1
   npm uninstall @opentdf/cli
-  npm ci
-  npm i "../../../cli/opentdf-cli-${app_version}.tgz"
+  if ! npm ci; then
+    return 1
+  fi
+  return npm i "../../../cli/opentdf-cli-${app_version}.tgz"
 }
 
 _wait-for() {
@@ -63,7 +65,17 @@ _init_server()
 }
 
 
-_configure_app
+if ! _configure_app; then
+  echo "[ERROR] Couldn't configure our library and app"
+  exit 2
+fi
+
+
+if ! _init_server; then
+  echo "[ERROR] Couldn't run web app server"
+  exit 2
+fi
+
 if ! _wait-for; then
   exit 1
 fi
@@ -75,10 +87,6 @@ fi
 
 if ! npm ci; then
   echo "[ERROR] Couldn't ci web-app"
-  exit 2
-fi
-if ! _init_server; then
-  echo "[ERROR] Couldn't run web app server"
   exit 2
 fi
 
