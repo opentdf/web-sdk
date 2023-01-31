@@ -1,6 +1,6 @@
 import { useState, useEffect, type ChangeEvent } from 'react';
 import './App.css';
-import { NanoTDFClient, AuthProviders } from '@opentdf/client';
+import { NanoTDFClient, AuthProviders } from '@opentdf/client/nano';
 import { type SessionInformation, OidcClient } from './session.js';
 
 function toHex(a: Uint8Array) {
@@ -50,10 +50,7 @@ function saver(blob: Blob, name: string) {
   click(a);
 }
 
-
 function App() {
-  const [cipherText, setCipherText] = useState<Uint8Array | undefined>();
-  const [plainText, setPlainText] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | undefined>();
   const [authState, setAuthState] = useState<SessionInformation>({ sessionState: 'start' });
 
@@ -83,7 +80,8 @@ function App() {
       console.warn('PLEASE SELECT FILE');
       return true;
     }
-    if (!authState?.user?.refreshToken) {
+    const oidcRefreshToken = authState?.user?.refreshToken;
+    if (!oidcRefreshToken) {
       console.warn('PLEASE LOG IN');
       return true;
     }
@@ -93,12 +91,11 @@ function App() {
       exchange: 'refresh',
       clientId: oidcClient.clientId,
       oidcOrigin: oidcClient.host,
-      oidcRefreshToken: authState.user.refreshToken,
+      oidcRefreshToken,
     });
     const nanoClient = new NanoTDFClient(authProvider, 'http://localhost:65432/api/kas');
     const cipherText = new Uint8Array(await nanoClient.encrypt(arrayBuffer));
     console.log(`Ciphertext: ${toHex(cipherText)}`);
-    setCipherText(cipherText);
     saver(new Blob([cipherText]), `${selectedFile.name}.ntdf`);
     return true;
   };
@@ -120,7 +117,6 @@ function App() {
     });
     const nanoClient = new NanoTDFClient(authProvider, 'http://localhost:65432/api/kas');
     const plainText = new Uint8Array(await nanoClient.decrypt(await selectedFile.arrayBuffer()));
-    setPlainText(`plain text: ${toHex(plainText)}`);
     saver(new Blob([plainText]), `${selectedFile.name}.decrypted`);
     return false;
   };

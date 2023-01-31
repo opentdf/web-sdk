@@ -96,7 +96,7 @@ function getTimestampInSeconds() {
 }
 
 const extractAuthorizationResponse = (url: string): AuthorizationResponse | null => {
-  const queryParams = new URLSearchParams(window.location.search);
+  const queryParams = new URLSearchParams(url);
   console.log(`response: ${JSON.stringify(queryParams.toString())}`);
   // state=ApkI9hDcVp8nIOZq4rqxM65mv_mEQDUEHTulLFt9jRA
   // &session_state=96a991a3-e94f-456d-8c85-75904e1fbdbb
@@ -308,7 +308,11 @@ export class OidcClient {
     params.set('code_verifier', options.codeVerifier);
     params.set('scope', this.scope);
 
-    const response = await fetch(this._sessions?.config.token_endpoint, {
+    const config = this._sessions?.config;
+    if (!config) {
+      throw new Error('Unable to autoconfigure OIDC');
+    }
+    const response = await fetch(config.token_endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',

@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc && vite build",
     "dev": "vite",
-    "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"",
+    "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"  \"tests/*.{js,jsx,ts,tsx}\" \"tests/tests/**/*.{js,jsx,ts,tsx}\"",
     "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; CC-BY-4.0; ISC; MIT'",
     "lint": "eslint \"src/**/*.{js,jsx,ts,tsx}\"",
     "lint:fix": "eslint --fix \"src/**/*.{js,jsx,ts,tsx}\"",
