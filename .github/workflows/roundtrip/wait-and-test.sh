@@ -55,10 +55,12 @@ _init_server()
       fi
       if ! ps $server_pid > /dev/null; then
         echo "The server died" >&2
+        cat "${output}"
         exit 1
       fi
       if [[ $i == "$limit" ]]; then
         echo "[WARN] Breaking _init_server loop after ${limit} iterations"
+        cat "${output}"
         break
       fi
       sleep_for=$((5 + i * i * 2))
@@ -72,7 +74,6 @@ if ! _configure_app; then
   echo "[ERROR] Couldn't configure our library and app"
   exit 2
 fi
-
 
 if ! _init_server; then
   echo "[ERROR] Couldn't run web app server"
