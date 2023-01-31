@@ -15,7 +15,10 @@ _configure_app() {
   if ! npm ci; then
     return 1
   fi
-  return npm i "../../../cli/opentdf-cli-${app_version}.tgz"
+  if ! npm i "../../../cli/opentdf-cli-${app_version}.tgz"; then 
+    return 1
+  fi
+  return 0
 }
 
 _wait-for() {
