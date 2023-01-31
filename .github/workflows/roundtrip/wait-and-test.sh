@@ -4,12 +4,13 @@ set -x
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null && pwd)"
 ROOT_DIR="$(cd "${APP_DIR}/../../.." >/dev/null && pwd)"
+WEB_APP_DIR="$(cd "${ROOT_DIR}/web-app" >/dev/null && pwd)"
 
 APP="${APP_DIR}/encrypt-decrypt.sh"
 
 _configure_app() {
   app_version=$(cd "${ROOT_DIR}/lib" && node -p "require('./package.json').version")
-  echo "installing tgz"
+  echo "installing opentdf-cli-${app_version}.tgz into ${APP_DIR}"
   cd "${APP_DIR}" || exit 1
   npm uninstall @opentdf/cli
   if ! npm ci; then
@@ -43,6 +44,10 @@ _wait-for() {
 _init_server()  
 {
     output=$(mktemp)
+    if ! cd "${WEB_APP_DIR}"; then
+      echo "[ERROR] unable to cd ${WEB_APP_DIR}"
+      exit 2
+    fi
     npm run dev &> "$output" &
     server_pid=$!
     echo "Server pid: $server_pid"
@@ -84,8 +89,8 @@ if ! _wait-for; then
   exit 1
 fi
 
-if ! cd "../../../web-app"; then
-  echo "[ERROR] Couldn't cd to web-app"
+if ! cd "${WEB_APP_DIR}"; then
+  echo "[ERROR] Couldn't cd to web-app dir, [${WEB_APP_DIR}]"
   exit 2
 fi
 
