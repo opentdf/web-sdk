@@ -204,7 +204,7 @@ class EncryptParamsBuilder {
   withStreamSource(readStream: ReadableStream<Uint8Array>): EncryptParamsBuilder {
     if (!readStream?.getReader) {
       throw new Error(
-        `Source must be a WebReadableStream. Run node streams through streams.Readable.toWeb()`
+        `Source must be a WebReadableStream. Run node streams through stream.Readable.toWeb()`
       );
     }
 
@@ -707,7 +707,7 @@ class DecryptParamsBuilder {
   withStreamSource(stream: ReadableStream<Uint8Array>) {
     if (!stream?.getReader) {
       throw new Error(
-        `Source must be a WebReadableStream. Run node streams through streams.Readable.toWeb()`
+        `Source must be a WebReadableStream. Run node streams through stream.Readable.toWeb()`
       );
     }
 
