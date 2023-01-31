@@ -826,6 +826,8 @@ class DecryptParamsBuilder {
 =======
 >>>>>>> 24dbf19 (🤖 🎨 Autoformat)
 
+    this.setUrlSource(wu);
+
     this._params.rcaSource = { pu, wu, wk, al };
   }
 
