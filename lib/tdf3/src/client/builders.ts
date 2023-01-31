@@ -821,6 +821,8 @@ class DecryptParamsBuilder {
 
     const { pu, wu, wk, al } = params;
 
+    this.setUrlSource(wu);
+
     this._params.rcaSource = { pu, wu, wk, al };
   }
 
@@ -829,7 +831,7 @@ class DecryptParamsBuilder {
    * @param rcaParams
    * @returns {DecryptParamsBuilder}
    */
-  withRcaSource(rcaParams: RcaParams): DecryptParamsBuilder {
+  withRcaSource(rcaParams: RcaParams | RcaLink): DecryptParamsBuilder {
     this.setRcaSource(rcaParams);
     return this;
   }
