@@ -30,21 +30,6 @@
       "default": {
         "types": "./dist/types/tdf3/index.d.ts",
         "import": "./dist/web/tdf3/index-web.js"
-<<<<<<< HEAD
-      }
-    },
-    "./encodings": {
-      "default": {
-        "types": "./dist/types/src/encodings/index.d.ts",
-        "import": "./dist/web/src/encodings/index.js"
-=======
->>>>>>> 9e45542 (🔥 Remove CommonJS support (#134))
-      }
-    },
-    "./encodings": {
-      "default": {
-        "types": "./dist/types/src/encodings/index.d.ts",
-        "import": "./dist/web/src/encodings/index.js"
       }
     },
     "./nano": {
