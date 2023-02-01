@@ -16,10 +16,10 @@ export default class Policy {
    * they will have access to the TDF
    */
   addEntities(entities: string[]): void {
-    this.dissemList.concat(entities);
+    this.dissemList.push(...entities);
 
     // Remove any duplicates
-    this.dissemList = this.dissemList.filter(function (elem, index, self) {
+    this.dissemList = this.dissemList.filter((elem, index, self) => {
       return index === self.indexOf(elem);
     });
   }

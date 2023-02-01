@@ -36,7 +36,6 @@ export class AttributeSet {
 
   constructor() {
     this.attributes = [];
-    this.defaultAttribute;
   }
 
   /**
