@@ -11,7 +11,7 @@
     "inlineSourceMap": true,
     "isolatedModules": true,
     "lib": ["dom", "dom.iterable", "es2020", "ES2022.Error"],
-    "module": "esnext",
+    "module": "es2020",
     "moduleResolution": "node16",
     "noImplicitAny": true,
     "noImplicitOverride": true,
@@ -24,7 +24,7 @@
     "strictFunctionTypes": true,
     "strictNullChecks": true,
     "strictPropertyInitialization": false,
-    "target": "ES2020",
+    "target": "es2020",
     "typeRoots": ["./node_modules/@types"]
   },
   "include": ["src", "tests", "tdf3"],
