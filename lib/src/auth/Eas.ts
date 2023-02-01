@@ -1,4 +1,4 @@
-import axios, { type AxiosResponse, type AxiosRequestConfig } from 'axios';
+import axios, { type AxiosResponse, type RawAxiosRequestConfig } from 'axios';
 
 import { AppIdAuthProvider, HttpRequest } from './auth.js';
 
@@ -6,7 +6,7 @@ const { request } = axios;
 
 // Required `any` below is to match type from axios library.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type RequestFunctor = <T = any, R = AxiosResponse<T>>(config: AxiosRequestConfig) => Promise<R>;
+type RequestFunctor = <T = any, R = AxiosResponse<T>>(config: RawAxiosRequestConfig) => Promise<R>;
 
 /**
  * Client for EAS interaction, specifically fetching entity object.
@@ -59,7 +59,7 @@ class Eas {
     const httpReq = await this.authProvider.withCreds(incredibleHttpReq);
 
     // Execute the http request using axios.
-    const axiosParams: AxiosRequestConfig = {
+    const axiosParams: RawAxiosRequestConfig = {
       method: httpReq.method,
       headers: httpReq.headers,
       url: httpReq.url,

@@ -2,7 +2,7 @@ import PolicyTypeEnum from '../nanotdf/enum/PolicyTypeEnum.js';
 
 export type InputSource =
   | ReadableStream<Uint8Array>
-  | Buffer
+  | Uint8Array
   | string
   | ArrayBuffer
   | Promise<ReadableStream<Uint8Array>>;
