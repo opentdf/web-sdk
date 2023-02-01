@@ -100,7 +100,7 @@ export class ZipWriter {
   zip64: boolean;
   constructor() {
     // Enable zip64
-    this.zip64 = false;
+    this.zip64 = true;
   }
 
   getLocalFileHeader(
