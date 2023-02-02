@@ -14,6 +14,7 @@ _configure_app() {
   cd "${APP_DIR}" || exit 1
   npm uninstall @opentdf/cli
   if ! npm ci; then
+    echo "[ERROR] Couldn't ci roundtrip command line app"
     return 1
   fi
   if ! npm i "../../../cli/opentdf-cli-${app_version}.tgz"; then 

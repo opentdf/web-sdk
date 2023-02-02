@@ -130,8 +130,6 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: '.github/workflows/roundtrip/package-lock.json'
       - uses: actions/download-artifact@v3
         with:
           name: opentdf-client-lib
