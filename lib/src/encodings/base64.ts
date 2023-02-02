@@ -105,7 +105,7 @@ function encodeArrayBuffer(arrayBuffer: ArrayBuffer, urlSafe?: boolean): string 
 }
 
 function decodeFallback(input: string): string {
-  input = input.replace(/=+$/, '');
+  input = input.replace(/={1,3}$/, '');
   if (input.length % 4 === 1) {
     throw new InvalidCharacterError('Invalid input.');
   }

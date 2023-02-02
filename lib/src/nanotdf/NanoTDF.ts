@@ -104,9 +104,9 @@ export default class NanoTDF {
     offset += payloadBufferView.length;
 
     // Write the signature
-    if (this.header.hasSignature) {
+    if (this.header.hasSignature && this.signature) {
       const signatureBufferView = new Uint8Array(buffer, offset, lengthOfSignature);
-      this.signature ? this.signature.copyToBuffer(signatureBufferView) : undefined;
+      this.signature.copyToBuffer(signatureBufferView);
     }
 
     return buffer;
