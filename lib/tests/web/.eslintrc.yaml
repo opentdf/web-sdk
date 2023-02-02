@@ -1,3 +1,4 @@
 env:
-  browser: true
   mocha: true
+extends:
+  ../../.eslintrc.yaml
