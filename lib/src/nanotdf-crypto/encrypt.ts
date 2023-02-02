@@ -7,7 +7,7 @@ import { Ciphers, CipherTagLengths } from './ciphers.js';
  * @see https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/decrypt
  *
  * @param key Encryption key
- * @param plaintext Buffer to encrypt
+ * @param plaintext Bytes to encrypt
  * @param iv Initialization vector
  * @param tagLength Size (bits) of authentication tag
  * @returns Resolves ciphertext buffer

@@ -105,6 +105,7 @@ dist
 # TernJS port file
 .tern-port
 /.idea/
+/.vscode/
 
 # temporary folders
 **/temp/

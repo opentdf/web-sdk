@@ -128,8 +128,8 @@ export function generateInitializationVector(length?: number): string {
   return randomBytesAsHex(length || 16);
 }
 
-export function randomBytes(length: number): Uint8Array {
-  const r = new Uint8Array(length);
+export function randomBytes(byteLength: number): Uint8Array {
+  const r = new Uint8Array(byteLength);
   crypto.getRandomValues(r);
   return r;
 }
