@@ -4,13 +4,13 @@ import axios from 'axios';
 import { arrayBufferToBuffer, inBrowser } from '../utils/index.js';
 import { AttributeValidator } from './validation/index.js';
 import { AttributeObject, Policy } from '../models/index.js';
-import { RcaParams } from '../tdf.js';
+import { type RcaParams, type RcaLink } from '../tdf.js';
 import { Binary } from '../binary.js';
 
 import { IllegalArgumentError, IllegalEnvError } from '../errors.js';
 import { PemKeyPair } from '../crypto/declarations.js';
 import PolicyObject from '../../../src/tdf/PolicyObject.js';
-import { type EntityObject } from '../../../src/tdf/EntityObject.js';
+import { EntityObject } from '../../../src/tdf/EntityObject.js';
 
 const { get } = axios;
 
@@ -203,6 +203,12 @@ class EncryptParamsBuilder {
    * @return {EncryptParamsBuilder} - this object.
    */
   withStreamSource(readStream: ReadableStream<Uint8Array>): EncryptParamsBuilder {
+    if (!readStream?.getReader) {
+      throw new Error(
+        `Source must be a WebReadableStream. Run node streams through stream.Readable.toWeb()`
+      );
+    }
+
     this.setStreamSource(readStream);
     return this;
   }
@@ -700,6 +706,12 @@ class DecryptParamsBuilder {
    * @return {DecryptParamsBuilder} - this object.
    */
   withStreamSource(stream: ReadableStream<Uint8Array>) {
+    if (!stream?.getReader) {
+      throw new Error(
+        `Source must be a WebReadableStream. Run node streams through stream.Readable.toWeb()`
+      );
+    }
+
     this.setStreamSource(stream);
     return this;
   }
@@ -795,8 +807,24 @@ class DecryptParamsBuilder {
   /**
    * @param rcaParams
    */
-  setRcaSource(rcaParams: RcaParams) {
-    this._params.rcaSource = rcaParams;
+  setRcaSource(rcaParams: RcaParams | RcaLink) {
+    let params;
+
+    if (typeof rcaParams === 'object') {
+      params = { ...rcaParams };
+    } else if (typeof rcaParams === 'string') {
+      params = Object.fromEntries(new URLSearchParams(rcaParams));
+    }
+
+    if (!params?.pu || !params?.wu || !params?.wk || !params?.al) {
+      throw new Error(`RCA link [${rcaParams}] is missing parameters!`);
+    }
+
+    const { pu, wu, wk, al } = params;
+
+    this.setUrlSource(wu);
+
+    this._params.rcaSource = { pu, wu, wk, al };
   }
 
   /**
@@ -804,7 +832,7 @@ class DecryptParamsBuilder {
    * @param rcaParams
    * @returns {DecryptParamsBuilder}
    */
-  withRcaSource(rcaParams: RcaParams): DecryptParamsBuilder {
+  withRcaSource(rcaParams: RcaParams | RcaLink): DecryptParamsBuilder {
     this.setRcaSource(rcaParams);
     return this;
   }

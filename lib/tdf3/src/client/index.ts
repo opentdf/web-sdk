@@ -100,6 +100,7 @@ export interface ClientConfig {
   clientId?: string;
   dpopEnabled?: boolean;
   kasEndpoint?: string;
+  easEndpoint?: string;
   // DEPRECATED Ignored
   keyRewrapEndpoint?: string;
   // DEPRECATED Ignored
@@ -111,7 +112,6 @@ export interface ClientConfig {
   externalJwt?: string;
   authProvider?: AuthProvider | AppIdAuthProvider;
   readerUrl?: string;
-  easEndpoint?: string;
   entityObjectEndpoint?: string;
 }
 
@@ -122,6 +122,8 @@ export class Client {
   kasEndpoint?: string;
 
   kasPublicKey?: string;
+
+  easEndpoint?: string;
 
   clientId?: string;
 
@@ -261,6 +263,8 @@ export class Client {
     payloadKey,
   }: EncryptParams): Promise<AnyTdfStream | null> {
     if (rcaSource && asHtml) throw new Error('rca links should be used only with zip format');
+    if (rcaSource && !this.kasEndpoint)
+      throw new Error('rca links require a kasEndpoint url to be set');
 
     const keypair: PemKeyPair = await this._getOrCreateKeypair(opts);
     const policyObject = await this._createPolicyObject(scope);
@@ -294,13 +298,8 @@ export class Client {
     const byteLimit = asHtml ? HTML_BYTE_LIMIT : GLOBAL_BYTE_LIMIT;
     const stream = await tdf.writeStream(byteLimit, rcaSource, payloadKey);
     // Looks like invalid calls | stream.upsertResponse equals empty array?
-    if (
-      rcaSource &&
-      stream.upsertResponse &&
-      stream.upsertResponse[0][0]?.storageLinks?.payload?.upload
-    ) {
-      const url = stream.upsertResponse[0][0].storageLinks.payload.upload;
-      await uploadBinaryToS3(stream.stream, url, stream.tdfSize);
+    if (rcaSource) {
+      stream.policyUuid = policyObject.uuid;
     }
     if (!asHtml) {
       return stream;
