@@ -54,8 +54,9 @@ export const formatAsPem = (base64KeyString: string, label: string): string => {
  */
 export const removePemFormatting = (input: string): string => {
   const oneLiner = input.replace(/[\n\r]/g, '');
+  // https://www.rfc-editor.org/rfc/rfc7468#section-2
   return oneLiner.replace(
-    /-----+(?:BEGIN|END)\s(?:RSA\s)?(?:PUBLIC|PRIVATE|CERTIFICATE)\sKEY-----+/g,
+    /-----(?:BEGIN|END)\s(?:RSA\s)?(?:PUBLIC|PRIVATE|CERTIFICATE)\sKEY-----/g,
     ''
   );
 };

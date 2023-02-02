@@ -1,9 +1,6 @@
 {
-  "extends": "./tsconfig-common.json",
+  "extends": "./tsconfig.json",
   "compilerOptions": {
-    "module": "ES2020",
-    "moduleResolution": "node16",
     "outDir": "dist/web"
-  },
-  "include": ["src", "test", "tdf3"]
+  }
 }
