@@ -17,7 +17,7 @@ _configure_app() {
     echo "[ERROR] Couldn't ci roundtrip command line app"
     return 1
   fi
-  if ! npm i "../../../cli/opentdf-cli-${app_version}.tgz"; then 
+  if ! npm i "../../../cli/opentdf-cli-${app_version}.tgz"; then
     return 1
   fi
   return 0
@@ -42,49 +42,47 @@ _wait-for() {
   exit 1
 }
 
-_init_server()  
-{
-    output=$(mktemp)
-    if ! cd "${WEB_APP_DIR}"; then
-      echo "[ERROR] unable to cd ${WEB_APP_DIR}"
-      exit 2
+_init_server() {
+  output=$(mktemp)
+  if ! cd "${WEB_APP_DIR}"; then
+    echo "[ERROR] unable to cd ${WEB_APP_DIR}"
+    exit 2
+  fi
+  npm uninstall @opentdf/client
+  if ! npm ci; then
+    echo "[ERROR] Couldn't ci web-app"
+    exit 2
+  fi
+  if ! npm i "../lib/opentdf-client-${app_version}.tgz"; then
+    ls -ls ../lib/
+    echo "[ERROR] Couldn't install @opentdf/client tarball"
+    return 1
+  fi
+  npm run dev &>"$output" &
+  server_pid=$!
+  echo "Server pid: $server_pid"
+  echo "Output: $output"
+  echo "Wait:"
+  limit=5
+  for i in $(seq 1 $limit); do
+    if grep -q -i 'ready' "$output"; then
+      return 0
     fi
-    npm uninstall @opentdf/client
-    if ! npm ci; then
-      echo "[ERROR] Couldn't ci web-app"
-      exit 2
+    if ! ps $server_pid >/dev/null; then
+      echo "The server died" >&2
+      cat "${output}"
+      exit 1
     fi
-    if ! npm i "../lib/opentdf-client-${app_version}.tgz"; then 
-      ls -ls ../lib/
-      echo "[ERROR] Couldn't install @opentdf/client tarball"
-      return 1
+    if [[ $i == "$limit" ]]; then
+      echo "[WARN] Breaking _init_server loop after ${limit} iterations"
+      cat "${output}"
+      break
     fi
-    npm run dev &> "$output" &
-    server_pid=$!
-    echo "Server pid: $server_pid"
-    echo "Output: $output"
-    echo "Wait:"
-    limit=5
-    for i in $(seq 1 $limit); do
-      if grep -q -i 'ready' "$output"; then
-        return 0
-      fi
-      if ! ps $server_pid > /dev/null; then
-        echo "The server died" >&2
-        cat "${output}"
-        exit 1
-      fi
-      if [[ $i == "$limit" ]]; then
-        echo "[WARN] Breaking _init_server loop after ${limit} iterations"
-        cat "${output}"
-        break
-      fi
-      sleep_for=$((5 + i * i * 2))
-      echo "[INFO] retrying in ${sleep_for} seconds... ( ${i} / $limit ) ..."
-      sleep ${sleep_for}
-    done
+    sleep_for=$((5 + i * i * 2))
+    echo "[INFO] retrying in ${sleep_for} seconds... ( ${i} / $limit ) ..."
+    sleep ${sleep_for}
+  done
 }
-
 
 if ! _configure_app; then
   echo "[ERROR] Couldn't configure our library and app"
@@ -105,7 +103,7 @@ if ! cd "${WEB_APP_DIR}"; then
   exit 2
 fi
 
-if ! cd tests; then 
+if ! cd tests; then
   echo "[ERROR] Couldn't open web integration tests folder"
   exit 2
 fi

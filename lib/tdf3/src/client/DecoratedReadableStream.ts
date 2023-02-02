@@ -20,6 +20,7 @@ export async function streamToBuffer(stream: ReadableStream<Uint8Array>): Promis
 export abstract class DecoratedReadableStream {
   KEK: null | string;
   algorithm: string;
+  policyUuid?: string;
   tdfSize: number;
   stream: ReadableStream<Uint8Array>;
   on: NodeJS.EventEmitter['on'];
