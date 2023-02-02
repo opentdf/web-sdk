@@ -55,6 +55,8 @@ _init_server()
       exit 2
     fi
     if ! npm i "../../../lib/opentdf-client-${app_version}.tgz"; then 
+      ls -ls ../../../lib/
+      echo "[ERROR] Couldn't install @opentdf/client tarball"
       return 1
     fi
     npm run dev &> "$output" &
