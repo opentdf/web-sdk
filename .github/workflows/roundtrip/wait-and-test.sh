@@ -14,6 +14,7 @@ _configure_app() {
   cd "${APP_DIR}" || exit 1
   npm uninstall @opentdf/cli
   if ! npm ci; then
+    echo "[ERROR] Couldn't ci roundtrip command line app"
     return 1
   fi
   if ! npm i "../../../cli/opentdf-cli-${app_version}.tgz"; then 
@@ -48,9 +49,15 @@ _init_server()
       echo "[ERROR] unable to cd ${WEB_APP_DIR}"
       exit 2
     fi
+    npm uninstall @opentdf/client
     if ! npm ci; then
       echo "[ERROR] Couldn't ci web-app"
       exit 2
+    fi
+    if ! npm i "../lib/opentdf-client-${app_version}.tgz"; then 
+      ls -ls ../lib/
+      echo "[ERROR] Couldn't install @opentdf/client tarball"
+      return 1
     fi
     npm run dev &> "$output" &
     server_pid=$!

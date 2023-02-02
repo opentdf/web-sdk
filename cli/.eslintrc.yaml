@@ -1,8 +1,4 @@
 env:
   node: true
-rules:
-  "@typescript-eslint/ban-ts-comment": off
 extends:
-  - eslint:recommended
-  - plugin:@typescript-eslint/recommended
-  - plugin:prettier/recommended
+  - ../lib/.eslintrc.yaml
