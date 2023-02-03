@@ -1,3 +1,4 @@
+import { Buffer } from 'buffer';
 import { Binary } from '../binary.js';
 import { Algorithms } from './algorithms.js';
 import { SymmetricCipher } from './symmetric-cipher-base.js';

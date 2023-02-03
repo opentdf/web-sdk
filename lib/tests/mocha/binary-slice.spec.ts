@@ -1,3 +1,4 @@
+import { Buffer } from 'buffer';
 import { assert, expect } from 'chai';
 import { Binary } from '../../tdf3/src/binary.js';
 

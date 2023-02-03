@@ -4,7 +4,8 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 import axios from 'axios';
-import { EventEmitter } from 'events';
+import { Buffer } from 'buffer';
+import { EventEmitter } from 'eventemitter3';
 
 import { VirtruS3Config, VirtruTempS3Credentials, VirtruCreds } from './builders.js';
 import { Upload } from '../utils/aws-lib-storage/index.js';

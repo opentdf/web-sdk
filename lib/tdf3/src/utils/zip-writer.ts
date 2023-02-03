@@ -1,3 +1,5 @@
+import { Buffer } from 'buffer';
+
 const CD_SIGNATURE = 0x02014b50;
 const LOCAL_FILE_HEADER_FIXED_SIZE = 30;
 const VERSION_NEEDED_TO_EXTRACT_UTF8 = 20;
