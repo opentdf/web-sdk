@@ -23,8 +23,9 @@ export abstract class DecoratedReadableStream {
   policyUuid?: string;
   tdfSize: number;
   stream: ReadableStream<Uint8Array>;
-  on: NodeJS.EventEmitter['on'];
-  emit: NodeJS.EventEmitter['emit'];
+  ee: EventEmitter;
+  on: EventEmitter['on'];
+  emit: EventEmitter['emit'];
   metadata?: Metadata;
   contentLength?: number;
   manifest: Manifest;
@@ -32,9 +33,9 @@ export abstract class DecoratedReadableStream {
 
   constructor(byteLimit: number, underlyingSource: UnderlyingSource) {
     this.stream = new ReadableStream(underlyingSource, { highWaterMark: byteLimit });
-    const ee = new EventEmitter();
-    this.on = ee.on;
-    this.emit = ee.emit;
+    this.ee = new EventEmitter();
+    this.on = (...args) => this.ee.on(...args);
+    this.emit = (...args) => this.ee.emit(...args);
   }
 
   /**

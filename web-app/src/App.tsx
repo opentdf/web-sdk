@@ -1,6 +1,6 @@
 import { useState, useEffect, type ChangeEvent } from 'react';
 import './App.css';
-import { NanoTDFClient, AuthProviders } from '@opentdf/client/nano';
+import { Client as Tdf3Client, NanoTDFClient, AuthProviders } from '@opentdf/client';
 import { type SessionInformation, OidcClient } from './session.js';
 
 function toHex(a: Uint8Array) {
@@ -24,9 +24,20 @@ function saver(blob: Blob, name: string) {
   a.dispatchEvent(new MouseEvent('click'));
 }
 
+type Containers = 'html' | 'tdf' | 'nano';
+
 function App() {
+  const [cipherText, setCipherText] = useState<Uint8Array | undefined>();
+  const [plainText, setPlainText] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | undefined>();
   const [authState, setAuthState] = useState<SessionInformation>({ sessionState: 'start' });
+  const [decryptContainerType, setDecryptContainerType] = useState<Containers>('nano');
+  const [encryptContainerType, setEncryptContainerType] = useState<Containers>('nano');
+
+  const handleRadioChange =
+    (handler: typeof setDecryptContainerType) => (e: ChangeEvent<HTMLInputElement>) => {
+      handler(e.target.value as Containers);
+    };
 
   useEffect(() => {
     oidcClient
@@ -60,16 +71,48 @@ function App() {
       return true;
     }
     console.info(`[THINKING about ${selectedFile.name}]`);
-    const arrayBuffer = await selectedFile.arrayBuffer();
     const authProvider = await AuthProviders.refreshAuthProvider({
       exchange: 'refresh',
       clientId: oidcClient.clientId,
       oidcOrigin: oidcClient.host,
       oidcRefreshToken,
     });
-    const nanoClient = new NanoTDFClient(authProvider, 'http://localhost:65432/api/kas');
-    const cipherText = new Uint8Array(await nanoClient.encrypt(arrayBuffer));
+    let cipherText;
+    switch (encryptContainerType) {
+      case 'nano': {
+        const arrayBuffer = await selectedFile.arrayBuffer();
+        const nanoClient = new NanoTDFClient(authProvider, 'http://localhost:65432/api/kas');
+        console.log('allocated client', nanoClient);
+        cipherText = new Uint8Array(await nanoClient.encrypt(arrayBuffer));
+        break;
+      }
+      case 'html': {
+        const client = new Tdf3Client.Client({
+          authProvider,
+          kasEndpoint: 'http://localhost:65432/api/kas',
+          readerUrl: 'https://secure.virtru.com/start?htmlProtocol=1',
+        });
+        const source = (await selectedFile.stream()) as unknown as ReadableStream<Uint8Array>;
+        const a = await client.encrypt({ source, offline: true, asHtml: true });
+        cipherText = await a?.toBuffer();
+        break;
+      }
+      case 'tdf': {
+        const client = new Tdf3Client.Client({
+          authProvider,
+          kasEndpoint: 'http://localhost:65432/api/kas',
+        });
+        const source = (await selectedFile.stream()) as unknown as ReadableStream<Uint8Array>;
+        const a = await client.encrypt({ source, offline: true });
+        cipherText = await a?.toBuffer();
+        break;
+      }
+    }
+    if (!cipherText) {
+      throw new Error('fail');
+    }
     console.log(`Ciphertext: ${toHex(cipherText)}`);
+    setCipherText(cipherText);
     saver(new Blob([cipherText]), `${selectedFile.name}.ntdf`);
     return true;
   };
@@ -89,9 +132,27 @@ function App() {
       oidcOrigin: oidcClient.host,
       oidcRefreshToken: authState.user.refreshToken,
     });
-    const nanoClient = new NanoTDFClient(authProvider, 'http://localhost:65432/api/kas');
-    const plainText = new Uint8Array(await nanoClient.decrypt(await selectedFile.arrayBuffer()));
-    saver(new Blob([plainText]), `${selectedFile.name}.decrypted`);
+    switch (decryptContainerType) {
+      case 'tdf': {
+        const client = new Tdf3Client.Client({
+          authProvider,
+          kasEndpoint: 'http://localhost:65432/api/kas',
+        });
+
+        const buffer = new Uint8Array(await selectedFile.arrayBuffer());
+        const plain = await client.decrypt({ source: { type: 'buffer', location: buffer } });
+        saver(new Blob([await plain.toBuffer()]), `${selectedFile.name}.decrypted`);
+        break;
+      }
+      case 'nano': {
+        const nanoClient = new NanoTDFClient(authProvider, 'http://localhost:65432/api/kas');
+        const plainText = new Uint8Array(
+          await nanoClient.decrypt(new Uint8Array(await selectedFile.arrayBuffer()))
+        );
+        saver(new Blob([plainText]), `${selectedFile.name}.decrypted`);
+        break;
+      }
+    }
     return false;
   };
 
@@ -146,6 +207,37 @@ function App() {
             <form className="column">
               <h2>Encrypt</h2>
               <div className="card horizontal-flow">
+                <div>
+                  <input
+                    type="radio"
+                    id="htmlEncrypt"
+                    name="container"
+                    value="html"
+                    onChange={handleRadioChange(setEncryptContainerType)}
+                    checked={encryptContainerType === 'html'}
+                  />{' '}
+                  <label htmlFor="html">HTML</label>
+                  <br />
+                  <input
+                    type="radio"
+                    id="zipEncrypt"
+                    name="container"
+                    value="tdf"
+                    onChange={handleRadioChange(setEncryptContainerType)}
+                    checked={encryptContainerType === 'tdf'}
+                  />{' '}
+                  <label htmlFor="zip">TDF</label>
+                  <br />
+                  <input
+                    type="radio"
+                    id="nanoEncrypt"
+                    name="container"
+                    value="nano"
+                    onChange={handleRadioChange(setEncryptContainerType)}
+                    checked={encryptContainerType === 'nano'}
+                  />{' '}
+                  <label htmlFor="nano">nano</label>
+                </div>
                 <button id="encryptButton" onClick={() => handleEncrypt()} type="button">
                   Encrypt
                 </button>
@@ -154,6 +246,27 @@ function App() {
             <form className="column">
               <h2>Decrypt</h2>
               <div className="card horizontal-flow">
+                <div>
+                  <input
+                    type="radio"
+                    id="tdfDecrypt"
+                    name="container"
+                    value="tdf"
+                    onChange={handleRadioChange(setDecryptContainerType)}
+                    checked={decryptContainerType === 'tdf'}
+                  />{' '}
+                  <label htmlFor="tdf">TDF</label>
+                  <br />
+                  <input
+                    type="radio"
+                    id="nanoDecrypt"
+                    name="container"
+                    value="nano"
+                    onChange={handleRadioChange(setDecryptContainerType)}
+                    checked={decryptContainerType === 'nano'}
+                  />{' '}
+                  <label htmlFor="nano">nano</label>
+                </div>
                 <button id="decryptButton" onClick={() => handleDecrypt()} type="button">
                   decrypt
                 </button>

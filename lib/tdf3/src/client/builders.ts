@@ -27,13 +27,13 @@ export type FetchCreds = {
   AWSSessionToken: string;
 };
 
-export interface VirtruTempS3Credentials {
+export type VirtruTempS3Credentials = {
   data: {
     bucket: string;
     fields: FetchCreds;
     url: string;
   };
-}
+};
 
 async function setRemoteStoreAsStream(
   fileName: string,
@@ -113,37 +113,37 @@ async function setRemoteStoreAsStream(
   }
 }
 
-interface Scope {
-  dissem: string[];
+export type Scope = {
+  dissem?: string[];
   policyId?: string;
   policyObject?: Policy;
-  attributes: AttributeObject[];
-}
+  attributes?: AttributeObject[];
+};
 
-type Metadata = {
+export type Metadata = {
   connectOptions: {
     testUrl: string;
   };
   policyObject: PolicyObject;
 };
 
-export interface EncryptParams {
+export type EncryptParams = {
   source: ReadableStream<Uint8Array>;
   opts?: { keypair: PemKeyPair };
   output?: NodeJS.WriteStream;
-  scope: Scope;
-  metadata: Metadata | null;
+  scope?: Scope;
+  metadata?: Metadata;
   keypair?: CryptoKeyPair;
   contentLength?: number;
-  offline: boolean;
-  windowSize: number;
-  asHtml: boolean;
-  rcaSource: boolean;
-  getPolicyId?: () => EncryptParams['scope']['policyId'];
+  offline?: boolean;
+  windowSize?: number;
+  asHtml?: boolean;
+  rcaSource?: boolean;
+  getPolicyId?: () => Scope['policyId'];
   mimeType?: string;
   eo?: EntityObject;
   payloadKey?: Binary;
-}
+};
 
 // 'Readonly<EncryptParams>': scope, metadata, offline, windowSize, asHtml
 
@@ -307,14 +307,23 @@ class EncryptParamsBuilder {
     return this;
   }
 
-  getAttributes(): EncryptParams['scope']['attributes'] {
+  getAttributes(): Scope['attributes'] {
     return this._params?.scope?.attributes || [];
   }
 
   /**
    * @param {{ attribute: string }[]} attributes URI of the form `<authority namespace>/attr/<name>/value/<value>`
    */
-  setAttributes(attributes: EncryptParams['scope']['attributes']) {
+  setAttributes(attributes: Scope['attributes']) {
+    if (!attributes) {
+      if (this._params.scope) {
+        delete this._params.scope.attributes;
+        if (!Object.keys(this._params.scope).length) {
+          delete this._params.scope;
+        }
+      }
+      return;
+    }
     AttributeValidator(attributes);
     if (this._params.scope) {
       this._params.scope.attributes = attributes;
@@ -328,7 +337,7 @@ class EncryptParamsBuilder {
    * @param {String} attributes.attribute URI of the form `<authority namespace>/attr/<name>/value/<value>`
    * @returns {EncryptParamsBuilder} with attributes set
    */
-  withAttributes(attributes: EncryptParams['scope']['attributes']): EncryptParamsBuilder {
+  withAttributes(attributes: Scope['attributes']): EncryptParamsBuilder {
     this.setAttributes(attributes);
     return this;
   }
@@ -337,7 +346,7 @@ class EncryptParamsBuilder {
    * Get the users configured to access (decrypt) the encrypted data.
    * @return {array} - array of users (e.g., email addresses).
    */
-  getUsersWithAccess(): EncryptParams['scope']['dissem'] {
+  getUsersWithAccess(): Scope['dissem'] {
     return this._params?.scope?.dissem || [];
   }
 
@@ -586,7 +595,7 @@ class EncryptParamsBuilder {
   }
 
   _deepCopy(_params: EncryptParams) {
-    return freeze({ ..._params, getPolicyId: () => _params.scope.policyId });
+    return freeze({ ..._params, getPolicyId: () => _params.scope?.policyId });
   }
 
   /**
@@ -601,7 +610,7 @@ class EncryptParamsBuilder {
 
 export type DecryptSource =
   | null
-  | { type: 'buffer'; location: Buffer }
+  | { type: 'buffer'; location: Uint8Array }
   | { type: 'remote'; location: string }
   | { type: 'stream'; location: ReadableStream<Uint8Array> }
   | { type: 'file-browser' | 'file-node'; location: string };
