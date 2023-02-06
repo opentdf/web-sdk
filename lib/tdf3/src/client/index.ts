@@ -19,7 +19,7 @@ import { PemKeyPair } from '../crypto/declarations.js';
 import { AuthProvider, AppIdAuthProvider, HttpRequest } from '../../../src/auth/auth.js';
 import EAS from '../../../src/auth/Eas.js';
 
-import { EncryptParams, DecryptParams } from './builders.js';
+import { EncryptParams, DecryptParams, type Scope } from './builders.js';
 import { Binary } from '../binary.js';
 import { type DecoratedReadableStream } from './DecoratedReadableStream.js';
 
@@ -27,7 +27,7 @@ import {
   DEFAULT_SEGMENT_SIZE,
   DecryptParamsBuilder,
   EncryptParamsBuilder,
-  DecryptSource,
+  type DecryptSource,
 } from './builders.js';
 import { Policy } from '../models/index.js';
 import { cryptoToPemPair, generateKeyPair, rsaPkcs1Sha256 } from '../crypto/index.js';
@@ -233,39 +233,46 @@ export class Client {
   /**
    * Encrypt plaintext into TDF ciphertext. One of the core operations of the Virtru SDK.
    *
-   * @param {object} scope - dissem and attributes for constructing the policy
-   * @param {object} source - nodeJS source object of unencrypted data
-   * @param {boolean} [asHtml] - If we should wrap the TDF data in a self-opening HTML wrapper
-   * @param {object} [metadata] - additional non-secret data to store with the TDF
-   * @param {object} [opts] - object containing keypair
-   * @param {string} [mimeType] - mime type of source
-   * @param {boolean} [offline] - Where to store the policy
-   * @param {object} [output] - output stream. Created and returned if not passed in
-   * @param {object} [rcaSource] - RCA source information
-   * @param {number} [windowSize] - segment size in bytes
-   * @param {object} [eo] - entity object
-   * @param {Binary} [payloadKey] - Separate key for payload
+   * @param scope dissem and attributes for constructing the policy
+   * @param source nodeJS source object of unencrypted data
+   * @param [asHtml] If we should wrap the TDF data in a self-opening HTML wrapper. Defaults to false
+   * @param [metadata] Additional non-secret data to store with the TDF
+   * @param [opts] Test only
+   * @param [mimeType] mime type of source. defaults to `unknown`
+   * @param [offline] Where to store the policy. Defaults to `false` - which results in `upsert` events to store/update a policy
+   * @param [output] output stream. Created and returned iff not passed in
+   * @param [rcaSource] RCA source information. Optional.
+   * @param [windowSize] - segment size in bytes. Defaults to a a million bytes.
+   * @param [eo] - (deprecated) entity object
+   * @param [payloadKey] - Separate key for payload; not saved. Used to support external party key storage.
    * @return a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} a new stream containing the TDF ciphertext, if output is not passed in as a paramter
    * @see EncryptParamsBuilder
    */
   async encrypt({
-    scope,
+    scope = { attributes: [], dissem: [] },
     source,
     asHtml = false,
-    metadata = null,
+    metadata,
     opts,
     mimeType,
     offline = false,
     output,
-    rcaSource = false,
+    rcaSource,
     windowSize = DEFAULT_SEGMENT_SIZE,
     eo,
     payloadKey,
   }: EncryptParams): Promise<AnyTdfStream | null> {
-    if (rcaSource && asHtml) throw new Error('rca links should be used only with zip format');
-    if (rcaSource && !this.kasEndpoint)
+    if (asHtml) {
+      if (rcaSource) {
+        throw new Error('rca links should be used only with zip format');
+      }
+      if (!this.readerUrl) {
+        throw new Error('html container missing required parameter: [readerUrl]');
+      }
+    }
+    if (rcaSource && !this.kasEndpoint) {
       throw new Error('rca links require a kasEndpoint url to be set');
-
+    }
     const keypair: PemKeyPair = await this._getOrCreateKeypair(opts);
     const policyObject = await this._createPolicyObject(scope);
     const kasPublicKey = await this._getOrFetchKasPubKey();
@@ -296,7 +303,7 @@ export class Client {
     });
 
     const byteLimit = asHtml ? HTML_BYTE_LIMIT : GLOBAL_BYTE_LIMIT;
-    const stream = await tdf.writeStream(byteLimit, rcaSource, payloadKey);
+    const stream = await tdf.writeStream(byteLimit, !!rcaSource, payloadKey);
     // Looks like invalid calls | stream.upsertResponse equals empty array?
     if (rcaSource) {
       stream.policyUuid = policyObject.uuid;
@@ -380,7 +387,7 @@ export class Client {
   /*
    * Create a policy object for an encrypt operation.
    */
-  async _createPolicyObject(scope: EncryptParams['scope']): Promise<Policy> {
+  async _createPolicyObject(scope: Scope): Promise<Policy> {
     if (scope.policyObject) {
       // use the client override if provided
       return scope.policyObject;
@@ -389,8 +396,8 @@ export class Client {
     return {
       uuid: policyId,
       body: {
-        dataAttributes: scope.attributes,
-        dissem: scope.dissem,
+        dataAttributes: scope.attributes || [],
+        dissem: scope.dissem || [],
       },
     };
   }

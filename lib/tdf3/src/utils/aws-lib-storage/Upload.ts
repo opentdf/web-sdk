@@ -77,7 +77,7 @@ export class Upload extends EventEmitter {
 
   private uploadedParts: CompletedPart[] = [];
   private uploadId?: string;
-  uploadEvent?: string;
+  uploadEvent?: string | symbol;
 
   private isMultiPart = true;
   private singleUploadResult?: CompleteMultipartUploadCommandOutput;
@@ -119,7 +119,7 @@ export class Upload extends EventEmitter {
     ]);
   }
 
-  public override on(event: 'httpUploadProgress', listener: (progress: Progress) => void): this {
+  public override on(event: string | symbol, listener: (progress: Progress) => void): this {
     this.uploadEvent = event;
     return super.on(event, listener);
   }

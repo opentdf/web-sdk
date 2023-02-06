@@ -1,4 +1,3 @@
-/* eslint-disable no-async-promise-executor */
 import { EventEmitter } from 'events';
 import axios from 'axios';
 import crc32 from 'buffer-crc32';
@@ -84,7 +83,7 @@ type AddKeyAccess = {
   url?: string;
   publicKey: string;
   attributeUrl?: string;
-  metadata: Metadata | null;
+  metadata?: Metadata;
 };
 
 type Segment = {
@@ -166,15 +165,15 @@ class TDF extends EventEmitter {
     return Buffer.from(fullHtmlString);
   }
 
-  static unwrapHtml(htmlPayload: Buffer | Uint8Array) {
-    const html = htmlPayload.toString();
+  static unwrapHtml(htmlPayload: Uint8Array) {
+    const html = new TextDecoder().decode(htmlPayload);
     const payloadRe = /<input id=['"]?data-input['"]?[^>]*value=['"]?([a-zA-Z0-9+/=]+)['"]?/;
+    const reResult = payloadRe.exec(html);
+    if (reResult === null) {
+      throw new TdfPayloadExtractionError('Payload is missing');
+    }
+    const base64Payload = reResult[1];
     try {
-      const reResult = payloadRe.exec(html);
-      if (reResult === null) {
-        throw new Error('Payload is missing');
-      }
-      const base64Payload = reResult[1];
       return base64ToBuffer(base64Payload);
     } catch (e) {
       throw new TdfPayloadExtractionError('There was a problem extracting the TDF3 payload', e);
@@ -272,16 +271,11 @@ class TDF extends EventEmitter {
    * @param  {String? Object?} options.metadata - Metadata. Appears to be dead code.
    * @return {<TDF>}- this instance
    */
-  async addKeyAccess({ type, url, publicKey, attributeUrl, metadata = null }: AddKeyAccess) {
+  async addKeyAccess({ type, url, publicKey, attributeUrl, metadata }: AddKeyAccess) {
     // TODO - run down metadata parameter. Clean it out if it isn't used this way anymore.
 
     /** Internal function to keep it DRY */
-    function createKeyAccess(
-      type: string,
-      kasUrl: string,
-      pubKey: string,
-      metadata: Metadata | null
-    ) {
+    function createKeyAccess(type: string, kasUrl: string, pubKey: string, metadata?: Metadata) {
       switch (type) {
         case 'wrapped':
           return new KeyAccessWrapped(kasUrl, pubKey, metadata);
