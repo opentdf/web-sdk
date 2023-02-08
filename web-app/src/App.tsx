@@ -7,6 +7,15 @@ function toHex(a: Uint8Array) {
   return [...a].map((x) => x.toString(16).padStart(2, '0')).join('');
 }
 
+function decryptedFileName(encryptedFileName: string): string {
+  const m = encryptedFileName.match(/^(.+)\.(\w+)\.(n?tdf)$/);
+  if (!m) {
+    console.warn(`Unable to extract raw file name from ${encryptedFileName}`);
+    return `${encryptedFileName}.decrypted`;
+  }
+  return `${m[1]}.decrypted.${m[2]}`;
+}
+
 const oidcClient = new OidcClient(
   'http://localhost:65432/auth/realms/tdf',
   'browsertest',
@@ -78,12 +87,14 @@ function App() {
       oidcRefreshToken,
     });
     let cipherText;
+    let extension = 'tdf';
     switch (encryptContainerType) {
       case 'nano': {
         const arrayBuffer = await selectedFile.arrayBuffer();
         const nanoClient = new NanoTDFClient(authProvider, 'http://localhost:65432/api/kas');
         console.log('allocated client', nanoClient);
         cipherText = new Uint8Array(await nanoClient.encrypt(arrayBuffer));
+        extension = 'ntdf';
         break;
       }
       case 'html': {
@@ -113,7 +124,7 @@ function App() {
     }
     console.log(`Ciphertext: ${toHex(cipherText)}`);
     setCipherText(cipherText);
-    saver(new Blob([cipherText]), `${selectedFile.name}.ntdf`);
+    saver(new Blob([cipherText]), `${selectedFile.name}.${extension}`);
     return true;
   };
 
@@ -141,7 +152,7 @@ function App() {
 
         const buffer = new Uint8Array(await selectedFile.arrayBuffer());
         const plain = await client.decrypt({ source: { type: 'buffer', location: buffer } });
-        saver(new Blob([await plain.toBuffer()]), `${selectedFile.name}.decrypted`);
+        saver(new Blob([await plain.toBuffer()]), decryptedFileName(selectedFile.name));
         break;
       }
       case 'nano': {
@@ -149,7 +160,7 @@ function App() {
         const plainText = new Uint8Array(
           await nanoClient.decrypt(new Uint8Array(await selectedFile.arrayBuffer()))
         );
-        saver(new Blob([plainText]), `${selectedFile.name}.decrypted`);
+        saver(new Blob([plainText]), decryptedFileName(selectedFile.name));
         break;
       }
     }
