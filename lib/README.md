@@ -10,7 +10,7 @@ TDF3 with JSON envelopes.
   const oidcCredentials: RefreshTokenCredentials = {
     clientId: keycloakClientId,
     exchange: 'refresh',
-    oidcRefreshToken: refreshToken,
+    refreshToken: refreshToken,
     oidcOrigin: keycloakUrl,
   }
   const authProvider = await AuthProviders.refreshAuthProvider(oidcCredentials);

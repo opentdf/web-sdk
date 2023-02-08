@@ -1,29 +1,28 @@
-import VirtruOIDC from './virtru-oidc.js';
-import { IOIDCRefreshTokenProvider } from '../nanotdf/interfaces/OIDCInterface.js';
-import { AuthProvider, HttpRequest } from './auth.js';
+import { AuthProvider, type HttpRequest } from './auth.js';
+import { AccessToken, type RefreshTokenCredentials } from './oidc.js';
 
 export class OIDCRefreshTokenProvider implements AuthProvider {
-  oidcAuth: VirtruOIDC;
-  externalRefreshToken?: string;
+  oidcAuth: AccessToken;
+  refreshToken?: string;
 
   constructor({
     clientId,
-    externalRefreshToken,
+    refreshToken,
     oidcOrigin,
-    clientSecret,
-  }: IOIDCRefreshTokenProvider) {
-    if (!clientId || !externalRefreshToken) {
+  }: Partial<RefreshTokenCredentials> & Omit<RefreshTokenCredentials, 'exchange'>) {
+    if (!clientId || !refreshToken) {
       throw new Error(
         'To use this browser-only provider you must supply clientId/valid OIDC refresh token'
       );
     }
 
-    this.oidcAuth = new VirtruOIDC({
+    this.oidcAuth = new AccessToken({
+      exchange: 'refresh',
       clientId,
-      clientSecret,
+      refreshToken: refreshToken,
       oidcOrigin,
     });
-    this.externalRefreshToken = externalRefreshToken;
+    this.refreshToken = refreshToken;
   }
 
   async updateClientPublicKey(clientPubkey: string, signingKey?: CryptoKeyPair): Promise<void> {
@@ -34,9 +33,9 @@ export class OIDCRefreshTokenProvider implements AuthProvider {
     //If we've been seeded with an externally-issued refresh token, consume it
     //and exchange it for a Virtru bearer token - if it's already been consumed,
     //skip this step
-    if (this.externalRefreshToken) {
-      await this.oidcAuth.exchangeExternalRefreshToken(this.externalRefreshToken);
-      delete this.externalRefreshToken;
+    if (this.refreshToken) {
+      await this.oidcAuth.exchangeForRefreshToken();
+      delete this.refreshToken;
     }
     return this.oidcAuth.withCreds(httpReq);
   }

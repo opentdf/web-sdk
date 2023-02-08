@@ -65,8 +65,8 @@ function App() {
       console.warn('PLEASE SELECT FILE');
       return true;
     }
-    const oidcRefreshToken = authState?.user?.refreshToken;
-    if (!oidcRefreshToken) {
+    const refreshToken = authState?.user?.refreshToken;
+    if (!refreshToken) {
       console.warn('PLEASE LOG IN');
       return true;
     }
@@ -75,7 +75,7 @@ function App() {
       exchange: 'refresh',
       clientId: oidcClient.clientId,
       oidcOrigin: oidcClient.host,
-      oidcRefreshToken,
+      refreshToken,
     });
     let cipherText;
     switch (encryptContainerType) {
@@ -130,7 +130,7 @@ function App() {
       exchange: 'refresh',
       clientId: oidcClient.clientId,
       oidcOrigin: oidcClient.host,
-      oidcRefreshToken: authState.user.refreshToken,
+      refreshToken: authState.user.refreshToken,
     });
     switch (decryptContainerType) {
       case 'tdf': {
