@@ -1,4 +1,5 @@
 import axios, { AxiosResponse } from 'axios';
+import { Buffer } from 'buffer';
 import { createReadStream, readFile, statSync } from 'fs';
 import { type AnyTdfStream, isAnyTdfStream } from '../client/tdf-stream.js';
 

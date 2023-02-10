@@ -1,3 +1,4 @@
+import { Buffer } from 'buffer';
 import { Binary } from '../binary.js';
 import { base64, hex } from '../../../src/encodings/index.js';
 import * as cryptoService from '../crypto/index.js';

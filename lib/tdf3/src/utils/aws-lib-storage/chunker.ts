@@ -1,3 +1,5 @@
+import { Buffer } from 'buffer';
+
 import { getChunkBuffer } from './chunks/getChunkBuffer.js';
 import { getChunkStream } from './chunks/getChunkStream.js';
 import { getDataReadable } from './chunks/getDataReadable.js';

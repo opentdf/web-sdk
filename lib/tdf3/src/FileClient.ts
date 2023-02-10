@@ -1,3 +1,4 @@
+import { Buffer } from 'buffer';
 import { createReadStream } from 'fs';
 import { Readable } from 'stream';
 

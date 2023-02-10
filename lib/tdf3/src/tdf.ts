@@ -1,3 +1,4 @@
+import { Buffer } from 'buffer';
 import { EventEmitter } from 'events';
 import axios from 'axios';
 import crc32 from 'buffer-crc32';

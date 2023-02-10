@@ -14,7 +14,8 @@ import {
   UploadPartCommand,
 } from '@aws-sdk/client-s3';
 import { extendedEncodeURIComponent } from '@aws-sdk/smithy-client';
-import { EventEmitter } from 'events';
+import { Buffer } from 'buffer';
+import { EventEmitter } from 'eventemitter3';
 
 import { getChunk } from './chunker.js';
 import { BodyDataTypes, Options, Progress } from './types.js';
