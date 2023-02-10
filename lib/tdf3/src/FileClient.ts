@@ -16,7 +16,7 @@ interface FileClientConfig {
   clientId?: string;
   oidcOrigin?: string;
   clientSecret?: string;
-  oidcRefreshToken?: string;
+  refreshToken?: string;
 
   authProvider?: AuthProvider;
 

@@ -20,7 +20,7 @@ Start a local, blank cluster. See [Integrate](https://github.com/opentdf/opentdf
   const oidcCredentials: RefreshTokenCredentials = {
     clientId: keycloakClientId,
     exchange: 'refresh',
-    oidcRefreshToken: refreshToken,
+    refreshToken: refreshToken,
     oidcOrigin: keycloakUrlWithRealm,
   }
   const authProvider = await AuthProviders.refreshAuthProvider(oidcCredentials);
