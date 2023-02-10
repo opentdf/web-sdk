@@ -1,3 +1,4 @@
+import { Buffer } from 'buffer';
 import { createReadStream } from 'fs';
 import { Readable } from 'stream';
 
@@ -16,7 +17,7 @@ interface FileClientConfig {
   clientId?: string;
   oidcOrigin?: string;
   clientSecret?: string;
-  oidcRefreshToken?: string;
+  refreshToken?: string;
 
   authProvider?: AuthProvider;
 

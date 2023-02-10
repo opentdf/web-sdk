@@ -106,7 +106,7 @@ export interface ClientConfig {
   // DEPRECATED Ignored
   keyUpsertEndpoint?: string;
   clientSecret?: string;
-  oidcRefreshToken?: string;
+  refreshToken?: string;
   kasPublicKey?: string;
   oidcOrigin?: string;
   externalJwt?: string;
@@ -147,7 +147,7 @@ export class Client {
    * @param {String} [config.clientId]
    * @param {String} [config.kasEndpoint] - Key Access Server url
    * @param {String} [config.clientSecret] - Should be added ONLY for Node build
-   * @param {String} [config.oidcRefreshToken] - After logging in to browser OIDC interface user
+   * @param {String} [config.refreshToken] - After logging in to browser OIDC interface user
    * receives fresh token that needed by SDK for auth needs
    * @param {String} [config.externalJwt] - JWT from external authority (eg Google)
    * @param {String} [config.oidcOrigin] - Endpoint of authentication service
@@ -199,10 +199,10 @@ export class Client {
       //If this is a browser context, we expect the caller to handle the initial
       //browser-based OIDC login and authentication process against the OIDC endpoint using their chosen method,
       //and provide us with a valid refresh token/clientId obtained from that process.
-      if (clientConfig.oidcRefreshToken) {
+      if (clientConfig.refreshToken) {
         clientConfig.authProvider = new OIDCRefreshTokenProvider({
           clientId: clientConfig.clientId,
-          externalRefreshToken: clientConfig.oidcRefreshToken,
+          refreshToken: clientConfig.refreshToken,
           oidcOrigin: clientConfig.oidcOrigin,
         });
       } else if (clientConfig.externalJwt) {

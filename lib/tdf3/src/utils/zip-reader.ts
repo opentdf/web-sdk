@@ -1,3 +1,4 @@
+import { Buffer } from 'buffer';
 import { Manifest } from '../models/index.js';
 import { Chunker } from './chunkers.js';
 

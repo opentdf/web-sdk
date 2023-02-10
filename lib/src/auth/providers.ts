@@ -3,7 +3,7 @@ import {
   ExternalJwtCredentials,
   OIDCCredentials,
   RefreshTokenCredentials,
-} from './OIDCCredentials.js';
+} from './oidc.js';
 import { OIDCClientCredentialsProvider } from './oidc-clientcredentials-provider.js';
 import { OIDCExternalJwtProvider } from './oidc-externaljwt-provider.js';
 import { AuthProvider } from './auth.js';
@@ -83,7 +83,7 @@ export const refreshAuthProvider = async (
 ): Promise<OIDCRefreshTokenProvider> => {
   return new OIDCRefreshTokenProvider({
     clientId: clientConfig.clientId,
-    externalRefreshToken: clientConfig.oidcRefreshToken,
+    refreshToken: clientConfig.refreshToken,
     oidcOrigin: clientConfig.oidcOrigin,
   });
 };

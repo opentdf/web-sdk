@@ -1,10 +1,11 @@
+import { Buffer } from 'buffer';
 import { EventEmitter } from 'events';
 import axios from 'axios';
 import crc32 from 'buffer-crc32';
 import { v4 } from 'uuid';
 import { exportSPKI, importPKCS8, importX509, SignJWT } from 'jose';
 import { AnyTdfStream, makeStream } from './client/tdf-stream.js';
-import { EntityObject } from '../../../lib/src/tdf/EntityObject.js';
+import { EntityObject } from '../../src/tdf/EntityObject.js';
 
 import {
   AttributeSet,

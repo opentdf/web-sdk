@@ -275,7 +275,7 @@ export const handleArgs = (args: string[]) => {
                 break;
             }
           }
-          console.assert(accessToken, 'No AccessToken found');
+          console.assert(accessToken, 'No access_token found');
           console.assert(!argv.dpop || dpopToken, 'DPoP requested but absent');
         }
       )

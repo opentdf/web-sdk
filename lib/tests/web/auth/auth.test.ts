@@ -1,6 +1,6 @@
 import { assert, expect } from '@esm-bundle/chai';
 import { fake } from 'sinon';
-import { AccessToken, type AccessTokenResponse } from '../../../src/auth/AccessToken.js';
+import { AccessToken, type AccessTokenResponse } from '../../../src/auth/oidc.js';
 
 // // const qsparse = (s: string) => Object.fromEntries(new URLSearchParams(s));
 const qsparse = (s: string) =>
@@ -33,12 +33,16 @@ function mockFetch(
 describe('AccessToken', () => {
   describe('userinfo endpoint', () => {
     it('appends Auth header and calls userinfo', async () => {
-      const cfg = {
-        auth_server_url: 'https://auth.invalid/auth/realms/yeet',
-        client_id: 'yoo',
-      };
       const mf = mockFetch({ access_token: 'fdfsdffsdf' });
-      const accessToken = new AccessToken(cfg, mf);
+      const accessToken = new AccessToken(
+        {
+          oidcOrigin: 'https://auth.invalid/auth/realms/yeet',
+          clientId: 'yoo',
+          exchange: 'refresh',
+          refreshToken: 'ignored',
+        },
+        mf
+      );
       const res = await accessToken.info('fakeToken');
       expect(res).to.have.property('access_token', 'fdfsdffsdf');
       expect(mf.lastCall.firstArg).to.match(
@@ -47,15 +51,19 @@ describe('AccessToken', () => {
       expect(mf).to.have.nested.property('lastArg.headers.Authorization', 'Bearer fakeToken');
     });
     it('error causes errors', async () => {
-      const cfg = {
-        auth_server_url: 'https://auth.invalid',
-        client_id: 'yoo',
-      };
       const mf = mockFetch(
         { access_token: 'fdfsdffsdf' },
         { ok: false, status: 401, statusText: 'Unauthorized' }
       );
-      const accessToken = new AccessToken(cfg, mf);
+      const accessToken = new AccessToken(
+        {
+          exchange: 'client',
+          oidcOrigin: 'https://auth.invalid',
+          clientId: 'yoo',
+          clientSecret: 'asdfa',
+        },
+        mf
+      );
       try {
         await accessToken.info('fakeToken');
         assert.fail();
@@ -76,16 +84,16 @@ describe('AccessToken', () => {
         const mf = mockFetch({ access_token: 'fdfsdffsdf' });
         const accessToken = new AccessToken(
           {
-            auth_mode: 'credentials',
-            auth_server_url: 'https://auth.invalid/auth/realms/yeet/',
-            client_id: 'myid',
-            client_secret: 'mysecret',
-            signing_key: mockKeyPair,
-            virtru_client_pubkey: 'fake-pub-key',
+            exchange: 'refresh',
+            oidcOrigin: 'https://auth.invalid/auth/realms/yeet/',
+            clientId: 'myid',
+            refreshToken: 'refresh',
+            signingKey: mockKeyPair,
+            clientPubKey: 'fake-pub-key',
           },
           mf
         );
-        const res = await accessToken.refresh('refresh');
+        const res = await accessToken.get();
         expect(res).to.equal('fdfsdffsdf');
         expect(mf.lastCall.firstArg).to.match(
           /\/auth\/realms\/yeet\/protocol\/openid-connect\/token$/
@@ -94,7 +102,6 @@ describe('AccessToken', () => {
         expect(body).to.eql({
           grant_type: 'refresh_token',
           client_id: 'myid',
-          client_secret: 'mysecret',
           refresh_token: 'refresh',
         });
         expect(mf.lastCall.lastArg.headers).to.have.property('X-VirtruPubKey', 'fake-pub-key');
@@ -106,14 +113,15 @@ describe('AccessToken', () => {
         const mf = mockFetch({ access_token: 'fake_token' });
         const accessToken = new AccessToken(
           {
-            auth_server_url: 'https://auth.invalid',
-            auth_mode: 'browser',
-            client_id: 'browserclient',
-            virtru_client_pubkey: 'fake-pub-key',
+            oidcOrigin: 'https://auth.invalid',
+            exchange: 'refresh',
+            clientId: 'browserclient',
+            clientPubKey: 'fake-pub-key',
+            refreshToken: 'fakeRefreshToken',
           },
           mf
         );
-        const res = await accessToken.refresh('fakeRefreshToken');
+        const res = await accessToken.get();
         expect(res).to.eql('fake_token');
         expect(mf.lastCall.firstArg).to.match(/\/protocol\/openid-connect\/token$/);
         const body = qsparse(mf.lastCall.lastArg.body);
@@ -132,22 +140,21 @@ describe('AccessToken', () => {
         const mf = mockFetch({ access_token: 'fake_token' });
         const accessToken = new AccessToken(
           {
-            auth_server_url: 'https://auth.invalid//',
-            client_id: 'myid',
-            client_secret: 'mysecret',
-            auth_mode: 'credentials',
-            virtru_client_pubkey: 'fake-pub-key',
+            oidcOrigin: 'https://auth.invalid//',
+            clientId: 'myid',
+            exchange: 'external',
+            clientPubKey: 'fake-pub-key',
+            externalJwt: 'subject.token',
           },
           mf
         );
-        const res = await accessToken.exchangeJwt('subject.token');
+        const res = await accessToken.get();
         expect(res).to.eql('fake_token');
         expect(mf.lastCall.firstArg).to.match(/\/protocol\/openid-connect\/token$/);
         const body = qsparse(mf.lastCall.lastArg.body);
         expect(body).to.eql({
           audience: 'myid',
           client_id: 'myid',
-          client_secret: 'mysecret',
           grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
           subject_token: 'subject.token',
           subject_token_type: 'urn:ietf:params:oauth:token-type:jwt',
@@ -160,16 +167,16 @@ describe('AccessToken', () => {
         const mf = mockFetch({ access_token: 'fake_token' });
         const accessToken = new AccessToken(
           {
-            auth_mode: 'browser',
-            auth_server_url: 'https://auth.invalid',
-            client_id: 'browserclient',
-            virtru_client_pubkey: 'fake-pub-key',
+            exchange: 'external',
+            oidcOrigin: 'https://auth.invalid',
+            clientId: 'browserclient',
+            clientPubKey: 'fake-pub-key',
+            externalJwt: 'fdfsdffsdf',
           },
           mf
         );
 
-        const jwtToken = 'fdfsdffsdf';
-        const res = await accessToken.exchangeJwt(jwtToken);
+        const res = await accessToken.get();
         expect(res).to.eql('fake_token');
         expect(mf.lastCall.firstArg).to.match(/\/protocol\/openid-connect\/token$/);
         const body = qsparse(mf.lastCall.lastArg.body);
@@ -177,68 +184,10 @@ describe('AccessToken', () => {
           audience: 'browserclient',
           client_id: 'browserclient',
           grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
-          subject_token: jwtToken,
+          subject_token: 'fdfsdffsdf',
           subject_token_type: 'urn:ietf:params:oauth:token-type:jwt',
         });
       });
-    });
-  });
-
-  describe('forceRefresh', () => {
-    it('should call refresh using internal refresh token if cached tokenset exists', async () => {
-      const mf = mockFetch({ access_token: 'sure', refresh_token: 'aieeee' });
-      const accessToken = new AccessToken(
-        {
-          auth_mode: 'browser',
-          auth_server_url: 'https://auth.invalid',
-          client_id: 'browserclient',
-          virtru_client_pubkey: 'fake-pub-key',
-        },
-        mf
-      );
-
-      // Do a refresh to cache tokenset
-      const res = await accessToken.refresh('fdfsdffsdf');
-      expect(res).to.eql('sure');
-      expect(accessToken.data?.refresh_token).to.eql('aieeee');
-      expect(mf.lastCall.firstArg).to.match(/\/protocol\/openid-connect\/token$/);
-      const body = qsparse(mf.lastCall.lastArg.body);
-      expect(body).to.eql({
-        client_id: 'browserclient',
-        grant_type: 'refresh_token',
-        refresh_token: 'fdfsdffsdf',
-      });
-
-      // Force refresh of cached tokens
-      const forceRes = await accessToken.forceRefresh();
-      expect(mf.callCount).to.eql(2);
-      expect(forceRes).to.eql('sure');
-      expect(mf.lastCall.firstArg).to.match(/\/auth\.invalid\/protocol\/openid-connect\/token$/);
-      const parseForceArgs = qsparse(mf.lastCall.lastArg.body);
-      expect(parseForceArgs).to.have.property('grant_type', 'refresh_token');
-      expect(parseForceArgs).to.have.property('refresh_token', 'aieeee');
-    });
-
-    it('should return error if force refresh happens and no cached tokenset exists', async () => {
-      const mf = mockFetch({ access_token: 'sure', refresh_token: 'aieeee' });
-      const accessToken = new AccessToken(
-        {
-          auth_mode: 'browser',
-          auth_server_url: 'https://auth.invalid',
-          client_id: 'browserclient',
-          virtru_client_pubkey: 'fake-pub-key',
-        },
-        mf
-      );
-      // Force refresh of cached tokens
-      try {
-        await accessToken.forceRefresh();
-        expect.fail();
-      } catch (e) {
-        expect(e.message).to.match(
-          /forceRefresh refreshes a preexisting cached tokenset, and none exists/
-        );
-      }
     });
   });
 
@@ -248,11 +197,11 @@ describe('AccessToken', () => {
         const mf = mockFetch({ access_token: 'notreal' });
         const accessTokenClient = new AccessToken(
           {
-            auth_server_url: 'https://auth.invalid/',
-            client_id: 'myid',
-            client_secret: 'mysecret',
-            auth_mode: 'credentials',
-            virtru_client_pubkey: 'fake-pub-key',
+            oidcOrigin: 'https://auth.invalid/',
+            clientId: 'myid',
+            clientSecret: 'mysecret',
+            exchange: 'client',
+            clientPubKey: 'fake-pub-key',
           },
           mf
         );
@@ -271,9 +220,10 @@ describe('AccessToken', () => {
         try {
           const accessTokenClient = new AccessToken(
             {
-              auth_server_url: 'https://auth.invalid',
-              auth_mode: 'credentials',
-              client_id: '',
+              oidcOrigin: 'https://auth.invalid',
+              exchange: 'client',
+              clientId: '',
+              clientSecret: undefined as unknown as string,
             },
             mf
           );
@@ -291,11 +241,11 @@ describe('AccessToken', () => {
       const mf = mockFetch({ access_token: 'notreal' });
       const accessTokenClient = new AccessToken(
         {
-          auth_server_url: 'https://auth.invalid',
-          client_id: 'myid',
-          client_secret: 'mysecret',
-          auth_mode: 'credentials',
-          virtru_client_pubkey: 'fake-pub-key',
+          oidcOrigin: 'https://auth.invalid',
+          clientId: 'myid',
+          clientSecret: 'mysecret',
+          exchange: 'client',
+          clientPubKey: 'fake-pub-key',
         },
         mf
       );
@@ -322,11 +272,11 @@ describe('AccessToken', () => {
       });
       const accessTokenClient = new AccessToken(
         {
-          auth_server_url: 'https://auth.invalid',
-          client_id: 'myid',
-          client_secret: 'mysecret',
-          auth_mode: 'credentials',
-          virtru_client_pubkey: 'fake-pub-key',
+          oidcOrigin: 'https://auth.invalid',
+          clientId: 'myid',
+          clientSecret: 'mysecret',
+          exchange: 'client',
+          clientPubKey: 'fake-pub-key',
         },
         mf
       );

@@ -1,3 +1,4 @@
+import { Buffer } from 'buffer';
 import { AppIdAuthProvider, AuthProvider } from '../../../src/auth/auth.js';
 
 export { ZipReader, readUInt64LE } from './zip-reader.js';
