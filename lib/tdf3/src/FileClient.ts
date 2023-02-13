@@ -1,3 +1,4 @@
+import { Buffer } from 'buffer';
 import { createReadStream } from 'fs';
 import { Readable } from 'stream';
 
@@ -16,12 +17,14 @@ interface FileClientConfig {
   clientId?: string;
   oidcOrigin?: string;
   clientSecret?: string;
-  oidcRefreshToken?: string;
+  refreshToken?: string;
 
   authProvider?: AuthProvider;
 
   kasEndpoint?: string;
 }
+
+type Writeable<T> = { -readonly [P in keyof T]: T[P] };
 
 function isClientTdf3(c: unknown): c is ClientTdf3 {
   if (typeof c !== 'object') {
@@ -117,7 +120,7 @@ export class FileClient {
         .build();
     if (users) {
       // XXX Should this append to existing scope or replace it?
-      defaultParams.scope.dissem = [...users];
+      ((defaultParams as Writeable<EncryptParams>).scope ??= {}).dissem = [...users];
     }
     const paramsBuilder = new EncryptParamsBuilder(defaultParams);
     await FileClient.setSource(source, paramsBuilder);

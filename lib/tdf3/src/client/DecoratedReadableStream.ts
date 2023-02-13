@@ -4,7 +4,8 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 import axios from 'axios';
-import { EventEmitter } from 'events';
+import { Buffer } from 'buffer';
+import { EventEmitter } from 'eventemitter3';
 
 import { VirtruS3Config, VirtruTempS3Credentials, VirtruCreds } from './builders.js';
 import { Upload } from '../utils/aws-lib-storage/index.js';
@@ -23,8 +24,9 @@ export abstract class DecoratedReadableStream {
   policyUuid?: string;
   tdfSize: number;
   stream: ReadableStream<Uint8Array>;
-  on: NodeJS.EventEmitter['on'];
-  emit: NodeJS.EventEmitter['emit'];
+  ee: EventEmitter;
+  on: EventEmitter['on'];
+  emit: EventEmitter['emit'];
   metadata?: Metadata;
   contentLength?: number;
   manifest: Manifest;
@@ -32,9 +34,9 @@ export abstract class DecoratedReadableStream {
 
   constructor(byteLimit: number, underlyingSource: UnderlyingSource) {
     this.stream = new ReadableStream(underlyingSource, { highWaterMark: 1 });
-    const ee = new EventEmitter();
-    this.on = ee.on;
-    this.emit = ee.emit;
+    this.ee = new EventEmitter();
+    this.on = (...args) => this.ee.on(...args);
+    this.emit = (...args) => this.ee.emit(...args);
   }
 
   /**

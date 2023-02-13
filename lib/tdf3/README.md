@@ -65,7 +65,7 @@ const { Client } = require("tdf3-js");
   const client = new Client.Client({
     clientId: "tdf-client",
     kasEndpoint: 'http://localhost/kas',
-    oidcRefreshToken: 'token', // Here is only difference in usage, browser build needs oidc tocken
+    refreshToken: 'token', // Here is only difference in usage, browser build needs oidc tocken
     oidcOrigin: 'http://localhost/oidc',
   });
 ```
