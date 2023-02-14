@@ -32,7 +32,7 @@ export abstract class DecoratedReadableStream {
   manifest: Manifest;
   upsertResponse?: UpsertResponse;
 
-  constructor(byteLimit: number, underlyingSource: UnderlyingSource) {
+  constructor(underlyingSource: UnderlyingSource) {
     this.stream = new ReadableStream(underlyingSource, { highWaterMark: 1 });
     this.ee = new EventEmitter();
     this.on = (...args) => this.ee.on(...args);

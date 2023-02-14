@@ -720,7 +720,7 @@ class TDF extends EventEmitter {
       },
     };
 
-    const plaintextStream = makeStream(segmentSizeDefault, underlingSource);
+    const plaintextStream = makeStream(underlingSource);
 
     if (upsertResponse) {
       plaintextStream.upsertResponse = upsertResponse;
@@ -923,7 +923,7 @@ class TDF extends EventEmitter {
 
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const that = this;
-    const outputStream = makeStream(this.segmentSizeDefault, {
+    const outputStream = makeStream({
       async pull(controller: ReadableStreamDefaultController) {
         while (
           segments.length &&
