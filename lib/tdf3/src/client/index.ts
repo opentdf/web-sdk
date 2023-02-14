@@ -325,7 +325,7 @@ export class Client {
       return null;
     }
 
-    return makeStream(windowSize, {
+    return makeStream({
       pull(controller: ReadableStreamDefaultController) {
         controller.enqueue(htmlBuf);
         controller.close();

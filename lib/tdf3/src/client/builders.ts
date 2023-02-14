@@ -15,7 +15,7 @@ import { EntityObject } from '../../../src/tdf/EntityObject.js';
 
 const { get } = axios;
 
-export const DEFAULT_SEGMENT_SIZE: number = 1000 * 1000;
+export const DEFAULT_SEGMENT_SIZE: number = 1024 * 1024;
 export type VirtruS3Config = S3ClientConfig & {
   Bucket?: string;
 };
