@@ -3,7 +3,7 @@ import { EventEmitter } from 'events';
 import axios from 'axios';
 import crc32 from 'buffer-crc32';
 import { v4 } from 'uuid';
-import { exportSPKI, importPKCS8, importX509, SignJWT } from 'jose';
+import { exportSPKI, importPKCS8, importX509 } from 'jose';
 import { AnyTdfStream, makeStream } from './client/tdf-stream.js';
 import { EntityObject } from '../../src/tdf/EntityObject.js';
 
@@ -809,11 +809,7 @@ class TDF extends EventEmitter {
 
         const jwtPayload = { requestBody: requestBodyStr };
         const pkKeyLike = await importPKCS8(this.privateKey, 'RS256');
-        const signedRequestToken = await new SignJWT(isAppIdProvider ? {} : jwtPayload)
-          .setProtectedHeader({ alg: 'RS256' })
-          .setIssuedAt()
-          .setExpirationTime('2h')
-          .sign(pkKeyLike);
+        const signedRequestToken = await reqSignature(isAppIdProvider ? {} : jwtPayload, pkKeyLike);
 
         let requestBody;
         if (isAppIdProvider) {
