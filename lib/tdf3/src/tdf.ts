@@ -516,7 +516,10 @@ class TDF extends EventEmitter {
           }
           return response.data;
         } catch (e) {
-          throw new KasUpsertError('Unable to perform upsert operation on the KAS', e);
+          throw new KasUpsertError(
+            `Unable to perform upsert operation on the KAS: [${e.name}: ${e.message}], response: [${e?.response?.body}]`,
+            e
+          );
         }
       })
     );
@@ -849,7 +852,10 @@ class TDF extends EventEmitter {
           this.emit('rewrap', metadata);
           return decryptedKeyBinary.asBuffer();
         } catch (e) {
-          throw new KasDecryptError('Unable to decrypt the response from KAS', e);
+          throw new KasDecryptError(
+            `Unable to decrypt the response from KAS: [${e.name}: ${e.message}], response: [${e?.response?.body}]`,
+            e
+          );
         }
       })
     );
