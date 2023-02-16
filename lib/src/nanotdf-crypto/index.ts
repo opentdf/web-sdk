@@ -1,5 +1,4 @@
 export { Ciphers } from './ciphers.js';
-export { default as authToken } from './authToken.js';
 export { default as cryptoPublicToPem } from './cryptoPublicToPem.js';
 export { default as decrypt } from './decrypt.js';
 export { default as digest } from './digest.js';

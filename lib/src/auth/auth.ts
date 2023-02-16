@@ -1,4 +1,4 @@
-import { JWTPayload, SignJWT } from 'jose';
+import { type JWTHeaderParameters, type JWTPayload, type KeyLike, SignJWT } from 'jose';
 
 export type Method =
   | 'GET'
@@ -48,17 +48,27 @@ export function withHeaders(httpReq: HttpRequest, newHeaders: Record<string, str
   return { ...httpReq, headers };
 }
 
+function getTimestampInSeconds() {
+  return Math.floor(Date.now() / 1000);
+}
+
 /**
  * Generate a JWT (or JWS-ed object)
  * @param toSign the data to sign. Interpreted as JWTPayload but AFAIK this isn't required
  * @param privateKey an RSA key
  * @returns the signed object, with a JWS header. This may be a JWT.
  */
-export async function reqSignature(toSign: unknown, privateKey: CryptoKey) {
+export async function reqSignature(
+  toSign: unknown,
+  privateKey: KeyLike,
+  jwtProtectedHeader: JWTHeaderParameters = { alg: 'RS256' }
+) {
+  const now = getTimestampInSeconds();
+  const anHour = 3600;
   return new SignJWT(toSign as JWTPayload)
-    .setProtectedHeader({ alg: 'RS256' })
-    .setIssuedAt()
-    .setExpirationTime('2h')
+    .setProtectedHeader(jwtProtectedHeader)
+    .setIssuedAt(now - anHour)
+    .setExpirationTime(now + anHour)
     .sign(privateKey);
 }
 

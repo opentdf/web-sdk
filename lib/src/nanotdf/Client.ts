@@ -1,7 +1,6 @@
 import type { TypedArray } from '../tdf/index.js';
 import * as base64 from '../encodings/base64.js';
 import {
-  authToken,
   cryptoPublicToPem,
   decrypt,
   enums as cryptoEnums,
@@ -13,7 +12,7 @@ import {
 import getHkdfSalt from './helpers/getHkdfSalt.js';
 import DefaultParams from './models/DefaultParams.js';
 import { fetchWrappedKey } from '../kas.js';
-import { AuthProvider } from '../auth/providers.js';
+import { AuthProvider, reqSignature } from '../auth/providers.js';
 
 const { KeyUsageType, AlgorithmName, NamedCurve } = cryptoEnums;
 
@@ -214,7 +213,9 @@ export default class Client {
 
       const jwtPayload = { requestBody: requestBodyStr };
       const requestBody = {
-        signedRequestToken: await authToken(this.requestSignerKeyPair.privateKey, jwtPayload),
+        signedRequestToken: await reqSignature(jwtPayload, this.requestSignerKeyPair.privateKey, {
+          alg: AlgorithmName.ES256,
+        }),
       };
 
       // Wrapped
