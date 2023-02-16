@@ -1,8 +1,25 @@
+function scrubCause(error?: Error, d?: number): { cause?: Error } {
+  if (!error || (d && d > 4)) {
+    return {};
+  }
+  if (!error.name) {
+    return {};
+  }
+  const cause = new Error(error.name, scrubCause(error.cause as Error, (d || 0) + 1));
+  if (error.message) {
+    cause.message = error.message;
+  }
+  if (error.stack) {
+    cause.stack = error.stack;
+  }
+  return { cause };
+}
+
 export class TdfError extends Error {
   override name = 'TdfError';
 
   constructor(message: string, cause?: Error) {
-    super(message, { cause });
+    super(message, scrubCause(cause));
     // Error is funny (only on ES5? So  guess just IE11 we have to worry about?)
     // https://github.com/Microsoft/TypeScript-wiki/blob/main/Breaking-Changes.md#extending-built-ins-like-error-array-and-map-may-no-longer-work
     // https://stackoverflow.com/questions/41102060/typescript-extending-error-class#comment70895020_41102306

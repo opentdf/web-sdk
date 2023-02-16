@@ -61,3 +61,40 @@ describe('Errors', () => {
     });
   });
 });
+
+describe('scrubbing causes', () => {
+  it('Removes unsupported fields', () => {
+    const cause = new Error();
+    cause.message = 'my message';
+    (cause as unknown as Record<string, string>).extra = 'some_stuff';
+    try {
+      throw new TdfError('message', cause);
+    } catch (e) {
+      assert.equal(e.message, 'message');
+      assert.equal(e.cause.extra, undefined);
+      assert.equal(e.cause.message, 'my message');
+      assert.equal(e.cause.cause, undefined);
+      assert.equal(e.cause.stack, cause.stack);
+    }
+  });
+
+  it('Avoids errors due to loops', () => {
+    const cause = new Error();
+    cause.message = 'my message';
+    (cause as unknown as Record<string, string>).extra = 'some_stuff';
+    cause.cause = cause;
+    try {
+      throw new TdfError('message', cause);
+    } catch (e) {
+      assert.equal(e.message, 'message');
+      assert.equal(e.cause.extra, undefined);
+      assert.equal(e.cause.message, 'my message');
+      assert.equal(e.cause.stack, cause.stack);
+      assert.equal(e.cause.cause.stack, cause.stack);
+      assert.equal(e.cause.cause.cause.stack, cause.stack);
+      assert.equal(e.cause.cause.cause.cause.stack, cause.stack);
+      assert.equal(e.cause.cause.cause.cause.cause.stack, cause.stack);
+      assert.equal(e.cause.cause.cause.cause.cause.cause, undefined);
+    }
+  });
+});
