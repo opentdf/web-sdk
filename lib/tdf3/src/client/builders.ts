@@ -826,7 +826,7 @@ class DecryptParamsBuilder {
       params = Object.fromEntries(new URLSearchParams(rcaParams));
     }
 
-    if (!params?.pu || !params?.wu || !params?.wk || !params?.al) {
+    if (!params?.pu || !params?.wu) {
       throw new Error(`RCA link [${rcaParams}] is missing parameters!`);
     }
 
