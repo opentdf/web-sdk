@@ -313,7 +313,7 @@ class EncryptParamsBuilder {
   }
 
   /**
-   * @param {{ attribute: string }[]} attributes URI of the form `<authority namespace>/attr/<name>/value/<value>`
+   * @param {AttributeObject[]} attributes URI of the form `<authority namespace>/attr/<name>/value/<value>`
    */
   setAttributes(attributes: Scope['attributes']) {
     if (!attributes) {
