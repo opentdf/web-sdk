@@ -10,7 +10,7 @@ import {
   Chunker,
 } from '../utils/index.js';
 import { base64 } from '../../../src/encodings/index.js';
-import TDF from '../tdf.js';
+import { TDF } from '../tdf.js';
 import { type AnyTdfStream, makeStream } from './tdf-stream.js';
 import { OIDCClientCredentialsProvider } from '../../../src/auth/oidc-clientcredentials-provider.js';
 import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-provider.js';
@@ -20,7 +20,6 @@ import { AuthProvider, AppIdAuthProvider, HttpRequest } from '../../../src/auth/
 import EAS from '../../../src/auth/Eas.js';
 
 import { EncryptParams, DecryptParams, type Scope } from './builders.js';
-import { Binary } from '../binary.js';
 import { type DecoratedReadableStream } from './DecoratedReadableStream.js';
 
 import {
@@ -39,7 +38,7 @@ const HTML_BYTE_LIMIT = 100 * 1000 * 1000; // 100 MB, see WS-9476.
 // No default config for now. Delegate to Virtru wrapper for endpoints.
 const defaultClientConfig = { oidcOrigin: '' };
 
-const uploadBinaryToS3 = async function (
+export const uploadBinaryToS3 = async function (
   stream: ReadableStream<Uint8Array>,
   uploadUrl: string,
   fileSize: number
@@ -123,7 +122,7 @@ export interface ClientConfig {
  *
  * Additionally, update the auth injector with the (potentially new) pubkey
  */
-async function createKeypair({
+export async function createSessionKeys({
   authProvider,
   dpopEnabled,
   keypair,
@@ -154,7 +153,7 @@ async function createKeypair({
 /*
  * If we have KAS url but not public key we can fetch it from KAS
  */
-async function fetchKasPubKey(kasEndpoint: string): Promise<string> {
+export async function fetchKasPubKey(kasEndpoint: string): Promise<string> {
   if (!kasEndpoint) {
     throw new TdfError('KAS definition not found');
   }
@@ -286,7 +285,7 @@ export class Client {
     if (clientConfig.keypair) {
       this.sessionKeys = Promise.resolve({ keypair: clientConfig.keypair });
     } else {
-      this.sessionKeys = createKeypair({
+      this.sessionKeys = createSessionKeys({
         authProvider: this.authProvider,
         dpopEnabled: this.dpopEnabled,
         keypair: clientConfig.keypair,
@@ -315,7 +314,6 @@ export class Client {
    * @param [eo] - (deprecated) entity object
    * @param [payloadKey] - Separate key for payload; not saved. Used to support external party key storage.
    * @return a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} a new stream containing the TDF ciphertext, if output is not passed in as a paramter
-   * @see EncryptParamsBuilder
    */
   async encrypt({
     scope = { attributes: [], dissem: [] },
@@ -404,10 +402,10 @@ export class Client {
   /**
    * Decrypt TDF ciphertext into plaintext. One of the core operations of the Virtru SDK.
    *
-   * @param {object} - Required. All parameters for the decrypt operation, generated using {@link DecryptParamsBuilder#build|DecryptParamsBuilder's build()}.
-   * @param {object} source - A data stream object, one of remote, stream, buffer, etc. types.
-   * @param {object} [rcaSource] - RCA source information
-   * @param {EntityObject} [eo]
+   * @param params
+   * @param params.source A data stream object, one of remote, stream, buffer, etc. types.
+   * @param params.rcaSource RCA source information
+   * @param params.eo Optional entity object (legacy AuthZ)
    * @return a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} stream containing the decrypted plaintext.
    * @see DecryptParamsBuilder
    */
@@ -471,18 +469,6 @@ export class Client {
       },
     };
   }
-
-  protected binaryToB64(binary: Binary): string {
-    return base64.encode(binary.asString());
-  }
 }
 
-export default {
-  Client,
-  DecryptParamsBuilder,
-  EncryptParamsBuilder,
-  AuthProvider,
-  AppIdAuthProvider,
-  uploadBinaryToS3,
-  HttpRequest,
-};
+export { AuthProvider, AppIdAuthProvider, DecryptParamsBuilder, EncryptParamsBuilder, HttpRequest };

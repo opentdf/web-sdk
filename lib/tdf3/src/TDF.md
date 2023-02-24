@@ -128,7 +128,3 @@ Returns an SHA key pair
 #### static async generatePolicyUuid()
 
 Returns a UUID v4
-
-#### static createMockStream(streamContent, isReadStream)
-
-Returns an object that mimics the Node.js Stream object. For browser use.

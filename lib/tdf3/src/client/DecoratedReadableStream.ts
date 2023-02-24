@@ -10,7 +10,7 @@ import { EventEmitter } from 'eventemitter3';
 import { VirtruS3Config, VirtruTempS3Credentials, VirtruCreds } from './builders.js';
 import { Upload } from '../utils/aws-lib-storage/index.js';
 import { Options } from '../utils/aws-lib-storage/types.js';
-import Metadata from '../tdf.js';
+import { type Metadata } from '../tdf.js';
 import { type Manifest, type UpsertResponse } from '../models/index.js';
 
 export async function streamToBuffer(stream: ReadableStream<Uint8Array>): Promise<Buffer> {
