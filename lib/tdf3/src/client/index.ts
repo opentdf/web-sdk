@@ -31,6 +31,7 @@ import {
 } from './builders.js';
 import { Policy } from '../models/index.js';
 import { cryptoToPemPair, generateKeyPair, rsaPkcs1Sha256 } from '../crypto/index.js';
+import { TdfError } from '../errors.js';
 
 const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
 const HTML_BYTE_LIMIT = 100 * 1000 * 1000; // 100 MB, see WS-9476.
@@ -155,12 +156,15 @@ async function createKeypair({
  */
 async function fetchKasPubKey(kasEndpoint: string): Promise<string> {
   if (!kasEndpoint) {
-    throw new Error('KAS definition not found');
+    throw new TdfError('KAS definition not found');
   }
   try {
     return await TDF.getPublicKeyFromKeyAccessServer(kasEndpoint);
-  } catch (e) {
-    throw new Error(`Retrieving KAS public key has failed with error [${e.message}]`);
+  } catch (cause) {
+    throw new TdfError(
+      `Retrieving KAS public key [${kasEndpoint}] failed [${cause.name}] [${cause.message}]`,
+      cause
+    );
   }
 }
 
