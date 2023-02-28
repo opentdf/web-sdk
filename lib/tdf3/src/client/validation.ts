@@ -3,7 +3,6 @@ import { AttributeObject } from '../models/attribute-set.js';
 
 const sageGetMatch = (match: RegExpMatchArray | null) => (match ? match[0] : null);
 
-
 export const ATTR_NAME_PROP_NAME = 'attr';
 export const ATTR_VALUE_PROP_NAME = 'value';
 
@@ -98,4 +97,3 @@ export const AttributeValidator = (attributes: Attribute[]) => {
     }
   }
 };
-
