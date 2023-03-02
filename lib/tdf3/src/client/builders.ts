@@ -3,14 +3,13 @@ import axios from 'axios';
 import { Buffer } from 'buffer';
 
 import { arrayBufferToBuffer, inBrowser } from '../utils/index.js';
-import { AttributeValidator } from './validation/index.js';
+import { AttributeValidator } from './validation.js';
 import { AttributeObject, Policy } from '../models/index.js';
-import { type RcaParams, type RcaLink } from '../tdf.js';
+import { type RcaParams, type RcaLink, type Metadata } from '../tdf.js';
 import { Binary } from '../binary.js';
 
 import { IllegalArgumentError, IllegalEnvError } from '../errors.js';
 import { PemKeyPair } from '../crypto/declarations.js';
-import PolicyObject from '../../../src/tdf/PolicyObject.js';
 import { EntityObject } from '../../../src/tdf/EntityObject.js';
 
 const { get } = axios;
@@ -121,13 +120,6 @@ export type Scope = {
   attributes?: AttributeObject[];
 };
 
-export type Metadata = {
-  connectOptions: {
-    testUrl: string;
-  };
-  policyObject: PolicyObject;
-};
-
 export type EncryptParams = {
   source: ReadableStream<Uint8Array>;
   opts?: { keypair: PemKeyPair };
@@ -159,7 +151,7 @@ function freeze<Type>(obj: Type): Readonly<Type> {
  * {@link Client#encrypt|encrypt} operation. Must be built before use via the {@link EncryptParamsBuilder#build|build()} function.
  */
 class EncryptParamsBuilder {
-  private _params: Partial<EncryptParams>;
+  _params: Partial<EncryptParams>;
 
   constructor(
     params: Partial<EncryptParams> = {
@@ -313,9 +305,9 @@ class EncryptParamsBuilder {
   }
 
   /**
-   * @param {{ attribute: string }[]} attributes URI of the form `<authority namespace>/attr/<name>/value/<value>`
+   * @param attributes URIs of the form `<authority namespace>/attr/<name>/value/<value>`
    */
-  setAttributes(attributes: Scope['attributes']) {
+  setAttributes(attributes?: AttributeObject[]) {
     if (!attributes) {
       if (this._params.scope) {
         delete this._params.scope.attributes;

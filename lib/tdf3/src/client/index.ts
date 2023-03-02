@@ -10,7 +10,7 @@ import {
   Chunker,
 } from '../utils/index.js';
 import { base64 } from '../../../src/encodings/index.js';
-import TDF from '../tdf.js';
+import { TDF } from '../tdf.js';
 import { type AnyTdfStream, makeStream } from './tdf-stream.js';
 import { OIDCClientCredentialsProvider } from '../../../src/auth/oidc-clientcredentials-provider.js';
 import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-provider.js';
@@ -20,7 +20,6 @@ import { AuthProvider, AppIdAuthProvider, HttpRequest } from '../../../src/auth/
 import EAS from '../../../src/auth/Eas.js';
 
 import { EncryptParams, DecryptParams, type Scope } from './builders.js';
-import { Binary } from '../binary.js';
 import { type DecoratedReadableStream } from './DecoratedReadableStream.js';
 
 import {
@@ -31,6 +30,7 @@ import {
 } from './builders.js';
 import { Policy } from '../models/index.js';
 import { cryptoToPemPair, generateKeyPair, rsaPkcs1Sha256 } from '../crypto/index.js';
+import { TdfError } from '../errors.js';
 
 const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
 const HTML_BYTE_LIMIT = 100 * 1000 * 1000; // 100 MB, see WS-9476.
@@ -38,7 +38,7 @@ const HTML_BYTE_LIMIT = 100 * 1000 * 1000; // 100 MB, see WS-9476.
 // No default config for now. Delegate to Virtru wrapper for endpoints.
 const defaultClientConfig = { oidcOrigin: '' };
 
-const uploadBinaryToS3 = async function (
+export const uploadBinaryToS3 = async function (
   stream: ReadableStream<Uint8Array>,
   uploadUrl: string,
   fileSize: number
@@ -95,6 +95,7 @@ const makeChunkable = async (source: DecryptSource) => {
 };
 
 export interface ClientConfig {
+  // WARNING please do not use this except for testing purposes.
   keypair?: PemKeyPair;
   organizationName?: string;
   clientId?: string;
@@ -115,31 +116,88 @@ export interface ClientConfig {
   entityObjectEndpoint?: string;
 }
 
+/*
+ * Extract a keypair provided as part of the options dict.
+ * Default to using the clientwide keypair, generating one if necessary.
+ *
+ * Additionally, update the auth injector with the (potentially new) pubkey
+ */
+export async function createSessionKeys({
+  authProvider,
+  dpopEnabled,
+  keypair,
+}: {
+  authProvider?: AuthProvider | AppIdAuthProvider;
+  dpopEnabled?: boolean;
+  keypair?: PemKeyPair;
+}): Promise<SessionKeys> {
+  //If clientconfig has keypair, assume auth provider was already set up with pubkey and bail
+  const k2 = keypair || (await cryptoToPemPair(await generateKeyPair()));
+  let signingKeys;
+
+  if (dpopEnabled) {
+    signingKeys = await crypto.subtle.generateKey(rsaPkcs1Sha256(), true, ['sign']);
+  }
+
+  // This will contact the auth server and forcibly refresh the auth token claims,
+  // binding the token and the (new) pubkey together.
+  // Note that we base64 encode the PEM string here as a quick workaround, simply because
+  // a formatted raw PEM string isn't a valid header value and sending it raw makes keycloak's
+  // header parser barf. There are more subtle ways to solve this, but this works for now.
+  if (authProvider && !isAppIdProviderCheck(authProvider)) {
+    await authProvider?.updateClientPublicKey(base64.encode(k2.publicKey), signingKeys);
+  }
+  return { keypair: k2, signingKeys };
+}
+
+/*
+ * If we have KAS url but not public key we can fetch it from KAS
+ */
+export async function fetchKasPubKey(kasEndpoint: string): Promise<string> {
+  if (!kasEndpoint) {
+    throw new TdfError('KAS definition not found');
+  }
+  try {
+    return await TDF.getPublicKeyFromKeyAccessServer(kasEndpoint);
+  } catch (cause) {
+    throw new TdfError(
+      `Retrieving KAS public key [${kasEndpoint}] failed [${cause.name}] [${cause.message}]`,
+      cause
+    );
+  }
+}
+
+export type SessionKeys = {
+  keypair: PemKeyPair;
+  signingKeys?: CryptoKeyPair;
+};
+
 export class Client {
   /**
    * Default kas endpoint, if present. Required for encrypt.
    */
-  kasEndpoint?: string;
+  readonly kasEndpoint: string;
 
-  kasPublicKey?: string;
+  readonly kasPublicKey: Promise<string>;
 
-  easEndpoint?: string;
+  readonly easEndpoint?: string;
 
-  clientId?: string;
+  readonly clientId?: string;
 
-  authProvider?: AuthProvider | AppIdAuthProvider;
+  readonly authProvider?: AuthProvider | AppIdAuthProvider;
 
-  readerUrl?: string;
+  readonly readerUrl?: string;
 
-  keypair?: PemKeyPair;
+  /**
+   * Session keys.
+   */
+  readonly sessionKeys: Promise<SessionKeys>;
 
-  signingKeys?: CryptoKeyPair;
-
-  eas?: EAS;
+  readonly eas?: EAS;
 
   readonly dpopEnabled: boolean;
 
-  clientConfig: ClientConfig;
+  readonly clientConfig: ClientConfig;
 
   /**
    * An abstraction for protecting and accessing data using TDF3 services.
@@ -156,8 +214,6 @@ export class Client {
     const clientConfig = { ...defaultClientConfig, ...config };
     this.dpopEnabled = !!clientConfig.dpopEnabled;
 
-    clientConfig.keypair && (this.keypair = clientConfig.keypair);
-    clientConfig.kasPublicKey && (this.kasPublicKey = clientConfig.kasPublicKey);
     clientConfig.readerUrl && (this.readerUrl = clientConfig.readerUrl);
 
     if (clientConfig.kasEndpoint) {
@@ -181,52 +237,64 @@ export class Client {
       });
     }
 
-    if (this.authProvider) {
-      return;
-    }
-
-    if (!clientConfig.clientId) {
-      throw new Error('Client ID or custom AuthProvider must be defined');
-    }
     this.clientId = clientConfig.clientId;
+    if (!this.authProvider) {
+      if (!clientConfig.clientId) {
+        throw new Error('Client ID or custom AuthProvider must be defined');
+      }
 
-    if (inBrowser()) {
-      //If you're in a browser and passing client secrets, you're Doing It Wrong.
-      if (clientConfig.clientSecret) {
-        throw new Error('Client credentials not supported in a browser context');
-      }
-      //Are we exchanging a refreshToken for a bearer token (normal AuthCode browser auth flow)?
-      //If this is a browser context, we expect the caller to handle the initial
-      //browser-based OIDC login and authentication process against the OIDC endpoint using their chosen method,
-      //and provide us with a valid refresh token/clientId obtained from that process.
-      if (clientConfig.refreshToken) {
-        clientConfig.authProvider = new OIDCRefreshTokenProvider({
+      if (inBrowser()) {
+        //If you're in a browser and passing client secrets, you're Doing It Wrong.
+        if (clientConfig.clientSecret) {
+          throw new Error('Client credentials not supported in a browser context');
+        }
+        //Are we exchanging a refreshToken for a bearer token (normal AuthCode browser auth flow)?
+        //If this is a browser context, we expect the caller to handle the initial
+        //browser-based OIDC login and authentication process against the OIDC endpoint using their chosen method,
+        //and provide us with a valid refresh token/clientId obtained from that process.
+        if (clientConfig.refreshToken) {
+          this.authProvider = new OIDCRefreshTokenProvider({
+            clientId: clientConfig.clientId,
+            refreshToken: clientConfig.refreshToken,
+            oidcOrigin: clientConfig.oidcOrigin,
+          });
+        } else if (clientConfig.externalJwt) {
+          //Are we exchanging a JWT previously issued by a trusted external entity (e.g. Google) for a bearer token?
+          this.authProvider = new OIDCExternalJwtProvider({
+            clientId: clientConfig.clientId,
+            externalJwt: clientConfig.externalJwt,
+            oidcOrigin: clientConfig.oidcOrigin,
+          });
+        }
+      } else {
+        //If you're NOT in a browser and are NOT passing client secrets, you're Doing It Wrong.
+        //If this is not a browser context, we expect the caller to supply their client ID and client secret, so that
+        // we can authenticate them directly with the OIDC endpoint.
+        if (!clientConfig.clientSecret) {
+          throw new Error(
+            'If using client credentials, must supply both client ID and client secret to constructor'
+          );
+        }
+        this.authProvider = new OIDCClientCredentialsProvider({
           clientId: clientConfig.clientId,
-          refreshToken: clientConfig.refreshToken,
+          clientSecret: clientConfig.clientSecret,
           oidcOrigin: clientConfig.oidcOrigin,
         });
-      } else if (clientConfig.externalJwt) {
-        //Are we exchanging a JWT previously issued by a trusted external entity (e.g. Google) for a bearer token?
-        clientConfig.authProvider = new OIDCExternalJwtProvider({
-          clientId: clientConfig.clientId,
-          externalJwt: clientConfig.externalJwt,
-          oidcOrigin: clientConfig.oidcOrigin,
-        });
       }
+    }
+    if (clientConfig.keypair) {
+      this.sessionKeys = Promise.resolve({ keypair: clientConfig.keypair });
     } else {
-      //If you're NOT in a browser and are NOT passing client secrets, you're Doing It Wrong.
-      //If this is not a browser context, we expect the caller to supply their client ID and client secret, so that
-      // we can authenticate them directly with the OIDC endpoint.
-      if (!clientConfig.clientSecret) {
-        throw new Error(
-          'If using client credentials, must supply both client ID and client secret to constructor'
-        );
-      }
-      this.authProvider = new OIDCClientCredentialsProvider({
-        clientId: clientConfig.clientId,
-        clientSecret: clientConfig.clientSecret,
-        oidcOrigin: clientConfig.oidcOrigin,
+      this.sessionKeys = createSessionKeys({
+        authProvider: this.authProvider,
+        dpopEnabled: this.dpopEnabled,
+        keypair: clientConfig.keypair,
       });
+    }
+    if (clientConfig.kasPublicKey) {
+      this.kasPublicKey = Promise.resolve(clientConfig.kasPublicKey);
+    } else {
+      this.kasPublicKey = fetchKasPubKey(this.kasEndpoint);
     }
   }
 
@@ -246,14 +314,12 @@ export class Client {
    * @param [eo] - (deprecated) entity object
    * @param [payloadKey] - Separate key for payload; not saved. Used to support external party key storage.
    * @return a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} a new stream containing the TDF ciphertext, if output is not passed in as a paramter
-   * @see EncryptParamsBuilder
    */
   async encrypt({
     scope = { attributes: [], dissem: [] },
     source,
     asHtml = false,
     metadata,
-    opts,
     mimeType,
     offline = false,
     output,
@@ -273,15 +339,15 @@ export class Client {
     if (rcaSource && !this.kasEndpoint) {
       throw new Error('rca links require a kasEndpoint url to be set');
     }
-    const keypair: PemKeyPair = await this._getOrCreateKeypair(opts);
-    const policyObject = await this._createPolicyObject(scope);
-    const kasPublicKey = await this._getOrFetchKasPubKey();
+    const sessionKeys = await this.sessionKeys;
+    const kasPublicKey = await this.kasPublicKey;
+    const policyObject = this._createPolicyObject(scope);
 
     // TODO: Refactor underlying builder to remove some of this unnecessary config.
 
     const tdf = TDF.create()
-      .setPrivateKey(keypair.privateKey)
-      .setPublicKey(keypair.publicKey)
+      .setPrivateKey(sessionKeys.keypair.privateKey)
+      .setPublicKey(sessionKeys.keypair.publicKey)
       .setEncryption({
         type: 'split',
         cipher: 'aes-256-gcm',
@@ -336,24 +402,26 @@ export class Client {
   /**
    * Decrypt TDF ciphertext into plaintext. One of the core operations of the Virtru SDK.
    *
-   * @param {object} - Required. All parameters for the decrypt operation, generated using {@link DecryptParamsBuilder#build|DecryptParamsBuilder's build()}.
-   * @param {object} source - A data stream object, one of remote, stream, buffer, etc. types.
-   * @param {object} opts - object with keypair
-   * @param {object} [rcaSource] - RCA source information
+   * @param params
+   * @param params.source A data stream object, one of remote, stream, buffer, etc. types.
+   * @param params.rcaSource RCA source information
+   * @param params.eo Optional entity object (legacy AuthZ)
    * @return a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} stream containing the decrypted plaintext.
    * @see DecryptParamsBuilder
    */
-  async decrypt({ source, opts, rcaSource }: DecryptParams): Promise<DecoratedReadableStream> {
-    const keypair = await this._getOrCreateKeypair(opts);
+  async decrypt({ eo, source, rcaSource }: DecryptParams): Promise<DecoratedReadableStream> {
+    const sessionKeys = await this.sessionKeys;
     let entityObject;
-    if (this.eas) {
+    if (eo && eo.publicKey == sessionKeys.keypair.publicKey) {
+      entityObject = eo;
+    } else if (this.eas) {
       entityObject = await this.eas.fetchEntityObject({
-        publicKey: keypair.publicKey,
+        publicKey: sessionKeys.keypair.publicKey,
       });
     }
     const tdf = TDF.create()
-      .setPrivateKey(keypair.privateKey)
-      .setPublicKey(keypair.publicKey)
+      .setPrivateKey(sessionKeys.keypair.privateKey)
+      .setPublicKey(sessionKeys.keypair.publicKey)
       .setAuthProvider(this.authProvider);
     if (entityObject) {
       tdf.setEntity(entityObject);
@@ -387,7 +455,7 @@ export class Client {
   /*
    * Create a policy object for an encrypt operation.
    */
-  async _createPolicyObject(scope: Scope): Promise<Policy> {
+  _createPolicyObject(scope: Scope): Policy {
     if (scope.policyObject) {
       // use the client override if provided
       return scope.policyObject;
@@ -401,79 +469,6 @@ export class Client {
       },
     };
   }
-
-  protected binaryToB64(binary: Binary): string {
-    return base64.encode(binary.asString());
-  }
-
-  /*
-   * Extract a keypair provided as part of the options dict.
-   * Default to using the clientwide keypair, generating one if necessary.
-   *
-   * Additionally, update the auth injector with the (potentially new) pubkey
-   */
-  async _getOrCreateKeypair(opts: undefined | { keypair: PemKeyPair }): Promise<PemKeyPair> {
-    //If clientconfig has keypair, assume auth provider was already set up with pubkey and bail
-    if (this.keypair) {
-      return this.keypair;
-    }
-
-    //If a keypair is being dynamically provided, then we've gotta (re)register
-    // the pubkey with the auth provider
-    if (opts) {
-      this.keypair = opts.keypair;
-    } else {
-      this.keypair = await cryptoToPemPair(await generateKeyPair());
-    }
-
-    if (this.dpopEnabled) {
-      this.signingKeys = await crypto.subtle.generateKey(rsaPkcs1Sha256(), true, ['sign']);
-    }
-
-    // This will contact the auth server and forcibly refresh the auth token claims,
-    // binding the token and the (new) pubkey together.
-    // Note that we base64 encode the PEM string here as a quick workaround, simply because
-    // a formatted raw PEM string isn't a valid header value and sending it raw makes keycloak's
-    // header parser barf. There are more subtle ways to solve this, but this works for now.
-
-    if (this.authProvider && !isAppIdProviderCheck(this.authProvider)) {
-      await this.authProvider?.updateClientPublicKey(
-        base64.encode(this.keypair.publicKey),
-        this.signingKeys
-      );
-    }
-    return this.keypair;
-  }
-
-  /*
-   * If we have KAS url but not public key we can fetch it from KAS
-   */
-  async _getOrFetchKasPubKey(): Promise<string> {
-    //If clientconfig has keypair, assume auth provider was already set up with pubkey and bail
-    if (this.kasPublicKey) {
-      return this.kasPublicKey;
-    }
-
-    if (this.kasEndpoint) {
-      try {
-        this.kasPublicKey = await TDF.getPublicKeyFromKeyAccessServer(this.kasEndpoint);
-      } catch (e) {
-        throw new Error(`Retrieving KAS public key has failed with error [${e.message}]`);
-      }
-
-      return this.kasPublicKey;
-    }
-
-    throw new Error('KAS definition not found');
-  }
 }
 
-export default {
-  Client,
-  DecryptParamsBuilder,
-  EncryptParamsBuilder,
-  AuthProvider,
-  AppIdAuthProvider,
-  uploadBinaryToS3,
-  HttpRequest,
-};
+export { AuthProvider, AppIdAuthProvider, DecryptParamsBuilder, EncryptParamsBuilder, HttpRequest };
