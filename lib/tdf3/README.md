@@ -270,7 +270,7 @@ await tdfInstance.writeStream(writeStream);
 
 #### writeStream
 
-Type: `Node stream` or `MockStream`
+Type: `Node stream`
 
 The stream can be used to write to a file location, or in-memory.
 
@@ -287,7 +287,7 @@ The URL of the remote resource from which tdf3-js will read data.
 
 #### outputStream
 
-Type: `Node stream` or `MockStream`
+Type: `Node stream`
 
 The stream can be used to write to a file location, or in-memory.
 

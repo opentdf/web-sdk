@@ -10,6 +10,7 @@ import { EntityObject } from '../../src/tdf/EntityObject.js';
 import {
   AttributeSet,
   isRemote as isRemoteKeyAccess,
+  KeyAccessType,
   KeyInfo,
   Manifest,
   Policy,
@@ -58,9 +59,16 @@ import PolicyObject from '../../src/tdf/PolicyObject.js';
 // TODO: input validation on manifest JSON
 const DEFAULT_SEGMENT_SIZE = 1024 * 1024;
 
-type Options = {
-  type: string;
-  cipher: string;
+/**
+ * Configuration for TDF3
+ */
+export type EncryptionOptions = {
+  /**
+   * Defaults to `split`, the currently only implmented key wrap algorithm.
+   */
+  type?: string;
+  // Defaults to AES-256-GCM for the encryption.
+  cipher?: string;
 };
 
 export type RcaParams = {
@@ -72,15 +80,15 @@ export type RcaParams = {
 
 export type RcaLink = string;
 
-type Metadata = {
-  connectOptions: {
+export type Metadata = {
+  connectOptions?: {
     testUrl: string;
   };
-  policyObject: PolicyObject;
+  policyObject?: PolicyObject;
 };
 
-type AddKeyAccess = {
-  type: 'wrapped' | 'remote';
+export type AddKeyAccess = {
+  type: KeyAccessType;
   url?: string;
   publicKey: string;
   attributeUrl?: string;
@@ -100,8 +108,7 @@ type EntryInfo = {
   fileByteCount?: number;
 };
 
-// TDF3
-class TDF extends EventEmitter {
+export class TDF extends EventEmitter {
   policy?: Policy;
   mimeType?: string;
   contentStream?: ReadableStream<Uint8Array>;
@@ -249,7 +256,12 @@ class TDF extends EventEmitter {
     return this;
   }
 
-  setEncryption(opts: Options) {
+  /**
+   * Initialize encryption cypher
+   * @param opts
+   * @returns
+   */
+  setEncryption(opts: EncryptionOptions) {
     switch (opts.type) {
       case 'split':
       default:
@@ -276,7 +288,12 @@ class TDF extends EventEmitter {
     // TODO - run down metadata parameter. Clean it out if it isn't used this way anymore.
 
     /** Internal function to keep it DRY */
-    function createKeyAccess(type: string, kasUrl: string, pubKey: string, metadata?: Metadata) {
+    function createKeyAccess(
+      type: KeyAccessType,
+      kasUrl: string,
+      pubKey: string,
+      metadata?: Metadata
+    ) {
       switch (type) {
         case 'wrapped':
           return new KeyAccessWrapped(kasUrl, pubKey, metadata);
@@ -992,5 +1009,3 @@ class TDF extends EventEmitter {
     return outputStream;
   }
 }
-
-export default TDF;
