@@ -9,7 +9,7 @@ const keepaliveAgent = new HttpsAgent({
   keepAlive: true,
   timeout: 10 * 60 * 1000,
   scheduling: 'fifo',
-  maxSockets: 10
+  maxSockets: 10,
 });
 
 // const retry = axiosRetry.default;

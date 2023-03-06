@@ -28,7 +28,6 @@ export class BrowserTdfStream extends DecoratedReadableStream {
     //   reader.read().then(async (res) => (res.done ? await writableStream.close() : await writableStream.write(res.value).then(pump)));
     // pump();
 
-
     // concatenate files attempt
     console.log('Using concatenation strategy');
     //@ts-ignore
@@ -49,7 +48,6 @@ export class BrowserTdfStream extends DecoratedReadableStream {
       await writeableStream.write({ type: 'write', data: value });
       // await writeableStream.close();
     }
-
 
     // sync file handler attempt
     // console.log('Using sync strategy');
@@ -90,7 +88,6 @@ export class BrowserTdfStream extends DecoratedReadableStream {
     // // // Write (pipe) manually
     // const writer = fileStream.getWriter();
     // const reader = this.stream.getReader();
-
 
     // while (true) {
     //   const { done, value} = await reader.read();
