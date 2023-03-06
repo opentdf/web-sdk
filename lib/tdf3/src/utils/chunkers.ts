@@ -105,9 +105,6 @@ export const fromUrl = (location: string): Chunker => {
       // NOTE: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Range
       throw Error('negative end unsupported');
     } else if (byteEnd) {
-      if (byteStart < 0 || byteEnd <= byteStart) {
-        throw Error(`invalid HTTP range [${byteStart}-${byteEnd}]`);
-      }
       rangeHeader += `-${(byteEnd || 0) - 1}`;
     }
     return getRemoteChunk(location, rangeHeader);
