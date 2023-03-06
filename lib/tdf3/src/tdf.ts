@@ -108,6 +108,9 @@ type EntryInfo = {
   fileByteCount?: number;
 };
 
+// const sleep = (ms: number) => new Promise((r) => window.setTimeout(r, ms));
+
+// TDF3
 export class TDF extends EventEmitter {
   policy?: Policy;
   mimeType?: string;
@@ -796,6 +799,7 @@ export class TDF extends EventEmitter {
 
   // load the TDF as a stream in memory, for further use in reading and key syncing
   async loadTDFStream(chunker: Chunker) {
+    console.log('loadTDFStream called');
     const zipReader = new ZipReader(chunker);
     const centralDirectory = await zipReader.getCentralDirectory();
 
@@ -891,6 +895,7 @@ export class TDF extends EventEmitter {
    * @param {Object} rcaParams - Optional field to specify if file is stored on S3
    */
   async readStream(chunker: Chunker, rcaParams?: RcaParams) {
+    console.log('readStream Chunker: ', chunker);
     const { zipReader, centralDirectory } = await this.loadTDFStream(chunker);
     if (!this.manifest) {
       throw new Error('Missing manifest data');
@@ -987,6 +992,7 @@ export class TDF extends EventEmitter {
             );
           }
 
+          // await sleep(100);
           controller.enqueue(decryptedSegment.payload.asBuffer());
         }
 
@@ -995,6 +1001,12 @@ export class TDF extends EventEmitter {
         }
       },
     });
+
+    if (rcaParams && rcaParams.wu) {
+      let res = await axios.head(rcaParams.wu);
+
+      outputStream.fileSize = parseInt(res?.headers?.['content-length'] as string, 10) || undefined;
+    }
 
     outputStream.manifest = this.manifest;
     if (outputStream.emit) {

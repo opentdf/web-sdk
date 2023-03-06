@@ -7,6 +7,8 @@ import { getDataReadableStream } from './chunks/getDataReadableStream.js';
 import { BodyDataTypes } from './types.js';
 
 export const getChunk = (data: BodyDataTypes, partSize: number) => {
+  console.log('Body Data Type:', typeof data);
+  console.log('Body Data Part Size:', partSize);
   if (data instanceof Buffer) {
     return getChunkBuffer(data, partSize);
   } else if (Object.prototype.hasOwnProperty.call(data, 'pipe')) {

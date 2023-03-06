@@ -1,7 +1,23 @@
 import axios, { AxiosResponse } from 'axios';
+import axiosRetry from 'axios-retry';
+import { HttpsAgent } from 'agentkeepalive';
 import { Buffer } from 'buffer';
 import { createReadStream, readFile, statSync } from 'fs';
 import { type AnyTdfStream, isAnyTdfStream } from '../client/tdf-stream.js';
+
+const keepaliveAgent = new HttpsAgent({
+  keepAlive: true,
+  timeout: 10 * 60 * 1000,
+  scheduling: 'fifo',
+  maxSockets: 10
+});
+
+// const retry = axiosRetry.default;
+
+axios.defaults.timeout = 10 * 60 * 1000; // 10 min
+axios.defaults.httpsAgent = keepaliveAgent;
+// @ts-ignore
+axiosRetry(axios, { retries: 3 }); // Retries all idempotent requests (GET, HEAD, OPTIONS, PUT, DELETE)
 
 /**
  * Read data from a seekable stream.
@@ -19,6 +35,7 @@ export const fromBrowserFile = (fileRef: Blob): Chunker => {
 };
 
 export const fromBuffer = (buffer: Uint8Array): Chunker => {
+  console.log('from buffer called');
   return (byteStart?: number, byteEnd?: number) => {
     return Promise.resolve(buffer.slice(byteStart, byteEnd));
   };
@@ -65,6 +82,7 @@ export const fromNodeFile = (filePath: string): Chunker => {
       });
       rs.on('error', reject);
       rs.on('end', () => {
+        console.log('stream ended');
         resolve(Buffer.concat(buffers));
       });
     });
@@ -72,7 +90,9 @@ export const fromNodeFile = (filePath: string): Chunker => {
 };
 
 export const fromUrl = (location: string): Chunker => {
+  console.log('fromUrl url:', location);
   async function getRemoteChunk(url: string, range?: string): Promise<Uint8Array> {
+    console.log('Called getRemoteChunk: ', range);
     try {
       const res: AxiosResponse<Uint8Array> = await axios.get(url, {
         ...(range && {
@@ -97,6 +117,9 @@ export const fromUrl = (location: string): Chunker => {
   }
 
   return (byteStart?: number, byteEnd?: number): Promise<Uint8Array> => {
+    console.log('Get remote chunk url:', location);
+    console.log('Get remote chunk byteStart:', byteStart);
+    console.log('Get remote chunk byteEnd:', byteEnd);
     if (byteStart === undefined) {
       return getRemoteChunk(location);
     }
@@ -104,7 +127,7 @@ export const fromUrl = (location: string): Chunker => {
     if (byteEnd && byteEnd < 0) {
       // NOTE: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Range
       throw Error('negative end unsupported');
-    } else if (byteEnd !== undefined) {
+    } else {
       rangeHeader += `-${(byteEnd || 0) - 1}`;
     }
     return getRemoteChunk(location, rangeHeader);
@@ -123,26 +146,31 @@ export const fromDataSource = async ({ type, location }: DataSource) => {
       if (!(location instanceof Uint8Array)) {
         throw new Error('Invalid data source; must be uint8 array');
       }
+      console.log('buffer data source detected');
       return fromBuffer(location);
     case 'file-browser':
       if (!(location instanceof Blob)) {
         throw new Error('Invalid data source; must be at least a Blob');
       }
+      console.log('file-browser data source detected');
       return fromBrowserFile(location);
     case 'file-node':
       if (typeof location !== 'string') {
         throw new Error('Invalid data source; file path not provided');
       }
+      console.log('file-node data source detected');
       return fromNodeFile(location);
     case 'remote':
       if (typeof location !== 'string') {
         throw new Error('Invalid data source; url not provided');
       }
+      console.log('remote data source detected');
       return fromUrl(location);
     case 'stream':
       if (!isAnyTdfStream(location)) {
         throw new Error('Invalid data source; must be DecoratedTdfStream');
       }
+      console.log('stream data source detected');
       return fromBuffer(await location.toBuffer());
     default:
       throw new Error(`Data source type not defined, or not supported: ${type}}`);

@@ -23,6 +23,7 @@ export abstract class DecoratedReadableStream {
   algorithm: string;
   policyUuid?: string;
   tdfSize: number;
+  fileSize: number | undefined;
   stream: ReadableStream<Uint8Array>;
   ee: EventEmitter;
   on: EventEmitter['on'];

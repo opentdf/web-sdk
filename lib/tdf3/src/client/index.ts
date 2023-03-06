@@ -68,6 +68,7 @@ const makeChunkable = async (source: DecryptSource) => {
   if (!source) {
     throw new Error('Invalid source');
   }
+  console.log('Source type: ', source.type);
   // dump stream to buffer
   // we don't support streams anyways (see zipreader.js)
   let initialChunker: Chunker;

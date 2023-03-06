@@ -4,7 +4,7 @@ import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 export class NodeTdfStream extends DecoratedReadableStream {
   override async toFile(filepath: string, encoding: BufferEncoding = 'utf-8'): Promise<void> {
     return new Promise((resolve, reject) => {
-      const file = createWriteStream(filepath, { encoding, flags: 'w' });
+      const file = createWriteStream(filepath, { encoding, flags: 'w', highWaterMark: 1 });
       const reader = this.stream.getReader();
       const pump = () =>
         reader

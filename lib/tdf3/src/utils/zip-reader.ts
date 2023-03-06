@@ -70,12 +70,16 @@ export class ZipReader {
    * @return {Object}             The central directory represented as an object
    */
   async getCentralDirectory(): Promise<CentralDirectory[]> {
+    console.log('Getting Central Directory');
     const chunk = await this.getChunk(-1000);
+    console.log('Central Directory chunk: ', chunk);
     // TODO: Does this need to be tuned??!?
     // Full buffer for the file chunk
     const chunkBuffer = Buffer.from(chunk);
     // Slice off the EOCDR (End of Central Directory Record) part of the buffer so we can figure out the CD size
+    console.log('Central Directory buffer: ', chunkBuffer);
     const cdBuffers = this.getCDBuffers(chunkBuffer);
+    console.log('Central Directory cdBuffers: ', cdBuffers);
 
     const cdParsedBuffers = cdBuffers.map(parseCDBuffer);
     for (const buffer of cdParsedBuffers) {
@@ -89,7 +93,10 @@ export class ZipReader {
    * @returns The manifest as a buffer represented as JSON
    */
   async getManifest(cdBuffers: CentralDirectory[], manifestFileName: string): Promise<Manifest> {
+    console.log('CD Buffers: ', cdBuffers);
+    console.log('Manifest File Name: ', manifestFileName);
     const cdObj = cdBuffers.find(({ fileName }) => fileName === manifestFileName);
+    console.log('CD Object: ', cdObj);
     if (!cdObj) {
       throw new Error('Unable to retrieve CD manifest');
     }
@@ -147,11 +154,18 @@ export class ZipReader {
     for (let i = chunkBuffer.length - 22; i >= 0; i -= 1) {
       // If what we're locking at isn't the start of a central directory, skip it..
       if (chunkBuffer.readUInt32LE(i) !== CD_SIGNATURE) {
+        console.log('Not equal to CD_SIGNATURE');
         // eslint-disable-next-line no-continue
         continue;
       }
+      // if (readUInt64LE(chunkBuffer, i * -1) !== CD_SIGNATURE) {
+      //   console.log('Not equal to CD_SIGNATURE');
+      //   // eslint-disable-next-line no-continue
+      //   continue;
+      // }
       // Slice off that CD from it's start until the end of either the buffer, or whatever the start of the previously
       // found CD was
+      console.log('pushing chunk');
       cdBuffers.push(chunkBuffer.slice(i, lastBufferOffset));
       // Store the last offset location so we know how to slice off hte next CD.
       lastBufferOffset = i;
@@ -298,6 +312,7 @@ function recalculateHeaderLength(tempHeaderBuffer: Buffer): number {
 }
 
 export function readUInt64LE(buffer: Buffer, offset: number): number {
+  console.log('reading 64 bit int');
   const lower32 = buffer.readUInt32LE(offset);
   const upper32 = buffer.readUInt32LE(offset + 4);
   const combined = upper32 * 0x100000000 + lower32;
