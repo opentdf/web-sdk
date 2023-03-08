@@ -49,6 +49,21 @@ const scenarios = {
   html: { encryptSelector: '#htmlEncrypt', decryptSelector: '#tdfDecrypt' },
 };
 
+
+
+test.beforeEach(async ({page}) => {
+  await page.addInitScript(() => {
+    window.showSaveFilePicker = async ({ suggestedName: string }) => [ 
+      {{
+        async createWriteable() {
+          return this._file;
+        }
+      }}
+     ];
+  });
+});
+
+
 for (const [name, { encryptSelector, decryptSelector }] of Object.entries(scenarios)) {
   test(name, async ({ page }) => {
     await authorize(page);

@@ -23,6 +23,15 @@ function decryptedFileName(encryptedFileName: string): string {
   return `${m[1]}.decrypted.${m[2]}`;
 }
 
+function decryptedFileExtension(encryptedFileName: string): string {
+  const m = encryptedFileName.match(/^(.+)\.(\w+)\.(ntdf|tdf|tdf\.html)$/);
+  if (!m) {
+    console.warn(`Unable to extract raw file name from ${encryptedFileName}`);
+    return `${encryptedFileName}.decrypted`;
+  }
+  return m[2];
+}
+
 const oidcClient = new OidcClient(
   'http://localhost:65432/auth/realms/tdf',
   'browsertest',
@@ -38,6 +47,24 @@ function saver(blob: Blob, name: string) {
     URL.revokeObjectURL(a.href);
   }, 4e4); // 40s
   a.dispatchEvent(new MouseEvent('click'));
+}
+
+async function getNewFileHandle(
+  extension: string,
+  suggestedName: string
+): Promise<FileSystemFileHandle> {
+  const options = {
+    types: [
+      {
+        description: `${extension} files`,
+        accept: {
+          'application/octet-stream': [`.${extension}`],
+        },
+      },
+    ],
+    suggestedName,
+  };
+  return window.showSaveFilePicker(options);
 }
 
 type Containers = 'html' | 'tdf' | 'nano';
@@ -60,6 +87,8 @@ function App() {
   const [authState, setAuthState] = useState<SessionInformation>({ sessionState: 'start' });
   const [decryptContainerType, setDecryptContainerType] = useState<Containers>('nano');
   const [encryptContainerType, setEncryptContainerType] = useState<Containers>('nano');
+  const [downloadState, setDownloadState] = useState<string | undefined>();
+  const [saveToFileSystemApi, setSaveToFileSystemApi] = useState<boolean>(false);
 
   const handleContainerFormatRadioChange =
     (handler: typeof setDecryptContainerType) => (e: ChangeEvent<HTMLInputElement>) => {
@@ -91,6 +120,34 @@ function App() {
     }
   };
 
+  const makeProgressPair = (fileSize: number, type: 'Encrypt' | 'Decrypt') => {
+    let bytesRead = 0;
+    let bytesWritten = 0;
+    return {
+      reader: new TransformStream({
+        async transform(chunk, controller) {
+          bytesRead += chunk.length;
+          const message = `Processed ${Math.round(
+            100 * (bytesRead / fileSize)
+          )}% input bytes (${bytesRead} / ${fileSize})`;
+          console.log(message);
+          controller.enqueue(chunk);
+          setDownloadState(message);
+        },
+      }),
+      writer: new TransformStream({
+        async transform(chunk, controller) {
+          bytesWritten += chunk.length;
+          console.log(`Processed output bytes: ${bytesWritten}`);
+          controller.enqueue(chunk);
+        },
+        flush() {
+          setDownloadState(`${type} Complete`);
+        },
+      }),
+    };
+  };
+
   const handleEncrypt = async () => {
     if (!inputSource) {
       console.warn('PLEASE SELECT FILE ∨ URL');
@@ -116,8 +173,22 @@ function App() {
         }
         const plainText = await inputSource.file.arrayBuffer();
         const nanoClient = new NanoTDFClient(authProvider, 'http://localhost:65432/api/kas');
-        const cipherText = await nanoClient.encrypt(plainText);
-        saver(new Blob([cipherText]), `${inputFileName}.ntdf`);
+        if (saveToFileSystemApi) {
+          const file = await getNewFileHandle('ntdf', `${selectedFile.name}.ntdf`);
+          const cipherText = await nanoClient.encrypt(plainText);
+          const writable = await file.createWritable();
+          try {
+            await writable.write(cipherText);
+            setDownloadState('Encrypt Complete');
+          } catch (e) {
+            setDownloadState(`Encrypt Failed: ${e}`);
+          } finally {
+            await writable.close();
+          }
+        } else {
+          const cipherText = await nanoClient.encrypt(plainText);
+          saver(new Blob([cipherText]), `${inputFileName}.ntdf`);
+        }
         break;
       }
       case 'html': {
@@ -126,8 +197,9 @@ function App() {
           kasEndpoint: 'http://localhost:65432/api/kas',
           readerUrl: 'https://secure.virtru.com/start?htmlProtocol=1',
         });
-        let source;
+        let source: ReadableStream<Uint8Array>, size: number;
         if ('file' in inputSource) {
+          size = inputSource.file.size;
           source = inputSource.file.stream() as unknown as ReadableStream<Uint8Array>;
         } else {
           const fr = await fetch(inputSource.url);
@@ -141,17 +213,30 @@ function App() {
               `Failed to fetch input [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`
             );
           }
+          size = parseInt(fr.headers.get('Content-Length') || '-1');
           source = fr.body;
         }
         try {
+          const downloadName = `${inputFileName}.tdf.html`;
+          let f;
+          if (saveToFileSystemApi) {
+            f = await getNewFileHandle('html', downloadName);
+          }
+          const progressTransformers = makeProgressPair(size, 'Encrypt');
           const cipherText = await client.encrypt({
-            source,
+            source: source.pipeThrough(progressTransformers.reader),
             offline: true,
             asHtml: true,
           });
-          const downloadName = `${inputFileName}.tdf.html`;
-          await cipherText.toFile(downloadName);
+          if (f) {
+            const writable = await f.createWritable();
+            await cipherText.stream.pipeThrough(progressTransformers.writer).pipeTo(writable);
+          } else {
+            cipherText.stream = cipherText.stream.pipeThrough(progressTransformers.writer);
+            await cipherText.toFile(downloadName);
+          }
         } catch (e) {
+          setDownloadState(`Encrypt Failed: ${e}`);
           console.error('Encrypt Failed', e);
         }
         break;
@@ -161,8 +246,9 @@ function App() {
           authProvider,
           kasEndpoint: 'http://localhost:65432/api/kas',
         });
-        let source;
+        let source: ReadableStream<Uint8Array>, size: number;
         if ('file' in inputSource) {
+          size = inputSource.file.size;
           source = inputSource.file.stream() as unknown as ReadableStream<Uint8Array>;
         } else {
           const fr = await fetch(inputSource.url);
@@ -176,15 +262,29 @@ function App() {
               `Failed to fetch input [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`
             );
           }
+          size = parseInt(fr.headers.get('Content-Length') || '-1');
           source = fr.body;
         }
         try {
+          let f;
+          const downloadName = `${inputFileName}.tdf`;
+          if (saveToFileSystemApi) {
+            f = await getNewFileHandle('tdf', downloadName);
+          }
+          const progressTransformers = makeProgressPair(size, 'Encrypt');
           const cipherText = await client.encrypt({
-            source,
+            source: source.pipeThrough(progressTransformers.reader),
             offline: true,
           });
-          await cipherText.toFile(`${inputFileName}.tdf`);
+          if (f) {
+            const writable = await f.createWritable();
+            await cipherText.stream.pipeThrough(progressTransformers.writer).pipeTo(writable);
+          } else {
+            cipherText.stream = cipherText.stream.pipeThrough(progressTransformers.writer);
+            await cipherText.toFile(downloadName);
+          }
         } catch (e) {
+          setDownloadState(`Encrypt Failed: ${e}`);
           console.error('Encrypt Failed', e);
         }
         break;
@@ -209,6 +309,10 @@ function App() {
       refreshToken: authState.user.refreshToken,
     });
     const dfn = decryptedFileName(fileNameFor(inputSource));
+    let f;
+    if (saveToFileSystemApi) {
+      f = await getNewFileHandle(decryptedFileExtension(fileNameFor(inputSource)), dfn);
+    }
     switch (decryptContainerType) {
       case 'tdf': {
         const client = new Tdf3Client.Client({
@@ -217,15 +321,33 @@ function App() {
         });
         try {
           let source: DecryptSource;
+          let size: number;
           if ('file' in inputSource) {
+            size = inputSource.file.size;
             source = { type: 'file-browser', location: inputSource.file };
           } else {
+            // TODO HEAD request from url & grab content-length maybe?
+            size = -1;
             source = { type: 'remote', location: inputSource.url.toString() };
           }
+          const progressTransformers = makeProgressPair(size, 'Decrypt');
+          // XXX chunker doesn't have an equivalent 'stream' interaface
+          // so we kinda fake it with percentages by tracking output, which should
+          // strictly be smaller than the input file.
           const plainText = await client.decrypt({ source });
-          await plainText.toFile(dfn);
+          plainText.stream = plainText.stream
+            .pipeThrough(progressTransformers.reader)
+            .pipeThrough(progressTransformers.writer);
+
+          if (f) {
+            const writable = await f.createWritable();
+            await plainText.stream.pipeTo(writable);
+          } else {
+            await plainText.toFile(dfn);
+          }
         } catch (e) {
           console.error('Decrypt Failed', e);
+          setDownloadState(`Decrypt Failed: ${e}`);
         }
         break;
       }
@@ -234,8 +356,23 @@ function App() {
           throw new Error('Unsupported : fetch the url I guess?');
         }
         const nanoClient = new NanoTDFClient(authProvider, 'http://localhost:65432/api/kas');
-        const plainText = await nanoClient.decrypt(await inputSource.file.arrayBuffer());
-        saver(new Blob([plainText]), dfn);
+        try {
+          const plainText = await nanoClient.decrypt(await inputSource.file.arrayBuffer());
+          if (f) {
+            const writable = await f.createWritable();
+            try {
+              await writable.write(plainText);
+              setDownloadState('Decrypt Complete');
+            } finally {
+              await writable.close();
+            }
+          } else {
+            saver(new Blob([plainText]), dfn);
+          }
+        } catch (e) {
+          console.error('Decrypt Failed', e);
+          setDownloadState(`Decrypt Failed: ${e}`);
+        }
         break;
       }
     }
@@ -284,7 +421,14 @@ function App() {
                   <div>Size: {new Intl.NumberFormat().format(inputSource.file.size)} bytes</div>
                 </>
               )}
-              <button id="clearFile" onClick={() => setInputSource(undefined)} type="button">
+              <button
+                id="clearFile"
+                onClick={() => {
+                  setInputSource(undefined);
+                  setDownloadState(undefined);
+                }}
+                type="button"
+              >
                 Clear file
               </button>
             </div>
@@ -373,6 +517,7 @@ function App() {
                 </button>
               </div>
             </form>
+            {downloadState && <div id="downloadState">{downloadState}</div>}
           </div>
         )}
       </div>
