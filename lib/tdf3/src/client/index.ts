@@ -316,6 +316,29 @@ export class Client {
    * @return a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} a new stream containing the TDF ciphertext, if output is not passed in as a paramter
    */
   async encrypt({
+    scope,
+    source,
+    asHtml,
+    metadata,
+    mimeType,
+    offline,
+    windowSize,
+    eo,
+    payloadKey,
+  }: Omit<EncryptParams, 'output'>): Promise<AnyTdfStream>;
+  async encrypt({
+    scope,
+    source,
+    asHtml,
+    metadata,
+    mimeType,
+    offline,
+    output,
+    windowSize,
+    eo,
+    payloadKey,
+  }: EncryptParams & { output: NodeJS.WriteStream }): Promise<void>;
+  async encrypt({
     scope = { attributes: [], dissem: [] },
     source,
     asHtml = false,
@@ -327,7 +350,7 @@ export class Client {
     windowSize = DEFAULT_SEGMENT_SIZE,
     eo,
     payloadKey,
-  }: EncryptParams): Promise<AnyTdfStream | null> {
+  }: EncryptParams): Promise<AnyTdfStream | void> {
     if (asHtml) {
       if (rcaSource) {
         throw new Error('rca links should be used only with zip format');
@@ -388,7 +411,7 @@ export class Client {
     if (output) {
       output.push(htmlBuf);
       output.push(null);
-      return null;
+      return;
     }
 
     return makeStream({

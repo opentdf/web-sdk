@@ -606,7 +606,8 @@ export type DecryptSource =
   | { type: 'buffer'; location: Uint8Array }
   | { type: 'remote'; location: string }
   | { type: 'stream'; location: ReadableStream<Uint8Array> }
-  | { type: 'file-browser' | 'file-node'; location: string };
+  | { type: 'file-browser'; location: Blob }
+  | { type: 'file-node'; location: string };
 
 export type DecryptParams = {
   source: DecryptSource;
@@ -757,24 +758,23 @@ class DecryptParamsBuilder {
   /**
    * Specify a reference to a local file with the TDF ciphertext to decrypt.
    * Only works with node.
-   * @param {string} filepath - the path of the local file to decrypt.
+   * @param source (node) the path of the local file to decrypt, or the Blob (browser/node)
    */
-  setFileSource(filepath: string) {
-    if (typeof window !== 'undefined') {
-      this._params.source = { type: 'file-browser', location: filepath };
+  setFileSource(source: string | Blob) {
+    if (source instanceof Blob) {
+      this._params.source = { type: 'file-browser', location: source };
     } else {
-      this._params.source = { type: 'file-node', location: filepath };
+      this._params.source = { type: 'file-node', location: source };
     }
   }
 
   /**
    * Specify a reference to a local file with the TDF ciphertext to decrypt. Only works with node.
    * Returns this object for method chaining.
-   * @param {string} filepath - the path of the local file to decrypt.
-   * @return {DecryptParamsBuilder} - this object.
+   * @param source (node) the path of the local file to decrypt, or the Blob (browser/node)
    */
-  withFileSource(filepath: string): DecryptParamsBuilder {
-    this.setFileSource(filepath);
+  withFileSource(source: string | Blob): DecryptParamsBuilder {
+    this.setFileSource(source);
     return this;
   }
 

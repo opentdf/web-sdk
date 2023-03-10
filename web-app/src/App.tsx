@@ -3,12 +3,8 @@ import './App.css';
 import { Client as Tdf3Client, NanoTDFClient, AuthProviders } from '@opentdf/client';
 import { type SessionInformation, OidcClient } from './session.js';
 
-function toHex(a: Uint8Array) {
-  return [...a].map((x) => x.toString(16).padStart(2, '0')).join('');
-}
-
 function decryptedFileName(encryptedFileName: string): string {
-  const m = encryptedFileName.match(/^(.+)\.(\w+)\.(n?tdf)$/);
+  const m = encryptedFileName.match(/^(.+)\.(\w+)\.(ntdf|tdf|tdf\.html)$/);
   if (!m) {
     console.warn(`Unable to extract raw file name from ${encryptedFileName}`);
     return `${encryptedFileName}.decrypted`;
@@ -36,8 +32,6 @@ function saver(blob: Blob, name: string) {
 type Containers = 'html' | 'tdf' | 'nano';
 
 function App() {
-  const [cipherText, setCipherText] = useState<Uint8Array | undefined>();
-  const [plainText, setPlainText] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | undefined>();
   const [authState, setAuthState] = useState<SessionInformation>({ sessionState: 'start' });
   const [decryptContainerType, setDecryptContainerType] = useState<Containers>('nano');
@@ -72,29 +66,26 @@ function App() {
   const handleEncrypt = async () => {
     if (!selectedFile) {
       console.warn('PLEASE SELECT FILE');
-      return true;
+      return false;
     }
     const refreshToken = authState?.user?.refreshToken;
     if (!refreshToken) {
       console.warn('PLEASE LOG IN');
-      return true;
+      return false;
     }
-    console.info(`[THINKING about ${selectedFile.name}]`);
     const authProvider = await AuthProviders.refreshAuthProvider({
       exchange: 'refresh',
       clientId: oidcClient.clientId,
       oidcOrigin: oidcClient.host,
       refreshToken,
     });
-    let cipherText;
-    let extension = 'tdf';
+    console.log(`Encrypting [${selectedFile.name}] to ${encryptContainerType} container'`);
     switch (encryptContainerType) {
       case 'nano': {
-        const arrayBuffer = await selectedFile.arrayBuffer();
+        const plainText = await selectedFile.arrayBuffer();
         const nanoClient = new NanoTDFClient(authProvider, 'http://localhost:65432/api/kas');
-        console.log('allocated client', nanoClient);
-        cipherText = new Uint8Array(await nanoClient.encrypt(arrayBuffer));
-        extension = 'ntdf';
+        const cipherText = await nanoClient.encrypt(plainText);
+        saver(new Blob([cipherText]), `${selectedFile.name}.ntdf`);
         break;
       }
       case 'html': {
@@ -103,9 +94,18 @@ function App() {
           kasEndpoint: 'http://localhost:65432/api/kas',
           readerUrl: 'https://secure.virtru.com/start?htmlProtocol=1',
         });
-        const source = (await selectedFile.stream()) as unknown as ReadableStream<Uint8Array>;
-        const a = await client.encrypt({ source, offline: true, asHtml: true });
-        cipherText = await a?.toBuffer();
+        const source = selectedFile.stream() as unknown as ReadableStream<Uint8Array>;
+        try {
+          const cipherText = await client.encrypt({
+            source,
+            offline: true,
+            asHtml: true,
+          });
+          const downloadName = `${selectedFile.name}.tdf.html`;
+          await cipherText.toFile(downloadName);
+        } catch (e) {
+          console.error('Encrypt Failed', e);
+        }
         break;
       }
       case 'tdf': {
@@ -113,18 +113,19 @@ function App() {
           authProvider,
           kasEndpoint: 'http://localhost:65432/api/kas',
         });
-        const source = (await selectedFile.stream()) as unknown as ReadableStream<Uint8Array>;
-        const a = await client.encrypt({ source, offline: true });
-        cipherText = await a?.toBuffer();
+        const source = selectedFile.stream() as unknown as ReadableStream<Uint8Array>;
+        try {
+          const cipherText = await client.encrypt({
+            source,
+            offline: true,
+          });
+          await cipherText.toFile(`${selectedFile.name}.tdf`);
+        } catch (e) {
+          console.error('Encrypt Failed', e);
+        }
         break;
       }
     }
-    if (!cipherText) {
-      throw new Error('fail');
-    }
-    console.log(`Ciphertext: ${toHex(cipherText)}`);
-    setCipherText(cipherText);
-    saver(new Blob([cipherText]), `${selectedFile.name}.${extension}`);
     return true;
   };
 
@@ -149,17 +150,19 @@ function App() {
           authProvider,
           kasEndpoint: 'http://localhost:65432/api/kas',
         });
-
-        const buffer = new Uint8Array(await selectedFile.arrayBuffer());
-        const plain = await client.decrypt({ source: { type: 'buffer', location: buffer } });
-        saver(new Blob([await plain.toBuffer()]), decryptedFileName(selectedFile.name));
+        try {
+          const plainText = await client.decrypt({
+            source: { type: 'file-browser', location: selectedFile },
+          });
+          await plainText.toFile(decryptedFileName(selectedFile.name));
+        } catch (e) {
+          console.error('Decrypt Failed', e);
+        }
         break;
       }
       case 'nano': {
         const nanoClient = new NanoTDFClient(authProvider, 'http://localhost:65432/api/kas');
-        const plainText = new Uint8Array(
-          await nanoClient.decrypt(new Uint8Array(await selectedFile.arrayBuffer()))
-        );
+        const plainText = await nanoClient.decrypt(await selectedFile.arrayBuffer());
         saver(new Blob([plainText]), decryptedFileName(selectedFile.name));
         break;
       }
