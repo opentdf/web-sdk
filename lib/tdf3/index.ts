@@ -8,6 +8,7 @@ import { NodeTdfStream } from './src/client/NodeTdfStream.js';
 import {
   type DecryptParams,
   DecryptParamsBuilder,
+  type DecryptSource,
   type EncryptParams,
   EncryptParamsBuilder,
 } from './src/client/builders.js';
@@ -51,6 +52,7 @@ export {
   DecryptParams,
   DecryptParamsBuilder,
   DecryptResult,
+  DecryptSource,
   EncryptionInformation,
   EncryptParams,
   EncryptParamsBuilder,

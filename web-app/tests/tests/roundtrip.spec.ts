@@ -1,5 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
-import { readFile } from 'fs/promises';
+import { readFile } from 'node:fs/promises';
+import { createServer } from 'node:http';
+import send from 'send';
 
 // References
 // Playwright assertions: https://playwright.dev/docs/test-assertions
@@ -26,6 +28,21 @@ const loadFile = async (page: Page, path: string) => {
   await page.locator('#fileSelector').setInputFiles(path);
 };
 
+let server;
+
+test.beforeAll(async ({ page }) => {
+  page.on('pageerror', (err) => {
+    console.error(err);
+  });
+  page.on('console', (message) => {
+    console.log(message);
+  });
+  server = createServer((req, res) => {
+    send(req, `${baseDir}${req.url}`).pipe(res);
+  });
+  server.listen();
+});
+
 test('login', async ({ page }) => {
   await authorize(page);
   await expect(page).toHaveTitle(/opentdf browser sample/);
@@ -40,12 +57,6 @@ const scenarios = {
 
 for (const [name, { encryptSelector, decryptSelector }] of Object.entries(scenarios)) {
   test(name, async ({ page }) => {
-    page.on('pageerror', (err) => {
-      console.error(err);
-    });
-    page.on('console', (message) => {
-      console.log(message);
-    });
     await authorize(page);
     await loadFile(page, 'README.md');
     const downloadPromise = page.waitForEvent('download');
@@ -73,3 +84,32 @@ for (const [name, { encryptSelector, decryptSelector }] of Object.entries(scenar
     expect(text).toContain('git clone https://github.com/opentdf/opentdf.git');
   });
 }
+
+
+test('Remote Source Streaming', async ({ page }) => {
+  await authorize(page);
+  await loadFile(page, 'README.md');
+  const downloadPromise = page.waitForEvent('download');
+  await page.locator(encryptSelector).click();
+  await page.locator('#encryptButton').click();
+  const download = await downloadPromise;
+  const cipherTextPath = await download.path();
+  expect(cipherTextPath).toBeTruthy();
+  if (!cipherTextPath) {
+    throw new Error();
+  }
+
+  // Clear file selector and upload againg
+  await page.locator('#clearFile').click();
+  await loadFile(page, cipherTextPath);
+  const plainDownloadPromise = page.waitForEvent('download');
+  await page.locator(decryptSelector).click();
+  await page.locator('#decryptButton').click();
+  const download2 = await plainDownloadPromise;
+  const plainTextPath = await download2.path();
+  if (!plainTextPath) {
+    throw new Error();
+  }
+  const text = await readFile(plainTextPath, 'utf8');
+  expect(text).toContain('git clone https://github.com/opentdf/opentdf.git');
+});
