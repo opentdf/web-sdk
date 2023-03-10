@@ -157,5 +157,5 @@ export abstract class DecoratedReadableStream {
    * @param filepath The path of the local file to write plaintext to.
    * @param encoding The charset encoding to use. Defaults to utf-8.
    */
-  abstract toFile(filepath: string, encoding: BufferEncoding): Promise<void>;
+  abstract toFile(filepath: string, encoding?: BufferEncoding): Promise<void>;
 }
