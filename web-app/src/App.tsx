@@ -40,7 +40,7 @@ async function getNewFileHandle(
         },
       },
     ],
-    ...(suggestedName && { suggestedName }),
+    suggestedName,
   };
   return window.showSaveFilePicker(options);
 }

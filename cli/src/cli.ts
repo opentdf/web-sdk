@@ -305,9 +305,7 @@ export const handleArgs = (args: string[]) => {
               throw new CLIError('CRITICAL', 'Encrypt configuration error: No output?');
             }
             if (argv.output) {
-              if (ct.toFile) {
-                await ct.toFile(argv.output as string);
-              }
+              await ct.toFile(argv.output as string);
             } else {
               console.log(await ct.toString());
             }
