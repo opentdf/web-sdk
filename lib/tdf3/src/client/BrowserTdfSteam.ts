@@ -6,7 +6,6 @@ import { isFirefox } from '../../../src/utils.js';
 export class BrowserTdfStream extends DecoratedReadableStream {
   override async toFile(filepath = 'download.tdf'): Promise<void> {
     if (isFirefox()) {
-      console.log('wont you fffSAVE me');
       await fileSave(new Response(this.stream), {
         fileName: filepath,
         extensions: [`.${filepath.split('.').pop()}`],
@@ -19,12 +18,10 @@ export class BrowserTdfStream extends DecoratedReadableStream {
     });
 
     if (WritableStream) {
-      console.log('WOOHOO Using writeable stream for real');
       return this.stream.pipeTo(fileStream);
     }
 
     // Write (pipe) manually
-    console.log('Working at the pumphouse');
     const writer = fileStream.getWriter();
     const reader = this.stream.getReader();
     const pump = (): Promise<void> =>
