@@ -45,7 +45,6 @@ function App() {
   const [authState, setAuthState] = useState<SessionInformation>({ sessionState: 'start' });
   const [decryptContainerType, setDecryptContainerType] = useState<Containers>('nano');
   const [encryptContainerType, setEncryptContainerType] = useState<Containers>('nano');
-  const [downloadState, setDownloadState] = useState<string | undefined>();
 
   const handleRadioChange =
     (handler: typeof setDecryptContainerType) => (e: ChangeEvent<HTMLInputElement>) => {
@@ -73,56 +72,27 @@ function App() {
     }
   };
 
-  const makeProgressPair = (fileSize: number, type: 'Encrypt' | 'Decrypt') => {
-    let bytesRead = 0;
-    let bytesWritten = 0;
-    return {
-      reader: new TransformStream({
-        async transform(chunk, controller) {
-          bytesRead += chunk.length;
-          const message = `Processed ${Math.round(
-            100 * (bytesRead / fileSize)
-          )}% input bytes (${bytesRead} / ${fileSize})`;
-          console.log(message);
-          controller.enqueue(chunk);
-          setDownloadState(message);
-        },
-      }),
-      writer: new TransformStream({
-        async transform(chunk, controller) {
-          bytesWritten += chunk.length;
-          console.log(`Processed output bytes: ${bytesWritten}`);
-          controller.enqueue(chunk);
-        },
-        flush() {
-          setDownloadState(`${type} Complete`);
-        },
-      }),
-    };
-  };
-
   const handleEncrypt = async () => {
     if (!selectedFile) {
       console.warn('PLEASE SELECT FILE');
-      return true;
+      return false;
     }
     const refreshToken = authState?.user?.refreshToken;
     if (!refreshToken) {
       console.warn('PLEASE LOG IN');
-      return true;
+      return false;
     }
-    console.info(`[THINKING about ${selectedFile.name}]`);
     const authProvider = await AuthProviders.refreshAuthProvider({
       exchange: 'refresh',
       clientId: oidcClient.clientId,
       oidcOrigin: oidcClient.host,
       refreshToken,
     });
+    console.log(`Encrypting [${selectedFile.name}] to ${encryptContainerType} container'`);
     switch (encryptContainerType) {
       case 'nano': {
         const plainText = await selectedFile.arrayBuffer();
         const nanoClient = new NanoTDFClient(authProvider, 'http://localhost:65432/api/kas');
-        console.log('allocated client', nanoClient);
         const cipherText = await nanoClient.encrypt(plainText);
         saver(new Blob([cipherText]), `${selectedFile.name}.ntdf`);
         break;
@@ -135,16 +105,13 @@ function App() {
         });
         const source = selectedFile.stream() as unknown as ReadableStream<Uint8Array>;
         try {
-          console.log('Encrypting with html');
           const cipherText = await client.encrypt({
             source,
             offline: true,
             asHtml: true,
           });
-          console.log('Encrypt method complete');
           const downloadName = `${selectedFile.name}.tdf.html`;
           await cipherText.toFile(downloadName);
-          console.log(`Encrypt toFile complete ${downloadName}`);
         } catch (e) {
           console.error('Encrypt Failed', e);
         }
