@@ -12,15 +12,6 @@ function decryptedFileName(encryptedFileName: string): string {
   return `${m[1]}.decrypted.${m[2]}`;
 }
 
-function decryptedFileExtension(encryptedFileName: string): string {
-  const m = encryptedFileName.match(/^(.+)\.(\w+)\.(ntdf|tdf|tdf\.html)$/);
-  if (!m) {
-    console.warn(`Unable to extract raw file name from ${encryptedFileName}`);
-    return `${encryptedFileName}.decrypted`;
-  }
-  return m[2];
-}
-
 const oidcClient = new OidcClient(
   'http://localhost:65432/auth/realms/tdf',
   'browsertest',
