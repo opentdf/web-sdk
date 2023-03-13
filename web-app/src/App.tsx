@@ -251,7 +251,6 @@ function App() {
     );
 
   const hasFileInput = inputSource && 'file' in inputSource;
-  const hasValidUrlInput = inputSource && 'url' in inputSource;
   return (
     <div className="App">
       <div className="header">
