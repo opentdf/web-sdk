@@ -29,7 +29,6 @@ const loadFile = async (page: Page, path: string) => {
 
 let server;
 
-
 test.beforeAll(async ({ page }) => {
   page.on('pageerror', (err) => {
     console.error(err);
@@ -84,7 +83,6 @@ for (const [name, { encryptSelector, decryptSelector }] of Object.entries(scenar
     expect(text).toContain('git clone https://github.com/opentdf/opentdf.git');
   });
 }
-
 
 test('Remote Source Streaming', async ({ page }) => {
   await authorize(page);

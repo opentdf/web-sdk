@@ -10,7 +10,7 @@ export async function serve(path, port) {
   if (!folder && !singleFile) {
     throw new Error('CRITICAL', `Path parameter not valid: [${file}]`);
   }
-  
+
   console.log(`Listening on port ${port}; serving up ${folder ? 'file' : 'bit'}s from ${path}`);
   const server = createServer((req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');

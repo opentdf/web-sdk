@@ -249,9 +249,9 @@ function App() {
     ) : (
       <pre id="user_token">{JSON.stringify(authState?.user, null, ' ')}</pre>
     );
-    
+
   const hasFileInput = inputSource && 'file' in inputSource;
-  const hasValidUrlInput = inputSource && 'url' in inputSource
+  const hasValidUrlInput = inputSource && 'url' in inputSource;
   return (
     <div className="App">
       <div className="header">
