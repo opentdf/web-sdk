@@ -22,7 +22,7 @@ export async function serve(path, port) {
     }
     const url = new URL(req.url, `http://${req.headers.host}`);
     const validNamePart = NodePath.basename(url.pathname);
-    const allowedName = `/${validNamePart}`
+    const allowedName = `/${validNamePart}`;
     if (allowedName !== url.pathname) {
       console.log(`[${url}].pathname (${url.pathname}) != [${allowedName}]`);
       res.writeHead(404);
