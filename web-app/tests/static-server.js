@@ -1,6 +1,7 @@
 // Simplest HTTP server that supports RANGE headers AFAIK.
 import { createServer } from 'node:http';
 import { stat } from 'node:fs/promises';
+import NodePath from 'node:path';
 import send from 'send';
 
 export async function serve(path, port) {
@@ -20,7 +21,15 @@ export async function serve(path, port) {
       res.setHeader('Access-Control-Allow-Headers', req.headers.origin);
     }
     const url = new URL(req.url, `http://${req.headers.host}`);
-    const localPath = folder ? `${path}${url.pathname}` : path;
+    const validNamePart = NodePath.basename(url.pathname);
+    const allowedName = `/${validNamePart}`
+    if (allowedName !== url.pathname) {
+      console.log(`[${url}].pathname (${url.pathname}) != [${allowedName}]`);
+      res.writeHead(404);
+      res.end();
+      return;
+    }
+    const localPath = folder ? `${path}${allowedName}` : path;
     console.log(`Processing ${req.method} [${url}], maybe serve [${localPath}]`);
     if (req.method === 'OPTIONS') {
       res.setHeader('Access-Control-Allow-Headers', 'Range');
