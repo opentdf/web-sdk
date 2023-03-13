@@ -1,7 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { createServer } from 'node:http';
-import send from 'send';
+import { serve } from '../static-server.js';
 
 // References
 // Playwright assertions: https://playwright.dev/docs/test-assertions
@@ -30,6 +29,7 @@ const loadFile = async (page: Page, path: string) => {
 
 let server;
 
+
 test.beforeAll(async ({ page }) => {
   page.on('pageerror', (err) => {
     console.error(err);
@@ -37,10 +37,10 @@ test.beforeAll(async ({ page }) => {
   page.on('console', (message) => {
     console.log(message);
   });
-  server = createServer((req, res) => {
-    send(req, `${baseDir}${req.url}`).pipe(res);
-  });
-  server.listen();
+  const dirname = new URL('.', import.meta.url).pathname;
+  const port = 8000;
+  const file = 'README.md';
+  server = serve(port, file);
 });
 
 test('login', async ({ page }) => {
@@ -88,10 +88,12 @@ for (const [name, { encryptSelector, decryptSelector }] of Object.entries(scenar
 
 test('Remote Source Streaming', async ({ page }) => {
   await authorize(page);
-  await loadFile(page, 'README.md');
+  await page.locator('#urlSelector').fill('http://localhost:8000/README.md');
+
   const downloadPromise = page.waitForEvent('download');
-  await page.locator(encryptSelector).click();
+  await page.locator('#zipEncrypt').click();
   await page.locator('#encryptButton').click();
+
   const download = await downloadPromise;
   const cipherTextPath = await download.path();
   expect(cipherTextPath).toBeTruthy();
@@ -103,7 +105,7 @@ test('Remote Source Streaming', async ({ page }) => {
   await page.locator('#clearFile').click();
   await loadFile(page, cipherTextPath);
   const plainDownloadPromise = page.waitForEvent('download');
-  await page.locator(decryptSelector).click();
+  await page.locator('#tdfDecrypt').click();
   await page.locator('#decryptButton').click();
   const download2 = await plainDownloadPromise;
   const plainTextPath = await download2.path();

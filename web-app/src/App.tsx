@@ -86,6 +86,8 @@ function App() {
       setInputSource({ file });
     } else if (target.value && target.validity.valid) {
       setInputSource({ url: new URL(target.value) });
+    } else {
+      setInputSource(undefined);
     }
   };
 
@@ -247,7 +249,9 @@ function App() {
     ) : (
       <pre id="user_token">{JSON.stringify(authState?.user, null, ' ')}</pre>
     );
-
+    
+  const hasFileInput = inputSource && 'file' in inputSource;
+  const hasValidUrlInput = inputSource && 'url' in inputSource
   return (
     <div className="App">
       <div className="header">
@@ -259,7 +263,7 @@ function App() {
       </div>
       <div className="body">
         <div className="input">
-          {inputSource && 'file' in inputSource ? (
+          {hasFileInput ? (
             <div id="details">
               <h2>{'file' in inputSource ? inputSource.file.name : inputSource.url.toString()}</h2>
               {'file' in inputSource && (
@@ -279,7 +283,7 @@ function App() {
             <>
               <label htmlFor="file-selector">Select file:</label>
               <input type="file" name="file" id="fileSelector" onChange={changeHandler} />
-              <div>OR</div>
+              <div>OR URL:</div>
               <input
                 type="url"
                 name="url"
