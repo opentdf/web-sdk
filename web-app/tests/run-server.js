@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-// Simplest HTTP server that supports RANGE headers AFAIK.
 import { serve } from './static-server.js';
 
 const dirname = new URL('.', import.meta.url).pathname;
