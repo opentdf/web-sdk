@@ -81,23 +81,23 @@ for (const [name, { encryptSelector, decryptSelector }] of Object.entries(scenar
 test('Remote Source Streaming', async ({ page }) => {
   const port = 8000;
   const file = 'README.md';
-  const server = await serve(port, file);
+  const server = await serve(file, port);
 
   try {
     await authorize(page);
     await page.locator('#urlSelector').fill('http://localhost:8000/README.md');
-  
+
     const downloadPromise = page.waitForEvent('download');
     await page.locator('#zipEncrypt').click();
     await page.locator('#encryptButton').click();
-  
+
     const download = await downloadPromise;
     const cipherTextPath = await download.path();
     expect(cipherTextPath).toBeTruthy();
     if (!cipherTextPath) {
       throw new Error();
     }
-  
+
     // Clear file selector and upload againg
     await page.locator('#clearFile').click();
     await loadFile(page, cipherTextPath);
@@ -112,6 +112,6 @@ test('Remote Source Streaming', async ({ page }) => {
     const text = await readFile(plainTextPath, 'utf8');
     expect(text).toContain('git clone https://github.com/opentdf/opentdf.git');
   } finally {
-    server.close()
+    server.close();
   }
 });
