@@ -88,7 +88,7 @@ export class FileClient {
           }
           source = response.body;
         } else {
-          source = Readable.toWeb(createReadStream(source)) as ReadableStream<Uint8Array>;
+          source = Readable.toWeb(createReadStream(source, { highWaterMark: 1 })) as ReadableStream<Uint8Array>;
         }
         params.setStreamSource(source);
       } else {

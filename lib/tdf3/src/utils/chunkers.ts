@@ -1,7 +1,23 @@
 import axios, { AxiosResponse } from 'axios';
+import axiosRetry from 'axios-retry';
+// import { HttpsAgent } from 'agentkeepalive';
 import { Buffer } from 'buffer';
 import { createReadStream, readFile, statSync } from 'fs';
 import { type AnyTdfStream, isAnyTdfStream } from '../client/tdf-stream.js';
+
+// const keepaliveAgent = new HttpsAgent({
+//   // keepAlive: true,
+//   // timeout: 10 * 60 * 1000,
+//   scheduling: 'fifo',
+//   // maxSockets: 10
+// });
+
+// const retry = axiosRetry.default;
+
+// axios.defaults.timeout = 10 * 60 * 1000; // 10 min
+// axios.defaults.httpsAgent = keepaliveAgent;
+// @ts-ignore
+axiosRetry(axios, { retries: 3 }); // Retries all idempotent requests (GET, HEAD, OPTIONS, PUT, DELETE)
 
 /**
  * Read data from a seekable stream.
@@ -71,32 +87,37 @@ export const fromNodeFile = (filePath: string): Chunker => {
   };
 };
 
-export const fromUrl = (location: string): Chunker => {
-  async function getRemoteChunk(url: string, range?: string): Promise<Uint8Array> {
-    try {
-      const res: AxiosResponse<Uint8Array> = await axios.get(url, {
-        ...(range && {
-          headers: {
-            Range: `bytes=${range}`,
-          },
-        }),
-        responseType: 'arraybuffer',
-      });
-      if (!res.data) {
-        throw new Error(
-          'Unexpected response type: Server should have responded with an ArrayBuffer.'
-        );
-      }
-      return res.data;
-    } catch (e) {
-      if (e && e.response && e.response.status === 416) {
-        console.log('Warning: Range not satisfiable');
-      }
-      throw e;
+async function getRemoteChunk(url: string, range?: string): Promise<Uint8Array> {
+  console.log('Calling getRemoteChunk(): ', range);
+  try {
+    const res: AxiosResponse<Uint8Array> = await axios.get(url, {
+      ...(range && {
+        headers: {
+          Range: `bytes=${range}`,
+        },
+      }),
+      responseType: 'arraybuffer',
+      maxRedirects: 0,
+    });
+    if (!res.data) {
+      throw new Error(
+        'Unexpected response type: Server should have responded with an ArrayBuffer.'
+      );
     }
+    return res.data;
+  } catch (e) {
+    if (e && e.response && e.response.status === 416) {
+      console.log('Warning: Range not satisfiable');
+    }
+    throw e;
   }
+}
 
-  return (byteStart?: number, byteEnd?: number): Promise<Uint8Array> => {
+export const fromUrl = async (location: string): Promise<Chunker> => {
+
+  return async (byteStart?: number, byteEnd?: number): Promise<Uint8Array> => {
+    console.log('byteStart: ', byteStart);
+    console.log('byteEnd: ', byteEnd);
     if (byteStart === undefined) {
       return getRemoteChunk(location);
     }
@@ -104,10 +125,11 @@ export const fromUrl = (location: string): Chunker => {
     if (byteEnd && byteEnd < 0) {
       // NOTE: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Range
       throw Error('negative end unsupported');
-    } else {
+    } else if (byteEnd) {
+      // rangeHeader += `-${(byteEnd ? byteEnd - 1 : 0)}`;
       rangeHeader += `-${(byteEnd || 0) - 1}`;
     }
-    return getRemoteChunk(location, rangeHeader);
+    return await getRemoteChunk(location, rangeHeader);
   };
 };
 

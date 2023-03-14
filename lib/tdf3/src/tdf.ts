@@ -222,7 +222,7 @@ export class TDF extends EventEmitter {
 
   // Extracts the TDF's manifest
   static async getManifestFromRemoteTDF(url: string): Promise<Manifest> {
-    const zipReader = new ZipReader(fromUrl(url));
+    const zipReader = new ZipReader(await fromUrl(url));
 
     const centralDirectory = await zipReader.getCentralDirectory();
     return await zipReader.getManifest(centralDirectory, '0.manifest.json');
@@ -796,6 +796,7 @@ export class TDF extends EventEmitter {
 
   // load the TDF as a stream in memory, for further use in reading and key syncing
   async loadTDFStream(chunker: Chunker) {
+    console.log('loadTDFStream() called');
     const zipReader = new ZipReader(chunker);
     const centralDirectory = await zipReader.getCentralDirectory();
 
@@ -944,50 +945,66 @@ export class TDF extends EventEmitter {
     const that = this;
     const outputStream = makeStream({
       async pull(controller: ReadableStreamDefaultController) {
-        while (
+        if (
           segments.length &&
           Number.isInteger(controller.desiredSize) &&
           (!controller.desiredSize || controller.desiredSize > 0)
         ) {
+          console.log('pull called');
           const segment = segments.shift();
-          if (!segment) {
+          console.log('segments length: ', segments?.length);
+          if (segment) {
             // Popped past the end
-            break;
-          }
-          const encryptedSegmentSize = segment.encryptedSegmentSize || encryptedSegmentSizeDefault;
-          const encryptedChunk = await zipReader.getPayloadSegment(
-            centralDirectory,
-            '0.payload',
-            encryptedOffset,
-            encryptedSegmentSize
-          );
-          encryptedOffset += encryptedSegmentSize;
-
-          // use the segment alg type if provided, otherwise use the root sig alg
-          const segmentIntegrityAlgorithmType =
-            that.manifest?.encryptionInformation.integrityInformation.segmentHashAlg;
-          const segmentHashStr = await that.getSignature(
-            reconstructedKeyBinary,
-            Binary.fromBuffer(encryptedChunk),
-            segmentIntegrityAlgorithmType || integrityAlgorithmType
-          );
-
-          if (segment.hash !== base64.encode(segmentHashStr)) {
-            throw new ManifestIntegrityError('Failed integrity check on segment hash');
-          }
-
-          let decryptedSegment;
-
-          try {
-            decryptedSegment = await cipher.decrypt(encryptedChunk, reconstructedKeyBinary);
-          } catch (e) {
-            throw new TdfDecryptError(
-              'Error decrypting payload. This suggests the key used to decrypt the payload is not correct.',
-              e
+            // break;
+            const encryptedSegmentSize = segment.encryptedSegmentSize || encryptedSegmentSizeDefault;
+            const encryptedChunk = await zipReader.getPayloadSegment(
+              centralDirectory,
+              '0.payload',
+              encryptedOffset,
+              encryptedSegmentSize
             );
+            encryptedOffset += encryptedSegmentSize;
+
+            // use the segment alg type if provided, otherwise use the root sig alg
+            const segmentIntegrityAlgorithmType =
+              that.manifest?.encryptionInformation.integrityInformation.segmentHashAlg;
+            const segmentHashStr = await that.getSignature(
+              reconstructedKeyBinary,
+              Binary.fromBuffer(encryptedChunk),
+              segmentIntegrityAlgorithmType || integrityAlgorithmType
+            );
+
+            if (segment.hash !== base64.encode(segmentHashStr)) {
+              throw new ManifestIntegrityError('Failed integrity check on segment hash');
+            }
+
+            let decryptedSegment;
+
+            try {
+              decryptedSegment = await cipher.decrypt(encryptedChunk, reconstructedKeyBinary);
+            } catch (e) {
+              throw new TdfDecryptError(
+                'Error decrypting payload. This suggests the key used to decrypt the payload is not correct.',
+                e
+              );
+            }
+
+            console.log('controller desired size: ', controller.desiredSize);
+            console.log('controller obj: ', controller);
+
+            // if (controller.desiredSize !== undefined && controller.desiredSize !== null && controller.desiredSize <= 0) {
+            //   console.log('desired size threshold activated');
+            //   // The internal queue is full, so propagate
+            //   // the backpressure signal to the underlying source.
+            //   // controller.close();
+            // }
+
+            controller.enqueue(decryptedSegment.payload.asBuffer());
+
+            // controller.close();
+
           }
 
-          controller.enqueue(decryptedSegment.payload.asBuffer());
         }
 
         if (segments.length === 0) {
@@ -995,6 +1012,12 @@ export class TDF extends EventEmitter {
         }
       },
     });
+
+    if (rcaParams && rcaParams.wu) {
+      let res = await axios.head(rcaParams.wu);
+
+      outputStream.fileSize = parseInt(res?.headers?.['content-length'] as string, 10) || undefined;
+    }
 
     outputStream.manifest = this.manifest;
     if (outputStream.emit) {

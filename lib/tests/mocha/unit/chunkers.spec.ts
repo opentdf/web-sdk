@@ -267,20 +267,21 @@ describe('chunkers', () => {
     };
     it('all', async () => {
       const { fromUrl } = await import('../../../tdf3/src/utils/chunkers.js');
-      const c: Chunker = fromUrl(urlFor(path));
+      const c: Chunker = await fromUrl(urlFor(path));
       const all: Uint8Array = await c();
       expect(all).to.deep.equal(b);
       expect(Array.from(all)).to.deep.equal(r);
     });
     it('one', async () => {
       const { fromUrl } = await import('../../../tdf3/src/utils/chunkers.js');
-      const c: Chunker = fromUrl(urlFor(path));
+      const c: Chunker = await fromUrl(urlFor(path));
       const one: Uint8Array = await c(1, 2);
       expect(one).to.deep.equal(b.slice(1, 2));
       expect(Array.from(one)).to.deep.eq([1]);
     });
     it('negative one', async () => {
       const { fromUrl } = await import('../../../tdf3/src/utils/chunkers.js');
+      // @ts-ignore
       const twofiftyfive: Uint8Array = await fromUrl(urlFor(path))(-1);
       expect(twofiftyfive).to.deep.equal(b.slice(255));
       expect(Array.from(twofiftyfive)).to.deep.equal([255]);
@@ -288,6 +289,7 @@ describe('chunkers', () => {
     it('negative two', async () => {
       const { fromUrl } = await import('../../../tdf3/src/utils/chunkers.js');
       try {
+        // @ts-ignore
         await fromUrl(urlFor(path))(-2, -1);
         expect.fail();
       } catch (e) {
@@ -297,6 +299,7 @@ describe('chunkers', () => {
     it('unsatisiable', async () => {
       const { fromUrl } = await import('../../../tdf3/src/utils/chunkers.js');
       try {
+        // @ts-ignore
         await fromUrl(urlFor(path))(12, 5);
         expect.fail();
       } catch (e) {
@@ -306,7 +309,7 @@ describe('chunkers', () => {
     it('broken stream all', async () => {
       const { fromUrl } = await import('../../../tdf3/src/utils/chunkers.js');
       try {
-        const c: Chunker = fromUrl(urlFor('error'));
+        const c: Chunker = await fromUrl(urlFor('error'));
         await c();
         expect.fail();
       } catch (e) {
@@ -316,7 +319,7 @@ describe('chunkers', () => {
     it('broken stream some', async () => {
       const { fromUrl } = await import('../../../tdf3/src/utils/chunkers.js');
       try {
-        const c: Chunker = fromUrl(urlFor('error'));
+        const c: Chunker = await fromUrl(urlFor('error'));
         await c(1);
         expect.fail();
       } catch (e) {

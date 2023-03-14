@@ -12,6 +12,7 @@ export async function* getChunkStream<T>(
   partSize: number,
   getNextData: (data: T) => AsyncGenerator<Buffer>
 ): AsyncGenerator<RawDataPart, void, undefined> {
+  console.log('getChunkStream called');
   let partNumber = 1;
   const currentBuffer: Buffers = { chunks: [], length: 0 };
 

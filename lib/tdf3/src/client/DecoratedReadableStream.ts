@@ -23,6 +23,7 @@ export abstract class DecoratedReadableStream {
   algorithm: string;
   policyUuid?: string;
   tdfSize: number;
+  fileSize: number | undefined;
   stream: ReadableStream<Uint8Array>;
   ee: EventEmitter;
   on: EventEmitter['on'];
@@ -33,7 +34,11 @@ export abstract class DecoratedReadableStream {
   upsertResponse?: UpsertResponse;
 
   constructor(underlyingSource: UnderlyingSource) {
-    this.stream = new ReadableStream(underlyingSource, { highWaterMark: 1 });
+
+    // const size = (1024 * 1024);
+    // const queueingStrategy = new CountQueuingStrategy({ highWaterMark: 1, size: size as unknown as QueuingStrategySize } as QueuingStrategyInit);
+
+    this.stream = new ReadableStream(underlyingSource) as ReadableStream<Uint8Array>;
     this.ee = new EventEmitter();
     this.on = (...args) => this.ee.on(...args);
     this.emit = (...args) => this.ee.emit(...args);

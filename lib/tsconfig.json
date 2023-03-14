@@ -10,7 +10,7 @@
     "forceConsistentCasingInFileNames": true,
     "inlineSourceMap": true,
     "isolatedModules": true,
-    "lib": ["dom", "dom.iterable", "es2020", "ES2022.Error"],
+    "lib": ["dom", "dom.iterable", "es2020", "ES2022.Error", "webworker"],
     "module": "es2020",
     "moduleResolution": "node16",
     "noImplicitAny": true,
@@ -26,6 +26,7 @@
     "strictNullChecks": true,
     "strictPropertyInitialization": false,
     "target": "es2020",
+    "types": [ "@types/wicg-file-system-access", "jest", "mocha"]
   },
   "include": ["src", "tests", "tdf3"],
   "exclude": ["**/node_modules"]
