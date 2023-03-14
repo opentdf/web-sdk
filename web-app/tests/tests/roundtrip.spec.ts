@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import fs from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { serve } from '../static-server.js';
 
@@ -98,9 +99,13 @@ test('Remote Source Streaming', async ({ page }) => {
       throw new Error();
     }
 
+    const dirname = new URL('.', import.meta.url).pathname;
+    const targetPath = `${dirname}/README.md.tdf`;
+    console.log(`cp ${cipherTextPath} ${targetPath}`);
+    fs.copyFileSync(cipherTextPath, targetPath);
+
     // Clear file selector and upload againg
-    await page.locator('#clearFile').click();
-    await loadFile(page, cipherTextPath);
+    await page.locator('#urlSelector').fill('http://localhost:8000/README.md.tdf');
     const plainDownloadPromise = page.waitForEvent('download');
     await page.locator('#tdfDecrypt').click();
     await page.locator('#decryptButton').click();
