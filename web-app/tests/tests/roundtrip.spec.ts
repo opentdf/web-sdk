@@ -27,19 +27,13 @@ const loadFile = async (page: Page, path: string) => {
   await page.locator('#fileSelector').setInputFiles(path);
 };
 
-let server;
-
-test.beforeAll(async ({ page }) => {
+test.beforeEach(async ({ page }) => {
   page.on('pageerror', (err) => {
     console.error(err);
   });
   page.on('console', (message) => {
     console.log(message);
   });
-  const dirname = new URL('.', import.meta.url).pathname;
-  const port = 8000;
-  const file = 'README.md';
-  server = serve(port, file);
 });
 
 test('login', async ({ page }) => {
@@ -85,31 +79,39 @@ for (const [name, { encryptSelector, decryptSelector }] of Object.entries(scenar
 }
 
 test('Remote Source Streaming', async ({ page }) => {
-  await authorize(page);
-  await page.locator('#urlSelector').fill('http://localhost:8000/README.md');
+  const port = 8000;
+  const file = 'README.md';
+  const server = await serve(port, file);
 
-  const downloadPromise = page.waitForEvent('download');
-  await page.locator('#zipEncrypt').click();
-  await page.locator('#encryptButton').click();
-
-  const download = await downloadPromise;
-  const cipherTextPath = await download.path();
-  expect(cipherTextPath).toBeTruthy();
-  if (!cipherTextPath) {
-    throw new Error();
+  try {
+    await authorize(page);
+    await page.locator('#urlSelector').fill('http://localhost:8000/README.md');
+  
+    const downloadPromise = page.waitForEvent('download');
+    await page.locator('#zipEncrypt').click();
+    await page.locator('#encryptButton').click();
+  
+    const download = await downloadPromise;
+    const cipherTextPath = await download.path();
+    expect(cipherTextPath).toBeTruthy();
+    if (!cipherTextPath) {
+      throw new Error();
+    }
+  
+    // Clear file selector and upload againg
+    await page.locator('#clearFile').click();
+    await loadFile(page, cipherTextPath);
+    const plainDownloadPromise = page.waitForEvent('download');
+    await page.locator('#tdfDecrypt').click();
+    await page.locator('#decryptButton').click();
+    const download2 = await plainDownloadPromise;
+    const plainTextPath = await download2.path();
+    if (!plainTextPath) {
+      throw new Error();
+    }
+    const text = await readFile(plainTextPath, 'utf8');
+    expect(text).toContain('git clone https://github.com/opentdf/opentdf.git');
+  } finally {
+    server.close()
   }
-
-  // Clear file selector and upload againg
-  await page.locator('#clearFile').click();
-  await loadFile(page, cipherTextPath);
-  const plainDownloadPromise = page.waitForEvent('download');
-  await page.locator('#tdfDecrypt').click();
-  await page.locator('#decryptButton').click();
-  const download2 = await plainDownloadPromise;
-  const plainTextPath = await download2.path();
-  if (!plainTextPath) {
-    throw new Error();
-  }
-  const text = await readFile(plainTextPath, 'utf8');
-  expect(text).toContain('git clone https://github.com/opentdf/opentdf.git');
 });
