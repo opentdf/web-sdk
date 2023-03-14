@@ -43,7 +43,7 @@ To try encrypting some of your own files via HTTP:
 ```
 cd web-app/tests
 npm i
-./run-server.js ~/my-test-documents
+./run-server.js ~/Downloads
 ```
 
 Then use the OR URL field in the sample app to load things up.

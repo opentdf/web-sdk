@@ -51,12 +51,18 @@ const scenarios = {
 
 for (const [name, { encryptSelector, decryptSelector }] of Object.entries(scenarios)) {
   test(name, async ({ page }) => {
+    page.on('download', (download) =>
+      download.path().then((r) => console.log(`Saves ${download.suggestedFilename()} as ${r}`))
+    );
+
     await authorize(page);
     await loadFile(page, 'README.md');
     const downloadPromise = page.waitForEvent('download');
     await page.locator(encryptSelector).click();
+    await page.locator('#fileSink').click();
     await page.locator('#encryptButton').click();
     const download = await downloadPromise;
+    expect(download.suggestedFilename()).toContain('README.md.');
     const cipherTextPath = await download.path();
     expect(cipherTextPath).toBeTruthy();
     if (!cipherTextPath) {
@@ -68,14 +74,18 @@ for (const [name, { encryptSelector, decryptSelector }] of Object.entries(scenar
     await loadFile(page, cipherTextPath);
     const plainDownloadPromise = page.waitForEvent('download');
     await page.locator(decryptSelector).click();
+    await page.locator('#fileSink').click();
     await page.locator('#decryptButton').click();
     const download2 = await plainDownloadPromise;
+    expect(download2.suggestedFilename()).toContain('.decrypted');
     const plainTextPath = await download2.path();
     if (!plainTextPath) {
       throw new Error();
     }
     const text = await readFile(plainTextPath, 'utf8');
-    expect(text).toContain('git clone https://github.com/opentdf/opentdf.git');
+    expect(text, `Looking for clone command in ${plainTextPath}`).toContain(
+      'git clone https://github.com/opentdf/opentdf.git'
+    );
   });
 }
 
@@ -88,10 +98,12 @@ test('Remote Source Streaming', async ({ page }) => {
 
     const downloadPromise = page.waitForEvent('download');
     await page.locator('#zipEncrypt').click();
+    await page.locator('#fileSink').click();
     await page.locator('#encryptButton').click();
 
     const download = await downloadPromise;
     const cipherTextPath = await download.path();
+    expect(download.suggestedFilename()).toContain('README.md.');
     expect(cipherTextPath).toBeTruthy();
     if (!cipherTextPath) {
       throw new Error();
@@ -106,12 +118,14 @@ test('Remote Source Streaming', async ({ page }) => {
     await page.locator('#urlSelector').fill('http://localhost:8000/README.md.tdf');
     const plainDownloadPromise = page.waitForEvent('download');
     await page.locator('#tdfDecrypt').click();
+    await page.locator('#fileSink').click();
     await page.locator('#decryptButton').click();
     const download2 = await plainDownloadPromise;
     const plainTextPath = await download2.path();
     if (!plainTextPath) {
       throw new Error();
     }
+    expect(download2.suggestedFilename()).toContain('.decrypted');
     const text = await readFile(plainTextPath, 'utf8');
     expect(text).toContain('git clone https://github.com/opentdf/opentdf.git');
   } finally {
