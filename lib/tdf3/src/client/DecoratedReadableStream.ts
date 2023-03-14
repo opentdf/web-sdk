@@ -32,8 +32,8 @@ export abstract class DecoratedReadableStream {
   manifest: Manifest;
   upsertResponse?: UpsertResponse;
 
-  constructor(underlyingSource: UnderlyingSource) {
-    this.stream = new ReadableStream(underlyingSource, { highWaterMark: 1 });
+  constructor(stream: ReadableStream<Uint8Array>) {
+    this.stream = stream;
     this.ee = new EventEmitter();
     this.on = (...args) => this.ee.on(...args);
     this.emit = (...args) => this.ee.emit(...args);

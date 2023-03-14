@@ -414,12 +414,14 @@ export class Client {
       return;
     }
 
-    return makeStream({
-      pull(controller: ReadableStreamDefaultController) {
-        controller.enqueue(htmlBuf);
-        controller.close();
-      },
-    });
+    return makeStream(
+      new ReadableStream({
+        pull(controller: ReadableStreamDefaultController) {
+          controller.enqueue(htmlBuf);
+          controller.close();
+        },
+      })
+    );
   }
 
   /**

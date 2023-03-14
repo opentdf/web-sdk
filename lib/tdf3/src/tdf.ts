@@ -1,7 +1,7 @@
-import { Buffer } from 'buffer';
-import { EventEmitter } from 'events';
 import axios from 'axios';
+import { Buffer } from 'buffer';
 import crc32 from 'buffer-crc32';
+import { EventEmitter } from 'events';
 import { v4 } from 'uuid';
 import { exportSPKI, importPKCS8, importX509 } from 'jose';
 import { AnyTdfStream, makeStream } from './client/tdf-stream.js';
@@ -106,6 +106,47 @@ type EntryInfo = {
   offset?: number;
   crcCounter?: number;
   fileByteCount?: number;
+};
+
+const toBuffer = (arr: Uint8Array) => {
+  return ArrayBuffer.isView(arr)
+    ? Buffer.from(arr.buffer, arr.byteOffset, arr.byteLength)
+    : Buffer.from(arr);
+};
+
+const normalizeChunksTo = (preferredSize: number) => {
+  const backingBuffer = new Uint8Array(preferredSize);
+  let offset = 0;
+  return new TransformStream<Uint8Array, Uint8Array>({
+    transform(chunk, controller) {
+      let nextSlice = chunk;
+      if (offset) {
+        const toTake = preferredSize - offset;
+        if (nextSlice.length < toTake) {
+          backingBuffer.set(nextSlice, offset);
+          offset += nextSlice.length;
+          return;
+        }
+        backingBuffer.set(nextSlice.subarray(0, toTake), offset);
+        controller.enqueue(backingBuffer);
+        nextSlice = nextSlice.subarray(toTake);
+        offset = 0;
+      }
+      // Cut chunk down to size
+      while (nextSlice.length >= preferredSize) {
+        controller.enqueue(nextSlice.subarray(0, preferredSize));
+        nextSlice = nextSlice.subarray(preferredSize);
+      }
+      backingBuffer.set(nextSlice);
+      offset = nextSlice.length;
+    },
+    flush(controller) {
+      if (!offset) {
+        return;
+      }
+      controller.enqueue(backingBuffer.subarray(0, offset));
+    },
+  });
 };
 
 export class TDF extends EventEmitter {
@@ -570,7 +611,7 @@ export class TDF extends EventEmitter {
       },
     ];
 
-    let currentBuffer = Buffer.alloc(0);
+    const SSD = this.segmentSizeDefault;
 
     let totalByteCount = 0;
     let crcCounter = 0;
@@ -616,7 +657,6 @@ export class TDF extends EventEmitter {
     // start writing the content
     entryInfos[0].filename = '0.payload';
     entryInfos[0].offset = totalByteCount;
-    const sourceReader = this.contentStream.getReader();
 
     /*
     TODO: Code duplication should be addressed
@@ -626,46 +666,21 @@ export class TDF extends EventEmitter {
     - LFS operations can have the write stream returned immediately after both .on('end') and .on('data') handlers
       have been defined, thus not requiring the handlers to be wrapped in a promise.
     */
-    const underlingSource = {
-      start: (controller: ReadableStreamDefaultController) => {
-        controller.enqueue(getHeader(entryInfos[0].filename));
-        _countChunk(getHeader(entryInfos[0].filename));
-        crcCounter = 0;
-        fileByteCount = 0;
-      },
+    const cipherTransformer = new TransformStream<Uint8Array, Uint8Array>(
+      {
+        start(controller) {
+          controller.enqueue(getHeader(entryInfos[0].filename));
+          _countChunk(getHeader(entryInfos[0].filename));
+          crcCounter = 0;
+          fileByteCount = 0;
+        },
 
-      pull: async (controller: ReadableStreamDefaultController) => {
-        let isDone;
-
-        while (currentBuffer.length < segmentSizeDefault && !isDone) {
-          const { value, done } = await sourceReader.read();
-          isDone = done;
-          if (value) {
-            currentBuffer = Buffer.concat([currentBuffer, value]);
-          }
-        }
-
-        while (
-          currentBuffer.length >= segmentSizeDefault &&
-          !!controller.desiredSize &&
-          controller.desiredSize > 0
-        ) {
-          const segment = currentBuffer.slice(0, segmentSizeDefault);
-          const encryptedSegment = await _encryptAndCountSegment(segment);
+        async transform(chunk, controller) {
+          const encryptedSegment = await _encryptAndCountSegment(toBuffer(chunk));
           controller.enqueue(encryptedSegment);
+        },
 
-          currentBuffer = currentBuffer.slice(segmentSizeDefault);
-        }
-
-        const isFinalChunkLeft = isDone && currentBuffer.length;
-
-        if (isFinalChunkLeft) {
-          const encryptedSegment = await _encryptAndCountSegment(currentBuffer);
-          controller.enqueue(encryptedSegment);
-          currentBuffer = Buffer.alloc(0);
-        }
-
-        if (isDone && currentBuffer.length === 0) {
+        async flush(controller) {
           entryInfos[0].crcCounter = crcCounter;
           entryInfos[0].fileByteCount = fileByteCount;
           const payloadDataDescriptor = zipWriter.writeDataDescriptor(crcCounter, fileByteCount);
@@ -734,22 +749,27 @@ export class TDF extends EventEmitter {
           );
           controller.enqueue(finalChunk);
           _countChunk(finalChunk);
-
-          controller.close();
-        }
+        },
       },
-    };
-
-    const plaintextStream = makeStream(underlingSource);
+      new ByteLengthQueuingStrategy({
+        highWaterMark: SSD,
+      }),
+      new ByteLengthQueuingStrategy({
+        highWaterMark: SSD,
+      })
+    );
+    const ciphertextStream = makeStream(
+      this.contentStream.pipeThrough(normalizeChunksTo(SSD)).pipeThrough(cipherTransformer)
+    );
 
     if (upsertResponse) {
-      plaintextStream.upsertResponse = upsertResponse;
-      plaintextStream.tdfSize = totalByteCount;
-      plaintextStream.KEK = payloadKey ? null : kek.payload.asBuffer().toString('base64');
-      plaintextStream.algorithm = manifest.encryptionInformation.method.algorithm;
+      ciphertextStream.upsertResponse = upsertResponse;
+      ciphertextStream.tdfSize = totalByteCount;
+      ciphertextStream.KEK = payloadKey ? null : kek.payload.asBuffer().toString('base64');
+      ciphertextStream.algorithm = manifest.encryptionInformation.method.algorithm;
     }
 
-    return plaintextStream;
+    return ciphertextStream;
 
     // nested helper fn's
     function getHeader(filename: string) {
@@ -942,59 +962,62 @@ export class TDF extends EventEmitter {
 
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const that = this;
-    const outputStream = makeStream({
-      async pull(controller: ReadableStreamDefaultController) {
-        while (
-          segments.length &&
-          Number.isInteger(controller.desiredSize) &&
-          (!controller.desiredSize || controller.desiredSize > 0)
-        ) {
-          const segment = segments.shift();
-          if (!segment) {
-            // Popped past the end
-            break;
-          }
-          const encryptedSegmentSize = segment.encryptedSegmentSize || encryptedSegmentSizeDefault;
-          const encryptedChunk = await zipReader.getPayloadSegment(
-            centralDirectory,
-            '0.payload',
-            encryptedOffset,
-            encryptedSegmentSize
-          );
-          encryptedOffset += encryptedSegmentSize;
-
-          // use the segment alg type if provided, otherwise use the root sig alg
-          const segmentIntegrityAlgorithmType =
-            that.manifest?.encryptionInformation.integrityInformation.segmentHashAlg;
-          const segmentHashStr = await that.getSignature(
-            reconstructedKeyBinary,
-            Binary.fromBuffer(encryptedChunk),
-            segmentIntegrityAlgorithmType || integrityAlgorithmType
-          );
-
-          if (segment.hash !== base64.encode(segmentHashStr)) {
-            throw new ManifestIntegrityError('Failed integrity check on segment hash');
-          }
-
-          let decryptedSegment;
-
-          try {
-            decryptedSegment = await cipher.decrypt(encryptedChunk, reconstructedKeyBinary);
-          } catch (e) {
-            throw new TdfDecryptError(
-              'Error decrypting payload. This suggests the key used to decrypt the payload is not correct.',
-              e
+    const outputStream = makeStream(
+      new ReadableStream({
+        async pull(controller: ReadableStreamDefaultController) {
+          while (
+            segments.length &&
+            Number.isInteger(controller.desiredSize) &&
+            (!controller.desiredSize || controller.desiredSize > 0)
+          ) {
+            const segment = segments.shift();
+            if (!segment) {
+              // Popped past the end
+              break;
+            }
+            const encryptedSegmentSize =
+              segment.encryptedSegmentSize || encryptedSegmentSizeDefault;
+            const encryptedChunk = await zipReader.getPayloadSegment(
+              centralDirectory,
+              '0.payload',
+              encryptedOffset,
+              encryptedSegmentSize
             );
+            encryptedOffset += encryptedSegmentSize;
+
+            // use the segment alg type if provided, otherwise use the root sig alg
+            const segmentIntegrityAlgorithmType =
+              that.manifest?.encryptionInformation.integrityInformation.segmentHashAlg;
+            const segmentHashStr = await that.getSignature(
+              reconstructedKeyBinary,
+              Binary.fromBuffer(encryptedChunk),
+              segmentIntegrityAlgorithmType || integrityAlgorithmType
+            );
+
+            if (segment.hash !== base64.encode(segmentHashStr)) {
+              throw new ManifestIntegrityError('Failed integrity check on segment hash');
+            }
+
+            let decryptedSegment;
+
+            try {
+              decryptedSegment = await cipher.decrypt(encryptedChunk, reconstructedKeyBinary);
+            } catch (e) {
+              throw new TdfDecryptError(
+                'Error decrypting payload. This suggests the key used to decrypt the payload is not correct.',
+                e
+              );
+            }
+
+            controller.enqueue(decryptedSegment.payload.asBuffer());
           }
 
-          controller.enqueue(decryptedSegment.payload.asBuffer());
-        }
-
-        if (segments.length === 0) {
-          controller.close();
-        }
-      },
-    });
+          if (segments.length === 0) {
+            controller.close();
+          }
+        },
+      })
+    );
 
     outputStream.manifest = this.manifest;
     if (outputStream.emit) {

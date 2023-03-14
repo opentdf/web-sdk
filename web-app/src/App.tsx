@@ -41,6 +41,7 @@ function saver(blob: Blob, name: string) {
 }
 
 type Containers = 'html' | 'tdf' | 'nano';
+type CurrentDataController = AbortController | undefined;
 type InputSource = { file: File } | { url: URL } | undefined;
 
 function fileNameFor(inputSource: InputSource) {
@@ -60,6 +61,7 @@ function App() {
   const [authState, setAuthState] = useState<SessionInformation>({ sessionState: 'start' });
   const [decryptContainerType, setDecryptContainerType] = useState<Containers>('nano');
   const [encryptContainerType, setEncryptContainerType] = useState<Containers>('nano');
+  const [streamController, setStreamController] = useState<CurrentDataController>();
 
   const handleContainerFormatRadioChange =
     (handler: typeof setDecryptContainerType) => (e: ChangeEvent<HTMLInputElement>) => {
@@ -130,7 +132,9 @@ function App() {
         if ('file' in inputSource) {
           source = inputSource.file.stream() as unknown as ReadableStream<Uint8Array>;
         } else {
-          const fr = await fetch(inputSource.url);
+          const sc = new AbortController();
+          setStreamController(sc);
+          const fr = await fetch(inputSource.url, { cache: 'no-store', signal: sc.signal });
           if (!fr.ok) {
             throw Error(
               `Error on fetch [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`
@@ -154,6 +158,7 @@ function App() {
         } catch (e) {
           console.error('Encrypt Failed', e);
         }
+        setStreamController(undefined);
         break;
       }
       case 'tdf': {
@@ -165,7 +170,9 @@ function App() {
         if ('file' in inputSource) {
           source = inputSource.file.stream() as unknown as ReadableStream<Uint8Array>;
         } else {
-          const fr = await fetch(inputSource.url);
+          const sc = new AbortController();
+          setStreamController(sc);
+          const fr = await fetch(inputSource.url, { cache: 'no-store', signal: sc.signal });
           if (!fr.ok) {
             throw Error(
               `Error on fetch [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`
@@ -187,6 +194,7 @@ function App() {
         } catch (e) {
           console.error('Encrypt Failed', e);
         }
+        setStreamController(undefined);
         break;
       }
     }
@@ -303,7 +311,23 @@ function App() {
             </>
           )}
         </div>
-        {inputSource && (
+        {streamController && (
+          <div className="action">
+            <button
+              id="cancelStream"
+              onClick={async () => {
+                console.log(`Cancelling !!!!`);
+                const p = streamController.abort();
+                setStreamController(undefined);
+                await p;
+              }}
+              type="button"
+            >
+              CANCEL
+            </button>
+          </div>
+        )}
+        {inputSource && !streamController && (
           <div className="action">
             <form className="column">
               <h2>Encrypt</h2>

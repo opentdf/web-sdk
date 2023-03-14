@@ -20,23 +20,23 @@
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.29.2",
+    "@playwright/test": "^1.31.2",
     "@rollup/plugin-inject": "^5.0.3",
-    "@types/react": "^18.0.27",
-    "@types/react-dom": "^18.0.10",
-    "@typescript-eslint/eslint-plugin": "^5.48.2",
-    "@typescript-eslint/parser": "^5.48.2",
-    "@vitejs/plugin-react": "^3.0.1",
-    "@vitest/ui": "^0.27.2",
+    "@types/react": "^18.0.28",
+    "@types/react-dom": "^18.0.11",
+    "@typescript-eslint/eslint-plugin": "^5.55.0",
+    "@typescript-eslint/parser": "^5.55.0",
+    "@vitejs/plugin-react": "^3.1.0",
+    "@vitest/ui": "^0.29.2",
     "buffer": "^6.0.3",
-    "eslint": "^8.32.0",
-    "eslint-config-prettier": "^8.6.0",
+    "eslint": "^8.36.0",
+    "eslint-config-prettier": "^8.7.0",
     "eslint-plugin-prettier": "^4.2.1",
     "license-checker": "^25.0.1",
-    "playwright": "^1.29.2",
-    "prettier": "^2.8.3",
-    "typescript": "^4.9.4",
-    "vite": "^4.0.4",
-    "vitest": "^0.27.2"
+    "playwright": "^1.31.2",
+    "prettier": "^2.8.4",
+    "typescript": "^4.9.5",
+    "vite": "^4.1.4",
+    "vitest": "^0.29.2"
   }
 }
