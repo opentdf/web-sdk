@@ -131,6 +131,11 @@ function App() {
           source = inputSource.file.stream() as unknown as ReadableStream<Uint8Array>;
         } else {
           const fr = await fetch(inputSource.url);
+          if (!fr.ok) {
+            throw Error(
+              `Error on fetch [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`
+            );
+          }
           if (!fr.body) {
             throw Error(
               `Failed to fetch input [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`
@@ -161,6 +166,11 @@ function App() {
           source = inputSource.file.stream() as unknown as ReadableStream<Uint8Array>;
         } else {
           const fr = await fetch(inputSource.url);
+          if (!fr.ok) {
+            throw Error(
+              `Error on fetch [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`
+            );
+          }
           if (!fr.body) {
             throw Error(
               `Failed to fetch input [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`

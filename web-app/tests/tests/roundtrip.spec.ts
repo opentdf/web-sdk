@@ -80,9 +80,7 @@ for (const [name, { encryptSelector, decryptSelector }] of Object.entries(scenar
 }
 
 test('Remote Source Streaming', async ({ page }) => {
-  const port = 8000;
-  const file = 'README.md';
-  const server = await serve(file, port);
+  const server = await serve('.', 8000);
 
   try {
     await authorize(page);
@@ -100,7 +98,7 @@ test('Remote Source Streaming', async ({ page }) => {
     }
 
     const dirname = new URL('.', import.meta.url).pathname;
-    const targetPath = `${dirname}/README.md.tdf`;
+    const targetPath = `${dirname}/../README.md.tdf`;
     console.log(`cp ${cipherTextPath} ${targetPath}`);
     fs.copyFileSync(cipherTextPath, targetPath);
 
