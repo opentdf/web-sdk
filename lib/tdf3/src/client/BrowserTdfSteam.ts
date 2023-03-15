@@ -204,10 +204,10 @@ export class BrowserTdfStream extends DecoratedReadableStream {
       readableStrategy: { highWaterMark: 1 },
     });
 
-    // if (WritableStream) {
-    //   console.log('Using pipe() method');
-    //   return this.stream.pipeTo(fileStream);
-    // }
+    if (WritableStream) {
+      console.log('Using pipe() method');
+      return this.stream.pipeTo(fileStream);
+    }
 
     // Write (pipe) manually
     const reader = this.stream.getReader();

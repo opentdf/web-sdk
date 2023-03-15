@@ -1,5 +1,5 @@
-import axios, { AxiosResponse } from 'axios';
-import axiosRetry from 'axios-retry';
+// import axios, { AxiosResponse } from 'axios';
+// import axiosRetry from 'axios-retry';
 // import { HttpsAgent } from 'agentkeepalive';
 import { Buffer } from 'buffer';
 import { createReadStream, readFile, statSync } from 'fs';
@@ -17,7 +17,7 @@ import { type AnyTdfStream, isAnyTdfStream } from '../client/tdf-stream.js';
 // axios.defaults.timeout = 10 * 60 * 1000; // 10 min
 // axios.defaults.httpsAgent = keepaliveAgent;
 // @ts-ignore
-axiosRetry(axios, { retries: 3 }); // Retries all idempotent requests (GET, HEAD, OPTIONS, PUT, DELETE)
+// axiosRetry(axios, { retries: 3 }); // Retries all idempotent requests (GET, HEAD, OPTIONS, PUT, DELETE)
 
 /**
  * Read data from a seekable stream.
@@ -90,21 +90,39 @@ export const fromNodeFile = (filePath: string): Chunker => {
 async function getRemoteChunk(url: string, range?: string): Promise<Uint8Array> {
   console.log('Calling getRemoteChunk(): ', range);
   try {
-    const res: AxiosResponse<Uint8Array> = await axios.get(url, {
+
+    const res = await fetch(url, {
       ...(range && {
-        headers: {
-          Range: `bytes=${range}`,
-        },
+          headers: {
+            Range: `bytes=${range}`,
+          },
       }),
-      responseType: 'arraybuffer',
-      maxRedirects: 0,
-    });
-    if (!res.data) {
+    })
+    if(!res.ok) {
       throw new Error(
         'Unexpected response type: Server should have responded with an ArrayBuffer.'
       );
     }
-    return res.data;
+
+    // @ts-ignore
+    return res.arrayBuffer();
+    // const res: AxiosResponse<Uint8Array> = await axios.get(url, {
+    //   ...(range && {
+    //     headers: {
+    //       Range: `bytes=${range}`,
+    //     },
+    //   }),
+    //   responseType: 'arraybuffer',
+    //   maxRedirects: 0,
+    // });
+
+
+    // if (!res.data) {
+    //   throw new Error(
+    //     'Unexpected response type: Server should have responded with an ArrayBuffer.'
+    //   );
+    // }
+    // return res.data;
   } catch (e) {
     if (e && e.response && e.response.status === 416) {
       console.log('Warning: Range not satisfiable');
@@ -129,7 +147,7 @@ export const fromUrl = async (location: string): Promise<Chunker> => {
       // rangeHeader += `-${(byteEnd ? byteEnd - 1 : 0)}`;
       rangeHeader += `-${(byteEnd || 0) - 1}`;
     }
-    return await getRemoteChunk(location, rangeHeader);
+    return getRemoteChunk(location, rangeHeader);
   };
 };
 

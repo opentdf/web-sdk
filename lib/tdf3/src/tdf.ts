@@ -897,7 +897,8 @@ export class TDF extends EventEmitter {
       throw new Error('Missing manifest data');
     }
 
-    const { segments } = this.manifest.encryptionInformation.integrityInformation;
+    let { segments } = this.manifest.encryptionInformation.integrityInformation;
+    console.log('Segments: ', JSON.stringify(segments));
     const unwrapResult = await this.unwrapKey(this.manifest);
     let { reconstructedKeyBinary } = unwrapResult;
     const { metadata } = unwrapResult;
@@ -942,9 +943,10 @@ export class TDF extends EventEmitter {
     let encryptedOffset = 0;
 
     // eslint-disable-next-line @typescript-eslint/no-this-alias
-    const that = this;
-    const outputStream = makeStream({
-      async pull(controller: ReadableStreamDefaultController) {
+    // const that = this;
+
+    const underlyingSource = {
+      pull : async (controller: ReadableStreamDefaultController) => {
         if (
           segments.length &&
           Number.isInteger(controller.desiredSize) &&
@@ -954,8 +956,6 @@ export class TDF extends EventEmitter {
           const segment = segments.shift();
           console.log('segments length: ', segments?.length);
           if (segment) {
-            // Popped past the end
-            // break;
             const encryptedSegmentSize = segment.encryptedSegmentSize || encryptedSegmentSizeDefault;
             const encryptedChunk = await zipReader.getPayloadSegment(
               centralDirectory,
@@ -967,8 +967,8 @@ export class TDF extends EventEmitter {
 
             // use the segment alg type if provided, otherwise use the root sig alg
             const segmentIntegrityAlgorithmType =
-              that.manifest?.encryptionInformation.integrityInformation.segmentHashAlg;
-            const segmentHashStr = await that.getSignature(
+              this.manifest?.encryptionInformation.integrityInformation.segmentHashAlg;
+            const segmentHashStr = await this.getSignature(
               reconstructedKeyBinary,
               Binary.fromBuffer(encryptedChunk),
               segmentIntegrityAlgorithmType || integrityAlgorithmType
@@ -1004,14 +1004,15 @@ export class TDF extends EventEmitter {
             // controller.close();
 
           }
-
         }
 
         if (segments.length === 0) {
           controller.close();
         }
       },
-    });
+    };
+
+    const outputStream = makeStream(underlyingSource);
 
     if (rcaParams && rcaParams.wu) {
       let res = await axios.head(rcaParams.wu);
