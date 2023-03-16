@@ -288,7 +288,9 @@ describe('chunkers', () => {
     it('negative two', async () => {
       const { fromUrl } = await import('../../../tdf3/src/utils/chunkers.js');
       try {
-        await (await fromUrl(urlFor(path)))(-2, -1);
+        await (
+          await fromUrl(urlFor(path))
+        )(-2, -1);
         expect.fail();
       } catch (e) {
         expect(e).to.be.an('error');
@@ -297,7 +299,9 @@ describe('chunkers', () => {
     it('unsatisiable', async () => {
       const { fromUrl } = await import('../../../tdf3/src/utils/chunkers.js');
       try {
-        await (await fromUrl(urlFor(path)))(12, 5);
+        await (
+          await fromUrl(urlFor(path))
+        )(12, 5);
         expect.fail();
       } catch (e) {
         expect(e.message).to.include('416');
