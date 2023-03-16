@@ -1,21 +1,6 @@
-// import axios, { AxiosResponse } from 'axios';
 import { Buffer } from 'buffer';
 import { createReadStream, readFile, statSync } from 'fs';
 import { type AnyTdfStream, isAnyTdfStream } from '../client/tdf-stream.js';
-
-// const keepaliveAgent = new HttpsAgent({
-//   // keepAlive: true,
-//   // timeout: 10 * 60 * 1000,
-//   scheduling: 'fifo',
-//   // maxSockets: 10
-// });
-
-// const retry = axiosRetry.default;
-
-// axios.defaults.timeout = 10 * 60 * 1000; // 10 min
-// axios.defaults.httpsAgent = keepaliveAgent;
-// @ts-ignore
-// axiosRetry(axios, { retries: 3 }); // Retries all idempotent requests (GET, HEAD, OPTIONS, PUT, DELETE)
 
 /**
  * Read data from a seekable stream.
