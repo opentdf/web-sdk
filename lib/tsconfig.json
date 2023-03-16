@@ -10,7 +10,7 @@
     "forceConsistentCasingInFileNames": true,
     "inlineSourceMap": true,
     "isolatedModules": true,
-    "lib": ["dom", "dom.iterable", "es2020", "ES2022.Error", "webworker"],
+    "lib": ["dom", "dom.iterable", "es2020", "ES2022.Error"],
     "module": "es2020",
     "moduleResolution": "node16",
     "noImplicitAny": true,
