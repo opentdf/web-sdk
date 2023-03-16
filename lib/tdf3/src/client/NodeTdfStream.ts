@@ -1,5 +1,4 @@
 import { createWriteStream } from 'node:fs';
-import { Writable } from 'node:stream';
 import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 
 export class NodeTdfStream extends DecoratedReadableStream {
