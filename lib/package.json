@@ -73,10 +73,8 @@
     "events": "^3.3.0",
     "jose": "^4.11.2",
     "jsonschema": "^1.4.1",
-    "pump": "^3.0.0",
     "streamsaver": "^2.0.6",
     "uuid": "~9.0.0",
-    "web-streams-node": "^0.4.0",
     "web-streams-polyfill": "^3.2.1"
   },
   "devDependencies": {
@@ -87,7 +85,6 @@
     "@types/jsonwebtoken": "~9.0.1",
     "@types/mocha": "~10.0.1",
     "@types/node": "^18.11.18",
-    "@types/pump": "^1.1.1",
     "@types/send": "^0.17.1",
     "@types/sinon": "~10.0.13",
     "@types/streamsaver": "^2.0.1",
