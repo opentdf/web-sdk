@@ -18,7 +18,6 @@ export class BrowserTdfStream extends DecoratedReadableStream {
     });
 
     if (WritableStream) {
-      console.log('Using pipe() method');
       return this.stream.pipeTo(fileStream);
     }
 
@@ -26,7 +25,6 @@ export class BrowserTdfStream extends DecoratedReadableStream {
     const reader = this.stream.getReader();
     let writer = fileStream.getWriter();
     const pump = async (): Promise<void> => {
-      console.log('calling pull');
       let res = await reader.read();
 
       if(res.done) {
@@ -34,7 +32,6 @@ export class BrowserTdfStream extends DecoratedReadableStream {
       }
       else {
         await writer.write(res.value);
-        console.log('file system write complete');
         return pump();
       }
     }
