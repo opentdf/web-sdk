@@ -1,14 +1,16 @@
 import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 import streamSaver from 'streamsaver';
-// import { fileSave } from 'browser-fs-access';
+import { fileSave } from 'browser-fs-access';
 import { isFirefox } from '../../../src/utils.js';
 
 export class BrowserTdfStream extends DecoratedReadableStream {
   override async toFile(filepath = 'download.tdf'): Promise<void> {
     if (isFirefox()) {
-      let ponyfill = await import('web-streams-polyfill');
-      // @ts-ignore
-      streamSaver.WritableStream = ponyfill.WritableStream;
+      await fileSave(new Response(this.stream), {
+        fileName: filepath,
+        extensions: [`.${filepath.split('.').pop()}`],
+      });
+      return;
     }
 
     const fileStream = streamSaver.createWriteStream(filepath, {
