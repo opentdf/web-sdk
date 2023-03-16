@@ -75,12 +75,13 @@
     "jsonschema": "^1.4.1",
     "streamsaver": "^2.0.6",
     "uuid": "~9.0.0",
-    "web-streams-node": "^0.4.0"
+    "web-streams-polyfill": "^3.2.1"
   },
   "devDependencies": {
     "@esm-bundle/chai": "~4.3.4-fix.0",
     "@types/buffer-crc32": "^0.2.2",
     "@types/chai": "~4.3.4",
+    "@types/jest": "^29.4.0",
     "@types/jsonwebtoken": "~9.0.1",
     "@types/mocha": "~10.0.1",
     "@types/node": "^18.11.18",
@@ -88,6 +89,7 @@
     "@types/sinon": "~10.0.13",
     "@types/streamsaver": "^2.0.1",
     "@types/uuid": "~9.0.0",
+    "@types/wicg-file-system-access": "^2020.9.5",
     "@typescript-eslint/eslint-plugin": "^5.48.2",
     "@typescript-eslint/parser": "^5.48.2",
     "@web/dev-server-esbuild": "^0.3.3",

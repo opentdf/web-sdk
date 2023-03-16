@@ -222,7 +222,7 @@ export class TDF extends EventEmitter {
 
   // Extracts the TDF's manifest
   static async getManifestFromRemoteTDF(url: string): Promise<Manifest> {
-    const zipReader = new ZipReader(fromUrl(url));
+    const zipReader = new ZipReader(await fromUrl(url));
 
     const centralDirectory = await zipReader.getCentralDirectory();
     return await zipReader.getManifest(centralDirectory, '0.manifest.json');
@@ -941,60 +941,72 @@ export class TDF extends EventEmitter {
     let encryptedOffset = 0;
 
     // eslint-disable-next-line @typescript-eslint/no-this-alias
-    const that = this;
-    const outputStream = makeStream({
-      async pull(controller: ReadableStreamDefaultController) {
-        while (
-          segments.length &&
-          Number.isInteger(controller.desiredSize) &&
-          (!controller.desiredSize || controller.desiredSize > 0)
-        ) {
-          const segment = segments.shift();
-          if (!segment) {
-            // Popped past the end
-            break;
-          }
-          const encryptedSegmentSize = segment.encryptedSegmentSize || encryptedSegmentSizeDefault;
-          const encryptedChunk = await zipReader.getPayloadSegment(
-            centralDirectory,
-            '0.payload',
-            encryptedOffset,
-            encryptedSegmentSize
-          );
-          encryptedOffset += encryptedSegmentSize;
+    // const that = this;
 
-          // use the segment alg type if provided, otherwise use the root sig alg
-          const segmentIntegrityAlgorithmType =
-            that.manifest?.encryptionInformation.integrityInformation.segmentHashAlg;
-          const segmentHashStr = await that.getSignature(
-            reconstructedKeyBinary,
-            Binary.fromBuffer(encryptedChunk),
-            segmentIntegrityAlgorithmType || integrityAlgorithmType
-          );
-
-          if (segment.hash !== base64.encode(segmentHashStr)) {
-            throw new ManifestIntegrityError('Failed integrity check on segment hash');
-          }
-
-          let decryptedSegment;
-
-          try {
-            decryptedSegment = await cipher.decrypt(encryptedChunk, reconstructedKeyBinary);
-          } catch (e) {
-            throw new TdfDecryptError(
-              'Error decrypting payload. This suggests the key used to decrypt the payload is not correct.',
-              e
-            );
-          }
-
-          controller.enqueue(decryptedSegment.payload.asBuffer());
-        }
-
+    const underlyingSource = {
+      pull: async (controller: ReadableStreamDefaultController) => {
         if (segments.length === 0) {
           controller.close();
+          return;
         }
+
+        const segment = segments.shift();
+        if (!segment) {
+          throw new Error('Shifted past end of segments array');
+        }
+        if (!this.manifest) {
+          throw new Error('Missing manifest information');
+        }
+        const encryptedSegmentSize = segment.encryptedSegmentSize || encryptedSegmentSizeDefault;
+        const encryptedChunk = await zipReader.getPayloadSegment(
+          centralDirectory,
+          '0.payload',
+          encryptedOffset,
+          encryptedSegmentSize
+        );
+        encryptedOffset += encryptedSegmentSize;
+
+        // use the segment alg type if provided, otherwise use the root sig alg
+        const segmentIntegrityAlgorithmType =
+          this.manifest.encryptionInformation.integrityInformation.segmentHashAlg;
+        const segmentHashStr = await this.getSignature(
+          reconstructedKeyBinary,
+          Binary.fromBuffer(encryptedChunk),
+          segmentIntegrityAlgorithmType || integrityAlgorithmType
+        );
+
+        if (segment.hash !== base64.encode(segmentHashStr)) {
+          throw new ManifestIntegrityError('Failed integrity check on segment hash');
+        }
+
+        let decryptedSegment;
+
+        try {
+          decryptedSegment = await cipher.decrypt(encryptedChunk, reconstructedKeyBinary);
+        } catch (e) {
+          throw new TdfDecryptError(
+            'Error decrypting payload. This suggests the key used to decrypt the payload is not correct.',
+            e
+          );
+        }
+
+        controller.enqueue(decryptedSegment.payload.asBuffer());
       },
-    });
+    };
+
+    const outputStream = makeStream(underlyingSource);
+
+    if (rcaParams && rcaParams.wu) {
+      const res = await axios.head(rcaParams.wu);
+
+      const length = parseInt(res?.headers?.['content-length'] as string, 10);
+
+      if (length) {
+        outputStream.fileSize = length;
+      } else {
+        console.log('Unable to retrieve total fileSize');
+      }
+    }
 
     outputStream.manifest = this.manifest;
     if (outputStream.emit) {

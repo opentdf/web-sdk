@@ -23,6 +23,7 @@ export abstract class DecoratedReadableStream {
   algorithm: string;
   policyUuid?: string;
   tdfSize: number;
+  fileSize: number | undefined;
   stream: ReadableStream<Uint8Array>;
   ee: EventEmitter;
   on: EventEmitter['on'];
@@ -33,7 +34,9 @@ export abstract class DecoratedReadableStream {
   upsertResponse?: UpsertResponse;
 
   constructor(underlyingSource: UnderlyingSource) {
-    this.stream = new ReadableStream(underlyingSource, { highWaterMark: 1 });
+    this.stream = new ReadableStream(underlyingSource, {
+      highWaterMark: 1,
+    }) as ReadableStream<Uint8Array>;
     this.ee = new EventEmitter();
     this.on = (...args) => this.ee.on(...args);
     this.emit = (...args) => this.ee.emit(...args);

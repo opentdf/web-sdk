@@ -71,32 +71,32 @@ export const fromNodeFile = (filePath: string): Chunker => {
   };
 };
 
-export const fromUrl = (location: string): Chunker => {
-  async function getRemoteChunk(url: string, range?: string): Promise<Uint8Array> {
-    try {
-      const res: AxiosResponse<Uint8Array> = await axios.get(url, {
-        ...(range && {
-          headers: {
-            Range: `bytes=${range}`,
-          },
-        }),
-        responseType: 'arraybuffer',
-      });
-      if (!res.data) {
-        throw new Error(
-          'Unexpected response type: Server should have responded with an ArrayBuffer.'
-        );
-      }
-      return res.data;
-    } catch (e) {
-      if (e && e.response && e.response.status === 416) {
-        console.log('Warning: Range not satisfiable');
-      }
-      throw e;
+async function getRemoteChunk(url: string, range?: string): Promise<Uint8Array> {
+  try {
+    const res: AxiosResponse<Uint8Array> = await axios.get(url, {
+      ...(range && {
+        headers: {
+          Range: `bytes=${range}`,
+        },
+      }),
+      responseType: 'arraybuffer',
+    });
+    if (!res.data) {
+      throw new Error(
+        'Unexpected response type: Server should have responded with an ArrayBuffer.'
+      );
     }
+    return res.data;
+  } catch (e) {
+    if (e && e.response && e.response.status === 416) {
+      console.log('Warning: Range not satisfiable');
+    }
+    throw e;
   }
+}
 
-  return (byteStart?: number, byteEnd?: number): Promise<Uint8Array> => {
+export const fromUrl = async (location: string): Promise<Chunker> => {
+  return async (byteStart?: number, byteEnd?: number): Promise<Uint8Array> => {
     if (byteStart === undefined) {
       return getRemoteChunk(location);
     }
@@ -107,7 +107,7 @@ export const fromUrl = (location: string): Chunker => {
     } else if (byteEnd) {
       rangeHeader += `-${byteEnd - 1}`;
     }
-    return getRemoteChunk(location, rangeHeader);
+    return await getRemoteChunk(location, rangeHeader);
   };
 };
 
