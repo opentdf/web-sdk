@@ -896,7 +896,7 @@ export class TDF extends EventEmitter {
       throw new Error('Missing manifest data');
     }
 
-    let { segments } = this.manifest.encryptionInformation.integrityInformation;
+    const { segments } = this.manifest.encryptionInformation.integrityInformation;
     const unwrapResult = await this.unwrapKey(this.manifest);
     let { reconstructedKeyBinary } = unwrapResult;
     const { metadata } = unwrapResult;
@@ -955,7 +955,11 @@ export class TDF extends EventEmitter {
         if (!segment) {
           throw new Error('Shifted past end of segments array');
         }
-        const encryptedSegmentSize = segment?.encryptedSegmentSize || encryptedSegmentSizeDefault;
+        if (!this.manifest) {
+          throw new Error('Missing manifest information');
+
+        }
+        const encryptedSegmentSize = segment.encryptedSegmentSize || encryptedSegmentSizeDefault;
         const encryptedChunk = await zipReader.getPayloadSegment(
           centralDirectory,
           '0.payload',
@@ -966,14 +970,14 @@ export class TDF extends EventEmitter {
 
         // use the segment alg type if provided, otherwise use the root sig alg
         const segmentIntegrityAlgorithmType =
-          this.manifest?.encryptionInformation.integrityInformation.segmentHashAlg;
+          this.manifest.encryptionInformation.integrityInformation.segmentHashAlg;
         const segmentHashStr = await this.getSignature(
           reconstructedKeyBinary,
           Binary.fromBuffer(encryptedChunk),
           segmentIntegrityAlgorithmType || integrityAlgorithmType
         );
 
-        if (segment?.hash !== base64.encode(segmentHashStr)) {
+        if (segment.hash !== base64.encode(segmentHashStr)) {
           throw new ManifestIntegrityError('Failed integrity check on segment hash');
         }
 
@@ -995,9 +999,16 @@ export class TDF extends EventEmitter {
     const outputStream = makeStream(underlyingSource);
 
     if (rcaParams && rcaParams.wu) {
-      let res = await axios.head(rcaParams.wu);
+      const res = await axios.head(rcaParams.wu);
 
-      outputStream.fileSize = parseInt(res?.headers?.['content-length'] as string, 10) || undefined;
+      const length = parseInt(res?.headers?.['content-length'] as string, 10);
+
+      if (length) {
+        outputStream.fileSize = length;
+      }
+      else {
+        console.log('Unable to retrieve total fileSize');
+      }
     }
 
     outputStream.manifest = this.manifest;

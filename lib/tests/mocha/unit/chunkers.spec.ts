@@ -281,16 +281,14 @@ describe('chunkers', () => {
     });
     it('negative one', async () => {
       const { fromUrl } = await import('../../../tdf3/src/utils/chunkers.js');
-      // @ts-ignore
-      const twofiftyfive: Uint8Array = await fromUrl(urlFor(path))(-1);
+      const twofiftyfive: Uint8Array = await (await fromUrl(urlFor(path)))(-1);
       expect(twofiftyfive).to.deep.equal(b.slice(255));
       expect(Array.from(twofiftyfive)).to.deep.equal([255]);
     });
     it('negative two', async () => {
       const { fromUrl } = await import('../../../tdf3/src/utils/chunkers.js');
       try {
-        // @ts-ignore
-        await fromUrl(urlFor(path))(-2, -1);
+        (await fromUrl(urlFor(path)))(-2, -1);
         expect.fail();
       } catch (e) {
         expect(e).to.be.an('error');
@@ -299,8 +297,7 @@ describe('chunkers', () => {
     it('unsatisiable', async () => {
       const { fromUrl } = await import('../../../tdf3/src/utils/chunkers.js');
       try {
-        // @ts-ignore
-        await fromUrl(urlFor(path))(12, 5);
+        (await fromUrl(urlFor(path)))(12, 5);
         expect.fail();
       } catch (e) {
         expect(e.message).to.include('416');

@@ -100,8 +100,7 @@ async function getRemoteChunk(url: string, range?: string): Promise<Uint8Array> 
       );
     }
 
-    // @ts-ignore
-    return res.arrayBuffer();
+    return await res.arrayBuffer() as Uint8Array;
   } catch (e) {
     if (e && e.response && e.response.status === 416) {
       console.log('Warning: Range not satisfiable');
