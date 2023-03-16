@@ -944,8 +944,7 @@ export class TDF extends EventEmitter {
     // const that = this;
 
     const underlyingSource = {
-      pull : async (controller: ReadableStreamDefaultController) => {
-
+      pull: async (controller: ReadableStreamDefaultController) => {
         if (segments.length === 0) {
           controller.close();
           return;
@@ -957,7 +956,6 @@ export class TDF extends EventEmitter {
         }
         if (!this.manifest) {
           throw new Error('Missing manifest information');
-
         }
         const encryptedSegmentSize = segment.encryptedSegmentSize || encryptedSegmentSizeDefault;
         const encryptedChunk = await zipReader.getPayloadSegment(
@@ -1005,8 +1003,7 @@ export class TDF extends EventEmitter {
 
       if (length) {
         outputStream.fileSize = length;
-      }
-      else {
+      } else {
         console.log('Unable to retrieve total fileSize');
       }
     }

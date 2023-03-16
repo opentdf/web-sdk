@@ -74,18 +74,18 @@ async function getRemoteChunk(url: string, range?: string): Promise<Uint8Array> 
   try {
     const res = await fetch(url, {
       ...(range && {
-          headers: {
-            Range: `bytes=${range}`,
-          },
+        headers: {
+          Range: `bytes=${range}`,
+        },
       }),
-    })
-    if(!res.ok) {
+    });
+    if (!res.ok) {
       throw new Error(
         'Unexpected response type: Server should have responded with an ArrayBuffer.'
       );
     }
 
-    return await res.arrayBuffer() as Uint8Array;
+    return (await res.arrayBuffer()) as Uint8Array;
   } catch (e) {
     if (e && e.response && e.response.status === 416) {
       console.log('Warning: Range not satisfiable');
@@ -95,7 +95,6 @@ async function getRemoteChunk(url: string, range?: string): Promise<Uint8Array> 
 }
 
 export const fromUrl = async (location: string): Promise<Chunker> => {
-
   return async (byteStart?: number, byteEnd?: number): Promise<Uint8Array> => {
     if (byteStart === undefined) {
       return getRemoteChunk(location);

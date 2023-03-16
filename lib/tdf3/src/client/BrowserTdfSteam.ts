@@ -27,14 +27,13 @@ export class BrowserTdfStream extends DecoratedReadableStream {
     const pump = async (): Promise<void> => {
       let res = await reader.read();
 
-      if(res.done) {
+      if (res.done) {
         return await writer.close();
-      }
-      else {
+      } else {
         await writer.write(res.value);
         return pump();
       }
-    }
+    };
     return pump();
 
     // const pump = (): Promise<void> =>
