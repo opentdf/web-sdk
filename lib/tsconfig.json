@@ -26,7 +26,6 @@
     "strictNullChecks": true,
     "strictPropertyInitialization": false,
     "target": "es2020",
-    "types": [ "@types/wicg-file-system-access", "jest", "mocha"]
   },
   "include": ["src", "tests", "tdf3"],
   "exclude": ["**/node_modules"]
