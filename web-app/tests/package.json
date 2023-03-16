@@ -2,6 +2,7 @@
   "name": "tests",
   "version": "1.0.0",
   "description": "",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "test": "playwright test"
@@ -10,6 +11,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@playwright/test": "^1.30.0"
+    "@playwright/test": "^1.30.0",
+    "send": "^0.18.0"
   }
 }

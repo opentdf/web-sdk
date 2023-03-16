@@ -1,14 +1,21 @@
 import { useState, useEffect, type ChangeEvent } from 'react';
 import './App.css';
-import { Client as Tdf3Client, NanoTDFClient, AuthProviders } from '@opentdf/client';
+import {
+  Client as Tdf3Client,
+  type DecryptSource,
+  NanoTDFClient,
+  AuthProviders,
+} from '@opentdf/client';
 import { type SessionInformation, OidcClient } from './session.js';
 
-function toHex(a: Uint8Array) {
-  return [...a].map((x) => x.toString(16).padStart(2, '0')).join('');
-}
-
 function decryptedFileName(encryptedFileName: string): string {
-  const m = encryptedFileName.match(/^(.+)\.(\w+)\.(n?tdf)$/);
+  // Groups: 1 file 'name' bit
+  // 2: original file extension
+  // [non-capture group] - match how safari and chrome insert counters before extension.
+  //    I'm guessing this has some fascinating internationalizations but for now WFM is enough.
+  // 3: TDF container type extension
+  const m = encryptedFileName.match(/^(.+)\.(\w+)(?:-\d+| \(\d+\))?\.(ntdf|tdf|tdf\.html)$/);
+  console.log(encryptedFileName, m);
   if (!m) {
     console.warn(`Unable to extract raw file name from ${encryptedFileName}`);
     return `${encryptedFileName}.decrypted`;
@@ -34,16 +41,27 @@ function saver(blob: Blob, name: string) {
 }
 
 type Containers = 'html' | 'tdf' | 'nano';
+type InputSource = { file: File } | { url: URL } | undefined;
+
+function fileNameFor(inputSource: InputSource) {
+  if (!inputSource) {
+    return 'undefined.bin';
+  }
+  if ('file' in inputSource) {
+    return inputSource.file.name;
+  }
+  const { pathname } = inputSource.url;
+  const i = pathname.lastIndexOf('/');
+  return pathname.slice(i + 1);
+}
 
 function App() {
-  const [cipherText, setCipherText] = useState<Uint8Array | undefined>();
-  const [plainText, setPlainText] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | undefined>();
+  const [inputSource, setInputSource] = useState<InputSource>();
   const [authState, setAuthState] = useState<SessionInformation>({ sessionState: 'start' });
   const [decryptContainerType, setDecryptContainerType] = useState<Containers>('nano');
   const [encryptContainerType, setEncryptContainerType] = useState<Containers>('nano');
 
-  const handleRadioChange =
+  const handleContainerFormatRadioChange =
     (handler: typeof setDecryptContainerType) => (e: ChangeEvent<HTMLInputElement>) => {
       handler(e.target.value as Containers);
     };
@@ -65,36 +83,41 @@ function App() {
     const target = event.target as HTMLInputElement;
     if (target.files?.length) {
       const [file] = target.files;
-      setSelectedFile(file);
+      setInputSource({ file });
+    } else if (target.value && target.validity.valid) {
+      setInputSource({ url: new URL(target.value) });
+    } else {
+      setInputSource(undefined);
     }
   };
 
   const handleEncrypt = async () => {
-    if (!selectedFile) {
-      console.warn('PLEASE SELECT FILE');
-      return true;
+    if (!inputSource) {
+      console.warn('PLEASE SELECT FILE ∨ URL');
+      return false;
     }
     const refreshToken = authState?.user?.refreshToken;
     if (!refreshToken) {
       console.warn('PLEASE LOG IN');
-      return true;
+      return false;
     }
-    console.info(`[THINKING about ${selectedFile.name}]`);
     const authProvider = await AuthProviders.refreshAuthProvider({
       exchange: 'refresh',
       clientId: oidcClient.clientId,
       oidcOrigin: oidcClient.host,
       refreshToken,
     });
-    let cipherText;
-    let extension = 'tdf';
+    const inputFileName = fileNameFor(inputSource);
+    console.log(`Encrypting [${inputFileName}] to ${encryptContainerType} container'`);
     switch (encryptContainerType) {
       case 'nano': {
-        const arrayBuffer = await selectedFile.arrayBuffer();
+        if (!('file' in inputSource)) {
+          throw new Error('Unsupported : fetch the url I guess?');
+        }
+        const plainText = await inputSource.file.arrayBuffer();
         const nanoClient = new NanoTDFClient(authProvider, 'http://localhost:65432/api/kas');
-        console.log('allocated client', nanoClient);
-        cipherText = new Uint8Array(await nanoClient.encrypt(arrayBuffer));
-        extension = 'ntdf';
+        const cipherText = await nanoClient.encrypt(plainText);
+        saver(new Blob([cipherText]), `${inputFileName}.ntdf`);
         break;
       }
       case 'html': {
@@ -103,9 +126,34 @@ function App() {
           kasEndpoint: 'http://localhost:65432/api/kas',
           readerUrl: 'https://secure.virtru.com/start?htmlProtocol=1',
         });
-        const source = (await selectedFile.stream()) as unknown as ReadableStream<Uint8Array>;
-        const a = await client.encrypt({ source, offline: true, asHtml: true });
-        cipherText = await a?.toBuffer();
+        let source;
+        if ('file' in inputSource) {
+          source = inputSource.file.stream() as unknown as ReadableStream<Uint8Array>;
+        } else {
+          const fr = await fetch(inputSource.url);
+          if (!fr.ok) {
+            throw Error(
+              `Error on fetch [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`
+            );
+          }
+          if (!fr.body) {
+            throw Error(
+              `Failed to fetch input [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`
+            );
+          }
+          source = fr.body;
+        }
+        try {
+          const cipherText = await client.encrypt({
+            source,
+            offline: true,
+            asHtml: true,
+          });
+          const downloadName = `${inputFileName}.tdf.html`;
+          await cipherText.toFile(downloadName);
+        } catch (e) {
+          console.error('Encrypt Failed', e);
+        }
         break;
       }
       case 'tdf': {
@@ -113,23 +161,40 @@ function App() {
           authProvider,
           kasEndpoint: 'http://localhost:65432/api/kas',
         });
-        const source = (await selectedFile.stream()) as unknown as ReadableStream<Uint8Array>;
-        const a = await client.encrypt({ source, offline: true });
-        cipherText = await a?.toBuffer();
+        let source;
+        if ('file' in inputSource) {
+          source = inputSource.file.stream() as unknown as ReadableStream<Uint8Array>;
+        } else {
+          const fr = await fetch(inputSource.url);
+          if (!fr.ok) {
+            throw Error(
+              `Error on fetch [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`
+            );
+          }
+          if (!fr.body) {
+            throw Error(
+              `Failed to fetch input [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`
+            );
+          }
+          source = fr.body;
+        }
+        try {
+          const cipherText = await client.encrypt({
+            source,
+            offline: true,
+          });
+          await cipherText.toFile(`${inputFileName}.tdf`);
+        } catch (e) {
+          console.error('Encrypt Failed', e);
+        }
         break;
       }
     }
-    if (!cipherText) {
-      throw new Error('fail');
-    }
-    console.log(`Ciphertext: ${toHex(cipherText)}`);
-    setCipherText(cipherText);
-    saver(new Blob([cipherText]), `${selectedFile.name}.${extension}`);
     return true;
   };
 
   const handleDecrypt = async () => {
-    if (!selectedFile) {
+    if (!inputSource) {
       console.log('PLEASE SELECT FILE');
       return false;
     }
@@ -143,24 +208,34 @@ function App() {
       oidcOrigin: oidcClient.host,
       refreshToken: authState.user.refreshToken,
     });
+    const dfn = decryptedFileName(fileNameFor(inputSource));
     switch (decryptContainerType) {
       case 'tdf': {
         const client = new Tdf3Client.Client({
           authProvider,
           kasEndpoint: 'http://localhost:65432/api/kas',
         });
-
-        const buffer = new Uint8Array(await selectedFile.arrayBuffer());
-        const plain = await client.decrypt({ source: { type: 'buffer', location: buffer } });
-        saver(new Blob([await plain.toBuffer()]), decryptedFileName(selectedFile.name));
+        try {
+          let source: DecryptSource;
+          if ('file' in inputSource) {
+            source = { type: 'file-browser', location: inputSource.file };
+          } else {
+            source = { type: 'remote', location: inputSource.url.toString() };
+          }
+          const plainText = await client.decrypt({ source });
+          await plainText.toFile(dfn);
+        } catch (e) {
+          console.error('Decrypt Failed', e);
+        }
         break;
       }
       case 'nano': {
+        if (!('file' in inputSource)) {
+          throw new Error('Unsupported : fetch the url I guess?');
+        }
         const nanoClient = new NanoTDFClient(authProvider, 'http://localhost:65432/api/kas');
-        const plainText = new Uint8Array(
-          await nanoClient.decrypt(new Uint8Array(await selectedFile.arrayBuffer()))
-        );
-        saver(new Blob([plainText]), decryptedFileName(selectedFile.name));
+        const plainText = await nanoClient.decrypt(await inputSource.file.arrayBuffer());
+        saver(new Blob([plainText]), dfn);
         break;
       }
     }
@@ -185,6 +260,7 @@ function App() {
       <pre id="user_token">{JSON.stringify(authState?.user, null, ' ')}</pre>
     );
 
+  const hasFileInput = inputSource && 'file' in inputSource;
   return (
     <div className="App">
       <div className="header">
@@ -196,13 +272,19 @@ function App() {
       </div>
       <div className="body">
         <div className="input">
-          {selectedFile ? (
+          {hasFileInput ? (
             <div id="details">
-              <h2>{selectedFile.name}</h2>
-              <div id="contentType">Content Type: {selectedFile.type}</div>
-              <div>Last Modified: {new Date(selectedFile.lastModified).toLocaleString()}</div>
-              <div>Size: {new Intl.NumberFormat().format(selectedFile.size)} bytes</div>
-              <button id="clearFile" onClick={() => setSelectedFile(undefined)} type="button">
+              <h2>{'file' in inputSource ? inputSource.file.name : inputSource.url.toString()}</h2>
+              {'file' in inputSource && (
+                <>
+                  <div id="contentType">Content Type: {inputSource.file.type}</div>
+                  <div>
+                    Last Modified: {new Date(inputSource.file.lastModified).toLocaleString()}
+                  </div>
+                  <div>Size: {new Intl.NumberFormat().format(inputSource.file.size)} bytes</div>
+                </>
+              )}
+              <button id="clearFile" onClick={() => setInputSource(undefined)} type="button">
                 Clear file
               </button>
             </div>
@@ -210,10 +292,18 @@ function App() {
             <>
               <label htmlFor="file-selector">Select file:</label>
               <input type="file" name="file" id="fileSelector" onChange={changeHandler} />
+              <div>OR URL:</div>
+              <input
+                type="url"
+                name="url"
+                id="urlSelector"
+                onChange={changeHandler}
+                placeholder="http://localhost:8000/sample.tdf"
+              />
             </>
           )}
         </div>
-        {selectedFile && (
+        {inputSource && (
           <div className="action">
             <form className="column">
               <h2>Encrypt</h2>
@@ -224,7 +314,7 @@ function App() {
                     id="htmlEncrypt"
                     name="container"
                     value="html"
-                    onChange={handleRadioChange(setEncryptContainerType)}
+                    onChange={handleContainerFormatRadioChange(setEncryptContainerType)}
                     checked={encryptContainerType === 'html'}
                   />{' '}
                   <label htmlFor="html">HTML</label>
@@ -234,7 +324,7 @@ function App() {
                     id="zipEncrypt"
                     name="container"
                     value="tdf"
-                    onChange={handleRadioChange(setEncryptContainerType)}
+                    onChange={handleContainerFormatRadioChange(setEncryptContainerType)}
                     checked={encryptContainerType === 'tdf'}
                   />{' '}
                   <label htmlFor="zip">TDF</label>
@@ -244,7 +334,7 @@ function App() {
                     id="nanoEncrypt"
                     name="container"
                     value="nano"
-                    onChange={handleRadioChange(setEncryptContainerType)}
+                    onChange={handleContainerFormatRadioChange(setEncryptContainerType)}
                     checked={encryptContainerType === 'nano'}
                   />{' '}
                   <label htmlFor="nano">nano</label>
@@ -263,7 +353,7 @@ function App() {
                     id="tdfDecrypt"
                     name="container"
                     value="tdf"
-                    onChange={handleRadioChange(setDecryptContainerType)}
+                    onChange={handleContainerFormatRadioChange(setDecryptContainerType)}
                     checked={decryptContainerType === 'tdf'}
                   />{' '}
                   <label htmlFor="tdf">TDF</label>
@@ -273,7 +363,7 @@ function App() {
                     id="nanoDecrypt"
                     name="container"
                     value="nano"
-                    onChange={handleRadioChange(setDecryptContainerType)}
+                    onChange={handleContainerFormatRadioChange(setDecryptContainerType)}
                     checked={decryptContainerType === 'nano'}
                   />{' '}
                   <label htmlFor="nano">nano</label>
