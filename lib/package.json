@@ -78,7 +78,8 @@
     "pump": "^3.0.0",
     "streamsaver": "^2.0.6",
     "uuid": "~9.0.0",
-    "web-streams-node": "^0.4.0"
+    "web-streams-node": "^0.4.0",
+    "web-streams-polyfill": "^3.2.1"
   },
   "devDependencies": {
     "@esm-bundle/chai": "~4.3.4-fix.0",

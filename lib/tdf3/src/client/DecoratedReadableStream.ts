@@ -34,11 +34,7 @@ export abstract class DecoratedReadableStream {
   upsertResponse?: UpsertResponse;
 
   constructor(underlyingSource: UnderlyingSource) {
-
-    // const size = (1024 * 1024);
-    // const queueingStrategy = new CountQueuingStrategy({ highWaterMark: 1, size: size as unknown as QueuingStrategySize } as QueuingStrategyInit);
-
-    this.stream = new ReadableStream(underlyingSource) as ReadableStream<Uint8Array>;
+    this.stream = new ReadableStream(underlyingSource, { highWaterMark: 1 }) as ReadableStream<Uint8Array>;
     this.ee = new EventEmitter();
     this.on = (...args) => this.ee.on(...args);
     this.emit = (...args) => this.ee.emit(...args);
