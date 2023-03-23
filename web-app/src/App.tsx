@@ -215,6 +215,11 @@ function App() {
       refreshToken,
     });
     switch (encryptContainerType) {
+      case 'random': {
+        // TODO generate random text of a given requested size in bytes (exponential slider)
+        // TODO and type, e.g. 'html', 'uniform', 'textish'
+      }
+      break;
       case 'nano': {
         if (!('file' in inputSource)) {
           throw new Error('Unsupported : fetch the url I guess?');
