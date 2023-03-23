@@ -12,7 +12,7 @@ export class NodeTdfStream extends DecoratedReadableStream {
   ): Promise<void> {
     const encoding =
       (typeof options === 'string' && options) || (options && options.encoding) || 'utf-8';
-    const nodeStream = createWriteStream(filepath, { encoding, flags: 'w' });
+    const nodeStream = createWriteStream(filepath, { encoding, flags: 'w', highWaterMark: 1 });
     const writer = Writable.toWeb(nodeStream);
     await this.stream.pipeTo(writer);
   }
