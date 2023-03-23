@@ -12,13 +12,6 @@ import { Buffer } from 'buffer';
  */
 export abstract class Binary {
   /**
-   * Initializes the binary class from the string
-   */
-  static fromString(data: string): Binary {
-    return new StringBinary(data);
-  }
-
-  /**
    * Initializes the binary class from an arrayBuffer
    */
   static fromArrayBuffer(data: ArrayBuffer): Binary {
@@ -51,17 +44,11 @@ export abstract class Binary {
     return false;
   }
 
-  isString(): boolean {
-    return false;
-  }
-
   abstract asArrayBuffer(): ArrayBuffer;
 
   abstract asBuffer(): Buffer;
 
   abstract asByteArray(): number[];
-
-  abstract asString(): string;
 
   abstract length(): number;
 
@@ -102,15 +89,6 @@ class ArrayBufferBinary extends Binary {
       byteArray[i] = uint8Array[i];
     }
     return byteArray;
-  }
-
-  override asString(): string {
-    const uint8Array = new Uint8Array(this.value);
-    let str = '';
-    for (let i = 0; i < uint8Array.length; i++) {
-      str = str + String.fromCharCode(uint8Array[i]);
-    }
-    return str;
   }
 
   override isArrayBuffer(): boolean {
@@ -165,10 +143,6 @@ class BufferBinary extends Binary {
     return byteArray;
   }
 
-  override asString(): string {
-    return this.value.toString('binary');
-  }
-
   override isBuffer(): boolean {
     return true;
   }
@@ -204,10 +178,6 @@ class ByteArrayBinary extends Binary {
     return this.value;
   }
 
-  override asString(): string {
-    return Buffer.from(this.value).toString();
-  }
-
   override isByteArray(): boolean {
     return true;
   }
@@ -219,53 +189,5 @@ class ByteArrayBinary extends Binary {
   override slice(start: number, end?: number): Binary {
     const [s, e] = adjustSliceParams(this.length(), start, end);
     return new ByteArrayBinary(this.value.slice(s, e));
-  }
-}
-
-class StringBinary extends Binary {
-  value: string;
-
-  constructor(value: string) {
-    super();
-    this.value = value;
-  }
-
-  asArrayBuffer(): ArrayBuffer {
-    const { length } = this.value;
-    const buffer = new ArrayBuffer(length);
-    const bufferView = new Uint8Array(buffer);
-    for (let i = 0; i < length; i++) {
-      bufferView[i] = this.value.charCodeAt(i);
-    }
-    return buffer;
-  }
-
-  asBuffer(): Buffer {
-    return Buffer.from(this.value, 'binary');
-  }
-
-  asByteArray(): number[] {
-    const byteArray = [];
-    for (let i = 0; i < this.value.length; i++) {
-      byteArray.push(this.value.charCodeAt(i));
-    }
-    return byteArray;
-  }
-
-  asString(): string {
-    return this.value;
-  }
-
-  override isString(): boolean {
-    return true;
-  }
-
-  length(): number {
-    return this.value.length;
-  }
-
-  slice(start: number, end?: number): Binary {
-    const [s, e] = adjustSliceParams(this.value.length, start, end);
-    return new StringBinary(this.value.substring(s, e));
   }
 }

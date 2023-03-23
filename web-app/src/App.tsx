@@ -288,6 +288,7 @@ function App() {
           const progressTransformers = makeProgressPair(size, 'Encrypt');
           const cipherText = await client.encrypt({
             source: source.pipeThrough(progressTransformers.reader),
+            metadata: { displayName: inputFileName },
             offline: true,
             asHtml: true,
           });

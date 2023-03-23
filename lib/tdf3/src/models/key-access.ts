@@ -41,7 +41,7 @@ export class Wrapped {
       type: 'wrapped',
       url: this.url,
       protocol: 'kas',
-      wrappedKey: base64.encode(wrappedKeyBinary.asString()),
+      wrappedKey: base64.encodeArrayBuffer(wrappedKeyBinary.asArrayBuffer()),
       encryptedMetadata: base64.encode(encryptedMetadataStr),
       policyBinding: base64.encode(policyBinding),
     };

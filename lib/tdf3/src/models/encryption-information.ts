@@ -51,7 +51,7 @@ export class SplitKey {
 
   async generateKey(): Promise<KeyInfo> {
     const unwrappedKey = this.cipher.generateKey();
-    const unwrappedKeyBinary = Binary.fromString(hex.decode(unwrappedKey));
+    const unwrappedKeyBinary = Binary.fromArrayBuffer(hex.decodeToArrayBuffer(unwrappedKey));
     const unwrappedKeyIvBinary = await this.generateIvBinary();
     return { unwrappedKeyBinary, unwrappedKeyIvBinary };
   }
@@ -92,7 +92,7 @@ export class SplitKey {
             }
       ) as string;
 
-      const metadataBinary = Binary.fromString(metadataStr);
+      const metadataBinary = Binary.fromArrayBuffer(new TextEncoder().encode(metadataStr));
 
       const encryptedMetadataResult = await this.encrypt(
         metadataBinary,
@@ -101,8 +101,8 @@ export class SplitKey {
       );
 
       const encryptedMetadataOb = {
-        ciphertext: base64.encode(encryptedMetadataResult.payload.asString()),
-        iv: base64.encode(keyInfo.unwrappedKeyIvBinary.asString()),
+        ciphertext: base64.encodeArrayBuffer(encryptedMetadataResult.payload.asArrayBuffer()),
+        iv: base64.encodeArrayBuffer(keyInfo.unwrappedKeyIvBinary.asArrayBuffer()),
       };
 
       const encryptedMetadataStr = JSON.stringify(encryptedMetadataOb);
@@ -119,7 +119,7 @@ export class SplitKey {
 
   async generateIvBinary(): Promise<Binary> {
     const iv = await this.cipher.generateInitializationVector();
-    return Binary.fromString(hex.decode(iv));
+    return Binary.fromArrayBuffer(hex.decodeToArrayBuffer(iv));
   }
 
   async write(policy: Policy, keyInfo: KeyInfo): Promise<EncryptionInformation> {
@@ -138,7 +138,7 @@ export class SplitKey {
       method: {
         algorithm,
         isStreamable: false,
-        iv: base64.encode(keyInfo.unwrappedKeyIvBinary.asString()),
+        iv: base64.encodeArrayBuffer(keyInfo.unwrappedKeyIvBinary.asArrayBuffer()),
       },
       integrityInformation: {
         rootSignature: {
