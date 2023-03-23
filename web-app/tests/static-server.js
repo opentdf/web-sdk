@@ -20,6 +20,7 @@ export async function serve(path, port) {
     if (req.headers?.origin) {
       res.setHeader('Access-Control-Allow-Headers', req.headers.origin);
     }
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Length');
     const url = new URL(req.url, `http://${req.headers.host}`);
     const validNamePart = NodePath.basename(url.pathname);
     const allowedName = `/${validNamePart}`;

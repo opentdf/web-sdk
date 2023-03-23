@@ -1,10 +1,19 @@
-import { DecoratedReadableStream } from './DecoratedReadableStream.js';
+import {
+  DecoratedReadableStream,
+  type DecoratedReadableStreamSinkOptions,
+} from './DecoratedReadableStream.js';
 import streamSaver from 'streamsaver';
 import { fileSave } from 'browser-fs-access';
 import { isFirefox } from '../../../src/utils.js';
 
 export class BrowserTdfStream extends DecoratedReadableStream {
-  override async toFile(filepath = 'download.tdf'): Promise<void> {
+  override async toFile(
+    filepath = 'download.tdf',
+    options?: BufferEncoding | DecoratedReadableStreamSinkOptions
+  ): Promise<void> {
+    if (options && typeof options === 'string') {
+      throw new Error('Unsupported Operation: Cannot set encoding in browser');
+    }
     if (isFirefox()) {
       await fileSave(new Response(this.stream), {
         fileName: filepath,
@@ -20,7 +29,7 @@ export class BrowserTdfStream extends DecoratedReadableStream {
     });
 
     if (WritableStream) {
-      return this.stream.pipeTo(fileStream);
+      return this.stream.pipeTo(fileStream, options);
     }
 
     // Write (pipe) manually

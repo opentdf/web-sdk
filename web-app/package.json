@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@opentdf/client": "file:../lib/opentdf-client-0.4.0.tgz",
+    "native-file-system-adapter": "^3.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
@@ -24,6 +25,7 @@
     "@rollup/plugin-inject": "^5.0.3",
     "@types/react": "^18.0.27",
     "@types/react-dom": "^18.0.10",
+    "@types/wicg-file-system-access": "^2020.9.5",
     "@typescript-eslint/eslint-plugin": "^5.48.2",
     "@typescript-eslint/parser": "^5.48.2",
     "@vitejs/plugin-react": "^3.0.1",
