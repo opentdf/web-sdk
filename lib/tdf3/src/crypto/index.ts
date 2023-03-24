@@ -14,7 +14,7 @@ import {
 } from './declarations.js';
 import { TdfDecryptError } from '../errors.js';
 import { formatAsPem, removePemFormatting } from './crypto-utils.js';
-import { encodeArrayBuffer as hexEncode } from '../../../src/encodings/hex.js';
+import { decodeToArrayBuffer, encodeArrayBuffer as hexEncode } from '../../../src/encodings/hex.js';
 import {
   decodeArrayBuffer as base64Decode,
   encodeArrayBuffer as base64Encode,
@@ -316,13 +316,21 @@ export async function sha256(content: string): Promise<string> {
 
 /**
  * Create an HMAC SHA256 hash
- * @param  key     Key string
- * @param  content Content string
+ * @param  key     Key string as unicode text
+ * @param  content Content string as hexidecimal encoded number
  * @return Hex hash
  */
 export async function hmac(key: string, content: string): Promise<string> {
   const contentBuffer = new TextEncoder().encode(content);
-  const keyBuffer = hex2Ab(key);
+  const keyBuffer = decodeToArrayBuffer(key);
+  const hashBuffer = await hmacBuffer(keyBuffer, contentBuffer);
+  return hexEncode(hashBuffer);
+}
+
+export async function hmacBuffer(
+  keyBuffer: BufferSource,
+  contentBuffer: BufferSource
+): Promise<ArrayBuffer> {
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
     keyBuffer,
@@ -333,22 +341,5 @@ export async function hmac(key: string, content: string): Promise<string> {
     true,
     ['sign', 'verify']
   );
-  const hashBuffer = await crypto.subtle.sign('HMAC', cryptoKey, contentBuffer);
-  return hexEncode(hashBuffer);
-}
-
-/**
- * Create an ArrayBuffer from a hex string.
- * https://developers.google.com/web/updates/2012/06/How-to-convert-ArrayBuffer-to-and-from-String?hl=en
- * @param  hex - Hex string
- */
-export function hex2Ab(hex: string): ArrayBuffer {
-  const buffer = new ArrayBuffer(hex.length / 2);
-  const bufferView = new Uint8Array(buffer);
-
-  for (let i = 0; i < hex.length; i += 2) {
-    bufferView[i / 2] = parseInt(hex.substr(i, 2), 16);
-  }
-
-  return buffer;
+  return crypto.subtle.sign('HMAC', cryptoKey, contentBuffer);
 }

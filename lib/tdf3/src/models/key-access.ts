@@ -79,7 +79,7 @@ export class Remote {
     );
 
     // this.wrappedKey = wrappedKeyBinary.asBuffer().toString('hex');
-    this.wrappedKey = base64.encode(wrappedKeyBinary.asString());
+    this.wrappedKey = base64.encodeArrayBuffer(wrappedKeyBinary.asArrayBuffer());
 
     this.keyAccessObject = {
       type: 'remote',

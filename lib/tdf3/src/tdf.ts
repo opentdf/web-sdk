@@ -19,7 +19,7 @@ import {
   UpsertResponse,
   Wrapped as KeyAccessWrapped,
 } from './models/index.js';
-import { base64 } from '../../src/encodings/index.js';
+import { base64, hex } from '../../src/encodings/index.js';
 import * as cryptoService from './crypto/index.js';
 import {
   base64ToBuffer,
@@ -108,6 +108,26 @@ type EntryInfo = {
   fileByteCount?: number;
 };
 
+type IntegrityAlgorithm = 'hs256' | 'gmac';
+
+function isIntegrityAlgorithm(x: string): x is IntegrityAlgorithm {
+  return x === 'hs256' || x === 'gmac';
+}
+
+function validateIntegrityAlgorithm(x?: string): IntegrityAlgorithm {
+  if (!x || x.length < 4 || x.length > 5) {
+    throw Error('Unsupported integrity algorithm');
+  }
+  if (isIntegrityAlgorithm(x)) {
+    return x;
+  }
+  const lowerX = x.toLowerCase();
+  if (isIntegrityAlgorithm(lowerX)) {
+    return lowerX;
+  }
+  throw Error('Unsupported integrity algorithm');
+}
+
 export class TDF extends EventEmitter {
   policy?: Policy;
   mimeType?: string;
@@ -117,8 +137,8 @@ export class TDF extends EventEmitter {
   encryptionInformation?: SplitKey;
   htmlTransferUrl?: string;
   authProvider?: AuthProvider | AppIdAuthProvider;
-  integrityAlgorithm: string;
-  segmentIntegrityAlgorithm: string;
+  integrityAlgorithm: IntegrityAlgorithm;
+  segmentIntegrityAlgorithm: IntegrityAlgorithm;
   publicKey: string;
   privateKey: string;
   attributeSet: AttributeSet;
@@ -130,7 +150,7 @@ export class TDF extends EventEmitter {
     this.attributeSet = new AttributeSet();
     this.publicKey = '';
     this.privateKey = '';
-    this.integrityAlgorithm = 'HS256';
+    this.integrityAlgorithm = 'hs256';
     this.segmentIntegrityAlgorithm = this.integrityAlgorithm;
     this.segmentSizeDefault = DEFAULT_SEGMENT_SIZE;
   }
@@ -388,11 +408,14 @@ export class TDF extends EventEmitter {
     return this;
   }
 
-  setIntegrityAlgorithm(integrityAlgorithm: string, segmentIntegrityAlgorithm: string) {
-    this.integrityAlgorithm = integrityAlgorithm.toUpperCase();
-    this.segmentIntegrityAlgorithm = (
+  setIntegrityAlgorithm(
+    integrityAlgorithm: IntegrityAlgorithm,
+    segmentIntegrityAlgorithm?: IntegrityAlgorithm
+  ) {
+    this.integrityAlgorithm = validateIntegrityAlgorithm(integrityAlgorithm);
+    this.segmentIntegrityAlgorithm = validateIntegrityAlgorithm(
       segmentIntegrityAlgorithm || integrityAlgorithm
-    ).toUpperCase();
+    );
     return this;
   }
 
@@ -450,10 +473,11 @@ export class TDF extends EventEmitter {
         return payloadBinary.asBuffer().slice(-16).toString('hex');
       case 'hs256':
         // simple hmac is the default
-        return await cryptoService.hmac(
-          unwrappedKeyBinary.asBuffer().toString('hex'),
-          payloadBinary.asBuffer().toString()
+        const hmacBuffer = await cryptoService.hmacBuffer(
+          unwrappedKeyBinary.asBuffer(),
+          payloadBinary.asBuffer()
         );
+        return hex.encodeArrayBuffer(hmacBuffer);
       default:
         throw new IllegalArgumentError(`Unsupported signature alg [${algorithmType}]`);
     }
@@ -903,9 +927,8 @@ export class TDF extends EventEmitter {
     if (rcaParams && rcaParams.wk) {
       const { wk, al } = rcaParams;
       this.encryptionInformation = new SplitKey(TDF.createCipher(al.toLowerCase()));
-      const kekPayload = Binary.fromBuffer(Buffer.from(wk, 'base64'));
       const decodedReconstructedKeyBinary = await this.encryptionInformation.decrypt(
-        kekPayload.asBuffer(),
+        Buffer.from(wk, 'base64'),
         reconstructedKeyBinary
       );
       reconstructedKeyBinary = decodedReconstructedKeyBinary.payload;

@@ -19,16 +19,18 @@ export function decode(hex: string): string {
 }
 
 export function decodeToArrayBuffer(hex: string): ArrayBuffer | never {
-  if (hex.length & 1) {
-    throw new Error('Invalid Argument');
+  if (typeof hex !== 'string') {
+    throw new TypeError('Expected input of hexString to be a String');
   }
-  const byteArray = new Uint8Array(hex.length / 2);
+  if (hex.length & 1) {
+    throw new RangeError('Invalid Argument');
+  }
+  const byteArray = new Uint8Array(hex.length >> 1);
   for (let i = 0; i < hex.length; i += 2) {
     byteArray[i >> 1] = parseInt(hex.slice(i, i + 2), 16);
   }
   return byteArray.buffer;
 }
-
 
 export function encodeArrayBuffer(arrayBuffer: ArrayBuffer): string | never {
   if (typeof arrayBuffer !== 'object') {
