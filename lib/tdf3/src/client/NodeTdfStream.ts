@@ -6,19 +6,19 @@ export class NodeTdfStream extends DecoratedReadableStream {
     return new Promise((resolve, reject) => {
       const file = createWriteStream(filepath, { encoding, flags: 'w', highWaterMark: 1 });
       const reader = this.stream.getReader();
-      const pump = () =>
-        reader
-          .read()
-          .then((res) => {
-            if (res.done) {
-              file.end();
-              resolve();
-            } else {
-              file.write(res.value, encoding, pump);
-            }
-          })
-          .catch(reject);
-      pump();
+
+      const pump = async (): Promise<void> => {
+        let res = await reader.read();
+
+        if (res.done) {
+          file.end();
+          return;
+        } else {
+          file.write(res.value, encoding);
+          return pump();
+        }
+      };
+      return pump();
     });
   }
 }
