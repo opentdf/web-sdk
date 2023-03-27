@@ -18,6 +18,11 @@ export async function streamToBuffer(stream: ReadableStream<Uint8Array>): Promis
   return Buffer.from(accumulator);
 }
 
+export type DecoratedReadableStreamSinkOptions = {
+  encoding?: BufferEncoding;
+  signal?: AbortSignal;
+};
+
 export abstract class DecoratedReadableStream {
   KEK: null | string;
   algorithm: string;
@@ -160,5 +165,8 @@ export abstract class DecoratedReadableStream {
    * @param filepath The path of the local file to write plaintext to.
    * @param encoding The charset encoding to use. Defaults to utf-8.
    */
-  abstract toFile(filepath: string, encoding?: BufferEncoding): Promise<void>;
+  abstract toFile(
+    filepath: string,
+    options?: BufferEncoding | DecoratedReadableStreamSinkOptions
+  ): Promise<void>;
 }
