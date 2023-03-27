@@ -25,3 +25,7 @@
   align-items: bottom;
   gap: 1em;
 }
+
+.selected {
+  font-weight: bolder;
+}

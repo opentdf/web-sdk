@@ -1,3 +1,4 @@
+import { clsx } from 'clsx';
 import { useState, useEffect, type ChangeEvent } from 'react';
 import { showSaveFilePicker } from 'native-file-system-adapter';
 import './App.css';
@@ -70,7 +71,18 @@ async function getNewFileHandle(
 
 type Containers = 'html' | 'tdf' | 'nano';
 type CurrentDataController = AbortController | undefined;
-type InputSource = { file: File } | { url: URL } | undefined;
+type FileInputSource = { file: File };
+type UrlInputSource = {
+  url: URL;
+};
+
+type RandomType = 'bytes';
+type RandomInputSource = {
+  type: RandomType;
+  length: number;
+};
+
+type InputSource = FileInputSource | UrlInputSource | RandomInputSource | undefined;
 type SinkType = 'file' | 'fsapi' | 'none';
 
 function fileNameFor(inputSource: InputSource) {
@@ -79,6 +91,9 @@ function fileNameFor(inputSource: InputSource) {
   }
   if ('file' in inputSource) {
     return inputSource.file.name;
+  }
+  if ('length' in inputSource) {
+    return `random-${inputSource.type}-${inputSource.length}-bytes`;
   }
   const { pathname } = inputSource.url;
   const i = pathname.lastIndexOf('/');
@@ -112,6 +127,69 @@ function drain() {
   });
 }
 
+function randomStream({ length }: RandomInputSource): ReadableStream<Uint8Array> {
+  let counter = 0;
+  const maxChunkSize = 65536;
+  return new ReadableStream({
+    async pull(controller) {
+      const nextChunkSize = Math.min(length - counter, maxChunkSize);
+      if (nextChunkSize <= 0) {
+        controller.close();
+        return;
+      }
+      const value = new Uint8Array(nextChunkSize);
+      crypto.getRandomValues(value);
+      controller.enqueue(value);
+      counter += nextChunkSize;
+    },
+  });
+}
+function randomArrayBuffer({ length }: RandomInputSource): ArrayBuffer {
+  const maxSize = 16 * 2 ** 20;
+  if (length >= maxSize || length < 0) {
+    throw new Error(`Invalid size for random buffer: [${length}]`);
+  }
+  const maxChunkSize = 65536;
+  const value = new Uint8Array(length);
+  for (let i = 0; i < length; i += maxChunkSize) {
+    crypto.getRandomValues(value.slice(i, i + maxChunkSize));
+  }
+  return value;
+}
+
+function randomChunker({ length }: RandomInputSource): Chunker {
+  const maxChunkSize = 2 ** 20;
+  return (byteStart?: number, byteEnd?: number) => {
+    if (!byteStart) {
+      byteStart = 0;
+    } else if (byteStart < 0) {
+      byteStart = length + byteStart;
+    }
+    if (!byteEnd) {
+      byteEnd = length;
+    } else if (byteEnd < 0) {
+      byteEnd = length + byteEnd;
+    }
+    if (byteEnd > Number.MAX_SAFE_INTEGER) {
+      throw new Error();
+    }
+    if (byteEnd - byteStart > maxChunkSize) {
+      throw new Error();
+    }
+    const width = byteEnd - byteStart;
+    const value = new Uint8Array(width);
+    if (width < 0) {
+      throw new Error();
+    }
+    if (!width) {
+      return Promise.resolve(value);
+    }
+    // TODO use a seedable PRNG to make this make sense.
+    crypto.getRandomValues(value);
+    return Promise.resolve(value);
+  };
+}
+
 function App() {
   const [authState, setAuthState] = useState<SessionInformation>({ sessionState: 'start' });
   const [decryptContainerType, setDecryptContainerType] = useState<Containers>('tdf');
@@ -139,12 +217,26 @@ function App() {
       });
   }, []);
 
-  const changeHandler = (event: ChangeEvent<HTMLInputElement>) => {
+  const setFileHandler = (event: ChangeEvent<HTMLInputElement>) => {
     const target = event.target as HTMLInputElement;
     if (target.files?.length) {
       const [file] = target.files;
       setInputSource({ file });
-    } else if (target.value && target.validity.valid) {
+    } else {
+      setInputSource(undefined);
+    }
+  };
+  const setRandomHandler = (event: ChangeEvent<HTMLInputElement>) => {
+    const target = event.target as HTMLInputElement;
+    if (target.value && target.validity.valid) {
+      setInputSource({ type: 'bytes', length: parseInt(target.value) });
+    } else {
+      setInputSource(undefined);
+    }
+  };
+  const setUrlHandler = (event: ChangeEvent<HTMLInputElement>) => {
+    const target = event.target as HTMLInputElement;
+    if (target.value && target.validity.valid) {
       setInputSource({ url: new URL(target.value) });
     } else {
       setInputSource(undefined);
@@ -198,7 +290,7 @@ function App() {
 
   const handleEncrypt = async () => {
     if (!inputSource) {
-      console.warn('PLEASE SELECT FILE ∨ URL');
+      console.warn('No input source selected');
       return false;
     }
     const refreshToken = authState?.user?.refreshToken;
@@ -215,16 +307,14 @@ function App() {
       refreshToken,
     });
     switch (encryptContainerType) {
-      case 'random': {
-        // TODO generate random text of a given requested size in bytes (exponential slider)
-        // TODO and type, e.g. 'html', 'uniform', 'textish'
-      }
-      break;
       case 'nano': {
-        if (!('file' in inputSource)) {
+        if ('url' in inputSource) {
           throw new Error('Unsupported : fetch the url I guess?');
         }
-        const plainText = await inputSource.file.arrayBuffer();
+        const plainText =
+          'file' in inputSource
+            ? await inputSource.file.arrayBuffer()
+            : randomArrayBuffer(inputSource);
         const nanoClient = new NanoTDFClient(authProvider, 'http://localhost:65432/api/kas');
         setDownloadState('Encrypting...');
         switch (sinkType) {
@@ -266,6 +356,9 @@ function App() {
         if ('file' in inputSource) {
           size = inputSource.file.size;
           source = inputSource.file.stream() as unknown as ReadableStream<Uint8Array>;
+        } else if ('type' in inputSource) {
+          size = inputSource.length;
+          source = randomStream(inputSource);
         } else {
           // NOTE: Attaching the signal to the pipeline (in pipeTo, below)
           // is insufficient (at least in Chrome) to abort the fetch itself.
@@ -330,6 +423,9 @@ function App() {
         if ('file' in inputSource) {
           size = inputSource.file.size;
           source = inputSource.file.stream() as unknown as ReadableStream<Uint8Array>;
+        } else if ('type' in inputSource) {
+          size = inputSource.length;
+          source = randomStream(inputSource);
         } else {
           const fr = await fetch(inputSource.url, { signal: sc.signal });
           if (!fr.ok) {
@@ -420,6 +516,9 @@ function App() {
           if ('file' in inputSource) {
             size = inputSource.file.size;
             source = { type: 'file-browser', location: inputSource.file };
+          } else if ('type' in inputSource) {
+            size = inputSource.length;
+            source = { type: 'chunker', location: randomChunker(inputSource) };
           } else {
             const hr = await fetch(inputSource.url, { method: 'HEAD' });
             size = parseInt(hr.headers.get('Content-Length') || '-1');
@@ -456,12 +555,16 @@ function App() {
         break;
       }
       case 'nano': {
-        if (!('file' in inputSource)) {
+        if ('url' in inputSource) {
           throw new Error('Unsupported : fetch the url I guess?');
         }
         const nanoClient = new NanoTDFClient(authProvider, 'http://localhost:65432/api/kas');
         try {
-          const plainText = await nanoClient.decrypt(await inputSource.file.arrayBuffer());
+          const cipherText =
+            'file' in inputSource
+              ? await inputSource.file.arrayBuffer()
+              : randomArrayBuffer(inputSource);
+          const plainText = await nanoClient.decrypt(cipherText);
           switch (sinkType) {
             case 'file':
               saver(new Blob([plainText]), dfn);
@@ -625,16 +728,32 @@ function App() {
               </div>
             ) : (
               <>
-                <label htmlFor="file-selector">Select file:</label>
-                <input type="file" name="file" id="fileSelector" onChange={changeHandler} />
-                <div>OR URL:</div>
-                <input
-                  type="url"
-                  name="url"
-                  id="urlSelector"
-                  onChange={changeHandler}
-                  placeholder="http://localhost:8000/sample.tdf"
-                />
+                <label htmlFor="fileSelector">Select file:</label>
+                <input type="file" name="file" id="fileSelector" onChange={setFileHandler} />
+                <div>OR</div>
+                <div className={clsx({ selected: inputSource && 'url' in inputSource })}>
+                  <label htmlFor="urlSelector">Load from URL:</label>
+                  <input
+                    id="urlSelector"
+                    name="url"
+                    onChange={setUrlHandler}
+                    placeholder="http://localhost:8000/sample.tdf"
+                    type="url"
+                  />
+                </div>
+                <div>OR:</div>
+                <div className={clsx({ selected: inputSource && 'length' in inputSource })}>
+                  <label htmlFor="randomSelector">Random Bytes:</label>
+                  <input
+                    id="randomSelector"
+                    name="randomSelector"
+                    min="0"
+                    max={2 ** 34}
+                    onChange={setRandomHandler}
+                    placeholder={`${2 ** 20} bytes`}
+                    type="number"
+                  />
+                </div>
               </>
             )}
           </fieldset>

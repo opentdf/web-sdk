@@ -2,7 +2,7 @@ import { S3Client, GetObjectCommand, HeadObjectCommand, S3ClientConfig } from '@
 import axios from 'axios';
 import { Buffer } from 'buffer';
 
-import { arrayBufferToBuffer, inBrowser } from '../utils/index.js';
+import { arrayBufferToBuffer, DataSource, inBrowser } from '../utils/index.js';
 import { AttributeValidator } from './validation.js';
 import { AttributeObject, Policy } from '../models/index.js';
 import { type RcaParams, type RcaLink, type Metadata } from '../tdf.js';
@@ -11,6 +11,7 @@ import { Binary } from '../binary.js';
 import { IllegalArgumentError, IllegalEnvError } from '../errors.js';
 import { PemKeyPair } from '../crypto/declarations.js';
 import { EntityObject } from '../../../src/tdf/EntityObject.js';
+import { isAnyTdfStream } from './tdf-stream.js';
 
 const { get } = axios;
 
@@ -600,17 +601,8 @@ class EncryptParamsBuilder {
     return this._deepCopy(this._params as EncryptParams);
   }
 }
-
-export type DecryptSource =
-  | null
-  | { type: 'buffer'; location: Uint8Array }
-  | { type: 'remote'; location: string }
-  | { type: 'stream'; location: ReadableStream<Uint8Array> }
-  | { type: 'file-browser'; location: Blob }
-  | { type: 'file-node'; location: string };
-
 export type DecryptParams = {
-  source: DecryptSource;
+  source: DataSource;
   opts?: { keypair: PemKeyPair };
   rcaSource?: RcaParams;
   eo?: EntityObject;
@@ -634,9 +626,9 @@ export type DecryptParams = {
  </pre>
  */
 class DecryptParamsBuilder {
-  private _params: DecryptParams;
+  private _params: Partial<DecryptParams>;
 
-  constructor(to_copy: DecryptParams = { source: null }) {
+  constructor(to_copy: Partial<DecryptParams> = {}) {
     this._params = {
       ...to_copy,
     };
@@ -651,7 +643,7 @@ class DecryptParamsBuilder {
     return this;
   }
 
-  getStreamSource(): DecryptSource {
+  getStreamSource(): DataSource | undefined {
     return this._params.source;
   }
 
@@ -700,6 +692,9 @@ class DecryptParamsBuilder {
    * @param {Readable} stream - a Readable stream to decrypt.
    */
   setStreamSource(stream: ReadableStream<Uint8Array>) {
+    if (!isAnyTdfStream(stream)) {
+      throw new Error('Invalid data source; must be DecoratedTdfStream');
+    }
     this._params.source = { type: 'stream', location: stream };
   }
 
@@ -849,7 +844,10 @@ class DecryptParamsBuilder {
    * Creates a deep copy to prevent tricky call-by-reference and async execution bugs.
    */
   build(): Readonly<DecryptParams> {
-    return this._deepCopy(this._params);
+    if (!this._params.source) {
+      throw new IllegalArgumentError('No source specified');
+    }
+    return this._deepCopy(this._params as DecryptParams);
   }
 }
 

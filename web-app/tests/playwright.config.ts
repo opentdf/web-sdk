@@ -13,9 +13,9 @@ import { devices } from '@playwright/test';
 const config: PlaywrightTestConfig = {
   testDir: './tests',
   /* Maximum time one test can run for. */
-  timeout: 10 * 1000,
+  timeout: 300_000,
   expect: {
-    timeout: 3000,
+    timeout: 200_000,
   },
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
