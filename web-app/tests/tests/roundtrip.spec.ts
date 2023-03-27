@@ -120,9 +120,8 @@ test('Large File', async ({ page }) => {
     throw new Error();
   }
   const stats = await fs.stat(plainTextPath);
-  expect(stats).toContain({size: eightGigs});
+  expect(stats).toContain({ size: eightGigs });
 });
-
 
 test('Remote Source Streaming', async ({ page }) => {
   const server = await serve('.', 8000);
