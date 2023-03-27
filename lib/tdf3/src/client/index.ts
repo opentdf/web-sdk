@@ -8,7 +8,6 @@ import {
   streamToBuffer,
   isAppIdProviderCheck,
   type Chunker,
-  type DataSource,
 } from '../utils/index.js';
 import { base64 } from '../../../src/encodings/index.js';
 import { TDF } from '../tdf.js';
@@ -23,7 +22,12 @@ import EAS from '../../../src/auth/Eas.js';
 import { EncryptParams, DecryptParams, type Scope } from './builders.js';
 import { type DecoratedReadableStream } from './DecoratedReadableStream.js';
 
-import { DEFAULT_SEGMENT_SIZE, DecryptParamsBuilder, EncryptParamsBuilder } from './builders.js';
+import {
+  DEFAULT_SEGMENT_SIZE,
+  DecryptParamsBuilder,
+  type DecryptSource,
+  EncryptParamsBuilder,
+} from './builders.js';
 import { Policy } from '../models/index.js';
 import { cryptoToPemPair, generateKeyPair, rsaPkcs1Sha256 } from '../crypto/index.js';
 import { TdfError } from '../errors.js';
@@ -60,7 +64,7 @@ export const uploadBinaryToS3 = async function (
 };
 const getFirstTwoBytes = async (chunker: Chunker) => new TextDecoder().decode(await chunker(0, 2));
 
-const makeChunkable = async (source: DataSource) => {
+const makeChunkable = async (source: DecryptSource) => {
   if (!source) {
     throw new Error('Invalid source');
   }
@@ -69,7 +73,7 @@ const makeChunkable = async (source: DataSource) => {
   let initialChunker: Chunker;
   let buf = null;
   if (source.type === 'stream') {
-    buf = await source.location.toBuffer();
+    buf = await streamToBuffer(source.location);
     initialChunker = fromBuffer(buf);
   } else if (source.type === 'buffer') {
     buf = source.location;
@@ -462,7 +466,7 @@ export class Client {
    * @return {string} - the unique policyId, which can be used for tracking purposes or policy management operations.
    * @see DecryptParamsBuilder
    */
-  async getPolicyId({ source }: { source: DataSource }) {
+  async getPolicyId({ source }: { source: DecryptSource }) {
     const chunker = await makeChunkable(source);
     const zipHelper = new ZipReader(chunker);
     const centralDirectory = await zipHelper.getCentralDirectory();
@@ -493,8 +497,8 @@ export class Client {
 export {
   AuthProvider,
   AppIdAuthProvider,
-  DataSource,
   DecryptParamsBuilder,
+  DecryptSource,
   EncryptParamsBuilder,
   HttpRequest,
   fromDataSource,

@@ -5,16 +5,11 @@ import { BrowserTdfStream } from './src/client/BrowserTdfSteam.js';
 import {
   type DecryptParams,
   DecryptParamsBuilder,
+  type DecryptSource,
   type EncryptParams,
   EncryptParamsBuilder,
 } from './src/client/builders.js';
-import {
-  type SessionKeys,
-  type ClientConfig,
-  type DataSource,
-  createSessionKeys,
-  fromDataSource,
-} from './src/client/index.js';
+import { type SessionKeys, type ClientConfig, createSessionKeys } from './src/client/index.js';
 import { type AnyTdfStream, registerModuleType } from './src/client/tdf-stream.js';
 import { type DecryptResult, type EncryptResult } from './src/crypto/declarations.js';
 import { TDF, Client, Errors } from './src/index.js';
@@ -44,12 +39,11 @@ export {
   Binary,
   Client,
   ClientConfig,
-  DataSource,
   DecoratedReadableStream,
   DecryptParams,
   DecryptParamsBuilder,
   DecryptResult,
-  DataSource as DecryptSource,
+  DecryptSource,
   EncryptionInformation,
   EncryptParams,
   EncryptParamsBuilder,
@@ -65,6 +59,5 @@ export {
   TDF,
   clientType,
   createSessionKeys,
-  fromDataSource,
   version,
 };

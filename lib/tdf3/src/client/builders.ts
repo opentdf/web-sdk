@@ -2,7 +2,7 @@ import { S3Client, GetObjectCommand, HeadObjectCommand, S3ClientConfig } from '@
 import axios from 'axios';
 import { Buffer } from 'buffer';
 
-import { arrayBufferToBuffer, DataSource, inBrowser } from '../utils/index.js';
+import { arrayBufferToBuffer, inBrowser } from '../utils/index.js';
 import { AttributeValidator } from './validation.js';
 import { AttributeObject, Policy } from '../models/index.js';
 import { type RcaParams, type RcaLink, type Metadata } from '../tdf.js';
@@ -11,7 +11,6 @@ import { Binary } from '../binary.js';
 import { IllegalArgumentError, IllegalEnvError } from '../errors.js';
 import { PemKeyPair } from '../crypto/declarations.js';
 import { EntityObject } from '../../../src/tdf/EntityObject.js';
-import { isAnyTdfStream } from './tdf-stream.js';
 
 const { get } = axios;
 
@@ -601,8 +600,16 @@ class EncryptParamsBuilder {
     return this._deepCopy(this._params as EncryptParams);
   }
 }
+
+export type DecryptSource =
+  | { type: 'buffer'; location: Uint8Array }
+  | { type: 'remote'; location: string }
+  | { type: 'stream'; location: ReadableStream<Uint8Array> }
+  | { type: 'file-browser'; location: Blob }
+  | { type: 'file-node'; location: string };
+
 export type DecryptParams = {
-  source: DataSource;
+  source: DecryptSource;
   opts?: { keypair: PemKeyPair };
   rcaSource?: RcaParams;
   eo?: EntityObject;
@@ -643,7 +650,7 @@ class DecryptParamsBuilder {
     return this;
   }
 
-  getStreamSource(): DataSource | undefined {
+  getStreamSource(): DecryptSource | undefined {
     return this._params.source;
   }
 
@@ -692,9 +699,6 @@ class DecryptParamsBuilder {
    * @param {Readable} stream - a Readable stream to decrypt.
    */
   setStreamSource(stream: ReadableStream<Uint8Array>) {
-    if (!isAnyTdfStream(stream)) {
-      throw new Error('Invalid data source; must be DecoratedTdfStream');
-    }
     this._params.source = { type: 'stream', location: stream };
   }
 

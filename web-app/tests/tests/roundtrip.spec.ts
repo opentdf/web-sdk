@@ -119,7 +119,7 @@ test('Large File', async ({ page }) => {
   if (!plainTextPath) {
     throw new Error();
   }
-  const stats = await fs.stat(plainTextPath);
+  const stats = fs.statSync(plainTextPath);
   expect(stats).toContain({ size: eightGigs });
 });
 
