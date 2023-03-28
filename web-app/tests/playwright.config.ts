@@ -7,15 +7,21 @@ import { devices } from '@playwright/test';
  */
 // require('dotenv').config();
 
+const requestedTests = (process.env.PLAYWRIGHT_TESTS_TO_RUN || "roundtrip").replace(/[\s,]+/g, ' ').trim().split(' ');
+const withHuge = requestedTests.includes('huge');
+
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
 const config: PlaywrightTestConfig = {
   testDir: './tests',
+
+  ...(!withHuge && { testIgnore: 'huge*' }),
+
   /* Maximum time one test can run for. */
-  timeout: 300_000,
+  timeout: withHuge ? 300_000 : 10_000,
   expect: {
-    timeout: 200_000,
+    timeout: withHuge ? 200_000 : 3_000,
   },
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
