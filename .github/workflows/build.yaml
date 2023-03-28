@@ -170,6 +170,7 @@ jobs:
           TEST_SCRIPT: ../../wait-and-test.sh
           OPENTDF_INGRESS_HOST_PORT: "5432"
           OPENTDF_LOAD_FRONTEND: "false"
+          PLAYWRIGHT_TESTS_TO_RUN: roundtrip
         run: |-
           tilt ci --file opentdf/quickstart/Tiltfile
 

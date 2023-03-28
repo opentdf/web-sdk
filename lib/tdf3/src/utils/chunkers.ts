@@ -111,11 +111,13 @@ export const fromUrl = async (location: string): Promise<Chunker> => {
   };
 };
 
-type sourcetype = 'buffer' | 'file-browser' | 'file-node' | 'remote' | 'stream';
-type DataSource = {
-  type: sourcetype;
-  location: AnyTdfStream | Uint8Array | Blob | string;
-};
+export type DataSource =
+  | { type: 'buffer'; location: Uint8Array }
+  | { type: 'chunker'; location: Chunker }
+  | { type: 'file-browser'; location: Blob }
+  | { type: 'file-node'; location: string }
+  | { type: 'remote'; location: string }
+  | { type: 'stream'; location: AnyTdfStream };
 
 export const fromDataSource = async ({ type, location }: DataSource) => {
   switch (type) {
@@ -124,6 +126,11 @@ export const fromDataSource = async ({ type, location }: DataSource) => {
         throw new Error('Invalid data source; must be uint8 array');
       }
       return fromBuffer(location);
+    case 'chunker':
+      if (!(location instanceof Function)) {
+        throw new Error('Invalid data source; must be uint8 array');
+      }
+      return location;
     case 'file-browser':
       if (!(location instanceof Blob)) {
         throw new Error('Invalid data source; must be at least a Blob');

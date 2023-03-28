@@ -35,6 +35,12 @@ npm i
 npm test
 ```
 
+To enable the large file tests, set
+
+```
+PLAYWRIGHT_TESTS_TO_RUN=huge roundtrip
+```
+
 
 ## Running with test server for local URL streaming tests
 

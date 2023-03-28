@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@opentdf/client": "file:../lib/opentdf-client-0.4.0.tgz",
+    "clsx": "^1.2.1",
     "native-file-system-adapter": "^3.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"

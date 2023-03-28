@@ -1,32 +1,12 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { serve } from '../static-server.js';
+import { authorize, loadFile } from './acts.js';
 
 // References
 // Playwright assertions: https://playwright.dev/docs/test-assertions
 // upload files: https://timdeschryver.dev/blog/how-to-upload-files-with-playwright
-
-const authorize = async (page: Page) => {
-  await page.goto('http://localhost:65432/');
-  // If we are logged in, return early.
-  const sessionState = await page.locator('#sessionState').textContent();
-  if (sessionState === 'loggedin') {
-    return;
-  }
-  if (sessionState !== 'start') {
-    throw new Error(`Invalid session state [${sessionState}]`);
-  }
-  await page.locator('#login_button').click();
-
-  await page.fill('#username', 'user1');
-  await page.fill('#password', 'testuser123');
-  await Promise.all([page.waitForResponse('**/token'), page.click('#kc-login')]);
-};
-
-const loadFile = async (page: Page, path: string) => {
-  await page.locator('#fileSelector').setInputFiles(path);
-};
 
 test.beforeEach(async ({ page }) => {
   page.on('pageerror', (err) => {
