@@ -7,7 +7,10 @@ import { devices } from '@playwright/test';
  */
 // require('dotenv').config();
 
-const requestedTests = (process.env.PLAYWRIGHT_TESTS_TO_RUN || "roundtrip").replace(/[\s,]+/g, ' ').trim().split(' ');
+const requestedTests = (process.env.PLAYWRIGHT_TESTS_TO_RUN || 'roundtrip')
+  .replace(/[\s,]+/g, ' ')
+  .trim()
+  .split(' ');
 const withHuge = requestedTests.includes('huge');
 
 /**
