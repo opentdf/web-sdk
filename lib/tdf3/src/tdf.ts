@@ -516,7 +516,9 @@ export class TDF extends EventEmitter {
         const httpReq = await this.authProvider.withCreds(this.buildRequest('POST', url, body));
 
         try {
-          const response = await axios.post(url, httpReq.body, { headers: httpReq.headers });
+          const response = await axios.post(httpReq.url, httpReq.body, {
+            headers: httpReq.headers,
+          });
 
           // Remove additional properties which were needed to sync, but not that we want to save to
           // the manifest
@@ -855,7 +857,7 @@ export class TDF extends EventEmitter {
           // The response from KAS on a rewrap
           const {
             data: { entityWrappedKey, metadata },
-          } = await axios.post(url, httpReq.body, { headers: httpReq.headers });
+          } = await axios.post(httpReq.url, httpReq.body, { headers: httpReq.headers });
           responseMetadata = metadata;
           const key = Binary.fromString(base64.decode(entityWrappedKey));
           const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(
