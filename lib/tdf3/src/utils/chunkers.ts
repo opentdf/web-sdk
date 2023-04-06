@@ -2,6 +2,10 @@ import axios, { AxiosResponse } from 'axios';
 import { Buffer } from 'buffer';
 import { createReadStream, readFile, statSync } from 'fs';
 import { type AnyTdfStream, isAnyTdfStream } from '../client/tdf-stream.js';
+import axiosRetry from 'axios-retry';
+
+// @ts-ignore
+axiosRetry(axios, { retries: 3 }); // Retries all idempotent requests (GET, HEAD, OPTIONS, PUT, DELETE)
 
 /**
  * Read data from a seekable stream.
