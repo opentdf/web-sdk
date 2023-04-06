@@ -52,7 +52,7 @@ class Eas {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       params: {
-        format: 'jwt'
+        format: 'jwt',
       },
       body: { publicKey, ...etc },
     };
