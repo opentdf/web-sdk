@@ -51,6 +51,9 @@ class Eas {
       url: this.endpoint,
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      params: {
+        format: 'jwt'
+      },
       body: { publicKey, ...etc },
     };
 
