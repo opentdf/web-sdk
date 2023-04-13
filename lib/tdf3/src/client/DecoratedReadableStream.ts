@@ -6,10 +6,10 @@ import {
 import axios from 'axios';
 import { Buffer } from 'buffer';
 import { EventEmitter } from 'eventemitter3';
+import { Upload } from '@aws-sdk/lib-storage';
+import { Options } from '@aws-sdk/lib-storage';
 
 import { VirtruS3Config, VirtruTempS3Credentials, VirtruCreds } from './builders.js';
-import { Upload } from '../utils/aws-lib-storage/index.js';
-import { Options } from '../utils/aws-lib-storage/types.js';
 import { type Metadata } from '../tdf.js';
 import { type Manifest, type UpsertResponse } from '../models/index.js';
 
