@@ -4,5 +4,5 @@ extends:
   - plugin:@typescript-eslint/recommended
   - plugin:prettier/recommended
 parserOptions:
-  project: ./tsconfig.json
+  project: ['**/tsconfig.json']
 root: true
