@@ -13,7 +13,7 @@ test.beforeEach(async ({ page }) => {
 
 test('Large File', async ({ page }) => {
   await authorize(page);
-  const fiveGigs = 5 * (2 ** 30);
+  const fiveGigs = 5 * 2 ** 30;
   await page.locator('#randomSelector').fill(fiveGigs.toString());
 
   const downloadPromise = page.waitForEvent('download');
