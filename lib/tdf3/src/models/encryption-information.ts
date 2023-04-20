@@ -92,7 +92,7 @@ export class SplitKey {
             }
       ) as string;
 
-      const metadataBinary = Binary.fromString(metadataStr);
+      const metadataBinary = Binary.fromArrayBuffer(new TextEncoder().encode(metadataStr));
 
       const encryptedMetadataResult = await this.encrypt(
         metadataBinary,
