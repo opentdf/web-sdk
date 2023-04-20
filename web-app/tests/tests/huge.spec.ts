@@ -42,8 +42,12 @@ test('Large File', async ({ page }) => {
     if (!plainTextPath) {
       throw new Error();
     }
-    const stats = fs.statSync(plainTextPath);
-    expect(stats).toHaveProperty('size', eightGigs);
+    try {
+      const stats = fs.statSync(plainTextPath);
+      expect(stats).toHaveProperty('size', eightGigs);
+    } finally {
+      fs.unlink(plainTextPath);
+    }
   } finally {
     fs.unlink(cipherTextPath);
   }
