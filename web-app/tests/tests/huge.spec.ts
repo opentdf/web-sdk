@@ -23,24 +23,28 @@ test('Large File', async ({ page }) => {
 
   const download = await downloadPromise;
   const cipherTextPath = await download.path();
-  expect(download.suggestedFilename()).toContain('bytes');
-  expect(cipherTextPath).toBeTruthy();
-  if (!cipherTextPath) {
-    throw new Error();
-  }
+  try {
+    expect(download.suggestedFilename()).toContain('bytes');
+    expect(cipherTextPath).toBeTruthy();
+    if (!cipherTextPath) {
+      throw new Error();
+    }
 
-  await page.locator('#randomSelector').clear();
-  await loadFile(page, cipherTextPath);
-  const plainDownloadPromise = page.waitForEvent('download');
-  await page.locator('#tdfDecrypt').click();
-  await page.locator('#fileSink').click();
-  await page.locator('#decryptButton').click();
-  const download2 = await plainDownloadPromise;
-  expect(download2.suggestedFilename()).toContain('.decrypted');
-  const plainTextPath = await download2.path();
-  if (!plainTextPath) {
-    throw new Error();
+    await page.locator('#randomSelector').clear();
+    await loadFile(page, cipherTextPath);
+    const plainDownloadPromise = page.waitForEvent('download');
+    await page.locator('#tdfDecrypt').click();
+    await page.locator('#fileSink').click();
+    await page.locator('#decryptButton').click();
+    const download2 = await plainDownloadPromise;
+    expect(download2.suggestedFilename()).toContain('.decrypted');
+    const plainTextPath = await download2.path();
+    if (!plainTextPath) {
+      throw new Error();
+    }
+    const stats = fs.statSync(plainTextPath);
+    expect(stats).toHaveProperty('size', eightGigs);
+  } finally {
+    fs.unlink(cipherTextPath);
   }
-  const stats = fs.statSync(plainTextPath);
-  expect(stats).toHaveProperty('size', eightGigs);
 });
