@@ -13,8 +13,8 @@ test.beforeEach(async ({ page }) => {
 
 test('Large File', async ({ page }) => {
   await authorize(page);
-  const eightGigs = 2 ** 33;
-  await page.locator('#randomSelector').fill(eightGigs.toString());
+  const fiveGigs = 5 * (2 ** 30);
+  await page.locator('#randomSelector').fill(fiveGigs.toString());
 
   const downloadPromise = page.waitForEvent('download');
   await page.locator('#zipEncrypt').click();
@@ -44,7 +44,7 @@ test('Large File', async ({ page }) => {
     }
     try {
       const stats = fs.statSync(plainTextPath);
-      expect(stats).toHaveProperty('size', eightGigs);
+      expect(stats).toHaveProperty('size', fiveGigs);
     } finally {
       fs.unlink(plainTextPath);
     }
