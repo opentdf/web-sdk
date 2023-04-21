@@ -12,14 +12,14 @@ const requestedTests = (process.env.PLAYWRIGHT_TESTS_TO_RUN || 'roundtrip')
   .trim()
   .split(' ');
 const withHuge = requestedTests.includes('huge');
+const testMatch = requestedTests.map((s: string) => `${s}.spec.ts`);
 
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
 const config: PlaywrightTestConfig = {
   testDir: './tests',
-
-  ...(!withHuge && { testIgnore: 'huge*' }),
+  testMatch,
 
   /* Maximum time one test can run for. */
   timeout: withHuge ? 900_000 : 10_000,
