@@ -46,9 +46,9 @@ test('Large File', async ({ page }) => {
       const stats = fs.statSync(plainTextPath);
       expect(stats).toHaveProperty('size', fiveGigs);
     } finally {
-      fs.unlink(plainTextPath);
+      fs.unlinkSync(plainTextPath);
     }
   } finally {
-    fs.unlink(cipherTextPath);
+    fs.unlinkSync(cipherTextPath);
   }
 });
