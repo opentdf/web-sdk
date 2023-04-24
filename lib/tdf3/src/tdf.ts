@@ -547,7 +547,8 @@ export class TDF extends EventEmitter {
   async writeStream(
     byteLimit: number,
     isRcaSource: boolean,
-    payloadKey?: Binary
+    payloadKey?: Binary,
+    progressHandler?: Function,
   ): Promise<AnyTdfStream> {
     if (!this.contentStream) {
       throw new IllegalArgumentError('No input stream defined');
@@ -572,9 +573,8 @@ export class TDF extends EventEmitter {
       },
     ];
 
-    let currentBuffer = Buffer.alloc(0);
-
     let totalByteCount = 0;
+    let bytesProcessed = 0;
     let crcCounter = 0;
     let fileByteCount = 0;
     let aggregateHash = '';
@@ -618,8 +618,6 @@ export class TDF extends EventEmitter {
     // start writing the content
     entryInfos[0].filename = '0.payload';
     entryInfos[0].offset = totalByteCount;
-    const sourceReader = this.contentStream.getReader();
-
     /*
     TODO: Code duplication should be addressed
     - RCA operations require that the write stream has already finished executing it's .on('end') handler before being returned,
@@ -628,62 +626,36 @@ export class TDF extends EventEmitter {
     - LFS operations can have the write stream returned immediately after both .on('end') and .on('data') handlers
       have been defined, thus not requiring the handlers to be wrapped in a promise.
     */
-    const underlingSource = {
-      start: (controller: ReadableStreamDefaultController) => {
+    const transfromer : Transformer = {
+      async start(controller) {
         controller.enqueue(getHeader(entryInfos[0].filename));
         _countChunk(getHeader(entryInfos[0].filename));
         crcCounter = 0;
         fileByteCount = 0;
       },
 
-      pull: async (controller: ReadableStreamDefaultController) => {
-        let isDone;
+      async transform(chunk, controller) {
+        const encryptedSegment = await _encryptAndCountSegment(chunk);
+        controller.enqueue(encryptedSegment);
+      },
 
-        while (currentBuffer.length < segmentSizeDefault && !isDone) {
-          const { value, done } = await sourceReader.read();
-          isDone = done;
-          if (value) {
-            currentBuffer = Buffer.concat([currentBuffer, value]);
-          }
-        }
+      async flush(controller) {
+        entryInfos[0].crcCounter = crcCounter;
+        entryInfos[0].fileByteCount = fileByteCount;
+        const payloadDataDescriptor = zipWriter.writeDataDescriptor(crcCounter, fileByteCount);
 
-        while (
-          currentBuffer.length >= segmentSizeDefault &&
-          !!controller.desiredSize &&
-          controller.desiredSize > 0
-        ) {
-          const segment = currentBuffer.slice(0, segmentSizeDefault);
-          const encryptedSegment = await _encryptAndCountSegment(segment);
-          controller.enqueue(encryptedSegment);
+        controller.enqueue(payloadDataDescriptor);
+        _countChunk(payloadDataDescriptor);
 
-          currentBuffer = currentBuffer.slice(segmentSizeDefault);
-        }
-
-        const isFinalChunkLeft = isDone && currentBuffer.length;
-
-        if (isFinalChunkLeft) {
-          const encryptedSegment = await _encryptAndCountSegment(currentBuffer);
-          controller.enqueue(encryptedSegment);
-          currentBuffer = Buffer.alloc(0);
-        }
-
-        if (isDone && currentBuffer.length === 0) {
-          entryInfos[0].crcCounter = crcCounter;
-          entryInfos[0].fileByteCount = fileByteCount;
-          const payloadDataDescriptor = zipWriter.writeDataDescriptor(crcCounter, fileByteCount);
-
-          controller.enqueue(payloadDataDescriptor);
-          _countChunk(payloadDataDescriptor);
-
-          // prepare the manifest
-          entryInfos[1].filename = '0.manifest.json';
-          entryInfos[1].offset = totalByteCount;
-          controller.enqueue(getHeader(entryInfos[1].filename));
-          _countChunk(getHeader(entryInfos[1].filename));
-          crcCounter = 0;
-          fileByteCount = 0;
-
-          // hash the concat of all hashes
+        // prepare the manifest
+        entryInfos[1].filename = '0.manifest.json';
+        entryInfos[1].offset = totalByteCount;
+        controller.enqueue(getHeader(entryInfos[1].filename));
+        _countChunk(getHeader(entryInfos[1].filename));
+        crcCounter = 0;
+        fileByteCount = 0;
+        // hash the concat of all hashes
+        if (manifest) {
           const payloadSigStr = await self.getSignature(
             payloadKey || keyInfo.unwrappedKeyBinary,
             Binary.fromString(aggregateHash),
@@ -693,9 +665,7 @@ export class TDF extends EventEmitter {
             base64.encode(payloadSigStr);
           manifest.encryptionInformation.integrityInformation.rootSignature.alg =
             self.integrityAlgorithm;
-
-          manifest.encryptionInformation.integrityInformation.segmentSizeDefault =
-            segmentSizeDefault;
+          manifest.encryptionInformation.integrityInformation.segmentSizeDefault = segmentSizeDefault;
           manifest.encryptionInformation.integrityInformation.encryptedSegmentSizeDefault =
             encryptedSegmentSizeDefault;
           manifest.encryptionInformation.integrityInformation.segmentHashAlg =
@@ -708,41 +678,40 @@ export class TDF extends EventEmitter {
           const manifestBuffer = Buffer.from(JSON.stringify(manifest));
           controller.enqueue(manifestBuffer);
           _countChunk(manifestBuffer);
-          entryInfos[1].crcCounter = crcCounter;
-          entryInfos[1].fileByteCount = fileByteCount;
-          const manifestDataDescriptor = zipWriter.writeDataDescriptor(crcCounter, fileByteCount);
-          controller.enqueue(manifestDataDescriptor);
-          _countChunk(manifestDataDescriptor);
-
-          // write the central directory out
-          const centralDirectoryByteCount = totalByteCount;
-          for (let i = 0; i < entryInfos.length; i++) {
-            const entryInfo = entryInfos[i];
-            const result = zipWriter.writeCentralDirectoryRecord(
-              entryInfo.fileByteCount || 0,
-              entryInfo.filename,
-              entryInfo.offset || 0,
-              entryInfo.crcCounter || 0,
-              2175008768
-            );
-            controller.enqueue(result);
-            _countChunk(result);
-          }
-          const endOfCentralDirectoryByteCount = totalByteCount - centralDirectoryByteCount;
-          const finalChunk = zipWriter.writeEndOfCentralDirectoryRecord(
-            entryInfos.length,
-            endOfCentralDirectoryByteCount,
-            centralDirectoryByteCount
-          );
-          controller.enqueue(finalChunk);
-          _countChunk(finalChunk);
-
-          controller.close();
         }
-      },
+
+        entryInfos[1].crcCounter = crcCounter;
+        entryInfos[1].fileByteCount = fileByteCount;
+        const manifestDataDescriptor = zipWriter.writeDataDescriptor(crcCounter, fileByteCount);
+        controller.enqueue(manifestDataDescriptor);
+        _countChunk(manifestDataDescriptor);
+
+        // write the central directory out
+        const centralDirectoryByteCount = totalByteCount;
+        for (let i = 0; i < entryInfos.length; i++) {
+          const entryInfo = entryInfos[i];
+          const result = zipWriter.writeCentralDirectoryRecord(
+            entryInfo.fileByteCount || 0,
+            entryInfo.filename,
+            entryInfo.offset || 0,
+            entryInfo.crcCounter || 0,
+            2175008768
+          );
+          controller.enqueue(result);
+          _countChunk(result);
+        }
+        const endOfCentralDirectoryByteCount = totalByteCount - centralDirectoryByteCount;
+        const finalChunk = zipWriter.writeEndOfCentralDirectoryRecord(
+          entryInfos.length,
+          endOfCentralDirectoryByteCount,
+          centralDirectoryByteCount
+        );
+        controller.enqueue(finalChunk);
+        _countChunk(finalChunk);
+      }
     };
 
-    const plaintextStream = makeStream(underlingSource);
+    const plaintextStream = makeStream(transfromer);
 
     if (upsertResponse) {
       plaintextStream.upsertResponse = upsertResponse;
@@ -768,6 +737,10 @@ export class TDF extends EventEmitter {
     }
 
     async function _encryptAndCountSegment(chunk: Buffer) {
+      bytesProcessed += chunk.length;
+      if (progressHandler) {
+        progressHandler(bytesProcessed);
+      }
       // Don't pass in an IV here. The encrypt function will generate one for you, ensuring that each segment has a unique IV.
       const encryptedResult = await encryptionInformation.encrypt(
         Binary.fromBuffer(chunk),
@@ -889,7 +862,6 @@ export class TDF extends EventEmitter {
    * readStream
    *
    * @param {Object} chunker - A function object for getting data in a series of typed array objects
-   * @param {Stream} outputStream - The writable stream we should put the new bits into
    * @param {Object} rcaParams - Optional field to specify if file is stored on S3
    */
   async readStream(chunker: Chunker, rcaParams?: RcaParams) {

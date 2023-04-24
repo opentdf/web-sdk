@@ -1,5 +1,5 @@
 import { type BrowserTdfStream } from './BrowserTdfSteam.js';
-import { DecoratedReadableStream } from './DecoratedReadableStream.js';
+import { DecoratedStream } from './DecoratedStream.js';
 import { type NodeTdfStream } from './NodeTdfStream.js';
 
 export type AnyTdfStream = BrowserTdfStream | NodeTdfStream;
@@ -19,9 +19,9 @@ export function registerModuleType(factory: AnyTdfStreamCtor) {
   _stream.factory = factory;
 }
 
-export function makeStream(a: ConstructorParameters<AnyTdfStreamCtor>[0]): DecoratedReadableStream {
+export function makeStream(a: Transformer | UnderlyingSource, wattermark: number = 1): DecoratedStream {
   if (!_stream.factory) {
     throw Error('Stream factory misconfigured');
   }
-  return new _stream.factory(a);
+  return new _stream.factory(a, wattermark);
 }

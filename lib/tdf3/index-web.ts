@@ -1,6 +1,6 @@
 import { FileClient } from './src/FileClient.js';
 import { Binary } from './src/binary.js';
-import { DecoratedReadableStream } from './src/client/DecoratedReadableStream.js';
+import { DecoratedStream } from './src/client/DecoratedStream.js';
 import { BrowserTdfStream } from './src/client/BrowserTdfSteam.js';
 import {
   type DecryptParams,
@@ -39,7 +39,7 @@ export {
   Binary,
   Client,
   ClientConfig,
-  DecoratedReadableStream,
+  DecoratedStream,
   DecryptParams,
   DecryptParamsBuilder,
   DecryptResult,

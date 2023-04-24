@@ -23,13 +23,21 @@ export type DecoratedReadableStreamSinkOptions = {
   signal?: AbortSignal;
 };
 
-export abstract class DecoratedReadableStream {
+function isTransformer(param: any): param is Transformer{
+  return !!param.transform;
+}
+function isUnderlyingSource(param: any): param is UnderlyingSource{
+  return !!param.pull;
+}
+
+export abstract class DecoratedStream {
   KEK: null | string;
   algorithm: string;
   policyUuid?: string;
   tdfSize: number;
   fileSize: number | undefined;
-  stream: ReadableStream<Uint8Array>;
+  stream: TransformStream<Uint8Array> | ReadableStream<Uint8Array>;
+  readable: ReadableStream<Uint8Array>;
   ee: EventEmitter;
   on: EventEmitter['on'];
   emit: EventEmitter['emit'];
@@ -38,10 +46,13 @@ export abstract class DecoratedReadableStream {
   manifest: Manifest;
   upsertResponse?: UpsertResponse;
 
-  constructor(underlyingSource: UnderlyingSource) {
-    this.stream = new ReadableStream(underlyingSource, {
-      highWaterMark: 1,
-    }) as ReadableStream<Uint8Array>;
+  constructor(param: Transformer | UnderlyingSource, highWaterMark: number = 1) {
+    if (isTransformer(param)){
+      this.stream = new TransformStream(param, { highWaterMark });
+    } else if (isUnderlyingSource(param)){
+      this.stream = new ReadableStream(param, { highWaterMark, }) as ReadableStream<Uint8Array>;
+    }
+    this.readable = this.stream instanceof TransformStream ? this.stream.readable : this.stream;
     this.ee = new EventEmitter();
     this.on = (...args) => this.ee.on(...args);
     this.emit = (...args) => this.ee.emit(...args);
@@ -106,7 +117,7 @@ export abstract class DecoratedReadableStream {
     const uploadParams: Options['params'] = {
       Bucket: BUCKET_NAME,
       Key: FILE_NAME,
-      Body: this.stream,
+      Body: this.readable
     };
 
     try {
@@ -148,7 +159,7 @@ export abstract class DecoratedReadableStream {
    * @return the plaintext in Buffer form.
    */
   async toBuffer(): Promise<Buffer> {
-    return streamToBuffer(this.stream);
+    return streamToBuffer(this.readable);
   }
 
   /**
@@ -156,7 +167,7 @@ export abstract class DecoratedReadableStream {
    * @return the plaintext in string form.
    */
   async toString(): Promise<string> {
-    return new Response(this.stream).text();
+    return new Response(this.readable).text();
   }
 
   /**

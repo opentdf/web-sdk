@@ -4,7 +4,7 @@ import { AppIdAuthProvider, AuthProvider } from '../../../src/auth/auth.js';
 export { ZipReader, readUInt64LE } from './zip-reader.js';
 export { ZipWriter } from './zip-writer.js';
 export { keySplit, keyMerge } from './keysplit.js';
-export { streamToBuffer } from '../client/DecoratedReadableStream.js';
+export { streamToBuffer } from '../client/DecoratedStream.js';
 export * from './chunkers.js';
 
 export function inBrowser(): boolean {

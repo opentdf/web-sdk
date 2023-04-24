@@ -1,11 +1,11 @@
 import { createWriteStream } from 'node:fs';
 import { Writable } from 'node:stream';
 import {
-  DecoratedReadableStream,
+  DecoratedStream,
   type DecoratedReadableStreamSinkOptions,
-} from './DecoratedReadableStream.js';
+} from './DecoratedStream.js';
 
-export class NodeTdfStream extends DecoratedReadableStream {
+export class NodeTdfStream extends DecoratedStream {
   override async toFile(
     filepath: string,
     options: BufferEncoding | DecoratedReadableStreamSinkOptions = 'utf-8'
@@ -14,6 +14,6 @@ export class NodeTdfStream extends DecoratedReadableStream {
       (typeof options === 'string' && options) || (options && options.encoding) || 'utf-8';
     const nodeStream = createWriteStream(filepath, { encoding, flags: 'w', highWaterMark: 1 });
     const writer = Writable.toWeb(nodeStream);
-    await this.stream.pipeTo(writer);
+    await this.readable.pipeTo(writer);
   }
 }

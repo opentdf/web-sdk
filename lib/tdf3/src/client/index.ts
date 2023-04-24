@@ -20,7 +20,7 @@ import { AuthProvider, AppIdAuthProvider, HttpRequest } from '../../../src/auth/
 import EAS from '../../../src/auth/Eas.js';
 
 import { EncryptParams, DecryptParams, type Scope } from './builders.js';
-import { type DecoratedReadableStream } from './DecoratedReadableStream.js';
+import { type DecoratedStream } from './DecoratedStream.js';
 
 import {
   DEFAULT_SEGMENT_SIZE,
@@ -114,6 +114,7 @@ export interface ClientConfig {
   authProvider?: AuthProvider | AppIdAuthProvider;
   readerUrl?: string;
   entityObjectEndpoint?: string;
+  progressHandler?: Function;
 }
 
 /*
@@ -325,6 +326,7 @@ export class Client {
     windowSize,
     eo,
     payloadKey,
+    fileSize,
   }: Omit<EncryptParams, 'output'>): Promise<AnyTdfStream>;
   async encrypt({
     scope,
@@ -337,6 +339,7 @@ export class Client {
     windowSize,
     eo,
     payloadKey,
+    fileSize,
   }: EncryptParams & { output: NodeJS.WriteStream }): Promise<void>;
   async encrypt({
     scope = { attributes: [], dissem: [] },
@@ -350,6 +353,7 @@ export class Client {
     windowSize = DEFAULT_SEGMENT_SIZE,
     eo,
     payloadKey,
+    fileSize,
   }: EncryptParams): Promise<AnyTdfStream | void> {
     if (asHtml) {
       if (rcaSource) {
@@ -365,6 +369,7 @@ export class Client {
     const sessionKeys = await this.sessionKeys;
     const kasPublicKey = await this.kasPublicKey;
     const policyObject = this._createPolicyObject(scope);
+    console.log(policyObject);
 
     // TODO: Refactor underlying builder to remove some of this unnecessary config.
 
@@ -392,7 +397,7 @@ export class Client {
     });
 
     const byteLimit = asHtml ? HTML_BYTE_LIMIT : GLOBAL_BYTE_LIMIT;
-    const stream = await tdf.writeStream(byteLimit, !!rcaSource, payloadKey);
+    const stream = await tdf.writeStream(byteLimit, !!rcaSource, payloadKey, this.clientConfig.progressHandler);
     // Looks like invalid calls | stream.upsertResponse equals empty array?
     if (rcaSource) {
       stream.policyUuid = policyObject.uuid;
@@ -432,7 +437,7 @@ export class Client {
    * @return a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} stream containing the decrypted plaintext.
    * @see DecryptParamsBuilder
    */
-  async decrypt({ eo, source, rcaSource }: DecryptParams): Promise<DecoratedReadableStream> {
+  async decrypt({ eo, source, rcaSource }: DecryptParams): Promise<DecoratedStream> {
     const sessionKeys = await this.sessionKeys;
     let entityObject;
     if (eo && eo.publicKey == sessionKeys.keypair.publicKey) {

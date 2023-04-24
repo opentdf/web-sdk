@@ -130,6 +130,7 @@ export type EncryptParams = {
   contentLength?: number;
   offline?: boolean;
   windowSize?: number;
+  fileSize?: number;
   asHtml?: boolean;
   rcaSource?: boolean;
   getPolicyId?: () => Scope['policyId'];
