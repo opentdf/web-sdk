@@ -35,6 +35,12 @@ npm i
 npm test
 ```
 
+To enable the large file tests, set
+
+```
+PLAYWRIGHT_TESTS_TO_RUN=huge roundtrip
+```
+
 
 ## Running with test server for local URL streaming tests
 
@@ -43,7 +49,7 @@ To try encrypting some of your own files via HTTP:
 ```
 cd web-app/tests
 npm i
-./run-server.js ~/my-test-documents
+./run-server.js ~/Downloads
 ```
 
 Then use the OR URL field in the sample app to load things up.

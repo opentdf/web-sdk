@@ -7,7 +7,7 @@ import {
   fromDataSource,
   streamToBuffer,
   isAppIdProviderCheck,
-  Chunker,
+  type Chunker,
 } from '../utils/index.js';
 import { base64 } from '../../../src/encodings/index.js';
 import { TDF } from '../tdf.js';
@@ -25,8 +25,8 @@ import { type DecoratedReadableStream } from './DecoratedReadableStream.js';
 import {
   DEFAULT_SEGMENT_SIZE,
   DecryptParamsBuilder,
-  EncryptParamsBuilder,
   type DecryptSource,
+  EncryptParamsBuilder,
 } from './builders.js';
 import { Policy } from '../models/index.js';
 import { cryptoToPemPair, generateKeyPair, rsaPkcs1Sha256 } from '../crypto/index.js';
@@ -494,4 +494,12 @@ export class Client {
   }
 }
 
-export { AuthProvider, AppIdAuthProvider, DecryptParamsBuilder, EncryptParamsBuilder, HttpRequest };
+export {
+  AuthProvider,
+  AppIdAuthProvider,
+  DecryptParamsBuilder,
+  DecryptSource,
+  EncryptParamsBuilder,
+  HttpRequest,
+  fromDataSource,
+};

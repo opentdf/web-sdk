@@ -16,6 +16,7 @@ type AuthToProcess = {
   clientId?: string;
   clientSecret?: string;
   oidcEndpoint: string;
+  userId?: string;
 };
 
 const containerTypes = ['tdf3', 'nano', 'dataset'] as const;
@@ -27,7 +28,7 @@ const parseJwtComplete = (jwt: string) => {
   return { header: parseJwt(jwt, 0), payload: parseJwt(jwt) };
 };
 
-async function processAuth({ auth, clientId, clientSecret, oidcEndpoint }: AuthToProcess) {
+async function processAuth({ auth, clientId, clientSecret, oidcEndpoint, userId }: AuthToProcess) {
   log('DEBUG', 'Processing auth params');
   if (auth) {
     log('DEBUG', 'Processing an auth string');
@@ -57,10 +58,15 @@ async function processAuth({ auth, clientId, clientSecret, oidcEndpoint }: AuthT
       log('DEBUG', `updateClientPublicKey: [${clientPubkey}] [${signingKey?.publicKey}]`);
     },
     withCreds: async (httpReq: AuthProviders.HttpRequest) => {
-      const creds = await actual.withCreds(httpReq);
-      log('DEBUG', `HTTP Requesting: ${JSON.stringify(creds)}`);
-      requestLog.push(creds);
-      return creds;
+      const credible = await actual.withCreds(httpReq);
+      if (userId) {
+        const url = new URL(credible.url);
+        url.searchParams.set('userId', userId);
+        credible.url = url.href;
+      }
+      log('DEBUG', `HTTP Requesting: ${JSON.stringify(credible)}`);
+      requestLog.push(credible);
+      return credible;
     },
   };
 }
@@ -169,6 +175,12 @@ export const handleArgs = (args: string[]) => {
         choices: containerTypes,
         description: 'Container format',
         default: 'nano',
+      })
+
+      .option('userId', {
+        group: 'TDF Settings',
+        type: 'string',
+        description: 'Owner email address',
       })
 
       // Examples

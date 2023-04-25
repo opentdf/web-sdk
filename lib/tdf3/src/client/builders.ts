@@ -602,7 +602,6 @@ class EncryptParamsBuilder {
 }
 
 export type DecryptSource =
-  | null
   | { type: 'buffer'; location: Uint8Array }
   | { type: 'remote'; location: string }
   | { type: 'stream'; location: ReadableStream<Uint8Array> }
@@ -634,9 +633,9 @@ export type DecryptParams = {
  </pre>
  */
 class DecryptParamsBuilder {
-  private _params: DecryptParams;
+  private _params: Partial<DecryptParams>;
 
-  constructor(to_copy: DecryptParams = { source: null }) {
+  constructor(to_copy: Partial<DecryptParams> = {}) {
     this._params = {
       ...to_copy,
     };
@@ -651,7 +650,7 @@ class DecryptParamsBuilder {
     return this;
   }
 
-  getStreamSource(): DecryptSource {
+  getStreamSource(): DecryptSource | undefined {
     return this._params.source;
   }
 
@@ -849,7 +848,10 @@ class DecryptParamsBuilder {
    * Creates a deep copy to prevent tricky call-by-reference and async execution bugs.
    */
   build(): Readonly<DecryptParams> {
-    return this._deepCopy(this._params);
+    if (!this._params.source) {
+      throw new IllegalArgumentError('No source specified');
+    }
+    return this._deepCopy(this._params as DecryptParams);
   }
 }
 

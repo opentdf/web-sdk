@@ -7,22 +7,25 @@ import { devices } from '@playwright/test';
  */
 // require('dotenv').config();
 
+const requestedTests = (process.env.PLAYWRIGHT_TESTS_TO_RUN || 'roundtrip')
+  .replace(/[\s,]+/g, ' ')
+  .trim()
+  .split(' ');
+const withHuge = requestedTests.includes('huge');
+const testMatch = requestedTests.map((s: string) => `${s}.spec.ts`);
+
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
 const config: PlaywrightTestConfig = {
   testDir: './tests',
+  testMatch,
+
   /* Maximum time one test can run for. */
-  timeout: 10 * 1000,
+  timeout: withHuge ? 900_000 : 10_000,
   expect: {
-    /**
-     * Maximum time expect() should wait for the condition to be met.
-     * For example in `await expect(locator).toHaveText();`
-     */
-    timeout: 3000,
+    timeout: withHuge ? 900_000 : 3_000,
   },
-  /* Run tests in files in parallel */
-  fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */

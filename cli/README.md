@@ -24,6 +24,7 @@ bin/opentdf.mjs \
   --oidcEndpoint http://localhost:65432/auth/realms/tdf \
   --auth tdf-client:123-456 \
   --containerType tdf3 \
+  --userId alice@somewhere.there \
   decrypt sample.tdf
 ```
 
