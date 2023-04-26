@@ -393,7 +393,12 @@ export class Client {
     });
 
     const byteLimit = asHtml ? HTML_BYTE_LIMIT : GLOBAL_BYTE_LIMIT;
-    const stream = await tdf.writeStream(byteLimit, !!rcaSource, payloadKey, this.clientConfig.progressHandler);
+    const stream = await tdf.writeStream(
+      byteLimit,
+      !!rcaSource,
+      payloadKey,
+      this.clientConfig.progressHandler
+    );
     // Looks like invalid calls | stream.upsertResponse equals empty array?
     if (rcaSource) {
       stream.policyUuid = policyObject.uuid;

@@ -548,7 +548,7 @@ export class TDF extends EventEmitter {
     byteLimit: number,
     isRcaSource: boolean,
     payloadKey?: Binary,
-    progressHandler?: Function,
+    progressHandler?: Function
   ): Promise<AnyTdfStream> {
     if (!this.contentStream) {
       throw new IllegalArgumentError('No input stream defined');
