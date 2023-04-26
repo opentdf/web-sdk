@@ -101,7 +101,7 @@ jobs:
     defaults:
       run:
         working-directory: .github/workflows/roundtrip
-    timeout-minutes: 90
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
