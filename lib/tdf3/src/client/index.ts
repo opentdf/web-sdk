@@ -114,7 +114,7 @@ export interface ClientConfig {
   authProvider?: AuthProvider | AppIdAuthProvider;
   readerUrl?: string;
   entityObjectEndpoint?: string;
-  progressHandler?: Function;
+  progressHandler?: (bytesProcessed: number) => void;
 }
 
 /*

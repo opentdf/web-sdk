@@ -548,7 +548,7 @@ export class TDF extends EventEmitter {
     byteLimit: number,
     isRcaSource: boolean,
     payloadKey?: Binary,
-    progressHandler?: Function
+    progressHandler?: (bytesProcessed: number) => void
   ): Promise<AnyTdfStream> {
     if (!this.contentStream) {
       throw new IllegalArgumentError('No input stream defined');
@@ -898,7 +898,7 @@ export class TDF extends EventEmitter {
    * @param {Stream} outputStream - The writable stream we should put the new bits into
    * @param {Object} rcaParams - Optional field to specify if file is stored on S3
    */
-  async readStream(chunker: Chunker, rcaParams?: RcaParams, progressHandler?: Function) {
+  async readStream(chunker: Chunker, rcaParams?: RcaParams, progressHandler?: (bytesProcessed: number) => void) {
     const { zipReader, centralDirectory } = await this.loadTDFStream(chunker);
     if (!this.manifest) {
       throw new Error('Missing manifest data');
