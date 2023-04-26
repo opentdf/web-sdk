@@ -28,7 +28,7 @@ export interface RawDataPart {
 
 const MIN_PART_SIZE = 1024 * 1024 * 5;
 
-export const byteLength = (input: RawDataPart['data'] | PutObjectCommandInput['Body']) => {
+export const byteLength = (input: RawDataPart['data'] | PutObjectCommandInput['Body'] | ReadableStream) => {
   if (input === null || input === undefined) {
     return 0;
   }
@@ -49,7 +49,7 @@ export const byteLength = (input: RawDataPart['data'] | PutObjectCommandInput['B
     //     return undefined;
     //   }
   }
-  throw new Error(`Unsupported type [${input}]`);
+  return 0;
 };
 
 export class Upload extends EventEmitter {

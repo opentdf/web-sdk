@@ -75,7 +75,7 @@ export abstract class DecoratedReadableStream {
         console.error(e);
       }
     }
-
+    debugger;
     // Build a storage config object from 'config' or 'virtruTempS3Credentials'
     if (virtruTempS3Credentials) {
       const credentials: VirtruCreds = {
@@ -110,6 +110,7 @@ export abstract class DecoratedReadableStream {
     };
 
     try {
+      debugger;
       const parallelUpload = new Upload({
         client: s3,
         queueSize: CONCURRENT_UPLOADS, // optional concurrency configuration
@@ -125,6 +126,7 @@ export abstract class DecoratedReadableStream {
       return await parallelUpload.done();
     } catch (e) {
       console.error(e);
+      debugger;
       throw e;
     }
   }
