@@ -5,7 +5,11 @@ import { type AnyTdfStream, isAnyTdfStream } from '../client/tdf-stream.js';
 import axiosRetry from 'axios-retry';
 
 // @ts-ignore
-axiosRetry(axios, { retries: 3, retryDelay: axiosRetry.exponentialDelay, retryCondition: () => true }); // Retries all idempotent requests (GET, HEAD, OPTIONS, PUT, DELETE)
+axiosRetry(axios, {
+  retries: 3,
+  retryDelay: axiosRetry.exponentialDelay,
+  retryCondition: () => true,
+}); // Retries all idempotent requests (GET, HEAD, OPTIONS, PUT, DELETE)
 
 /**
  * Read data from a seekable stream.
