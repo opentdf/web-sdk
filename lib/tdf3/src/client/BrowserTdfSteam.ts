@@ -4,7 +4,7 @@ import {
 } from './DecoratedReadableStream.js';
 import streamSaver from 'streamsaver';
 import { fileSave } from 'browser-fs-access';
-import { isFirefox } from '../../../src/utils.js';
+import { isFirefox, isSafari } from '../../../src/utils.js';
 
 export class BrowserTdfStream extends DecoratedReadableStream {
   override async toFile(
@@ -14,7 +14,7 @@ export class BrowserTdfStream extends DecoratedReadableStream {
     if (options && typeof options === 'string') {
       throw new Error('Unsupported Operation: Cannot set encoding in browser');
     }
-    if (isFirefox()) {
+    if (isSafari() || isFirefox()) {
       await fileSave(new Response(this.stream), {
         fileName: filepath,
         extensions: [`.${filepath.split('.').pop()}`],
