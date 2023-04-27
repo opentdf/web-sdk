@@ -1011,14 +1011,22 @@ export class TDF extends EventEmitter {
     const outputStream = makeStream(underlyingSource);
 
     if (rcaParams && rcaParams.wu) {
-      const res = await axios.head(rcaParams.wu);
-
-      const length = parseInt(res?.headers?.['content-length'] as string, 10);
-
-      if (length) {
-        outputStream.fileSize = length;
-      } else {
-        console.log('Unable to retrieve total fileSize');
+      try {
+        const res = await axios.head(rcaParams.wu);
+        const length = parseInt(res?.headers?.['content-length'] as string, 10);
+        if (length) {
+          outputStream.fileSize = length;
+        } else {
+          console.log('fileSize: Unable to view size');
+        }
+      } catch (e) {
+        if (e.response) {
+          console.error('fileSize: ', e.response.status, e.response.headers);
+        } else if (e.request) {
+          console.error('fileSize: network failure');
+        } else {
+          console.error('fileSize: ', e.message);
+        }
       }
     }
 
