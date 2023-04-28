@@ -4,8 +4,10 @@ import { createReadStream, readFile, statSync } from 'fs';
 import { type AnyTdfStream, isAnyTdfStream } from '../client/tdf-stream.js';
 import axiosRetry from 'axios-retry';
 
+const axiosRemoteChunk = axios.create();
+
 // @ts-ignore
-axiosRetry(axios, {
+axiosRetry(axiosRemoteChunk, {
   retries: 3,
   retryDelay: axiosRetry.exponentialDelay,
   retryCondition: () => true,
@@ -81,7 +83,7 @@ export const fromNodeFile = (filePath: string): Chunker => {
 
 async function getRemoteChunk(url: string, range?: string): Promise<Uint8Array> {
   try {
-    const res: AxiosResponse<Uint8Array> = await axios.get(url, {
+    const res: AxiosResponse<Uint8Array> = await axiosRemoteChunk.get(url, {
       ...(range && {
         headers: {
           Range: `bytes=${range}`,
