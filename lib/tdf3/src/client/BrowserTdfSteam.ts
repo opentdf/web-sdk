@@ -22,7 +22,7 @@ export class BrowserTdfStream extends DecoratedReadableStream {
       return;
     }
 
-    streamSaver.mitm = 'https://secure.virtru.com/rca/stream-saver/index.html';
+    streamSaver.mitm = 'https://secure.develop.virtru.com/rca/stream-saver/index.html';
 
     const fileStream = streamSaver.createWriteStream(filepath, {
       ...(this.contentLength && { size: this.contentLength }),
