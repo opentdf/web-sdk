@@ -952,7 +952,10 @@ export class TDF extends EventEmitter {
     // See: https://github.com/jherwitz/tdf3-js/blob/3ec3c8a3b8c5cecb6f6976b540d5ecde21183c8c/src/tdf.js#L739
     let encryptedOffset = 0;
 
+    // ! new code starts here
     let reader : ReadableStreamDefaultReader<Uint8Array> | undefined;
+    let mainBuff = Buffer.alloc(encryptedSegmentSizeDefault * 2);
+    let residue = undefined;
 
     if (rcaParams && rcaParams.wu) {
       const cdObj = centralDirectory.find(({ fileName }) => '0.payload' === fileName);
@@ -974,28 +977,34 @@ export class TDF extends EventEmitter {
     const underlyingSource = {
       pull: async (controller: ReadableStreamDefaultController) => {
         if (rcaParams && rcaParams.wu) {
+          if (segments.length === 0) {
+            controller.close();
+            return;
+          }
 
-          let mainBuff = Buffer.alloc(encryptedSegmentSizeDefault * 2);
           let fill = 0;
-          let residue = undefined;
-          let encryptedChunk = undefined;
+          let encryptedChunk = undefined as unknown as Buffer;
           const segment = segments.shift();
           const encryptedSegmentSize = segment?.encryptedSegmentSize || encryptedSegmentSizeDefault;
 
 
+          // * build a encryptedSegmentSize chunk
           while (true) {
             // @ts-ignore
             const { value: encryptedChunkPiece, done } = await reader?.read();
 
             if (done) {
+              console.log('Stream end detected');
               if (fill > 0) {
                 throw new Error('Expected no leftover data at end of stream');
               }
-
+              controller.close();
+              return;
             }
 
             mainBuff.fill(encryptedChunkPiece, fill, fill + encryptedChunkPiece.length);
             fill += encryptedChunkPiece.length;
+            encryptedOffset += encryptedChunkPiece.length;
 
             if (fill >= encryptedSegmentSize) {
 
@@ -1011,11 +1020,11 @@ export class TDF extends EventEmitter {
                 fill = 0;
                 mainBuff.fill('');
               }
-
+              console.log('Encrypted segment size: ', encryptedSegmentSize);
+              console.log('Encrypted chunk length: ', encryptedChunk.length);
               break; // * start to process the encryptedChunk below
 
             }
-
 
           }
 
@@ -1035,15 +1044,41 @@ export class TDF extends EventEmitter {
           // if (!segment) {
           //   throw new Error('Shifted past end of segments array');
           // }
-          // if (!this.manifest) {
-          //   throw new Error('Missing manifest information');
-          // }
+          if (!this.manifest) {
+            throw new Error('Missing manifest information');
+          }
 
+          // use the segment alg type if provided, otherwise use the root sig alg
+          const segmentIntegrityAlgorithmType =
+            this.manifest.encryptionInformation.integrityInformation.segmentHashAlg;
+          const segmentHashStr = await this.getSignature(
+            reconstructedKeyBinary,
+            Binary.fromBuffer(encryptedChunk),
+            segmentIntegrityAlgorithmType || integrityAlgorithmType
+          );
 
+          if (segment?.hash !== base64.encode(segmentHashStr)) {
+            throw new ManifestIntegrityError('Failed integrity check on segment hash');
+          }
+
+          let decryptedSegment;
+
+          try {
+            decryptedSegment = await cipher.decrypt(encryptedChunk, reconstructedKeyBinary);
+          } catch (e) {
+            throw new TdfDecryptError(
+              'Error decrypting payload. This suggests the key used to decrypt the payload is not correct.',
+              e
+            );
+          }
+          if (progressHandler) {
+            progressHandler(encryptedOffset);
+          }
+          controller.enqueue(decryptedSegment.payload.asBuffer());
 
 
         }
-        else { // ! _____________________________________________
+        else { // ! _____________________________________________ old code below
           if (segments.length === 0) {
             controller.close();
             return;
