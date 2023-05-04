@@ -1031,22 +1031,6 @@ export class TDF extends EventEmitter {
             }
           }
 
-          // const { value: encryptedChunk, done } = await reader.read();
-
-          // if (done) {
-          //   controller.close();
-          //   return;
-          // }
-
-          // if (segments.length === 0) {
-          //   controller.close();
-          //   return;
-          // }
-
-          // const segment = segments.shift();
-          // if (!segment) {
-          //   throw new Error('Shifted past end of segments array');
-          // }
           if (!this.manifest) {
             throw new Error('Missing manifest information');
           }
