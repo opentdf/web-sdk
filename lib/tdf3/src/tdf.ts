@@ -959,12 +959,17 @@ export class TDF extends EventEmitter {
 
     if (rcaParams && rcaParams.wu) {
       const cdObj = centralDirectory.find(({ fileName }) => '0.payload' === fileName);
-
+      console.log('cdObj: ', cdObj);
       if (!cdObj) {
         throw new Error('Unable to retrieve CD');
       }
 
-      const byteStart = cdObj.relativeOffsetOfLocalHeader + cdObj.headerLength + encryptedOffset;
+      // const byteStart = cdObj.relativeOffsetOfLocalHeader + cdObj.headerLength + encryptedOffset;
+
+      const byteStart = encryptedOffset;
+
+      console.log('byteStart: ', byteStart);
+      console.log('byteEnd: ', byteStart + (segments.length * encryptedSegmentSizeDefault));
 
       const response = await fetch(rcaParams.wu, {
         headers: {
@@ -978,6 +983,7 @@ export class TDF extends EventEmitter {
     const underlyingSource = {
       pull: async (controller: ReadableStreamDefaultController) => {
         if (rcaParams && rcaParams.wu) {
+          console.log('running rca code');
           if (segments.length === 0) {
             controller.close();
             return;
@@ -1055,6 +1061,9 @@ export class TDF extends EventEmitter {
           );
 
           if (segment?.hash !== base64.encode(segmentHashStr)) {
+            console.log('encryptedChunk: ', encryptedChunk);
+            console.log('segment hash: ', segment?.hash);
+            console.log('segment hash string: ', segmentHashStr);
             throw new ManifestIntegrityError('Failed integrity check on segment hash');
           }
 
@@ -1073,6 +1082,7 @@ export class TDF extends EventEmitter {
           }
           controller.enqueue(decryptedSegment.payload.asBuffer());
         } else {
+          console.log('Running non rca code');
           // ! _____________________________________________ old code below
           if (segments.length === 0) {
             controller.close();
