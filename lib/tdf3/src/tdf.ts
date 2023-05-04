@@ -969,7 +969,7 @@ export class TDF extends EventEmitter {
       const byteStart = encryptedOffset;
 
       console.log('byteStart: ', byteStart);
-      console.log('byteEnd: ', byteStart + (segments.length * encryptedSegmentSizeDefault));
+      console.log('byteEnd: ', byteStart + segments.length * encryptedSegmentSizeDefault);
 
       const response = await fetch(rcaParams.wu, {
         headers: {
