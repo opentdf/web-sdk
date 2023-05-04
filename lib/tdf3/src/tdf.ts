@@ -953,7 +953,7 @@ export class TDF extends EventEmitter {
     let encryptedOffset = 0;
 
     // ! new code starts here
-    let reader : ReadableStreamDefaultReader<Uint8Array> | undefined;
+    let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
     let mainBuff = Buffer.alloc(encryptedSegmentSizeDefault * 2);
     let residue = undefined;
 
@@ -967,12 +967,13 @@ export class TDF extends EventEmitter {
       const byteStart = cdObj.relativeOffsetOfLocalHeader + cdObj.headerLength + encryptedOffset;
 
       const response = await fetch(rcaParams.wu, {
-        headers: { 'Range': `bytes=${byteStart}-${byteStart + (segments.length * encryptedSegmentSizeDefault)}` },
+        headers: {
+          Range: `bytes=${byteStart}-${byteStart + segments.length * encryptedSegmentSizeDefault}`,
+        },
       });
 
       reader = response?.body?.getReader();
     }
-
 
     const underlyingSource = {
       pull: async (controller: ReadableStreamDefaultController) => {
@@ -986,7 +987,6 @@ export class TDF extends EventEmitter {
           let encryptedChunk = undefined as unknown as Buffer;
           const segment = segments.shift();
           const encryptedSegmentSize = segment?.encryptedSegmentSize || encryptedSegmentSizeDefault;
-
 
           // * build a encryptedSegmentSize chunk
           while (true) {
@@ -1007,7 +1007,6 @@ export class TDF extends EventEmitter {
             encryptedOffset += encryptedChunkPiece.length;
 
             if (fill >= encryptedSegmentSize) {
-
               encryptedChunk = mainBuff.subarray(0, encryptedSegmentSize);
               residue = mainBuff.subarray(encryptedSegmentSize, fill);
 
@@ -1023,9 +1022,7 @@ export class TDF extends EventEmitter {
               console.log('Encrypted segment size: ', encryptedSegmentSize);
               console.log('Encrypted chunk length: ', encryptedChunk.length);
               break; // * start to process the encryptedChunk below
-
             }
-
           }
 
           // const { value: encryptedChunk, done } = await reader.read();
@@ -1075,10 +1072,8 @@ export class TDF extends EventEmitter {
             progressHandler(encryptedOffset);
           }
           controller.enqueue(decryptedSegment.payload.asBuffer());
-
-
-        }
-        else { // ! _____________________________________________ old code below
+        } else {
+          // ! _____________________________________________ old code below
           if (segments.length === 0) {
             controller.close();
             return;
@@ -1128,9 +1123,6 @@ export class TDF extends EventEmitter {
           }
           controller.enqueue(decryptedSegment.payload.asBuffer());
         }
-
-
-
       },
     };
 
