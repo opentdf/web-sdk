@@ -964,16 +964,15 @@ export class TDF extends EventEmitter {
         throw new Error('Unable to retrieve CD');
       }
 
-      // const byteStart = cdObj.relativeOffsetOfLocalHeader + cdObj.headerLength + encryptedOffset;
-
-      const byteStart = encryptedOffset;
+      const byteStart = cdObj.relativeOffsetOfLocalHeader + cdObj.headerLength + encryptedOffset;
+      const byteEnd = byteStart + (segments.length * encryptedSegmentSizeDefault);
 
       console.log('byteStart: ', byteStart);
-      console.log('byteEnd: ', byteStart + segments.length * encryptedSegmentSizeDefault);
+      console.log('byteEnd: ', byteEnd);
 
       const response = await fetch(rcaParams.wu, {
         headers: {
-          Range: `bytes=${byteStart}-${byteStart + segments.length * encryptedSegmentSizeDefault}`,
+          Range: `bytes=${byteStart}-${byteEnd}`,
         },
       });
 
