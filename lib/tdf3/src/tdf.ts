@@ -965,7 +965,7 @@ export class TDF extends EventEmitter {
       }
 
       const byteStart = cdObj.relativeOffsetOfLocalHeader + cdObj.headerLength + encryptedOffset;
-      const byteEnd = byteStart + (segments.length * encryptedSegmentSizeDefault);
+      const byteEnd = byteStart + segments.length * encryptedSegmentSizeDefault;
 
       console.log('byteStart: ', byteStart);
       console.log('byteEnd: ', byteEnd);
