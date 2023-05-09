@@ -4,7 +4,7 @@ import axios from 'axios';
 import crc32 from 'buffer-crc32';
 import { v4 } from 'uuid';
 import { exportSPKI, importPKCS8, importX509 } from 'jose';
-import * as fastq from "fastq";
+import * as fastq from 'fastq';
 import { AnyTdfStream, makeStream } from './client/tdf-stream.js';
 import { EntityObject } from '../../src/tdf/EntityObject.js';
 
@@ -960,12 +960,12 @@ export class TDF extends EventEmitter {
 
     const q: any = fastq.promise(asyncQueueWorker, 1);
 
-
     const underlyingSource = {
       pull: async (controller: ReadableStreamDefaultController) => {
         pullController = controller;
         // @ts-ignore
-        if (rcaParams && rcaParams.wu) { // * New code
+        if (rcaParams && rcaParams.wu) {
+          // * New code
           console.log('Running parallelize method');
 
           const segment = segments.shift();
@@ -979,8 +979,8 @@ export class TDF extends EventEmitter {
           }
 
           q.push(async () => {
-
-            const encryptedSegmentSize = segment?.encryptedSegmentSize || encryptedSegmentSizeDefault;
+            const encryptedSegmentSize =
+              segment?.encryptedSegmentSize || encryptedSegmentSizeDefault;
 
             const encryptedChunk = await zipReader.getPayloadSegment(
               centralDirectory,
@@ -990,8 +990,9 @@ export class TDF extends EventEmitter {
             );
             encryptedOffset += encryptedSegmentSize;
 
-              // use the segment alg type if provided, otherwise use the root sig alg
-            const segmentIntegrityAlgorithmType = this?.manifest?.encryptionInformation.integrityInformation.segmentHashAlg;
+            // use the segment alg type if provided, otherwise use the root sig alg
+            const segmentIntegrityAlgorithmType =
+              this?.manifest?.encryptionInformation.integrityInformation.segmentHashAlg;
             const segmentHashStr = await this.getSignature(
               reconstructedKeyBinary,
               Binary.fromBuffer(encryptedChunk),
@@ -999,7 +1000,11 @@ export class TDF extends EventEmitter {
             );
 
             if (segment?.hash !== base64.encode(segmentHashStr)) {
-              console.log('failing segment check segment, followedy by segmentHashStr: ', segment?.hash, segmentHashStr);
+              console.log(
+                'failing segment check segment, followedy by segmentHashStr: ',
+                segment?.hash,
+                segmentHashStr
+              );
               throw new ManifestIntegrityError('Failed integrity check on segment hash');
             }
 
@@ -1018,9 +1023,8 @@ export class TDF extends EventEmitter {
             }
 
             return decryptedSegment.payload.asBuffer();
-          })
-        }
-        else {
+          });
+        } else {
           console.log('Running original method');
           if (segments.length === 0) {
             controller.close();
