@@ -72,6 +72,7 @@
     "dpop": "^1.1.0",
     "eventemitter3": "^5.0.0",
     "events": "^3.3.0",
+    "fastq": "^1.15.0",
     "jose": "^4.11.2",
     "jsonschema": "^1.4.1",
     "streamsaver": "^2.0.6",
