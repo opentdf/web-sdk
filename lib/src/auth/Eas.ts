@@ -66,7 +66,7 @@ class Eas {
       method: httpReq.method,
       headers: httpReq.headers,
       url: httpReq.url,
-      params: undefined,
+      params: httpReq.params,
       data: undefined,
     };
     // Allow the authProvider to change the method.
@@ -75,7 +75,8 @@ class Eas {
     } else {
       axiosParams.params = httpReq.body;
     }
-    return (await this.requestFunctor(axiosParams)).data;
+    const response = await this.requestFunctor(axiosParams);
+    return { data: response.data, headers: response.headers };
   }
 }
 

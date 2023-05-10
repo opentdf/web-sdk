@@ -135,6 +135,7 @@ export type EncryptParams = {
   getPolicyId?: () => Scope['policyId'];
   mimeType?: string;
   eo?: EntityObject;
+  jwtToken?: string;
   payloadKey?: Binary;
 };
 
