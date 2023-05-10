@@ -114,6 +114,7 @@ export interface ClientConfig {
   authProvider?: AuthProvider | AppIdAuthProvider;
   readerUrl?: string;
   entityObjectEndpoint?: string;
+  progressHandler?: (bytesProcessed: number) => void;
 }
 
 /*
@@ -398,7 +399,12 @@ export class Client {
     });
 
     const byteLimit = asHtml ? HTML_BYTE_LIMIT : GLOBAL_BYTE_LIMIT;
-    const stream = await tdf.writeStream(byteLimit, !!rcaSource, payloadKey);
+    const stream = await tdf.writeStream(
+      byteLimit,
+      !!rcaSource,
+      payloadKey,
+      this.clientConfig.progressHandler
+    );
     // Looks like invalid calls | stream.upsertResponse equals empty array?
     if (rcaSource) {
       stream.policyUuid = policyObject.uuid;
@@ -463,7 +469,7 @@ export class Client {
 
     // Await in order to catch any errors from this call.
     // TODO: Write error event to stream and don't await.
-    return tdf.readStream(chunker, rcaSource);
+    return tdf.readStream(chunker, rcaSource, this.clientConfig.progressHandler);
   }
 
   /**

@@ -190,6 +190,22 @@ function randomChunker({ length }: RandomInputSource): Chunker {
   };
 }
 
+function humanReadableDurationEstimate(ms: number) {
+  if (ms < 1000 * 1.5) {
+    return `${ms} ms`;
+  }
+  if (ms < 60_000 * 1.5) {
+    return `${(ms / 1_000).toFixed(1)} s`;
+  }
+  if (ms < 3_600_000 * 1.5) {
+    return `${(ms / 60_000).toFixed(1)} m`;
+  }
+  if (ms < 86_400_000 * 1.5) {
+    return `${(ms / 3_600_000).toFixed(1)} h`;
+  }
+  return `${(ms / 86_400_000).toFixed(1)} d`;
+}
+
 function App() {
   const [authState, setAuthState] = useState<SessionInformation>({ sessionState: 'start' });
   const [decryptContainerType, setDecryptContainerType] = useState<Containers>('tdf');
@@ -248,16 +264,32 @@ function App() {
     let lastLoggedRead = -1;
     let lastLoggedWritten = -1;
     let bytesWritten = 0;
+    let startTime = Date.now();
     const logEveryBytes = fileSize && fileSize > 100 ? fileSize / 100 : 1000 * 1000 * 16;
     return {
       reader: new TransformStream({
+        start() {
+          const n = Date.now();
+          const d = n - startTime;
+          if (d > 1000) {
+            console.log(`Started ${d.toLocaleString()} milliseconds after initialized`);
+          }
+          startTime = n;
+        },
         async transform(chunk, controller) {
           bytesRead += chunk.length;
-          const message = `🤓 Processed ${Math.round(
+          const message = `🤓 ${type}ed ${Math.round(
             100 * (bytesRead / fileSize)
-          )}% input bytes (${bytesRead} / ${fileSize})`;
+          )}% input bytes (${bytesRead.toLocaleString()} / ${fileSize.toLocaleString()})`;
           if (bytesRead - lastLoggedRead > logEveryBytes) {
-            console.log(message);
+            const d = Date.now() - startTime;
+            const totalTimeEstimate = (d * fileSize) / bytesRead;
+            const timeRemainingEstimate = totalTimeEstimate - d;
+            console.log(
+              `${message}, about ${humanReadableDurationEstimate(
+                timeRemainingEstimate
+              )} remaining of ${totalTimeEstimate.toLocaleString()}ms`
+            );
             lastLoggedRead = bytesRead;
           }
           controller.enqueue(chunk);
@@ -276,12 +308,14 @@ function App() {
         async transform(chunk, controller) {
           bytesWritten += chunk.length;
           if (bytesWritten - lastLoggedWritten > logEveryBytes) {
-            console.log(`✍️ Processed output bytes: ${bytesWritten}`);
+            console.log(`✍️ ${type}ed output bytes: ${bytesWritten.toLocaleString()}`);
             lastLoggedWritten = bytesWritten;
           }
           controller.enqueue(chunk);
         },
         flush() {
+          const d = Date.now() - startTime;
+          console.log(`✍️ ${type} Complete after ${d.toLocaleString()} milliseconds`);
           setDownloadState(`✍️ ${type} Complete`);
         },
       }),

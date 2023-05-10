@@ -212,15 +212,23 @@ jobs:
       - run: make doc
       - run: echo "::notice file=lib/package.json::Will be published to [GitHub Packages](https://github.com/opentdf/client-web/pkgs/npm/client) as ${{ steps.guess-build-metadata.outputs.DIST_TAG }} with version=[${{ steps.guess-build-metadata.outputs.FULL_VERSION }}]"
       - run: >-
-          .github/workflows/publish-to.sh ${{ steps.guess-build-metadata.outputs.FULL_VERSION }}
+          .github/workflows/publish-to.sh
+          ${{ steps.guess-build-metadata.outputs.FULL_VERSION }}
           ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: echo "- [Client Library](https://github.com/opentdf/client-web/pkgs/npm/client)">>$GITHUB_STEP_SUMMARY
       - run: echo "- [Command Line Tool](https://github.com/opentdf/client-web/pkgs/npm/cli)">>$GITHUB_STEP_SUMMARY
       - name: trigger xtest
-        run: |
-          curl -XPOST -u "virtru-cloudnative:${{secrets.PERSONAL_ACCESS_TOKEN}}" -H "Accept: application/vnd.github.everest-preview+json" -H "Content-Type: application/json" "https://api.github.com/repos/opentdf/backend/dispatches" --data '{"event_type": "xtest", "client_payload": {"version":"'$(BUILD_META="" .github/workflows/gh-semver.sh)'"}}'
+        run: >-
+          curl -XPOST
+          -u "virtru-cloudnative:${{secrets.PERSONAL_ACCESS_TOKEN}}"
+          -H "Accept: application/vnd.github.everest-preview+json"
+          -H "Content-Type: application/json"
+          "https://api.github.com/repos/opentdf/backend/dispatches"
+          --data '{"event_type":"xtest","client_payload":{"version":"'${FULL_VERSION%%+*}'"}}'
+        env:
+          FULL_VERSION: ${{ steps.guess-build-metadata.outputs.FULL_VERSION }}
       - name: Publish documentation to gh-pages
         uses: JamesIves/github-pages-deploy-action@v4.4.1
         with:

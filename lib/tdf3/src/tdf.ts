@@ -555,7 +555,8 @@ export class TDF extends EventEmitter {
   async writeStream(
     byteLimit: number,
     isRcaSource: boolean,
-    payloadKey?: Binary
+    payloadKey?: Binary,
+    progressHandler?: (bytesProcessed: number) => void
   ): Promise<AnyTdfStream> {
     if (!this.contentStream) {
       throw new IllegalArgumentError('No input stream defined');
@@ -583,6 +584,7 @@ export class TDF extends EventEmitter {
     let currentBuffer = Buffer.alloc(0);
 
     let totalByteCount = 0;
+    let bytesProcessed = 0;
     let crcCounter = 0;
     let fileByteCount = 0;
     let aggregateHash = '';
@@ -776,6 +778,10 @@ export class TDF extends EventEmitter {
     }
 
     async function _encryptAndCountSegment(chunk: Buffer) {
+      bytesProcessed += chunk.length;
+      if (progressHandler) {
+        progressHandler(bytesProcessed);
+      }
       // Don't pass in an IV here. The encrypt function will generate one for you, ensuring that each segment has a unique IV.
       const encryptedResult = await encryptionInformation.encrypt(
         Binary.fromBuffer(chunk),
@@ -901,7 +907,11 @@ export class TDF extends EventEmitter {
    * @param {Stream} outputStream - The writable stream we should put the new bits into
    * @param {Object} rcaParams - Optional field to specify if file is stored on S3
    */
-  async readStream(chunker: Chunker, rcaParams?: RcaParams) {
+  async readStream(
+    chunker: Chunker,
+    rcaParams?: RcaParams,
+    progressHandler?: (bytesProcessed: number) => void
+  ) {
     const { zipReader, centralDirectory } = await this.loadTDFStream(chunker);
     if (!this.manifest) {
       throw new Error('Missing manifest data');
@@ -1000,7 +1010,9 @@ export class TDF extends EventEmitter {
             e
           );
         }
-
+        if (progressHandler) {
+          progressHandler(encryptedOffset);
+        }
         controller.enqueue(decryptedSegment.payload.asBuffer());
       },
     };
