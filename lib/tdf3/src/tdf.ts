@@ -500,7 +500,9 @@ export class TDF extends EventEmitter {
         if (!ignoreType && !isRemote) {
           return;
         }
-        const url = `${keyAccessObject.url}/${(!this.jwtToken && isAppIdProvider) ? '' : 'v2/'}upsert`;
+        const url = `${keyAccessObject.url}/${
+          !this.jwtToken && isAppIdProvider ? '' : 'v2/'
+        }upsert`;
 
         //TODO I dont' think we need a body at all for KAS requests
         // Do we need ANY of this if it's already embedded in the EO in the Bearer OIDC token?
@@ -524,8 +526,8 @@ export class TDF extends EventEmitter {
           const response = await axios.post(httpReq.url, httpReq.body, {
             headers: {
               ...httpReq.headers,
-              'x-tdf-claims': `Bearer ${this.jwtToken}`
-            }
+              'x-tdf-claims': `Bearer ${this.jwtToken}`,
+            },
           });
 
           // Remove additional properties which were needed to sync, but not that we want to save to
@@ -832,7 +834,7 @@ export class TDF extends EventEmitter {
           throw new Error('Upsert can be done without auth provider');
         }
         // this.jwtSupportMode
-        const url = `${keySplitInfo.url}/${(!this.jwtToken && isAppIdProvider) ? '' : 'v2'}/rewrap`;
+        const url = `${keySplitInfo.url}/${!this.jwtToken && isAppIdProvider ? '' : 'v2'}/rewrap`;
 
         const requestBodyStr = JSON.stringify({
           algorithm: 'RS256',
