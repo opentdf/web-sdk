@@ -1,5 +1,5 @@
 
-version=0.4.0
+version=0.5.0
 pkgs=lib cli web-app
 
 .PHONY: all audit license-check lint test ci i start format clean
