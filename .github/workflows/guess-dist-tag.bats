@@ -4,7 +4,7 @@
   export GITHUB_REF="heads/unknown"
   run $BATS_TEST_DIRNAME/guess-dist-tag.sh
   echo output=[$output]
-  [[ $output == "aleph" ]]
+  [[ $output == "alpha" ]]
 }
 
 @test "feature branches are alpha I guess" {

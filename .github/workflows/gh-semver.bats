@@ -16,7 +16,7 @@
   run $BATS_TEST_DIRNAME/gh-semver.sh
   echo output=[$output]
   [ "$status" -eq 0 ]
-  [ "$output" = "0.0.1-aleph.0" ]
+  [ "$output" = "0.0.1-alpha.0" ]
 }
 
 

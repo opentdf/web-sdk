@@ -3,12 +3,13 @@
 # Release = latest
 # Release candidate = rc
 # Beta = beta
+# Alpha = alpha (default)
 
 set -euo pipefail
 
 : "${GITHUB_REF:=$(git rev-parse --symbolic-full-name HEAD)}"
 
-NPM_DIST_TAG=aleph
+NPM_DIST_TAG=alpha
 case "${GITHUB_REF}" in
   refs/heads/main)
     NPM_DIST_TAG=beta
