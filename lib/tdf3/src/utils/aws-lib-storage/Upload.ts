@@ -1,18 +1,19 @@
 import { AbortController, AbortSignal } from '@aws-sdk/abort-controller';
 import {
-  AbortMultipartUploadCommandOutput,
-  CompletedPart,
+  type AbortMultipartUploadCommandOutput,
+  type CompletedPart,
+  type CompleteMultipartUploadCommandOutput,
+  type CreateMultipartUploadCommandOutput,
+  type PutObjectCommandInput,
+  type Tag,
   CompleteMultipartUploadCommand,
-  CompleteMultipartUploadCommandOutput,
   CreateMultipartUploadCommand,
-  CreateMultipartUploadCommandOutput,
   PutObjectCommand,
-  PutObjectCommandInput,
   PutObjectTaggingCommand,
   S3Client,
-  Tag,
   UploadPartCommand,
 } from '@aws-sdk/client-s3';
+// import { PutObjectCommand } from '../client-s3/PutObjectCommand.js'
 import { extendedEncodeURIComponent } from '@aws-sdk/smithy-client';
 import { Buffer } from 'buffer';
 import { EventEmitter } from 'eventemitter3';
@@ -42,12 +43,6 @@ export const byteLength = (input: RawDataPart['data'] | PutObjectCommandInput['B
     return input.length;
   } else if ('size' in input && typeof input.size === 'number') {
     return input.size;
-    // } else if ('path' in input && typeof input.path === 'string') {
-    //   try {
-    //     return ClientDefaultValues.lstatSync(input.path).size;
-    //   } catch (error) {
-    //     return undefined;
-    //   }
   }
   return 0;
 };
@@ -113,9 +108,9 @@ export class Upload extends EventEmitter {
 
   public async done(): Promise<
     CompleteMultipartUploadCommandOutput | AbortMultipartUploadCommandOutput
-  > {
+    > {
     return await Promise.race([
-      this.__doMultipartUpload(),
+      this.__doMultipartUpload(), // #upload1
       this.__abortTimeout(this.abortController.signal),
     ]);
   }
@@ -128,10 +123,10 @@ export class Upload extends EventEmitter {
   private async __uploadUsingPut(dataPart: RawDataPart): Promise<void> {
     this.isMultiPart = false;
     const params = { ...this.params, Body: dataPart.data };
-    const [putResult, endpoint] = await Promise.all([
-      this.client.send(new PutObjectCommand(params)),
-      this.client.config.endpoint(),
-    ]);
+    console.log(params);
+    console.log(new PutObjectCommand(params));
+    const putResult = await this.client.send(new PutObjectCommand(params));
+    const endpoint = new URL(String(this.client.config.endpoint));
 
     const locationKey = this.params
       .Key!.split('/')
@@ -160,6 +155,7 @@ export class Upload extends EventEmitter {
   }
 
   private async __createMultipartUpload(): Promise<void> {
+    console.log('CreateMultipartUploadCommand')
     if (!this.createMultiPartPromise) {
       const createCommandParams = { ...this.params, Body: undefined };
       this.createMultiPartPromise = this.client.send(
@@ -173,7 +169,9 @@ export class Upload extends EventEmitter {
   private async __doConcurrentUpload(
     dataFeeder: AsyncGenerator<RawDataPart, void, undefined>
   ): Promise<void> {
+    console.log('UploadPartCommand');
     for await (const dataPart of dataFeeder) {
+      console.log('UploadPartCommandLoop');
       if (this.uploadedParts.length > this.MAX_PARTS) {
         throw new Error(
           `Exceeded ${this.MAX_PARTS} as part of the upload to ${this.params.Key} and ${this.params.Bucket}.`
@@ -187,7 +185,7 @@ export class Upload extends EventEmitter {
 
         // Use put instead of multi-part for one chunk uploads.
         if (dataPart.partNumber === 1 && dataPart.lastPart) {
-          return await this.__uploadUsingPut(dataPart);
+          return await this.__uploadUsingPut(dataPart); // #smallUpload2
         }
 
         if (!this.uploadId) {
@@ -196,7 +194,6 @@ export class Upload extends EventEmitter {
             return;
           }
         }
-
         const partResult = await this.client.send(
           new UploadPartCommand({
             ...this.params,
@@ -242,12 +239,13 @@ export class Upload extends EventEmitter {
   }
 
   private async __doMultipartUpload(): Promise<CompleteMultipartUploadCommandOutput> {
+    console.log('__doMultipartUpload')
     // Set up data input chunks.
     const dataFeeder = getChunk(this.params.Body, this.partSize);
 
     // Create and start concurrent uploads.
     for (let index = 0; index < this.queueSize; index++) {
-      const currentUpload = this.__doConcurrentUpload(dataFeeder);
+      const currentUpload = this.__doConcurrentUpload(dataFeeder); // #smallUpload1
       this.concurrentUploaders.push(currentUpload);
     }
 
@@ -269,6 +267,7 @@ export class Upload extends EventEmitter {
           Parts: this.uploadedParts,
         },
       };
+      console.log('CompleteMultipartUploadCommand')
       result = await this.client.send(new CompleteMultipartUploadCommand(uploadCompleteParams));
     } else {
       result = this.singleUploadResult!;
@@ -276,6 +275,7 @@ export class Upload extends EventEmitter {
 
     // Add tags to the object after it's completed the upload.
     if (this.tags.length) {
+      console.log('PutObjectTaggingCommand')
       await this.client.send(
         new PutObjectTaggingCommand({
           ...this.params,

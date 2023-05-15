@@ -1,8 +1,9 @@
 import {
   AbortMultipartUploadCommandOutput,
   CompleteMultipartUploadCommandOutput,
-  S3Client,
+  // S3Client,
 } from '@aws-sdk/client-s3';
+import { S3Client } from '../utils/client-s3/client.js';
 import axios from 'axios';
 import { Buffer } from 'buffer';
 import { EventEmitter } from 'eventemitter3';
@@ -101,6 +102,8 @@ export abstract class DecoratedReadableStream {
     const FILE_NAME = fileName || 'upload.tdf';
 
     const s3 = new S3Client(storageParams);
+    console.log(storageParams);
+    console.log(s3);
 
     // Managed Parallel Upload
     const uploadParams: Options['params'] = {
@@ -112,6 +115,7 @@ export abstract class DecoratedReadableStream {
     try {
       debugger;
       const parallelUpload = new Upload({
+        // @ts-ignore
         client: s3,
         queueSize: CONCURRENT_UPLOADS, // optional concurrency configuration
         partSize: MAX_UPLOAD_PART_SIZE, // optional size of each part, defaults to 5MB, cannot be smaller than 5MB
