@@ -123,8 +123,6 @@ export class Upload extends EventEmitter {
   private async __uploadUsingPut(dataPart: RawDataPart): Promise<void> {
     this.isMultiPart = false;
     const params = { ...this.params, Body: dataPart.data };
-    console.log(params);
-    console.log(new PutObjectCommand(params));
     const putResult = await this.client.send(new PutObjectCommand(params));
     const endpoint = new URL(String(this.client.config.endpoint));
 
@@ -155,7 +153,6 @@ export class Upload extends EventEmitter {
   }
 
   private async __createMultipartUpload(): Promise<void> {
-    console.log('CreateMultipartUploadCommand')
     if (!this.createMultiPartPromise) {
       const createCommandParams = { ...this.params, Body: undefined };
       this.createMultiPartPromise = this.client.send(
@@ -169,9 +166,7 @@ export class Upload extends EventEmitter {
   private async __doConcurrentUpload(
     dataFeeder: AsyncGenerator<RawDataPart, void, undefined>
   ): Promise<void> {
-    console.log('UploadPartCommand');
     for await (const dataPart of dataFeeder) {
-      console.log('UploadPartCommandLoop');
       if (this.uploadedParts.length > this.MAX_PARTS) {
         throw new Error(
           `Exceeded ${this.MAX_PARTS} as part of the upload to ${this.params.Key} and ${this.params.Bucket}.`
@@ -239,7 +234,6 @@ export class Upload extends EventEmitter {
   }
 
   private async __doMultipartUpload(): Promise<CompleteMultipartUploadCommandOutput> {
-    console.log('__doMultipartUpload')
     // Set up data input chunks.
     const dataFeeder = getChunk(this.params.Body, this.partSize);
 
@@ -267,7 +261,6 @@ export class Upload extends EventEmitter {
           Parts: this.uploadedParts,
         },
       };
-      console.log('CompleteMultipartUploadCommand')
       result = await this.client.send(new CompleteMultipartUploadCommand(uploadCompleteParams));
     } else {
       result = this.singleUploadResult!;
@@ -275,7 +268,6 @@ export class Upload extends EventEmitter {
 
     // Add tags to the object after it's completed the upload.
     if (this.tags.length) {
-      console.log('PutObjectTaggingCommand')
       await this.client.send(
         new PutObjectTaggingCommand({
           ...this.params,

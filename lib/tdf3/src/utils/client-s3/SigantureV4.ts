@@ -119,23 +119,36 @@ export class SignatureV4 {
     }: RequestSigningArguments = {}
   ): Promise<HttpRequest> {
     const credentials = await this.credentialProvider();
+    console.log('credentials')
+    console.log(credentials)
+    // accessKeyId:"storage-testing"
+    // secretAccessKey: "storage-testing-pass"
     this.validateResolvedCredentials(credentials);
-    const region = signingRegion ?? (await this.regionProvider());
+    const region = signingRegion ?? (await this.regionProvider()); // "us-east-1"
+    console.log('requestToSign', requestToSign);
     const request = prepareRequest(requestToSign);
     const { longDate, shortDate } = formatDate(signingDate);
+    console.log('{ longDate, shortDate }')
+    console.log({ longDate, shortDate })
     const scope = createScope(shortDate, region, signingService ?? this.service);
-
+    console.log(scope) // "20230515/us-east-1/s3/aws4_request"
     request.headers[AMZ_DATE_HEADER] = longDate;
     if (credentials.sessionToken) {
       request.headers[TOKEN_HEADER] = credentials.sessionToken;
     }
 
+    console.log('request, this.sha256')
+    console.log(request, this.sha256)
     const payloadHash = await getPayloadHash(request, this.sha256);
     if (!hasHeader(SHA256_HEADER, request.headers) && this.applyChecksum) {
       request.headers[SHA256_HEADER] = payloadHash;
     }
 
     const canonicalHeaders = getCanonicalHeaders(request, unsignableHeaders, signableHeaders);
+    console.log('credentials, region, shortDate, signingService')
+    console.log(credentials, region, shortDate, signingService)
+    console.log('key:')
+    console.log( await this.getSigningKey(credentials, region, shortDate, signingService),)
     const signature = await this.getSignature(
       longDate,
       scope,

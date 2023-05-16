@@ -18,9 +18,11 @@ export class S3Client {
 
   signer() {
     const authScheme: AuthScheme = {
-      signingName: String(this.config.serviceId),
+      signingName: 's3',
       name: "sigv4",
       signingRegion: String(this.config.region),
+      // @ts-ignore
+      disableDoubleEncoding: true,
       properties: {},
     };
     const signingRegion = authScheme.signingRegion;
@@ -63,19 +65,34 @@ export class S3Client {
       query: {'x-id': 'PutObject'},
     }
 
+    console.log('putObject')
+    console.log(putObject)
     if (ArrayBuffer.isView(putObject.input.Body)){
+      console.log('String(putObject.input.Body.byteLength)');
+      console.log(String(putObject.input.Body.byteLength));
       request.headers['content-length'] = String(putObject.input.Body.byteLength);
     }
 
     request.headers['amz-sdk-invocation-id'] = v4();
     this._getUserAgent(request.headers);
 
-    request.headers['amz-sdk-request'] = `attempt=${this.attempt + 1}; max=${this.config.maxAttempts}`;
+    const defaultMaxAttempts = 3
+
+    request.headers['amz-sdk-request'] = `attempt=${this.attempt + 1}; max=${this.config.maxAttempts || defaultMaxAttempts}`;
+    request.body = putObject.input.Body
 
     const signer = this.signer();
+
+    // signingDate = new Date(),
+    //   signableHeaders,
+    //   unsignableHeaders,
+    //   signingRegion,
+    //   signingService,
+    console.log('this.config.signingRegion')
+    console.log(this.config.signingRegion)
     const requestSigned = await signer.signRequest(request, {
         signingRegion: this.config.signingRegion,
-        signingService: this.config.serviceId,
+        signingService: 's3',
       });
     return this.handle(requestSigned);
   }
@@ -98,8 +115,6 @@ export class S3Client {
       headers: new Headers(request.headers),
       method: method,
     };
-    console.log(url);
-    console.log(requestOptions);
     const fetchRequest = new Request(url, requestOptions);
     console.log(fetchRequest);
 
