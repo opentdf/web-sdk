@@ -901,7 +901,8 @@ export class TDF extends EventEmitter {
   async readStream(
     chunker: Chunker,
     rcaParams?: RcaParams,
-    progressHandler?: (bytesProcessed: number) => void
+    progressHandler?: (bytesProcessed: number) => void,
+    fileStreamServiceWorker?: string
   ) {
     const { zipReader, centralDirectory } = await this.loadTDFStream(chunker);
     if (!this.manifest) {
@@ -1006,6 +1007,7 @@ export class TDF extends EventEmitter {
         }
         controller.enqueue(decryptedSegment.payload.asBuffer());
       },
+      ...(fileStreamServiceWorker && { fileStreamServiceWorker }),
     };
 
     const outputStream = makeStream(underlyingSource);

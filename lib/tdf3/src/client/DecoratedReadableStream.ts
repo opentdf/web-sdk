@@ -37,8 +37,16 @@ export abstract class DecoratedReadableStream {
   contentLength?: number;
   manifest: Manifest;
   upsertResponse?: UpsertResponse;
+  fileStreamServiceWorker?: string;
 
-  constructor(underlyingSource: UnderlyingSource) {
+  constructor(
+    underlyingSource: UnderlyingSource & {
+      fileStreamServiceWorker?: string;
+    }
+  ) {
+    if (underlyingSource.fileStreamServiceWorker) {
+      this.fileStreamServiceWorker = underlyingSource.fileStreamServiceWorker;
+    }
     this.stream = new ReadableStream(underlyingSource, {
       highWaterMark: 1,
     }) as ReadableStream<Uint8Array>;
