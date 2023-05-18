@@ -114,6 +114,7 @@ export interface ClientConfig {
   authProvider?: AuthProvider | AppIdAuthProvider;
   readerUrl?: string;
   entityObjectEndpoint?: string;
+  fileStreamServiceWorker?: string;
   progressHandler?: (bytesProcessed: number) => void;
 }
 
@@ -188,6 +189,8 @@ export class Client {
   readonly authProvider?: AuthProvider | AppIdAuthProvider;
 
   readonly readerUrl?: string;
+
+  readonly fileStreamServiceWorker?: string;
 
   /**
    * Session keys.
@@ -459,7 +462,12 @@ export class Client {
 
     // Await in order to catch any errors from this call.
     // TODO: Write error event to stream and don't await.
-    return tdf.readStream(chunker, rcaSource, this.clientConfig.progressHandler);
+    return tdf.readStream(
+      chunker,
+      rcaSource,
+      this.clientConfig.progressHandler,
+      this.clientConfig.fileStreamServiceWorker
+    );
   }
 
   /**

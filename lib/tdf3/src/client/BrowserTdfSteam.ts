@@ -22,6 +22,10 @@ export class BrowserTdfStream extends DecoratedReadableStream {
       return;
     }
 
+    if (this.fileStreamServiceWorker) {
+      streamSaver.mitm = this.fileStreamServiceWorker;
+    }
+
     const fileStream = streamSaver.createWriteStream(filepath, {
       ...(this.contentLength && { size: this.contentLength }),
       writableStrategy: { highWaterMark: 1 },
@@ -34,9 +38,9 @@ export class BrowserTdfStream extends DecoratedReadableStream {
 
     // Write (pipe) manually
     const reader = this.stream.getReader();
-    let writer = fileStream.getWriter();
+    const writer = fileStream.getWriter();
     const pump = async (): Promise<void> => {
-      let res = await reader.read();
+      const res = await reader.read();
 
       if (res.done) {
         return await writer.close();
