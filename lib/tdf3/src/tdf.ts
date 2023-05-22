@@ -514,7 +514,7 @@ export class TDF extends EventEmitter {
           body.clientPayloadSignature = await reqSignature(body, pkKeyLike);
         }
         const httpReq = await this.authProvider.withCreds(this.buildRequest('POST', url, body));
-        httpReq.headers['X-Virtru-Public-Key'] = btoa(this.publicKey)
+        httpReq.headers['X-Virtru-Public-Key'] = btoa(this.publicKey);
 
         try {
           const response = await axios.post(httpReq.url, httpReq.body, {
