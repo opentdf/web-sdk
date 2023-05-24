@@ -1047,14 +1047,14 @@ export class TDF extends EventEmitter {
             decryptedChunk: null,
           },
           {
-            set: function (obj: Chunk, prop, value) {
+            set: function (obj: Chunk, prop: string | symbol, value) {
               obj[prop] = value;
               if (prop === 'decryptedChunk' && obj._resolve) {
                 obj._resolve(value);
               }
               return true;
             },
-            get: function (target: Chunk, prop) {
+            get: function (target: Chunk, prop: string | symbol) {
               if (prop === 'decryptedChunk') {
                 return new Promise((resolve) => {
                   if (target.decryptedChunk) {
