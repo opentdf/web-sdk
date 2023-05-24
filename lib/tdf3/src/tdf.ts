@@ -959,7 +959,7 @@ export class TDF extends EventEmitter {
               slice[0].encryptedOffset,
               bufferSize
             );
-            slice.map(({ encryptedOffset, encryptedSegmentSize }, index) => {
+            slice.forEach(({ encryptedOffset, encryptedSegmentSize }, index) => {
               const offset =
                 slice[0].encryptedOffset === 0
                   ? encryptedOffset
@@ -968,7 +968,12 @@ export class TDF extends EventEmitter {
                 offset,
                 offset + (encryptedSegmentSize as number)
               );
-              this.decryptChunk(encryptedChunk, reconstructedKeyBinary, slice[index]['hash']);
+              this.decryptChunk(encryptedChunk, reconstructedKeyBinary, slice[index]['hash']).catch((e) => {
+                throw new TdfDecryptError(
+                  'Error decrypting payload. This suggests the key used to decrypt the payload is not correct.',
+                  e
+                );
+              });
             });
             buffer = null;
           } catch (e) {
@@ -1039,14 +1044,13 @@ export class TDF extends EventEmitter {
     let mapOfRequestsOffset = 0;
     this.chunkMap = new Map(
       segments.map(({ hash, encryptedSegmentSize = encryptedSegmentSizeDefault }) => {
-        const target: Chunk = {
-          hash,
-          encryptedOffset: mapOfRequestsOffset,
-          encryptedSegmentSize,
-          decryptedChunk: null,
-        };
         const result = new Proxy(
-          target,
+          {
+            hash,
+            encryptedOffset: mapOfRequestsOffset,
+            encryptedSegmentSize,
+            decryptedChunk: null,
+          },
           {
             set: function (obj: Chunk, prop: keyof Chunk, value: (value: unknown) => void | null | DecryptResult) {
               if (prop === 'decryptedChunk' && obj._resolve) {
@@ -1078,7 +1082,7 @@ export class TDF extends EventEmitter {
       centralDirectory,
       zipReader,
       reconstructedKeyBinary
-    );
+    ).catch((e) => throw new Error(e));
 
     let progress = 0;
     const underlyingSource = {
