@@ -968,12 +968,14 @@ export class TDF extends EventEmitter {
                 offset,
                 offset + (encryptedSegmentSize as number)
               );
-              this.decryptChunk(encryptedChunk, reconstructedKeyBinary, slice[index]['hash']).catch((e) => {
-                throw new TdfDecryptError(
-                  'Error decrypting payload. This suggests the key used to decrypt the payload is not correct.',
-                  e
-                );
-              });
+              this.decryptChunk(encryptedChunk, reconstructedKeyBinary, slice[index]['hash']).catch(
+                (e) => {
+                  throw new TdfDecryptError(
+                    'Error decrypting payload. This suggests the key used to decrypt the payload is not correct.',
+                    e
+                  );
+                }
+              );
             });
             buffer = null;
           } catch (e) {
@@ -1052,7 +1054,11 @@ export class TDF extends EventEmitter {
             decryptedChunk: null,
           },
           {
-            set: function (obj: Chunk, prop: keyof Chunk, value: (value: unknown) => void | null | DecryptResult) {
+            set: function (
+              obj: Chunk,
+              prop: keyof Chunk,
+              value: (value: unknown) => void | null | DecryptResult
+            ) {
               if (prop === 'decryptedChunk' && obj._resolve) {
                 obj._resolve(value);
               }
@@ -1068,7 +1074,7 @@ export class TDF extends EventEmitter {
                   }
                 });
               }
-              return obj[(prop as keyof Chunk)];
+              return obj[prop as keyof Chunk];
             },
           }
         );
