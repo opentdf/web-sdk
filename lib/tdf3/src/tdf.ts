@@ -1082,7 +1082,9 @@ export class TDF extends EventEmitter {
       centralDirectory,
       zipReader,
       reconstructedKeyBinary
-    ).catch((e) => throw new Error(e));
+    ).catch((e) => {
+      throw new Error(e);
+    });
 
     let progress = 0;
     const underlyingSource = {
