@@ -118,6 +118,10 @@ type Chunk = {
   _resolve?: (value: unknown) => void;
 };
 
+function isChunkProperty(str: string): str is keyof Chunk {
+  return ['hash', 'encryptedOffset', 'encryptedSegmentSize', 'decryptedChunk', '_resolve'].includes(str);
+}
+
 export class TDF extends EventEmitter {
   policy?: Policy;
   mimeType?: string;
@@ -1049,7 +1053,9 @@ export class TDF extends EventEmitter {
           target,
           {
             set: function (obj: Chunk, prop, value) {
-              obj[prop] = value;
+              if(isChunkProperty((prop as string))) {
+                obj[prop] = value;
+              }
               if (prop === 'decryptedChunk' && obj._resolve) {
                 obj._resolve(value);
               }
@@ -1065,7 +1071,11 @@ export class TDF extends EventEmitter {
                   }
                 });
               }
-              return target[prop];
+              if(isChunkProperty((prop as string))) {
+                return target[prop];
+              } else {
+                return undefined;
+              }
             },
           }
         );
