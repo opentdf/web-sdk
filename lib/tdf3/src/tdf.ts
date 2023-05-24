@@ -1039,22 +1039,23 @@ export class TDF extends EventEmitter {
     let mapOfRequestsOffset = 0;
     this.chunkMap = new Map(
       segments.map(({ hash, encryptedSegmentSize = encryptedSegmentSizeDefault }) => {
+        const target: Chunk = {
+          hash,
+          encryptedOffset: mapOfRequestsOffset,
+          encryptedSegmentSize,
+          decryptedChunk: null,
+        };
         const result = new Proxy(
+          target,
           {
-            hash,
-            encryptedOffset: mapOfRequestsOffset,
-            encryptedSegmentSize,
-            decryptedChunk: null,
-          },
-          {
-            set: function (obj: Chunk, prop: string, value: unknown) {
+            set: function (obj: Chunk, prop, value) {
               obj[prop] = value;
               if (prop === 'decryptedChunk' && obj._resolve) {
                 obj._resolve(value);
               }
               return true;
             },
-            get: function (target: Chunk, prop: string) {
+            get: function (target: Chunk, prop) {
               if (prop === 'decryptedChunk') {
                 return new Promise((resolve) => {
                   if (target.decryptedChunk) {
