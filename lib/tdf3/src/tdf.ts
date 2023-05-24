@@ -118,9 +118,6 @@ type Chunk = {
   _resolve?: (value: unknown) => void;
 };
 
-type ValueOf<T> = T[keyof T];
-type ValueOfChunk = ValueOf<Chunk>; // string | number
-
 export class TDF extends EventEmitter {
   policy?: Policy;
   mimeType?: string;
@@ -1051,24 +1048,23 @@ export class TDF extends EventEmitter {
         const result = new Proxy(
           target,
           {
-            set: function (obj: Chunk, prop, value) {
-              (obj as Chunk)[(prop as keyof Chunk)] = (value as ValueOfChunk);
+            set: function (obj: Chunk, prop: keyof Chunk, value: (value: unknown) => void | null | DecryptResult) {
               if (prop === 'decryptedChunk' && obj._resolve) {
                 obj._resolve(value);
               }
-              return true;
+              return Reflect.set(obj, prop, value);
             },
-            get: function (target: Chunk, prop) {
+            get: function (obj: Chunk, prop) {
               if (prop === 'decryptedChunk') {
                 return new Promise((resolve) => {
-                  if (target.decryptedChunk) {
-                    resolve(target.decryptedChunk);
+                  if (obj.decryptedChunk) {
+                    resolve(obj.decryptedChunk);
                   } else {
-                    target._resolve = resolve;
+                    obj._resolve = resolve;
                   }
                 });
               }
-              return target[(prop as keyof Chunk)];
+              return obj[(prop as keyof Chunk)];
             },
           }
         );
