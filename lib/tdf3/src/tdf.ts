@@ -118,7 +118,8 @@ type Chunk = {
   _resolve?: (value: unknown) => void;
 };
 
-type ChunkKey = keyof Chunk;
+type ValueOf<T> = T[keyof T];
+type ValueOfChunk = ValueOf<Chunk>; // string | number
 
 export class TDF extends EventEmitter {
   policy?: Policy;
@@ -1051,7 +1052,7 @@ export class TDF extends EventEmitter {
           target,
           {
             set: function (obj: Chunk, prop, value) {
-              obj[(prop as ChunkKey)] = value;
+              obj[(prop as keyof Chunk)] = (value as ValueOfChunk);
               if (prop === 'decryptedChunk' && obj._resolve) {
                 obj._resolve(value);
               }
@@ -1067,7 +1068,7 @@ export class TDF extends EventEmitter {
                   }
                 });
               }
-              return target[(prop as ChunkKey)];
+              return target[(prop as keyof Chunk)];
             },
           }
         );
