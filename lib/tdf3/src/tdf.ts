@@ -55,6 +55,8 @@ import {
   reqSignature,
 } from '../../src/auth/auth.js';
 import PolicyObject from '../../src/tdf/PolicyObject.js';
+import { DecryptResult } from './crypto/declarations.js';
+import { CentralDirectory } from './utils/zip-reader.js';
 
 // TODO: input validation on manifest JSON
 const DEFAULT_SEGMENT_SIZE = 1024 * 1024;
@@ -108,6 +110,14 @@ type EntryInfo = {
   fileByteCount?: number;
 };
 
+type Chunk = {
+  hash: string;
+  encryptedOffset: number;
+  encryptedSegmentSize?: number;
+  decryptedChunk: null | DecryptResult;
+  _resolve?: (value: unknown) => void;
+};
+
 export class TDF extends EventEmitter {
   policy?: Policy;
   mimeType?: string;
@@ -123,6 +133,7 @@ export class TDF extends EventEmitter {
   privateKey: string;
   attributeSet: AttributeSet;
   segmentSizeDefault: number;
+  chunkMap: Map<string, Chunk>;
 
   constructor() {
     super();
@@ -891,6 +902,93 @@ export class TDF extends EventEmitter {
     };
   }
 
+  async decryptChunk(encryptedChunk: Buffer, reconstructedKeyBinary: Binary, hash: string) {
+    if (!this.manifest) {
+      throw new Error('Missing manifest information');
+    }
+    const integrityAlgorithmType =
+      this.manifest.encryptionInformation.integrityInformation.rootSignature.alg;
+    const segmentIntegrityAlgorithmType =
+      this.manifest.encryptionInformation.integrityInformation.segmentHashAlg;
+    const cipher = TDF.createCipher(
+      this.manifest.encryptionInformation.method.algorithm.toLowerCase()
+    );
+
+    const segmentHashStr = await this.getSignature(
+      reconstructedKeyBinary,
+      Binary.fromBuffer(encryptedChunk),
+      segmentIntegrityAlgorithmType || integrityAlgorithmType
+    );
+    if (hash !== base64.encode(segmentHashStr)) {
+      throw new ManifestIntegrityError('Failed integrity check on segment hash');
+    }
+    const decryptedChunk = await cipher.decrypt(encryptedChunk, reconstructedKeyBinary);
+    const chunkMapElement = this.chunkMap.get(hash);
+    if (chunkMapElement) {
+      chunkMapElement.decryptedChunk = decryptedChunk;
+    }
+  }
+
+  async updateChunkQueue(
+    chunkMap: Chunk[],
+    centralDirectory: CentralDirectory[],
+    zipReader: ZipReader,
+    reconstructedKeyBinary: Binary
+  ) {
+    const requestsInParallelCount = 100;
+    let requests = [];
+    const maxLength = 3;
+
+    for (let i = 0; i < chunkMap.length; i += requestsInParallelCount) {
+      if (requests.length === maxLength) {
+        await Promise.all(requests);
+        requests = [];
+      }
+      requests.push(
+        (async () => {
+          try {
+            const slice = chunkMap.slice(i, i + requestsInParallelCount);
+            const bufferSize = slice.reduce(
+              (currentVal, { encryptedSegmentSize }) =>
+                currentVal + (encryptedSegmentSize as number),
+              0
+            );
+            let buffer: Buffer | null = await zipReader.getPayloadSegment(
+              centralDirectory,
+              '0.payload',
+              slice[0].encryptedOffset,
+              bufferSize
+            );
+            slice.forEach(({ encryptedOffset, encryptedSegmentSize }, index) => {
+              const offset =
+                slice[0].encryptedOffset === 0
+                  ? encryptedOffset
+                  : encryptedOffset % slice[0].encryptedOffset;
+              const encryptedChunk = (buffer as Buffer).subarray(
+                offset,
+                offset + (encryptedSegmentSize as number)
+              );
+              this.decryptChunk(encryptedChunk, reconstructedKeyBinary, slice[index]['hash']).catch(
+                (e) => {
+                  throw new TdfDecryptError(
+                    'Error decrypting payload. This suggests the key used to decrypt the payload is not correct.',
+                    e
+                  );
+                }
+              );
+            });
+            buffer = null;
+          } catch (e) {
+            throw new TdfDecryptError(
+              'Error decrypting payload. This suggests the key used to decrypt the payload is not correct.',
+              e
+            );
+          }
+        })()
+      );
+    }
+  }
+
   /**
    * readStream
    *
@@ -913,6 +1011,11 @@ export class TDF extends EventEmitter {
     const unwrapResult = await this.unwrapKey(this.manifest);
     let { reconstructedKeyBinary } = unwrapResult;
     const { metadata } = unwrapResult;
+
+    const defaultSegmentSize =
+      this.manifest?.encryptionInformation?.integrityInformation?.encryptedSegmentSizeDefault;
+    const encryptedSegmentSizeDefault = defaultSegmentSize || DEFAULT_SEGMENT_SIZE;
+
     if (rcaParams && rcaParams.wk) {
       const { wk, al } = rcaParams;
       this.encryptionInformation = new SplitKey(TDF.createCipher(al.toLowerCase()));
@@ -940,72 +1043,73 @@ export class TDF extends EventEmitter {
       throw new ManifestIntegrityError('Failed integrity check on root signature');
     }
 
-    // use the wrapped key to decrypt the payload
-    const cipher = TDF.createCipher(
-      this.manifest.encryptionInformation.method.algorithm.toLowerCase()
+    let mapOfRequestsOffset = 0;
+    this.chunkMap = new Map(
+      segments.map(({ hash, encryptedSegmentSize = encryptedSegmentSizeDefault }) => {
+        const result = new Proxy(
+          {
+            hash,
+            encryptedOffset: mapOfRequestsOffset,
+            encryptedSegmentSize,
+            decryptedChunk: null,
+          },
+          {
+            set: function (
+              obj: Chunk,
+              prop: keyof Chunk,
+              value: (value: unknown) => void | null | DecryptResult
+            ) {
+              if (prop === 'decryptedChunk' && obj._resolve) {
+                obj._resolve(value);
+              }
+              return Reflect.set(obj, prop, value);
+            },
+            get: function (obj: Chunk, prop) {
+              if (prop === 'decryptedChunk') {
+                return new Promise((resolve) => {
+                  if (obj.decryptedChunk) {
+                    resolve(obj.decryptedChunk);
+                  } else {
+                    obj._resolve = resolve;
+                  }
+                });
+              }
+              return obj[prop as keyof Chunk];
+            },
+          }
+        );
+        mapOfRequestsOffset += encryptedSegmentSize || encryptedSegmentSizeDefault;
+        return [hash, result];
+      })
     );
 
-    const defaultSegmentSize =
-      this.manifest?.encryptionInformation?.integrityInformation?.encryptedSegmentSizeDefault || 0;
-    const encryptedSegmentSizeDefault = defaultSegmentSize || DEFAULT_SEGMENT_SIZE;
+    this.updateChunkQueue(
+      Array.from(this.chunkMap.values()),
+      centralDirectory,
+      zipReader,
+      reconstructedKeyBinary
+    ).catch((e) => {
+      throw new Error(e);
+    });
 
-    // TODO: Don't await on each segment serially, instead use event-driven approach to prevent deadlock.
-    // See: https://github.com/jherwitz/tdf3-js/blob/3ec3c8a3b8c5cecb6f6976b540d5ecde21183c8c/src/tdf.js#L739
-    let encryptedOffset = 0;
-
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
-    // const that = this;
-
+    let progress = 0;
     const underlyingSource = {
       pull: async (controller: ReadableStreamDefaultController) => {
-        if (segments.length === 0) {
+        if (this.chunkMap.size === 0) {
           controller.close();
           return;
         }
 
-        const segment = segments.shift();
-        if (!segment) {
-          throw new Error('Shifted past end of segments array');
-        }
-        if (!this.manifest) {
-          throw new Error('Missing manifest information');
-        }
-        const encryptedSegmentSize = segment.encryptedSegmentSize || encryptedSegmentSizeDefault;
-        const encryptedChunk = await zipReader.getPayloadSegment(
-          centralDirectory,
-          '0.payload',
-          encryptedOffset,
-          encryptedSegmentSize
-        );
-        encryptedOffset += encryptedSegmentSize;
+        const [hash, chunk] = this.chunkMap.entries().next().value;
+        const decryptedSegment = await chunk.decryptedChunk;
 
-        // use the segment alg type if provided, otherwise use the root sig alg
-        const segmentIntegrityAlgorithmType =
-          this.manifest.encryptionInformation.integrityInformation.segmentHashAlg;
-        const segmentHashStr = await this.getSignature(
-          reconstructedKeyBinary,
-          Binary.fromBuffer(encryptedChunk),
-          segmentIntegrityAlgorithmType || integrityAlgorithmType
-        );
-
-        if (segment.hash !== base64.encode(segmentHashStr)) {
-          throw new ManifestIntegrityError('Failed integrity check on segment hash');
-        }
-
-        let decryptedSegment;
-
-        try {
-          decryptedSegment = await cipher.decrypt(encryptedChunk, reconstructedKeyBinary);
-        } catch (e) {
-          throw new TdfDecryptError(
-            'Error decrypting payload. This suggests the key used to decrypt the payload is not correct.',
-            e
-          );
-        }
-        if (progressHandler) {
-          progressHandler(encryptedOffset);
-        }
         controller.enqueue(decryptedSegment.payload.asBuffer());
+        progress += chunk.encryptedSegmentSize;
+        if (progressHandler) {
+          progressHandler(progress);
+        }
+
+        this.chunkMap.delete(hash);
       },
       ...(fileStreamServiceWorker && { fileStreamServiceWorker }),
     };
