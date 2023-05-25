@@ -936,15 +936,15 @@ export class TDF extends EventEmitter {
     reconstructedKeyBinary: Binary
   ) {
     const requestsInParallelCount = 100;
-    let requsets = [];
+    let requests = [];
     const maxLength = 3;
 
     for (let i = 0; i < chunkMap.length; i += requestsInParallelCount) {
-      if (requsets.length === maxLength) {
-        await Promise.all(requsets);
-        requsets = [];
+      if (requests.length === maxLength) {
+        await Promise.all(requests);
+        requests = [];
       }
-      requsets.push(
+      requests.push(
         (async () => {
           try {
             const slice = chunkMap.slice(i, i + requestsInParallelCount);
