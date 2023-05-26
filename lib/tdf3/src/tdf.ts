@@ -514,6 +514,7 @@ export class TDF extends EventEmitter {
           body.clientPayloadSignature = await reqSignature(body, pkKeyLike);
         }
         const httpReq = await this.authProvider.withCreds(this.buildRequest('POST', url, body));
+        // TODO: Move this logic into internal virtru authProviders
         httpReq.headers['X-Virtru-Public-Key'] = btoa(this.publicKey);
 
         try {
