@@ -525,6 +525,8 @@ export class TDF extends EventEmitter {
           body.clientPayloadSignature = await reqSignature(body, pkKeyLike);
         }
         const httpReq = await this.authProvider.withCreds(this.buildRequest('POST', url, body));
+        // TODO: Move this logic into internal virtru authProviders
+        httpReq.headers['X-Virtru-Public-Key'] = btoa(this.publicKey);
 
         try {
           const response = await axios.post(httpReq.url, httpReq.body, {
@@ -869,6 +871,7 @@ export class TDF extends EventEmitter {
         const httpReq = await this.authProvider.withCreds(
           this.buildRequest('POST', url, requestBody)
         );
+        httpReq.headers['X-Virtru-Public-Key'] = btoa(this.publicKey);
 
         try {
           // The response from KAS on a rewrap
