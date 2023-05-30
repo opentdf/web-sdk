@@ -456,7 +456,26 @@ function App() {
         let source: ReadableStream<Uint8Array>, size: number;
         if ('file' in inputSource) {
           size = inputSource.file.size;
-          source = inputSource.file.stream() as unknown as ReadableStream<Uint8Array>;
+          // try {
+          //   source = inputSource.file.stream() as unknown as ReadableStream<Uint8Array>;
+          // } catch (e) {
+          // console.warn(e);
+          let where = 0;
+          const { file } = inputSource;
+          const chunkSize = 8_000_000;
+          source = new ReadableStream({
+            async pull(controller) {
+              const end = Math.min(where + chunkSize, file.size);
+              if (end == where) {
+                controller.close();
+                return;
+              }
+              const value = await file.slice(where, end).arrayBuffer();
+              where = end;
+              controller.enqueue(new Uint8Array(value));
+            },
+          });
+          // }
         } else if ('type' in inputSource) {
           size = inputSource.length;
           source = randomStream(inputSource);
