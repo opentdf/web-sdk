@@ -193,12 +193,6 @@ jobs:
         with:
           node-version: '18.x'
           registry-url: https://npm.pkg.github.com
-      - name: Set output
-        id: vars
-        run: |
-          echo "Tag name from GITHUB_REF_NAME: $GITHUB_REF_NAME"
-          echo "Tag name from github.ref_name: ${{  github.ref_name }}"
-          echo "Tag name from github.ref: ${{  github.ref }}"
       - name: Check version number is same between tag, library, and/or release
         id: check-version
         run: |-
