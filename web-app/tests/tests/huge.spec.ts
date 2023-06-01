@@ -16,6 +16,7 @@ test('Large File', async ({ page }) => {
   const fiveGigs = 5 * 2 ** 30;
   await page.locator('#randomSelector').fill(fiveGigs.toString());
 
+  page.on('download', download => download.path().then(p => console.log('download event. path:', p)));
   const downloadPromise = page.waitForEvent('download');
   await page.locator('#zipEncrypt').click();
   await page.locator('#fileSink').click();
