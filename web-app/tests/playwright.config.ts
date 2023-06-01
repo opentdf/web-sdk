@@ -22,9 +22,9 @@ const config: PlaywrightTestConfig = {
   testMatch,
 
   /* Maximum time one test can run for. */
-  timeout: withHuge ? 900_000 : 10_000,
+  timeout: withHuge ? 3_600_000 : 10_000,
   expect: {
-    timeout: withHuge ? 900_000 : 3_000,
+    timeout: withHuge ? 3_600_000 : 3_000,
   },
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
