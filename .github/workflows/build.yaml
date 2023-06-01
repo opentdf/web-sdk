@@ -195,7 +195,9 @@ jobs:
           registry-url: https://npm.pkg.github.com
       - name: Set output
         id: vars
-        run: echo "tag=${github.ref}" >> $GITHUB_STEP_SUMMARY
+        run: |
+        echo "tag=${{ github.ref }}" >> $GITHUB_ENV
+        echo ${env:tag}
       - name: Check version number is same between tag, library, and/or release
         id: check-version
         run: |-
