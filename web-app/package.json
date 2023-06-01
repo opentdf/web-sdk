@@ -15,7 +15,7 @@
     "test:ui": "vite build && vitest --ui"
   },
   "dependencies": {
-    "@opentdf/client": "file:../lib/opentdf-client-0.5.1.tgz",
+    "@opentdf/client": "file:../lib/opentdf-client-0.5.2.tgz",
     "clsx": "^1.2.1",
     "native-file-system-adapter": "^3.0.0",
     "react": "^18.2.0",
