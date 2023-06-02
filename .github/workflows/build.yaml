@@ -252,9 +252,13 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       - run: make all
       - run: >-
-          .github/workflows/publish-to.sh ${{ needs.deliver-ghp.outputs.FULL_VERSION }}
-          ${{ needs.deliver-ghp.outputs.DIST_TAG }}
-      - run: npm publish --access public
+          .github/workflows/publish-to.sh ${{ needs.deliver-ghp.outputs.FULL_VERSION }} ${{ needs.deliver-ghp.outputs.DIST_TAG }}
+      - run: >-
+          cd lib
+          npm --no-git-tag-version --allow-same-version version "$v" --tag "$t"
+          npm publish --access public
+          cd ../cli
+          npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: echo "- [Client Library](https://www.npmjs.com/package/@opentdf/client/v/${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
