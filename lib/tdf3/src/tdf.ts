@@ -184,8 +184,13 @@ export class TDF extends EventEmitter {
     return Buffer.from(fullHtmlString);
   }
 
-  static unwrapHtml(htmlPayload: Uint8Array) {
-    const html = new TextDecoder().decode(htmlPayload);
+  static unwrapHtml(htmlPayload: ArrayBuffer | Uint8Array | Binary | string) {
+    let html;
+    if (htmlPayload instanceof ArrayBuffer || ArrayBuffer.isView(htmlPayload)) {
+      html = new TextDecoder().decode(htmlPayload);
+    } else {
+      html = htmlPayload.toString();
+    }
     const payloadRe = /<input id=['"]?data-input['"]?[^>]*value=['"]?([a-zA-Z0-9+/=]+)['"]?/;
     const reResult = payloadRe.exec(html);
     if (reResult === null) {
