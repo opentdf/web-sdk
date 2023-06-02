@@ -254,6 +254,7 @@ jobs:
       - run: >-
           .github/workflows/publish-to.sh ${{ needs.deliver-ghp.outputs.FULL_VERSION }}
           ${{ needs.deliver-ghp.outputs.DIST_TAG }}
+          npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: echo "- [Client Library](https://www.npmjs.com/package/@opentdf/client/v/${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
