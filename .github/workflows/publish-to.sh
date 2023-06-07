@@ -14,11 +14,18 @@ for f in {,tdf3/}src/version.ts; do
   fi
   mv "${f}.tmp" "${f}"
 done
+npm --no-git-tag-version --allow-same-version version "$v" --tag "$t"
+npm publish --access public
 
 sleep 5
 
 cd ../cli
 
-npm --no-git-tag-version --allow-same-version version "$v" --tag "$t" --loglevel verbose
-npm uninstall "@opentdf/client" --loglevel verbose
-npm install "@opentdf/client@$v" --loglevel verbose
+npm --no-git-tag-version --allow-same-version version "$v" --tag "$t"
+npm uninstall "@opentdf/client"
+npm install "@opentdf/client@$v"
+npm publish --access public
+
+if [[ "$GITHUB_STEP_SUMMARY" ]]; then
+  echo "### Published ${v}" >>"$GITHUB_STEP_SUMMARY"
+fi
