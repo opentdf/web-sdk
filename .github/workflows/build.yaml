@@ -235,7 +235,6 @@ jobs:
   deliver-npmjs-altered:
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    environment: npmjs
     needs: deliver-ghp
     if: >-
       (github.event_name == 'push' && github.ref == 'refs/heads/main')
