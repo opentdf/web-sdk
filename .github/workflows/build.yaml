@@ -235,7 +235,7 @@ jobs:
           branch: gh-pages
           folder: lib/dist/docs
 
-  deliver-npmjs:
+  deliver-npmjs-altered:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     environment: npmjs
@@ -250,7 +250,7 @@ jobs:
         with:
           node-version: '18.x'
           registry-url: 'https://registry.npmjs.org'
-      - run: make all
+#      - run: make all
 #      - run: >-
 #          .github/workflows/publish-to.sh ${{ needs.deliver-ghp.outputs.FULL_VERSION }} ${{ needs.deliver-ghp.outputs.DIST_TAG }}
 #      - run: >-
