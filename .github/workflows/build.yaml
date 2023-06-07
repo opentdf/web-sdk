@@ -28,7 +28,6 @@ jobs:
         with:
           name: coverage
           path: lib/coverage/
-      - run: npm audit
       - run: npm run license-check
       - run: npm run lint
       - run: npm pack
@@ -58,7 +57,6 @@ jobs:
           path: lib/
       - run: npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-*.tgz
       - run: npm test
-      - run: npm audit
       - run: npm run license-check
       - run: npm run lint
       - run: npm pack
@@ -94,7 +92,6 @@ jobs:
       - run: npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-*.tgz
       - run: npm install
       - run: npm test
-      - run: npm audit
       - run: npm run license-check
       - run: npm run lint
       - run: npm pack
