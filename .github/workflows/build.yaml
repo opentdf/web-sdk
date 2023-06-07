@@ -208,10 +208,6 @@ jobs:
       - run: make test
       - run: make doc
       - run: echo "::notice file=lib/package.json::Will be published to [GitHub Packages](https://github.com/opentdf/client-web/pkgs/npm/client) as ${{ steps.guess-build-metadata.outputs.DIST_TAG }} with version=[${{ steps.guess-build-metadata.outputs.FULL_VERSION }}]"
-      - run: >-
-          .github/workflows/publish-to.sh
-          ${{ steps.guess-build-metadata.outputs.FULL_VERSION }}
-          ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: echo "- [Client Library](https://github.com/opentdf/client-web/pkgs/npm/client)">>$GITHUB_STEP_SUMMARY
