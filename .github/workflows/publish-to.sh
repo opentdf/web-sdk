@@ -15,7 +15,7 @@ for f in {,tdf3/}src/version.ts; do
   mv "${f}.tmp" "${f}"
 done
 npm --no-git-tag-version --allow-same-version version "$v" --tag "$t"
-npm config set reg.example.com/:_authToken $NODE_AUTH_TOKEN
+npm config set reg.example.com/:_authToken "$NODE_AUTH_TOKEN"
 npm publish --access public
 
 sleep 5
@@ -25,7 +25,7 @@ cd ../cli
 npm --no-git-tag-version --allow-same-version version "$v" --tag "$t"
 npm uninstall "@opentdf/client"
 npm install "@opentdf/client@$v"
-npm config set reg.example.com/:_authToken $NODE_AUTH_TOKEN
+npm config set reg.example.com/:_authToken "$NODE_AUTH_TOKEN"
 npm publish --access public
 
 if [[ "$GITHUB_STEP_SUMMARY" ]]; then
