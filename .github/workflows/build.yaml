@@ -28,7 +28,12 @@ jobs:
         id: coverage-md
         with:
           srcBasePath: './'
+          textReportPath: './lib/coverage/coverage.txt'
+      - run: echo "${MARKDOWN_REPORT}" >> $GITHUB_STEP_SUMMARY
+        env:
+          MARKDOWN_REPORT: "${{ steps.coverage-md.outputs.markdownReport }}"
       - uses: marocchino/sticky-pull-request-comment@v2
+        if: github.event_name == 'pull_request'
         with:
           message: ${{ steps.coverage-md.outputs.markdownReport }}
       - run: npm audit
