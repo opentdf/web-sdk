@@ -51,15 +51,16 @@
   },
   "scripts": {
     "build": "npm run clean && tsc -p tsconfig-node-esm.json && tsc",
-    "clean": "rm -rf {build,dist}",
+    "clean": "rm -rf {build,coverage,dist}",
+    "coverage:merge": "for x in mocha wtr; do cp coverage/$x/coverage-final.json coverage/$x.json; done; nyc merge coverage nyc-coverage.json; nyc report --reporter text -t coverage >coverate/coverage.txt",
     "doc": "typedoc --out dist/docs src/index.ts",
     "format": "prettier --write \"{src,tdf3,tests}/**/*.ts\"",
     "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; CC-BY-4.0; ISC; MIT'",
     "lint": "eslint ./src/**/*.ts ./tdf3/**/*.ts ./tests/**/*.ts",
     "prepack": "npm run build",
-    "test": "npm run build && web-test-runner && npm run test:tdf3",
-    "test:watch": "web-test-runner --watch",
-    "test:tdf3": "TS_NODE_PROJECT='./tsconfig-node-esm.json' c8 mocha --file tests/mocha/setup.js --timeout 300000",
+    "test": "npm run build && npm run test:wtr && npm run test:mocha && npm run coverage:merge",
+    "test:mocha": "TS_NODE_PROJECT='./tsconfig-node-esm.json' c8 mocha --file tests/mocha/setup.js --timeout 300000",
+    "test:wtr": "web-test-runner",
     "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))"
   },
   "dependencies": {
@@ -110,6 +111,7 @@
     "jszip": "^3.10.1",
     "license-checker": "^25.0.1",
     "mocha": "^10.2.0",
+    "nyc": "^15.1.0",
     "prettier": "^2.8.8",
     "process": "^0.11.10",
     "rimraf": "^5.0.0",

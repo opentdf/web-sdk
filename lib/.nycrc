@@ -1,18 +1,17 @@
 {
+  "report-dir": "coverage/mocha",
   "reporter": [
-    "html",
-    "text",
-    "text-summary"
+    "json"
   ],
   "extension": [
     ".ts"
   ],
   "include": [
-    "tdf3/src/**/*.js",
+    "src/**/*.ts",
     "tdf3/src/**/*.ts"
   ],
   "exclude": [
-    "tests/mocha/**/*.spec.*"
+    "tests/**"
   ],
   "require": [
     "ts-node/register"
