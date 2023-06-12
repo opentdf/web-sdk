@@ -63,7 +63,7 @@
     "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "3.197.0",
+    "@aws-sdk/client-s3": "^3.350.0",
     "axios": "^1.4.0",
     "axios-retry": "^3.4.0",
     "browser-fs-access": "^0.33.1",
