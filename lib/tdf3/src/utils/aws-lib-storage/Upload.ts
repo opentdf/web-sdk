@@ -1,4 +1,4 @@
-import { AbortController, AbortSignal } from "@aws-sdk/abort-controller";
+import { AbortController, AbortSignal } from '@aws-sdk/abort-controller';
 import {
   AbortMultipartUploadCommandOutput,
   CompletedPart,
@@ -12,19 +12,19 @@ import {
   S3Client,
   Tag,
   UploadPartCommand,
-} from "@aws-sdk/client-s3";
+} from '@aws-sdk/client-s3';
 import {
   EndpointParameterInstructionsSupplier,
   getEndpointFromInstructions,
   toEndpointV1,
-} from "@aws-sdk/middleware-endpoint";
-import { HttpRequest } from "@aws-sdk/protocol-http";
-import { extendedEncodeURIComponent } from "@aws-sdk/smithy-client";
-import { Endpoint } from "@aws-sdk/types";
-import { EventEmitter } from "events";
+} from '@aws-sdk/middleware-endpoint';
+import { HttpRequest } from '@aws-sdk/protocol-http';
+import { extendedEncodeURIComponent } from '@aws-sdk/smithy-client';
+import { Endpoint } from '@aws-sdk/types';
+import { EventEmitter } from 'events';
 
-import { getChunk } from "./chunker.js";
-import { BodyDataTypes, Options, Progress } from "./types.js";
+import { getChunk } from './chunker.js';
+import { BodyDataTypes, Options, Progress } from './types.js';
 
 export interface RawDataPart {
   partNumber: number;
@@ -34,7 +34,9 @@ export interface RawDataPart {
 
 const MIN_PART_SIZE = 1024 * 1024 * 5;
 
-export const byteLength = (input: RawDataPart['data'] | PutObjectCommandInput['Body'] | ReadableStream) => {
+export const byteLength = (
+  input: RawDataPart['data'] | PutObjectCommandInput['Body'] | ReadableStream
+) => {
   if (input === null || input === undefined) {
     return 0;
   }
@@ -111,11 +113,16 @@ export class Upload extends EventEmitter {
     this.abortController.abort();
   }
 
-  public async done(): Promise<CompleteMultipartUploadCommandOutput | AbortMultipartUploadCommandOutput> {
-    return await Promise.race([this.__doMultipartUpload(), this.__abortTimeout(this.abortController.signal)]);
+  public async done(): Promise<
+    CompleteMultipartUploadCommandOutput | AbortMultipartUploadCommandOutput
+  > {
+    return await Promise.race([
+      this.__doMultipartUpload(),
+      this.__abortTimeout(this.abortController.signal),
+    ]);
   }
 
-  public override on(event: "httpUploadProgress", listener: (progress: Progress) => void): this {
+  public override on(event: 'httpUploadProgress', listener: (progress: Progress) => void): this {
     this.uploadEvent = event;
     return super.on(event, listener);
   }
@@ -126,7 +133,8 @@ export class Upload extends EventEmitter {
 
     const clientConfig = this.client.config;
     const requestHandler = clientConfig.requestHandler;
-    const eventEmitter: EventEmitter | null = requestHandler instanceof EventEmitter ? requestHandler : null;
+    const eventEmitter: EventEmitter | null =
+      requestHandler instanceof EventEmitter ? requestHandler : null;
     const uploadEventListener = (event: ProgressEvent) => {
       this.bytesUploadedSoFar = event.loaded;
       this.totalBytes = event.total;
@@ -141,33 +149,42 @@ export class Upload extends EventEmitter {
 
     if (eventEmitter !== null) {
       // The requestHandler is the xhr-http-handler.
-      eventEmitter.on("xhr.upload.progress", uploadEventListener);
+      eventEmitter.on('xhr.upload.progress', uploadEventListener);
     }
 
-    const resolved = await Promise.all([this.client.send(new PutObjectCommand(params)), clientConfig?.endpoint?.()]);
+    const resolved = await Promise.all([
+      this.client.send(new PutObjectCommand(params)),
+      clientConfig?.endpoint?.(),
+    ]);
     const putResult = resolved[0];
     let endpoint: Endpoint | undefined = resolved[1];
 
     if (!endpoint) {
       endpoint = toEndpointV1(
-        await getEndpointFromInstructions(params, PutObjectCommand as EndpointParameterInstructionsSupplier, {
-          ...clientConfig,
-        })
+        await getEndpointFromInstructions(
+          params,
+          PutObjectCommand as EndpointParameterInstructionsSupplier,
+          {
+            ...clientConfig,
+          }
+        )
       );
     }
 
     if (!endpoint) {
-      throw new Error('Could not resolve endpoint from S3 "client.config.endpoint()" nor EndpointsV2.');
+      throw new Error(
+        'Could not resolve endpoint from S3 "client.config.endpoint()" nor EndpointsV2.'
+      );
     }
 
     if (eventEmitter !== null) {
-      eventEmitter.off("xhr.upload.progress", uploadEventListener);
+      eventEmitter.off('xhr.upload.progress', uploadEventListener);
     }
 
     const locationKey = this.params
-      .Key!.split("/")
+      .Key!.split('/')
       .map((segment) => extendedEncodeURIComponent(segment))
-      .join("/");
+      .join('/');
     const locationBucket = extendedEncodeURIComponent(this.params.Bucket!);
 
     const Location: string = (() => {
@@ -202,13 +219,17 @@ export class Upload extends EventEmitter {
   private async __createMultipartUpload(): Promise<void> {
     if (!this.createMultiPartPromise) {
       const createCommandParams = { ...this.params, Body: undefined };
-      this.createMultiPartPromise = this.client.send(new CreateMultipartUploadCommand(createCommandParams));
+      this.createMultiPartPromise = this.client.send(
+        new CreateMultipartUploadCommand(createCommandParams)
+      );
     }
     const createMultipartUploadResult = await this.createMultiPartPromise;
     this.uploadId = createMultipartUploadResult.UploadId;
   }
 
-  private async __doConcurrentUpload(dataFeeder: AsyncGenerator<RawDataPart, void, undefined>): Promise<void> {
+  private async __doConcurrentUpload(
+    dataFeeder: AsyncGenerator<RawDataPart, void, undefined>
+  ): Promise<void> {
     for await (const dataPart of dataFeeder) {
       if (this.uploadedParts.length > this.MAX_PARTS) {
         throw new Error(
@@ -236,11 +257,12 @@ export class Upload extends EventEmitter {
         const partSize: number = byteLength(dataPart.data) || 0;
 
         const requestHandler = this.client.config.requestHandler;
-        const eventEmitter: EventEmitter | null = requestHandler instanceof EventEmitter ? requestHandler : null;
+        const eventEmitter: EventEmitter | null =
+          requestHandler instanceof EventEmitter ? requestHandler : null;
 
         let lastSeenBytes = 0;
         const uploadEventListener = (event: ProgressEvent, request: HttpRequest) => {
-          const requestPartSize = Number(request.query["partNumber"]) || -1;
+          const requestPartSize = Number(request.query['partNumber']) || -1;
 
           if (requestPartSize !== dataPart.partNumber) {
             // ignored, because the emitted event is not for this part.
@@ -263,7 +285,7 @@ export class Upload extends EventEmitter {
 
         if (eventEmitter !== null) {
           // The requestHandler is the xhr-http-handler.
-          eventEmitter.on("xhr.upload.progress", uploadEventListener);
+          eventEmitter.on('xhr.upload.progress', uploadEventListener);
         }
 
         const partResult = await this.client.send(
@@ -276,7 +298,7 @@ export class Upload extends EventEmitter {
         );
 
         if (eventEmitter !== null) {
-          eventEmitter.off("xhr.upload.progress", uploadEventListener);
+          eventEmitter.off('xhr.upload.progress', uploadEventListener);
         }
 
         if (this.abortController.signal.aborted) {
@@ -336,7 +358,7 @@ export class Upload extends EventEmitter {
     // Create and start concurrent uploads.
     await Promise.all(this.concurrentUploaders);
     if (this.abortController.signal.aborted) {
-      throw Object.assign(new Error("Upload aborted."), { name: "AbortError" });
+      throw Object.assign(new Error('Upload aborted.'), { name: 'AbortError' });
     }
 
     let result;
@@ -377,11 +399,13 @@ export class Upload extends EventEmitter {
     }
   }
 
-  private async __abortTimeout(abortSignal: AbortSignal): Promise<AbortMultipartUploadCommandOutput> {
+  private async __abortTimeout(
+    abortSignal: AbortSignal
+  ): Promise<AbortMultipartUploadCommandOutput> {
     return new Promise((resolve, reject) => {
       abortSignal.onabort = () => {
-        const abortError = new Error("Upload aborted.");
-        abortError.name = "AbortError";
+        const abortError = new Error('Upload aborted.');
+        abortError.name = 'AbortError';
         reject(abortError);
       };
     });
