@@ -14,9 +14,6 @@ jobs:
     defaults:
       run:
         working-directory: ./lib
-    permissions:
-      # Needed to post the code-coverage comment
-      pull-requests: write
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v3
@@ -35,10 +32,6 @@ jobs:
       - run: echo "${MARKDOWN_REPORT}" >> $GITHUB_STEP_SUMMARY
         env:
           MARKDOWN_REPORT: "${{ steps.coverage-md.outputs.markdownReport }}"
-      - uses: marocchino/sticky-pull-request-comment@v2
-        if: github.event_name == 'pull_request'
-        with:
-          message: ${{ steps.coverage-md.outputs.markdownReport }}
       - run: npm audit
       - run: npm run license-check
       - run: npm run lint
