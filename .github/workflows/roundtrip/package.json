@@ -4,6 +4,6 @@
     "description": "Simple example to encrypt and decrypt files with quickstart backend.",
     "scripts": {},
     "dependencies": {
-        "@opentdf/cli": "file:../../../cli/opentdf-cli-0.5.0.tgz"
+        "@opentdf/cli": "file:../../../cli/opentdf-cli-1.0.0.tgz"
     }
 }
