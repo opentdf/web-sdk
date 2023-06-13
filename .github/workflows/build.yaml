@@ -14,6 +14,9 @@ jobs:
     defaults:
       run:
         working-directory: ./lib
+    permissions:
+      # Needed to post the code-coverage comment
+      pull-requests: write
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v3
