@@ -24,10 +24,14 @@ jobs:
           cache-dependency-path: './lib/package-lock.json'
       - run: npm ci
       - run: npm test
-      - uses: actions/upload-artifact@v3
+      - uses: fingerprintjs/action-coverage-report-md@v1
+        id: coverage-md
         with:
-          name: coverage
-          path: lib/coverage/
+          srcBasePath: './'
+          textReportPath: './lib/coverage/coverage.txt'
+      - run: echo "${MARKDOWN_REPORT}" >> $GITHUB_STEP_SUMMARY
+        env:
+          MARKDOWN_REPORT: "${{ steps.coverage-md.outputs.markdownReport }}"
       - run: npm audit
       - run: npm run license-check
       - run: npm run lint
