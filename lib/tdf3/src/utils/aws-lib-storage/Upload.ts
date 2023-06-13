@@ -189,7 +189,7 @@ export class Upload extends EventEmitter {
 
     const Location: string = (() => {
       const endpointHostnameIncludesBucket = endpoint.hostname.startsWith(`${locationBucket}.`);
-      const forcePathStyle = this.client.config.forcePathStyle;
+      const { forcePathStyle } = this.client.config;
       if (forcePathStyle) {
         return `${endpoint.protocol}//${endpoint.hostname}/${locationBucket}/${locationKey}`;
       }
