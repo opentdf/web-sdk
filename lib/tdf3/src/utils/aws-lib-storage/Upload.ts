@@ -13,9 +13,15 @@ import {
   Tag,
   UploadPartCommand,
 } from '@aws-sdk/client-s3';
+import {
+  EndpointParameterInstructionsSupplier,
+  getEndpointFromInstructions,
+  toEndpointV1,
+} from '@aws-sdk/middleware-endpoint';
+import { HttpRequest } from '@aws-sdk/protocol-http';
 import { extendedEncodeURIComponent } from '@aws-sdk/smithy-client';
-import { Buffer } from 'buffer';
-import { EventEmitter } from 'eventemitter3';
+import { Endpoint } from '@aws-sdk/types';
+import { EventEmitter } from 'events';
 
 import { getChunk } from './chunker.js';
 import { BodyDataTypes, Options, Progress } from './types.js';
@@ -28,7 +34,9 @@ export interface RawDataPart {
 
 const MIN_PART_SIZE = 1024 * 1024 * 5;
 
-export const byteLength = (input: RawDataPart['data'] | PutObjectCommandInput['Body']) => {
+export const byteLength = (
+  input: RawDataPart['data'] | PutObjectCommandInput['Body'] | ReadableStream
+) => {
   if (input === null || input === undefined) {
     return 0;
   }
@@ -42,14 +50,8 @@ export const byteLength = (input: RawDataPart['data'] | PutObjectCommandInput['B
     return input.length;
   } else if ('size' in input && typeof input.size === 'number') {
     return input.size;
-    // } else if ('path' in input && typeof input.path === 'string') {
-    //   try {
-    //     return ClientDefaultValues.lstatSync(input.path).size;
-    //   } catch (error) {
-    //     return undefined;
-    //   }
   }
-  throw new Error(`Unsupported type [${input}]`);
+  return 0;
 };
 
 export class Upload extends EventEmitter {
@@ -78,7 +80,7 @@ export class Upload extends EventEmitter {
 
   private uploadedParts: CompletedPart[] = [];
   private uploadId?: string;
-  uploadEvent?: string | symbol;
+  uploadEvent?: string;
 
   private isMultiPart = true;
   private singleUploadResult?: CompleteMultipartUploadCommandOutput;
@@ -120,7 +122,7 @@ export class Upload extends EventEmitter {
     ]);
   }
 
-  public override on(event: string | symbol, listener: (progress: Progress) => void): this {
+  public override on(event: 'httpUploadProgress', listener: (progress: Progress) => void): this {
     this.uploadEvent = event;
     return super.on(event, listener);
   }
@@ -128,10 +130,56 @@ export class Upload extends EventEmitter {
   private async __uploadUsingPut(dataPart: RawDataPart): Promise<void> {
     this.isMultiPart = false;
     const params = { ...this.params, Body: dataPart.data };
-    const [putResult, endpoint] = await Promise.all([
+
+    const clientConfig = this.client.config;
+    const requestHandler = clientConfig.requestHandler;
+    const eventEmitter: EventEmitter | null =
+      requestHandler instanceof EventEmitter ? requestHandler : null;
+    const uploadEventListener = (event: ProgressEvent) => {
+      this.bytesUploadedSoFar = event.loaded;
+      this.totalBytes = event.total;
+      this.__notifyProgress({
+        loaded: this.bytesUploadedSoFar,
+        total: this.totalBytes,
+        part: dataPart.partNumber,
+        Key: this.params.Key,
+        Bucket: this.params.Bucket,
+      });
+    };
+
+    if (eventEmitter !== null) {
+      // The requestHandler is the xhr-http-handler.
+      eventEmitter.on('xhr.upload.progress', uploadEventListener);
+    }
+
+    const resolved = await Promise.all([
       this.client.send(new PutObjectCommand(params)),
-      this.client.config.endpoint(),
+      clientConfig?.endpoint?.(),
     ]);
+    const putResult = resolved[0];
+    let endpoint: Endpoint | undefined = resolved[1];
+
+    if (!endpoint) {
+      endpoint = toEndpointV1(
+        await getEndpointFromInstructions(
+          params,
+          PutObjectCommand as EndpointParameterInstructionsSupplier,
+          {
+            ...clientConfig,
+          }
+        )
+      );
+    }
+
+    if (!endpoint) {
+      throw new Error(
+        'Could not resolve endpoint from S3 "client.config.endpoint()" nor EndpointsV2.'
+      );
+    }
+
+    if (eventEmitter !== null) {
+      eventEmitter.off('xhr.upload.progress', uploadEventListener);
+    }
 
     const locationKey = this.params
       .Key!.split('/')
@@ -139,9 +187,17 @@ export class Upload extends EventEmitter {
       .join('/');
     const locationBucket = extendedEncodeURIComponent(this.params.Bucket!);
 
-    const Location: string = this.client.config.forcePathStyle
-      ? `${endpoint.protocol}//${endpoint.hostname}/${locationBucket}/${locationKey}`
-      : `${endpoint.protocol}//${locationBucket}.${endpoint.hostname}/${locationKey}`;
+    const Location: string = (() => {
+      const endpointHostnameIncludesBucket = endpoint.hostname.startsWith(`${locationBucket}.`);
+      const { forcePathStyle } = this.client.config;
+      if (forcePathStyle) {
+        return `${endpoint.protocol}//${endpoint.hostname}/${locationBucket}/${locationKey}`;
+      }
+      if (endpointHostnameIncludesBucket) {
+        return `${endpoint.protocol}//${endpoint.hostname}/${locationKey}`;
+      }
+      return `${endpoint.protocol}//${locationBucket}.${endpoint.hostname}/${locationKey}`;
+    })();
 
     this.singleUploadResult = {
       ...putResult,
@@ -150,6 +206,7 @@ export class Upload extends EventEmitter {
       Location,
     };
     const totalSize = byteLength(dataPart.data);
+
     this.__notifyProgress({
       loaded: totalSize,
       total: totalSize,
@@ -197,6 +254,40 @@ export class Upload extends EventEmitter {
           }
         }
 
+        const partSize: number = byteLength(dataPart.data) || 0;
+
+        const requestHandler = this.client.config.requestHandler;
+        const eventEmitter: EventEmitter | null =
+          requestHandler instanceof EventEmitter ? requestHandler : null;
+
+        let lastSeenBytes = 0;
+        const uploadEventListener = (event: ProgressEvent, request: HttpRequest) => {
+          const requestPartSize = Number(request.query['partNumber']) || -1;
+
+          if (requestPartSize !== dataPart.partNumber) {
+            // ignored, because the emitted event is not for this part.
+            return;
+          }
+
+          if (event.total && partSize) {
+            this.bytesUploadedSoFar += event.loaded - lastSeenBytes;
+            lastSeenBytes = event.loaded;
+          }
+
+          this.__notifyProgress({
+            loaded: this.bytesUploadedSoFar,
+            total: this.totalBytes,
+            part: dataPart.partNumber,
+            Key: this.params.Key,
+            Bucket: this.params.Bucket,
+          });
+        };
+
+        if (eventEmitter !== null) {
+          // The requestHandler is the xhr-http-handler.
+          eventEmitter.on('xhr.upload.progress', uploadEventListener);
+        }
+
         const partResult = await this.client.send(
           new UploadPartCommand({
             ...this.params,
@@ -206,8 +297,18 @@ export class Upload extends EventEmitter {
           })
         );
 
+        if (eventEmitter !== null) {
+          eventEmitter.off('xhr.upload.progress', uploadEventListener);
+        }
+
         if (this.abortController.signal.aborted) {
           return;
+        }
+
+        if (!partResult.ETag) {
+          throw new Error(
+            `Part ${dataPart.partNumber} is missing ETag in UploadPart response. Missing Bucket CORS configuration for ETag header?`
+          );
         }
 
         this.uploadedParts.push({
@@ -219,7 +320,10 @@ export class Upload extends EventEmitter {
           ...(partResult.ChecksumSHA256 && { ChecksumSHA256: partResult.ChecksumSHA256 }),
         });
 
-        this.bytesUploadedSoFar += byteLength(dataPart.data);
+        if (eventEmitter === null) {
+          this.bytesUploadedSoFar += partSize;
+        }
+
         this.__notifyProgress({
           loaded: this.bytesUploadedSoFar,
           total: this.totalBytes,
