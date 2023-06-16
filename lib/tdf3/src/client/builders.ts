@@ -2,13 +2,13 @@ import { S3Client, GetObjectCommand, HeadObjectCommand, S3ClientConfig } from '@
 import axios from 'axios';
 import { Buffer } from 'buffer';
 
-import { arrayBufferToBuffer, inBrowser } from '../utils/index.js';
+import { arrayBufferToBuffer } from '../utils/index.js';
 import { AttributeValidator } from './validation.js';
 import { AttributeObject, Policy } from '../models/index.js';
 import { type RcaParams, type RcaLink, type Metadata } from '../tdf.js';
 import { Binary } from '../binary.js';
 
-import { IllegalArgumentError, IllegalEnvError } from '../errors.js';
+import { IllegalArgumentError } from '../errors.js';
 import { PemKeyPair } from '../crypto/declarations.js';
 import { EntityObject } from '../../../src/tdf/EntityObject.js';
 
@@ -282,10 +282,6 @@ class EncryptParamsBuilder {
    * @return {EncryptParamsBuilder} - this object
    */
   setArrayBufferSource(arraybuffer: ArrayBuffer) {
-    if (!inBrowser()) {
-      throw new IllegalEnvError("must be in a browser context to use 'withArrayBufferSource'");
-    }
-
     this.setBufferSource(arrayBufferToBuffer(arraybuffer));
   }
 
@@ -787,10 +783,6 @@ class DecryptParamsBuilder {
    * @return {DecryptParamsBuilder} - this object
    */
   setArrayBufferSource(arraybuffer: ArrayBuffer) {
-    if (!inBrowser()) {
-      throw new IllegalEnvError("must be in a browser context to use 'withArrayBufferSource'");
-    }
-
     this.setBufferSource(arrayBufferToBuffer(arraybuffer));
   }
 

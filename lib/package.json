@@ -1,6 +1,6 @@
 {
   "name": "@opentdf/client",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "Access and generate tdf protected content",
   "homepage": "https://github.com/opentdf/client-web",
   "bugs": {
@@ -17,20 +17,15 @@
     "directory": "lib"
   },
   "type": "module",
+  "main": "./dist/web/tdf3/index-web.js",
   "license": "BSD-3-Clause-Clear",
   "author": "Virtru",
   "browser": "./dist/web/tdf3/index-web.js",
   "types": "./dist/types/tdf3/index.d.ts",
   "exports": {
     ".": {
-      "node": {
-        "types": "./dist/types/tdf3/index.d.ts",
-        "import": "./dist/node/tdf3/index.js"
-      },
-      "default": {
-        "types": "./dist/types/tdf3/index.d.ts",
-        "import": "./dist/web/tdf3/index-web.js"
-      }
+      "types": "./dist/types/tdf3/index.d.ts",
+      "import": "./dist/web/tdf3/index-web.js"
     },
     "./encodings": {
       "default": {
@@ -39,18 +34,12 @@
       }
     },
     "./nano": {
-      "node": {
-        "types": "./dist/types/src/index.d.ts",
-        "import": "./dist/node/src/index.node.js"
-      },
-      "default": {
-        "types": "./dist/types/src/index.d.ts",
-        "import": "./dist/web/src/index.js"
-      }
+      "types": "./dist/types/src/index.d.ts",
+      "import": "./dist/web/src/index.js"
     }
   },
   "scripts": {
-    "build": "npm run clean && tsc -p tsconfig-node-esm.json && tsc",
+    "build": "npm run clean && tsc",
     "clean": "rm -rf {build,coverage,dist}",
     "coverage:merge": "for x in mocha wtr; do cp coverage/$x/coverage-final.json coverage/$x.json; done; nyc report --reporter text -t coverage --lines 75 --statements 75 --branches 70 --functions 65 --check-coverage >coverage/coverage.txt",
     "doc": "typedoc --out dist/docs src/index.ts",
@@ -71,13 +60,11 @@
     "buffer": "^6.0.3",
     "buffer-crc32": "^0.2.13",
     "dpop": "^1.2.0",
-    "eventemitter3": "^5.0.1",
     "events": "^3.3.0",
     "jose": "^4.14.4",
     "jsonschema": "^1.4.1",
     "streamsaver": "^2.0.6",
-    "uuid": "~9.0.0",
-    "web-streams-polyfill": "^3.2.1"
+    "uuid": "~9.0.0"
   },
   "devDependencies": {
     "@esm-bundle/chai": "~4.3.4-fix.0",
@@ -120,7 +107,6 @@
     "sinon": "~15.1.2",
     "streamsaver": "^2.0.6",
     "ts-loader": "^9.4.3",
-    "ts-node": "^10.9.1",
     "tsconfig-paths": "^4.2.0",
     "tsify": "^5.0.4",
     "typedoc": "^0.24.8",
