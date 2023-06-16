@@ -1,7 +1,7 @@
 import axios, { AxiosResponse } from 'axios';
 import { Buffer } from 'buffer';
 import { createReadStream, readFile, statSync } from 'fs';
-import { type AnyTdfStream, isAnyTdfStream } from '../client/tdf-stream.js';
+import { type DecoratedReadableStream, isDecoratedReadableStream } from '../client/DecoratedReadableStream.js';
 import axiosRetry from 'axios-retry';
 
 const axiosRemoteChunk = axios.create();
@@ -28,7 +28,7 @@ export const fromBrowserFile = (fileRef: Blob): Chunker => {
   };
 };
 
-export const fromBuffer = (buffer: Uint8Array): Chunker => {
+export const fromBuffer = (buffer: Uint8Array | Buffer): Chunker => {
   return (byteStart?: number, byteEnd?: number) => {
     return Promise.resolve(buffer.slice(byteStart, byteEnd));
   };
@@ -127,7 +127,7 @@ export type DataSource =
   | { type: 'file-browser'; location: Blob }
   | { type: 'file-node'; location: string }
   | { type: 'remote'; location: string }
-  | { type: 'stream'; location: AnyTdfStream };
+  | { type: 'stream'; location: DecoratedReadableStream };
 
 export const fromDataSource = async ({ type, location }: DataSource) => {
   switch (type) {
@@ -157,7 +157,7 @@ export const fromDataSource = async ({ type, location }: DataSource) => {
       }
       return fromUrl(location);
     case 'stream':
-      if (!isAnyTdfStream(location)) {
+      if (!isDecoratedReadableStream(location)) {
         throw new Error('Invalid data source; must be DecoratedTdfStream');
       }
       return fromBuffer(await location.toBuffer());
