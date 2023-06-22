@@ -1,6 +1,4 @@
-import { Buffer } from 'buffer';
-
-export async function* getDataReadableStream(data: ReadableStream): AsyncGenerator<Buffer> {
+export async function* getDataReadableStream(data: ReadableStream): AsyncGenerator<Uint8Array> {
   // Get a lock on the stream.
   const reader = data.getReader();
 
@@ -11,7 +9,7 @@ export async function* getDataReadableStream(data: ReadableStream): AsyncGenerat
       // Exit if we're done.
       if (done) return;
       // Else yield the chunk.
-      yield Buffer.from(value);
+      yield value;
     }
   } finally {
     // release the lock for reading from this stream.

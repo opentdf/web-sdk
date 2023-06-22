@@ -1,4 +1,3 @@
-import { Buffer } from 'buffer';
 import { AppIdAuthProvider, AuthProvider } from '../../../src/auth/auth.js';
 
 export { ZipReader, readUInt64LE } from './zip-reader.js';
@@ -7,17 +6,8 @@ export { keySplit, keyMerge } from './keysplit.js';
 export { streamToBuffer } from '../client/DecoratedReadableStream.js';
 export * from './chunkers.js';
 
-export function base64ToBuffer(b64: string): Buffer | Uint8Array {
-  return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
-}
-
-export function arrayBufferToBuffer(ab: ArrayBuffer): Buffer {
-  const buf = Buffer.alloc(ab.byteLength);
-  const view = new Uint8Array(ab);
-  for (let i = 0; i < buf.length; ++i) {
-    buf[i] = view[i];
-  }
-  return buf;
+export function base64ToBuffer(b64: string): Uint8Array {
+  return Uint8Array.from(atob(b64).split(''), (c) => c.charCodeAt(0))
 }
 
 export function isAppIdProviderCheck(
@@ -25,12 +15,57 @@ export function isAppIdProviderCheck(
 ): provider is AppIdAuthProvider {
   return (provider as AppIdAuthProvider)._getName !== undefined;
 }
+export function concatUint8(uint8Arrays: Uint8Array[]): Uint8Array {
+  const newLength = uint8Arrays.reduce((accumulator, currentValue) => accumulator + currentValue.length, 0);
+  const combinedUint8Array = new Uint8Array(newLength);
 
-export function bufferToArrayBuffer(buf: Buffer): ArrayBuffer {
-  const ab = new ArrayBuffer(buf.length);
-  const view = new Uint8Array(ab);
-  for (let i = 0; i < buf.length; ++i) {
-    view[i] = buf[i];
+  let offset = 0;
+  for (const uint8Array of uint8Arrays) {
+    combinedUint8Array.set(uint8Array, offset);
+    offset += uint8Array.length;
   }
-  return ab;
+
+  return combinedUint8Array;
+}
+
+export function readUInt32LE(uint8Array: Uint8Array, offset: number): number {
+  return (
+    (uint8Array[offset]) |
+    (uint8Array[offset + 1] << 8) |
+    (uint8Array[offset + 2] << 16) |
+    (uint8Array[offset + 3] << 24)
+  );
+}
+
+export function readUInt16LE(uint8Array: Uint8Array, offset: number): number {
+  return uint8Array[offset] | (uint8Array[offset + 1] << 8);
+}
+
+export function readUInt32BE(arrayBuffer: ArrayBuffer, offset: number): number {
+  const view = new DataView(arrayBuffer, offset, 4);
+  return view.getUint32(0, false);
+}
+
+export function writeUInt16LE(uint8Array: Uint8Array, value: number, offset: number): void {
+  uint8Array[offset] = value & 0xFF;
+  uint8Array[offset + 1] = (value >> 8) & 0xFF;
+}
+
+export function writeUInt32LE(uint8Array: Uint8Array, value: number, offset: number): void {
+  uint8Array[offset] = value & 0xFF;
+  uint8Array[offset + 1] = (value >> 8) & 0xFF;
+  uint8Array[offset + 2] = (value >> 16) & 0xFF;
+  uint8Array[offset + 3] = (value >> 24) & 0xFF;
+}
+
+export function copyUint8Arr(
+  source: Uint8Array,
+  target: Uint8Array,
+  targetStart: number = 0,
+  sourceStart: number = 0,
+  sourceEnd: number = source.length
+): number {
+  const length = Math.min(sourceEnd - sourceStart, target.length - targetStart);
+  target.set(source.subarray(sourceStart, sourceStart + length), targetStart);
+  return length;
 }

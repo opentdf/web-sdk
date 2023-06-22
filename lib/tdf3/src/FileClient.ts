@@ -1,5 +1,3 @@
-import { Buffer } from 'buffer';
-
 import { Client as ClientTdf3 } from './client/index.js';
 import {
   type DecryptParams,
@@ -53,10 +51,6 @@ export class FileClient {
   ): Promise<void> {
     if (source instanceof Promise) {
       source = await source;
-    }
-    if (Buffer && Buffer.isBuffer(source)) {
-      params.setBufferSource(source);
-      return;
     }
     if (source instanceof ArrayBuffer) {
       params.setArrayBufferSource(source);

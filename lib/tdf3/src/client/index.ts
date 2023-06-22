@@ -41,7 +41,7 @@ export const uploadBinaryToS3 = async function (
   fileSize: number
 ) {
   try {
-    const body: Buffer | ReadableStream<Uint8Array> = await streamToBuffer(stream)
+    const body: ArrayBuffer | ReadableStream<Uint8Array> = await streamToBuffer(stream)
 
     await axios.put(uploadUrl, body, {
       headers: {

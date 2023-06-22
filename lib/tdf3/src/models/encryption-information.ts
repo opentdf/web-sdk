@@ -1,4 +1,3 @@
-import { Buffer } from 'buffer';
 import { keySplit } from '../utils/index.js';
 import { base64, hex } from '../../../src/encodings/index.js';
 import { Binary } from '../binary.js';
@@ -65,13 +64,13 @@ export class SplitKey {
     return this.cipher.encrypt(contentBinary, keyBinary, ivBinary);
   }
 
-  async decrypt(content: Buffer, keyBinary: Binary): Promise<DecryptResult> {
-    return this.cipher.decrypt(content, keyBinary);
+  async decrypt(content: ArrayBuffer, keyBinary: Binary): Promise<DecryptResult> {
+    return this.cipher.decrypt(new Uint8Array(content), keyBinary);
   }
 
   async getKeyAccessObjects(policy: Policy, keyInfo: KeyInfo): Promise<KeyAccessObject[]> {
     const unwrappedKeySplitBuffers = keySplit(
-      keyInfo.unwrappedKeyBinary.asBuffer(),
+      new Uint8Array(keyInfo.unwrappedKeyBinary.asArrayBuffer()),
       this.keyAccess.length
     );
 
@@ -79,7 +78,7 @@ export class SplitKey {
     for (let i = 0; i < this.keyAccess.length; i++) {
       // use the key split to encrypt metadata for each key access object
       const unwrappedKeySplitBuffer = unwrappedKeySplitBuffers[i];
-      const unwrappedKeySplitBinary = Binary.fromBuffer(Buffer.from(unwrappedKeySplitBuffer));
+      const unwrappedKeySplitBinary = Binary.fromArrayBuffer(unwrappedKeySplitBuffer.buffer);
 
       const metadata = this.keyAccess[i].metadata || '';
       const metadataStr = (
