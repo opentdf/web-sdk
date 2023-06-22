@@ -1,6 +1,6 @@
-import { Buffer } from 'buffer';
 import { Manifest } from '../models/index.js';
 import { Chunker } from './chunkers.js';
+import { readUInt32LE, readUInt16LE, copyUint8Arr } from './index.js';
 
 // TODO: Better document what these constants are
 // TODO: Document each function please
@@ -71,11 +71,8 @@ export class ZipReader {
    */
   async getCentralDirectory(): Promise<CentralDirectory[]> {
     const chunk = await this.getChunk(-1000);
-    // TODO: Does this need to be tuned??!?
-    // Full buffer for the file chunk
-    const chunkBuffer = Buffer.from(chunk);
     // Slice off the EOCDR (End of Central Directory Record) part of the buffer so we can figure out the CD size
-    const cdBuffers = this.getCDBuffers(chunkBuffer);
+    const cdBuffers = this.getCDBuffers(chunk);
 
     const cdParsedBuffers = cdBuffers.map(parseCDBuffer);
     for (const buffer of cdParsedBuffers) {
@@ -96,9 +93,9 @@ export class ZipReader {
     const byteStart = cdObj.relativeOffsetOfLocalHeader + cdObj.headerLength;
     const byteEnd = byteStart + cdObj.uncompressedSize;
     const manifest = await this.getChunk(byteStart, byteEnd);
-    const manifestBuffer = Buffer.from(manifest);
+    const decoder = new TextDecoder();
 
-    return JSON.parse(manifestBuffer.toString());
+    return JSON.parse(decoder.decode(manifest));
   }
 
   async adjustHeaders(cdObj: CentralDirectory): Promise<void> {
@@ -111,8 +108,7 @@ export class ZipReader {
       cdObj.relativeOffsetOfLocalHeader,
       cdObj.relativeOffsetOfLocalHeader + cdObj.headerLength
     );
-    const headerBuffer = Buffer.from(headerChunk);
-    cdObj.headerLength = recalculateHeaderLength(headerBuffer);
+    cdObj.headerLength = recalculateHeaderLength(headerChunk);
   }
 
   async getPayloadSegment(
@@ -120,7 +116,7 @@ export class ZipReader {
     payloadName: string,
     encrpytedSegmentOffset: number,
     encryptedSegmentSize: number
-  ): Promise<Buffer> {
+  ): Promise<Uint8Array> {
     const cdObj = cdBuffers.find(({ fileName }) => payloadName === fileName);
     if (!cdObj) {
       throw new Error('Unable to retrieve CD');
@@ -130,9 +126,7 @@ export class ZipReader {
     // TODO: what's the exact byte start?
     const byteEnd = byteStart + encryptedSegmentSize;
 
-    const chunk = await this.getChunk(byteStart, byteEnd);
-    const segmentBuffer = Buffer.from(chunk);
-    return segmentBuffer;
+    return await this.getChunk(byteStart, byteEnd);
   }
 
   /**
@@ -141,12 +135,12 @@ export class ZipReader {
    * @param  {Buffer} chunkBuffer The last portion of a zip file
    * @returns {Array}             An array of buffers
    */
-  getCDBuffers(chunkBuffer: Buffer): Buffer[] {
+  getCDBuffers(chunkBuffer: Uint8Array): Uint8Array[] {
     const cdBuffers = [];
     let lastBufferOffset = chunkBuffer.length;
     for (let i = chunkBuffer.length - 22; i >= 0; i -= 1) {
       // If what we're locking at isn't the start of a central directory, skip it..
-      if (chunkBuffer.readUInt32LE(i) !== CD_SIGNATURE) {
+      if (readUInt32LE(chunkBuffer, i) !== CD_SIGNATURE) {
         // eslint-disable-next-line no-continue
         continue;
       }
@@ -164,39 +158,39 @@ export class ZipReader {
   }
 }
 
-function parseCentralDirectoryWithNoExtras(cdBuffer: Buffer): CentralDirectory {
+function parseCentralDirectoryWithNoExtras(cdBuffer: Uint8Array): CentralDirectory {
   const cd: Partial<CentralDirectory> = {};
   // 4 - Version made by
-  cd.versionMadeBy = cdBuffer.readUInt16LE(4);
+  cd.versionMadeBy = readUInt16LE(cdBuffer, 4);
   // 6 - Version needed to extract (minimum)
-  cd.versionNeededToExtract = cdBuffer.readUInt16LE(6);
+  cd.versionNeededToExtract = readUInt16LE(cdBuffer, 6);
   // 8 - General purpose bit flag
-  cd.generalPurposeBitFlag = cdBuffer.readUInt16LE(8);
+  cd.generalPurposeBitFlag = readUInt16LE(cdBuffer, 8);
   // 10 - Compression method
-  cd.compressionMethod = cdBuffer.readUInt16LE(10);
+  cd.compressionMethod = readUInt16LE(cdBuffer, 10);
   // 12 - File last modification time
-  cd.lastModFileTime = cdBuffer.readUInt16LE(12);
+  cd.lastModFileTime = readUInt16LE(cdBuffer, 12);
   // 14 - File last modification date
-  cd.lastModFileDate = cdBuffer.readUInt16LE(14);
+  cd.lastModFileDate = readUInt16LE(cdBuffer, 14);
   // 16 - CRC-32
-  cd.crc32 = cdBuffer.readUInt32LE(16);
+  cd.crc32 = readUInt32LE(cdBuffer, 16);
   // 20 - Compressed size
-  cd.compressedSize = cdBuffer.readUInt32LE(20);
+  cd.compressedSize = readUInt32LE(cdBuffer, 20);
   // 24 - Uncompressed size
-  cd.uncompressedSize = cdBuffer.readUInt32LE(24);
+  cd.uncompressedSize = readUInt32LE(cdBuffer, 24);
   // 28 - File name length (n)
-  cd.fileNameLength = cdBuffer.readUInt16LE(28);
+  cd.fileNameLength = readUInt16LE(cdBuffer, 28);
   // 30 - Extra field length (m)
-  cd.extraFieldLength = cdBuffer.readUInt16LE(30);
+  cd.extraFieldLength = readUInt16LE(cdBuffer, 30);
   // 32 - File comment length (k)
-  cd.fileCommentLength = cdBuffer.readUInt16LE(32);
+  cd.fileCommentLength = readUInt16LE(cdBuffer, 32);
   // 34 - Disk number where file starts
   // 36 - Internal file attributes
-  cd.internalFileAttributes = cdBuffer.readUInt16LE(36);
+  cd.internalFileAttributes = readUInt16LE(cdBuffer, 36);
   // 38 - External file attributes
-  cd.externalFileAttributes = cdBuffer.readUInt32LE(38);
+  cd.externalFileAttributes = readUInt32LE(cdBuffer, 38);
   // 42 - Relative offset of local file header
-  cd.relativeOffsetOfLocalHeader = cdBuffer.readUInt32LE(42);
+  cd.relativeOffsetOfLocalHeader = readUInt32LE(cdBuffer, 42);
   const fileNameBuffer = cdBuffer.slice(
     CENTRAL_DIRECTORY_RECORD_FIXED_SIZE,
     CENTRAL_DIRECTORY_RECORD_FIXED_SIZE + cd.fileNameLength
@@ -214,8 +208,8 @@ function parseCentralDirectoryWithNoExtras(cdBuffer: Buffer): CentralDirectory {
  * @param  cdBuffer The central directory buffer to parse
  * @return The CD object
  */
-export function parseCDBuffer(cdBuffer: Buffer): CentralDirectory {
-  if (cdBuffer.readUInt32LE(0) !== CD_SIGNATURE) {
+export function parseCDBuffer(cdBuffer: Uint8Array): CentralDirectory {
+  if (readUInt32LE(cdBuffer, 0) !== CD_SIGNATURE) {
     throw new Error('Invalid central directory file header signature');
   }
 
@@ -277,9 +271,10 @@ export function parseCDBuffer(cdBuffer: Buffer): CentralDirectory {
  * @param  isUtf8 Is it utf8? Otherwise, assumed to be CP-437
  * @return The converted string
  */
-function bufferToString(buffer: Buffer, start: number, end: number, isUtf8: boolean): string {
+function bufferToString(buffer: Uint8Array, start: number, end: number, isUtf8: boolean): string {
   if (isUtf8) {
-    return buffer.toString('utf8', start, end);
+    const decoder = new TextDecoder();
+    return decoder.decode(buffer.buffer.slice(start, end));
   }
 
   let result = '';
@@ -291,15 +286,15 @@ function bufferToString(buffer: Buffer, start: number, end: number, isUtf8: bool
   return result;
 }
 
-function recalculateHeaderLength(tempHeaderBuffer: Buffer): number {
-  const fileNameLength = tempHeaderBuffer.readUInt16LE(26);
-  const extraFieldLength = tempHeaderBuffer.readUInt16LE(28);
+function recalculateHeaderLength(tempHeaderBuffer: Uint8Array): number {
+  const fileNameLength = readUInt16LE(tempHeaderBuffer, 26);
+  const extraFieldLength = readUInt16LE(tempHeaderBuffer, 28);
   return LOCAL_FILE_HEADER_FIXED_SIZE + fileNameLength + extraFieldLength;
 }
 
-export function readUInt64LE(buffer: Buffer, offset: number): number {
-  const lower32 = buffer.readUInt32LE(offset);
-  const upper32 = buffer.readUInt32LE(offset + 4);
+export function readUInt64LE(buffer: Uint8Array, offset: number): number {
+  const lower32 = readUInt32LE(buffer, offset);
+  const upper32 = readUInt32LE(buffer, offset + 4);
   const combined = upper32 * 0x100000000 + lower32;
   if (!Number.isSafeInteger(combined)) {
     throw Error(`Value exceeds MAX_SAFE_INTEGER: ${combined}`);
@@ -311,20 +306,20 @@ export function readUInt64LE(buffer: Buffer, offset: number): number {
 /**
  * Breaks extra field buffer into slices by field identifier.
  */
-function sliceExtraFields(extraFieldBuffer: Buffer, cd: CentralDirectory): Record<number, Buffer> {
-  const extraFields: Record<number, Buffer> = {};
+function sliceExtraFields(extraFieldBuffer: Uint8Array, cd: CentralDirectory): Record<number, Uint8Array> {
+  const extraFields: Record<number, Uint8Array> = {};
 
   let i = 0;
   while (i < extraFieldBuffer.length - 3) {
-    const headerId = extraFieldBuffer.readUInt16LE(i + 0);
-    const dataSize = extraFieldBuffer.readUInt16LE(i + 2);
+    const headerId = readUInt16LE(extraFieldBuffer, i);
+    const dataSize = readUInt16LE(extraFieldBuffer, i + 2);
     const dataStart = i + 4;
     const dataEnd = dataStart + dataSize;
     if (dataEnd > extraFieldBuffer.length) {
       throw new Error('extra field length exceeds extra field buffer size');
     }
-    const dataBuffer = Buffer.allocUnsafe(dataSize);
-    extraFieldBuffer.copy(dataBuffer, 0, dataStart, dataEnd);
+    const dataBuffer = new Uint8Array(dataSize);
+    copyUint8Arr(extraFieldBuffer, dataBuffer, 0, dataStart, dataEnd);
     if (extraFields[headerId]) {
       throw new Error(`Conflicting extra field #${headerId} for entry [${cd.fileName}]`);
     }

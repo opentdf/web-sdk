@@ -1,4 +1,3 @@
-import { Buffer } from 'buffer';
 import { Binary } from '../binary.js';
 import { base64, hex } from '../../../src/encodings/index.js';
 import * as cryptoService from '../crypto/index.js';
@@ -26,7 +25,7 @@ export class Wrapped {
     encryptedMetadataStr: string
   ): Promise<KeyAccessObject> {
     const policyStr = JSON.stringify(policy);
-    const unwrappedKeyBinary = Binary.fromBuffer(Buffer.from(keyBuffer));
+    const unwrappedKeyBinary = Binary.fromArrayBuffer(keyBuffer.buffer);
     const wrappedKeyBinary = await cryptoService.encryptWithPublicKey(
       unwrappedKeyBinary,
       this.publicKey
@@ -72,7 +71,7 @@ export class Remote {
       hex.encodeArrayBuffer(keyBuffer),
       base64.encode(policyStr)
     );
-    const unwrappedKeyBinary = Binary.fromBuffer(Buffer.from(keyBuffer));
+    const unwrappedKeyBinary = Binary.fromArrayBuffer(keyBuffer.buffer);
     const wrappedKeyBinary = await cryptoService.encryptWithPublicKey(
       unwrappedKeyBinary,
       this.publicKey

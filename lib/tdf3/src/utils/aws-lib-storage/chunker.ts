@@ -1,5 +1,3 @@
-import { Buffer } from 'buffer';
-
 import { getChunkBuffer } from './chunks/getChunkBuffer.js';
 import { getChunkStream } from './chunks/getChunkStream.js';
 import { getDataReadable } from './chunks/getDataReadable.js';
@@ -7,13 +5,14 @@ import { getDataReadableStream } from './chunks/getDataReadableStream.js';
 import { BodyDataTypes } from './types.js';
 
 export const getChunk = (data: BodyDataTypes, partSize: number) => {
-  if (data instanceof Buffer) {
+  if (data instanceof ArrayBuffer) {
     return getChunkBuffer(data, partSize);
   } else if (Object.prototype.hasOwnProperty.call(data, 'pipe')) {
     return getChunkStream<any>(data, partSize, getDataReadable);
-  } else if (data instanceof String || typeof data === 'string' || data instanceof Uint8Array) {
-    // chunk Strings, Uint8Array.
-    return getChunkBuffer(Buffer.from(data), partSize);
+  } else if (data instanceof Uint8Array) {
+    return getChunkBuffer(data.buffer, partSize);
+  } else if (data instanceof String || typeof data === 'string') {
+    return getChunkBuffer(new TextEncoder().encode(data as string), partSize);
   }
   if (typeof (data as any).stream === 'function') {
     // approximate support for Blobs.
@@ -22,7 +21,7 @@ export const getChunk = (data: BodyDataTypes, partSize: number) => {
     return getChunkStream<ReadableStream>(data, partSize, getDataReadableStream);
   } else {
     throw new Error(
-      'Body Data is unsupported format, expected data to be one of: string | Uint8Array | Buffer | Readable | ReadableStream | Blob;.'
+      'Body Data is unsupported format, expected data to be one of: string | Uint8Array | Readable | ReadableStream | Blob;.'
     );
   }
 };

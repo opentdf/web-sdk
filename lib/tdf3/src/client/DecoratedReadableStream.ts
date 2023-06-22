@@ -4,8 +4,11 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 import axios from 'axios';
-import { Buffer } from 'buffer';
-import { EventEmitter } from 'eventemitter3';
+import { EventEmitter } from 'events';
+import streamSaver from 'streamsaver';
+import { fileSave } from 'browser-fs-access';
+import { isFirefox } from '../../../src/utils.js';
+
 
 import { VirtruS3Config, VirtruTempS3Credentials, VirtruCreds } from './builders.js';
 import { Upload } from '../utils/aws-lib-storage/index.js';
@@ -13,9 +16,9 @@ import { Options } from '../utils/aws-lib-storage/types.js';
 import { type Metadata } from '../tdf.js';
 import { type Manifest, type UpsertResponse } from '../models/index.js';
 
-export async function streamToBuffer(stream: ReadableStream<Uint8Array>): Promise<Buffer> {
+export async function streamToBuffer(stream: ReadableStream<Uint8Array>): Promise<Uint8Array> {
   const accumulator = await new Response(stream).arrayBuffer();
-  return Buffer.from(accumulator);
+  return new Uint8Array(accumulator);
 }
 
 export type DecoratedReadableStreamSinkOptions = {
@@ -23,7 +26,7 @@ export type DecoratedReadableStreamSinkOptions = {
   signal?: AbortSignal;
 };
 
-export abstract class DecoratedReadableStream {
+export class DecoratedReadableStream {
   KEK: null | string;
   algorithm: string;
   policyUuid?: string;
@@ -155,7 +158,7 @@ export abstract class DecoratedReadableStream {
    * Dump the stream content to a buffer. This will consume the stream.
    * @return the plaintext in Buffer form.
    */
-  async toBuffer(): Promise<Buffer> {
+  async toBuffer(): Promise<Uint8Array> {
     return streamToBuffer(this.stream);
   }
 
@@ -173,8 +176,61 @@ export abstract class DecoratedReadableStream {
    * @param filepath The path of the local file to write plaintext to.
    * @param encoding The charset encoding to use. Defaults to utf-8.
    */
-  abstract toFile(
-    filepath: string,
+  async toFile(
+    filepath = 'download.tdf',
     options?: BufferEncoding | DecoratedReadableStreamSinkOptions
-  ): Promise<void>;
+  ): Promise<void> {
+    if (options && typeof options === 'string') {
+      throw new Error('Unsupported Operation: Cannot set encoding in browser');
+    }
+    if (isFirefox()) {
+      await fileSave(new Response(this.stream), {
+        fileName: filepath,
+        extensions: [`.${filepath.split('.').pop()}`],
+      });
+      return;
+    }
+
+    if (this.fileStreamServiceWorker) {
+      streamSaver.mitm = this.fileStreamServiceWorker;
+    }
+
+    const fileStream = streamSaver.createWriteStream(filepath, {
+      ...(this.contentLength && { size: this.contentLength }),
+      writableStrategy: { highWaterMark: 1 },
+      readableStrategy: { highWaterMark: 1 },
+    });
+
+    if (WritableStream) {
+      return this.stream.pipeTo(fileStream, options);
+    }
+
+    // Write (pipe) manually
+    const reader = this.stream.getReader();
+    const writer = fileStream.getWriter();
+    const pump = async (): Promise<void> => {
+      const res = await reader.read();
+
+      if (res.done) {
+        return await writer.close();
+      } else {
+        await writer.write(res.value);
+        return pump();
+      }
+    };
+    return pump();
+
+    // const pump = (): Promise<void> =>
+    //   reader.read().then((res) => (res.done ? writer.close() : writer.write(res.value).then(pump)));
+    // pump();
+  }
 }
+
+export function isDecoratedReadableStream(s: unknown): s is DecoratedReadableStream {
+  return (
+    typeof (s as DecoratedReadableStream)?.toBuffer !== 'undefined' &&
+    typeof (s as DecoratedReadableStream)?.toFile !== 'undefined' &&
+    typeof (s as DecoratedReadableStream)?.toString !== 'undefined'
+  );
+}
+

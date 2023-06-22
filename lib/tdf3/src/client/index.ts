@@ -2,7 +2,6 @@ import { v4 } from 'uuid';
 import axios from 'axios';
 import {
   ZipReader,
-  inBrowser,
   fromBuffer,
   fromDataSource,
   streamToBuffer,
@@ -11,8 +10,6 @@ import {
 } from '../utils/index.js';
 import { base64 } from '../../../src/encodings/index.js';
 import { TDF } from '../tdf.js';
-import { type AnyTdfStream, makeStream } from './tdf-stream.js';
-import { OIDCClientCredentialsProvider } from '../../../src/auth/oidc-clientcredentials-provider.js';
 import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-provider.js';
 import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider.js';
 import { PemKeyPair } from '../crypto/declarations.js';
@@ -20,7 +17,7 @@ import { AuthProvider, AppIdAuthProvider, HttpRequest } from '../../../src/auth/
 import EAS from '../../../src/auth/Eas.js';
 
 import { EncryptParams, DecryptParams, type Scope } from './builders.js';
-import { type DecoratedReadableStream } from './DecoratedReadableStream.js';
+import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 
 import {
   DEFAULT_SEGMENT_SIZE,
@@ -44,9 +41,7 @@ export const uploadBinaryToS3 = async function (
   fileSize: number
 ) {
   try {
-    const body: Buffer | ReadableStream<Uint8Array> = inBrowser()
-      ? await streamToBuffer(stream)
-      : stream;
+    const body: ArrayBuffer | ReadableStream<Uint8Array> = await streamToBuffer(stream)
 
     await axios.put(uploadUrl, body, {
       headers: {
@@ -247,41 +242,25 @@ export class Client {
         throw new Error('Client ID or custom AuthProvider must be defined');
       }
 
-      if (inBrowser()) {
-        //If you're in a browser and passing client secrets, you're Doing It Wrong.
-        if (clientConfig.clientSecret) {
-          throw new Error('Client credentials not supported in a browser context');
-        }
-        //Are we exchanging a refreshToken for a bearer token (normal AuthCode browser auth flow)?
-        //If this is a browser context, we expect the caller to handle the initial
-        //browser-based OIDC login and authentication process against the OIDC endpoint using their chosen method,
-        //and provide us with a valid refresh token/clientId obtained from that process.
-        if (clientConfig.refreshToken) {
-          this.authProvider = new OIDCRefreshTokenProvider({
-            clientId: clientConfig.clientId,
-            refreshToken: clientConfig.refreshToken,
-            oidcOrigin: clientConfig.oidcOrigin,
-          });
-        } else if (clientConfig.externalJwt) {
-          //Are we exchanging a JWT previously issued by a trusted external entity (e.g. Google) for a bearer token?
-          this.authProvider = new OIDCExternalJwtProvider({
-            clientId: clientConfig.clientId,
-            externalJwt: clientConfig.externalJwt,
-            oidcOrigin: clientConfig.oidcOrigin,
-          });
-        }
-      } else {
-        //If you're NOT in a browser and are NOT passing client secrets, you're Doing It Wrong.
-        //If this is not a browser context, we expect the caller to supply their client ID and client secret, so that
-        // we can authenticate them directly with the OIDC endpoint.
-        if (!clientConfig.clientSecret) {
-          throw new Error(
-            'If using client credentials, must supply both client ID and client secret to constructor'
-          );
-        }
-        this.authProvider = new OIDCClientCredentialsProvider({
+      //If you're in a browser and passing client secrets, you're Doing It Wrong.
+      if (clientConfig.clientSecret) {
+        throw new Error('Client credentials not supported in a browser context');
+      }
+      //Are we exchanging a refreshToken for a bearer token (normal AuthCode browser auth flow)?
+      //If this is a browser context, we expect the caller to handle the initial
+      //browser-based OIDC login and authentication process against the OIDC endpoint using their chosen method,
+      //and provide us with a valid refresh token/clientId obtained from that process.
+      if (clientConfig.refreshToken) {
+        this.authProvider = new OIDCRefreshTokenProvider({
           clientId: clientConfig.clientId,
-          clientSecret: clientConfig.clientSecret,
+          refreshToken: clientConfig.refreshToken,
+          oidcOrigin: clientConfig.oidcOrigin,
+        });
+      } else if (clientConfig.externalJwt) {
+        //Are we exchanging a JWT previously issued by a trusted external entity (e.g. Google) for a bearer token?
+        this.authProvider = new OIDCExternalJwtProvider({
+          clientId: clientConfig.clientId,
+          externalJwt: clientConfig.externalJwt,
           oidcOrigin: clientConfig.oidcOrigin,
         });
       }
@@ -329,7 +308,7 @@ export class Client {
     windowSize,
     eo,
     payloadKey,
-  }: Omit<EncryptParams, 'output'>): Promise<AnyTdfStream>;
+  }: Omit<EncryptParams, 'output'>): Promise<DecoratedReadableStream>;
   async encrypt({
     scope,
     source,
@@ -354,7 +333,7 @@ export class Client {
     windowSize = DEFAULT_SEGMENT_SIZE,
     eo,
     payloadKey,
-  }: EncryptParams): Promise<AnyTdfStream | void> {
+  }: EncryptParams): Promise<DecoratedReadableStream | void> {
     if (asHtml) {
       if (rcaSource) {
         throw new Error('rca links should be used only with zip format');
@@ -423,8 +402,8 @@ export class Client {
       return;
     }
 
-    return makeStream({
-      pull(controller: ReadableStreamDefaultController) {
+    return new DecoratedReadableStream({
+      pull(controller: ReadableStreamDefaultController)   {
         controller.enqueue(htmlBuf);
         controller.close();
       },

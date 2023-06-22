@@ -1,7 +1,3 @@
-import { Buffer } from 'buffer';
-import { createReadStream } from 'fs';
-import { Readable } from 'stream';
-
 import { Client as ClientTdf3 } from './client/index.js';
 import {
   type DecryptParams,
@@ -11,7 +7,7 @@ import {
 } from './client/builders.js';
 import { type InputSource } from '../../src/types/index.js';
 import { type AuthProvider } from '../../src/auth/auth.js';
-import { type AnyTdfStream } from './client/tdf-stream.js';
+import { type DecoratedReadableStream } from './client/DecoratedReadableStream.js';
 
 interface FileClientConfig {
   clientId?: string;
@@ -56,10 +52,6 @@ export class FileClient {
     if (source instanceof Promise) {
       source = await source;
     }
-    if (Buffer && Buffer.isBuffer(source)) {
-      params.setBufferSource(source);
-      return;
-    }
     if (source instanceof ArrayBuffer) {
       params.setArrayBufferSource(source);
       return;
@@ -87,12 +79,8 @@ export class FileClient {
             throw new Error(`${response.status}: No body returned.`);
           }
           source = response.body;
-        } else {
-          source = Readable.toWeb(
-            createReadStream(source, { highWaterMark: 1 })
-          ) as ReadableStream<Uint8Array>;
         }
-        params.setStreamSource(source);
+        params.setStreamSource(source as ReadableStream);
       } else {
         // params instanceof DecryptParamsBuilder
         if (url) {
@@ -108,7 +96,7 @@ export class FileClient {
     source: InputSource = '',
     users?: string[],
     params?: EncryptParams
-  ): Promise<AnyTdfStream | null> {
+  ): Promise<DecoratedReadableStream | null> {
     const defaultParams =
       params ||
       new EncryptParamsBuilder()
@@ -129,7 +117,7 @@ export class FileClient {
     return await this.client.encrypt(paramsBuilder.build());
   }
 
-  async decrypt(source: InputSource = '', params?: DecryptParams): Promise<AnyTdfStream> {
+  async decrypt(source: InputSource = '', params?: DecryptParams): Promise<DecoratedReadableStream> {
     const decryptParams = new DecryptParamsBuilder(params);
     if (source) {
       await FileClient.setSource(source, decryptParams);

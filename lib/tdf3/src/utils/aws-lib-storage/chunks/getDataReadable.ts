@@ -1,7 +1,5 @@
-import { Buffer } from 'buffer';
-
-export async function* getDataReadable(data: any): AsyncGenerator<Buffer> {
+export async function* getDataReadable(data: any): AsyncGenerator<Uint8Array> {
   for await (const chunk of data) {
-    yield Buffer.from(chunk);
+    yield chunk;
   }
 }

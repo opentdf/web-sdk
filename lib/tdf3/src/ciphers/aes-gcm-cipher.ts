@@ -1,7 +1,7 @@
-import { Buffer } from 'buffer';
 import { Binary } from '../binary.js';
 import { Algorithms } from './algorithms.js';
 import { SymmetricCipher } from './symmetric-cipher-base.js';
+import { concatUint8 } from '../utils/index.js';
 
 import type { CryptoService, DecryptResult, EncryptResult } from '../crypto/declarations.js';
 
@@ -14,15 +14,15 @@ type ProcessGcmPayload = {
   payloadAuthTag: Binary;
 };
 // Should this be a Binary, Buffer, or... both?
-function processGcmPayload(buffer: Buffer): ProcessGcmPayload {
+function processGcmPayload(buffer: ArrayBuffer): ProcessGcmPayload {
   // Read the 12 byte IV from the beginning of the stream
-  const payloadIv = Binary.fromBuffer(buffer.slice(0, 12));
+  const payloadIv = Binary.fromArrayBuffer(buffer.slice(0, 12));
 
   // Slice the final 16 bytes of the buffer for the authentication tag
-  const payloadAuthTag = Binary.fromBuffer(buffer.slice(-16));
+  const payloadAuthTag = Binary.fromArrayBuffer(buffer.slice(-16));
 
   return {
-    payload: Binary.fromBuffer(buffer.slice(12, -16)),
+    payload: Binary.fromArrayBuffer(buffer.slice(12, -16)),
     payloadIv,
     payloadAuthTag,
   };
@@ -42,14 +42,14 @@ export class AesGcmCipher extends SymmetricCipher {
    * it's parts.  There is no need to process the payload.
    */
   override async encrypt(payload: Binary, key: Binary, iv: Binary): Promise<EncryptResult> {
-    const toConcat: Buffer[] = [];
+    const toConcat: Uint8Array[] = [];
     const result = await this.cryptoService.encrypt(payload, key, iv, Algorithms.AES_256_GCM);
-    toConcat.push(iv.asBuffer());
-    toConcat.push(result.payload.asBuffer());
+    toConcat.push(new Uint8Array(iv.asArrayBuffer()));
+    toConcat.push(new Uint8Array(result.payload.asArrayBuffer()));
     if (result.authTag) {
-      toConcat.push(result.authTag.asBuffer());
+      toConcat.push(new Uint8Array(result.authTag.asArrayBuffer()));
     }
-    result.payload = Binary.fromBuffer(Buffer.concat(toConcat));
+    result.payload = Binary.fromArrayBuffer(concatUint8(toConcat).buffer);
     return result;
   }
 
@@ -58,7 +58,7 @@ export class AesGcmCipher extends SymmetricCipher {
    * @returns
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  override async decrypt(buffer: Buffer, key: Binary, iv?: Binary): Promise<DecryptResult> {
+  override async decrypt(buffer: ArrayBuffer, key: Binary, iv?: Binary): Promise<DecryptResult> {
     const { payload, payloadIv, payloadAuthTag } = processGcmPayload(buffer);
 
     return this.cryptoService.decrypt(

@@ -8,7 +8,7 @@ export interface Progress {
   Bucket?: string;
 }
 
-// string | Uint8Array | Buffer | Readable | ReadableStream | Blob.
+// string | Uint8Array | Readable | ReadableStream | Blob.
 export type BodyDataTypes = PutObjectCommandInput['Body'];
 
 /**
