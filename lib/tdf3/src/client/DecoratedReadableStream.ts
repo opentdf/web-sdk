@@ -10,7 +10,6 @@ import streamSaver from 'streamsaver';
 import { fileSave } from 'browser-fs-access';
 import { isFirefox } from '../../../src/utils.js';
 
-
 import { VirtruS3Config, VirtruTempS3Credentials, VirtruCreds } from './builders.js';
 import { Upload } from '../utils/aws-lib-storage/index.js';
 import { Options } from '../utils/aws-lib-storage/types.js';
@@ -234,4 +233,3 @@ export function isDecoratedReadableStream(s: unknown): s is DecoratedReadableStr
     typeof (s as DecoratedReadableStream)?.toString !== 'undefined'
   );
 }
-

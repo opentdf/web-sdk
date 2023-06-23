@@ -1,7 +1,10 @@
 import axios, { AxiosResponse } from 'axios';
 import { Buffer } from 'buffer';
 import { createReadStream, readFile, statSync } from 'fs';
-import { type DecoratedReadableStream, isDecoratedReadableStream } from '../client/DecoratedReadableStream.js';
+import {
+  type DecoratedReadableStream,
+  isDecoratedReadableStream,
+} from '../client/DecoratedReadableStream.js';
 import axiosRetry from 'axios-retry';
 
 const axiosRemoteChunk = axios.create();

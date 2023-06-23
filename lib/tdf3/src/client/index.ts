@@ -41,7 +41,7 @@ export const uploadBinaryToS3 = async function (
   fileSize: number
 ) {
   try {
-    const body: Buffer | ReadableStream<Uint8Array> = await streamToBuffer(stream)
+    const body: Buffer | ReadableStream<Uint8Array> = await streamToBuffer(stream);
 
     await axios.put(uploadUrl, body, {
       headers: {
@@ -403,7 +403,7 @@ export class Client {
     }
 
     return new DecoratedReadableStream({
-      pull(controller: ReadableStreamDefaultController)   {
+      pull(controller: ReadableStreamDefaultController) {
         controller.enqueue(htmlBuf);
         controller.close();
       },

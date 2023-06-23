@@ -8,7 +8,7 @@ export { streamToBuffer } from '../client/DecoratedReadableStream.js';
 export * from './chunkers.js';
 
 export function base64ToBuffer(b64: string): Buffer | Uint8Array {
-  return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
+  return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
 }
 
 export function arrayBufferToBuffer(ab: ArrayBuffer): Buffer {

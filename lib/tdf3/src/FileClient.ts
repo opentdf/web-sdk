@@ -123,7 +123,10 @@ export class FileClient {
     return await this.client.encrypt(paramsBuilder.build());
   }
 
-  async decrypt(source: InputSource = '', params?: DecryptParams): Promise<DecoratedReadableStream> {
+  async decrypt(
+    source: InputSource = '',
+    params?: DecryptParams
+  ): Promise<DecoratedReadableStream> {
     const decryptParams = new DecryptParamsBuilder(params);
     if (source) {
       await FileClient.setSource(source, decryptParams);
