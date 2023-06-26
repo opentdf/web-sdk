@@ -87,13 +87,8 @@ export class FileClient {
           source = response.body;
         }
         params.setStreamSource(source as ReadableStream);
-      } else {
-        // params instanceof DecryptParamsBuilder
-        if (url) {
-          params.setUrlSource(source);
-        } else {
-          params.setFileSource(source);
-        }
+      } else if (url) {
+        params.setUrlSource(source);
       }
     }
   }

@@ -27,17 +27,9 @@ describe('FileClient', () => {
     client = { decrypt, encrypt } as unknown as ClientTdf3;
   });
   describe('encrypt', () => {
-    it('file source bare', async () => {
-      const fileClient = new FileClient(client);
-      await fileClient.encrypt('README.md');
-      expect(encrypt.callCount).to.equal(1);
-      const params = encrypt.args[0][0];
-      expect(params).to.contain({ offline: true });
-      expect(params.source).to.be.an.instanceOf(ReadableStream);
-    });
     it('file source url', async () => {
       const fileClient = new FileClient(client);
-      await fileClient.encrypt('file://./README.md');
+      await fileClient.encrypt('http://localhost:3000/README.md');
       expect(encrypt.callCount).to.equal(1);
       const params = encrypt.args[0][0];
       expect(params).to.contain({ offline: true });

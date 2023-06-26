@@ -1,6 +1,5 @@
 import axios, { AxiosResponse } from 'axios';
 import { Buffer } from 'buffer';
-import { createReadStream, readFile, statSync } from 'fs';
 import {
   type DecoratedReadableStream,
   isDecoratedReadableStream,
@@ -34,53 +33,6 @@ export const fromBrowserFile = (fileRef: Blob): Chunker => {
 export const fromBuffer = (buffer: Uint8Array | Buffer): Chunker => {
   return (byteStart?: number, byteEnd?: number) => {
     return Promise.resolve(buffer.slice(byteStart, byteEnd));
-  };
-};
-
-export const fromNodeFile = (filePath: string): Chunker => {
-  const fileSize = statSync(filePath).size;
-
-  return (byteStart?: number, byteEnd?: number): Promise<Uint8Array> => {
-    let start = byteStart || 0;
-    let end = byteEnd;
-
-    if (!start && !end) {
-      return new Promise<Uint8Array>((resolve, reject) => {
-        readFile(filePath, (err: any | null, data: Uint8Array | PromiseLike<Uint8Array>) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(data);
-          }
-        });
-      });
-    }
-    if (start < 0) {
-      // max with 0 for the case where the chunk size is larger than the file size.
-      start = Math.max(0, fileSize - Math.abs(start));
-    }
-    if (byteEnd) {
-      if (byteEnd < 0) {
-        end = fileSize + byteEnd - 1;
-      } else {
-        end = byteEnd - 1;
-      }
-    }
-
-    const rs = createReadStream(filePath, { start, end });
-    const buffers: Uint8Array[] = [];
-    return new Promise<Uint8Array>((resolve, reject) => {
-      rs.on('data', (buff) => {
-        if (typeof buff === 'string') {
-          throw new Error('Incorrect read stream');
-        }
-        buffers.push(buff);
-      });
-      rs.on('error', reject);
-      rs.on('end', () => {
-        resolve(Buffer.concat(buffers));
-      });
-    });
   };
 };
 
@@ -128,7 +80,6 @@ export type DataSource =
   | { type: 'buffer'; location: Uint8Array }
   | { type: 'chunker'; location: Chunker }
   | { type: 'file-browser'; location: Blob }
-  | { type: 'file-node'; location: string }
   | { type: 'remote'; location: string }
   | { type: 'stream'; location: DecoratedReadableStream };
 
@@ -149,11 +100,6 @@ export const fromDataSource = async ({ type, location }: DataSource) => {
         throw new Error('Invalid data source; must be at least a Blob');
       }
       return fromBrowserFile(location);
-    case 'file-node':
-      if (typeof location !== 'string') {
-        throw new Error('Invalid data source; file path not provided');
-      }
-      return fromNodeFile(location);
     case 'remote':
       if (typeof location !== 'string') {
         throw new Error('Invalid data source; url not provided');

@@ -1,18 +1,12 @@
 import { assert } from 'chai';
-import { rimrafSync } from 'rimraf';
-import { mkdirSync, readFileSync } from 'fs';
-
 import { Client as TDF } from '../../tdf3/src/index.js';
 import { DecoratedReadableStream } from '../../tdf3/src/client/DecoratedReadableStream.js';
-
-const TEMP_DIR = 'temp/';
 
 describe('client wrapper tests', function () {
   it('client params safe from updating', function () {
     const config = {
       kasEndpoint: 'kasUrl',
       clientId: 'id',
-      clientSecret: 'secret',
     };
     const client = new TDF.Client(config);
     assert.deepEqual(config, { ...config });
@@ -30,6 +24,7 @@ describe('client wrapper tests', function () {
   it('encrypt params null string source', function () {
     const paramsBuilder = new TDF.EncryptParamsBuilder();
     try {
+      // @ts-ignore
       paramsBuilder.setStringSource(null);
       throw new Error("didn't throw");
     } catch (e) {
@@ -40,6 +35,7 @@ describe('client wrapper tests', function () {
   it('encrypt params bad string source', function () {
     const paramsBuilder = new TDF.EncryptParamsBuilder();
     try {
+      // @ts-ignore
       paramsBuilder.setStringSource(42);
       throw new Error("didn't throw");
     } catch (e) {
@@ -48,8 +44,9 @@ describe('client wrapper tests', function () {
   });
 
   it('encrypt params null file source', function () {
-    const paramsBuilder = new TDF.EncryptParamsBuilder();
+    const paramsBuilder = new TDF.DecryptParamsBuilder();
     try {
+      // @ts-ignore
       paramsBuilder.setFileSource(null);
       throw new Error("didn't throw");
     } catch (e) {
@@ -86,8 +83,9 @@ describe('client wrapper tests', function () {
   });
 
   it('encrypt params bad file source', function () {
-    const paramsBuilder = new TDF.EncryptParamsBuilder();
+    const paramsBuilder = new TDF.DecryptParamsBuilder();
     try {
+      // @ts-ignore
       paramsBuilder.setFileSource(42);
       throw new Error("didn't throw");
     } catch (e) {
@@ -100,6 +98,7 @@ describe('client wrapper tests', function () {
       .withStringSource('hello world')
       .withPolicyId('foo')
       .build();
+    // @ts-ignore
     assert.equal('foo', params.getPolicyId());
   });
 
@@ -118,6 +117,11 @@ describe('client wrapper tests', function () {
 
   it('encrypt error', async function () {
     const encryptParams = new TDF.EncryptParamsBuilder().withStringSource('hello world').build();
+    const config = {
+      kasEndpoint: 'kasUrl',
+      clientId: 'id',
+    };
+    const client = new TDF.Client(config);
     try {
       await client.encrypt(encryptParams);
       assert.fail('did not throw');
@@ -128,6 +132,11 @@ describe('client wrapper tests', function () {
 
   it('decrypt error', async function () {
     const decryptParams = new TDF.DecryptParamsBuilder().withStringSource('not a tdf').build();
+    const config = {
+      kasEndpoint: 'kasUrl',
+      clientId: 'id',
+    };
+    const client = new TDF.Client(config);
     try {
       await client.decrypt(decryptParams);
       assert.fail('did not throw');
@@ -138,17 +147,9 @@ describe('client wrapper tests', function () {
 });
 
 describe('tdf stream tests', function () {
-  before(function () {
-    rimrafSync(TEMP_DIR);
-    mkdirSync(TEMP_DIR);
-  });
-
-  after(function () {
-    rimrafSync(TEMP_DIR);
-  });
   it('plaintext stream string', async function () {
     const pt = new TextEncoder().encode('hello world');
-    const stream = new NodeTdfStream({
+    const stream = new DecoratedReadableStream({
       start(controller) {
         controller.enqueue(pt);
         controller.close();
@@ -158,7 +159,7 @@ describe('tdf stream tests', function () {
   });
   it('plaintext stream buffer', async function () {
     const pt = new TextEncoder().encode('hello world');
-    const stream = new NodeTdfStream({
+    const stream = new DecoratedReadableStream({
       start(controller) {
         controller.enqueue(pt);
         controller.close();
@@ -166,18 +167,4 @@ describe('tdf stream tests', function () {
     });
     assert.equal('hello world', (await stream.toBuffer()).toString('utf-8'));
   });
-  it('plaintext stream file', async function () {
-    const pt = 'hello world';
-    const filename = `${TEMP_DIR}/plain.txt`;
-    const stream = new NodeTdfStream({
-      start(controller) {
-        controller.enqueue(pt);
-        controller.close();
-      }
-    });
-    await stream.toFile(filename);
-    const rt = readFileSync(filename, { encoding: 'utf-8' });
-    assert.equal(pt, rt);
-  });
-
 });

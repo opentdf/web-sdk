@@ -20,7 +20,6 @@
   "main": "./dist/web/tdf3/index-web.js",
   "license": "BSD-3-Clause-Clear",
   "author": "Virtru",
-  "browser": "./dist/web/tdf3/index-web.js",
   "types": "./dist/types/tdf3/index.d.ts",
   "exports": {
     ".": {
@@ -48,7 +47,7 @@
     "lint": "eslint ./src/**/*.ts ./tdf3/**/*.ts ./tests/**/*.ts",
     "prepack": "npm run build",
     "test": "npm run build && npm run test:wtr && npm run test:mocha && npm run coverage:merge",
-    "test:mocha": "npx karma start karma.conf.cjs",
+    "test:mocha": "npx webpack --config webpack.test.config.cjs && npx karma start karma.conf.cjs",
     "test:wtr": "web-test-runner",
     "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))"
   },
@@ -91,25 +90,26 @@
     "eslint-config-prettier": "^8.8.0",
     "eslint-plugin-prettier": "^4.2.1",
     "esmock": "^2.3.1",
+    "glob": "^10.3.0",
     "jszip": "^3.10.1",
     "karma": "^6.4.2",
     "karma-chai": "^0.1.0",
     "karma-chrome-launcher": "^3.2.0",
     "karma-coverage": "^2.2.1",
     "karma-mocha": "^2.0.1",
-    "karma-typescript": "^5.5.4",
     "license-checker-rseidelsohn": "^4.2.6",
     "mocha": "^10.2.0",
     "prettier": "^2.8.8",
     "process": "^0.11.10",
-    "rimraf": "^5.0.1",
     "rollup": "^3.25.1",
     "send": "^0.18.0",
     "sinon": "~15.1.2",
     "streamsaver": "^2.0.6",
-    "ts-loader": "^9.4.3",
+    "ts-node": "^10.9.1",
     "tsconfig-paths": "^4.2.0",
     "typedoc": "^0.24.8",
-    "typescript": "5.1.3"
+    "typescript": "^5.1.3",
+    "webpack": "^5.88.0",
+    "webpack-cli": "^5.1.4"
   }
 }

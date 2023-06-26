@@ -601,8 +601,7 @@ export type DecryptSource =
   | { type: 'buffer'; location: Uint8Array }
   | { type: 'remote'; location: string }
   | { type: 'stream'; location: ReadableStream<Uint8Array> }
-  | { type: 'file-browser'; location: Blob }
-  | { type: 'file-node'; location: string };
+  | { type: 'file-browser'; location: Blob };
 
 export type DecryptParams = {
   source: DecryptSource;
@@ -755,12 +754,8 @@ class DecryptParamsBuilder {
    * Only works with node.
    * @param source (node) the path of the local file to decrypt, or the Blob (browser/node)
    */
-  setFileSource(source: string | Blob) {
-    if (source instanceof Blob) {
-      this._params.source = { type: 'file-browser', location: source };
-    } else {
-      this._params.source = { type: 'file-node', location: source };
-    }
+  setFileSource(source: Blob) {
+    this._params.source = { type: 'file-browser', location: source };
   }
 
   /**
@@ -768,7 +763,7 @@ class DecryptParamsBuilder {
    * Returns this object for method chaining.
    * @param source (node) the path of the local file to decrypt, or the Blob (browser/node)
    */
-  withFileSource(source: string | Blob): DecryptParamsBuilder {
+  withFileSource(source: Blob): DecryptParamsBuilder {
     this.setFileSource(source);
     return this;
   }
