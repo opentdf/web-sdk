@@ -66,7 +66,7 @@ export class FileClient {
       let url;
       try {
         url = new URL(source);
-        if (!['http', 'https'].includes(url.protocol)) {
+        if (!['http:', 'https:'].includes(url.protocol)) {
           url = undefined;
         }
       } catch (_) {
@@ -85,9 +85,10 @@ export class FileClient {
             throw new Error(`${response.status}: No body returned.`);
           }
           source = response.body;
+          params.setStreamSource(source);
         }
-        params.setStreamSource(source as ReadableStream);
       } else if (url) {
+        // params instanceof DecryptParamsBuilder
         params.setUrlSource(source);
       }
     }

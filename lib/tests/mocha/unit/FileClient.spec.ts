@@ -37,7 +37,7 @@ describe('FileClient', () => {
     });
     it('dissems', async () => {
       const fileClient = new FileClient(client);
-      await fileClient.encrypt('README.md', ['a', 'b']);
+      await fileClient.encrypt('http://localhost:3000/README.md', ['a', 'b']);
       expect(encrypt.callCount).to.equal(1);
       const params = encrypt.args[0][0];
       expect(params).to.deep.include({ scope: { attributes: [], dissem: ['a', 'b'] } });
@@ -45,7 +45,7 @@ describe('FileClient', () => {
     it('attributes', async () => {
       const fileClient = new FileClient(client);
       await fileClient.encrypt(
-        'README.md',
+        'http://localhost:3000/README.md',
         [],
         new EncryptParamsBuilder()
           .withAttributes([{ attribute: 'https://hay.co/attr/a/value/1' }])
@@ -60,23 +60,13 @@ describe('FileClient', () => {
   });
 
   describe('decrypt', () => {
-    it('file source bare', async () => {
-      const fileClient = new FileClient(client);
-      const location = 'README.md';
-      await fileClient.decrypt(location);
-      expect(decrypt.callCount).to.equal(1);
-      const params = decrypt.args[0][0];
-      console.log(params);
-      expect(params).to.deep.include({ source: { location, type: 'file-node' } });
-    });
     it('file source url', async () => {
       const fileClient = new FileClient(client);
-      const location = 'file://./README.md';
+      const location = 'http://localhost:3000/README.md';
       await fileClient.decrypt(location);
       expect(decrypt.callCount).to.equal(1);
       const params = decrypt.args[0][0];
-      console.log(params);
-      expect(params).to.deep.include({ source: { location, type: 'file-node' } });
+      expect(params).to.deep.include({ source: { location, type: 'remote' } });
     });
   });
 });
