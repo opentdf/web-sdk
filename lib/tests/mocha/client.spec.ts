@@ -153,7 +153,7 @@ describe('tdf stream tests', function () {
       start(controller) {
         controller.enqueue(pt);
         controller.close();
-      }
+      },
     });
     assert.equal('hello world', await stream.toString());
   });
@@ -163,7 +163,7 @@ describe('tdf stream tests', function () {
       start(controller) {
         controller.enqueue(pt);
         controller.close();
-      }
+      },
     });
     assert.equal('hello world', (await stream.toBuffer()).toString('utf-8'));
   });
