@@ -78,7 +78,11 @@ describe('chunkers', () => {
     });
     it('negative one', async () => {
       const { fromUrl } = await import('../../../tdf3/src/utils/chunkers.js');
-      const twofiftyfive: Uint8Array = new Uint8Array(await (await fromUrl('http://localhost:3000/file'))(-1));
+      const twofiftyfive: Uint8Array = new Uint8Array(
+        await (
+          await fromUrl('http://localhost:3000/file')
+        )(-1)
+      );
       expect(twofiftyfive).to.deep.equal(b.slice(255));
       expect(Array.from(twofiftyfive)).to.deep.equal([255]);
     });
