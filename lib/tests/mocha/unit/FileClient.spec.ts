@@ -29,7 +29,7 @@ describe('FileClient', () => {
   describe('encrypt', () => {
     it('file source url', async () => {
       const fileClient = new FileClient(client);
-      await fileClient.encrypt('http://localhost:3000/README.md');
+      await fileClient.encrypt('http://localhost:3000/file');
       expect(encrypt.callCount).to.equal(1);
       const params = encrypt.args[0][0];
       expect(params).to.contain({ offline: true });
@@ -37,7 +37,7 @@ describe('FileClient', () => {
     });
     it('dissems', async () => {
       const fileClient = new FileClient(client);
-      await fileClient.encrypt('http://localhost:3000/README.md', ['a', 'b']);
+      await fileClient.encrypt('http://localhost:3000/file', ['a', 'b']);
       expect(encrypt.callCount).to.equal(1);
       const params = encrypt.args[0][0];
       expect(params).to.deep.include({ scope: { attributes: [], dissem: ['a', 'b'] } });
@@ -45,7 +45,7 @@ describe('FileClient', () => {
     it('attributes', async () => {
       const fileClient = new FileClient(client);
       await fileClient.encrypt(
-        'http://localhost:3000/README.md',
+        'http://localhost:3000/file',
         [],
         new EncryptParamsBuilder()
           .withAttributes([{ attribute: 'https://hay.co/attr/a/value/1' }])
@@ -62,7 +62,7 @@ describe('FileClient', () => {
   describe('decrypt', () => {
     it('file source url', async () => {
       const fileClient = new FileClient(client);
-      const location = 'http://localhost:3000/README.md';
+      const location = 'http://localhost:3000/file';
       await fileClient.decrypt(location);
       expect(decrypt.callCount).to.equal(1);
       const params = decrypt.args[0][0];
