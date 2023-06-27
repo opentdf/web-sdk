@@ -47,12 +47,13 @@
     "lint": "eslint ./src/**/*.ts ./tdf3/**/*.ts ./tests/**/*.ts",
     "prepack": "npm run build",
     "test": "npm run build && npm run test:wtr && npm run test:mocha && npm run coverage:merge",
-    "test:mocha": "npx webpack --config webpack.test.config.cjs && npx karma start karma.conf.cjs",
+    "test:mocha": "node tests/server.cjs & npx webpack --config webpack.test.config.cjs && npx karma start karma.conf.cjs",
     "test:wtr": "web-test-runner",
     "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.358.0",
+    "ajv": "^6.12.6",
     "axios": "^1.4.0",
     "axios-retry": "^3.5.0",
     "browser-fs-access": "^0.34.1",
@@ -61,7 +62,6 @@
     "dpop": "^1.2.0",
     "events": "^3.3.0",
     "jose": "^4.14.4",
-    "jsonschema": "^1.4.1",
     "streamsaver": "^2.0.6",
     "uuid": "~9.0.0"
   },
