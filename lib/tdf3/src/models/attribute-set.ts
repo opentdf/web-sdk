@@ -88,7 +88,7 @@ export class AttributeSet {
    */
   addAttribute(attrObj: AttributeObject): AttributeObject | null {
     // Check shape of object.  Reject semi-silently if malformed.
-    const validate = validator.compile(ATTRIBUTE_OBJECT_SCHEMA)
+    const validate = validator.compile(ATTRIBUTE_OBJECT_SCHEMA);
     const result = validate(attrObj);
     if (!result) {
       // TODO: Determine if an error should be thrown
