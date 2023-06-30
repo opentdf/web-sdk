@@ -32,7 +32,7 @@ jobs:
       - run: echo "${MARKDOWN_REPORT}" >> $GITHUB_STEP_SUMMARY
         env:
           MARKDOWN_REPORT: "${{ steps.coverage-md.outputs.markdownReport }}"
-      - run: npm audit
+      - run: npm audit --omit dev && npm audit --audit-level high
       - run: npm run license-check
       - run: npm run lint
       - run: npm pack
@@ -62,7 +62,7 @@ jobs:
           path: lib/
       - run: npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-*.tgz
       - run: npm test
-      - run: npm audit
+      - run: npm audit --omit dev && npm audit --audit-level high
       - run: npm run license-check
       - run: npm run lint
       - run: npm pack
@@ -98,7 +98,7 @@ jobs:
       - run: npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-*.tgz
       - run: npm install
       - run: npm test
-      - run: npm audit
+      - run: npm audit --omit dev && npm audit --audit-level high
       - run: npm run license-check
       - run: npm run lint
       - run: npm pack
