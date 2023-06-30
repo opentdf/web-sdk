@@ -1,5 +1,5 @@
 
-version=1.0.0
+version=1.0.1
 pkgs=lib cli web-app
 
 .PHONY: all audit license-check lint test ci i start format clean
@@ -35,7 +35,7 @@ dist: lib/opentdf-client-$(version).tgz
 	(cp lib/opentdf-client-$(version).tgz ./)
 
 audit:
-	for x in $(pkgs); do (cd $$x && npm audit) || exit 1; done
+	for x in $(pkgs); do (cd $$x && npm audit --omit=dev) || exit 1; done
 
 format license-check lint test: ci
 	for x in $(pkgs); do (cd $$x && npm run $@) || exit 1; done

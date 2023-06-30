@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e
+set -exuo pipefail
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null && pwd)"
 
