@@ -20,7 +20,7 @@ import {
 } from '@aws-sdk/middleware-endpoint';
 import { HttpRequest } from '@aws-sdk/protocol-http';
 import { extendedEncodeURIComponent } from '@aws-sdk/smithy-client';
-import { Endpoint } from '@aws-sdk/types';
+import { type Endpoint } from '@aws-sdk/types';
 import { EventEmitter } from 'events';
 
 import { getChunk } from './chunker.js';
