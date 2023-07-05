@@ -46,8 +46,8 @@
     "license-check": "license-checker-rseidelsohn --production --onlyAllow 'Apache-2.0; BSD; CC-BY-4.0; ISC; MIT'",
     "lint": "eslint ./src/**/*.ts ./tdf3/**/*.ts ./tests/**/*.ts",
     "prepack": "npm run build",
-    "test": "npm run build && npm run test:wtr && npm run test:mocha && npm run coverage:merge",
-    "test:mocha": "node tests/server.cjs & npx webpack --config webpack.test.config.cjs && npx karma start karma.conf.cjs",
+    "test": "npm run build && npm run test:wtr && npm run test:mocha",
+    "test:browser": "rm -rf tests/mocha/dist && node tests/server.cjs & npx webpack --config webpack.test.config.cjs && npx karma start karma.conf.cjs; node tests/stopServer.cjs",
     "test:wtr": "web-test-runner",
     "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))"
   },
@@ -85,6 +85,7 @@
     "@web/test-runner": "~0.16.1",
     "@web/test-runner-commands": "~0.7.0",
     "audit-ci": "^6.6.1",
+    "chai": "^4.3.7",
     "colors": "^1.4.0",
     "eslint": "^8.42.0",
     "eslint-config-prettier": "^8.8.0",
@@ -93,7 +94,6 @@
     "glob": "^10.3.0",
     "jszip": "^3.10.1",
     "karma": "^6.4.2",
-    "karma-chai": "^0.1.0",
     "karma-chrome-launcher": "^3.2.0",
     "karma-coverage": "^2.2.1",
     "karma-mocha": "^2.0.1",
@@ -108,7 +108,7 @@
     "tsconfig-paths": "^4.2.0",
     "typedoc": "^0.24.8",
     "typescript": "^5.1.3",
-    "webpack": "^5.88.0",
+    "webpack": "^5.88.1",
     "webpack-cli": "^5.1.4"
   }
 }
