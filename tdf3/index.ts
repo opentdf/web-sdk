@@ -1,4 +1,4 @@
-import { FileClient } from './src/FileClient.js';
+import { FileClient } from './src/index.js';
 import { Binary } from './src/binary.js';
 import { DecoratedReadableStream } from './src/client/DecoratedReadableStream.js';
 import {
@@ -11,11 +11,7 @@ import {
 import { type SessionKeys, type ClientConfig, createSessionKeys } from './src/client/index.js';
 import { type DecryptResult, type EncryptResult } from './src/crypto/declarations.js';
 import { TDF, Client, Errors } from './src/index.js';
-import {
-  type KeyInfo,
-  SplitKey,
-  type EncryptionInformation,
-} from './src/models/encryption-information.js';
+import { type KeyInfo, SplitKey, type EncryptionInformation } from './src/models/index.js';
 import { AuthProvider, AppIdAuthProvider, HttpRequest } from '../src/auth/auth.js';
 import {
   NanoTDFClient,

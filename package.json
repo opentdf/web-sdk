@@ -7,8 +7,8 @@
     "url": "https://github.com/arkavo-org/client-web/issues"
   },
   "files": [
-    "dist/*/src/**",
-    "dist/*/tdf3/**",
+    "src/**",
+    "tdf3/**",
     "README.md"
   ],
   "repository": {
@@ -16,24 +16,24 @@
     "url": "git+https://github.com/arkavo-org/client-web.git"
   },
   "type": "module",
-  "main": "./dist/web/tdf3/index-web.js",
+  "main": "./tdf3/index.js",
   "license": "BSD-3-Clause-Clear",
   "author": "Arkavo,Virtru",
-  "types": "./dist/types/tdf3/index.d.ts",
+  "types": "./tdf3/index.js",
   "exports": {
     ".": {
-      "types": "./dist/types/tdf3/index.d.ts",
-      "import": "./dist/web/tdf3/index-web.js"
+      "types": "./tdf3/index.ts",
+      "import": "./tdf3/index.js"
     },
     "./encodings": {
       "default": {
-        "types": "./dist/types/src/encodings/index.d.ts",
-        "import": "./dist/web/src/encodings/index.js"
+        "types": "./src/encodings/index.ts",
+        "import": "./src/encodings/index.js"
       }
     },
     "./nano": {
-      "types": "./dist/types/src/index.d.ts",
-      "import": "./dist/web/src/index.js"
+      "types": "./src/index.d.ts",
+      "import": "./src/index.js"
     }
   },
   "scripts": {
