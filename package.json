@@ -53,7 +53,7 @@
   },
   "dependencies": {
     "@aws-sdk/abort-controller": "^3.357.0",
-    "@aws-sdk/client-s3": "^3.358.0",
+    "@aws-sdk/client-s3": "^3.367.0",
     "@aws-sdk/middleware-endpoint": "^3.365.0",
     "@aws-sdk/protocol-http": "^3.357.0",
     "@aws-sdk/smithy-client": "^3.360.0",
@@ -90,7 +90,7 @@
     "license-checker-rseidelsohn": "^4.2.6",
     "mocha": "^10.2.0",
     "prettier": "^2.8.8",
-    "sinon": "~15.1.2",
+    "sinon": "~15.2.0",
     "typedoc": "^0.24.8",
     "typescript": "^5.1.6",
     "webpack": "^5.88.1"
