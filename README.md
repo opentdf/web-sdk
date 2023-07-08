@@ -19,7 +19,9 @@ npm login --auth-type=legacy --registry=https://npm.pkg.github.com --scope=@arka
 ### Example
 
 ```typescript
-const authProvider: AuthProvider = new OIDCExternalJwtProvider({clientId: "", externalJwt: "", oidcOrigin: ""})
+import { AuthProvider, NanoTDFClient, AuthProviders } from "@arkavo-org/client";
+
+const authProvider: AuthProvider = new AuthProviders.OIDCExternalJwtProvider({clientId: "", externalJwt: "", oidcOrigin: ""})
 const client = new NanoTDFClient(this.authProvider, "https://arkavo.net");
 const plainText = "hello world"
 const cipherText = await client.encrypt(plainText);

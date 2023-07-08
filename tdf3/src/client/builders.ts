@@ -1,16 +1,16 @@
-import { S3Client, GetObjectCommand, HeadObjectCommand, S3ClientConfig } from '@aws-sdk/client-s3';
+import { GetObjectCommand, HeadObjectCommand, S3Client, S3ClientConfig } from '@aws-sdk/client-s3';
 import axios from 'axios';
 import { Buffer } from 'buffer';
 
 import { arrayBufferToBuffer } from '../utils/index.js';
 import { AttributeValidator } from './validation.js';
 import { AttributeObject, Policy } from '../models/index.js';
-import { type RcaParams, type RcaLink, type Metadata } from '../tdf.js';
+import { type Metadata, type RcaLink, type RcaParams } from '../tdf.js';
 import { Binary } from '../binary.js';
 
 import { IllegalArgumentError } from '../errors.js';
 import { PemKeyPair } from '../crypto/declarations.js';
-import { EntityObject } from '../../../src/tdf/EntityObject.js';
+import { EntityObject } from '../../../src/tdf/index.js';
 
 const { get } = axios;
 
@@ -800,7 +800,7 @@ class DecryptParamsBuilder {
 
     if (typeof rcaParams === 'object') {
       params = { ...rcaParams };
-    } else if (typeof rcaParams === 'string') {
+    } else {
       params = Object.fromEntries(new URLSearchParams(rcaParams));
     }
 

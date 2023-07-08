@@ -23,12 +23,12 @@ import { base64 } from '../../src/encodings/index.js';
 import * as cryptoService from './crypto/index.js';
 import {
   base64ToBuffer,
+  Chunker,
   fromUrl,
+  isAppIdProviderCheck,
   keyMerge,
   ZipReader,
   ZipWriter,
-  Chunker,
-  isAppIdProviderCheck,
 } from './utils/index.js';
 import { Binary } from './binary.js';
 import {
@@ -48,8 +48,8 @@ import { htmlWrapperTemplate } from './templates/index.js';
 // TODO: remove dependencies from ciphers so that we can open-source instead of relying on other Virtru libs
 import { AesGcmCipher } from './ciphers/index.js';
 import {
-  AuthProvider,
   AppIdAuthProvider,
+  AuthProvider,
   HttpRequest,
   Method,
   reqSignature,

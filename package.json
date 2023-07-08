@@ -38,7 +38,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "clean": "rm -rf {build,coverage,dist}",
+    "clean": "rm -rf {build,coverage}",
     "coverage:merge": "for x in mocha wtr; do cp coverage/$x/coverage-final.json coverage/$x.json; done; nyc report --reporter text -t coverage --lines 75 --statements 75 --branches 70 --functions 65 --check-coverage >coverage/coverage.txt",
     "doc": "typedoc --out dist/docs src/index.ts",
     "format": "prettier --write \"{src,tdf3}/**/*.ts\"",

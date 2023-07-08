@@ -218,7 +218,7 @@ export class NanoTDFDatasetClient extends Client {
    * cannot be changed. If a new ephemeral key is desired it a new client should be initialized.
    * There is no performance impact for creating a new client IFF the ephemeral key pair is provided.
    *
-   * @param clientConfig OIDC client credentials
+   * @param authProvider
    * @param kasUrl Key access service URL
    * @param ephemeralKeyPair (optional) ephemeral key pair to use
    * @param maxKeyIterations Max iteration to performe without a key rotation

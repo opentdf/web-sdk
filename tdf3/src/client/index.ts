@@ -1,30 +1,31 @@
 import { v4 } from 'uuid';
 import axios from 'axios';
 import {
-  ZipReader,
+  type Chunker,
   fromBuffer,
   fromDataSource,
-  streamToBuffer,
   isAppIdProviderCheck,
-  type Chunker,
+  streamToBuffer,
+  ZipReader,
 } from '../utils/index.js';
 import { base64 } from '../../../src/encodings/index.js';
 import { TDF } from '../tdf.js';
 import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-provider.js';
 import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider.js';
 import { PemKeyPair } from '../crypto/declarations.js';
-import { AuthProvider, AppIdAuthProvider, HttpRequest } from '../../../src/auth/auth.js';
+import { AppIdAuthProvider, AuthProvider, HttpRequest } from '../../../src/auth/auth.js';
 import EAS from '../../../src/auth/Eas.js';
 
-import { EncryptParams, DecryptParams, type Scope } from './builders.js';
-import { DecoratedReadableStream } from './DecoratedReadableStream.js';
-
 import {
-  DEFAULT_SEGMENT_SIZE,
+  DecryptParams,
   DecryptParamsBuilder,
   type DecryptSource,
+  DEFAULT_SEGMENT_SIZE,
+  EncryptParams,
   EncryptParamsBuilder,
+  type Scope,
 } from './builders.js';
+import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 import { Policy } from '../models/index.js';
 import { cryptoToPemPair, generateKeyPair, rsaPkcs1Sha256 } from '../crypto/index.js';
 import { TdfError } from '../errors.js';
