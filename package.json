@@ -47,7 +47,7 @@
     "prepack": "npm run build",
     "test": "npm run build && npm run test:wtr && npm run test:mocha && npm run test:browser && npm run coverage:merge",
     "test:browser": "rm -rf tests/mocha/dist && node tests/server.cjs & npx webpack --config webpack.test.config.cjs && npx karma start karma.conf.cjs; node tests/stopServer.cjs",
-    "test:mocha": "node tests/server.cjs & c8 --exclude=\"dist/web/tests/**/*\" --report-dir=./coverage/mocha mocha 'dist/web/tests/mocha/**/*.spec.js' --file tests/mocha/setup.js && npx c8 report --reporter=json --report-dir=./coverage/mocha; node tests/stopServer.cjs",
+    "test:mocha": "node tests/server.cjs & c8 --report-dir=./coverage/mocha mocha 'tests/mocha/**/*.spec.js' --file tests/mocha/setup.js && npx c8 report --reporter=json --report-dir=./coverage/mocha; node tests/stopServer.cjs",
     "test:wtr": "web-test-runner",
     "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))"
   },
@@ -60,7 +60,6 @@
     "ajv": "^6.12.6",
     "axios": "^1.4.0",
     "browser-fs-access": "^0.34.1",
-    "buffer-crc32": "^0.2.13",
     "dpop": "^1.2.0",
     "jose": "^4.14.4",
     "nyc": "^15.1.0",

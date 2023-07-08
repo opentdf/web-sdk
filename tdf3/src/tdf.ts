@@ -1,7 +1,6 @@
 import { Buffer } from 'buffer';
 import { EventEmitter } from 'events';
 import axios from 'axios';
-import crc32 from 'buffer-crc32';
 import { v4 } from 'uuid';
 import { exportSPKI, importPKCS8, importX509 } from 'jose';
 import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
@@ -774,7 +773,8 @@ export class TDF extends EventEmitter {
       if (totalByteCount > byteLimit) {
         throw new Error(`Safe byte limit (${byteLimit}) exceeded`);
       }
-      crcCounter = crc32.unsigned(chunk, crcCounter);
+      // FIXME buffer-crc32
+      // crcCounter = crc32.unsigned(chunk, crcCounter);
       fileByteCount += chunk.length;
     }
 
