@@ -1,0 +1,23 @@
+# This GitHub action will publish a package with a short sha
+# act --secret-file act.env --container-architecture linux/amd64 --workflows .github/workflows/build.yaml
+name: build
+on:
+  push:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          registry-url: 'https://npm.pkg.github.com'
+      - name: Update Version with Commit SHA
+        run: |
+          export VERSION=$(npm pkg get version | xargs echo)
+          npm pkg set version=$(echo "${VERSION}-${GITHUB_SHA::8}")
+      - run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
