@@ -18,7 +18,7 @@
   "type": "module",
   "main": "./dist/web/tdf3/index-web.js",
   "license": "BSD-3-Clause-Clear",
-  "author": "Arkavo",
+  "author": "Arkavo,Virtru",
   "types": "./dist/types/tdf3/index.d.ts",
   "exports": {
     ".": {
