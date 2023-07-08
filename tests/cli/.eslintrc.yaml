@@ -1,4 +1,4 @@
 env:
   node: true
 extends:
-  - ../lib/.eslintrc.yaml
+  - .eslintrc.yaml
