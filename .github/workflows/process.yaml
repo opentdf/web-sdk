@@ -1,0 +1,70 @@
+# This GitHub action will check the developer process
+# act --secret-file act.env --container-architecture linux/amd64 --workflows .github/workflows/process.yaml
+name: process
+on:
+  pull_request:
+    branches:
+      - next
+      - main
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+      - name: Read package.version file from pull request branch
+        id: version-pr
+        run: echo "::set-output name=version::$(npm pkg get version | xargs echo)"
+      # This step will read the version number from the VERSION file in the base branch
+      # and store it as an output variable named version
+      - name: Read package.version file from base branch
+        id: version-base
+        run: |
+          git checkout ${{ github.base_ref }}
+          echo "::set-output name=version::$(npm pkg get version | xargs echo)"
+#      debug
+#      - name: View context attributes
+#        uses: actions/github-script@v6
+#        with:
+#          github-token: ${{ secrets.GITHUB_TOKEN }}
+#          script: console.log(context)
+      - run: npm install semver
+      # This step will compare the version numbers using a semantic versioning library
+      # and set the action status to failed if the version number in the pull request branch
+      # is not valid or not greater than the one in the base branch
+      - name: Compare version numbers
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const semver = require('semver')
+            const versionPr = '${{ steps.version-pr.outputs.version }}'
+            const versionBase = '${{ steps.version-base.outputs.version }}'
+            if (!semver.valid(versionPr)) {
+              const reason = `Invalid version number: ${versionPr}`
+              // requires authorization
+              // github.rest.pulls.createReviewComment({
+              //     owner: context.repo.owner,
+              //     repo: context.repo.repo,
+              //     pull_number: context.runId,
+              //     body: reason,
+              //     commit_id: context.sha,
+              //     path: "VERSION",
+              //     line: 1
+              //   });
+              core.setFailed(reason)
+            } else if (!semver.gt(versionPr, versionBase)) {
+              const reason = `Version number not incremented: ${versionPr} <= ${versionBase}`
+              // github.rest.pulls.createReviewComment({
+              //   owner: context.repo.owner,
+              //   repo: context.repo.repo,
+              //   pull_number: context.runId,
+              //   body: reason,
+              //   commit_id: context.sha,
+              //   path: "VERSION",
+              //   line: 1
+              // });
+              core.setFailed(reason)
+            } else {
+              console.log(`Version number OK: ${versionPr} > ${versionBase}`)
+            }
