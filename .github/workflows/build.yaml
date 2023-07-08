@@ -15,7 +15,7 @@ jobs:
         with:
           node-version: '20'
           registry-url: 'https://npm.pkg.github.com'
-          scope: '@arkavo'
+          scope: 'arkavo-org'
       - name: Update Version with Commit SHA
         run: |
           export VERSION=$(npm pkg get version | xargs echo)
