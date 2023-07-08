@@ -966,10 +966,9 @@ export class TDF extends EventEmitter {
                 offset + (encryptedSegmentSize as number)
               );
               this.decryptChunk(encryptedChunk, reconstructedKeyBinary, slice[index]['hash']).catch(
-                (e) => {
+                () => {
                   throw new TdfDecryptError(
-                    'Error decrypting payload. This suggests the key used to decrypt the payload is not correct.',
-                    e
+                    'Error decrypting payload. This suggests the key used to decrypt the payload is not correct.'
                   );
                 }
               );
