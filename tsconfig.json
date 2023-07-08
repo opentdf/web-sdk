@@ -27,6 +27,6 @@
     "strictPropertyInitialization": false,
     "target": "es2020",
   },
-  "include": ["src", "tests", "tdf3"],
+  "include": ["src", "tdf3"],
   "exclude": ["**/node_modules"]
 }
