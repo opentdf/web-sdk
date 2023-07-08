@@ -1,10 +1,10 @@
 {
-  "name": "@opentdf/client",
+  "name": "@arkavo/client",
   "version": "3.0.0",
-  "description": "Access and generate tdf protected content",
-  "homepage": "https://github.com/opentdf/client-web",
+  "description": "Access and generate TDF protected content",
+  "homepage": "https://github.com/arkavo-org/client-web",
   "bugs": {
-    "url": "https://github.com/opentdf/client-web/issues"
+    "url": "https://github.com/arkavo-org/client-web/issues"
   },
   "files": [
     "dist/*/src/**",
@@ -13,13 +13,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/opentdf/client-web.git",
-    "directory": "lib"
+    "url": "git+https://github.com/arkavo-org/client-web.git"
   },
   "type": "module",
   "main": "./dist/web/tdf3/index-web.js",
   "license": "BSD-3-Clause-Clear",
-  "author": "Virtru",
+  "author": "Arkavo",
   "types": "./dist/types/tdf3/index.d.ts",
   "exports": {
     ".": {
