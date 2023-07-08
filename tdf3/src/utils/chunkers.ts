@@ -29,27 +29,18 @@ export const fromBuffer = (buffer: Uint8Array | Buffer): Chunker => {
 };
 
 async function getRemoteChunk(url: string, range?: string): Promise<Uint8Array> {
-  try {
-    const res: AxiosResponse<Uint8Array> = await axiosRemoteChunk.get(url, {
-      ...(range && {
-        headers: {
-          Range: `bytes=${range}`,
-        },
-      }),
-      responseType: 'arraybuffer',
-    });
-    if (!res.data) {
-      throw new Error(
-        'Unexpected response type: Server should have responded with an ArrayBuffer.'
-      );
-    }
-    return res.data;
-  } catch (e) {
-    if (e && e.response && e.response.status === 416) {
-      console.log('Warning: Range not satisfiable');
-    }
-    throw e;
+  const res: AxiosResponse<Uint8Array> = await axiosRemoteChunk.get(url, {
+    ...(range && {
+      headers: {
+        Range: `bytes=${range}`,
+      },
+    }),
+    responseType: 'arraybuffer',
+  });
+  if (!res.data) {
+    throw new Error('Unexpected response type: Server should have responded with an ArrayBuffer.');
   }
+  return res.data;
 }
 
 export const fromUrl = async (location: string): Promise<Chunker> => {

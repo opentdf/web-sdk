@@ -10,7 +10,7 @@ import streamSaver from 'streamsaver';
 import { fileSave } from 'browser-fs-access';
 import { isFirefox } from '../../../src/utils.js';
 
-import { VirtruS3Config, VirtruTempS3Credentials, VirtruCreds } from './builders.js';
+import { VirtruCreds, VirtruS3Config, VirtruTempS3Credentials } from './builders.js';
 import { Upload } from '../utils/aws-lib-storage/index.js';
 import { Options } from '../utils/aws-lib-storage/types.js';
 import { type Metadata } from '../tdf.js';
@@ -27,10 +27,10 @@ export type DecoratedReadableStreamSinkOptions = {
 };
 
 export class DecoratedReadableStream {
-  KEK: null | string;
-  algorithm: string;
+  KEK: null | string | undefined;
+  algorithm: string | undefined;
   policyUuid?: string;
-  tdfSize: number;
+  tdfSize: number | undefined;
   fileSize: number | undefined;
   stream: ReadableStream<Uint8Array>;
   ee: EventEmitter;
@@ -38,7 +38,7 @@ export class DecoratedReadableStream {
   emit: EventEmitter['emit'];
   metadata?: Metadata;
   contentLength?: number;
-  manifest: Manifest;
+  manifest: Manifest | undefined;
   upsertResponse?: UpsertResponse;
   fileStreamServiceWorker?: string;
 
@@ -62,10 +62,10 @@ export class DecoratedReadableStream {
    *
    * Dump the stream content to remote storage. This will consume the stream.
    * @param {string} fileName - the name of the remote file to write TDF ciphertext to.
-   * @param {S3ClientConfig} [config] - the object containing remote storage configuration.
+   * @param {VirtruS3Config} [config] - the object containing remote storage configuration.
    * <br>A detailed spec for the interface can be found [here]{@link https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/clients/client-s3/interfaces/s3clientconfig.html}
    * @param {string} [credentialURL] - the url to request remote storage credentials from.
-   * @return {RemoteUploadResponse} - an object containing metadata for the uploaded file.
+   * @return {Promise} - an object containing metadata for the uploaded file.
    */
   async toRemoteStore(
     fileName: string,
@@ -174,7 +174,7 @@ export class DecoratedReadableStream {
    * Dump the stream content to a local file. This will consume the stream.
    *
    * @param filepath The path of the local file to write plaintext to.
-   * @param encoding The charset encoding to use. Defaults to utf-8.
+   * @param options
    */
   async toFile(
     filepath = 'download.tdf',

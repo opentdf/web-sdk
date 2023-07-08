@@ -5,7 +5,7 @@ import crc32 from 'buffer-crc32';
 import { v4 } from 'uuid';
 import { exportSPKI, importPKCS8, importX509 } from 'jose';
 import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
-import { EntityObject } from '../../src/tdf/EntityObject.js';
+import { EntityObject } from '../../src/tdf/index.js';
 
 import {
   AttributeSet,
@@ -97,12 +97,6 @@ export type AddKeyAccess = {
   metadata?: Metadata;
 };
 
-type Segment = {
-  hash: string;
-  segmentSize: number | undefined;
-  encryptedSegmentSize: number | undefined;
-};
-
 type EntryInfo = {
   filename: string;
   offset?: number;
@@ -144,6 +138,7 @@ export class TDF extends EventEmitter {
     this.integrityAlgorithm = 'HS256';
     this.segmentIntegrityAlgorithm = this.integrityAlgorithm;
     this.segmentSizeDefault = DEFAULT_SEGMENT_SIZE;
+    this.chunkMap = new Map<string, Chunk>();
   }
 
   // factory
@@ -200,7 +195,7 @@ export class TDF extends EventEmitter {
     try {
       return base64ToBuffer(base64Payload);
     } catch (e) {
-      throw new TdfPayloadExtractionError('There was a problem extracting the TDF3 payload', e);
+      throw new TdfPayloadExtractionError('There was a problem extracting the TDF3 payload');
     }
   }
 
@@ -552,8 +547,7 @@ export class TDF extends EventEmitter {
           return response.data;
         } catch (e) {
           throw new KasUpsertError(
-            `Unable to perform upsert operation on the KAS: [${e.name}: ${e.message}], response: [${e?.response?.body}]`,
-            e
+            `Unable to perform upsert operation on the KAS: [${e}: ${e}], response: [${e}]`
           );
         }
       })
@@ -575,7 +569,6 @@ export class TDF extends EventEmitter {
     const encryptionInformation = this.encryptionInformation;
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this;
-    const segmentInfos: Segment[] = [];
     if (!byteLimit) {
       byteLimit = Number.MAX_SAFE_INTEGER;
     }
@@ -718,7 +711,7 @@ export class TDF extends EventEmitter {
             encryptedSegmentSizeDefault;
           manifest.encryptionInformation.integrityInformation.segmentHashAlg =
             self.segmentIntegrityAlgorithm;
-          manifest.encryptionInformation.integrityInformation.segments = segmentInfos;
+          manifest.encryptionInformation.integrityInformation.segments = [];
 
           manifest.encryptionInformation.method.isStreamable = true;
 
@@ -805,7 +798,7 @@ export class TDF extends EventEmitter {
       // combined string of all hashes for root signature
       aggregateHash += payloadSigStr;
 
-      segmentInfos.push({
+      manifest.encryptionInformation.integrityInformation.segments.push({
         hash: base64.encode(payloadSigStr),
         segmentSize: chunk.length === segmentSizeDefault ? undefined : chunk.length,
         encryptedSegmentSize:
@@ -890,8 +883,7 @@ export class TDF extends EventEmitter {
           return decryptedKeyBinary.asBuffer();
         } catch (e) {
           throw new KasDecryptError(
-            `Unable to decrypt the response from KAS: [${e.name}: ${e.message}], response: [${e?.response?.body}]`,
-            e
+            `Unable to decrypt the response from KAS: [${e}: ${e}], response: [${e}]`
           );
         }
       })
@@ -985,8 +977,7 @@ export class TDF extends EventEmitter {
             buffer = null;
           } catch (e) {
             throw new TdfDecryptError(
-              'Error decrypting payload. This suggests the key used to decrypt the payload is not correct.',
-              e
+              'Error decrypting payload. This suggests the key used to decrypt the payload is not correct.'
             );
           }
         })()
@@ -998,8 +989,9 @@ export class TDF extends EventEmitter {
    * readStream
    *
    * @param {Object} chunker - A function object for getting data in a series of typed array objects
-   * @param {Stream} outputStream - The writable stream we should put the new bits into
    * @param {Object} rcaParams - Optional field to specify if file is stored on S3
+   * @param progressHandler
+   * @param fileStreamServiceWorker
    */
   async readStream(
     chunker: Chunker,

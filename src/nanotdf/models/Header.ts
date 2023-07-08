@@ -316,7 +316,7 @@ export default class Header {
     try {
       return `${this.kas.getUrl()}/v2/rewrap`;
     } catch (e) {
-      throw new Error(`Cannot construct KAS Rewrap URL: ${e.message}`);
+      throw new Error(`Cannot construct KAS Rewrap URL: ${e}`);
     }
   }
 }

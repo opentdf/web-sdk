@@ -156,11 +156,8 @@ export async function fetchKasPubKey(kasEndpoint: string): Promise<string> {
   }
   try {
     return await TDF.getPublicKeyFromKeyAccessServer(kasEndpoint);
-  } catch (cause) {
-    throw new TdfError(
-      `Retrieving KAS public key [${kasEndpoint}] failed [${cause.name}] [${cause.message}]`,
-      cause
-    );
+  } catch (e) {
+    throw new TdfError(`Retrieving KAS public key [${kasEndpoint}] failed [${e}]`);
   }
 }
 
@@ -291,8 +288,6 @@ export class Client {
    * @param [opts] Test only
    * @param [mimeType] mime type of source. defaults to `unknown`
    * @param [offline] Where to store the policy. Defaults to `false` - which results in `upsert` events to store/update a policy
-   * @param [output] output stream. Created and returned iff not passed in
-   * @param [rcaSource] RCA source information. Optional.
    * @param [windowSize] - segment size in bytes. Defaults to a a million bytes.
    * @param [eo] - (deprecated) entity object
    * @param [payloadKey] - Separate key for payload; not saved. Used to support external party key storage.

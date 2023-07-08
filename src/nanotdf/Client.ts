@@ -12,7 +12,7 @@ import {
 import getHkdfSalt from './helpers/getHkdfSalt.js';
 import DefaultParams from './models/DefaultParams.js';
 import { fetchWrappedKey } from '../kas.js';
-import { AuthProvider, reqSignature } from '../auth/providers.js';
+import { AuthProvider, reqSignature } from '../auth/auth.js';
 
 const { KeyUsageType, AlgorithmName, NamedCurve } = cryptoEnums;
 
@@ -198,101 +198,92 @@ export default class Client {
       throw new Error('Signer key has not been set or generated');
     }
 
+    const requestBodyStr = JSON.stringify({
+      algorithm: DefaultParams.defaultECAlgorithm,
+      // nano keyAccess minimum, header is used for nano
+      keyAccess: {
+        type: Client.KEY_ACCESS_REMOTE,
+        url: '',
+        protocol: Client.KAS_PROTOCOL,
+        header: base64.encodeArrayBuffer(nanoTdfHeader),
+      },
+      clientPublicKey: await cryptoPublicToPem(this.ephemeralKeyPair.publicKey),
+    });
+
+    const jwtPayload = { requestBody: requestBodyStr };
+    const requestBody = {
+      signedRequestToken: await reqSignature(jwtPayload, this.requestSignerKeyPair.privateKey, {
+        alg: AlgorithmName.ES256,
+      }),
+    };
+
+    // Wrapped
+    const wrappedKey = await fetchWrappedKey(
+      kasRewrapUrl,
+      requestBody,
+      this.authProvider,
+      clientVersion
+    );
+
+    // Extract the iv and ciphertext
+    const entityWrappedKey = new Uint8Array(base64.decodeArrayBuffer(wrappedKey.entityWrappedKey));
+    const ivLength =
+      clientVersion == Client.SDK_INITIAL_RELEASE ? Client.INITIAL_RELEASE_IV_SIZE : Client.IV_SIZE;
+    const iv = entityWrappedKey.subarray(0, ivLength);
+    const encryptedSharedKey = entityWrappedKey.subarray(ivLength);
+
+    let publicKey;
     try {
-      const requestBodyStr = JSON.stringify({
-        algorithm: DefaultParams.defaultECAlgorithm,
-        // nano keyAccess minimum, header is used for nano
-        keyAccess: {
-          type: Client.KEY_ACCESS_REMOTE,
-          url: '',
-          protocol: Client.KAS_PROTOCOL,
-          header: base64.encodeArrayBuffer(nanoTdfHeader),
-        },
-        clientPublicKey: await cryptoPublicToPem(this.ephemeralKeyPair.publicKey),
-      });
-
-      const jwtPayload = { requestBody: requestBodyStr };
-      const requestBody = {
-        signedRequestToken: await reqSignature(jwtPayload, this.requestSignerKeyPair.privateKey, {
-          alg: AlgorithmName.ES256,
-        }),
-      };
-
-      // Wrapped
-      const wrappedKey = await fetchWrappedKey(
-        kasRewrapUrl,
-        requestBody,
-        this.authProvider,
-        clientVersion
-      );
-
-      // Extract the iv and ciphertext
-      const entityWrappedKey = new Uint8Array(
-        base64.decodeArrayBuffer(wrappedKey.entityWrappedKey)
-      );
-      const ivLength =
-        clientVersion == Client.SDK_INITIAL_RELEASE
-          ? Client.INITIAL_RELEASE_IV_SIZE
-          : Client.IV_SIZE;
-      const iv = entityWrappedKey.subarray(0, ivLength);
-      const encryptedSharedKey = entityWrappedKey.subarray(ivLength);
-
-      let publicKey;
-      try {
-        // Get session public key as crypto key
-        publicKey = await pemPublicToCrypto(wrappedKey.sessionPublicKey);
-      } catch (cause) {
-        throw new Error(
-          `PEM Public Key to crypto public key failed. Is PEM formatted correctly?\n Caused by: ${cause.message}`,
-          { cause }
-        );
-      }
-
-      let hkdfSalt;
-      try {
-        // Get the hkdf salt params
-        hkdfSalt = await getHkdfSalt(magicNumberVersion);
-      } catch (e) {
-        throw new Error(`Salting hkdf failed\n Caused by: ${e.message}`);
-      }
-
-      // Get the unwrapping key
-      const unwrappingKey = await keyAgreement(
-        // Ephemeral private key
-        this.ephemeralKeyPair.privateKey,
-        publicKey,
-        hkdfSalt
-      );
-
-      let decryptedKey;
-      try {
-        // Decrypt the wrapped key
-        decryptedKey = await decrypt(unwrappingKey, encryptedSharedKey, iv, authTagLength);
-      } catch (e) {
-        throw new Error(
-          `Unable to decrypt key. Are you using the right KAS? Is the salt correct?\n Caused by: ${e.message}`
-        );
-      }
-
-      // UnwrappedKey
-      let unwrappedKey;
-      try {
-        unwrappedKey = await importRawKey(
-          decryptedKey,
-          // Want to use the key to encrypt and decrypt. Signing key will be used later.
-          [KeyUsageType.Encrypt, KeyUsageType.Decrypt],
-          // @security This allows the key to be used in `exportKey` and `wrapKey`
-          // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/exportKey
-          // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/wrapKey
-          true
-        );
-      } catch (e) {
-        throw new Error(`Unable to import raw key.\n Caused by: ${e.message}`);
-      }
-
-      return unwrappedKey;
+      // Get session public key as crypto key
+      publicKey = await pemPublicToCrypto(wrappedKey.sessionPublicKey);
     } catch (e) {
-      throw new Error(`Could not rewrap key with entity object.\n Caused by: ${e.message}`);
+      throw new Error(
+        `PEM Public Key to crypto public key failed. Is PEM formatted correctly?\n Caused by: ${e}`
+      );
     }
+
+    let hkdfSalt;
+    try {
+      // Get the hkdf salt params
+      hkdfSalt = await getHkdfSalt(magicNumberVersion);
+    } catch (e) {
+      throw new Error(`Salting hkdf failed\n Caused by: ${e}`);
+    }
+
+    // Get the unwrapping key
+    const unwrappingKey = await keyAgreement(
+      // Ephemeral private key
+      this.ephemeralKeyPair.privateKey,
+      publicKey,
+      hkdfSalt
+    );
+
+    let decryptedKey;
+    try {
+      // Decrypt the wrapped key
+      decryptedKey = await decrypt(unwrappingKey, encryptedSharedKey, iv, authTagLength);
+    } catch (e) {
+      throw new Error(
+        `Unable to decrypt key. Are you using the right KAS? Is the salt correct?\n Caused by: ${e}`
+      );
+    }
+
+    // UnwrappedKey
+    let unwrappedKey;
+    try {
+      unwrappedKey = await importRawKey(
+        decryptedKey,
+        // Want to use the key to encrypt and decrypt. Signing key will be used later.
+        [KeyUsageType.Encrypt, KeyUsageType.Decrypt],
+        // @security This allows the key to be used in `exportKey` and `wrapKey`
+        // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/exportKey
+        // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/wrapKey
+        true
+      );
+    } catch (e) {
+      throw new Error(`Unable to import raw key.\n Caused by: ${e}`);
+    }
+
+    return unwrappedKey;
   }
 }
