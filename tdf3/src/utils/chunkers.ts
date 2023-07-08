@@ -4,16 +4,8 @@ import {
   type DecoratedReadableStream,
   isDecoratedReadableStream,
 } from '../client/DecoratedReadableStream.js';
-import axiosRetry from 'axios-retry';
 
 const axiosRemoteChunk = axios.create();
-
-// @ts-ignore
-axiosRetry(axiosRemoteChunk, {
-  retries: 3,
-  retryDelay: axiosRetry.exponentialDelay,
-  retryCondition: () => true,
-}); // Retries all idempotent requests (GET, HEAD, OPTIONS, PUT, DELETE)
 
 /**
  * Read data from a seekable stream.
