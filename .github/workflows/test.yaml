@@ -3,18 +3,17 @@
 # act --secret-file act.env --container-architecture linux/amd64 --workflows .github/workflows/test.yaml
 name: test
 on:
-  # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#registry_package
-  registry_package:
+  # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#workflow_run
+  workflow_run:
+    workflows: [build]
     types:
-      - published
-
+      - completed
 permissions:
   contents: read
   packages: read
 jobs:
   integration-vite:
     name: integration-vite
-#    if: ${{ github.event.registry_package.package_version.container_metadata.tag.name != '' }}
     runs-on: ubuntu-latest
     steps:
       - env:
