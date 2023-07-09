@@ -3,15 +3,24 @@
 # act --secret-file act.env --container-architecture linux/amd64 --workflows .github/workflows/test.yaml
 name: test
 on:
-  push:
+  # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#registry_package
+  registry_package:
+    types:
+      - published
+
 permissions:
   contents: read
   packages: read
 jobs:
   integration-vite:
     name: integration-vite
+#    if: ${{ github.event.registry_package.package_version.container_metadata.tag.name != '' }}
     runs-on: ubuntu-latest
     steps:
+      - env:
+          EVENT_CONTEXT: ${{ toJSON(github.event) }}
+        run: |
+          echo $EVENT_CONTEXT
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
