@@ -1,6 +1,5 @@
 import { GetObjectCommand, HeadObjectCommand, S3Client, S3ClientConfig } from '@aws-sdk/client-s3';
 import axios from 'axios';
-import { Buffer } from 'buffer';
 
 import { arrayBufferToBuffer } from '../utils/index.js';
 import { AttributeValidator } from './validation.js';

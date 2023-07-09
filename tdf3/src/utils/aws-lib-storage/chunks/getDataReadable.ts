@@ -1,7 +1,6 @@
-import { Buffer } from 'buffer';
-
 export async function* getDataReadable(data: any): AsyncGenerator<Buffer> {
-  for await (const chunk of data) {
-    yield Buffer.from(chunk);
-  }
+  if (data && typeof data[Symbol.asyncIterator] === 'function')
+    for await (const chunk of data) {
+      yield Buffer.from(chunk);
+    }
 }

@@ -1,4 +1,3 @@
-import { Buffer } from 'buffer';
 import { Manifest } from '../models/index.js';
 import { Chunker } from './chunkers.js';
 
@@ -66,7 +65,6 @@ export class ZipReader {
 
   /**
    * Utility function to get the centralDirectory for the zip file.
-   * @param  {Buffer} chunkBuffer Takes a buffer of a portion of the file
    * @return {Object}             The central directory represented as an object
    */
   async getCentralDirectory(): Promise<CentralDirectory[]> {
@@ -131,8 +129,7 @@ export class ZipReader {
     const byteEnd = byteStart + encryptedSegmentSize;
 
     const chunk = await this.getChunk(byteStart, byteEnd);
-    const segmentBuffer = Buffer.from(chunk);
-    return segmentBuffer;
+    return Buffer.from(chunk);
   }
 
   /**
@@ -316,7 +313,7 @@ function sliceExtraFields(extraFieldBuffer: Buffer, cd: CentralDirectory): Recor
 
   let i = 0;
   while (i < extraFieldBuffer.length - 3) {
-    const headerId = extraFieldBuffer.readUInt16LE(i + 0);
+    const headerId = extraFieldBuffer.readUInt16LE(i);
     const dataSize = extraFieldBuffer.readUInt16LE(i + 2);
     const dataStart = i + 4;
     const dataEnd = dataStart + dataSize;

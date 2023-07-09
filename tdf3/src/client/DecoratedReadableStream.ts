@@ -4,7 +4,6 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 import axios from 'axios';
-import { Buffer } from 'buffer';
 import { EventEmitter } from 'events';
 import streamSaver from 'streamsaver';
 import { fileSave } from 'browser-fs-access';

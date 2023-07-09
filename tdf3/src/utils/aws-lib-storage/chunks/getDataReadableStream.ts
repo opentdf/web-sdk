@@ -1,5 +1,3 @@
-import { Buffer } from 'buffer';
-
 export async function* getDataReadableStream(data: ReadableStream): AsyncGenerator<Buffer> {
   // Get a lock on the stream.
   const reader = data.getReader();

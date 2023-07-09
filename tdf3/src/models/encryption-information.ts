@@ -1,4 +1,3 @@
-import { Buffer } from 'buffer';
 import { keySplit } from '../utils/index.js';
 import { base64, hex } from '../../../src/encodings/index.js';
 import { Binary } from '../binary.js';
