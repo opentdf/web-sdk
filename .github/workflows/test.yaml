@@ -1,0 +1,36 @@
+# This GitHub action will run integration tests
+# Integration tests live here (not unit tests)
+# act --secret-file act.env --container-architecture linux/amd64 --workflows .github/workflows/test.yaml
+name: test
+on:
+  push:
+permissions:
+  contents: read
+jobs:
+  integration-vite:
+    name: integration-vite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install Vite
+        run: npm install -g create-vite
+      - name: Create Vite App
+        run: create-vite test-app --template react
+      - name: Install Arkavo
+        run: |
+          export VERSION=$(npm pkg get version | xargs echo)
+          cd test-app
+          echo "@arkavo-org:registry=https://npm.pkg.github.com" >> .npmrc
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
+          npm install @arkavo-org/client@$(echo "${VERSION}-${GITHUB_SHA::8}")
+      - name: Copy Application Code
+        run: cp -r tests/web-app/src/* test-app/src
+      - name: Start Vite App
+        run: cd test-app && npm run dev &
