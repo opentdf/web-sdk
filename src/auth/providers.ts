@@ -91,7 +91,6 @@ export const refreshAuthProvider = async (
 /**
  * Generate an auth provder.
  * @param clientConfig OIDC client credentials
- * @param clientPubKey Client identification
  * @returns a promise for a new auth provider with the requested excahnge type
  */
 export const clientAuthProvider = async (clientConfig: OIDCCredentials): Promise<AuthProvider> => {
@@ -134,7 +133,6 @@ export const clientAuthProvider = async (clientConfig: OIDCCredentials): Promise
 };
 
 export * from './auth.js';
-export * from './OIDCCredentials.js';
 export { OIDCClientCredentialsProvider } from './oidc-clientcredentials-provider.js';
 export { OIDCExternalJwtProvider } from './oidc-externaljwt-provider.js';
 export { OIDCRefreshTokenProvider } from './oidc-refreshtoken-provider.js';
