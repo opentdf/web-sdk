@@ -6,6 +6,7 @@ on:
   push:
 permissions:
   contents: read
+  packages: read
 jobs:
   integration-vite:
     name: integration-vite
