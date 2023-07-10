@@ -88,7 +88,7 @@
     "karma": "^6.4.2",
     "license-checker-rseidelsohn": "^4.2.6",
     "mocha": "^10.2.0",
-    "prettier": "^2.8.8",
+    "prettier": "^3.0.0",
     "sinon": "~15.2.0",
     "typedoc": "^0.24.8",
     "typescript": "^5.1.6",
