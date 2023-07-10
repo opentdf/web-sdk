@@ -134,7 +134,7 @@ export class TDF extends EventEmitter {
   attributeSet: AttributeSet;
   segmentSizeDefault: number;
   chunkMap: Map<string, Chunk>;
-  cryptoService: CryptoService;
+  cryptoService: CryptoService<CryptoKeyPair>;
 
   constructor() {
     super();

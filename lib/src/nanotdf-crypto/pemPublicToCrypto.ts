@@ -29,7 +29,7 @@
 
 import * as base64 from '../encodings/base64.js';
 import { importX509 } from 'jose';
-import type { KeyObject } from 'crypto';
+import { type KeyObject } from 'crypto';
 import { encodeArrayBuffer as hexEncodeArrayBuffer } from '../encodings/hex.js';
 
 const RSA_OID = '06092a864886f70d010101';

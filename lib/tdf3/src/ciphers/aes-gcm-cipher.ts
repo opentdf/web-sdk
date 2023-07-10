@@ -3,7 +3,11 @@ import { Binary } from '../binary.js';
 import { Algorithms } from './algorithms.js';
 import { SymmetricCipher } from './symmetric-cipher-base.js';
 
-import type { CryptoService, DecryptResult, EncryptResult } from '../crypto/declarations.js';
+import {
+  type CryptoService,
+  type DecryptResult,
+  type EncryptResult,
+} from '../crypto/declarations.js';
 
 const KEY_LENGTH = 32;
 const IV_LENGTH = 12;
