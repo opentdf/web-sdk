@@ -90,7 +90,7 @@ const makeChunkable = async (source: DecryptSource) => {
   }
   // Unwrap if it's html.
   // If NOT zip (html), convert/dump to buffer, unwrap, and continue.
-  const htmlBuf = buf || (await initialChunker());
+  const htmlBuf = buf ?? (await initialChunker());
   const zipBuf = TDF.unwrapHtml(htmlBuf);
   return fromBuffer(zipBuf);
 };
@@ -139,7 +139,7 @@ export async function createSessionKeys({
 }): Promise<SessionKeys> {
   //If clientconfig has keypair, assume auth provider was already set up with pubkey and bail
   const k2 =
-    keypair || (await cryptoService.cryptoToPemPair(await cryptoService.generateKeyPair()));
+    keypair ?? (await cryptoService.cryptoToPemPair(await cryptoService.generateKeyPair()));
   let signingKeys;
 
   if (dpopEnabled) {
@@ -245,7 +245,7 @@ export class Client {
       this.eas = new EAS({
         authProvider: this.authProvider,
         endpoint:
-          clientConfig.entityObjectEndpoint || `${clientConfig.easEndpoint}/api/entityobject`,
+          clientConfig.entityObjectEndpoint ?? `${clientConfig.easEndpoint}/api/entityobject`,
       });
     }
 
@@ -424,7 +424,7 @@ export class Client {
     if (!tdf.manifest) {
       throw new Error('Missing manifest in encrypt function');
     }
-    const htmlBuf = TDF.wrapHtml(await stream.toBuffer(), tdf.manifest, this.readerUrl || '');
+    const htmlBuf = TDF.wrapHtml(await stream.toBuffer(), tdf.manifest, this.readerUrl ?? '');
 
     if (output) {
       output.push(htmlBuf);
@@ -506,12 +506,12 @@ export class Client {
       // use the client override if provided
       return scope.policyObject;
     }
-    const policyId = scope.policyId || v4();
+    const policyId = scope.policyId ?? v4();
     return {
       uuid: policyId,
       body: {
-        dataAttributes: scope.attributes || [],
-        dissem: scope.dissem || [],
+        dataAttributes: scope.attributes ?? [],
+        dissem: scope.dissem ?? [],
       },
     };
   }

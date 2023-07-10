@@ -283,7 +283,7 @@ export class TDF extends EventEmitter {
     switch (opts.type) {
       case 'split':
       default:
-        this.encryptionInformation = new SplitKey(this.createCipher(opts.cipher || 'aes-256-gcm'));
+        this.encryptionInformation = new SplitKey(this.createCipher(opts.cipher ?? 'aes-256-gcm'));
         break;
     }
     return this;
