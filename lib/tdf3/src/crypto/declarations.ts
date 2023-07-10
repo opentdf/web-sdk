@@ -1,4 +1,5 @@
 import { Binary } from '../binary.js';
+import { type AlgorithmUrn } from '../ciphers/algorithms.js';
 
 export type EncryptResult = {
   /** Encrypted payload. */

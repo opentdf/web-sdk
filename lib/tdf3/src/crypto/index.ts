@@ -19,6 +19,7 @@ import {
   decodeArrayBuffer as base64Decode,
   encodeArrayBuffer as base64Encode,
 } from '../../../src/encodings/base64.js';
+import { AlgorithmUrn } from '../ciphers/algorithms.js';
 
 // Used to pass into native crypto functions
 const METHODS: KeyUsage[] = ['encrypt', 'decrypt'];
