@@ -7,6 +7,7 @@ import { HttpRequest } from '../../src/auth/auth.js';
 const Mocks = getMocks();
 
 const authProvider = {
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
   updateClientPublicKey: async () => {},
   withCreds: async (httpReq: HttpRequest) => httpReq,
 };

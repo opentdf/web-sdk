@@ -3,6 +3,11 @@ env:
 extends:
   - plugin:@typescript-eslint/recommended
   - plugin:prettier/recommended
+overrides:
+  - files:
+      - '*.spec.ts'
+    rules:
+      '@typescript-eslint/ban-ts-comment': 'off'
 parserOptions:
   project: ['**/tsconfig.json']
 root: true
