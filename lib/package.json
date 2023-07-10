@@ -67,7 +67,6 @@
     "dpop": "^1.2.0",
     "events": "^3.3.0",
     "jose": "^4.14.4",
-    "nyc": "^15.1.0",
     "streamsaver": "^2.0.6",
     "uuid": "~9.0.0"
   },
@@ -104,6 +103,7 @@
     "karma-mocha": "^2.0.1",
     "license-checker-rseidelsohn": "^4.2.6",
     "mocha": "^10.2.0",
+    "nyc": "^15.1.0",
     "prettier": "^2.8.8",
     "process": "^0.11.10",
     "rollup": "^3.26.0",
