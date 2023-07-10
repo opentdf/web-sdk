@@ -27,7 +27,7 @@ _wait-for() {
   echo "[INFO] In retry loop for quickstarted opentdf backend..."
   limit=5
   for i in $(seq 1 $limit); do
-    if sh "${APP}"; then
+    if "${APP}"; then
       return 0
     fi
     if [[ $i == "$limit" ]]; then
