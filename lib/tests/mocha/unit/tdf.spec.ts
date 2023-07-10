@@ -72,7 +72,7 @@ describe('TDF', () => {
 
   it('should fail on invalid cypher param', () => {
     try {
-      TDF.createCipher('nonexistent cypher')
+      TDF.createCipher('nonexistent cypher');
     } catch (e) {
       expect(e.message).to.include('nonexistent cypher');
     }

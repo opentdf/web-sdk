@@ -8,8 +8,8 @@ const Mocks = getMocks();
 
 const authProvider = {
   updateClientPublicKey: async () => {},
-  withCreds: async (httpReq: HttpRequest) => httpReq
-}
+  withCreds: async (httpReq: HttpRequest) => httpReq,
+};
 
 describe('encrypt decrypt test', async function () {
   const expectedVal = 'hello world';
@@ -54,7 +54,7 @@ describe('encrypt decrypt test', async function () {
         start(controller) {
           controller.enqueue(new TextEncoder().encode(expectedVal));
           controller.close();
-        }
+        },
       }),
     });
 
@@ -69,5 +69,5 @@ describe('encrypt decrypt test', async function () {
     const { value: decryptedText } = await decryptStream.stream.getReader().read();
 
     assert.equal(new TextDecoder().decode(decryptedText), expectedVal);
-  })
-})
+  });
+});
