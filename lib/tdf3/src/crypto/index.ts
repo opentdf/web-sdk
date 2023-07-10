@@ -292,7 +292,10 @@ function _importKey(key: Binary, algorithm: AesCbcParams | AesGcmParams) {
  * @param  {String|undefined} algorithm
  * @return {DOMString} Algorithm to use
  */
-function getSymmetricAlgoDomString(iv: Binary, algorithm?: AlgorithmUrn): AesCbcParams | AesGcmParams {
+function getSymmetricAlgoDomString(
+  iv: Binary,
+  algorithm?: AlgorithmUrn
+): AesCbcParams | AesGcmParams {
   let nativeAlgorithm = 'AES-CBC';
   if (algorithm === Algorithms.AES_256_GCM) {
     nativeAlgorithm = 'AES-GCM';

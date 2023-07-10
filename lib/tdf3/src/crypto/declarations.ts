@@ -48,7 +48,12 @@ export type CryptoService<PairT = CryptoKeyPair> = {
   /**
    * Encrypt content with the default or handed algorithm.
    */
-  encrypt: (payload: Binary, key: Binary, iv: Binary, algorithm?: AlgorithmUrn) => Promise<EncryptResult>;
+  encrypt: (
+    payload: Binary,
+    key: Binary,
+    iv: Binary,
+    algorithm?: AlgorithmUrn
+  ) => Promise<EncryptResult>;
 
   encryptWithPublicKey: (payload: Binary, publicKey: string) => Promise<Binary>;
 

@@ -138,7 +138,8 @@ export async function createSessionKeys({
   keypair?: PemKeyPair;
 }): Promise<SessionKeys> {
   //If clientconfig has keypair, assume auth provider was already set up with pubkey and bail
-  const k2 = keypair || (await cryptoService.cryptoToPemPair(await cryptoService.generateKeyPair()));
+  const k2 =
+    keypair || (await cryptoService.cryptoToPemPair(await cryptoService.generateKeyPair()));
   let signingKeys;
 
   if (dpopEnabled) {
