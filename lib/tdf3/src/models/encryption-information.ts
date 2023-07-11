@@ -2,10 +2,14 @@ import { Buffer } from 'buffer';
 import { keySplit } from '../utils/index.js';
 import { base64, hex } from '../../../src/encodings/index.js';
 import { Binary } from '../binary.js';
-import { SymmetricCipher } from '../ciphers/symmetric-cipher-base.js';
-import { KeyAccess, KeyAccessObject } from './key-access.js';
-import { Policy } from './policy.js';
-import { DecryptResult, EncryptResult } from '../crypto/declarations.js';
+import { type SymmetricCipher } from '../ciphers/symmetric-cipher-base.js';
+import { type KeyAccess, type KeyAccessObject } from './key-access.js';
+import { type Policy } from './policy.js';
+import {
+  type CryptoService,
+  type DecryptResult,
+  type EncryptResult,
+} from '../crypto/declarations.js';
 
 export type KeyInfo = {
   readonly unwrappedKeyBinary: Binary;
@@ -43,9 +47,11 @@ export type EncryptionInformation = {
 };
 
 export class SplitKey {
+  readonly cryptoService: CryptoService;
   keyAccess: KeyAccess[];
 
   constructor(public readonly cipher: SymmetricCipher) {
+    this.cryptoService = cipher.cryptoService;
     this.keyAccess = [];
   }
 
@@ -72,7 +78,8 @@ export class SplitKey {
   async getKeyAccessObjects(policy: Policy, keyInfo: KeyInfo): Promise<KeyAccessObject[]> {
     const unwrappedKeySplitBuffers = keySplit(
       keyInfo.unwrappedKeyBinary.asBuffer(),
-      this.keyAccess.length
+      this.keyAccess.length,
+      this.cryptoService
     );
 
     const keyAccessObjects = [];

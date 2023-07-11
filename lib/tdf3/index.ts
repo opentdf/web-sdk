@@ -14,7 +14,12 @@ import {
 } from './src/client/builders.js';
 import { type SessionKeys, type ClientConfig, createSessionKeys } from './src/client/index.js';
 import { type AnyTdfStream, registerModuleType } from './src/client/tdf-stream.js';
-import { type DecryptResult, type EncryptResult } from './src/crypto/declarations.js';
+import {
+  type CryptoService,
+  type DecryptResult,
+  type EncryptResult,
+  type PemKeyPair,
+} from './src/crypto/declarations.js';
 import { TDF, Client, Errors } from './src/index.js';
 import {
   type KeyInfo,
@@ -29,6 +34,7 @@ import {
   version,
   clientType,
 } from '../src/index.js';
+import { type AlgorithmName, type AlgorithmUrn } from './src/ciphers/algorithms.js';
 
 if (globalThis) {
   globalThis.crypto ??= crypto as unknown as Crypto;
@@ -51,12 +57,10 @@ export {
   DecoratedReadableStream,
   DecryptParams,
   DecryptParamsBuilder,
-  DecryptResult,
   DecryptSource,
   EncryptionInformation,
   EncryptParams,
   EncryptParamsBuilder,
-  EncryptResult,
   Errors,
   FileClient,
   HttpRequest,
@@ -69,6 +73,15 @@ export {
   clientType,
   createSessionKeys,
   version,
+};
+
+export type {
+  AlgorithmName,
+  AlgorithmUrn,
+  CryptoService,
+  DecryptResult,
+  EncryptResult,
+  PemKeyPair,
 };
 
 export default {

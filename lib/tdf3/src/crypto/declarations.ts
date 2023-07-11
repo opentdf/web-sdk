@@ -1,4 +1,5 @@
 import { Binary } from '../binary.js';
+import { type AlgorithmUrn } from '../ciphers/algorithms.js';
 
 export type EncryptResult = {
   /** Encrypted payload. */
@@ -21,12 +22,14 @@ export type PemKeyPair = {
  */
 export const MIN_ASYMMETRIC_KEY_SIZE_BITS = 2048;
 
-export type CryptoService = {
+export type CryptoService<PairT = CryptoKeyPair> = {
   /** Track which crypto implementation we are using */
   name: string;
 
   /** Default algorithm identifier. */
-  method: string;
+  method: AlgorithmUrn;
+
+  cryptoToPemPair: (keys: PairT) => Promise<PemKeyPair>;
 
   /**
    * Try to decrypt content with the default or handed algorithm. Throws on
@@ -36,7 +39,7 @@ export type CryptoService = {
     payload: Binary,
     key: Binary,
     iv: Binary,
-    algorithm?: string,
+    algorithm?: AlgorithmUrn,
     authTag?: Binary
   ) => Promise<DecryptResult>;
 
@@ -45,7 +48,12 @@ export type CryptoService = {
   /**
    * Encrypt content with the default or handed algorithm.
    */
-  encrypt: (payload: Binary, key: Binary, iv: Binary, algorithm?: string) => Promise<EncryptResult>;
+  encrypt: (
+    payload: Binary,
+    key: Binary,
+    iv: Binary,
+    algorithm?: AlgorithmUrn
+  ) => Promise<EncryptResult>;
 
   encryptWithPublicKey: (payload: Binary, publicKey: string) => Promise<Binary>;
 
@@ -59,12 +67,14 @@ export type CryptoService = {
    * Generate an RSA key pair
    * @param size in bits, defaults to a reasonable size for the default method
    */
-  generateKeyPair: (size?: number) => Promise<CryptoKeyPair>;
+  generateKeyPair: (size?: number) => Promise<PairT>;
 
   /**
    * Create an HMAC SHA256 hash
    */
   hmac: (key: string, content: string) => Promise<string>;
+
+  randomBytes: (byteLength: number) => Uint8Array;
 
   /** Compute the hex-encoded SHA hash of a UTF-16 encoded string. */
   sha256: (content: string) => Promise<string>;

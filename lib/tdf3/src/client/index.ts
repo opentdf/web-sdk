@@ -15,7 +15,7 @@ import { type AnyTdfStream, makeStream } from './tdf-stream.js';
 import { OIDCClientCredentialsProvider } from '../../../src/auth/oidc-clientcredentials-provider.js';
 import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-provider.js';
 import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider.js';
-import { PemKeyPair } from '../crypto/declarations.js';
+import { CryptoService, PemKeyPair } from '../crypto/declarations.js';
 import { AuthProvider, AppIdAuthProvider, HttpRequest } from '../../../src/auth/auth.js';
 import EAS from '../../../src/auth/Eas.js';
 
@@ -28,15 +28,16 @@ import {
   type DecryptSource,
   EncryptParamsBuilder,
 } from './builders.js';
+import * as defaultCryptoService from '../crypto/index.js';
 import { Policy } from '../models/index.js';
-import { cryptoToPemPair, generateKeyPair, rsaPkcs1Sha256 } from '../crypto/index.js';
 import { TdfError } from '../errors.js';
+import { rsaPkcs1Sha256 } from '../crypto/index.js';
 
 const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
 const HTML_BYTE_LIMIT = 100 * 1000 * 1000; // 100 MB, see WS-9476.
 
 // No default config for now. Delegate to Virtru wrapper for endpoints.
-const defaultClientConfig = { oidcOrigin: '' };
+const defaultClientConfig = { oidcOrigin: '', cryptoService: defaultCryptoService };
 
 export const uploadBinaryToS3 = async function (
   stream: ReadableStream<Uint8Array>,
@@ -89,12 +90,13 @@ const makeChunkable = async (source: DecryptSource) => {
   }
   // Unwrap if it's html.
   // If NOT zip (html), convert/dump to buffer, unwrap, and continue.
-  const htmlBuf = buf || (await initialChunker());
+  const htmlBuf = buf ?? (await initialChunker());
   const zipBuf = TDF.unwrapHtml(htmlBuf);
   return fromBuffer(zipBuf);
 };
 
 export interface ClientConfig {
+  cryptoService?: CryptoService;
   // WARNING please do not use this except for testing purposes.
   keypair?: PemKeyPair;
   organizationName?: string;
@@ -126,15 +128,18 @@ export interface ClientConfig {
  */
 export async function createSessionKeys({
   authProvider,
+  cryptoService,
   dpopEnabled,
   keypair,
 }: {
   authProvider?: AuthProvider | AppIdAuthProvider;
+  cryptoService: CryptoService;
   dpopEnabled?: boolean;
   keypair?: PemKeyPair;
 }): Promise<SessionKeys> {
   //If clientconfig has keypair, assume auth provider was already set up with pubkey and bail
-  const k2 = keypair || (await cryptoToPemPair(await generateKeyPair()));
+  const k2 =
+    keypair ?? (await cryptoService.cryptoToPemPair(await cryptoService.generateKeyPair()));
   let signingKeys;
 
   if (dpopEnabled) {
@@ -175,6 +180,8 @@ export type SessionKeys = {
 };
 
 export class Client {
+  readonly cryptoService: CryptoService;
+
   /**
    * Default kas endpoint, if present. Required for encrypt.
    */
@@ -216,6 +223,7 @@ export class Client {
    */
   constructor(config: ClientConfig) {
     const clientConfig = { ...defaultClientConfig, ...config };
+    this.cryptoService = clientConfig.cryptoService;
     this.dpopEnabled = !!clientConfig.dpopEnabled;
 
     clientConfig.readerUrl && (this.readerUrl = clientConfig.readerUrl);
@@ -237,7 +245,7 @@ export class Client {
       this.eas = new EAS({
         authProvider: this.authProvider,
         endpoint:
-          clientConfig.entityObjectEndpoint || `${clientConfig.easEndpoint}/api/entityobject`,
+          clientConfig.entityObjectEndpoint ?? `${clientConfig.easEndpoint}/api/entityobject`,
       });
     }
 
@@ -291,6 +299,7 @@ export class Client {
     } else {
       this.sessionKeys = createSessionKeys({
         authProvider: this.authProvider,
+        cryptoService: this.cryptoService,
         dpopEnabled: this.dpopEnabled,
         keypair: clientConfig.keypair,
       });
@@ -415,7 +424,7 @@ export class Client {
     if (!tdf.manifest) {
       throw new Error('Missing manifest in encrypt function');
     }
-    const htmlBuf = TDF.wrapHtml(await stream.toBuffer(), tdf.manifest, this.readerUrl || '');
+    const htmlBuf = TDF.wrapHtml(await stream.toBuffer(), tdf.manifest, this.readerUrl ?? '');
 
     if (output) {
       output.push(htmlBuf);
@@ -497,12 +506,12 @@ export class Client {
       // use the client override if provided
       return scope.policyObject;
     }
-    const policyId = scope.policyId || v4();
+    const policyId = scope.policyId ?? v4();
     return {
       uuid: policyId,
       body: {
-        dataAttributes: scope.attributes || [],
-        dissem: scope.dissem || [],
+        dataAttributes: scope.attributes ?? [],
+        dissem: scope.dissem ?? [],
       },
     };
   }

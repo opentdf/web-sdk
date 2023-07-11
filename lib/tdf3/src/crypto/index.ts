@@ -7,6 +7,7 @@
 import { Algorithms } from '../ciphers/index.js';
 import { Binary } from '../binary.js';
 import {
+  CryptoService,
   DecryptResult,
   EncryptResult,
   MIN_ASYMMETRIC_KEY_SIZE_BITS,
@@ -19,6 +20,7 @@ import {
   decodeArrayBuffer as base64Decode,
   encodeArrayBuffer as base64Encode,
 } from '../../../src/encodings/base64.js';
+import { AlgorithmUrn } from '../ciphers/algorithms.js';
 
 // Used to pass into native crypto functions
 const METHODS: KeyUsage[] = ['encrypt', 'decrypt'];
@@ -192,7 +194,7 @@ export function decrypt(
   payload: Binary,
   key: Binary,
   iv: Binary,
-  algorithm?: string,
+  algorithm?: AlgorithmUrn,
   authTag?: Binary
 ): Promise<DecryptResult> {
   return _doDecrypt(payload, key, iv, algorithm, authTag);
@@ -209,7 +211,7 @@ export function encrypt(
   payload: Binary,
   key: Binary,
   iv: Binary,
-  algorithm?: string
+  algorithm?: AlgorithmUrn
 ): Promise<EncryptResult> {
   return _doEncrypt(payload, key, iv, algorithm);
 }
@@ -218,7 +220,7 @@ async function _doEncrypt(
   payload: Binary,
   key: Binary,
   iv: Binary,
-  algorithm?: string
+  algorithm?: AlgorithmUrn
 ): Promise<EncryptResult> {
   console.assert(payload != null);
   console.assert(key != null);
@@ -244,7 +246,7 @@ async function _doDecrypt(
   payload: Binary,
   key: Binary,
   iv: Binary,
-  algorithm?: string,
+  algorithm?: AlgorithmUrn,
   authTag?: Binary
 ): Promise<DecryptResult> {
   console.assert(payload != null);
@@ -290,7 +292,10 @@ function _importKey(key: Binary, algorithm: AesCbcParams | AesGcmParams) {
  * @param  {String|undefined} algorithm
  * @return {DOMString} Algorithm to use
  */
-function getSymmetricAlgoDomString(iv: Binary, algorithm?: string): AesCbcParams | AesGcmParams {
+function getSymmetricAlgoDomString(
+  iv: Binary,
+  algorithm?: AlgorithmUrn
+): AesCbcParams | AesGcmParams {
   let nativeAlgorithm = 'AES-CBC';
   if (algorithm === Algorithms.AES_256_GCM) {
     nativeAlgorithm = 'AES-GCM';
@@ -352,3 +357,19 @@ export function hex2Ab(hex: string): ArrayBuffer {
 
   return buffer;
 }
+
+export const DefaultCryptoService: CryptoService<CryptoKeyPair> = {
+  name,
+  method,
+  cryptoToPemPair,
+  decrypt,
+  decryptWithPrivateKey,
+  encrypt,
+  encryptWithPublicKey,
+  generateInitializationVector,
+  generateKey,
+  generateKeyPair,
+  hmac,
+  randomBytes,
+  sha256,
+};
