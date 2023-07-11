@@ -1,4 +1,3 @@
-import { FileClient } from './src/FileClient.js';
 import { Binary } from './src/binary.js';
 import { DecoratedReadableStream } from './src/client/DecoratedReadableStream.js';
 import {
@@ -59,7 +58,6 @@ export {
   EncryptParams,
   EncryptParamsBuilder,
   Errors,
-  FileClient,
   HttpRequest,
   KeyInfo,
   NanoTDFClient,
