@@ -20,10 +20,10 @@
   "main": "./dist/web/tdf3/index-web.js",
   "license": "BSD-3-Clause-Clear",
   "author": "Virtru",
-  "types": "./dist/types/tdf3/index.d.ts",
+  "types": "./dist/types/tdf3/index-web.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/types/tdf3/index.d.ts",
+      "types": "./dist/types/tdf3/index-web.d.ts",
       "import": "./dist/web/tdf3/index-web.js"
     },
     "./encodings": {
