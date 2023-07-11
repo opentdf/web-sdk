@@ -16,21 +16,30 @@ export function bxor(b1: Uint8Array, b2: Uint8Array): Uint8Array {
  * @param n The number of entries to split across
  * @returns `n` entries of `length(key)` size
  */
-export function keySplit(key: Uint8Array, n: number, cryptoService: CryptoService): Uint8Array[] {
+export async function keySplit(
+  key: Uint8Array,
+  n: number,
+  cryptoService: CryptoService
+): Promise<Uint8Array[]> {
   if (!(key instanceof Uint8Array)) {
     throw Error('ERROR in keySplit - key is not an unsigned byte array');
   }
   if (n <= 0) {
     throw Error('ERROR in keySplit - n is not a positive integer');
   }
+  if (n == 1) {
+    return [key];
+  }
   const keyLength = key.length;
   const splits = [];
   let currKey = key;
+  const nonces = await Promise.all(
+    Array.from(new Array(n - 1), () => cryptoService.randomBytes(keyLength))
+  );
   // https://en.wikipedia.org/wiki/Secret_sharing#t_=_n
-  for (let i = 1; i < n; i++) {
-    const shareI = cryptoService.randomBytes(keyLength);
-    currKey = bxor(shareI, currKey);
-    splits.push(shareI);
+  for (const nonce of nonces) {
+    currKey = bxor(nonce, currKey);
+    splits.push(nonce);
   }
   splits.push(currKey);
   return splits;

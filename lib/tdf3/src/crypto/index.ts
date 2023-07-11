@@ -69,7 +69,7 @@ export function rsaPkcs1Sha256(
  * Generate a random hex key
  * @return New key as a hex string
  */
-export function generateKey(length?: number): string {
+export async function generateKey(length?: number): Promise<string> {
   return randomBytesAsHex(length || 32);
 }
 
@@ -126,11 +126,11 @@ export async function encryptWithPublicKey(payload: Binary, publicKey: string): 
 /**
  * Generate a 16-byte initialization vector
  */
-export function generateInitializationVector(length?: number): string {
+export async function generateInitializationVector(length?: number): Promise<string> {
   return randomBytesAsHex(length || 16);
 }
 
-export function randomBytes(byteLength: number): Uint8Array {
+export async function randomBytes(byteLength: number): Promise<Uint8Array> {
   const r = new Uint8Array(byteLength);
   crypto.getRandomValues(r);
   return r;
@@ -146,11 +146,11 @@ export function randomBytes(byteLength: number): Uint8Array {
  *
  * @returns The hex string.
  */
-export function randomBytesAsHex(length: number): string {
+export function randomBytesAsHex(length: number): Promise<string> {
   // Create a typed array of the correct length to fill
   const r = new Uint8Array(length);
   crypto.getRandomValues(r);
-  return hexEncode(r.buffer);
+  return Promise.resolve(hexEncode(r.buffer));
 }
 
 /**

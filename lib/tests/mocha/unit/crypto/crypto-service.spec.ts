@@ -58,28 +58,28 @@ describe('Crypto Service', () => {
   });
 
   describe('generateKey', () => {
-    it('default length (32 bytes)', () => {
-      const key = generateKey(0);
+    it('default length (32 bytes)', async () => {
+      const key = await generateKey(0);
       expect(key).to.be.a('string');
       expect(key).to.have.lengthOf(32 << 1);
     });
-    it('short', () => {
-      const key = generateKey(1);
+    it('short', async () => {
+      const key = await generateKey(1);
       expect(key).to.be.a('string');
       expect(key).to.have.lengthOf(2);
     });
-    it('reasonable bytes', () => {
-      const key = generateKey(20);
+    it('reasonable bytes', async () => {
+      const key = await generateKey(20);
       expect(key).to.be.a('string');
       expect(key).to.have.lengthOf(40);
     });
-    it('undefined bytes', () => {
-      const key = generateKey(undefined);
+    it('undefined bytes', async () => {
+      const key = await generateKey(undefined);
       expect(key).to.be.a('string');
       expect(key).to.have.lengthOf(64);
     });
-    it('null bytes', () => {
-      const key = generateKey();
+    it('null bytes', async () => {
+      const key = await generateKey();
       expect(key).to.be.a('string');
       expect(key).to.have.lengthOf(64);
     });
@@ -123,21 +123,22 @@ describe('Crypto Service', () => {
 
   describe('generateInitializationVector', () => {
     it('iv - just one byte', async () => {
-      expect(generateInitializationVector(1)).to.have.lengthOf(2);
+      const iv = await generateInitializationVector(1);
+      expect(iv).to.have.lengthOf(2);
     });
-    it('iv - standard length (16)', () => {
-      const iv = generateInitializationVector();
+    it('iv - standard length (16)', async () => {
+      const iv = await generateInitializationVector();
       expect(iv).to.have.lengthOf(32);
     });
   });
 
   describe('randomBytesAsHex', () => {
-    it('1 byte', () => {
-      const randomHexBytes = randomBytesAsHex(1);
+    it('1 byte', async () => {
+      const randomHexBytes = await randomBytesAsHex(1);
       expect(randomHexBytes).to.have.lengthOf(2);
     });
-    it('10 bytes', () => {
-      const randomHexBytes2 = randomBytesAsHex(10);
+    it('10 bytes', async () => {
+      const randomHexBytes2 = await randomBytesAsHex(10);
       expect(randomHexBytes2).to.have.lengthOf(20);
     });
   });
@@ -204,7 +205,7 @@ describe('Crypto Service', () => {
       // crypto.scryptSync('test', 'salt', 32) =>
       decodeArrayBuffer('cvR6X2vLG5ap13ssLxRjOV1KOjJfraYpD8D+97zdtY4=')
     );
-    const iv = Binary.fromString(generateInitializationVector(16));
+    const iv = Binary.fromString(await generateInitializationVector(16));
     const algo = 'http://www.w3.org/2009/xmlenc11#aes256-gcm';
 
     const encrypted = await encrypt(payload, key, iv, algo);

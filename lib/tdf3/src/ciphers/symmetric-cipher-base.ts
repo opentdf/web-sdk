@@ -18,14 +18,14 @@ export abstract class SymmetricCipher {
     this.cryptoService = cryptoService;
   }
 
-  generateInitializationVector(): string {
+  async generateInitializationVector(): Promise<string> {
     if (!this.ivLength) {
       throw Error('No iv length');
     }
     return this.cryptoService.generateInitializationVector(this.ivLength);
   }
 
-  generateKey(): string {
+  async generateKey(): Promise<string> {
     if (!this.keyLength) {
       throw Error('No key length');
     }

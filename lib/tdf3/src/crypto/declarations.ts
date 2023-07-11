@@ -12,6 +12,9 @@ export type DecryptResult = {
   payload: Binary;
 };
 
+/**
+ * PEM formatted keypair.
+ */
 export type PemKeyPair = {
   publicKey: string;
   privateKey: string;
@@ -58,10 +61,10 @@ export type CryptoService<PairT = CryptoKeyPair> = {
   encryptWithPublicKey: (payload: Binary, publicKey: string) => Promise<Binary>;
 
   /** Get length random bytes as a hex-encoded string. */
-  generateInitializationVector: (length: number) => string;
+  generateInitializationVector: (length?: number) => Promise<string>;
 
   /** Get length random bytes as a hex-encoded string. */
-  generateKey: (length: number) => string;
+  generateKey: (length?: number) => Promise<string>;
 
   /**
    * Generate an RSA key pair
@@ -74,7 +77,7 @@ export type CryptoService<PairT = CryptoKeyPair> = {
    */
   hmac: (key: string, content: string) => Promise<string>;
 
-  randomBytes: (byteLength: number) => Uint8Array;
+  randomBytes: (byteLength: number) => Promise<Uint8Array>;
 
   /** Compute the hex-encoded SHA hash of a UTF-16 encoded string. */
   sha256: (content: string) => Promise<string>;

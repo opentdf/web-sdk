@@ -73,7 +73,7 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: '.github/workflows/roundtrip/package-lock.json'
+          cache-dependency-path: './web-app/package-lock.json'
       - uses: actions/download-artifact@v3
         with:
           name: opentdf-client-lib
