@@ -67,11 +67,6 @@ _init_server() {
   done
 }
 
-if ! _configure_app; then
-  echo "[ERROR] Couldn't configure our library and app"
-  exit 2
-fi
-
 if ! _init_server; then
   echo "[ERROR] Couldn't run web app server"
   exit 2
