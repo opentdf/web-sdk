@@ -492,7 +492,7 @@ export class TDF extends EventEmitter {
     }
   }
 
-  buildRequest(method: Method, url: string, body?: unknown): HttpRequest {
+  buildRequest(method: Method, url: string, body: unknown): HttpRequest {
     return {
       headers: {},
       method: method,
@@ -1127,12 +1127,8 @@ export class TDF extends EventEmitter {
 
     const outputStream = makeStream(underlyingSource);
 
-    if (rcaParams?.wu) {
-      let httpReq = this.buildRequest('HEAD', rcaParams.wu);
-      if (this.authProvider) {
-        httpReq = await this.authProvider.withCreds(httpReq);
-      }
-      const res = await axios.request(httpReq);
+    if (rcaParams && rcaParams.wu) {
+      const res = await axios.head(rcaParams.wu);
 
       const length = parseInt(res?.headers?.['content-length'] as string, 10);
 
