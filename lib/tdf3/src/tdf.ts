@@ -118,6 +118,10 @@ type Chunk = {
   _resolve?: (value: unknown) => void;
 };
 
+type TDFConfiguration = {
+  cryptoService?: CryptoService;
+};
+
 export class TDF extends EventEmitter {
   policy?: Policy;
   mimeType?: string;
@@ -136,11 +140,11 @@ export class TDF extends EventEmitter {
   chunkMap: Map<string, Chunk>;
   cryptoService: CryptoService<CryptoKeyPair>;
 
-  constructor({ cryptoService } : { cryptoService?: CryptoService }) {
+  constructor(configuration?: TDFConfiguration) {
     super();
 
     this.attributeSet = new AttributeSet();
-    this.cryptoService = cryptoService ?? defaultCryptoService;
+    this.cryptoService = configuration?.cryptoService ?? defaultCryptoService;
     this.publicKey = '';
     this.privateKey = '';
     this.integrityAlgorithm = 'HS256';
