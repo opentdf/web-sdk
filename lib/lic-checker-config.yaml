@@ -1,6 +1,0 @@
-# renamed from license-checker-config.yml because GH gets confused and thinks this is the license file
-blacklisted-licenses:
-  - gpl
-
-whitelisted-modules:
-  - jszip@3.7.1

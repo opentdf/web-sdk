@@ -7,14 +7,8 @@ export { keySplit, keyMerge } from './keysplit.js';
 export { streamToBuffer } from '../client/DecoratedReadableStream.js';
 export * from './chunkers.js';
 
-export function inBrowser(): boolean {
-  return typeof window !== 'undefined';
-}
-
 export function base64ToBuffer(b64: string): Buffer | Uint8Array {
-  return inBrowser() && atob
-    ? Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
-    : Buffer.from(b64, 'base64');
+  return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
 }
 
 export function arrayBufferToBuffer(ab: ArrayBuffer): Buffer {

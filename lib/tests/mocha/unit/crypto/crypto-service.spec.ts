@@ -96,8 +96,8 @@ describe('Crypto Service', () => {
       expect(res).to.have.own.property('publicKey');
     });
 
-    it('should generate pair 2049', async () => {
-      const res = await generateKeyPair(2049);
+    it('should generate pair 2048', async () => {
+      const res = await generateKeyPair(2048);
       expect(res).to.have.own.property('publicKey');
     });
 

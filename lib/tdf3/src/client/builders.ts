@@ -2,13 +2,13 @@ import { S3Client, GetObjectCommand, HeadObjectCommand, S3ClientConfig } from '@
 import axios from 'axios';
 import { Buffer } from 'buffer';
 
-import { arrayBufferToBuffer, inBrowser } from '../utils/index.js';
+import { arrayBufferToBuffer } from '../utils/index.js';
 import { AttributeValidator } from './validation.js';
 import { AttributeObject, Policy } from '../models/index.js';
 import { type RcaParams, type RcaLink, type Metadata } from '../tdf.js';
 import { Binary } from '../binary.js';
 
-import { IllegalArgumentError, IllegalEnvError } from '../errors.js';
+import { IllegalArgumentError } from '../errors.js';
 import { PemKeyPair } from '../crypto/declarations.js';
 import { EntityObject } from '../../../src/tdf/EntityObject.js';
 
@@ -282,10 +282,6 @@ class EncryptParamsBuilder {
    * @return {EncryptParamsBuilder} - this object
    */
   setArrayBufferSource(arraybuffer: ArrayBuffer) {
-    if (!inBrowser()) {
-      throw new IllegalEnvError("must be in a browser context to use 'withArrayBufferSource'");
-    }
-
     this.setBufferSource(arrayBufferToBuffer(arraybuffer));
   }
 
@@ -605,8 +601,7 @@ export type DecryptSource =
   | { type: 'buffer'; location: Uint8Array }
   | { type: 'remote'; location: string }
   | { type: 'stream'; location: ReadableStream<Uint8Array> }
-  | { type: 'file-browser'; location: Blob }
-  | { type: 'file-node'; location: string };
+  | { type: 'file-browser'; location: Blob };
 
 export type DecryptParams = {
   source: DecryptSource;
@@ -759,12 +754,8 @@ class DecryptParamsBuilder {
    * Only works with node.
    * @param source (node) the path of the local file to decrypt, or the Blob (browser/node)
    */
-  setFileSource(source: string | Blob) {
-    if (source instanceof Blob) {
-      this._params.source = { type: 'file-browser', location: source };
-    } else {
-      this._params.source = { type: 'file-node', location: source };
-    }
+  setFileSource(source: Blob) {
+    this._params.source = { type: 'file-browser', location: source };
   }
 
   /**
@@ -772,7 +763,7 @@ class DecryptParamsBuilder {
    * Returns this object for method chaining.
    * @param source (node) the path of the local file to decrypt, or the Blob (browser/node)
    */
-  withFileSource(source: string | Blob): DecryptParamsBuilder {
+  withFileSource(source: Blob): DecryptParamsBuilder {
     this.setFileSource(source);
     return this;
   }
@@ -787,10 +778,6 @@ class DecryptParamsBuilder {
    * @return {DecryptParamsBuilder} - this object
    */
   setArrayBufferSource(arraybuffer: ArrayBuffer) {
-    if (!inBrowser()) {
-      throw new IllegalEnvError("must be in a browser context to use 'withArrayBufferSource'");
-    }
-
     this.setBufferSource(arrayBufferToBuffer(arraybuffer));
   }
 

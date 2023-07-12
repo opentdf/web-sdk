@@ -1,7 +1,6 @@
 import { FileClient } from './src/FileClient.js';
 import { Binary } from './src/binary.js';
 import { DecoratedReadableStream } from './src/client/DecoratedReadableStream.js';
-import { BrowserTdfStream } from './src/client/BrowserTdfSteam.js';
 import {
   type DecryptParams,
   DecryptParamsBuilder,
@@ -10,8 +9,12 @@ import {
   EncryptParamsBuilder,
 } from './src/client/builders.js';
 import { type SessionKeys, type ClientConfig, createSessionKeys } from './src/client/index.js';
-import { type AnyTdfStream, registerModuleType } from './src/client/tdf-stream.js';
-import { type DecryptResult, type EncryptResult } from './src/crypto/declarations.js';
+import {
+  type CryptoService,
+  type DecryptResult,
+  type EncryptResult,
+  type PemKeyPair,
+} from './src/crypto/declarations.js';
 import { TDF, Client, Errors } from './src/index.js';
 import {
   type KeyInfo,
@@ -26,13 +29,20 @@ import {
   version,
   clientType,
 } from '../src/index.js';
-
-registerModuleType(BrowserTdfStream);
+import { type AlgorithmName, type AlgorithmUrn } from './src/ciphers/algorithms.js';
 
 window.TDF = TDF;
 
+export type {
+  AlgorithmName,
+  AlgorithmUrn,
+  CryptoService,
+  DecryptResult,
+  EncryptResult,
+  PemKeyPair,
+};
+
 export {
-  AnyTdfStream,
   AppIdAuthProvider,
   AuthProvider,
   AuthProviders,
@@ -42,12 +52,10 @@ export {
   DecoratedReadableStream,
   DecryptParams,
   DecryptParamsBuilder,
-  DecryptResult,
   DecryptSource,
   EncryptionInformation,
   EncryptParams,
   EncryptParamsBuilder,
-  EncryptResult,
   Errors,
   FileClient,
   HttpRequest,

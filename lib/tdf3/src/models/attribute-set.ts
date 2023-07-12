@@ -1,4 +1,4 @@
-import { Validator } from 'jsonschema';
+import Ajv from 'ajv';
 import { decodeJwt } from 'jose';
 
 const verbose = false;
@@ -27,7 +27,7 @@ const ATTRIBUTE_OBJECT_SCHEMA = {
   additionalProperties: false,
 };
 
-const validator = new Validator();
+const validator = new Ajv();
 
 export class AttributeSet {
   attributes: AttributeObject[];
@@ -88,8 +88,9 @@ export class AttributeSet {
    */
   addAttribute(attrObj: AttributeObject): AttributeObject | null {
     // Check shape of object.  Reject semi-silently if malformed.
-    const result = validator.validate(attrObj, ATTRIBUTE_OBJECT_SCHEMA);
-    if (!result.valid) {
+    const validate = validator.compile(ATTRIBUTE_OBJECT_SCHEMA);
+    const result = validate(attrObj);
+    if (!result) {
       // TODO: Determine if an error should be thrown
       // console.log("WARNING - AttributeSet.addAttribute: AttributeObject is malformed. AddAttribute failed:");
       if (verbose) console.log(attrObj);

@@ -4,7 +4,7 @@ import axios from 'axios';
 import crc32 from 'buffer-crc32';
 import { v4 } from 'uuid';
 import { exportSPKI, importPKCS8, importX509 } from 'jose';
-import { AnyTdfStream, makeStream } from './client/tdf-stream.js';
+import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
 import { EntityObject } from '../../src/tdf/EntityObject.js';
 
 import {
@@ -571,7 +571,7 @@ export class TDF extends EventEmitter {
     isRcaSource: boolean,
     payloadKey?: Binary,
     progressHandler?: (bytesProcessed: number) => void
-  ): Promise<AnyTdfStream> {
+  ): Promise<DecoratedReadableStream> {
     if (!this.contentStream) {
       throw new IllegalArgumentError('No input stream defined');
     }
@@ -766,7 +766,7 @@ export class TDF extends EventEmitter {
       },
     };
 
-    const plaintextStream = makeStream(underlingSource);
+    const plaintextStream = new DecoratedReadableStream(underlingSource);
 
     if (upsertResponse) {
       plaintextStream.upsertResponse = upsertResponse;
@@ -1125,7 +1125,7 @@ export class TDF extends EventEmitter {
       ...(fileStreamServiceWorker && { fileStreamServiceWorker }),
     };
 
-    const outputStream = makeStream(underlyingSource);
+    const outputStream = new DecoratedReadableStream(underlyingSource);
 
     if (rcaParams && rcaParams.wu) {
       const res = await axios.head(rcaParams.wu);
