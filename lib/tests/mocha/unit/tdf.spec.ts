@@ -72,14 +72,14 @@ describe('TDF', () => {
 
   it('should fail on invalid cypher param', () => {
     try {
-      TDF.createCipher('nonexistent cypher');
+      TDF.create().createCipher('nonexistent cypher');
     } catch (e) {
       expect(e.message).to.include('nonexistent cypher');
     }
   });
 
   it('should return cypher', () => {
-    const cypher = TDF.createCipher('aes-256-gcm');
+    const cypher = TDF.create().createCipher('aes-256-gcm');
     expect(cypher instanceof AesGcmCipher).to.equal(true);
   });
 
@@ -98,7 +98,7 @@ describe('TDF', () => {
   });
 
   it('should ensure that policy id is uuid format', async () => {
-    const uuid = await TDF.generatePolicyUuid();
+    const uuid = await TDF.create().generatePolicyUuid();
     expect(uuid).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
   });
 });
