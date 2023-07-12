@@ -154,7 +154,7 @@ export class TDF extends EventEmitter {
 
   // factory
   static create(configuration?: TDFConfiguration) {
-    return new TDF(configuration?.cryptoService ? configuration : undefined);
+    return new TDF(configuration);
   }
 
   createCipher(type: string) {
