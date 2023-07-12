@@ -41,41 +41,6 @@ jobs:
           name: opentdf-client-lib
           path: ./lib/opentdf-client-*.tgz
 
-  cli:
-    needs:
-      - lib
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./cli
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: './cli/package-lock.json'
-      - uses: actions/download-artifact@v3
-        with:
-          name: opentdf-client-lib
-          path: lib/
-      - run: npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-*.tgz
-      - run: npm test
-      - run: npm audit --omit dev && npm audit --audit-level high
-      - run: npm run license-check
-      - run: npm run lint
-      - run: npm pack
-      - name: Setup BATS
-        uses: mig4/setup-bats@v1
-        with:
-          bats-version: 1.2.1
-      - run: bats bin/opentdf.bats
-      - uses: actions/upload-artifact@v3
-        with:
-          name: opentdf-cli
-          path: ./cli/opentdf-cli-*.tgz
-
   web-app:
     needs:
       - lib
@@ -123,7 +88,7 @@ jobs:
 
   backend-roundtrip:
     needs:
-      - cli
+      - web-app
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -140,10 +105,6 @@ jobs:
         with:
           name: opentdf-client-lib
           path: lib/
-      - uses: actions/download-artifact@v3
-        with:
-          name: opentdf-cli
-          path: cli
       - name: Git clone backend
         run: |
           git clone https://github.com/opentdf/opentdf.git
@@ -179,7 +140,7 @@ jobs:
           tilt ci --file opentdf/quickstart/Tiltfile
 
   deliver-ghp:
-    needs: [lib, cli, web-app, scripts]
+    needs: [lib, web-app, scripts, backend-roundtrip]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     # To publish from a release or feature branch, remove the ref == condition below
@@ -222,7 +183,6 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: echo "- [Client Library](https://github.com/opentdf/client-web/pkgs/npm/client)">>$GITHUB_STEP_SUMMARY
-      - run: echo "- [Command Line Tool](https://github.com/opentdf/client-web/pkgs/npm/cli)">>$GITHUB_STEP_SUMMARY
       - name: trigger xtest
         run: >-
           curl -XPOST
@@ -261,5 +221,4 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: echo "- [Client Library](https://www.npmjs.com/package/@opentdf/client/v/${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
-      - run: echo "- [Command Line Tool](https://www.npmjs.com/package/@opentdf/cli/v/${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
       - run: echo "- [unpkg](https://unpkg.com/browse/@opentdf/client@${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY

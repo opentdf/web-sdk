@@ -6,28 +6,11 @@ APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null && pwd)"
 ROOT_DIR="$(cd "${APP_DIR}/../../.." >/dev/null && pwd)"
 WEB_APP_DIR="$(cd "${ROOT_DIR}/web-app" >/dev/null && pwd)"
 
-APP="${APP_DIR}/encrypt-decrypt.sh"
-
-_configure_app() {
-  app_version=$(cd "${ROOT_DIR}/lib" && node -p "require('./package.json').version")
-  echo "installing opentdf-cli-${app_version}.tgz into ${APP_DIR}"
-  cd "${APP_DIR}" || exit 1
-  npm uninstall @opentdf/cli
-  if ! npm ci; then
-    echo "[ERROR] Couldn't ci roundtrip command line app"
-    return 1
-  fi
-  if ! npm i "../../../cli/opentdf-cli-${app_version}.tgz"; then
-    return 1
-  fi
-  return 0
-}
-
 _wait-for() {
   echo "[INFO] In retry loop for quickstarted opentdf backend..."
   limit=5
   for i in $(seq 1 $limit); do
-    if "${APP}"; then
+    if curl --show-error --fail --insecure http://localhost:65432/api/kas; then
       return 0
     fi
     if [[ $i == "$limit" ]]; then
