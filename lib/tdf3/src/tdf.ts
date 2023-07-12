@@ -136,11 +136,11 @@ export class TDF extends EventEmitter {
   chunkMap: Map<string, Chunk>;
   cryptoService: CryptoService<CryptoKeyPair>;
 
-  constructor() {
+  constructor({ cryptoService } : { cryptoService?: CryptoService }) {
     super();
 
     this.attributeSet = new AttributeSet();
-    this.cryptoService = defaultCryptoService;
+    this.cryptoService = cryptoService ?? defaultCryptoService;
     this.publicKey = '';
     this.privateKey = '';
     this.integrityAlgorithm = 'HS256';
