@@ -20,7 +20,7 @@ import {
   Wrapped as KeyAccessWrapped,
 } from './models/index.js';
 import { base64 } from '../../src/encodings/index.js';
-import * as cryptoService from './crypto/index.js';
+import * as defaultCryptoService from './crypto/index.js';
 import {
   base64ToBuffer,
   fromUrl,
@@ -55,7 +55,7 @@ import {
   reqSignature,
 } from '../../src/auth/auth.js';
 import PolicyObject from '../../src/tdf/PolicyObject.js';
-import { DecryptResult } from './crypto/declarations.js';
+import { type CryptoService, type DecryptResult } from './crypto/declarations.js';
 import { CentralDirectory } from './utils/zip-reader.js';
 
 // TODO: input validation on manifest JSON
@@ -118,6 +118,10 @@ type Chunk = {
   _resolve?: (value: unknown) => void;
 };
 
+type TDFConfiguration = {
+  cryptoService?: CryptoService;
+};
+
 export class TDF extends EventEmitter {
   policy?: Policy;
   mimeType?: string;
@@ -134,11 +138,13 @@ export class TDF extends EventEmitter {
   attributeSet: AttributeSet;
   segmentSizeDefault: number;
   chunkMap: Map<string, Chunk>;
+  cryptoService: CryptoService<CryptoKeyPair>;
 
-  constructor() {
+  constructor(configuration?: TDFConfiguration) {
     super();
 
     this.attributeSet = new AttributeSet();
+    this.cryptoService = configuration?.cryptoService ?? defaultCryptoService;
     this.publicKey = '';
     this.privateKey = '';
     this.integrityAlgorithm = 'HS256';
@@ -147,18 +153,18 @@ export class TDF extends EventEmitter {
   }
 
   // factory
-  static create() {
-    return new TDF();
+  static create(configuration?: TDFConfiguration) {
+    return new TDF(configuration);
   }
 
-  static createCipher(type: string) {
+  createCipher(type: string) {
     if (type === 'aes-256-gcm') {
-      return new AesGcmCipher(cryptoService);
+      return new AesGcmCipher(this.cryptoService);
     }
     throw new Error(`Unsupported cipher [${type}]`);
   }
 
-  static async generatePolicyUuid() {
+  async generatePolicyUuid() {
     return v4();
   }
 
@@ -281,7 +287,7 @@ export class TDF extends EventEmitter {
     switch (opts.type) {
       case 'split':
       default:
-        this.encryptionInformation = new SplitKey(TDF.createCipher(opts.cipher || 'aes-256-gcm'));
+        this.encryptionInformation = new SplitKey(this.createCipher(opts.cipher ?? 'aes-256-gcm'));
         break;
     }
     return this;
@@ -466,7 +472,7 @@ export class TDF extends EventEmitter {
         return payloadBinary.asBuffer().slice(-16).toString('hex');
       case 'hs256':
         // simple hmac is the default
-        return await cryptoService.hmac(
+        return await this.cryptoService.hmac(
           unwrappedKeyBinary.asBuffer().toString('hex'),
           payloadBinary.asBuffer().toString()
         );
@@ -882,7 +888,7 @@ export class TDF extends EventEmitter {
           } = await axios.post(httpReq.url, httpReq.body, { headers: httpReq.headers });
           responseMetadata = metadata;
           const key = Binary.fromString(base64.decode(entityWrappedKey));
-          const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(
+          const decryptedKeyBinary = await this.cryptoService.decryptWithPrivateKey(
             key,
             this.privateKey
           );
@@ -915,7 +921,7 @@ export class TDF extends EventEmitter {
       this.manifest.encryptionInformation.integrityInformation.rootSignature.alg;
     const segmentIntegrityAlgorithmType =
       this.manifest.encryptionInformation.integrityInformation.segmentHashAlg;
-    const cipher = TDF.createCipher(
+    const cipher = this.createCipher(
       this.manifest.encryptionInformation.method.algorithm.toLowerCase()
     );
 
@@ -1023,7 +1029,7 @@ export class TDF extends EventEmitter {
 
     if (rcaParams && rcaParams.wk) {
       const { wk, al } = rcaParams;
-      this.encryptionInformation = new SplitKey(TDF.createCipher(al.toLowerCase()));
+      this.encryptionInformation = new SplitKey(this.createCipher(al.toLowerCase()));
       const kekPayload = Binary.fromBuffer(Buffer.from(wk, 'base64'));
       const decodedReconstructedKeyBinary = await this.encryptionInformation.decrypt(
         kekPayload.asBuffer(),

@@ -1,6 +1,6 @@
 {
   "name": "web-app",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "license": "BSD-3-Clause-Clear",
   "type": "module",
   "scripts": {
@@ -15,7 +15,7 @@
     "test:ui": "vite build && vitest --ui"
   },
   "dependencies": {
-    "@opentdf/client": "file:../lib/opentdf-client-1.0.1.tgz",
+    "@opentdf/client": "file:../lib/opentdf-client-1.1.0.tgz",
     "clsx": "^1.2.1",
     "native-file-system-adapter": "^3.0.0",
     "react": "^18.2.0",
@@ -27,19 +27,18 @@
     "@types/react": "^18.2.14",
     "@types/react-dom": "^18.2.6",
     "@types/wicg-file-system-access": "^2020.9.6",
-    "@typescript-eslint/eslint-plugin": "^5.60.1",
-    "@typescript-eslint/parser": "^5.60.1",
-    "@vitejs/plugin-react": "^4.0.1",
-    "@vitest/ui": "^0.32.2",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "@vitejs/plugin-react": "^4.0.3",
+    "@vitest/ui": "^0.33.0",
     "buffer": "^6.0.3",
-    "eslint": "^8.43.0",
+    "eslint": "^8.44.0",
     "eslint-config-prettier": "^8.8.0",
-    "eslint-plugin-prettier": "^4.2.1",
     "license-checker": "^25.0.1",
     "playwright": "^1.35.1",
-    "prettier": "^2.8.8",
+    "prettier": "^3.0.0",
     "typescript": "^5.1.6",
-    "vite": "^4.3.9",
-    "vitest": "^0.32.2"
+    "vite": "^4.4.2",
+    "vitest": "^0.33.0"
   }
 }

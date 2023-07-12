@@ -1,8 +1,6 @@
 import { afterAll, beforeAll, describe, test } from 'vitest';
-import { preview } from 'vite';
-import type { PreviewServer } from 'vite';
-import { chromium } from 'playwright';
-import type { Browser, Page } from 'playwright';
+import { preview, type PreviewServer } from 'vite';
+import { chromium, type Browser, type Page } from 'playwright';
 import { expect } from '@playwright/test';
 
 describe('basic', () => {

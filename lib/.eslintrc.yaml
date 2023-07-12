@@ -2,7 +2,7 @@ env:
   browser: true
 extends:
   - plugin:@typescript-eslint/recommended
-  - plugin:prettier/recommended
+  - prettier
 overrides:
   - files:
       - '*.spec.ts'

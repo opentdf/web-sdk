@@ -1,6 +1,6 @@
 
-version=1.0.1
-pkgs=lib cli web-app
+version=1.1.0
+pkgs=lib web-app
 
 .PHONY: all audit license-check lint test ci i start format clean
 
@@ -14,16 +14,13 @@ clean:
 	rm -rf */node_modules
 
 ci: lib/opentdf-client-$(version).tgz
-	for x in cli web-app; do (cd $$x && npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-$(version).tgz) || exit 1; done
+	for x in web-app; do (cd $$x && npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-$(version).tgz) || exit 1; done
 
 i:
 	(cd lib && npm i && npm pack)
-	for x in cli web-app; do (cd $$x && npm uninstall @opentdf/client && npm i && npm i ../lib/opentdf-client-$(version).tgz) || exit 1; done
+	for x in web-app; do (cd $$x && npm uninstall @opentdf/client && npm i && npm i ../lib/opentdf-client-$(version).tgz) || exit 1; done
 
-all: ci lib/opentdf-client-$(version).tgz cli/opentdf-cli-$(version).tgz web-app/opentdf-web-app-$(version).tgz
-
-cli/opentdf-cli-$(version).tgz: lib/opentdf-client-$(version).tgz $(shell find cli -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
-	(cd cli && npm ci ../lib/opentdf-client-$(version).tgz && npm pack)
+all: ci lib/opentdf-client-$(version).tgz web-app/opentdf-web-app-$(version).tgz
 
 web-app/opentdf-web-app-$(version).tgz: lib/opentdf-client-$(version).tgz $(shell find web-app -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
 	(cd web-app && npm ci ../lib/opentdf-client-$(version).tgz && npm pack)
@@ -36,6 +33,9 @@ dist: lib/opentdf-client-$(version).tgz
 
 audit:
 	for x in $(pkgs); do (cd $$x && npm audit --omit=dev) || exit 1; done
+
+audit-fix:
+	for x in $(pkgs); do (cd $$x && npm audit fix) || exit 1; done
 
 format license-check lint test: ci
 	for x in $(pkgs); do (cd $$x && npm run $@) || exit 1; done

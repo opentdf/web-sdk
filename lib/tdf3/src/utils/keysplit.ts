@@ -1,4 +1,4 @@
-import { randomBytes } from '../crypto/index.js';
+import { type CryptoService } from '../crypto/declarations.js';
 
 export function bxor(b1: Uint8Array, b2: Uint8Array): Uint8Array {
   const result = new Uint8Array(b1.length);
@@ -16,7 +16,7 @@ export function bxor(b1: Uint8Array, b2: Uint8Array): Uint8Array {
  * @param n The number of entries to split across
  * @returns `n` entries of `length(key)` size
  */
-export function keySplit(key: Uint8Array, n = 1): Uint8Array[] {
+export function keySplit(key: Uint8Array, n: number, cryptoService: CryptoService): Uint8Array[] {
   if (!(key instanceof Uint8Array)) {
     throw Error('ERROR in keySplit - key is not an unsigned byte array');
   }
@@ -28,7 +28,7 @@ export function keySplit(key: Uint8Array, n = 1): Uint8Array[] {
   let currKey = key;
   // https://en.wikipedia.org/wiki/Secret_sharing#t_=_n
   for (let i = 1; i < n; i++) {
-    const shareI = randomBytes(keyLength);
+    const shareI = cryptoService.randomBytes(keyLength);
     currKey = bxor(shareI, currKey);
     splits.push(shareI);
   }

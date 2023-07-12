@@ -117,7 +117,7 @@ Uses the manifest to rewrap the policy key split. Calls a KAS.
 
 +++++++++++ Could be utilities? +++++++++++
 
-#### static createCipher(type)
+#### createCipher(type)
 
 Returns an AES-GCM crypto service
 
