@@ -6,6 +6,9 @@ APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null && pwd)"
 ROOT_DIR="$(cd "${APP_DIR}/../../.." >/dev/null && pwd)"
 WEB_APP_DIR="$(cd "${ROOT_DIR}/web-app" >/dev/null && pwd)"
 
+app_version=$(cd "${ROOT_DIR}/lib" && node -p "require('./package.json').version")
+echo "[INFO] App version: ${app_version}"
+
 _wait-for() {
   echo "[INFO] In retry loop for quickstarted opentdf backend..."
   limit=5
