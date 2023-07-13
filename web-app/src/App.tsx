@@ -159,7 +159,7 @@ function randomArrayBuffer({ length }: RandomInputSource): ArrayBuffer {
 
 function randomChunker({ length }: RandomInputSource): Chunker {
   const maxChunkSize = 2 ** 20;
-  return (byteStart?: number, byteEnd?: number) => {
+  return async (byteStart?: number, byteEnd?: number) => {
     if (!byteStart) {
       byteStart = 0;
     } else if (byteStart < 0) {
@@ -182,11 +182,11 @@ function randomChunker({ length }: RandomInputSource): Chunker {
       throw new Error();
     }
     if (!width) {
-      return Promise.resolve(value);
+      return value;
     }
     // TODO use a seedable PRNG to make this make sense.
     crypto.getRandomValues(value);
-    return Promise.resolve(value);
+    return value;
   };
 }
 

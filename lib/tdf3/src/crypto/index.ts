@@ -146,11 +146,11 @@ export async function randomBytes(byteLength: number): Promise<Uint8Array> {
  *
  * @returns The hex string.
  */
-export function randomBytesAsHex(length: number): Promise<string> {
+export async function randomBytesAsHex(length: number): Promise<string> {
   // Create a typed array of the correct length to fill
   const r = new Uint8Array(length);
   crypto.getRandomValues(r);
-  return Promise.resolve(hexEncode(r.buffer));
+  return hexEncode(r.buffer);
 }
 
 /**
