@@ -6,7 +6,7 @@ import {
   type DecryptResult,
   type EncryptResult,
   type PemKeyPair,
-} from 'tdf3/index-web.js';
+} from 'tdf3/index.js';
 import { Client } from '../../../tdf3/src/client/index.js';
 
 describe('CryptoService DI', () => {
@@ -43,10 +43,10 @@ describe('CryptoService DI', () => {
       encryptWithPublicKey: function (payload: Binary, publicKey: string): Promise<Binary> {
         throw new Error('Function not implemented.');
       },
-      generateInitializationVector: function (length: number): string {
+      generateInitializationVector: function (length?: number): Promise<string> {
         throw new Error('Function not implemented.');
       },
-      generateKey: function (length: number): string {
+      generateKey: function (length?: number): Promise<string> {
         throw new Error('Function not implemented.');
       },
       generateKeyPair: function (size?: number | undefined): Promise<CryptoKeyPair> {
@@ -55,7 +55,7 @@ describe('CryptoService DI', () => {
       hmac: function (key: string, content: string): Promise<string> {
         throw new Error('Function not implemented.');
       },
-      randomBytes: function (byteLength: number): Uint8Array {
+      randomBytes: function (byteLength: number): Promise<Uint8Array> {
         throw new Error('Function not implemented.');
       },
       sha256: function (content: string): Promise<string> {

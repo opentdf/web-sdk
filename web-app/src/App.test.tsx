@@ -24,7 +24,7 @@ describe('basic', () => {
   test('starts logged out', async () => {
     await page.goto('http://localhost:3000');
     const sessionState = page.locator('#sessionState');
-    expect(sessionState).toHaveText('start');
+    await expect(sessionState).toContainText('start');
   }, 60_000);
 
   test('file upload check', async () => {

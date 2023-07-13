@@ -1,6 +1,6 @@
 import { type JWTHeaderParameters, type JWTPayload, type KeyLike, SignJWT } from 'jose';
 
-export type Method =
+export type HttpMethod =
   | 'GET'
   | 'HEAD'
   | 'POST'
@@ -17,7 +17,7 @@ export type Method =
 export class HttpRequest {
   headers: Record<string, string>;
 
-  method: Method;
+  method: HttpMethod;
 
   params?: object;
 

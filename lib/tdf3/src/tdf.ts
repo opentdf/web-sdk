@@ -51,7 +51,7 @@ import {
   AuthProvider,
   AppIdAuthProvider,
   HttpRequest,
-  Method,
+  type HttpMethod,
   reqSignature,
 } from '../../src/auth/auth.js';
 import PolicyObject from '../../src/tdf/PolicyObject.js';
@@ -492,7 +492,7 @@ export class TDF extends EventEmitter {
     }
   }
 
-  buildRequest(method: Method, url: string, body: unknown): HttpRequest {
+  buildRequest(method: HttpMethod, url: string, body?: unknown): HttpRequest {
     return {
       headers: {},
       method: method,

@@ -56,7 +56,7 @@ export class SplitKey {
   }
 
   async generateKey(): Promise<KeyInfo> {
-    const unwrappedKey = this.cipher.generateKey();
+    const unwrappedKey = await this.cipher.generateKey();
     const unwrappedKeyBinary = Binary.fromString(hex.decode(unwrappedKey));
     const unwrappedKeyIvBinary = await this.generateIvBinary();
     return { unwrappedKeyBinary, unwrappedKeyIvBinary };
@@ -76,7 +76,7 @@ export class SplitKey {
   }
 
   async getKeyAccessObjects(policy: Policy, keyInfo: KeyInfo): Promise<KeyAccessObject[]> {
-    const unwrappedKeySplitBuffers = keySplit(
+    const unwrappedKeySplitBuffers = await keySplit(
       keyInfo.unwrappedKeyBinary.asBuffer(),
       this.keyAccess.length,
       this.cryptoService

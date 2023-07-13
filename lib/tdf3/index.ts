@@ -21,7 +21,7 @@ import {
   SplitKey,
   type EncryptionInformation,
 } from './src/models/encryption-information.js';
-import { AuthProvider, AppIdAuthProvider, HttpRequest } from '../src/auth/auth.js';
+import { AuthProvider, AppIdAuthProvider, type HttpMethod, HttpRequest } from '../src/auth/auth.js';
 import {
   NanoTDFClient,
   NanoTDFDatasetClient,
@@ -29,7 +29,7 @@ import {
   version,
   clientType,
 } from '../src/index.js';
-import { type AlgorithmName, type AlgorithmUrn } from './src/ciphers/algorithms.js';
+import { Algorithms, type AlgorithmName, type AlgorithmUrn } from './src/ciphers/algorithms.js';
 
 window.TDF = TDF;
 
@@ -39,10 +39,12 @@ export type {
   CryptoService,
   DecryptResult,
   EncryptResult,
+  HttpMethod,
   PemKeyPair,
 };
 
 export {
+  Algorithms,
   AppIdAuthProvider,
   AuthProvider,
   AuthProviders,
