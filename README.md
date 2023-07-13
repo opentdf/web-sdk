@@ -28,28 +28,6 @@ Start a local, blank cluster. See [Integrate](https://github.com/opentdf/opentdf
   const cipherText = await client.encrypt(plainText);
   const clearText = await client.decrypt(cipherText);
 ```
-For files:
-```typescript
-  // currently we support only ESM import
-  import { FileClient } from '@opentdf/client';
-
-  // for file Encryption
-  const fileClient = new FileClient(
-    { ...oidcCredentials, kasEndpoint }, ['userWeGrantAccessTo']
-  );
-
-  const cipherStream = await fileClient.encrypt('originalFile.jpeg');
-  await cipherStream.toFile('encryptedFile.tdf');
-
-  const fromReadStream = await fileClient.decrypt(fs.createReadStream('encryptedFile.tdf'));
-  await fromReadStream.toFile('decryptedFile.jpeg')
-```
-
-FileClient encrypt/decrypt supports [Webstream](https://streams.spec.whatwg.org/#rs-model),
-[Node stream](https://nodejs.org/api/stream.html#readable-streams),
-[Buffer](https://nodejs.org/dist/latest-v18.x/docs/api/buffer.html),
-[Array Buffer](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer),
-String (as path to file).
 ### Examples
 
 Review examples to see how to integrate. See [Examples](https://github.com/opentdf/opentdf/tree/main/examples)
