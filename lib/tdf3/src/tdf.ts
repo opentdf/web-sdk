@@ -114,8 +114,9 @@ type Chunk = {
   hash: string;
   encryptedOffset: number;
   encryptedSegmentSize?: number;
-  decryptedChunk: null | DecryptResult;
-  _resolve?: (value: unknown) => void;
+  decryptedChunkPromise: Promise<DecryptResult>;
+  decryptedChunk?: DecryptResult;
+  setDecryptedChunk(chunk: DecryptResult): void;
 };
 
 type TDFConfiguration = {
@@ -933,71 +934,61 @@ export class TDF extends EventEmitter {
     if (hash !== base64.encode(segmentHashStr)) {
       throw new ManifestIntegrityError('Failed integrity check on segment hash');
     }
-    const decryptedChunk = await cipher.decrypt(encryptedChunk, reconstructedKeyBinary);
-    const chunkMapElement = this.chunkMap.get(hash);
-    if (chunkMapElement) {
-      chunkMapElement.decryptedChunk = decryptedChunk;
-    }
+    this.chunkMap.get(hash)?.setDecryptedChunk(await cipher.decrypt(encryptedChunk, reconstructedKeyBinary))
   }
 
   async updateChunkQueue(
-    chunkMap: Chunk[],
     centralDirectory: CentralDirectory[],
     zipReader: ZipReader,
     reconstructedKeyBinary: Binary
   ) {
     const requestsInParallelCount = 100;
-    let requests = [];
-    const maxLength = 3;
-
-    for (let i = 0; i < chunkMap.length; i += requestsInParallelCount) {
-      if (requests.length === maxLength) {
-        await Promise.all(requests);
-        requests = [];
+    // let requests = [];
+    // const maxLength = 3;
+    let chunksArr: Chunk[] | null = Array.from(this.chunkMap.values())
+    for (let i = 0; i < chunksArr.length; i += requestsInParallelCount) {
+      try {
+        let slice: Chunk[] | null = chunksArr.slice(i, i + requestsInParallelCount);
+        const bufferSize = slice.reduce(
+          (currentVal, { encryptedSegmentSize }) =>
+            currentVal + (encryptedSegmentSize as number),
+          0
+        );
+        let buffer: Buffer | null = await zipReader.getPayloadSegment(
+          centralDirectory,
+          '0.payload',
+          slice[0].encryptedOffset,
+          bufferSize
+        );
+        for (const index in slice) {
+          const { encryptedOffset, encryptedSegmentSize } = slice[index];
+          const offset =
+            slice[0].encryptedOffset === 0
+              ? encryptedOffset
+              : encryptedOffset % slice[0].encryptedOffset;
+          const limit = offset + (encryptedSegmentSize as number);
+          let subarray: Buffer | null = (buffer as Buffer).subarray(offset, limit)
+          this.decryptChunk((subarray as Buffer), reconstructedKeyBinary, slice[index]['hash']).catch(
+            (e) => {
+              throw new TdfDecryptError(
+                'Error decrypting payload. This suggests the key used to decrypt the payload is not correct.',
+                e
+              );
+            }
+          );
+          subarray = null;
+        }
+        buffer = null;
+        slice = null;
+      } catch (e) {
+        throw new TdfDecryptError(
+          'Error decrypting payload. This suggests the key used to decrypt the payload is not correct.',
+          e
+        );
       }
-      requests.push(
-        (async () => {
-          try {
-            const slice = chunkMap.slice(i, i + requestsInParallelCount);
-            const bufferSize = slice.reduce(
-              (currentVal, { encryptedSegmentSize }) =>
-                currentVal + (encryptedSegmentSize as number),
-              0
-            );
-            let buffer: Buffer | null = await zipReader.getPayloadSegment(
-              centralDirectory,
-              '0.payload',
-              slice[0].encryptedOffset,
-              bufferSize
-            );
-            slice.forEach(({ encryptedOffset, encryptedSegmentSize }, index) => {
-              const offset =
-                slice[0].encryptedOffset === 0
-                  ? encryptedOffset
-                  : encryptedOffset % slice[0].encryptedOffset;
-              const encryptedChunk = (buffer as Buffer).subarray(
-                offset,
-                offset + (encryptedSegmentSize as number)
-              );
-              this.decryptChunk(encryptedChunk, reconstructedKeyBinary, slice[index]['hash']).catch(
-                (e) => {
-                  throw new TdfDecryptError(
-                    'Error decrypting payload. This suggests the key used to decrypt the payload is not correct.',
-                    e
-                  );
-                }
-              );
-            });
-            buffer = null;
-          } catch (e) {
-            throw new TdfDecryptError(
-              'Error decrypting payload. This suggests the key used to decrypt the payload is not correct.',
-              e
-            );
-          }
-        })()
-      );
     }
+
+    chunksArr = null;
   }
 
   /**
@@ -1055,47 +1046,31 @@ export class TDF extends EventEmitter {
     }
 
     let mapOfRequestsOffset = 0;
-    this.chunkMap = new Map(
-      segments.map(({ hash, encryptedSegmentSize = encryptedSegmentSizeDefault }) => {
-        const result = new Proxy(
-          {
-            hash,
-            encryptedOffset: mapOfRequestsOffset,
-            encryptedSegmentSize,
-            decryptedChunk: null,
+    this.chunkMap = new Map();
+    for (const i in segments) {
+      const { hash, encryptedSegmentSize = encryptedSegmentSizeDefault } = segments[i];
+      let resolve: (value: DecryptResult) => void;
+      const promise = new Promise((res) => {
+        resolve = res;
+      });
+
+      this.chunkMap.set(
+        hash,
+        ({
+          hash,
+          encryptedOffset: mapOfRequestsOffset,
+          encryptedSegmentSize,
+          decryptedChunkPromise: promise,
+          setDecryptedChunk(chunk: DecryptResult) {
+            this.decryptedChunk = chunk;
+            resolve(chunk);
           },
-          {
-            set: function (
-              obj: Chunk,
-              prop: keyof Chunk,
-              value: (value: unknown) => void | null | DecryptResult
-            ) {
-              if (prop === 'decryptedChunk' && obj._resolve) {
-                obj._resolve(value);
-              }
-              return Reflect.set(obj, prop, value);
-            },
-            get: function (obj: Chunk, prop) {
-              if (prop === 'decryptedChunk') {
-                return new Promise((resolve) => {
-                  if (obj.decryptedChunk) {
-                    resolve(obj.decryptedChunk);
-                  } else {
-                    obj._resolve = resolve;
-                  }
-                });
-              }
-              return obj[prop as keyof Chunk];
-            },
-          }
-        );
-        mapOfRequestsOffset += encryptedSegmentSize || encryptedSegmentSizeDefault;
-        return [hash, result];
-      })
-    );
+        } as Chunk)
+      );
+      mapOfRequestsOffset += encryptedSegmentSize || encryptedSegmentSizeDefault;
+    }
 
     this.updateChunkQueue(
-      Array.from(this.chunkMap.values()),
       centralDirectory,
       zipReader,
       reconstructedKeyBinary
@@ -1112,7 +1087,7 @@ export class TDF extends EventEmitter {
         }
 
         const [hash, chunk] = this.chunkMap.entries().next().value;
-        const decryptedSegment = await chunk.decryptedChunk;
+        const decryptedSegment = chunk.decryptedChunk || await chunk.decryptedChunkPromise;
 
         controller.enqueue(decryptedSegment.payload.asBuffer());
         progress += chunk.encryptedSegmentSize;

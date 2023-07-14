@@ -1,6 +1,6 @@
 {
   "name": "@opentdf/client",
-  "version": "1.1.0",
+  "version": "1.1.7",
   "description": "Access and generate tdf protected content",
   "homepage": "https://github.com/opentdf/client-web",
   "bugs": {
@@ -9,6 +9,8 @@
   "files": [
     "dist/*/src/**",
     "dist/*/tdf3/**",
+    "src/**",
+    "tdf3/**",
     "README.md"
   ],
   "repository": {
