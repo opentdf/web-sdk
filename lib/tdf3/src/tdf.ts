@@ -114,7 +114,7 @@ type Chunk = {
   hash: string;
   encryptedOffset: number;
   encryptedSegmentSize?: number;
-  decryptedChunk?: DecryptResult;
+  decryptedChunk?: null | DecryptResult;
   _resolve?: (value: unknown) => void;
 };
 
@@ -1057,17 +1057,15 @@ export class TDF extends EventEmitter {
     }
 
     let mapOfRequestsOffset = 0;
-    this.chunkMap = new Map();
-    for (const i in segments) {
-      const { hash, encryptedSegmentSize = encryptedSegmentSizeDefault } = segments[i];
-
-      this.chunkMap.set(hash, {
+    this.chunkMap = new Map(segments.map(({ hash, encryptedSegmentSize = encryptedSegmentSizeDefault }) => {
+      const result = ({
         hash,
         encryptedOffset: mapOfRequestsOffset,
         encryptedSegmentSize,
       } as Chunk);
       mapOfRequestsOffset += encryptedSegmentSize || encryptedSegmentSizeDefault;
-    }
+      return [hash, result];
+    }));
 
     this.updateChunkQueue(
       Array.from(this.chunkMap.values()),
@@ -1100,7 +1098,7 @@ export class TDF extends EventEmitter {
           progressHandler(progress);
         }
 
-        delete chunk.decryptedChunk;
+        chunk.decryptedChunk = null;
         this.chunkMap.delete(hash);
       },
       ...(fileStreamServiceWorker && { fileStreamServiceWorker }),
