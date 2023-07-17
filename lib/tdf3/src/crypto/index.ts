@@ -85,7 +85,7 @@ export async function generateKeyPair(size?: number): Promise<CryptoKeyPair> {
 
 export async function cryptoToPemPair(keysMaybe: unknown): Promise<PemKeyPair> {
   const keys = keysMaybe as CryptoKeyPair;
-  if (!keys.publicKey || !keys.publicKey) {
+  if (!keys.privateKey || !keys.publicKey) {
     throw new Error('invalid');
   }
 
