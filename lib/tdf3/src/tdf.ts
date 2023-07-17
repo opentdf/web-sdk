@@ -114,9 +114,8 @@ type Chunk = {
   hash: string;
   encryptedOffset: number;
   encryptedSegmentSize?: number;
-  decryptedChunkPromise: Promise<DecryptResult>;
   decryptedChunk?: DecryptResult;
-  setDecryptedChunk(chunk: DecryptResult): void;
+  _resolve?: (value: unknown) => void;
 };
 
 type TDFConfiguration = {
@@ -934,7 +933,7 @@ export class TDF extends EventEmitter {
     if (hash !== base64.encode(segmentHashStr)) {
       throw new ManifestIntegrityError('Failed integrity check on segment hash');
     }
-    this.chunkMap.get(hash)?.setDecryptedChunk(await cipher.decrypt(encryptedChunk, reconstructedKeyBinary))
+    return await cipher.decrypt(encryptedChunk, reconstructedKeyBinary);
   }
 
   async updateChunkQueue(
@@ -968,14 +967,11 @@ export class TDF extends EventEmitter {
               : encryptedOffset % slice[0].encryptedOffset;
           const limit = offset + (encryptedSegmentSize as number);
           let subarray: Buffer | null = (buffer as Buffer).subarray(offset, limit)
-          this.decryptChunk((subarray as Buffer), reconstructedKeyBinary, slice[index]['hash']).catch(
-            (e) => {
-              throw new TdfDecryptError(
-                'Error decrypting payload. This suggests the key used to decrypt the payload is not correct.',
-                e
-              );
-            }
-          );
+          slice[index].decryptedChunk = await this.decryptChunk((subarray as Buffer), reconstructedKeyBinary, slice[index]['hash']) as DecryptResult;
+          if (slice[index]._resolve) {
+            // @ts-ignore
+            slice[index]._resolve(null);
+          }
           subarray = null;
         }
         buffer = null;
@@ -1049,10 +1045,6 @@ export class TDF extends EventEmitter {
     this.chunkMap = new Map();
     for (const i in segments) {
       const { hash, encryptedSegmentSize = encryptedSegmentSizeDefault } = segments[i];
-      let resolve: (value: DecryptResult) => void;
-      const promise = new Promise((res) => {
-        resolve = res;
-      });
 
       this.chunkMap.set(
         hash,
@@ -1060,11 +1052,6 @@ export class TDF extends EventEmitter {
           hash,
           encryptedOffset: mapOfRequestsOffset,
           encryptedSegmentSize,
-          decryptedChunkPromise: promise,
-          setDecryptedChunk(chunk: DecryptResult) {
-            this.decryptedChunk = chunk;
-            resolve(chunk);
-          },
         } as Chunk)
       );
       mapOfRequestsOffset += encryptedSegmentSize || encryptedSegmentSizeDefault;
@@ -1087,7 +1074,12 @@ export class TDF extends EventEmitter {
         }
 
         const [hash, chunk] = this.chunkMap.entries().next().value;
-        const decryptedSegment = chunk.decryptedChunk || await chunk.decryptedChunkPromise;
+        if (!chunk.decryptedChunk) {
+          await new Promise((resolve) => {
+            chunk._resolve = resolve;
+          })
+        }
+        const decryptedSegment = chunk.decryptedChunk;
 
         controller.enqueue(decryptedSegment.payload.asBuffer());
         progress += chunk.encryptedSegmentSize;
@@ -1095,6 +1087,7 @@ export class TDF extends EventEmitter {
           progressHandler(progress);
         }
 
+        delete chunk.decryptedChunk;
         this.chunkMap.delete(hash);
       },
       ...(fileStreamServiceWorker && { fileStreamServiceWorker }),
