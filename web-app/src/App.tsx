@@ -3,7 +3,7 @@ import { useState, useEffect, type ChangeEvent } from 'react';
 import { showSaveFilePicker } from 'native-file-system-adapter';
 import './App.css';
 import {
-  Client as Tdf3Client,
+  TDF3Client,
   type DecryptSource,
   NanoTDFClient,
   AuthProviders,
@@ -379,7 +379,7 @@ function App() {
         break;
       }
       case 'html': {
-        const client = new Tdf3Client.Client({
+        const client = new TDF3Client({
           authProvider,
           kasEndpoint: 'http://localhost:65432/api/kas',
           readerUrl: 'https://secure.virtru.com/start?htmlProtocol=1',
@@ -447,7 +447,7 @@ function App() {
         break;
       }
       case 'tdf': {
-        const client = new Tdf3Client.Client({
+        const client = new TDF3Client({
           authProvider,
           kasEndpoint: 'http://localhost:65432/api/kas',
         });

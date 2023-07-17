@@ -35,20 +35,25 @@ To terminate the running kas: `npm stop`
 ### node.js
 
 ```js
-const { Client } = require("tdf3-js");
+const { TDF3Client } = require("@opentdf/client");
 
 (async function() {
-  const client = new Client.Client({
+  const client = new TDF3Client({
     clientId: "tdf-client",
     kasEndpoint: 'http://localhost/kas',
     clientSecret: 'someSecret',
     oidcOrigin: 'http://localhost/oidc',
   });
-  const encryptParams = new Client.EncryptParamsBuilder()
-    .withStringSource("Hello world") // could be also .withFileSource("img.jpg")
-    .withOffline() // online mode in todo
-    .build();
-  const ct = await client.encrypt(encryptParams);
+  const source = new ReadableStream({
+      pull(controller) {
+        controller.enqueue(new TextEncoder().encode(string));
+        controller.close();
+      },
+    });
+  const ct = await client.encrypt({
+    source,
+    offline: true,
+  });
   const ciphertext = await ct.toString(); // could be also ct.toFile('img.jpg.html')
   console.log(`ciphered text :${ciphertext}`);
 

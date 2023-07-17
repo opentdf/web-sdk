@@ -14,7 +14,7 @@ import {
   type EncryptResult,
   type PemKeyPair,
 } from './src/crypto/declarations.js';
-import { TDF, Client, Errors } from './src/index.js';
+import { Client, Errors, TDF, TDF3Client } from './src/index.js';
 import {
   type KeyInfo,
   SplitKey,
@@ -65,6 +65,7 @@ export {
   SessionKeys,
   SplitKey,
   TDF,
+  TDF3Client,
   clientType,
   createSessionKeys,
   version,
