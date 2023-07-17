@@ -913,7 +913,11 @@ export class TDF extends EventEmitter {
     };
   }
 
-  async decryptChunk(encryptedChunk: Buffer, reconstructedKeyBinary: Binary, hash: string): Promise<DecryptResult> {
+  async decryptChunk(
+    encryptedChunk: Buffer,
+    reconstructedKeyBinary: Binary,
+    hash: string
+  ): Promise<DecryptResult> {
     if (!this.manifest) {
       throw new Error('Missing manifest information');
     }
@@ -977,7 +981,11 @@ export class TDF extends EventEmitter {
                 offset,
                 offset + (encryptedSegmentSize as number)
               );
-              slice[index].decryptedChunk = await this.decryptChunk(encryptedChunk, reconstructedKeyBinary, slice[index]['hash']);
+              slice[index].decryptedChunk = await this.decryptChunk(
+                encryptedChunk,
+                reconstructedKeyBinary,
+                slice[index]['hash']
+              );
               if (slice[index]._resolve) {
                 (slice[index]._resolve as (value: unknown) => void)(null);
               }
@@ -1053,14 +1061,11 @@ export class TDF extends EventEmitter {
     for (const i in segments) {
       const { hash, encryptedSegmentSize = encryptedSegmentSizeDefault } = segments[i];
 
-      this.chunkMap.set(
+      this.chunkMap.set(hash, {
         hash,
-        ({
-          hash,
-          encryptedOffset: mapOfRequestsOffset,
-          encryptedSegmentSize,
-        } as Chunk)
-      );
+        encryptedOffset: mapOfRequestsOffset,
+        encryptedSegmentSize,
+      } as Chunk);
       mapOfRequestsOffset += encryptedSegmentSize || encryptedSegmentSizeDefault;
     }
 
@@ -1085,7 +1090,7 @@ export class TDF extends EventEmitter {
         if (!chunk.decryptedChunk) {
           await new Promise((resolve) => {
             chunk._resolve = resolve;
-          })
+          });
         }
         const decryptedSegment = chunk.decryptedChunk;
 
