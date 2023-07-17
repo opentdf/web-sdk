@@ -14,7 +14,7 @@ describe('CryptoService DI', () => {
     const cryptoService: CryptoService = {
       name: 'mock',
       method: 'http://www.w3.org/2001/04/xmlenc#aes256-cbc',
-      cryptoToPemPair: function (keys: CryptoKeyPair): Promise<PemKeyPair> {
+      cryptoToPemPair: function (keys: unknown): Promise<PemKeyPair> {
         throw new Error('Function not implemented.');
       },
       decrypt: function (

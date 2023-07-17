@@ -22,13 +22,13 @@ import {
 import { base64 } from '../../src/encodings/index.js';
 import * as defaultCryptoService from './crypto/index.js';
 import {
-  base64ToBuffer,
-  fromUrl,
-  keyMerge,
+  type Chunker,
   ZipReader,
   ZipWriter,
-  Chunker,
+  base64ToBuffer,
+  fromUrl,
   isAppIdProviderCheck,
+  keyMerge,
 } from './utils/index.js';
 import { Binary } from './binary.js';
 import {
