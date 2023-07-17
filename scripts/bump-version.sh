@@ -61,6 +61,11 @@ if ! scripts/check-version-is.sh "${new_version}"; then
   exit 1
 fi
 
+if ! make all; then
+  echo "Unable to bump package locks"
+  exit 2
+fi
+
 commit_message="🆙 ${new_version} ${increment_type} ${detail}"
 git checkout -b "feature/bump-${increment_type}-from-${old_version}-to-${new_version}"
 git add .
