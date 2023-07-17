@@ -2,12 +2,7 @@ import { clsx } from 'clsx';
 import { useState, useEffect, type ChangeEvent } from 'react';
 import { showSaveFilePicker } from 'native-file-system-adapter';
 import './App.css';
-import {
-  TDF3Client,
-  type DecryptSource,
-  NanoTDFClient,
-  AuthProviders,
-} from '@opentdf/client';
+import { TDF3Client, type DecryptSource, NanoTDFClient, AuthProviders } from '@opentdf/client';
 import { type SessionInformation, OidcClient } from './session.js';
 
 function decryptedFileName(encryptedFileName: string): string {
