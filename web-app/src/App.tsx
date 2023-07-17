@@ -2,12 +2,7 @@ import { clsx } from 'clsx';
 import { useState, useEffect, type ChangeEvent } from 'react';
 import { showSaveFilePicker } from 'native-file-system-adapter';
 import './App.css';
-import {
-  Client as Tdf3Client,
-  type DecryptSource,
-  NanoTDFClient,
-  AuthProviders,
-} from '@opentdf/client';
+import { TDF3Client, type DecryptSource, NanoTDFClient, AuthProviders } from '@opentdf/client';
 import { type SessionInformation, OidcClient } from './session.js';
 
 function decryptedFileName(encryptedFileName: string): string {
@@ -379,7 +374,7 @@ function App() {
         break;
       }
       case 'html': {
-        const client = new Tdf3Client.Client({
+        const client = new TDF3Client({
           authProvider,
           kasEndpoint: 'http://localhost:65432/api/kas',
           readerUrl: 'https://secure.virtru.com/start?htmlProtocol=1',
@@ -447,7 +442,7 @@ function App() {
         break;
       }
       case 'tdf': {
-        const client = new Tdf3Client.Client({
+        const client = new TDF3Client({
           authProvider,
           kasEndpoint: 'http://localhost:65432/api/kas',
         });
@@ -538,7 +533,7 @@ function App() {
     }
     switch (decryptContainerType) {
       case 'tdf': {
-        const client = new Tdf3Client.Client({
+        const client = new TDF3Client({
           authProvider,
           kasEndpoint: 'http://localhost:65432/api/kas',
         });
