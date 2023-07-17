@@ -1057,15 +1057,17 @@ export class TDF extends EventEmitter {
     }
 
     let mapOfRequestsOffset = 0;
-    this.chunkMap = new Map(segments.map(({ hash, encryptedSegmentSize = encryptedSegmentSizeDefault }) => {
-      const result = ({
-        hash,
-        encryptedOffset: mapOfRequestsOffset,
-        encryptedSegmentSize,
-      } as Chunk);
-      mapOfRequestsOffset += encryptedSegmentSize || encryptedSegmentSizeDefault;
-      return [hash, result];
-    }));
+    this.chunkMap = new Map(
+      segments.map(({ hash, encryptedSegmentSize = encryptedSegmentSizeDefault }) => {
+        const result = {
+          hash,
+          encryptedOffset: mapOfRequestsOffset,
+          encryptedSegmentSize,
+        } as Chunk;
+        mapOfRequestsOffset += encryptedSegmentSize || encryptedSegmentSizeDefault;
+        return [hash, result];
+      })
+    );
 
     this.updateChunkQueue(
       Array.from(this.chunkMap.values()),
