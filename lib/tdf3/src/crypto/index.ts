@@ -83,7 +83,12 @@ export async function generateKeyPair(size?: number): Promise<CryptoKeyPair> {
   return crypto.subtle.generateKey(algoDomString, true, METHODS);
 }
 
-export async function cryptoToPemPair(keys: CryptoKeyPair): Promise<PemKeyPair> {
+export async function cryptoToPemPair(keysMaybe: unknown): Promise<PemKeyPair> {
+  const keys = keysMaybe as CryptoKeyPair;
+  if (!keys.publicKey || !keys.publicKey) {
+    throw new Error('invalid');
+  }
+
   const [exPublic, exPrivate] = await Promise.all([
     crypto.subtle.exportKey('spki', keys.publicKey),
     crypto.subtle.exportKey('pkcs8', keys.privateKey),

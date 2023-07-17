@@ -32,7 +32,8 @@ export type CryptoService<PairT = CryptoKeyPair> = {
   /** Default algorithm identifier. */
   method: AlgorithmUrn;
 
-  cryptoToPemPair: (keys: PairT) => Promise<PemKeyPair>;
+  /** Convert from PairT to PemKeyPair */
+  cryptoToPemPair: (keys: unknown) => Promise<PemKeyPair>;
 
   /**
    * Try to decrypt content with the default or handed algorithm. Throws on
