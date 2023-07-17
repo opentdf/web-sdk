@@ -538,7 +538,7 @@ function App() {
     }
     switch (decryptContainerType) {
       case 'tdf': {
-        const client = new Tdf3Client.Client({
+        const client = new TDF3Client({
           authProvider,
           kasEndpoint: 'http://localhost:65432/api/kas',
         });
