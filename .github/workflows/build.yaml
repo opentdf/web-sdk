@@ -4,8 +4,8 @@ on:
   pull_request:
   push:
     branches:
-      - main
-      - release/[0-9]+.[0-9]+.[0-9]+
+      - feature/2591_sonar_reporting
+#      - release/[0-9]+.[0-9]+.[0-9]+
   release:
     types: [created]
 jobs:
