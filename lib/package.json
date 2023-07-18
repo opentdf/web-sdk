@@ -24,21 +24,24 @@
   "exports": {
     ".": {
       "types": "./dist/types/tdf3/index.d.ts",
+      "require": "./dist/cjs/tdf3/index.js",
       "import": "./dist/web/tdf3/index.js"
     },
     "./encodings": {
       "default": {
         "types": "./dist/types/src/encodings/index.d.ts",
+        "require": "./dist/cjs/src/encodings/index.js",
         "import": "./dist/web/src/encodings/index.js"
       }
     },
     "./nano": {
       "types": "./dist/types/src/index.d.ts",
+      "require": "./dist/cjs/src/index.js",
       "import": "./dist/web/src/index.js"
     }
   },
   "scripts": {
-    "build": "npm run clean && tsc",
+    "build": "npm run clean && tsc && tsc --project tsconfig.commonjs.json",
     "clean": "rm -rf {build,coverage,dist}",
     "coverage:merge": "for x in mocha wtr; do cp coverage/$x/coverage-final.json coverage/$x.json; done; nyc report --reporter text -t coverage --lines 75 --statements 75 --branches 70 --functions 65 --check-coverage >coverage/coverage.txt",
     "doc": "typedoc --out dist/docs src/index.ts",
