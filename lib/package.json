@@ -12,6 +12,7 @@
     "dist/*/*.json",
     "README.md"
   ],
+  "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/opentdf/client-web.git",
