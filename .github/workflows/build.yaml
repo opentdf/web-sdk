@@ -41,11 +41,10 @@ jobs:
           name: opentdf-client-lib
           path: ./lib/opentdf-client-*.tgz
       - name: SonarCloud Scan
-        if: ${{ ! github.event.pull_request.head.repo.fork && env.SONAR_TOKEN }}
         uses: SonarSource/sonarcloud-github-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_TOKEN: d65c701cffed49f8b398711d9522bbc0d241491a
 
   web-app:
     needs:
