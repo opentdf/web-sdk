@@ -32,7 +32,6 @@ export type EncryptionInformation = {
       alg: string;
       sig: string;
     };
-    readonly segmentHash: string;
     segmentHashAlg: string;
     segments: Segment[];
     segmentSizeDefault?: number;
@@ -153,7 +152,6 @@ export class SplitKey {
           sig: '',
         },
         segmentHashAlg: '',
-        segmentHash: '',
         segments: [],
       },
       policy: policyForManifest,
