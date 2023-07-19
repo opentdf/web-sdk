@@ -9,6 +9,7 @@
   "files": [
     "dist/*/src/**",
     "dist/*/tdf3/**",
+    "dist/*/*.json",
     "README.md"
   ],
   "repository": {
@@ -16,11 +17,10 @@
     "url": "git+https://github.com/opentdf/client-web.git",
     "directory": "lib"
   },
-  "type": "module",
-  "main": "./dist/web/tdf3/index.js",
   "license": "BSD-3-Clause-Clear",
   "author": "Virtru",
   "types": "./dist/types/tdf3/index.d.ts",
+  "main": "./dist/cjs/tdf3/index.js",
   "exports": {
     ".": {
       "types": "./dist/types/tdf3/index.d.ts",
@@ -41,8 +41,8 @@
     }
   },
   "scripts": {
-    "build": "npm run clean && tsc && tsc --project tsconfig.commonjs.json",
-    "clean": "rm -rf {build,coverage,dist}",
+    "build": "npm run clean && tsc && tsc --project tsconfig.commonjs.json && ../scripts/add-module-types.sh",
+    "clean": "rm -rf coverage dist/types dist/{web,cjs}/{src,tdf3,tests}",
     "coverage:merge": "for x in mocha wtr; do cp coverage/$x/coverage-final.json coverage/$x.json; done; nyc report --reporter text -t coverage --lines 75 --statements 75 --branches 70 --functions 65 --check-coverage >coverage/coverage.txt",
     "doc": "typedoc --out dist/docs src/index.ts",
     "format": "prettier --write \"{src,tdf3,tests}/**/*.ts\"",
