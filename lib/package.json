@@ -43,7 +43,7 @@
   "scripts": {
     "build": "npm run clean && tsc && tsc --project tsconfig.commonjs.json",
     "clean": "rm -rf {build,coverage,dist}",
-    "coverage:merge": "for x in mocha wtr; do cp coverage/$x/coverage-final.json coverage/$x.json; done; nyc report --reporter lcov -t coverage --lines 75 --statements 75 --branches 70 --functions 65 --check-coverage >coverage/coverage.txt",
+    "coverage:merge": "for x in mocha wtr; do cp coverage/$x/coverage-final.json coverage/$x.json; done; nyc report --reporter text --reporter lcov -t coverage --lines 75 --statements 75 --branches 70 --functions 65 --check-coverage >coverage/coverage.txt",
     "doc": "typedoc --out dist/docs src/index.ts",
     "format": "prettier --write \"{src,tdf3,tests}/**/*.ts\"",
     "license-check": "license-checker-rseidelsohn --production --onlyAllow 'Apache-2.0; BSD; CC-BY-4.0; ISC; MIT'",
