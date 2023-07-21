@@ -14,11 +14,12 @@ for f in {,tdf3/}src/version.ts; do
   fi
   mv "${f}.tmp" "${f}"
 done
-npm --no-git-tag-version --allow-same-version version "$v" --tag "$t"
-npm publish --access public
+npm version --no-git-tag-version --allow-same-version "$v"
+npm publish --access public --tag "$t"
 
+# Wait for npm publish to go through...
 sleep 5
 
 if [[ "$GITHUB_STEP_SUMMARY" ]]; then
-  echo "### Published ${v}" >>"$GITHUB_STEP_SUMMARY"
+  echo "### Published ${v} (${t})" >>"$GITHUB_STEP_SUMMARY"
 fi
