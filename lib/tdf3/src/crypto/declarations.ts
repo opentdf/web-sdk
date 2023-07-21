@@ -25,15 +25,17 @@ export type PemKeyPair = {
  */
 export const MIN_ASYMMETRIC_KEY_SIZE_BITS = 2048;
 
-export type CryptoService<PairT = CryptoKeyPair> = {
+export type AnyKeyPair = PemKeyPair | CryptoKeyPair;
+
+export type CryptoService = {
   /** Track which crypto implementation we are using */
   name: string;
 
   /** Default algorithm identifier. */
   method: AlgorithmUrn;
 
-  /** Convert from PairT to PemKeyPair */
-  cryptoToPemPair: (keys: unknown) => Promise<PemKeyPair>;
+  /** Convert or narrow from AnyKeyPair to PemKeyPair */
+  cryptoToPemPair: (keys: AnyKeyPair) => Promise<PemKeyPair>;
 
   /**
    * Try to decrypt content with the default or handed algorithm. Throws on
@@ -71,7 +73,7 @@ export type CryptoService<PairT = CryptoKeyPair> = {
    * Generate an RSA key pair
    * @param size in bits, defaults to a reasonable size for the default method
    */
-  generateKeyPair: (size?: number) => Promise<PairT>;
+  generateKeyPair: (size?: number) => Promise<AnyKeyPair>;
 
   /**
    * Create an HMAC SHA256 hash
