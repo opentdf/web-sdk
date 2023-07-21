@@ -1,7 +1,7 @@
 import { Buffer } from 'buffer';
 import { EventEmitter } from 'events';
 import axios from 'axios';
-import crc32 from 'buffer-crc32';
+import { unsigned } from './utils/buffer-crc32.js';
 import { v4 } from 'uuid';
 import { exportSPKI, importPKCS8, importX509 } from 'jose';
 import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
@@ -595,7 +595,7 @@ export class TDF extends EventEmitter {
       },
     ];
 
-    let currentBuffer = Buffer.alloc(0);
+    let currentBuffer = new Uint8Array();
 
     let totalByteCount = 0;
     let bytesProcessed = 0;
@@ -667,7 +667,10 @@ export class TDF extends EventEmitter {
           const { value, done } = await sourceReader.read();
           isDone = done;
           if (value) {
-            currentBuffer = Buffer.concat([currentBuffer, value]);
+            const temp = new Uint8Array(currentBuffer.length + value.byteLength);
+            temp.set(currentBuffer);
+            temp.set(new Uint8Array(value), currentBuffer.length);
+            currentBuffer = temp;
           }
         }
 
@@ -688,7 +691,7 @@ export class TDF extends EventEmitter {
         if (isFinalChunkLeft) {
           const encryptedSegment = await _encryptAndCountSegment(currentBuffer);
           controller.enqueue(encryptedSegment);
-          currentBuffer = Buffer.alloc(0);
+          currentBuffer = new Uint8Array();
         }
 
         if (isDone && currentBuffer.length === 0) {
@@ -782,23 +785,27 @@ export class TDF extends EventEmitter {
       return zipWriter.getLocalFileHeader(filename, 0, 0, 0);
     }
 
-    function _countChunk(chunk: string | Buffer) {
+    function _countChunk(chunk: string | Uint8Array) {
+      if (typeof chunk === 'string'){
+        chunk = new TextEncoder().encode(chunk);
+      }
       totalByteCount += chunk.length;
       if (totalByteCount > byteLimit) {
         throw new Error(`Safe byte limit (${byteLimit}) exceeded`);
       }
-      crcCounter = crc32.unsigned(chunk, crcCounter);
+      //new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength);
+      crcCounter = unsigned((chunk as Uint8Array), crcCounter);
       fileByteCount += chunk.length;
     }
 
-    async function _encryptAndCountSegment(chunk: Buffer) {
+    async function _encryptAndCountSegment(chunk: Uint8Array) {
       bytesProcessed += chunk.length;
       if (progressHandler) {
         progressHandler(bytesProcessed);
       }
       // Don't pass in an IV here. The encrypt function will generate one for you, ensuring that each segment has a unique IV.
       const encryptedResult = await encryptionInformation.encrypt(
-        Binary.fromBuffer(chunk),
+        Binary.fromArrayBuffer(chunk.buffer),
         payloadKey || keyInfo.unwrappedKeyBinary
       );
       const payloadBuffer = encryptedResult.payload.asBuffer();
@@ -817,7 +824,7 @@ export class TDF extends EventEmitter {
         encryptedSegmentSize:
           payloadBuffer.length === encryptedSegmentSizeDefault ? undefined : payloadBuffer.length,
       });
-      const result = encryptedResult.payload.asBuffer();
+      const result = new Uint8Array(encryptedResult.payload.asByteArray());
       _countChunk(result);
 
       return result;

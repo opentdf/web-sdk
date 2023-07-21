@@ -137,6 +137,8 @@ class BufferBinary extends Binary {
 
   override asArrayBuffer(): ArrayBuffer {
     if (this.value.buffer) {
+      // client-web/lib/tdf3/src/tdf.ts _encryptAndCountSegment new Uint8Array(encryptedResult.payload.asArrayBuffer())
+      // causing error of encryption
       return this.value.buffer.slice(
         this.value.byteOffset,
         this.value.byteOffset + this.value.byteLength
