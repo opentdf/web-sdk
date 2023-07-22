@@ -72,3 +72,5 @@ export {
   createSessionKeys,
   version,
 };
+
+export * as WebCryptoService from './src/crypto/index.js';
