@@ -67,7 +67,7 @@ describe('TDF', () => {
     const wrapped = TDF.wrapHtml(cipherText, JSON.stringify({ thisIs: 'metadata' }), transferUrl);
     expect(TDF.unwrapHtml(wrapped)).to.eql(cipherText);
     expect(TDF.unwrapHtml(wrapped.buffer)).to.eql(cipherText);
-    expect(TDF.unwrapHtml(wrapped.toString('utf-8'))).to.eql(cipherText);
+    expect(TDF.unwrapHtml(wrapped.toString())).to.eql(cipherText);
   });
 
   it('should fail on invalid cypher param', () => {

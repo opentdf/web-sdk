@@ -175,7 +175,7 @@ export class TDF extends EventEmitter {
    * @param {String} transferUrl
    * @return {Buffer}
    */
-  static wrapHtml(payload: Buffer, manifest: Manifest | string, transferUrl: string): Buffer {
+  static wrapHtml(payload: Uint8Array, manifest: Manifest | string, transferUrl: string): Uint8Array {
     const { origin } = new URL(transferUrl);
     const exportManifest: string =
       typeof manifest === 'string' ? manifest : JSON.stringify(manifest);
@@ -184,10 +184,10 @@ export class TDF extends EventEmitter {
       transferUrl,
       transferBaseUrl: origin,
       manifest: base64.encode(exportManifest),
-      payload: payload.toString('base64'),
+      payload: base64.encodeArrayBuffer(payload.buffer),
     });
 
-    return Buffer.from(fullHtmlString);
+    return (new TextEncoder()).encode(fullHtmlString);
   }
 
   static unwrapHtml(htmlPayload: ArrayBuffer | Uint8Array | Binary | string) {
