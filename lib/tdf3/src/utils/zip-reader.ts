@@ -1,6 +1,7 @@
 import { Buffer } from 'buffer';
 import { Manifest } from '../models/index.js';
 import { Chunker } from './chunkers.js';
+import { readUInt32LE } from './index.js';
 
 // TODO: Better document what these constants are
 // TODO: Document each function please
@@ -72,10 +73,8 @@ export class ZipReader {
   async getCentralDirectory(): Promise<CentralDirectory[]> {
     const chunk = await this.getChunk(-1000);
     // TODO: Does this need to be tuned??!?
-    // Full buffer for the file chunk
-    const chunkBuffer = Buffer.from(chunk);
     // Slice off the EOCDR (End of Central Directory Record) part of the buffer so we can figure out the CD size
-    const cdBuffers = this.getCDBuffers(chunkBuffer);
+    const cdBuffers = this.getCDBuffers(chunk);
 
     const cdParsedBuffers = cdBuffers.map(parseCDBuffer);
     for (const buffer of cdParsedBuffers) {
@@ -141,12 +140,12 @@ export class ZipReader {
    * @param  {Buffer} chunkBuffer The last portion of a zip file
    * @returns {Array}             An array of buffers
    */
-  getCDBuffers(chunkBuffer: Buffer): Buffer[] {
+  getCDBuffers(chunkBuffer: Uint8Array): Uint8Array[] {
     const cdBuffers = [];
     let lastBufferOffset = chunkBuffer.length;
     for (let i = chunkBuffer.length - 22; i >= 0; i -= 1) {
       // If what we're locking at isn't the start of a central directory, skip it..
-      if (chunkBuffer.readUInt32LE(i) !== CD_SIGNATURE) {
+      if (readUInt32LE(chunkBuffer, i) !== CD_SIGNATURE) {
         // eslint-disable-next-line no-continue
         continue;
       }
@@ -214,12 +213,12 @@ function parseCentralDirectoryWithNoExtras(cdBuffer: Buffer): CentralDirectory {
  * @param  cdBuffer The central directory buffer to parse
  * @return The CD object
  */
-export function parseCDBuffer(cdBuffer: Buffer): CentralDirectory {
-  if (cdBuffer.readUInt32LE(0) !== CD_SIGNATURE) {
+export function parseCDBuffer(cdBuffer: Uint8Array): CentralDirectory {
+  if (readUInt32LE(cdBuffer, 0) !== CD_SIGNATURE) {
     throw new Error('Invalid central directory file header signature');
   }
 
-  const cd = parseCentralDirectoryWithNoExtras(cdBuffer);
+  const cd = parseCentralDirectoryWithNoExtras(Buffer.from(cdBuffer));
 
   if (cd.versionNeededToExtract < VERSION_NEEDED_TO_EXTRACT_ZIP64 || !cd.extraFieldLength) {
     // NOTE(PLAT-1134) Zip64 was added in pkzip 4.5
@@ -232,7 +231,7 @@ export function parseCDBuffer(cdBuffer: Buffer): CentralDirectory {
     CENTRAL_DIRECTORY_RECORD_FIXED_SIZE + cd.fileNameLength + cd.extraFieldLength
   );
 
-  const extraFields = sliceExtraFields(extraFieldBuffer, cd);
+  const extraFields = sliceExtraFields(Buffer.from(extraFieldBuffer), cd);
   const zip64EiefBuffer = extraFields[1];
   if (zip64EiefBuffer) {
     let index = 0;
