@@ -1,7 +1,6 @@
-import { Buffer } from 'buffer';
 import { Manifest } from '../models/index.js';
 import { Chunker } from './chunkers.js';
-import { readUInt32LE, readUInt16LE } from './index.js';
+import { readUInt32LE, readUInt16LE, copyUint8Arr } from './index.js';
 
 // TODO: Better document what these constants are
 // TODO: Document each function please
@@ -95,9 +94,8 @@ export class ZipReader {
     const byteStart = cdObj.relativeOffsetOfLocalHeader + cdObj.headerLength;
     const byteEnd = byteStart + cdObj.uncompressedSize;
     const manifest = await this.getChunk(byteStart, byteEnd);
-    const manifestBuffer = Buffer.from(manifest);
 
-    return JSON.parse(manifestBuffer.toString());
+    return JSON.parse(new TextDecoder().decode(manifest));
   }
 
   async adjustHeaders(cdObj: CentralDirectory): Promise<void> {
@@ -110,8 +108,7 @@ export class ZipReader {
       cdObj.relativeOffsetOfLocalHeader,
       cdObj.relativeOffsetOfLocalHeader + cdObj.headerLength
     );
-    const headerBuffer = Buffer.from(headerChunk);
-    cdObj.headerLength = recalculateHeaderLength(headerBuffer);
+    cdObj.headerLength = recalculateHeaderLength(headerChunk);
   }
 
   async getPayloadSegment(
@@ -119,7 +116,7 @@ export class ZipReader {
     payloadName: string,
     encrpytedSegmentOffset: number,
     encryptedSegmentSize: number
-  ): Promise<Buffer> {
+  ): Promise<Uint8Array> {
     const cdObj = cdBuffers.find(({ fileName }) => payloadName === fileName);
     if (!cdObj) {
       throw new Error('Unable to retrieve CD');
@@ -129,9 +126,7 @@ export class ZipReader {
     // TODO: what's the exact byte start?
     const byteEnd = byteStart + encryptedSegmentSize;
 
-    const chunk = await this.getChunk(byteStart, byteEnd);
-    const segmentBuffer = Buffer.from(chunk);
-    return segmentBuffer;
+    return await this.getChunk(byteStart, byteEnd);
   }
 
   /**
@@ -178,11 +173,11 @@ function parseCentralDirectoryWithNoExtras(cdBuffer: Uint8Array): CentralDirecto
   // 14 - File last modification date
   cd.lastModFileDate = readUInt16LE(cdBuffer, 14);
   // 16 - CRC-32
-  cd.crc32 = readUInt32LE(cdBuffer, 16); // wrong
+  cd.crc32 = readUInt32LE(cdBuffer, 16);
   // 20 - Compressed size
-  cd.compressedSize = readUInt32LE(cdBuffer, 20); // wrong
+  cd.compressedSize = readUInt32LE(cdBuffer, 20);
   // 24 - Uncompressed size
-  cd.uncompressedSize = readUInt32LE(cdBuffer, 24); // wrong
+  cd.uncompressedSize = readUInt32LE(cdBuffer, 24);
   // 28 - File name length (n)
   cd.fileNameLength = readUInt16LE(cdBuffer, 28);
   // 30 - Extra field length (m)
@@ -193,7 +188,7 @@ function parseCentralDirectoryWithNoExtras(cdBuffer: Uint8Array): CentralDirecto
   // 36 - Internal file attributes
   cd.internalFileAttributes = readUInt16LE(cdBuffer, 36);
   // 38 - External file attributes
-  cd.externalFileAttributes = readUInt32LE(cdBuffer, 38); // wrong
+  cd.externalFileAttributes = readUInt32LE(cdBuffer, 38);
   // 42 - Relative offset of local file header
   cd.relativeOffsetOfLocalHeader = readUInt32LE(cdBuffer, 42);
   const fileNameBuffer = cdBuffer.slice(
@@ -202,7 +197,7 @@ function parseCentralDirectoryWithNoExtras(cdBuffer: Uint8Array): CentralDirecto
   );
   // eslint-disable-next-line no-bitwise
   const isUtf8 = !!(cd.generalPurposeBitFlag & 0x800);
-  cd.fileName = bufferToString(Buffer.from(fileNameBuffer), 0, cd.fileNameLength, isUtf8);
+  cd.fileName = bufferToString(fileNameBuffer, 0, cd.fileNameLength, isUtf8);
   cd.headerLength = LOCAL_FILE_HEADER_FIXED_SIZE + cd.fileNameLength + cd.extraFieldLength;
   return cd as CentralDirectory;
 }
@@ -231,7 +226,7 @@ export function parseCDBuffer(cdBuffer: Uint8Array): CentralDirectory {
     CENTRAL_DIRECTORY_RECORD_FIXED_SIZE + cd.fileNameLength + cd.extraFieldLength
   );
 
-  const extraFields = sliceExtraFields(Buffer.from(extraFieldBuffer), cd);
+  const extraFields = sliceExtraFields(extraFieldBuffer, cd);
   const zip64EiefBuffer = extraFields[1];
   if (zip64EiefBuffer) {
     let index = 0;
@@ -276,9 +271,10 @@ export function parseCDBuffer(cdBuffer: Uint8Array): CentralDirectory {
  * @param  isUtf8 Is it utf8? Otherwise, assumed to be CP-437
  * @return The converted string
  */
-function bufferToString(buffer: Buffer, start: number, end: number, isUtf8: boolean): string {
+function bufferToString(buffer: Uint8Array, start: number, end: number, isUtf8: boolean): string {
   if (isUtf8) {
-    return buffer.toString('utf8', start, end);
+    const decoder = new TextDecoder();
+    return decoder.decode(buffer.buffer.slice(start, end));
   }
 
   let result = '';
@@ -290,15 +286,15 @@ function bufferToString(buffer: Buffer, start: number, end: number, isUtf8: bool
   return result;
 }
 
-function recalculateHeaderLength(tempHeaderBuffer: Buffer): number {
-  const fileNameLength = tempHeaderBuffer.readUInt16LE(26);
-  const extraFieldLength = tempHeaderBuffer.readUInt16LE(28);
+function recalculateHeaderLength(tempHeaderBuffer: Uint8Array): number {
+  const fileNameLength = readUInt16LE(tempHeaderBuffer, 26);
+  const extraFieldLength = readUInt16LE(tempHeaderBuffer, 28);
   return LOCAL_FILE_HEADER_FIXED_SIZE + fileNameLength + extraFieldLength;
 }
 
-export function readUInt64LE(buffer: Buffer, offset: number): number {
-  const lower32 = buffer.readUInt32LE(offset);
-  const upper32 = buffer.readUInt32LE(offset + 4);
+export function readUInt64LE(buffer: Uint8Array, offset: number): number {
+  const lower32 = readUInt32LE(buffer, offset);
+  const upper32 = readUInt32LE(buffer, offset + 4);
   const combined = upper32 * 0x100000000 + lower32;
   if (!Number.isSafeInteger(combined)) {
     throw Error(`Value exceeds MAX_SAFE_INTEGER: ${combined}`);
@@ -310,20 +306,20 @@ export function readUInt64LE(buffer: Buffer, offset: number): number {
 /**
  * Breaks extra field buffer into slices by field identifier.
  */
-function sliceExtraFields(extraFieldBuffer: Buffer, cd: CentralDirectory): Record<number, Buffer> {
-  const extraFields: Record<number, Buffer> = {};
+function sliceExtraFields(extraFieldBuffer: Uint8Array, cd: CentralDirectory): Record<number, Uint8Array> {
+  const extraFields: Record<number, Uint8Array> = {};
 
   let i = 0;
   while (i < extraFieldBuffer.length - 3) {
-    const headerId = extraFieldBuffer.readUInt16LE(i + 0);
-    const dataSize = extraFieldBuffer.readUInt16LE(i + 2);
+    const headerId = readUInt16LE(extraFieldBuffer, i + 0);
+    const dataSize = readUInt16LE(extraFieldBuffer, i + 2);
     const dataStart = i + 4;
     const dataEnd = dataStart + dataSize;
     if (dataEnd > extraFieldBuffer.length) {
       throw new Error('extra field length exceeds extra field buffer size');
     }
-    const dataBuffer = Buffer.allocUnsafe(dataSize);
-    extraFieldBuffer.copy(dataBuffer, 0, dataStart, dataEnd);
+    const dataBuffer = new Uint8Array(dataSize);
+    copyUint8Arr(extraFieldBuffer, dataBuffer, 0, dataStart, dataEnd);
     if (extraFields[headerId]) {
       throw new Error(`Conflicting extra field #${headerId} for entry [${cd.fileName}]`);
     }

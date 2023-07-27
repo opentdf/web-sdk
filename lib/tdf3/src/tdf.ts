@@ -921,7 +921,7 @@ export class TDF extends EventEmitter {
   }
 
   async decryptChunk(
-    encryptedChunk: Buffer,
+    encryptedChunk: Uint8Array,
     reconstructedKeyBinary: Binary,
     hash: string
   ): Promise<DecryptResult> {
@@ -938,13 +938,13 @@ export class TDF extends EventEmitter {
 
     const segmentHashStr = await this.getSignature(
       reconstructedKeyBinary,
-      Binary.fromBuffer(encryptedChunk),
+      Binary.fromArrayBuffer(encryptedChunk.buffer),
       segmentIntegrityAlgorithmType || integrityAlgorithmType
     );
     if (hash !== base64.encode(segmentHashStr)) {
       throw new ManifestIntegrityError('Failed integrity check on segment hash');
     }
-    return await cipher.decrypt(encryptedChunk, reconstructedKeyBinary);
+    return await cipher.decrypt(encryptedChunk.buffer, reconstructedKeyBinary);
   }
 
   async updateChunkQueue(
@@ -971,7 +971,7 @@ export class TDF extends EventEmitter {
                 currentVal + (encryptedSegmentSize as number),
               0
             );
-            let buffer: Buffer | null = await zipReader.getPayloadSegment(
+            let buffer: Uint8Array | null = await zipReader.getPayloadSegment(
               centralDirectory,
               '0.payload',
               slice[0].encryptedOffset,
@@ -984,7 +984,7 @@ export class TDF extends EventEmitter {
                 slice[0].encryptedOffset === 0
                   ? encryptedOffset
                   : encryptedOffset % slice[0].encryptedOffset;
-              const encryptedChunk = (buffer as Buffer).subarray(
+              const encryptedChunk = (buffer as Uint8Array).subarray(
                 offset,
                 offset + (encryptedSegmentSize as number)
               );
