@@ -1,4 +1,3 @@
-import { Buffer } from 'buffer';
 import { EventEmitter } from 'events';
 import axios from 'axios';
 import { unsigned } from './utils/buffer-crc32.js';
@@ -19,7 +18,7 @@ import {
   UpsertResponse,
   Wrapped as KeyAccessWrapped,
 } from './models/index.js';
-import { base64 } from '../../src/encodings/index.js';
+import { base64, hex } from '../../src/encodings/index.js';
 import * as defaultCryptoService from './crypto/index.js';
 import {
   type Chunker,
@@ -469,12 +468,12 @@ export class TDF extends EventEmitter {
     switch (algorithmType.toLowerCase()) {
       case 'gmac':
         // use the auth tag baked into the encrypted payload
-        return payloadBinary.asBuffer().slice(-16).toString('hex');
+        return hex.encodeArrayBuffer(new Uint8Array(payloadBinary.asByteArray()).slice(-16).buffer);
       case 'hs256':
         // simple hmac is the default
         return await this.cryptoService.hmac(
-          unwrappedKeyBinary.asBuffer().toString('hex'),
-          payloadBinary.asBuffer().toString()
+          hex.encodeArrayBuffer(new Uint8Array(unwrappedKeyBinary.asByteArray()).buffer),
+          new TextDecoder().decode(new Uint8Array(payloadBinary.asByteArray()).buffer)
         );
       default:
         throw new IllegalArgumentError(`Unsupported signature alg [${algorithmType}]`);
@@ -633,10 +632,10 @@ export class TDF extends EventEmitter {
     // determine default segment size by writing empty buffer
     const { segmentSizeDefault } = this;
     const encryptedBlargh = await this.encryptionInformation.encrypt(
-      Binary.fromBuffer(Buffer.alloc(segmentSizeDefault)),
+      Binary.fromArrayBuffer(new ArrayBuffer(segmentSizeDefault)),
       keyInfo.unwrappedKeyBinary
     );
-    const payloadBuffer = encryptedBlargh.payload.asBuffer();
+    const payloadBuffer = new Uint8Array(encryptedBlargh.payload.asByteArray());
     const encryptedSegmentSizeDefault = payloadBuffer.length;
 
     // start writing the content
@@ -774,7 +773,7 @@ export class TDF extends EventEmitter {
     if (upsertResponse) {
       plaintextStream.upsertResponse = upsertResponse;
       plaintextStream.tdfSize = totalByteCount;
-      plaintextStream.KEK = payloadKey ? null : kek.payload.asBuffer().toString('base64');
+      plaintextStream.KEK = payloadKey ? null : btoa(kek.payload.asString());
       plaintextStream.algorithm = manifest.encryptionInformation.method.algorithm;
     }
 
@@ -808,7 +807,7 @@ export class TDF extends EventEmitter {
         Binary.fromArrayBuffer(chunk.buffer),
         payloadKey || keyInfo.unwrappedKeyBinary
       );
-      const payloadBuffer = encryptedResult.payload.asBuffer();
+      const payloadBuffer = new Uint8Array(encryptedResult.payload.asByteArray());
       const payloadSigStr = await self.getSignature(
         payloadKey || keyInfo.unwrappedKeyBinary,
         encryptedResult.payload,
@@ -900,7 +899,7 @@ export class TDF extends EventEmitter {
             this.privateKey
           );
           this.emit('rewrap', metadata);
-          return decryptedKeyBinary.asBuffer();
+          return new Uint8Array(decryptedKeyBinary.asByteArray());
         } catch (e) {
           throw new KasDecryptError(
             `Unable to decrypt the response from KAS: [${e.name}: ${e.message}], response: [${e?.response?.body}]`,
@@ -1039,9 +1038,9 @@ export class TDF extends EventEmitter {
     if (rcaParams && rcaParams.wk) {
       const { wk, al } = rcaParams;
       this.encryptionInformation = new SplitKey(this.createCipher(al.toLowerCase()));
-      const kekPayload = Binary.fromBuffer(Buffer.from(wk, 'base64'));
+
       const decodedReconstructedKeyBinary = await this.encryptionInformation.decrypt(
-        kekPayload.asBuffer(),
+        Uint8Array.from(atob(wk).split(''), char => char.charCodeAt(0)),
         reconstructedKeyBinary
       );
       reconstructedKeyBinary = decodedReconstructedKeyBinary.payload;
@@ -1101,7 +1100,7 @@ export class TDF extends EventEmitter {
         }
         const decryptedSegment = chunk.decryptedChunk;
 
-        controller.enqueue(decryptedSegment.payload.asBuffer());
+        controller.enqueue(new Uint8Array(decryptedSegment.payload.asByteArray()));
         progress += chunk.encryptedSegmentSize;
         if (progressHandler) {
           progressHandler(progress);

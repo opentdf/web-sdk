@@ -1,7 +1,7 @@
-import { Buffer } from 'buffer';
 import { Binary } from '../binary.js';
 import { Algorithms } from './algorithms.js';
 import { SymmetricCipher } from './symmetric-cipher-base.js';
+import { concatUint8 } from '../utils/index.js';
 
 import {
   type CryptoService,
@@ -46,14 +46,14 @@ export class AesGcmCipher extends SymmetricCipher {
    * it's parts.  There is no need to process the payload.
    */
   override async encrypt(payload: Binary, key: Binary, iv: Binary): Promise<EncryptResult> {
-    const toConcat: Buffer[] = [];
+    const toConcat: Uint8Array[] = [];
     const result = await this.cryptoService.encrypt(payload, key, iv, Algorithms.AES_256_GCM);
-    toConcat.push(iv.asBuffer());
-    toConcat.push(result.payload.asBuffer());
+    toConcat.push(new Uint8Array(iv.asArrayBuffer()));
+    toConcat.push(new Uint8Array(result.payload.asArrayBuffer()));
     if (result.authTag) {
-      toConcat.push(result.authTag.asBuffer());
+      toConcat.push(new Uint8Array(result.authTag.asArrayBuffer()));
     }
-    result.payload = Binary.fromBuffer(Buffer.concat(toConcat));
+    result.payload = Binary.fromArrayBuffer(concatUint8(toConcat).buffer);
     return result;
   }
 
