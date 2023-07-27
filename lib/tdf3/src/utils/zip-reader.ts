@@ -1,7 +1,7 @@
 import { Buffer } from 'buffer';
 import { Manifest } from '../models/index.js';
 import { Chunker } from './chunkers.js';
-import { readUInt32LE } from './index.js';
+import { readUInt32LE, readUInt16LE } from './index.js';
 
 // TODO: Better document what these constants are
 // TODO: Document each function please
@@ -163,46 +163,46 @@ export class ZipReader {
   }
 }
 
-function parseCentralDirectoryWithNoExtras(cdBuffer: Buffer): CentralDirectory {
+function parseCentralDirectoryWithNoExtras(cdBuffer: Uint8Array): CentralDirectory {
   const cd: Partial<CentralDirectory> = {};
   // 4 - Version made by
-  cd.versionMadeBy = cdBuffer.readUInt16LE(4);
+  cd.versionMadeBy = readUInt16LE(cdBuffer, 4);
   // 6 - Version needed to extract (minimum)
-  cd.versionNeededToExtract = cdBuffer.readUInt16LE(6);
+  cd.versionNeededToExtract = readUInt16LE(cdBuffer, 6);
   // 8 - General purpose bit flag
-  cd.generalPurposeBitFlag = cdBuffer.readUInt16LE(8);
+  cd.generalPurposeBitFlag = readUInt16LE(cdBuffer, 8);
   // 10 - Compression method
-  cd.compressionMethod = cdBuffer.readUInt16LE(10);
+  cd.compressionMethod = readUInt16LE(cdBuffer, 10);
   // 12 - File last modification time
-  cd.lastModFileTime = cdBuffer.readUInt16LE(12);
+  cd.lastModFileTime = readUInt16LE(cdBuffer, 12);
   // 14 - File last modification date
-  cd.lastModFileDate = cdBuffer.readUInt16LE(14);
+  cd.lastModFileDate = readUInt16LE(cdBuffer, 14);
   // 16 - CRC-32
-  cd.crc32 = cdBuffer.readUInt32LE(16);
+  cd.crc32 = readUInt32LE(cdBuffer, 16); // wrong
   // 20 - Compressed size
-  cd.compressedSize = cdBuffer.readUInt32LE(20);
+  cd.compressedSize = readUInt32LE(cdBuffer, 20); // wrong
   // 24 - Uncompressed size
-  cd.uncompressedSize = cdBuffer.readUInt32LE(24);
+  cd.uncompressedSize = readUInt32LE(cdBuffer, 24); // wrong
   // 28 - File name length (n)
-  cd.fileNameLength = cdBuffer.readUInt16LE(28);
+  cd.fileNameLength = readUInt16LE(cdBuffer, 28);
   // 30 - Extra field length (m)
-  cd.extraFieldLength = cdBuffer.readUInt16LE(30);
+  cd.extraFieldLength = readUInt16LE(cdBuffer, 30);
   // 32 - File comment length (k)
-  cd.fileCommentLength = cdBuffer.readUInt16LE(32);
+  cd.fileCommentLength = readUInt16LE(cdBuffer, 32);
   // 34 - Disk number where file starts
   // 36 - Internal file attributes
-  cd.internalFileAttributes = cdBuffer.readUInt16LE(36);
+  cd.internalFileAttributes = readUInt16LE(cdBuffer, 36);
   // 38 - External file attributes
-  cd.externalFileAttributes = cdBuffer.readUInt32LE(38);
+  cd.externalFileAttributes = readUInt32LE(cdBuffer, 38); // wrong
   // 42 - Relative offset of local file header
-  cd.relativeOffsetOfLocalHeader = cdBuffer.readUInt32LE(42);
+  cd.relativeOffsetOfLocalHeader = readUInt32LE(cdBuffer, 42);
   const fileNameBuffer = cdBuffer.slice(
     CENTRAL_DIRECTORY_RECORD_FIXED_SIZE,
     CENTRAL_DIRECTORY_RECORD_FIXED_SIZE + cd.fileNameLength
   );
   // eslint-disable-next-line no-bitwise
   const isUtf8 = !!(cd.generalPurposeBitFlag & 0x800);
-  cd.fileName = bufferToString(fileNameBuffer, 0, cd.fileNameLength, isUtf8);
+  cd.fileName = bufferToString(Buffer.from(fileNameBuffer), 0, cd.fileNameLength, isUtf8);
   cd.headerLength = LOCAL_FILE_HEADER_FIXED_SIZE + cd.fileNameLength + cd.extraFieldLength;
   return cd as CentralDirectory;
 }
@@ -218,7 +218,7 @@ export function parseCDBuffer(cdBuffer: Uint8Array): CentralDirectory {
     throw new Error('Invalid central directory file header signature');
   }
 
-  const cd = parseCentralDirectoryWithNoExtras(Buffer.from(cdBuffer));
+  const cd = parseCentralDirectoryWithNoExtras(cdBuffer);
 
   if (cd.versionNeededToExtract < VERSION_NEEDED_TO_EXTRACT_ZIP64 || !cd.extraFieldLength) {
     // NOTE(PLAT-1134) Zip64 was added in pkzip 4.5

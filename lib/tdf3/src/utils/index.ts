@@ -54,7 +54,7 @@ export function readUInt32LE(uint8Array: Uint8Array, offset: number): number {
     (uint8Array[offset + 1] << 8) |
     (uint8Array[offset + 2] << 16) |
     (uint8Array[offset + 3] << 24)
-  );
+  ) >>> 0;
 }
 
 export function readUInt16LE(uint8Array: Uint8Array, offset: number): number {
