@@ -1,8 +1,6 @@
 import { S3Client, GetObjectCommand, HeadObjectCommand, S3ClientConfig } from '@aws-sdk/client-s3';
 import axios from 'axios';
-import { Buffer } from 'buffer';
 
-import { arrayBufferToBuffer } from '../utils/index.js';
 import { AttributeValidator } from './validation.js';
 import { AttributeObject, Policy } from '../models/index.js';
 import { type RcaParams, type RcaLink, type Metadata } from '../tdf.js';
@@ -252,7 +250,7 @@ class EncryptParamsBuilder {
    * Specify the content to encrypt, in buffer form.
    * @param {Buffer} buf - a buffer to encrypt.
    */
-  setBufferSource(buf: Buffer) {
+  setBufferSource(buf: ArrayBuffer) {
     const stream = new ReadableStream({
       pull(controller) {
         controller.enqueue(buf);
@@ -267,7 +265,7 @@ class EncryptParamsBuilder {
    * @param {Buffer} buf - a buffer to encrypt
    * @return {EncryptParamsBuilder} - this object.
    */
-  withBufferSource(buf: Buffer) {
+  withBufferSource(buf: ArrayBuffer) {
     this.setBufferSource(buf);
     return this;
   }
@@ -282,7 +280,7 @@ class EncryptParamsBuilder {
    * @return {EncryptParamsBuilder} - this object
    */
   setArrayBufferSource(arraybuffer: ArrayBuffer) {
-    this.setBufferSource(arrayBufferToBuffer(arraybuffer));
+    this.setBufferSource(arraybuffer);
   }
 
   /**
@@ -653,7 +651,7 @@ class DecryptParamsBuilder {
    * Set the TDF ciphertext to decrypt, in buffer form.
    * @param {Buffer} buffer - a buffer to decrypt.
    */
-  setBufferSource(buffer: Buffer) {
+  setBufferSource(buffer: Uint8Array) {
     this._params.source = { type: 'buffer', location: buffer };
   }
 
@@ -662,7 +660,7 @@ class DecryptParamsBuilder {
    * @param {Buffer} buffer - a buffer to decrypt.
    * @return {DecryptParamsBuilder} - this object.
    */
-  withBufferSource(buffer: Buffer): DecryptParamsBuilder {
+  withBufferSource(buffer: Uint8Array): DecryptParamsBuilder {
     this.setBufferSource(buffer);
     return this;
   }
@@ -778,7 +776,7 @@ class DecryptParamsBuilder {
    * @return {DecryptParamsBuilder} - this object
    */
   setArrayBufferSource(arraybuffer: ArrayBuffer) {
-    this.setBufferSource(arrayBufferToBuffer(arraybuffer));
+    this.setBufferSource(new Uint8Array(arraybuffer));
   }
 
   /**

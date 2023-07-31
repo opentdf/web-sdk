@@ -1,4 +1,3 @@
-import { Buffer } from 'buffer';
 import { AppIdAuthProvider, AuthProvider } from '../../../src/auth/auth.js';
 
 export { ZipReader, readUInt64LE } from './zip-reader.js';
@@ -7,17 +6,8 @@ export { keySplit, keyMerge } from './keysplit.js';
 export { streamToBuffer } from '../client/DecoratedReadableStream.js';
 export * from './chunkers.js';
 
-export function base64ToBuffer(b64: string): Buffer | Uint8Array {
+export function base64ToBuffer(b64: string): Uint8Array {
   return Uint8Array.from(atob(b64).split(''), (c) => c.charCodeAt(0))
-}
-
-export function arrayBufferToBuffer(ab: ArrayBuffer): Buffer {
-  const buf = Buffer.alloc(ab.byteLength);
-  const view = new Uint8Array(ab);
-  for (let i = 0; i < buf.length; ++i) {
-    buf[i] = view[i];
-  }
-  return buf;
 }
 
 export function isAppIdProviderCheck(
@@ -25,16 +15,6 @@ export function isAppIdProviderCheck(
 ): provider is AppIdAuthProvider {
   return (provider as AppIdAuthProvider)._getName !== undefined;
 }
-
-export function bufferToArrayBuffer(buf: Buffer): ArrayBuffer {
-  const ab = new ArrayBuffer(buf.length);
-  const view = new Uint8Array(ab);
-  for (let i = 0; i < buf.length; ++i) {
-    view[i] = buf[i];
-  }
-  return ab;
-}
-
 export function concatUint8(uint8Arrays: Uint8Array[]): Uint8Array {
   const newLength = uint8Arrays.reduce((accumulator, currentValue) => accumulator + currentValue.length, 0);
   const combinedUint8Array = new Uint8Array(newLength);

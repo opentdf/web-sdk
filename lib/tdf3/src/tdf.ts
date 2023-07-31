@@ -731,7 +731,7 @@ export class TDF extends EventEmitter {
           manifest.encryptionInformation.method.isStreamable = true;
 
           // write the manifest
-          const manifestBuffer = Buffer.from(JSON.stringify(manifest));
+          const manifestBuffer = new TextEncoder().encode((JSON.stringify(manifest)));
           controller.enqueue(manifestBuffer);
           _countChunk(manifestBuffer);
           entryInfos[1].crcCounter = crcCounter;
