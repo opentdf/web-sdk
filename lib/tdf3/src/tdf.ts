@@ -118,7 +118,7 @@ type Chunk = {
 };
 
 type TDFConfiguration = {
-  cryptoService?: CryptoService;
+  cryptoService: CryptoService;
 };
 
 export class TDF extends EventEmitter {
@@ -137,13 +137,13 @@ export class TDF extends EventEmitter {
   attributeSet: AttributeSet;
   segmentSizeDefault: number;
   chunkMap: Map<string, Chunk>;
-  cryptoService: CryptoService<CryptoKeyPair>;
+  cryptoService: CryptoService;
 
-  constructor(configuration?: TDFConfiguration) {
+  constructor(configuration: TDFConfiguration) {
     super();
 
     this.attributeSet = new AttributeSet();
-    this.cryptoService = configuration?.cryptoService ?? defaultCryptoService;
+    this.cryptoService = configuration.cryptoService;
     this.publicKey = '';
     this.privateKey = '';
     this.integrityAlgorithm = 'HS256';
@@ -152,7 +152,7 @@ export class TDF extends EventEmitter {
   }
 
   // factory
-  static create(configuration?: TDFConfiguration) {
+  static create(configuration: TDFConfiguration) {
     return new TDF(configuration);
   }
 

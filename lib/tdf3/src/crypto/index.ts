@@ -363,7 +363,7 @@ export function hex2Ab(hex: string): ArrayBuffer {
   return buffer;
 }
 
-export const DefaultCryptoService: CryptoService<CryptoKeyPair> = {
+export const DefaultCryptoService: CryptoService = {
   name,
   method,
   cryptoToPemPair,

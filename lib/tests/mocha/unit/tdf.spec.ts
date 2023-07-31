@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 
 import { TDF } from '../../../tdf3/src/index.js';
+import * as cryptoService from '../../../tdf3/src/crypto/index.js';
 import { AesGcmCipher } from '../../../tdf3/src/ciphers/aes-gcm-cipher.js';
 const sampleCert = `
 -----BEGIN CERTIFICATE-----
@@ -40,12 +41,12 @@ HJg=
 
 describe('TDF', () => {
   it('constructs', () => {
-    const actual = new TDF();
+    const actual = new TDF({ cryptoService });
     expect(actual).to.be.an.instanceof(TDF);
   });
 
   it('creates', () => {
-    const actual = TDF.create();
+    const actual = TDF.create({ cryptoService });
     expect(actual).to.be.an.instanceof(TDF);
   });
 
@@ -72,14 +73,14 @@ describe('TDF', () => {
 
   it('should fail on invalid cypher param', () => {
     try {
-      TDF.create().createCipher('nonexistent cypher');
+      TDF.create({ cryptoService }).createCipher('nonexistent cypher');
     } catch (e) {
       expect(e.message).to.include('nonexistent cypher');
     }
   });
 
   it('should return cypher', () => {
-    const cypher = TDF.create().createCipher('aes-256-gcm');
+    const cypher = TDF.create({ cryptoService }).createCipher('aes-256-gcm');
     expect(cypher instanceof AesGcmCipher).to.equal(true);
   });
 
@@ -98,7 +99,7 @@ describe('TDF', () => {
   });
 
   it('should ensure that policy id is uuid format', async () => {
-    const uuid = await TDF.create().generatePolicyUuid();
+    const uuid = await TDF.create({ cryptoService }).generatePolicyUuid();
     expect(uuid).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
   });
 });

@@ -354,7 +354,7 @@ export class Client {
 
     // TODO: Refactor underlying builder to remove some of this unnecessary config.
 
-    const tdf = TDF.create()
+    const tdf = TDF.create({ cryptoService: this.cryptoService })
       .setPrivateKey(sessionKeys.keypair.privateKey)
       .setPublicKey(sessionKeys.keypair.publicKey)
       .setEncryption({
@@ -433,7 +433,7 @@ export class Client {
         publicKey: sessionKeys.keypair.publicKey,
       });
     }
-    const tdf = TDF.create()
+    const tdf = TDF.create({ cryptoService: this.cryptoService })
       .setPrivateKey(sessionKeys.keypair.privateKey)
       .setPublicKey(sessionKeys.keypair.publicKey)
       .setAuthProvider(this.authProvider);

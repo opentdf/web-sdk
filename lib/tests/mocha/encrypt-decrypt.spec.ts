@@ -1,5 +1,6 @@
 import getMocks from '../mocks/index.js';
 import { Client, TDF } from '../../tdf3/src/index.js';
+import * as cryptoService from '../../tdf3/src/crypto/index.js';
 import { createSandbox } from 'sinon';
 import { assert } from 'chai';
 import { Binary } from '../../tdf3/src/binary.js';
@@ -18,7 +19,7 @@ describe('encrypt decrypt test', async function () {
   const kasPublicKey = await TDF.extractPemFromKeyString(Mocks.kasPublicKey);
 
   const sandbox = createSandbox();
-  const tdf1 = TDF.create();
+  const tdf1 = TDF.create({ cryptoService });
   sandbox.replace(
     TDF,
     'create',
