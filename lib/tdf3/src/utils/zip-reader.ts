@@ -306,7 +306,10 @@ export function readUInt64LE(buffer: Uint8Array, offset: number): number {
 /**
  * Breaks extra field buffer into slices by field identifier.
  */
-function sliceExtraFields(extraFieldBuffer: Uint8Array, cd: CentralDirectory): Record<number, Uint8Array> {
+function sliceExtraFields(
+  extraFieldBuffer: Uint8Array,
+  cd: CentralDirectory
+): Record<number, Uint8Array> {
   const extraFields: Record<number, Uint8Array> = {};
 
   let i = 0;

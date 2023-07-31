@@ -173,7 +173,11 @@ export class TDF extends EventEmitter {
    * @param {String} transferUrl
    * @return {Buffer}
    */
-  static wrapHtml(payload: Uint8Array, manifest: Manifest | string, transferUrl: string): Uint8Array {
+  static wrapHtml(
+    payload: Uint8Array,
+    manifest: Manifest | string,
+    transferUrl: string
+  ): Uint8Array {
     const { origin } = new URL(transferUrl);
     const exportManifest: string =
       typeof manifest === 'string' ? manifest : JSON.stringify(manifest);
@@ -185,7 +189,7 @@ export class TDF extends EventEmitter {
       payload: base64.encodeArrayBuffer(payload.buffer),
     });
 
-    return (new TextEncoder()).encode(fullHtmlString);
+    return new TextEncoder().encode(fullHtmlString);
   }
 
   static unwrapHtml(htmlPayload: ArrayBuffer | Uint8Array | Binary | string) {
@@ -730,7 +734,7 @@ export class TDF extends EventEmitter {
           manifest.encryptionInformation.method.isStreamable = true;
 
           // write the manifest
-          const manifestBuffer = new TextEncoder().encode((JSON.stringify(manifest)));
+          const manifestBuffer = new TextEncoder().encode(JSON.stringify(manifest));
           controller.enqueue(manifestBuffer);
           _countChunk(manifestBuffer);
           entryInfos[1].crcCounter = crcCounter;
@@ -784,7 +788,7 @@ export class TDF extends EventEmitter {
     }
 
     function _countChunk(chunk: string | Uint8Array) {
-      if (typeof chunk === 'string'){
+      if (typeof chunk === 'string') {
         chunk = new TextEncoder().encode(chunk);
       }
       totalByteCount += chunk.length;
@@ -792,7 +796,7 @@ export class TDF extends EventEmitter {
         throw new Error(`Safe byte limit (${byteLimit}) exceeded`);
       }
       //new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength);
-      crcCounter = unsigned((chunk as Uint8Array), crcCounter);
+      crcCounter = unsigned(chunk as Uint8Array, crcCounter);
       fileByteCount += chunk.length;
     }
 
@@ -1039,7 +1043,7 @@ export class TDF extends EventEmitter {
       this.encryptionInformation = new SplitKey(this.createCipher(al.toLowerCase()));
 
       const decodedReconstructedKeyBinary = await this.encryptionInformation.decrypt(
-        Uint8Array.from(atob(wk).split(''), char => char.charCodeAt(0)),
+        Uint8Array.from(atob(wk).split(''), (char) => char.charCodeAt(0)),
         reconstructedKeyBinary
       );
       reconstructedKeyBinary = decodedReconstructedKeyBinary.payload;

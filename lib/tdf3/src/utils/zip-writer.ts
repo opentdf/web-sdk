@@ -120,37 +120,37 @@ export class ZipWriter {
     generalPurposeBitFlag |= UNKNOWN_CRC32_AND_FILE_SIZES;
 
     const dateModified = dateToDosDateTime(now);
-    const filenameBuffer = (new TextEncoder()).encode(utf8FileName);
+    const filenameBuffer = new TextEncoder().encode(utf8FileName);
 
     // local file header signature     4 bytes  (0x04034b50)
-    writeUInt32LE(fixedSizeStuff,0x04034b50, 0);
+    writeUInt32LE(fixedSizeStuff, 0x04034b50, 0);
     // version needed to extract       2 bytes
-    writeUInt16LE(fixedSizeStuff,VERSION_NEEDED_TO_EXTRACT_UTF8, 4);
+    writeUInt16LE(fixedSizeStuff, VERSION_NEEDED_TO_EXTRACT_UTF8, 4);
     // general purpose bit flag        2 bytes
-    writeUInt16LE(fixedSizeStuff,generalPurposeBitFlag, 6);
+    writeUInt16LE(fixedSizeStuff, generalPurposeBitFlag, 6);
     // compression method              2 bytes
-    writeUInt16LE(fixedSizeStuff,NO_COMPRESSION, 8);
+    writeUInt16LE(fixedSizeStuff, NO_COMPRESSION, 8);
     // last mod file time              2 bytes
-    writeUInt16LE(fixedSizeStuff,dateModified.time, 10);
+    writeUInt16LE(fixedSizeStuff, dateModified.time, 10);
     // last mod file date              2 bytes
-    writeUInt16LE(fixedSizeStuff,dateModified.date, 12);
+    writeUInt16LE(fixedSizeStuff, dateModified.date, 12);
     // crc-32                          4 bytes
-    writeUInt32LE(fixedSizeStuff,crc32, 14);
+    writeUInt32LE(fixedSizeStuff, crc32, 14);
     // compressed size                 4 bytes
-    writeUInt32LE(fixedSizeStuff,this.zip64 ? 0xffffffff : compressedSize, 18);
+    writeUInt32LE(fixedSizeStuff, this.zip64 ? 0xffffffff : compressedSize, 18);
     // uncompressed size               4 bytes
-    writeUInt32LE(fixedSizeStuff,this.zip64 ? 0xffffffff : uncompressedSize, 22);
+    writeUInt32LE(fixedSizeStuff, this.zip64 ? 0xffffffff : uncompressedSize, 22);
     // file name length                2 bytes
-    writeUInt16LE(fixedSizeStuff,filenameBuffer.length, 26);
+    writeUInt16LE(fixedSizeStuff, filenameBuffer.length, 26);
 
     let zeiefBuffer = new Uint8Array(0);
     if (this.zip64) {
       // ZIP64 extended information extra field
       zeiefBuffer = new Uint8Array(ZIP64_EXTENDED_INFORMATION_EXTRA_FIELD_SIZE);
       // 0x0001                  2 bytes    Tag for this "extra" block type
-      writeUInt16LE(zeiefBuffer,0x0001, 0);
+      writeUInt16LE(zeiefBuffer, 0x0001, 0);
       // size                    2 bytes    Size of this "extra" block
-      writeUInt16LE(zeiefBuffer,ZIP64_EXTENDED_INFORMATION_EXTRA_FIELD_SIZE - 4, 2);
+      writeUInt16LE(zeiefBuffer, ZIP64_EXTENDED_INFORMATION_EXTRA_FIELD_SIZE - 4, 2);
       writeUInt64LE(zeiefBuffer, compressedSize, 4);
       writeUInt64LE(zeiefBuffer, uncompressedSize, 12);
       writeUInt64LE(zeiefBuffer, 0, 20);
@@ -233,9 +233,9 @@ export class ZipWriter {
       // ZIP64 extended information extra field
       zeiefBuffer = new Uint8Array(ZIP64_EXTENDED_INFORMATION_EXTRA_FIELD_SIZE);
       // 0x0001                  2 bytes    Tag for this "extra" block type
-      writeUInt16LE(zeiefBuffer,0x0001, 0);
+      writeUInt16LE(zeiefBuffer, 0x0001, 0);
       // size                    2 bytes    Size of this "extra" block
-      writeUInt16LE(zeiefBuffer,ZIP64_EXTENDED_INFORMATION_EXTRA_FIELD_SIZE - 4, 2);
+      writeUInt16LE(zeiefBuffer, ZIP64_EXTENDED_INFORMATION_EXTRA_FIELD_SIZE - 4, 2);
       // uncompressed size       8 bytes    Original uncompressed file size
       writeUInt64LE(zeiefBuffer, uncompressedSize, 4);
       // compressed Size          8 bytes    Size of compressed data
@@ -248,7 +248,7 @@ export class ZipWriter {
     }
 
     const dateModified = dateToDosDateTime(now);
-    const filenameBuffer = (new TextEncoder()).encode((utf8FileName));
+    const filenameBuffer = new TextEncoder().encode(utf8FileName);
 
     // central file header signature   4 bytes  (0x02014b50)
     writeUInt32LE(fixedSizeStuff, CD_SIGNATURE, 0);
@@ -362,13 +362,13 @@ export class ZipWriter {
     // ZIP64 End of Central Directory Locator
     const zip64EocdlBuffer = new Uint8Array(ZIP64_END_OF_CENTRAL_DIRECTORY_LOCATOR_SIZE);
     // zip64 end of central dir locator signature                               4 bytes  (0x07064b50)
-    writeUInt32LE(zip64EocdlBuffer,0x07064b50, 0);
+    writeUInt32LE(zip64EocdlBuffer, 0x07064b50, 0);
     // number of the disk with the start of the zip64 end of central directory  4 bytes
-    writeUInt32LE(zip64EocdlBuffer,0, 4);
+    writeUInt32LE(zip64EocdlBuffer, 0, 4);
     // relative offset of the zip64 end of central directory record             8 bytes
     writeUInt64LE(zip64EocdlBuffer, offsetOfStartOfCentralDirectory + sizeOfCentralDirectory, 8);
     // total number of disks                                                    4 bytes
-    writeUInt32LE(zip64EocdlBuffer,1, 16);
+    writeUInt32LE(zip64EocdlBuffer, 1, 16);
 
     return concatUint8([zip64EocdrBuffer, zip64EocdlBuffer, eocdrBuffer]);
   }

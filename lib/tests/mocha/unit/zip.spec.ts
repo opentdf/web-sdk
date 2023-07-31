@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 
-import { encodeArrayBuffer } from '../../../src/encodings/base64.js'
+import { encodeArrayBuffer } from '../../../src/encodings/base64.js';
 import { parseCDBuffer, readUInt64LE } from '../../../tdf3/src/utils/zip-reader.js';
 import { ZipWriter, dateToDosDateTime, writeUInt64LE } from '../../../tdf3/src/utils/zip-writer.js';
 
@@ -92,7 +92,9 @@ describe('zip utilities', () => {
       const zipWriter = new ZipWriter();
       zipWriter.zip64 = true;
       const descriptorBuffer = zipWriter.writeDataDescriptor(0x1337, 500);
-      expect(encodeArrayBuffer(descriptorBuffer.buffer)).to.equal('UEsHCDcTAAD0AQAAAAAAAPQBAAAAAAAA');
+      expect(encodeArrayBuffer(descriptorBuffer.buffer)).to.equal(
+        'UEsHCDcTAAD0AQAAAAAAAPQBAAAAAAAA'
+      );
     });
   });
 

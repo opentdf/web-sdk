@@ -41,7 +41,7 @@ export const byteLength = (
     return 0;
   }
   if (typeof input === 'string') {
-    return (new TextEncoder()).encode(input).byteLength
+    return new TextEncoder().encode(input).byteLength;
   }
   if ('byteLength' in input && typeof input.byteLength === 'number') {
     return input.byteLength;
