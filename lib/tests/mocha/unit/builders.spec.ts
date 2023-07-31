@@ -4,9 +4,9 @@ import { type AttributeObject } from '../../../src/tdf/index.js';
 import { EncryptParamsBuilder } from '../../../tdf3/src/client/builders.js';
 
 const aex = {
-   kasUrl: 'https://kas',
-   pubKey: 'PUBKEY',
-}
+  kasUrl: 'https://kas',
+  pubKey: 'PUBKEY',
+};
 
 describe('EncyptParamsBuilder', () => {
   describe('setAttributes', () => {
@@ -30,7 +30,7 @@ describe('EncyptParamsBuilder', () => {
 
     it('should not accept empty attributes', () => {
       const paramsBuilder = new EncryptParamsBuilder();
-      const emptyAttribute = {...aex};
+      const emptyAttribute = { ...aex };
       expect(() =>
         paramsBuilder.withAttributes([emptyAttribute as unknown as AttributeObject]).build()
       ).to.throw(Error, /attribute prop should be a string/);

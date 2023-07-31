@@ -1,4 +1,4 @@
-import Ajv, {JSONSchemaType} from 'ajv';
+import Ajv, { JSONSchemaType } from 'ajv';
 import { decodeJwt } from 'jose';
 
 const verbose = false;
