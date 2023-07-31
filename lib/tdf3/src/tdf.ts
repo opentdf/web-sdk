@@ -19,7 +19,6 @@ import {
   Wrapped as KeyAccessWrapped,
 } from './models/index.js';
 import { base64, hex } from '../../src/encodings/index.js';
-import * as defaultCryptoService from './crypto/index.js';
 import {
   type Chunker,
   ZipReader,
