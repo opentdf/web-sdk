@@ -22,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          fetch-depth: ${{ !env.do_sonarscan && 1 || 0 }}
+          fetch-depth: ${{ !fromJSON(env.do_sonarscan) && 1 || 0 }}
       - name: Dump GitHub context
         env:
           GITHUB_CONTEXT: ${{ toJson(github) }}
@@ -55,7 +55,7 @@ jobs:
           name: opentdf-client-lib
           path: ./lib/opentdf-client-*.tgz
       - name: SonarCloud Scan
-        if: env.do_sonarscan
+        if: fromJSON(env.do_sonarscan)
         uses: SonarSource/sonarcloud-github-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
