@@ -1,5 +1,9 @@
 name: Build, Test, and Deliver Client
 
+
+env:
+  do_sonarscan: ${{ !github.event.pull_request || github.event.pull_request.head.repo.full_name == github.repository }}
+
 on:
   pull_request:
   push:
@@ -17,6 +21,16 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: ${{ !env.do_sonarscan && 1 || 0 }}
+      - name: Dump GitHub context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
+      - name: Dump do_sonarscan
+        env:
+          DO_SONARSCAN: ${{ toJson(env.do_sonarscan) }}
+        run: echo "$DO_SONARSCAN"
       - uses: actions/setup-node@v3
         with:
           node-version: '18'
@@ -41,8 +55,7 @@ jobs:
           name: opentdf-client-lib
           path: ./lib/opentdf-client-*.tgz
       - name: SonarCloud Scan
-        if: >-
-          !github.event.pull_request || github.event.pull_request.head.repo.full_name == github.repository
+        if: env.do_sonarscan
         uses: SonarSource/sonarcloud-github-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
