@@ -164,7 +164,13 @@ export class DecoratedReadableStream {
 
   /**
    * Dump the stream content to a string. This will consume the stream.
-   * @return the plaintext in string form.
+   * NOTE: This interprets the stream as utf-8 encoded text, and therefore
+   * will mangle any binary streams, e.g. as produced by the `zip` encoding
+   * format. It is intended for use with the `HTML` encoding format, or with
+   * encrypted utf-8 text documents, such as HTML or XML documents. For other formats,
+   * it will produce text with encoding errors in most circumstances.
+   * @return the plaintext in string form, for decrypt, or the html as a string,
+   * for encrypt.
    */
   async toString(): Promise<string> {
     return new Response(this.stream).text();
