@@ -19,7 +19,7 @@ export class TdfError extends Error {
   override name = 'TdfError';
 
   constructor(message: string, cause?: Error) {
-    super(message, scrubCause(cause));
+    super(message, { cause: scrubCause(cause) });
     // Error is funny (only on ES5? So  guess just IE11 we have to worry about?)
     // https://github.com/Microsoft/TypeScript-wiki/blob/main/Breaking-Changes.md#extending-built-ins-like-error-array-and-map-may-no-longer-work
     // https://stackoverflow.com/questions/41102060/typescript-extending-error-class#comment70895020_41102306
