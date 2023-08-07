@@ -6,6 +6,8 @@ import { v4 } from 'uuid';
 import { exportSPKI, importPKCS8, importX509, KeyLike } from 'jose';
 import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
 import { EntityObject } from '../../src/tdf/EntityObject.js';
+import DefaultParams from './../../src/nanotdf/models/DefaultParams.js';
+
 import {
   enums as cryptoEnums,
 } from '../../src/nanotdf-crypto/index.js';
@@ -528,6 +530,7 @@ export class TDF extends EventEmitter {
         //TODO I dont' think we need a body at all for KAS requests
         // Do we need ANY of this if it's already embedded in the EO in the Bearer OIDC token?
         let body: Record<string, unknown> = {
+          algorithm: DefaultParams.defaultECAlgorithm,
           keyAccess: keyAccessObject,
           policy: unsavedManifest.encryptionInformation.policy,
           entity: isAppIdProviderCheck(this.authProvider) ? this.entity : undefined,
@@ -862,7 +865,7 @@ export class TDF extends EventEmitter {
         const url = `${keySplitInfo.url}/${isAppIdProvider ? '' : 'v2'}/rewrap`;
 
         const requestBodyStr = JSON.stringify({
-          algorithm: 'RS256',
+          algorithm: DefaultParams.defaultECAlgorithm,
           keyAccess: keySplitInfo,
           policy: manifest.encryptionInformation.policy,
           clientPublicKey: this.publicKey,

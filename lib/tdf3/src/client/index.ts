@@ -14,6 +14,7 @@ import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-pr
 import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider.js';
 import { CryptoService, PemKeyPair } from '../crypto/declarations.js';
 import { AuthProvider, AppIdAuthProvider, HttpRequest } from '../../../src/auth/auth.js';
+import { generateKeyPair, enums as cryptoEnums, cryptoPublicToPem } from '../../../src/nanotdf-crypto/index.js';
 import EAS from '../../../src/auth/Eas.js';
 
 import { EncryptParams, DecryptParams, type Scope } from './builders.js';
@@ -28,7 +29,6 @@ import {
 import * as defaultCryptoService from '../crypto/index.js';
 import { Policy } from '../models/index.js';
 import { TdfError } from '../errors.js';
-import { rsaPkcs1Sha256 } from '../crypto/index.js';
 
 const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
 const HTML_BYTE_LIMIT = 100 * 1000 * 1000; // 100 MB, see WS-9476.
@@ -137,7 +137,12 @@ export async function createSessionKeys({
   let signingKeys;
 
   if (dpopEnabled) {
-    signingKeys = await crypto.subtle.generateKey(rsaPkcs1Sha256(), true, ['sign']);
+    signingKeys = await generateKeyPair({
+      type: cryptoEnums.AlgorithmName.ECDSA,
+      curve: cryptoEnums.NamedCurve.P256,
+      keyUsages: [cryptoEnums.KeyUsageType.Sign, cryptoEnums.KeyUsageType.Verify],
+      isExtractable: true,
+    });
   }
 
   // This will contact the auth server and forcibly refresh the auth token claims,
@@ -145,8 +150,9 @@ export async function createSessionKeys({
   // Note that we base64 encode the PEM string here as a quick workaround, simply because
   // a formatted raw PEM string isn't a valid header value and sending it raw makes keycloak's
   // header parser barf. There are more subtle ways to solve this, but this works for now.
-  if (authProvider && !isAppIdProviderCheck(authProvider)) {
-    await authProvider?.updateClientPublicKey(base64.encode(k2.publicKey), signingKeys);
+  if (authProvider && !isAppIdProviderCheck(authProvider) && signingKeys) {
+    const signerPubKey = await cryptoPublicToPem(signingKeys.publicKey);
+    await authProvider?.updateClientPublicKey(base64.encode(signerPubKey), signingKeys);
   }
   return { keypair: k2, signingKeys };
 }

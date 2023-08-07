@@ -213,7 +213,10 @@ export default class Client {
 
       const jwtPayload = { requestBody: requestBodyStr };
       const requestBody = {
-        signedRequestToken: await reqSignature(jwtPayload, this.requestSignerKeyPair.privateKey, {
+        signedRequestToken: await reqSignature(
+          jwtPayload,
+          this.requestSignerKeyPair.privateKey,
+          {
           alg: AlgorithmName.ES256,
         }),
       };
