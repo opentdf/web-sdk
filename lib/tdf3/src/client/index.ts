@@ -370,6 +370,10 @@ export class Client {
     if (eo) {
       tdf.setEntity(eo);
     }
+    tdf.dpopEnabled = this.dpopEnabled;
+    if (sessionKeys.signingKeys) {
+      tdf.requestSignerKeyPair = sessionKeys.signingKeys;
+    }
     await tdf.addKeyAccess({
       type: offline ? 'wrapped' : 'remote',
       url: this.kasEndpoint,

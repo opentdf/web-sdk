@@ -3,9 +3,14 @@ import { EventEmitter } from 'events';
 import axios from 'axios';
 import crc32 from 'buffer-crc32';
 import { v4 } from 'uuid';
-import { exportSPKI, importPKCS8, importX509 } from 'jose';
+import { exportSPKI, importPKCS8, importX509, KeyLike } from 'jose';
 import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
 import { EntityObject } from '../../src/tdf/EntityObject.js';
+import {
+  enums as cryptoEnums,
+} from '../../src/nanotdf-crypto/index.js';
+
+const { AlgorithmName } = cryptoEnums;
 
 import {
   AttributeSet,
@@ -127,6 +132,7 @@ export class TDF extends EventEmitter {
   contentStream?: ReadableStream<Uint8Array>;
   manifest?: Manifest;
   entity?: EntityObject;
+  dpopEnabled?: Boolean;
   encryptionInformation?: SplitKey;
   htmlTransferUrl?: string;
   authProvider?: AuthProvider | AppIdAuthProvider;
@@ -138,6 +144,7 @@ export class TDF extends EventEmitter {
   segmentSizeDefault: number;
   chunkMap: Map<string, Chunk>;
   cryptoService: CryptoService;
+  requestSignerKeyPair?: Required<Readonly<CryptoKeyPair>>;
 
   constructor(configuration: TDFConfiguration) {
     super();
@@ -520,7 +527,7 @@ export class TDF extends EventEmitter {
 
         //TODO I dont' think we need a body at all for KAS requests
         // Do we need ANY of this if it's already embedded in the EO in the Bearer OIDC token?
-        const body: Record<string, unknown> = {
+        let body: Record<string, unknown> = {
           keyAccess: keyAccessObject,
           policy: unsavedManifest.encryptionInformation.policy,
           entity: isAppIdProviderCheck(this.authProvider) ? this.entity : undefined,
@@ -532,7 +539,15 @@ export class TDF extends EventEmitter {
         if (isAppIdProviderCheck(this.authProvider)) {
           body.authToken = await reqSignature({}, pkKeyLike);
         } else {
-          body.clientPayloadSignature = await reqSignature(body, pkKeyLike);
+          body.clientPublicKey = this.publicKey;
+          body = {
+            signedRequestToken: await reqSignature(
+              { requestBody: JSON.stringify(body)},
+              (this.requestSignerKeyPair?.privateKey as KeyLike),
+              { alg: AlgorithmName.ES256, }
+            )
+          }
+          // body.clientPayloadSignature = await reqSignature(body, pkKeyLike);
         }
         const httpReq = await this.authProvider.withCreds(this.buildRequest('POST', url, body));
 
