@@ -1,4 +1,5 @@
 import { type AxiosResponseHeaders, type RawAxiosResponseHeaders } from 'axios';
+import { UnsafeUrlError } from '../tdf3/src/errors.js';
 
 /**
  * Check to see if the given URL is 'secure'. This assumes:
@@ -50,7 +51,7 @@ const someStartsWith = (prefixes: string[], requestUrl: string): boolean =>
  */
 export const safeUrlCheck = (urlPrefixes: string[], testUrl: string): void | never => {
   if (!someStartsWith(urlPrefixes, testUrl)) {
-    throw new Error(`Invalid request URL: [${testUrl}] ∉ [${urlPrefixes}];`);
+    throw new UnsafeUrlError(`Invalid request URL: [${testUrl}] ∉ [${urlPrefixes}];`, testUrl);
   }
 };
 

@@ -27,6 +27,17 @@ export class TdfError extends Error {
   }
 }
 
+export class UnsafeUrlError extends Error {
+  override name = 'UnsafeUrlError';
+  readonly url: string;
+
+  constructor(message: string, url: string) {
+    super(message);
+    Object.setPrototypeOf(this, new.target.prototype);
+    this.url = url;
+  }
+}
+
 export class AttributeValidationError extends TdfError {
   override name = 'AttributeValidationError';
 }

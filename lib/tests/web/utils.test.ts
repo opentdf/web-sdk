@@ -125,6 +125,15 @@ describe('safeUrlCheck', () => {
       'Invalid request URL'
     );
   });
+
+  it('returns invalid url', () => {
+    try {
+      safeUrlCheck([], 'https://my.xyz/somewhere/else');
+      expect.fail();
+    } catch (e) {
+      expect(e).to.have.property('url', 'https://my.xyz/somewhere/else');
+    }
+  });
 });
 
 function mockApiResponse(date = '', status = 200) {
