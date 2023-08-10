@@ -6,6 +6,7 @@ import { v4 } from 'uuid';
 import { exportSPKI, importPKCS8, importX509 } from 'jose';
 import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
 import { EntityObject } from '../../src/tdf/EntityObject.js';
+import { validateSecureUrl } from '../../src/utils.js';
 
 import {
   AttributeSet,
@@ -118,6 +119,7 @@ type Chunk = {
 };
 
 type TDFConfiguration = {
+  allowedKases?: string[];
   cryptoService: CryptoService;
 };
 
@@ -138,10 +140,15 @@ export class TDF extends EventEmitter {
   segmentSizeDefault: number;
   chunkMap: Map<string, Chunk>;
   cryptoService: CryptoService;
+  allowedKases: string[];
 
   constructor(configuration: TDFConfiguration) {
     super();
 
+    if (configuration.allowedKases) {
+      this.allowedKases = [...configuration.allowedKases];
+      this.allowedKases.forEach(validateSecureUrl);
+    }
     this.attributeSet = new AttributeSet();
     this.cryptoService = configuration.cryptoService;
     this.publicKey = '';
@@ -211,19 +218,7 @@ export class TDF extends EventEmitter {
 
   // return a PEM-encoded string from the provided KAS server
   static async getPublicKeyFromKeyAccessServer(url: string): Promise<string> {
-    const httpsRegex = /^https:/;
-    if (url.startsWith('http://localhost') || url.startsWith('http://127.0.0.1')) {
-      console.warn(`Development KAS URL detected: [${url}]`);
-    } else if (
-      /^http:\/\/[a-zA-Z.-]*[.]?svc\.cluster\.local($|\/)/.test(url) ||
-      /^http:\/\/[a-zA-Z.-]*[.]?internal($|\/)/.test(url)
-    ) {
-      console.info(`Internal KAS URL detected: [${url}]`);
-    } else if (!httpsRegex.test(url)) {
-      console.error(
-        `Public key must be requested over a secure channel. Are you running in a secure environment? [${url}]`
-      );
-    }
+    validateSecureUrl(url);
     const kasPublicKeyRequest: { data: string } = await axios.get(`${url}/kas_public_key`);
     return TDF.extractPemFromKeyString(kasPublicKeyRequest.data);
   }
@@ -373,6 +368,12 @@ export class TDF extends EventEmitter {
     throw new KeyAccessError('TDF.addKeyAccess: No source for kasUrl or pubKey');
   }
 
+  setAllowedKases(kases: string[]) {
+    this.allowedKases = [...kases];
+    this.allowedKases.forEach(validateSecureUrl);
+    return this;
+  }
+
   setPolicy(policy: Policy) {
     this.validatePolicyObject(policy);
     this.policy = policy;
@@ -514,6 +515,10 @@ export class TDF extends EventEmitter {
         const isRemote = isRemoteKeyAccess(keyAccessObject);
         if (!ignoreType && !isRemote) {
           return;
+        }
+
+        if (!this.allowedKases.includes(keyAccessObject.url)) {
+          throw new KasUpsertError(`Unexpected KAS url: [${keyAccessObject.url}]`);
         }
 
         const url = `${keyAccessObject.url}/${isAppIdProvider ? '' : 'v2/'}upsert`;
@@ -843,6 +848,9 @@ export class TDF extends EventEmitter {
       keyAccess.map(async (keySplitInfo) => {
         if (this.authProvider === undefined) {
           throw new Error('Upsert can be done without auth provider');
+        }
+        if (!this.allowedKases.includes(keySplitInfo.url)) {
+          throw new KasUpsertError(`Unexpected KAS url: [${keySplitInfo.url}]`);
         }
         const url = `${keySplitInfo.url}/${isAppIdProvider ? '' : 'v2'}/rewrap`;
 

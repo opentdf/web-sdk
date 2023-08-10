@@ -15,6 +15,7 @@ import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-prov
 import { CryptoService, PemKeyPair } from '../crypto/declarations.js';
 import { AuthProvider, AppIdAuthProvider, HttpRequest } from '../../../src/auth/auth.js';
 import EAS from '../../../src/auth/Eas.js';
+import { validateSecureUrl } from '../../../src/utils.js';
 
 import { EncryptParams, DecryptParams, type Scope } from './builders.js';
 import { DecoratedReadableStream } from './DecoratedReadableStream.js';
@@ -98,6 +99,11 @@ export interface ClientConfig {
   clientId?: string;
   dpopEnabled?: boolean;
   kasEndpoint?: string;
+  /**
+   * List of allowed KASes to connect to for rewrap requests.
+   * Defaults to `[kasEndpoint]`.
+   */
+  allowedKases?: string[];
   easEndpoint?: string;
   // DEPRECATED Ignored
   keyRewrapEndpoint?: string;
@@ -151,18 +157,19 @@ export async function createSessionKeys({
   return { keypair: k2, signingKeys };
 }
 
-/*
- * If we have KAS url but not public key we can fetch it from KAS
+/**
+ * If we have KAS url but not public key we can fetch it from KAS, fetching
+ * the value from `${kas}/kas_public_key`.
  */
-export async function fetchKasPubKey(kasEndpoint: string): Promise<string> {
-  if (!kasEndpoint) {
+export async function fetchKasPubKey(kas: string): Promise<string> {
+  if (!kas) {
     throw new TdfError('KAS definition not found');
   }
   try {
-    return await TDF.getPublicKeyFromKeyAccessServer(kasEndpoint);
+    return await TDF.getPublicKeyFromKeyAccessServer(kas);
   } catch (cause) {
     throw new TdfError(
-      `Retrieving KAS public key [${kasEndpoint}] failed [${cause.name}] [${cause.message}]`,
+      `Retrieving KAS public key [${kas}] failed [${cause.name}] [${cause.message}]`,
       cause
     );
   }
@@ -180,6 +187,12 @@ export class Client {
    * Default kas endpoint, if present. Required for encrypt.
    */
   readonly kasEndpoint: string;
+
+  /**
+   * List of allowed KASes to connect to for rewrap requests.
+   * Defaults to `[this.kasEndpoint]`.
+   */
+  readonly allowedKases: string[];
 
   readonly kasPublicKey: Promise<string>;
 
@@ -230,6 +243,13 @@ export class Client {
       }
       this.kasEndpoint = clientConfig.keyRewrapEndpoint.replace(/\/rewrap$/, '');
     }
+
+    if (clientConfig.allowedKases) {
+      this.allowedKases = [...clientConfig.allowedKases];
+    } else {
+      this.allowedKases = [this.kasEndpoint];
+    }
+    this.allowedKases.forEach(validateSecureUrl);
 
     this.authProvider = config.authProvider;
     this.clientConfig = clientConfig;
@@ -354,7 +374,10 @@ export class Client {
 
     // TODO: Refactor underlying builder to remove some of this unnecessary config.
 
-    const tdf = TDF.create({ cryptoService: this.cryptoService })
+    const tdf = TDF.create({
+      allowedKases: this.allowedKases,
+      cryptoService: this.cryptoService,
+    })
       .setPrivateKey(sessionKeys.keypair.privateKey)
       .setPublicKey(sessionKeys.keypair.publicKey)
       .setEncryption({
@@ -436,6 +459,7 @@ export class Client {
     const tdf = TDF.create({ cryptoService: this.cryptoService })
       .setPrivateKey(sessionKeys.keypair.privateKey)
       .setPublicKey(sessionKeys.keypair.publicKey)
+      .setAllowedKases(this.allowedKases)
       .setAuthProvider(this.authProvider);
     if (entityObject) {
       tdf.setEntity(entityObject);
