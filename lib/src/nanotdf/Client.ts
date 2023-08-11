@@ -13,6 +13,7 @@ import getHkdfSalt from './helpers/getHkdfSalt.js';
 import DefaultParams from './models/DefaultParams.js';
 import { fetchWrappedKey } from '../kas.js';
 import { AuthProvider, reqSignature } from '../auth/providers.js';
+import { safeUrlCheck, validateSecureUrl } from '../utils.js';
 
 const { KeyUsageType, AlgorithmName, NamedCurve } = cryptoEnums;
 
@@ -52,6 +53,7 @@ export default class Client {
   static readonly INITIAL_RELEASE_IV_SIZE = 3;
   static readonly IV_SIZE = 12;
 
+  allowedKases: string[];
   /*
     These variables are expected to be either assigned during initialization or within the methods.
     This is needed as the flow is very specific. Errors should be thrown if the necessary step is not completed.
@@ -80,7 +82,9 @@ export default class Client {
     dpopEnabled = false
   ) {
     this.authProvider = authProvider;
+    validateSecureUrl(kasUrl);
     this.kasUrl = kasUrl;
+    this.allowedKases = [kasUrl];
     this.kasPubKey = '';
     this.dpopEnabled = dpopEnabled;
 
@@ -186,6 +190,8 @@ export default class Client {
     clientVersion: string,
     authTagLength: number
   ): Promise<CryptoKey> {
+    safeUrlCheck(this.allowedKases, kasRewrapUrl);
+
     // Ensure the ephemeral key pair has been set or generated (see createOidcServiceProvider)
     await this.fetchOIDCToken();
 
