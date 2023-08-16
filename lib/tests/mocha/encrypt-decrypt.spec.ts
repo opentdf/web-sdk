@@ -18,9 +18,6 @@ describe('encrypt decrypt test', async function () {
   const kasUrl = `http://localhost:4000/`;
   const kasPublicKey = await TDF.extractPemFromKeyString(Mocks.kasPublicKey);
 
-  after(() => {
-  });
-
   it('encrypt-decrypt stream source happy path', async function () {
     const sandbox = createSandbox();
     try {
@@ -46,10 +43,10 @@ describe('encrypt decrypt test', async function () {
         clientId: 'id',
         authProvider,
       });
-  
+
       const eo = await Mocks.getEntityObject();
       const scope = Mocks.getScope();
-  
+
       const encryptedStream = await client.encrypt({
         eo,
         metadata: Mocks.getMetadataObject(),
@@ -62,7 +59,7 @@ describe('encrypt decrypt test', async function () {
           },
         }),
       });
-  
+
       const decryptStream = await client.decrypt({
         eo,
         source: {
@@ -70,9 +67,9 @@ describe('encrypt decrypt test', async function () {
           location: encryptedStream.stream,
         },
       });
-  
+
       const { value: decryptedText } = await decryptStream.stream.getReader().read();
-  
+
       assert.equal(new TextDecoder().decode(decryptedText), expectedVal);
     } finally {
       sandbox.restore();

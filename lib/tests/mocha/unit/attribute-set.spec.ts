@@ -221,7 +221,7 @@ describe('AttributeSet', function () {
   it('simplest jwt attribute', async () => {
     const aSet = new AttributeSet();
     const attribute = 'https://example.com/attr/test-case/value/bar';
-    const jwtAttr = await Mocks.createJwtAttribute({attribute});
+    const jwtAttr = await Mocks.createJwtAttribute({ attribute });
     aSet.addJwtAttribute(jwtAttr);
 
     const expected = Mocks.createAttribute({ attribute });

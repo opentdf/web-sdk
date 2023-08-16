@@ -27,8 +27,15 @@ const ATTRIBUTE_OBJECT_SCHEMA: JSONSchemaType<AttributeObject> = {
   additionalProperties: false,
 };
 
-//@ts-expect-error: Ajv not a constructor
-const validator = new Ajv() || new Ajv.default();
+const validator = (() => {
+  try {
+    //@ts-expect-error: Ajv not a constructor
+    return new Ajv();
+  } catch (e) {
+    console.log(e);
+  }
+  return new Ajv.default();
+})();
 
 export class AttributeSet {
   attributes: AttributeObject[];
