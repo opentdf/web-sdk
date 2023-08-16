@@ -209,4 +209,22 @@ describe('AttributeSet', function () {
     const aSet = new AttributeSet();
     assert.deepEqual(aSet.get('unknown URL'), null);
   });
+
+  it('empty jwt attribute', async () => {
+    const aSet = new AttributeSet();
+    // @ts-expect-error invalid value
+    aSet.addJwtAttribute({});
+    assert.equal(aSet.attributes.length, 0);
+    assert.deepEqual(aSet.getDefault(), null);
+  });
+
+  it('simplest jwt attribute', async () => {
+    const aSet = new AttributeSet();
+    const attribute = 'https://example.com/attr/test-case/value/bar';
+    const jwtAttr = await Mocks.createJwtAttribute({attribute});
+    aSet.addJwtAttribute(jwtAttr);
+
+    const expected = Mocks.createAttribute({ attribute });
+    assert.include(aSet.get(attribute), expected);
+  });
 });
