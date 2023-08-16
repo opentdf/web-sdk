@@ -1,33 +1,33 @@
-import Ajv from 'ajv';
+import Ajv, { JSONSchemaType } from 'ajv';
 import { decodeJwt } from 'jose';
 
 const verbose = false;
 
 export type AttributeObject = {
   attribute: string;
-  kasUrl?: string;
-  pubKey?: string;
+  kasUrl: string;
+  pubKey: string;
   displayName?: string;
   isDefault?: boolean;
   jwt?: string;
 };
 
-const ATTRIBUTE_OBJECT_SCHEMA = {
-  id: '/AttributeObject',
+const ATTRIBUTE_OBJECT_SCHEMA: JSONSchemaType<AttributeObject> = {
+  $id: '/AttributeObject',
   type: 'object',
   properties: {
     attribute: { type: 'string' },
-    displayName: { type: 'string' },
-    isDefault: { type: 'boolean' },
+    displayName: { type: 'string', nullable: true },
+    isDefault: { type: 'boolean', nullable: true },
     pubKey: { type: 'string' },
     kasUrl: { type: 'string' },
-    jwt: { type: 'string' },
+    jwt: { type: 'string', nullable: true },
   },
   required: ['attribute', 'pubKey', 'kasUrl'],
   additionalProperties: false,
 };
 
-const validator = new Ajv();
+const validator = new Ajv.default();
 
 export class AttributeSet {
   attributes: AttributeObject[];

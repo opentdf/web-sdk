@@ -50,6 +50,11 @@ describe('TDF', () => {
     expect(actual).to.be.an.instanceof(TDF);
   });
 
+  it('allowedKases', () => {
+    const actual = TDF.create({ allowedKases: ['https://local.virtru.com'], cryptoService });
+    expect(actual.allowedKases).to.contain('https://local.virtru.com');
+  });
+
   it('Encodes the postMessage origin properly in wrapHtml', () => {
     const cipherText = 'abcezas123';
     const transferUrl = 'https://local.virtru.com/start?htmlProtocol=1';
