@@ -51,7 +51,8 @@ describe('TDF', () => {
   });
 
   it('allowedKases', () => {
-    const actual = TDF.create({ allowedKases: ['https://local.virtru.com'], cryptoService });
+    const cfg = { allowedKases: ['https://local.virtru.com'], cryptoService };
+    const actual = TDF.create(cfg);
     expect(actual.allowedKases).to.contain('https://local.virtru.com');
   });
 
