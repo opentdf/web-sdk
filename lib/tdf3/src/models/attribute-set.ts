@@ -27,7 +27,15 @@ const ATTRIBUTE_OBJECT_SCHEMA: JSONSchemaType<AttributeObject> = {
   additionalProperties: false,
 };
 
-const validator = new Ajv.default();
+const validator = (() => {
+  try {
+    //@ts-expect-error: Ajv not a constructor
+    return new Ajv();
+  } catch (e) {
+    console.log(e);
+  }
+  return new Ajv.default();
+})();
 
 export class AttributeSet {
   attributes: AttributeObject[];
@@ -148,11 +156,13 @@ export class AttributeSet {
    * @return {Object} - Decrypted and added attribute object
    */
   addJwtAttribute(jwtAttribute: { jwt: string }) {
-    const { jwt: attrJwt } = jwtAttribute;
+    const attrJwt = jwtAttribute?.jwt;
     // Can't verify the JWT because the client does not have the easPublicKey,
     // but the contents of the JWT can be decoded.
-    const attrObjPayload = decodeJwt(attrJwt);
-    if (!attrObjPayload) return null;
+    const attrObjPayload = attrJwt && decodeJwt(attrJwt);
+    if (!attrObjPayload) {
+      return null;
+    }
     // JWT payloads contain many things, incluing .iat and .exp. This
     // extraneous material should be stripped away before adding the
     // attribute to the attributeSet.
