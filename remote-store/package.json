@@ -30,7 +30,7 @@
     "clean": "rm -rf {coverage,dist}",
     "doc": "typedoc --out dist/docs src/index.ts",
     "format": "prettier --write \"{tests,src}/**/*.ts\"",
-    "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; CC-BY-4.0; ISC; MIT'",
+    "license-check": "license-checker-rseidelsohn --production --onlyAllow 'Apache-2.0; BSD; CC-BY-4.0; ISC; MIT'",
     "lint": "eslint ./src/**/*.ts",
     "prepack": "npm run build",
     "test": "mocha"
@@ -54,6 +54,7 @@
     "chai": "^4.3.7",
     "eslint": "^8.45.0",
     "eslint-config-prettier": "^8.8.0",
+    "license-checker-rseidelsohn": "^4.2.6",
     "mocha": "^10.2.0",
     "prettier": "^3.0.0",
     "ts-node": "^10.9.1",
