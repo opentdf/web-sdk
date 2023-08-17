@@ -15,21 +15,21 @@
     "url": "https://github.com/opentdf/client-web/issues"
   },
   "exports": {
-    "types": "./dist/index.d.ts",
-    "import": "./dist/index.js"
+    "types": "./dist/src/index.d.ts",
+    "import": "./dist/src/index.js"
   },
   "files": [
-    "dist/**",
+    "dist/src/**",
+    "src/**",
     "README.md"
   ],
-  "main": "./dist/index.js",
-  "browser": "./dist/web/tdf3/index-web.js",
-  "types": "./dist/types/tdf3/index.d.ts",
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf {coverage,dist}",
     "doc": "typedoc --out dist/docs src/index.ts",
-    "format": "prettier --write \"src/**/*.ts\"",
+    "format": "prettier --write \"{tests,src}/**/*.ts\"",
     "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; CC-BY-4.0; ISC; MIT'",
     "lint": "eslint ./src/**/*.ts",
     "prepack": "npm run build",
