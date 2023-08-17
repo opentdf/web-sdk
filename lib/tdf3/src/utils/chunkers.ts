@@ -1,4 +1,4 @@
-import axios, { AxiosResponse } from 'axios';
+import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { Buffer } from 'buffer';
 import {
   type DecoratedReadableStream,
@@ -6,14 +6,7 @@ import {
 } from '../client/DecoratedReadableStream.js';
 import axiosRetry from 'axios-retry';
 
-const axiosRemoteChunk = axios.create();
-
-// @ts-ignore
-axiosRetry(axiosRemoteChunk, {
-  retries: 3,
-  retryDelay: axiosRetry.exponentialDelay,
-  retryCondition: () => true,
-}); // Retries all idempotent requests (GET, HEAD, OPTIONS, PUT, DELETE)
+let axiosRemoteChunk: AxiosInstance | null = null;
 
 /**
  * Read data from a seekable stream.
@@ -37,6 +30,15 @@ export const fromBuffer = (buffer: Uint8Array | Buffer): Chunker => {
 };
 
 async function getRemoteChunk(url: string, range?: string): Promise<Uint8Array> {
+  if (!axiosRemoteChunk) {
+    axiosRemoteChunk = axios.create();
+    // @ts-ignore: axiosRetry not typed
+    axiosRetry(axiosRemoteChunk, {
+      retries: 3,
+      retryDelay: axiosRetry.exponentialDelay,
+      retryCondition: () => true,
+    }); // Retries all idempotent requests (GET, HEAD, OPTIONS, PUT, DELETE)
+  }
   try {
     const res: AxiosResponse<Uint8Array> = await axiosRemoteChunk.get(url, {
       ...(range && {

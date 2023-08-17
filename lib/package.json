@@ -10,6 +10,8 @@
     "dist/*/src/**",
     "dist/*/tdf3/**",
     "dist/*/*.json",
+    "src/**",
+    "tdf3/**",
     "README.md"
   ],
   "repository": {
