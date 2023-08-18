@@ -1,5 +1,5 @@
 
-version=1.3.1
+version=2.0.0
 extras=remote-store web-app
 pkgs=lib $(extras)
 
@@ -23,7 +23,7 @@ i:
 
 all: ci lib/opentdf-client-$(version).tgz remote-store/opentdf-remote-store-$(version).tgz web-app/opentdf-web-app-$(version).tgz
 
-web-app/opentdf-remote-store-$(version).tgz: lib/opentdf-client-$(version).tgz $(shell find remote-store -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
+remote-store/opentdf-remote-store-$(version).tgz: lib/opentdf-client-$(version).tgz $(shell find remote-store -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
 	(cd remote-store && npm ci ../lib/opentdf-client-$(version).tgz && npm pack)
 
 web-app/opentdf-web-app-$(version).tgz: lib/opentdf-client-$(version).tgz $(shell find web-app -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
