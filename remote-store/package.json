@@ -3,7 +3,7 @@
   "license": "BSD-3-Clause-Clear",
   "author": "Virtru",
   "type": "module",
-  "version": "1.2.1",
+  "version": "2.0.0",
   "description": "Upload a web stream directly to S3",
   "homepage": "https://github.com/opentdf/client-web",
   "repository": {
