@@ -52,7 +52,7 @@ export const setRemoteStoreAsStream = async (
   builder: DecryptParamsBuilder | EncryptParamsBuilder,
   fileName: string,
   config: VirtruS3Config,
-  credentialURL: string
+  credentialURL?: string
 ): Promise<DecryptParams | EncryptParams> => {
   let virtruTempS3Credentials: VirtruTempS3Credentials | undefined;
   let storageParams: VirtruS3Config;
