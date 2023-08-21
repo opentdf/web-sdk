@@ -1,5 +1,3 @@
-import { S3Client, GetObjectCommand, HeadObjectCommand, S3ClientConfig } from '@aws-sdk/client-s3';
-import axios from 'axios';
 import { Buffer } from 'buffer';
 
 import { arrayBufferToBuffer } from '../utils/index.js';
@@ -12,107 +10,7 @@ import { IllegalArgumentError } from '../errors.js';
 import { PemKeyPair } from '../crypto/declarations.js';
 import { EntityObject } from '../../../src/tdf/EntityObject.js';
 
-const { get } = axios;
-
 export const DEFAULT_SEGMENT_SIZE: number = 1024 * 1024;
-export type VirtruS3Config = S3ClientConfig & {
-  Bucket?: string;
-};
-
-export type VirtruCreds = S3ClientConfig['credentials'];
-
-export type FetchCreds = {
-  AWSAccessKeyId: string;
-  AWSSecretAccessKey: string;
-  AWSSessionToken: string;
-};
-
-export type VirtruTempS3Credentials = {
-  data: {
-    bucket: string;
-    fields: FetchCreds;
-    url: string;
-  };
-};
-
-async function setRemoteStoreAsStream(
-  fileName: string,
-  config: VirtruS3Config,
-  credentialURL: string,
-  builder: EncryptParamsBuilder | DecryptParamsBuilder
-): Promise<EncryptParams | DecryptParams> {
-  let virtruTempS3Credentials: VirtruTempS3Credentials | undefined;
-  let storageParams: VirtruS3Config;
-
-  // Param validation
-  if (!fileName) {
-    throw new Error('Passing a fileName is required for setRemoteStore()');
-  }
-
-  if (credentialURL) {
-    // Check for string or string object
-    try {
-      virtruTempS3Credentials = await get(credentialURL);
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
-  try {
-    const BUCKET_NAME: string | undefined =
-      config?.Bucket || virtruTempS3Credentials?.data?.bucket || undefined;
-
-    const FILE_NAME: string = fileName;
-
-    // Build a storage config object from 'config' or 'virtruTempS3Credentials'
-    if (virtruTempS3Credentials) {
-      const credentials: VirtruCreds = {
-        accessKeyId: virtruTempS3Credentials.data.fields.AWSAccessKeyId,
-        secretAccessKey: virtruTempS3Credentials.data.fields.AWSSecretAccessKey,
-        sessionToken: virtruTempS3Credentials.data.fields.AWSSessionToken,
-      };
-
-      storageParams = {
-        credentials,
-        region: virtruTempS3Credentials.data.url.split('.')[1],
-        forcePathStyle: false,
-        maxAttempts: 3,
-        useAccelerateEndpoint: true,
-      };
-    } else {
-      storageParams = config;
-    }
-
-    const s3 = new S3Client(storageParams);
-
-    const s3Metadata = await s3.send(
-      new HeadObjectCommand({
-        Key: FILE_NAME,
-        Bucket: BUCKET_NAME,
-      })
-    );
-
-    if (typeof s3Metadata.ContentLength === 'number') {
-      builder.setContentLength(s3Metadata.ContentLength);
-    }
-
-    const s3download = await s3.send(
-      new GetObjectCommand({
-        Key: FILE_NAME,
-        Bucket: BUCKET_NAME,
-      })
-    );
-
-    const s3Stream = s3download.Body;
-
-    builder.setStreamSource(s3Stream as ReadableStream<Uint8Array>);
-    return builder.build();
-  } catch (e) {
-    console.error(e);
-    throw e;
-  }
-}
-
 export type Scope = {
   dissem?: string[];
   policyId?: string;
@@ -204,24 +102,6 @@ class EncryptParamsBuilder {
 
     this.setStreamSource(readStream);
     return this;
-  }
-
-  /**
-   * Specify the remote content to encrypt in stream form.
-   * withRemoteStore() has not been implemented because setRemoteStore() is async so withRemoteStore() can't be chained with a build() call.
-   * @param {string} fileName - the name of the remote file to write TDF ciphertext to.
-   * @param {S3ClientConfig} [config] - the object containing remote storage configuration.
-   * <br>A detailed spec for the interface can be found [here]{@link https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/clients/client-s3/interfaces/s3clientconfig.html}
-   * @param {string} [credentialURL] - the url to request remote storage credentials from.
-   * <br>Credentials can be generated using [GetFederationToken]{@link https://docs.aws.amazon.com/STS/latest/APIReference/API_GetFederationToken.html}
-   * @return {EncryptParamsBuilder} - this object.
-   */
-  async setRemoteStore(
-    fileName: string,
-    config: VirtruS3Config,
-    credentialURL: string
-  ): Promise<EncryptParams | DecryptParams> {
-    return setRemoteStoreAsStream(fileName, config, credentialURL, this);
   }
 
   /**
@@ -711,24 +591,6 @@ class DecryptParamsBuilder {
 
     this.setStreamSource(stream);
     return this;
-  }
-
-  /**
-   * Specify the remote content to decrypt in stream form.
-   * withRemoteStore() has not been implemented because setRemoteStore() is async so withRemoteStore() can't be chained with a build() call.
-   * @param {string} fileName - the name of the remote file to write TDF ciphertext to.
-   * @param {S3ClientConfig} [config] - the object containing remote storage configuration.
-   * <br>A detailed spec for the interface can be found [here]{@link https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/clients/client-s3/interfaces/s3clientconfig.html}
-   * @param {string} [credentialURL] - the url to request remote storage credentials from.
-   * <br>Credentials can be generated using [GetFederationToken]{@link https://docs.aws.amazon.com/STS/latest/APIReference/API_GetFederationToken.html}
-   * @return {DecryptParamsBuilder} - this object.
-   */
-  async setRemoteStore(
-    fileName: string,
-    config: VirtruS3Config,
-    credentialURL: string
-  ): Promise<DecryptParams | EncryptParams> {
-    return setRemoteStoreAsStream(fileName, config, credentialURL, this);
   }
 
   /**

@@ -1,0 +1,63 @@
+{
+  "name": "@opentdf/remote-store",
+  "license": "BSD-3-Clause-Clear",
+  "author": "Virtru",
+  "type": "module",
+  "version": "2.0.0",
+  "description": "Upload a web stream directly to S3",
+  "homepage": "https://github.com/opentdf/client-web",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/opentdf/client-web.git",
+    "directory": "remote-store"
+  },
+  "bugs": {
+    "url": "https://github.com/opentdf/client-web/issues"
+  },
+  "exports": {
+    "types": "./dist/src/index.d.ts",
+    "import": "./dist/src/index.js"
+  },
+  "files": [
+    "dist/src/**",
+    "src/**",
+    "README.md"
+  ],
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf {coverage,dist}",
+    "doc": "typedoc --out dist/docs src/index.ts",
+    "format": "prettier --write \"{tests,src}/**/*.ts\"",
+    "license-check": "license-checker-rseidelsohn --production --onlyAllow 'Apache-2.0; BSD; CC-BY-4.0; ISC; MIT'",
+    "lint": "eslint ./src/**/*.ts",
+    "prepack": "npm run build",
+    "test": "mocha"
+  },
+  "dependencies": {
+    "@aws-sdk/abort-controller": "^3.370.0",
+    "@aws-sdk/client-s3": "^3.370.0",
+    "@aws-sdk/middleware-endpoint": "^3.370.0",
+    "@aws-sdk/protocol-http": "^3.370.0",
+    "@aws-sdk/smithy-client": "^3.370.0",
+    "@opentdf/client": "file:../lib/opentdf-client-2.0.0.tgz",
+    "axios": "^1.4.0"
+  },
+  "devDependencies": {
+    "@aws-sdk/types": "^3.370.0",
+    "@esm-bundle/chai": "4.3.4-fix.0",
+    "@types/chai": "^4.3.5",
+    "@types/mocha": "^10.0.1",
+    "@typescript-eslint/eslint-plugin": "^6.1.0",
+    "@typescript-eslint/parser": "^6.1.0",
+    "chai": "^4.3.7",
+    "eslint": "^8.45.0",
+    "eslint-config-prettier": "^8.8.0",
+    "license-checker-rseidelsohn": "^4.2.6",
+    "mocha": "^10.2.0",
+    "prettier": "^3.0.0",
+    "ts-node": "^10.9.1",
+    "typescript": "5.1.6"
+  }
+}

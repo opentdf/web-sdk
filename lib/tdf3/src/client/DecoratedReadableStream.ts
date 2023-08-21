@@ -1,18 +1,9 @@
-import {
-  AbortMultipartUploadCommandOutput,
-  CompleteMultipartUploadCommandOutput,
-  S3Client,
-} from '@aws-sdk/client-s3';
-import axios from 'axios';
 import { Buffer } from 'buffer';
 import { EventEmitter } from 'events';
 import streamSaver from 'streamsaver';
 import { fileSave } from 'browser-fs-access';
 import { isFirefox } from '../../../src/utils.js';
 
-import { VirtruS3Config, VirtruTempS3Credentials, VirtruCreds } from './builders.js';
-import { Upload } from '../utils/aws-lib-storage/index.js';
-import { Options } from '../utils/aws-lib-storage/types.js';
 import { type Metadata } from '../tdf.js';
 import { type Manifest, type UpsertResponse } from '../models/index.js';
 
@@ -56,88 +47,6 @@ export class DecoratedReadableStream {
     this.ee = new EventEmitter();
     this.on = (...args) => this.ee.on(...args);
     this.emit = (...args) => this.ee.emit(...args);
-  }
-
-  /**
-   *
-   * Dump the stream content to remote storage. This will consume the stream.
-   * @param {string} fileName - the name of the remote file to write TDF ciphertext to.
-   * @param {S3ClientConfig} [config] - the object containing remote storage configuration.
-   * <br>A detailed spec for the interface can be found [here]{@link https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/clients/client-s3/interfaces/s3clientconfig.html}
-   * @param {string} [credentialURL] - the url to request remote storage credentials from.
-   * @return {RemoteUploadResponse} - an object containing metadata for the uploaded file.
-   */
-  async toRemoteStore(
-    fileName: string,
-    config: VirtruS3Config,
-    credentialURL: string
-  ): Promise<CompleteMultipartUploadCommandOutput | AbortMultipartUploadCommandOutput> {
-    // State
-    const CONCURRENT_UPLOADS = 6;
-    const MAX_UPLOAD_PART_SIZE = 1024 * 1024 * 5; // 5MB
-    let storageParams: VirtruS3Config;
-    let virtruTempS3Credentials: VirtruTempS3Credentials | undefined;
-
-    // Param validation
-    if (!config) {
-      try {
-        virtruTempS3Credentials = await axios.get(credentialURL);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-
-    // Build a storage config object from 'config' or 'virtruTempS3Credentials'
-    if (virtruTempS3Credentials) {
-      const credentials: VirtruCreds = {
-        accessKeyId: virtruTempS3Credentials.data.fields.AWSAccessKeyId,
-        secretAccessKey: virtruTempS3Credentials.data.fields.AWSSecretAccessKey,
-        sessionToken: virtruTempS3Credentials.data.fields.AWSSessionToken,
-      };
-
-      storageParams = {
-        credentials,
-        region: virtruTempS3Credentials.data.url.split('.')[1],
-        forcePathStyle: false,
-        maxAttempts: 3,
-        useAccelerateEndpoint: true,
-      };
-    } else {
-      storageParams = config;
-    }
-
-    const BUCKET_NAME: string | undefined =
-      config?.Bucket || virtruTempS3Credentials?.data?.bucket || undefined;
-
-    const FILE_NAME = fileName || 'upload.tdf';
-
-    const s3 = new S3Client(storageParams);
-
-    // Managed Parallel Upload
-    const uploadParams: Options['params'] = {
-      Bucket: BUCKET_NAME,
-      Key: FILE_NAME,
-      Body: this.stream,
-    };
-
-    try {
-      const parallelUpload = new Upload({
-        client: s3,
-        queueSize: CONCURRENT_UPLOADS, // optional concurrency configuration
-        partSize: MAX_UPLOAD_PART_SIZE, // optional size of each part, defaults to 5MB, cannot be smaller than 5MB
-        leavePartsOnError: false, // optional manually handle dropped parts
-        params: uploadParams,
-      });
-
-      parallelUpload.on('httpUploadProgress', (progress) => {
-        this.emit('progress', progress);
-      });
-
-      return await parallelUpload.done();
-    } catch (e) {
-      console.error(e);
-      throw e;
-    }
   }
 
   async getMetadata() {
