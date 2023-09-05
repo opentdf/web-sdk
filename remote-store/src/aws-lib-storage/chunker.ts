@@ -11,7 +11,7 @@ export const getChunk = (data: BodyDataTypes, partSize: number) => {
     return getChunkStream<BodyDataTypes>(data, partSize, getDataReadable);
   } else if (data instanceof String || typeof data === 'string') {
     // chunk Strings, Uint8Array.
-    return getChunkBuffer(new TextEncoder().encode(data), partSize);
+    return getChunkBuffer(new TextEncoder().encode(data as string), partSize);
   }
   if (typeof (data as { stream: unknown }).stream === 'function') {
     // approximate support for Blobs.
