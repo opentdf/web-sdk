@@ -48,3 +48,10 @@ TDF3 with JSON envelopes.
 ## Examples
 
 Review examples to see how to integrate. See [Examples](https://github.com/opentdf/opentdf/tree/main/examples)
+
+## Upgrading from 1.x
+
+- The 'RemoteStorage' features have been moved into a separate library, @opentdf/remote-storage. 
+  For an example refactor, see https://github.com/opentdf/opentdf/pull/256
+- We have replaced all usages of node's `Buffer` with the web-friendlier `UInt8Array`.
+  You will most likely see this in the return types of some functions.
