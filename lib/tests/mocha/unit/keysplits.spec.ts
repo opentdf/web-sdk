@@ -30,7 +30,7 @@ describe('keysplits', () => {
     const key = await generateKey(4);
 
     const unwrappedKeyBinary = Binary.fromString(hex.decode(key));
-    const splits = await keySplit(unwrappedKeyBinary.asBuffer(), 1, defaultCryptoService);
+    const splits = await keySplit(new Uint8Array(unwrappedKeyBinary.asArrayBuffer()), 1, defaultCryptoService);
 
     expect(hex.encodeArrayBuffer(splits[0])).to.eql(key);
   });

@@ -1,5 +1,4 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
-import { Buffer } from 'buffer';
 import {
   type DecoratedReadableStream,
   isDecoratedReadableStream,
