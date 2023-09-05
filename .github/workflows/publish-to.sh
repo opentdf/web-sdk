@@ -20,6 +20,13 @@ npm publish --access public --tag "$t"
 # Wait for npm publish to go through...
 sleep 5
 
+cd ../remote-store
+
+npm version --no-git-tag-version --allow-same-version "$v"
+npm uninstall "@opentdf/client"
+npm install "@opentdf/client@$v"
+npm publish --access public --tag "$t"
+
 if [[ "$GITHUB_STEP_SUMMARY" ]]; then
   echo "### Published ${v} (${t})" >>"$GITHUB_STEP_SUMMARY"
 fi

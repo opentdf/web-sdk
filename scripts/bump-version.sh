@@ -22,7 +22,7 @@ elif [[ $(git status --porcelain) ]]; then
   exit 1
 fi
 
-packages=(lib web-app)
+packages=(lib remote-store web-app)
 old_version=$(cd "${packages[0]}" && node -p "require('./package.json').version")
 echo npm --no-git-tag-version version "${increment_type}"
 (cd "${packages[0]}" && npm --no-git-tag-version version "${increment_type}")

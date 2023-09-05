@@ -53,6 +53,33 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
+  remote-store:
+    needs:
+      - lib
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./remote-store
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: './remote-store/package-lock.json'
+      - uses: actions/download-artifact@v3
+        with:
+          name: opentdf-client-lib
+          path: lib/
+      - run: npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-*.tgz
+      - run: npm install
+      - run: npm test
+      - run: npm audit
+      - run: npm run license-check
+      - run: npm run lint
+      - run: npm pack
+
   web-app:
     needs:
       - lib
@@ -233,4 +260,5 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: echo "- [Client Library](https://www.npmjs.com/package/@opentdf/client/v/${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
+      - run: echo "- [Remote Store](https://www.npmjs.com/package/@opentdf/remote-store/v/${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
       - run: echo "- [unpkg](https://unpkg.com/browse/@opentdf/client@${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
