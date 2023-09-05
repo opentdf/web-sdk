@@ -1,7 +1,7 @@
 import { RawDataPart } from '../Upload.js';
 
 export async function* getChunkBuffer(
-  data: Buffer,
+  data: Uint8Array,
   partSize: number
 ): AsyncGenerator<RawDataPart, void, undefined> {
   let partNumber = 1;
