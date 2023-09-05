@@ -1,4 +1,3 @@
-import { Buffer } from 'buffer';
 import { EventEmitter } from 'events';
 import streamSaver from 'streamsaver';
 import { fileSave } from 'browser-fs-access';
@@ -7,9 +6,9 @@ import { isFirefox } from '../../../src/utils.js';
 import { type Metadata } from '../tdf.js';
 import { type Manifest, type UpsertResponse } from '../models/index.js';
 
-export async function streamToBuffer(stream: ReadableStream<Uint8Array>): Promise<Buffer> {
+export async function streamToBuffer(stream: ReadableStream<Uint8Array>): Promise<Uint8Array> {
   const accumulator = await new Response(stream).arrayBuffer();
-  return Buffer.from(accumulator);
+  return new Uint8Array(accumulator);
 }
 
 export type DecoratedReadableStreamSinkOptions = {
@@ -67,7 +66,7 @@ export class DecoratedReadableStream {
    * Dump the stream content to a buffer. This will consume the stream.
    * @return the plaintext in Buffer form.
    */
-  async toBuffer(): Promise<Buffer> {
+  async toBuffer(): Promise<Uint8Array> {
     return streamToBuffer(this.stream);
   }
 

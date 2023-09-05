@@ -41,8 +41,7 @@ export const byteLength = (
     return 0;
   }
   if (typeof input === 'string') {
-    // number of utf-8 encoded bytes in a string
-    return Buffer.from(input).byteLength;
+    return new TextEncoder().encode(input).byteLength;
   }
   if ('byteLength' in input && typeof input.byteLength === 'number') {
     return input.byteLength;

@@ -1,5 +1,4 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
-import { Buffer } from 'buffer';
 import {
   type DecoratedReadableStream,
   isDecoratedReadableStream,
@@ -40,7 +39,7 @@ async function getRemoteChunk(url: string, range?: string): Promise<Uint8Array> 
     }); // Retries all idempotent requests (GET, HEAD, OPTIONS, PUT, DELETE)
   }
   try {
-    const res: AxiosResponse<Uint8Array> = await axiosRemoteChunk.get(url, {
+    const res: AxiosResponse<ArrayBuffer> = await axiosRemoteChunk.get(url, {
       ...(range && {
         headers: {
           Range: `bytes=${range}`,
@@ -53,7 +52,7 @@ async function getRemoteChunk(url: string, range?: string): Promise<Uint8Array> 
         'Unexpected response type: Server should have responded with an ArrayBuffer.'
       );
     }
-    return res.data;
+    return new Uint8Array(res.data);
   } catch (e) {
     if (e && e.response && e.response.status === 416) {
       console.log('Warning: Range not satisfiable');

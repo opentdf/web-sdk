@@ -1,16 +1,14 @@
-import { Buffer } from 'buffer';
-
 import { RawDataPart } from '../Upload.js';
 
 interface Buffers {
-  chunks: Buffer[];
+  chunks: Uint8Array[];
   length: number;
 }
 
 export async function* getChunkStream<T>(
   data: T,
   partSize: number,
-  getNextData: (data: T) => AsyncGenerator<Buffer>
+  getNextData: (data: T) => AsyncGenerator<Uint8Array>
 ): AsyncGenerator<RawDataPart, void, undefined> {
   let partNumber = 1;
   const currentBuffer: Buffers = { chunks: [], length: 0 };
@@ -26,7 +24,7 @@ export async function* getChunkStream<T>(
        */
       const dataChunk =
         currentBuffer.chunks.length > 1
-          ? Buffer.concat(currentBuffer.chunks)
+          ? concatUint8(currentBuffer.chunks)
           : currentBuffer.chunks[0];
 
       yield {
@@ -42,7 +40,23 @@ export async function* getChunkStream<T>(
   }
   yield {
     partNumber,
-    data: Buffer.concat(currentBuffer.chunks),
+    data: concatUint8(currentBuffer.chunks),
     lastPart: true,
   };
+}
+
+function concatUint8(uint8Arrays: Uint8Array[]): Uint8Array {
+  const newLength = uint8Arrays.reduce(
+    (accumulator, currentValue) => accumulator + currentValue.length,
+    0
+  );
+  const combinedUint8Array = new Uint8Array(newLength);
+
+  let offset = 0;
+  for (const uint8Array of uint8Arrays) {
+    combinedUint8Array.set(uint8Array, offset);
+    offset += uint8Array.length;
+  }
+
+  return combinedUint8Array;
 }

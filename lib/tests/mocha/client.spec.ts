@@ -165,6 +165,6 @@ describe('tdf stream tests', function () {
         controller.close();
       },
     });
-    assert.equal('hello world', (await stream.toBuffer()).toString('utf-8'));
+    assert.equal('hello world', new TextDecoder().decode(await stream.toBuffer()));
   });
 });

@@ -1,5 +1,6 @@
 import { expect } from 'chai';
 
+import { encodeArrayBuffer } from '../../../src/encodings/base64.js';
 import { parseCDBuffer, readUInt64LE } from '../../../tdf3/src/utils/zip-reader.js';
 import { ZipWriter, dateToDosDateTime, writeUInt64LE } from '../../../tdf3/src/utils/zip-writer.js';
 
@@ -60,7 +61,7 @@ describe('zip utilities', () => {
         500,
         new Date('1980-01-01T00:00:00')
       );
-      expect(headerBuffer.toString('base64')).to.equal(
+      expect(encodeArrayBuffer(headerBuffer.buffer)).to.equal(
         'UEsDBBQACAgAAAAAIQA3EwAABQAAAPQBAAAHAAAASGV5LnR4dA=='
       );
     });
@@ -74,7 +75,7 @@ describe('zip utilities', () => {
         500,
         new Date('1980-01-01T00:00:00')
       );
-      expect(headerBuffer.toString('base64')).to.equal(
+      expect(encodeArrayBuffer(headerBuffer.buffer)).to.equal(
         'UEsDBBQACAgAAAAAIQA3EwAA//////////8HABwASGV5LnR4dAEAGAAFAAAAAAAAAPQBAAAAAAAAAAAAAAAAAAA='
       );
     });
@@ -85,13 +86,15 @@ describe('zip utilities', () => {
       const zipWriter = new ZipWriter();
       zipWriter.zip64 = false;
       const descriptorBuffer = zipWriter.writeDataDescriptor(0x1337, 500);
-      expect(descriptorBuffer.toString('base64')).to.equal('UEsHCDcTAAD0AQAA9AEAAA==');
+      expect(encodeArrayBuffer(descriptorBuffer.buffer)).to.equal('UEsHCDcTAAD0AQAA9AEAAA==');
     });
     it('zip64', async () => {
       const zipWriter = new ZipWriter();
       zipWriter.zip64 = true;
       const descriptorBuffer = zipWriter.writeDataDescriptor(0x1337, 500);
-      expect(descriptorBuffer.toString('base64')).to.equal('UEsHCDcTAAD0AQAAAAAAAPQBAAAAAAAA');
+      expect(encodeArrayBuffer(descriptorBuffer.buffer)).to.equal(
+        'UEsHCDcTAAD0AQAAAAAAAPQBAAAAAAAA'
+      );
     });
   });
 
@@ -119,7 +122,7 @@ describe('zip utilities', () => {
         lastModFileDate: 33,
         lastModFileTime: 0,
       });
-      expect(cdrBuffer.toString('base64')).to.equal(
+      expect(encodeArrayBuffer(cdrBuffer.buffer)).to.equal(
         'UEsBAj8DFAAICAAAAAAhADcTAAD0AQAA9AEAAAcAAAAAAAAAAAAAAKSB0AcAAEhleS50eHQ='
       );
     });
@@ -144,7 +147,7 @@ describe('zip utilities', () => {
         lastModFileDate: 33,
         lastModFileTime: 0,
       });
-      expect(cdrBuffer.toString('base64')).to.equal(
+      expect(encodeArrayBuffer(cdrBuffer.buffer)).to.equal(
         'UEsBAj8DLQAICAAAAAAhADcTAAD//////////wcAHAAAAAAAAAAAAKSB/////0hleS50eHQBABgAAAAAAAAABAAAAAAAAAAEANAHAAAAAAAA'
       );
     });
@@ -155,13 +158,13 @@ describe('zip utilities', () => {
       const zipWriter = new ZipWriter();
       zipWriter.zip64 = false;
       const eocdrBuffer = zipWriter.writeEndOfCentralDirectoryRecord(2, 200, 2000);
-      expect(eocdrBuffer.toString('base64')).to.equal('UEsFBgAAAAACAAIAyAAAANAHAAAAAA==');
+      expect(encodeArrayBuffer(eocdrBuffer)).to.equal('UEsFBgAAAAACAAIAyAAAANAHAAAAAA==');
     });
     it('zip64', async () => {
       const zipWriter = new ZipWriter();
       zipWriter.zip64 = true;
       const eocdrBuffer = zipWriter.writeEndOfCentralDirectoryRecord(2, 200, 2000);
-      expect(eocdrBuffer.toString('base64')).to.equal(
+      expect(encodeArrayBuffer(eocdrBuffer)).to.equal(
         'UEsGBiwAAAAAAAAAPwMtAAAAAAAAAAAAAgAAAAAAAAACAAAAAAAAAMgAAAAAAAAA0AcAAAAAAABQSwYHAAAAAJgIAAAAAAAAAQAAAFBLBQYAAAAA////////////////AAA='
       );
     });

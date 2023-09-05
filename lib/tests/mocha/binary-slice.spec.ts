@@ -1,4 +1,3 @@
-import { Buffer } from 'buffer';
 import { assert, expect } from 'chai';
 import { Binary } from '../../tdf3/src/binary.js';
 
@@ -16,18 +15,16 @@ function range(a: number, b?: number): number[] {
 
 function expectorate(b: number[]) {
   const arrayBufferBinary = Binary.fromArrayBuffer(Uint8Array.from(b).buffer);
-  const bufferBinary = Binary.fromBuffer(Buffer.from(b));
   const byteArrayBinary = Binary.fromByteArray(b);
   const stringBinary = Binary.fromString(String.fromCharCode(...b));
-  return { arrayBufferBinary, bufferBinary, byteArrayBinary, stringBinary };
+  return { arrayBufferBinary, byteArrayBinary, stringBinary };
 }
 
 function actuate(bin: Binary) {
   const arrayBufferBinary = Binary.fromArrayBuffer(bin.asArrayBuffer());
-  const bufferBinary = Binary.fromBuffer(bin.asBuffer());
   const byteArrayBinary = Binary.fromByteArray(bin.asByteArray());
   const stringBinary = Binary.fromString(bin.asString());
-  return { arrayBufferBinary, bufferBinary, byteArrayBinary, stringBinary };
+  return { arrayBufferBinary, byteArrayBinary, stringBinary };
 }
 
 describe('Slice method', function () {
