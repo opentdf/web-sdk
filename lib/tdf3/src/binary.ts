@@ -1,4 +1,3 @@
-
 /**
  * Provides a binary type that can be initialized with many different forms of
  * data

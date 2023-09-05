@@ -1,5 +1,5 @@
 import { RawDataPart } from '../Upload.js';
-import { concatUint8 } from '../../../utils/index.js'
+import { concatUint8 } from '../../../utils/index.js';
 
 interface Buffers {
   chunks: Uint8Array[];
