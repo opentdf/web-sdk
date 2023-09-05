@@ -1,5 +1,4 @@
 import { RawDataPart } from '../Upload.js';
-import { concatUint8 } from '../../../../lib/tdf3/src/utils/index.js';
 
 interface Buffers {
   chunks: Uint8Array[];
@@ -44,4 +43,20 @@ export async function* getChunkStream<T>(
     data: concatUint8(currentBuffer.chunks),
     lastPart: true,
   };
+}
+
+function concatUint8(uint8Arrays: Uint8Array[]): Uint8Array {
+  const newLength = uint8Arrays.reduce(
+    (accumulator, currentValue) => accumulator + currentValue.length,
+    0
+  );
+  const combinedUint8Array = new Uint8Array(newLength);
+
+  let offset = 0;
+  for (const uint8Array of uint8Arrays) {
+    combinedUint8Array.set(uint8Array, offset);
+    offset += uint8Array.length;
+  }
+
+  return combinedUint8Array;
 }
