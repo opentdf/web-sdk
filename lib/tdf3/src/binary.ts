@@ -65,7 +65,7 @@ function adjustSliceParams(length: number, start: number, end?: number): [number
     result.push(end);
   }
 
-  return result;
+  return (result as [number, number?]);
 }
 
 class ArrayBufferBinary extends Binary {
