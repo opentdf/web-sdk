@@ -60,7 +60,12 @@ function adjustSliceParams(length: number, start: number, end?: number): [number
   if (end && end < 0) {
     end = length + end;
   }
-  return [start, end];
+  const result = [start];
+  if (end) {
+    result.push(end);
+  }
+
+  return result;
 }
 
 class ArrayBufferBinary extends Binary {
@@ -87,11 +92,7 @@ class ArrayBufferBinary extends Binary {
 
   override asString(): string {
     const uint8Array = new Uint8Array(this.value);
-    let str = '';
-    for (let i = 0; i < uint8Array.length; i++) {
-      str = str + String.fromCharCode(uint8Array[i]);
-    }
-    return str;
+    return new TextDecoder().decode(uint8Array);
   }
 
   override isArrayBuffer(): boolean {
@@ -127,11 +128,7 @@ class ByteArrayBinary extends Binary {
 
   override asString(): string {
     const uint8Array = new Uint8Array(this.value);
-    let str = '';
-    for (let i = 0; i < uint8Array.length; i++) {
-      str = str + String.fromCharCode(uint8Array[i]);
-    }
-    return str;
+    return new TextDecoder().decode(uint8Array);
   }
 
   override isByteArray(): boolean {
