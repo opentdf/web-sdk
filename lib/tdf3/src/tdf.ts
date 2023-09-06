@@ -781,7 +781,7 @@ export class TDF extends EventEmitter {
     if (upsertResponse) {
       plaintextStream.upsertResponse = upsertResponse;
       plaintextStream.tdfSize = totalByteCount;
-      plaintextStream.KEK = payloadKey ? null : btoa(kek.payload.asString());
+      plaintextStream.KEK = payloadKey ? null : kek.payload.asB64();
       plaintextStream.algorithm = manifest.encryptionInformation.method.algorithm;
     }
 

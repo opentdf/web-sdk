@@ -44,6 +44,8 @@ export abstract class Binary {
 
   abstract asArrayBuffer(): ArrayBuffer;
 
+  abstract asB64(): string;
+
   abstract asByteArray(): number[];
 
   abstract asString(): string;
@@ -95,6 +97,11 @@ class ArrayBufferBinary extends Binary {
     return new TextDecoder().decode(uint8Array);
   }
 
+  override asB64(): string {
+    const uint8Array = new Uint8Array(this.value);
+    return window.btoa([...uint8Array].map(byte => String.fromCharCode(byte)).join(''));
+  }
+
   override isArrayBuffer(): boolean {
     return true;
   }
@@ -129,6 +136,11 @@ class ByteArrayBinary extends Binary {
   override asString(): string {
     const uint8Array = new Uint8Array(this.value);
     return new TextDecoder().decode(uint8Array);
+  }
+
+  override asB64(): string {
+    const uint8Array = new Uint8Array(this.value);
+    return window.btoa([...uint8Array].map(byte => String.fromCharCode(byte)).join(''));
   }
 
   override isByteArray(): boolean {
@@ -173,6 +185,11 @@ class StringBinary extends Binary {
 
   asString(): string {
     return this.value;
+  }
+
+  override asB64(): string {
+    const uint8Array: Uint8Array = new TextEncoder().encode(this.value);
+    return window.btoa([...uint8Array].map(byte => String.fromCharCode(byte)).join(''));
   }
 
   override isString(): boolean {

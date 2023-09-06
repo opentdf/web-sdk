@@ -40,7 +40,7 @@ export class Wrapped {
       type: 'wrapped',
       url: this.url,
       protocol: 'kas',
-      wrappedKey: base64.encode(wrappedKeyBinary.asString()),
+      wrappedKey: wrappedKeyBinary.asB64(),
       encryptedMetadata: base64.encode(encryptedMetadataStr),
       policyBinding: base64.encode(policyBinding),
     };
@@ -77,8 +77,7 @@ export class Remote {
       this.publicKey
     );
 
-    // this.wrappedKey = wrappedKeyBinary.asBuffer().toString('hex');
-    this.wrappedKey = base64.encode(wrappedKeyBinary.asString());
+    this.wrappedKey = wrappedKeyBinary.asB64();
 
     this.keyAccessObject = {
       type: 'remote',
