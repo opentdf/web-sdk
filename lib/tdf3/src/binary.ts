@@ -87,11 +87,7 @@ class ArrayBufferBinary extends Binary {
 
   override asString(): string {
     const uint8Array = new Uint8Array(this.value);
-    let str = '';
-    for (let i = 0; i < uint8Array.length; i++) {
-      str = str + String.fromCharCode(uint8Array[i]);
-    }
-    return str;
+    return unescape(encodeURIComponent(new TextDecoder().decode(uint8Array)));
   }
 
   override isArrayBuffer(): boolean {
@@ -127,11 +123,7 @@ class ByteArrayBinary extends Binary {
 
   override asString(): string {
     const uint8Array = new Uint8Array(this.value);
-    let str = '';
-    for (let i = 0; i < uint8Array.length; i++) {
-      str = str + String.fromCharCode(uint8Array[i]);
-    }
-    return str;
+    return unescape(encodeURIComponent(new TextDecoder().decode(uint8Array)));
   }
 
   override isByteArray(): boolean {
