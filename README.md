@@ -7,7 +7,6 @@ This project is focused on providing web client support for the OpenTDF family o
 Do you want a quick demonstration of OpenTDF? See [Quickstart](https://github.com/opentdf/opentdf/tree/main/quickstart#readme)
 
 ## Integrate
-
 Ready to begin integrating into your system?  
 Start a local, blank cluster. See [Integrate](https://github.com/opentdf/opentdf/tree/main/quickstart#readme)
 
