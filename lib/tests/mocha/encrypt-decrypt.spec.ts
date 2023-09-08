@@ -49,7 +49,7 @@ describe('encrypt decrypt test', async function () {
 
       const encryptedStream = await client.encrypt({
         eo,
-        metadata: {},
+        metadata: Mocks.getMetadataObject(),
         offline: true,
         scope,
         source: new ReadableStream({
