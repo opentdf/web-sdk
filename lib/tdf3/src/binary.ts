@@ -69,7 +69,7 @@ function adjustSliceParams(length: number, start: number, end?: number): [number
     result.push(end);
   }
 
-  return (result as [number, number?]);
+  return result as [number, number?];
 }
 
 class ArrayBufferBinary extends Binary {
@@ -101,7 +101,7 @@ class ArrayBufferBinary extends Binary {
 
   override asB64(): string {
     const uint8Array = new Uint8Array(this.value);
-    return window.btoa([...uint8Array].map(byte => String.fromCharCode(byte)).join(''));
+    return window.btoa([...uint8Array].map((byte) => String.fromCharCode(byte)).join(''));
   }
 
   override asHex(): string {
@@ -148,7 +148,7 @@ class ByteArrayBinary extends Binary {
 
   override asB64(): string {
     const uint8Array = new Uint8Array(this.value);
-    return window.btoa([...uint8Array].map(byte => String.fromCharCode(byte)).join(''));
+    return window.btoa([...uint8Array].map((byte) => String.fromCharCode(byte)).join(''));
   }
 
   override asHex(): string {
