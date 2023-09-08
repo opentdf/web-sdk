@@ -25,6 +25,7 @@ import {
   ZipReader,
   ZipWriter,
   base64ToBuffer,
+  bufferToBase64,
   fromUrl,
   isAppIdProviderCheck,
   keyMerge,
@@ -193,7 +194,7 @@ export class TDF extends EventEmitter {
       transferUrl,
       transferBaseUrl: origin,
       manifest: base64.encode(exportManifest),
-      payload: base64.encodeArrayBuffer(payload.buffer),
+      payload: bufferToBase64(payload),
     });
 
     return new TextEncoder().encode(fullHtmlString);
@@ -475,10 +476,7 @@ export class TDF extends EventEmitter {
         return hex.encodeArrayBuffer(new Uint8Array(payloadBinary.asByteArray()).slice(-16).buffer);
       case 'hs256':
         // simple hmac is the default
-        return await this.cryptoService.hmac(
-          hex.encodeArrayBuffer(new Uint8Array(unwrappedKeyBinary.asByteArray()).buffer),
-          new TextDecoder().decode(new Uint8Array(payloadBinary.asByteArray()).buffer)
-        );
+        return await this.cryptoService.hmac(unwrappedKeyBinary.asHex(), payloadBinary.asString());
       default:
         throw new IllegalArgumentError(`Unsupported signature alg [${algorithmType}]`);
     }
@@ -781,7 +779,7 @@ export class TDF extends EventEmitter {
     if (upsertResponse) {
       plaintextStream.upsertResponse = upsertResponse;
       plaintextStream.tdfSize = totalByteCount;
-      plaintextStream.KEK = payloadKey ? null : btoa(kek.payload.asString());
+      plaintextStream.KEK = payloadKey ? null : kek.payload.asB64();
       plaintextStream.algorithm = manifest.encryptionInformation.method.algorithm;
     }
 

@@ -10,6 +10,14 @@ export function base64ToBuffer(b64: string): Uint8Array {
   return Uint8Array.from(atob(b64).split(''), (c) => c.charCodeAt(0));
 }
 
+export function bufferToBase64(slice: Uint8Array) {
+  return btoa(
+    Array.from(slice)
+      .map((byte) => String.fromCharCode(byte))
+      .join('')
+  );
+}
+
 export function isAppIdProviderCheck(
   provider: AuthProvider | AppIdAuthProvider
 ): provider is AppIdAuthProvider {

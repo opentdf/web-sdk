@@ -106,8 +106,8 @@ export class SplitKey {
       );
 
       const encryptedMetadataOb = {
-        ciphertext: base64.encode(encryptedMetadataResult.payload.asString()),
-        iv: base64.encode(keyInfo.unwrappedKeyIvBinary.asString()),
+        ciphertext: encryptedMetadataResult.payload.asB64(),
+        iv: keyInfo.unwrappedKeyIvBinary.asB64(),
       };
 
       const encryptedMetadataStr = JSON.stringify(encryptedMetadataOb);
@@ -143,7 +143,7 @@ export class SplitKey {
       method: {
         algorithm,
         isStreamable: false,
-        iv: base64.encode(keyInfo.unwrappedKeyIvBinary.asString()),
+        iv: keyInfo.unwrappedKeyIvBinary.asB64(),
       },
       integrityInformation: {
         rootSignature: {

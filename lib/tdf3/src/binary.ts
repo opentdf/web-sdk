@@ -44,6 +44,10 @@ export abstract class Binary {
 
   abstract asArrayBuffer(): ArrayBuffer;
 
+  abstract asB64(): string;
+
+  abstract asHex(): string;
+
   abstract asByteArray(): number[];
 
   abstract asString(): string;
@@ -60,7 +64,12 @@ function adjustSliceParams(length: number, start: number, end?: number): [number
   if (end && end < 0) {
     end = length + end;
   }
-  return [start, end];
+  const result = [start];
+  if (end) {
+    result.push(end);
+  }
+
+  return result as [number, number?];
 }
 
 class ArrayBufferBinary extends Binary {
@@ -87,11 +96,18 @@ class ArrayBufferBinary extends Binary {
 
   override asString(): string {
     const uint8Array = new Uint8Array(this.value);
-    let str = '';
-    for (let i = 0; i < uint8Array.length; i++) {
-      str = str + String.fromCharCode(uint8Array[i]);
-    }
-    return str;
+    return new TextDecoder('utf-8').decode(uint8Array);
+  }
+
+  override asB64(): string {
+    const uint8Array = new Uint8Array(this.value);
+    return window.btoa([...uint8Array].map((byte) => String.fromCharCode(byte)).join(''));
+  }
+
+  override asHex(): string {
+    return Array.from(new Uint8Array(this.value))
+      .map((byte) => byte.toString(16).padStart(2, '0'))
+      .join('');
   }
 
   override isArrayBuffer(): boolean {
@@ -127,11 +143,16 @@ class ByteArrayBinary extends Binary {
 
   override asString(): string {
     const uint8Array = new Uint8Array(this.value);
-    let str = '';
-    for (let i = 0; i < uint8Array.length; i++) {
-      str = str + String.fromCharCode(uint8Array[i]);
-    }
-    return str;
+    return new TextDecoder('utf-8').decode(uint8Array);
+  }
+
+  override asB64(): string {
+    const uint8Array = new Uint8Array(this.value);
+    return window.btoa([...uint8Array].map((byte) => String.fromCharCode(byte)).join(''));
+  }
+
+  override asHex(): string {
+    return this.value.map((byte) => byte.toString(16).padStart(2, '0')).join('');
   }
 
   override isByteArray(): boolean {
@@ -176,6 +197,18 @@ class StringBinary extends Binary {
 
   asString(): string {
     return this.value;
+  }
+
+  override asB64(): string {
+    const uint8Array = new TextEncoder().encode(this.asString());
+    const charArray = Array.from(uint8Array, (byte) => String.fromCharCode(byte));
+    return btoa(charArray.join(''));
+  }
+
+  override asHex(): string {
+    return Array.from(new TextEncoder().encode(this.value))
+      .map((byte) => byte.toString(16).padStart(2, '0'))
+      .join('');
   }
 
   override isString(): boolean {
