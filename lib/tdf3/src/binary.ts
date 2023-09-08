@@ -106,7 +106,7 @@ class ArrayBufferBinary extends Binary {
 
   override asHex(): string {
     return Array.from(new Uint8Array(this.value))
-      .map(byte => byte.toString(16).padStart(2, '0'))
+      .map((byte) => byte.toString(16).padStart(2, '0'))
       .join('');
   }
 
@@ -152,7 +152,7 @@ class ByteArrayBinary extends Binary {
   }
 
   override asHex(): string {
-    return this.value.map(byte => byte.toString(16).padStart(2, '0')).join('');
+    return this.value.map((byte) => byte.toString(16).padStart(2, '0')).join('');
   }
 
   override isByteArray(): boolean {
@@ -201,13 +201,13 @@ class StringBinary extends Binary {
 
   override asB64(): string {
     const uint8Array = new TextEncoder().encode(this.asString());
-    const charArray = Array.from(uint8Array, byte => String.fromCharCode(byte));
+    const charArray = Array.from(uint8Array, (byte) => String.fromCharCode(byte));
     return btoa(charArray.join(''));
   }
 
   override asHex(): string {
     return Array.from(new TextEncoder().encode(this.value))
-      .map(byte => byte.toString(16).padStart(2, '0'))
+      .map((byte) => byte.toString(16).padStart(2, '0'))
       .join('');
   }
 

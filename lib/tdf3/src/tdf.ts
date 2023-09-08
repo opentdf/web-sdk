@@ -476,10 +476,7 @@ export class TDF extends EventEmitter {
         return hex.encodeArrayBuffer(new Uint8Array(payloadBinary.asByteArray()).slice(-16).buffer);
       case 'hs256':
         // simple hmac is the default
-        return await this.cryptoService.hmac(
-          unwrappedKeyBinary.asHex(),
-          payloadBinary.asString()
-        );
+        return await this.cryptoService.hmac(unwrappedKeyBinary.asHex(), payloadBinary.asString());
       default:
         throw new IllegalArgumentError(`Unsupported signature alg [${algorithmType}]`);
     }

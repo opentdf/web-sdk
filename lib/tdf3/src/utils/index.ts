@@ -11,7 +11,11 @@ export function base64ToBuffer(b64: string): Uint8Array {
 }
 
 export function bufferToBase64(slice: Uint8Array) {
-  return btoa(Array.from(slice).map(byte => String.fromCharCode(byte)).join(''));
+  return btoa(
+    Array.from(slice)
+      .map((byte) => String.fromCharCode(byte))
+      .join('')
+  );
 }
 
 export function isAppIdProviderCheck(
