@@ -19,7 +19,7 @@ import {
   UpsertResponse,
   Wrapped as KeyAccessWrapped,
 } from './models/index.js';
-import { base64, hex } from '../../src/encodings/index.js';
+import { base64 } from '../../src/encodings/index.js';
 import {
   type Chunker,
   ZipReader,
@@ -28,6 +28,8 @@ import {
   fromUrl,
   isAppIdProviderCheck,
   keyMerge,
+  buffToString,
+  base64ToBytes,
 } from './utils/index.js';
 import { Binary } from './binary.js';
 import {
@@ -472,12 +474,15 @@ export class TDF extends EventEmitter {
     switch (algorithmType.toLowerCase()) {
       case 'gmac':
         // use the auth tag baked into the encrypted payload
-        return hex.encodeArrayBuffer(new Uint8Array(payloadBinary.asByteArray()).slice(-16).buffer);
+        return buffToString(
+          new Uint8Array(payloadBinary.asByteArray()).slice(-16),
+          'hex'
+        );
       case 'hs256':
         // simple hmac is the default
         return await this.cryptoService.hmac(
-          hex.encodeArrayBuffer(new Uint8Array(unwrappedKeyBinary.asByteArray()).buffer),
-          new TextDecoder().decode(new Uint8Array(payloadBinary.asByteArray()).buffer)
+          buffToString(new Uint8Array(unwrappedKeyBinary.asByteArray()), 'hex'),
+          buffToString(new Uint8Array(payloadBinary.asByteArray()))
         );
       default:
         throw new IllegalArgumentError(`Unsupported signature alg [${algorithmType}]`);
@@ -781,7 +786,7 @@ export class TDF extends EventEmitter {
     if (upsertResponse) {
       plaintextStream.upsertResponse = upsertResponse;
       plaintextStream.tdfSize = totalByteCount;
-      plaintextStream.KEK = payloadKey ? null : btoa(kek.payload.asString());
+      plaintextStream.KEK = payloadKey ? null : buffToString(Uint8Array.from(kek.payload.asByteArray()), 'base64');
       plaintextStream.algorithm = manifest.encryptionInformation.method.algorithm;
     }
 
@@ -1051,7 +1056,7 @@ export class TDF extends EventEmitter {
       this.encryptionInformation = new SplitKey(this.createCipher(al.toLowerCase()));
 
       const decodedReconstructedKeyBinary = await this.encryptionInformation.decrypt(
-        Uint8Array.from(atob(wk).split(''), (char) => char.charCodeAt(0)),
+        Uint8Array.from(base64ToBytes(wk)),
         reconstructedKeyBinary
       );
       reconstructedKeyBinary = decodedReconstructedKeyBinary.payload;

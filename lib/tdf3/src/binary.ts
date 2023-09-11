@@ -1,3 +1,5 @@
+import { buffToString } from './utils/index.js';
+
 /**
  * Provides a binary type that can be initialized with many different forms of
  * data
@@ -77,21 +79,12 @@ class ArrayBufferBinary extends Binary {
 
   override asByteArray(): number[] {
     const uint8Array = new Uint8Array(this.value);
-    // Initialize array
-    const byteArray = new Array(uint8Array.length);
-    for (let i = 0; i < byteArray.length; i++) {
-      byteArray[i] = uint8Array[i];
-    }
-    return byteArray;
+    return Array.from(uint8Array);
   }
 
   override asString(): string {
     const uint8Array = new Uint8Array(this.value);
-    let str = '';
-    for (let i = 0; i < uint8Array.length; i++) {
-      str = str + String.fromCharCode(uint8Array[i]);
-    }
-    return str;
+    return buffToString(uint8Array, 'binary');
   }
 
   override isArrayBuffer(): boolean {
@@ -127,11 +120,7 @@ class ByteArrayBinary extends Binary {
 
   override asString(): string {
     const uint8Array = new Uint8Array(this.value);
-    let str = '';
-    for (let i = 0; i < uint8Array.length; i++) {
-      str = str + String.fromCharCode(uint8Array[i]);
-    }
-    return str;
+    return buffToString(uint8Array, 'binary');
   }
 
   override isByteArray(): boolean {
