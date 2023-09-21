@@ -5,11 +5,9 @@ import { getDataReadableStream } from './chunks/getDataReadableStream.js';
 import { BodyDataTypes } from './types.js';
 
 export const getChunk = (data: BodyDataTypes, partSize: number) => {
-  if (data instanceof Uint8Array) {
-    return getChunkBuffer(data, partSize);
-  } else if (Object.prototype.hasOwnProperty.call(data, 'pipe')) {
+  if (Object.prototype.hasOwnProperty.call(data, 'pipe')) {
     return getChunkStream<BodyDataTypes>(data, partSize, getDataReadable);
-  } else if (data instanceof String || typeof data === 'string') {
+  } else if (data instanceof String || typeof data === 'string' || data instanceof Uint8Array) {
     // chunk Strings, Uint8Array.
     return getChunkBuffer(new TextEncoder().encode(data as string), partSize);
   }

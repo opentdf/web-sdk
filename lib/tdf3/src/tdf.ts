@@ -195,7 +195,7 @@ export class TDF extends EventEmitter {
       transferUrl,
       transferBaseUrl: origin,
       manifest: base64.encode(exportManifest),
-      payload: base64.encodeArrayBuffer(payload.buffer),
+      payload: buffToString(payload, 'base64'),
     });
 
     return new TextEncoder().encode(fullHtmlString);

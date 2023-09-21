@@ -7,7 +7,7 @@ export { keySplit, keyMerge } from './keysplit.js';
 export { streamToBuffer } from '../client/DecoratedReadableStream.js';
 export * from './chunkers.js';
 
-type SupportedEncoding = 'hex' | 'utf8' | 'utf-8' | 'ascii' | 'latin1' | 'binary' | 'base64' | 'ucs2' | 'ucs-2' | 'utf16le' | 'utf-16le';
+export type SupportedEncoding = 'hex' | 'utf8' | 'utf-8' | 'binary' | 'latin1' |'base64';
 
 const hexSliceLookupTable = (() =>{
   const alphabet = '0123456789abcdef'
@@ -104,18 +104,6 @@ function hexSlice(buf: Uint8Array, start: number = 0, end: number = buf.length):
 }
 
 // https://github.com/feross/buffer/blob/master/index.js#L1053
-function asciiSlice(buf: Uint8Array, start: number, end: number): string {
-  let result = '';
-  end = Math.min(buf.length, end);
-
-  for (let i = start; i < end; ++i) {
-    result += String.fromCharCode(buf[i] & 0x7F);
-  }
-
-  return result;
-}
-
-// https://github.com/feross/buffer/blob/master/index.js#L1053
 function latin1Slice(buf: Uint8Array, start: number, end: number): string {
   let result = '';
   end = Math.min(buf.length, end);
@@ -135,20 +123,8 @@ function base64Slice(buf: Uint8Array, start: number, end: number): string {
   }
 }
 
-function utf16leSlice(buf: Uint8Array, start: number, end: number): string {
-  const bytes = buf.slice(start, end);
-  let res = '';
-
-  // If bytes.length is odd, the last 8 bits must be ignored (same as node.js)
-  for (let i = 0; i < bytes.length - 1; i += 2) {
-    res += String.fromCharCode(bytes[i] + (bytes[i + 1] * 256));
-  }
-
-  return res;
-}
-
 // https://github.com/feross/buffer/blob/master/index.js#L483
-export function buffToString (buffer: Uint8Array, encoding: SupportedEncoding = 'utf8', start = 0, end = buffer.length) {
+export function buffToString(buffer: Uint8Array, encoding: SupportedEncoding = 'utf8', start = 0, end = buffer.length) {
   if (start < 0) {
     start = 0
   }
@@ -163,31 +139,20 @@ export function buffToString (buffer: Uint8Array, encoding: SupportedEncoding = 
     return ''
   }
 
-  while (true) {
-    switch (encoding) {
-      case 'hex':
-        return hexSlice(buffer, start, end)
+  switch (encoding) {
+    case 'hex':
+      return hexSlice(buffer, start, end);
 
-      case 'utf8':
-      case 'utf-8':
-        return utf8Slice(buffer, start, end)
+    case 'utf8':
+    case 'utf-8':
+      return utf8Slice(buffer, start, end);
 
-      case 'ascii':
-        return asciiSlice(buffer, start, end)
+    case 'latin1':
+    case 'binary':
+      return latin1Slice(buffer, start, end);
 
-      case 'latin1':
-      case 'binary':
-        return latin1Slice(buffer, start, end)
-
-      case 'base64':
-        return base64Slice(buffer, start, end)
-
-      case 'ucs2':
-      case 'ucs-2':
-      case 'utf16le':
-      case 'utf-16le':
-        return utf16leSlice(buffer, start, end)
-    }
+    case 'base64':
+      return base64Slice(buffer, start, end);
   }
 }
 
