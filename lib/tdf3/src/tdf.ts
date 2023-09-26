@@ -19,7 +19,7 @@ import {
   UpsertResponse,
   Wrapped as KeyAccessWrapped,
 } from './models/index.js';
-import { base64 } from '../../src/encodings/index.js';
+import { base64, hex } from '../../src/encodings/index.js';
 import {
   type Chunker,
   ZipReader,
@@ -30,6 +30,7 @@ import {
   keyMerge,
   buffToString,
   base64ToBytes,
+  concatUint8,
 } from './utils/index.js';
 import { Binary } from './binary.js';
 import {
@@ -474,15 +475,12 @@ export class TDF extends EventEmitter {
     switch (algorithmType.toLowerCase()) {
       case 'gmac':
         // use the auth tag baked into the encrypted payload
-        return buffToString(
-          new Uint8Array(payloadBinary.asByteArray()).slice(-16),
-          'hex'
-        );
+        return hex.encodeArrayBuffer(payloadBinary.asArrayBuffer().slice(-16));
       case 'hs256':
         // simple hmac is the default
         return await this.cryptoService.hmac(
-          buffToString(new Uint8Array(unwrappedKeyBinary.asByteArray()), 'hex'),
-          buffToString(new Uint8Array(payloadBinary.asByteArray()))
+          buffToString(new Uint8Array(unwrappedKeyBinary.asArrayBuffer()), 'hex'),
+          buffToString(new Uint8Array(payloadBinary.asArrayBuffer()), 'utf-8'),
         );
       default:
         throw new IllegalArgumentError(`Unsupported signature alg [${algorithmType}]`);
@@ -679,10 +677,7 @@ export class TDF extends EventEmitter {
           const { value, done } = await sourceReader.read();
           isDone = done;
           if (value) {
-            const temp = new Uint8Array(currentBuffer.length + value.byteLength);
-            temp.set(currentBuffer);
-            temp.set(new Uint8Array(value), currentBuffer.length);
-            currentBuffer = temp;
+            currentBuffer = concatUint8([currentBuffer, value]);
           }
         }
 
@@ -740,7 +735,7 @@ export class TDF extends EventEmitter {
           manifest.encryptionInformation.integrityInformation.segmentHashAlg =
             self.segmentIntegrityAlgorithm;
           manifest.encryptionInformation.integrityInformation.segments = segmentInfos;
-
+          console.log(segmentInfos);
           manifest.encryptionInformation.method.isStreamable = true;
 
           // write the manifest
@@ -940,24 +935,30 @@ export class TDF extends EventEmitter {
     reconstructedKeyBinary: Binary,
     hash: string
   ): Promise<DecryptResult> {
+    console.log('decryptChunk: encryptedChunk, reconstructedKeyBinary, hash');
+    console.log(encryptedChunk, reconstructedKeyBinary, hash);
     if (!this.manifest) {
       throw new Error('Missing manifest information');
     }
-    const integrityAlgorithmType =
-      this.manifest.encryptionInformation.integrityInformation.rootSignature.alg;
-    const segmentIntegrityAlgorithmType =
-      this.manifest.encryptionInformation.integrityInformation.segmentHashAlg;
+    // const integrityAlgorithmType =
+    //   this.manifest.encryptionInformation.integrityInformation.rootSignature.alg;
+    // const segmentIntegrityAlgorithmType =
+    //   this.manifest.encryptionInformation.integrityInformation.segmentHashAlg;
     const cipher = this.createCipher(
       this.manifest.encryptionInformation.method.algorithm.toLowerCase()
     );
 
-    const segmentHashStr = await this.getSignature(
-      reconstructedKeyBinary,
-      Binary.fromArrayBuffer(encryptedChunk.buffer),
-      segmentIntegrityAlgorithmType || integrityAlgorithmType
-    );
-    if (hash !== base64.encode(segmentHashStr)) {
+    // const segmentHashStr = await this.getSignature(
+    //   reconstructedKeyBinary,
+    //   Binary.fromArrayBuffer(encryptedChunk.buffer),
+    //   segmentIntegrityAlgorithmType || integrityAlgorithmType
+    // );
+    const segmentHashStr = buffToString(encryptedChunk.slice(-16), 'hex');
+    debugger;
+    if (hash !== btoa(segmentHashStr)) {
       throw new ManifestIntegrityError('Failed integrity check on segment hash');
+    } else {
+      console.log('success')
     }
     return await cipher.decrypt(encryptedChunk.buffer, reconstructedKeyBinary);
   }
@@ -971,16 +972,18 @@ export class TDF extends EventEmitter {
     const requestsInParallelCount = 100;
     let requests = [];
     const maxLength = 3;
-
+    console.log(chunkMap);
     for (let i = 0; i < chunkMap.length; i += requestsInParallelCount) {
       if (requests.length === maxLength) {
         await Promise.all(requests);
         requests = [];
       }
       requests.push(
-        (async () => {
+        (async (index) => {
           try {
-            const slice = chunkMap.slice(i, i + requestsInParallelCount);
+            const slice = chunkMap.slice(index, index + requestsInParallelCount);
+            console.log('slice:');
+            console.log(slice);
             const bufferSize = slice.reduce(
               (currentVal, { encryptedSegmentSize }) =>
                 currentVal + (encryptedSegmentSize as number),
@@ -992,8 +995,10 @@ export class TDF extends EventEmitter {
               slice[0].encryptedOffset,
               bufferSize
             );
-            for (const index in slice) {
-              const { encryptedOffset, encryptedSegmentSize } = slice[index];
+            console.log('buffer:');
+            console.log(buffer);
+            for (const currentSlice of slice) {
+              const { encryptedOffset, encryptedSegmentSize, hash } = currentSlice;
 
               const offset =
                 slice[0].encryptedOffset === 0
@@ -1003,13 +1008,15 @@ export class TDF extends EventEmitter {
                 offset,
                 offset + (encryptedSegmentSize as number)
               );
-              slice[index].decryptedChunk = await this.decryptChunk(
+              console.log('encryptedChunk, reconstructedKeyBinary, hash');
+              console.log(encryptedChunk, reconstructedKeyBinary, hash);
+              currentSlice.decryptedChunk = await this.decryptChunk(
                 encryptedChunk,
                 reconstructedKeyBinary,
-                slice[index]['hash']
+                hash,
               );
-              if (slice[index]._resolve) {
-                (slice[index]._resolve as (value: unknown) => void)(null);
+              if (currentSlice._resolve) {
+                (currentSlice._resolve as (value: unknown) => void)(null);
               }
             }
             buffer = null;
@@ -1019,7 +1026,7 @@ export class TDF extends EventEmitter {
               e
             );
           }
-        })()
+        })(i)
       );
     }
   }
