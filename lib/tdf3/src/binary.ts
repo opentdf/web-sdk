@@ -1,3 +1,5 @@
+import { buffToString, SupportedEncoding, base64ToBytes } from './utils/index.js';
+
 /**
  * Provides a binary type that can be initialized with many different forms of
  * data
@@ -14,6 +16,13 @@ export abstract class Binary {
    */
   static fromString(data: string): Binary {
     return new StringBinary(data);
+  }
+
+  /**
+   * Initializes the binary class from the base64
+   */
+  static fromBase64(data: string): Binary {
+    return new ArrayBufferBinary(Uint8Array.from(base64ToBytes(data)).buffer);
   }
 
   /**
@@ -46,7 +55,7 @@ export abstract class Binary {
 
   abstract asByteArray(): number[];
 
-  abstract asString(): string;
+  abstract asString(encoding?: SupportedEncoding): string;
 
   abstract length(): number;
 
@@ -77,21 +86,12 @@ class ArrayBufferBinary extends Binary {
 
   override asByteArray(): number[] {
     const uint8Array = new Uint8Array(this.value);
-    // Initialize array
-    const byteArray = new Array(uint8Array.length);
-    for (let i = 0; i < byteArray.length; i++) {
-      byteArray[i] = uint8Array[i];
-    }
-    return byteArray;
+    return Array.from(uint8Array);
   }
 
-  override asString(): string {
+  override asString(encoding: SupportedEncoding = 'binary'): string {
     const uint8Array = new Uint8Array(this.value);
-    let str = '';
-    for (let i = 0; i < uint8Array.length; i++) {
-      str = str + String.fromCharCode(uint8Array[i]);
-    }
-    return str;
+    return buffToString(uint8Array, encoding);
   }
 
   override isArrayBuffer(): boolean {
@@ -125,13 +125,9 @@ class ByteArrayBinary extends Binary {
     return this.value;
   }
 
-  override asString(): string {
+  override asString(encoding: SupportedEncoding = 'binary'): string {
     const uint8Array = new Uint8Array(this.value);
-    let str = '';
-    for (let i = 0; i < uint8Array.length; i++) {
-      str = str + String.fromCharCode(uint8Array[i]);
-    }
-    return str;
+    return buffToString(uint8Array, encoding);
   }
 
   override isByteArray(): boolean {
@@ -174,7 +170,12 @@ class StringBinary extends Binary {
     return byteArray;
   }
 
-  asString(): string {
+  asString(encoding?: SupportedEncoding): string {
+    if (encoding) {
+      throw new Error(
+        'Method doesnt accept encoding param, it returns binary string in original format'
+      );
+    }
     return this.value;
   }
 

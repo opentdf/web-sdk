@@ -1,6 +1,6 @@
 import { Manifest } from '../models/index.js';
 import { Chunker } from './chunkers.js';
-import { readUInt32LE, readUInt16LE, copyUint8Arr } from './index.js';
+import { readUInt32LE, readUInt16LE, copyUint8Arr, buffToString } from './index.js';
 
 // TODO: Better document what these constants are
 // TODO: Document each function please
@@ -273,8 +273,7 @@ export function parseCDBuffer(cdBuffer: Uint8Array): CentralDirectory {
  */
 function bufferToString(buffer: Uint8Array, start: number, end: number, isUtf8: boolean): string {
   if (isUtf8) {
-    const decoder = new TextDecoder();
-    return decoder.decode(buffer.buffer.slice(start, end));
+    return buffToString(buffer, 'utf-8', start, end);
   }
 
   let result = '';

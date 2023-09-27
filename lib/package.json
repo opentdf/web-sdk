@@ -61,6 +61,7 @@
     "ajv": "^8.12.0",
     "axios": "^1.4.0",
     "axios-retry": "^3.6.0",
+    "base64-js": "^1.5.1",
     "browser-fs-access": "^0.34.1",
     "buffer": "^6.0.3",
     "buffer-crc32": "^0.2.13",

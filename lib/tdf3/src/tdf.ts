@@ -19,7 +19,7 @@ import {
   UpsertResponse,
   Wrapped as KeyAccessWrapped,
 } from './models/index.js';
-import { base64, hex } from '../../src/encodings/index.js';
+import { base64 } from '../../src/encodings/index.js';
 import {
   type Chunker,
   ZipReader,
@@ -28,6 +28,9 @@ import {
   fromUrl,
   isAppIdProviderCheck,
   keyMerge,
+  buffToString,
+  base64ToBytes,
+  concatUint8,
 } from './utils/index.js';
 import { Binary } from './binary.js';
 import {
@@ -193,7 +196,7 @@ export class TDF extends EventEmitter {
       transferUrl,
       transferBaseUrl: origin,
       manifest: base64.encode(exportManifest),
-      payload: base64.encodeArrayBuffer(payload.buffer),
+      payload: buffToString(payload, 'base64'),
     });
 
     return new TextEncoder().encode(fullHtmlString);
@@ -472,12 +475,12 @@ export class TDF extends EventEmitter {
     switch (algorithmType.toLowerCase()) {
       case 'gmac':
         // use the auth tag baked into the encrypted payload
-        return hex.encodeArrayBuffer(new Uint8Array(payloadBinary.asByteArray()).slice(-16).buffer);
+        return buffToString(Uint8Array.from(payloadBinary.asByteArray()).slice(-16), 'hex');
       case 'hs256':
         // simple hmac is the default
         return await this.cryptoService.hmac(
-          hex.encodeArrayBuffer(new Uint8Array(unwrappedKeyBinary.asByteArray()).buffer),
-          new TextDecoder().decode(new Uint8Array(payloadBinary.asByteArray()).buffer)
+          buffToString(new Uint8Array(unwrappedKeyBinary.asArrayBuffer()), 'hex'),
+          buffToString(new Uint8Array(payloadBinary.asArrayBuffer()), 'utf-8')
         );
       default:
         throw new IllegalArgumentError(`Unsupported signature alg [${algorithmType}]`);
@@ -674,10 +677,7 @@ export class TDF extends EventEmitter {
           const { value, done } = await sourceReader.read();
           isDone = done;
           if (value) {
-            const temp = new Uint8Array(currentBuffer.length + value.byteLength);
-            temp.set(currentBuffer);
-            temp.set(new Uint8Array(value), currentBuffer.length);
-            currentBuffer = temp;
+            currentBuffer = concatUint8([currentBuffer, value]);
           }
         }
 
@@ -781,7 +781,9 @@ export class TDF extends EventEmitter {
     if (upsertResponse) {
       plaintextStream.upsertResponse = upsertResponse;
       plaintextStream.tdfSize = totalByteCount;
-      plaintextStream.KEK = payloadKey ? null : btoa(kek.payload.asString());
+      plaintextStream.KEK = payloadKey
+        ? null
+        : buffToString(Uint8Array.from(kek.payload.asByteArray()), 'base64');
       plaintextStream.algorithm = manifest.encryptionInformation.method.algorithm;
     }
 
@@ -862,7 +864,7 @@ export class TDF extends EventEmitter {
         if (!this.allowedKases.includes(keySplitInfo.url)) {
           throw new KasUpsertError(`Unexpected KAS url: [${keySplitInfo.url}]`);
         }
-        const url = `${keySplitInfo.url}/${isAppIdProvider ? '' : 'v2'}/rewrap`;
+        const url = `${keySplitInfo.url}/${isAppIdProvider ? '' : 'v2/'}rewrap`;
 
         const requestBodyStr = JSON.stringify({
           algorithm: 'RS256',
@@ -951,10 +953,10 @@ export class TDF extends EventEmitter {
       Binary.fromArrayBuffer(encryptedChunk.buffer),
       segmentIntegrityAlgorithmType || integrityAlgorithmType
     );
-    if (hash !== base64.encode(segmentHashStr)) {
+    if (hash !== btoa(segmentHashStr)) {
       throw new ManifestIntegrityError('Failed integrity check on segment hash');
     }
-    return await cipher.decrypt(encryptedChunk.buffer, reconstructedKeyBinary);
+    return await cipher.decrypt(encryptedChunk, reconstructedKeyBinary);
   }
 
   async updateChunkQueue(
@@ -994,10 +996,10 @@ export class TDF extends EventEmitter {
                 slice[0].encryptedOffset === 0
                   ? encryptedOffset
                   : encryptedOffset % slice[0].encryptedOffset;
-              const encryptedChunk = (buffer as Uint8Array).subarray(
-                offset,
-                offset + (encryptedSegmentSize as number)
+              const encryptedChunk = new Uint8Array(
+                buffer.slice(offset, offset + (encryptedSegmentSize as number))
               );
+
               slice[index].decryptedChunk = await this.decryptChunk(
                 encryptedChunk,
                 reconstructedKeyBinary,
@@ -1051,7 +1053,7 @@ export class TDF extends EventEmitter {
       this.encryptionInformation = new SplitKey(this.createCipher(al.toLowerCase()));
 
       const decodedReconstructedKeyBinary = await this.encryptionInformation.decrypt(
-        Uint8Array.from(atob(wk).split(''), (char) => char.charCodeAt(0)),
+        Uint8Array.from(base64ToBytes(wk)),
         reconstructedKeyBinary
       );
       reconstructedKeyBinary = decodedReconstructedKeyBinary.payload;
