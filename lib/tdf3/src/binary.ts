@@ -127,7 +127,7 @@ class ByteArrayBinary extends Binary {
 
   override asString(encoding: SupportedEncoding = 'binary'): string {
     const uint8Array = new Uint8Array(this.value);
-    return buffToString(uint8Array);
+    return buffToString(uint8Array, encoding);
   }
 
   override isByteArray(): boolean {
