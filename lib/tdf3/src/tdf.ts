@@ -19,7 +19,7 @@ import {
   UpsertResponse,
   Wrapped as KeyAccessWrapped,
 } from './models/index.js';
-import { base64, hex } from '../../src/encodings/index.js';
+import { base64 } from '../../src/encodings/index.js';
 import {
   type Chunker,
   ZipReader,
@@ -475,7 +475,7 @@ export class TDF extends EventEmitter {
     switch (algorithmType.toLowerCase()) {
       case 'gmac':
         // use the auth tag baked into the encrypted payload
-        return hex.encodeArrayBuffer(payloadBinary.asArrayBuffer().slice(-16));
+        return buffToString(Uint8Array.from(payloadBinary.asByteArray()).slice(-16), 'hex');
       case 'hs256':
         // simple hmac is the default
         return await this.cryptoService.hmac(
@@ -735,7 +735,7 @@ export class TDF extends EventEmitter {
           manifest.encryptionInformation.integrityInformation.segmentHashAlg =
             self.segmentIntegrityAlgorithm;
           manifest.encryptionInformation.integrityInformation.segments = segmentInfos;
-          console.log(segmentInfos);
+
           manifest.encryptionInformation.method.isStreamable = true;
 
           // write the manifest
@@ -862,7 +862,7 @@ export class TDF extends EventEmitter {
         if (!this.allowedKases.includes(keySplitInfo.url)) {
           throw new KasUpsertError(`Unexpected KAS url: [${keySplitInfo.url}]`);
         }
-        const url = `${keySplitInfo.url}/${isAppIdProvider ? '' : 'v2'}/rewrap`;
+        const url = `${keySplitInfo.url}/${isAppIdProvider ? '' : 'v2/'}rewrap`;
 
         const requestBodyStr = JSON.stringify({
           algorithm: 'RS256',
@@ -935,32 +935,26 @@ export class TDF extends EventEmitter {
     reconstructedKeyBinary: Binary,
     hash: string
   ): Promise<DecryptResult> {
-    console.log('decryptChunk: encryptedChunk, reconstructedKeyBinary, hash');
-    console.log(encryptedChunk, reconstructedKeyBinary, hash);
     if (!this.manifest) {
       throw new Error('Missing manifest information');
     }
-    // const integrityAlgorithmType =
-    //   this.manifest.encryptionInformation.integrityInformation.rootSignature.alg;
-    // const segmentIntegrityAlgorithmType =
-    //   this.manifest.encryptionInformation.integrityInformation.segmentHashAlg;
+    const integrityAlgorithmType =
+      this.manifest.encryptionInformation.integrityInformation.rootSignature.alg;
+    const segmentIntegrityAlgorithmType =
+      this.manifest.encryptionInformation.integrityInformation.segmentHashAlg;
     const cipher = this.createCipher(
       this.manifest.encryptionInformation.method.algorithm.toLowerCase()
     );
 
-    // const segmentHashStr = await this.getSignature(
-    //   reconstructedKeyBinary,
-    //   Binary.fromArrayBuffer(encryptedChunk.buffer),
-    //   segmentIntegrityAlgorithmType || integrityAlgorithmType
-    // );
-    const segmentHashStr = buffToString(encryptedChunk.slice(-16), 'hex');
-    debugger;
+    const segmentHashStr = await this.getSignature(
+      reconstructedKeyBinary,
+      Binary.fromArrayBuffer(encryptedChunk.buffer),
+      segmentIntegrityAlgorithmType || integrityAlgorithmType
+    );
     if (hash !== btoa(segmentHashStr)) {
       throw new ManifestIntegrityError('Failed integrity check on segment hash');
-    } else {
-      console.log('success')
     }
-    return await cipher.decrypt(encryptedChunk.buffer, reconstructedKeyBinary);
+    return await cipher.decrypt(encryptedChunk, reconstructedKeyBinary);
   }
 
   async updateChunkQueue(
@@ -972,18 +966,16 @@ export class TDF extends EventEmitter {
     const requestsInParallelCount = 100;
     let requests = [];
     const maxLength = 3;
-    console.log(chunkMap);
+
     for (let i = 0; i < chunkMap.length; i += requestsInParallelCount) {
       if (requests.length === maxLength) {
         await Promise.all(requests);
         requests = [];
       }
       requests.push(
-        (async (index) => {
+        (async () => {
           try {
-            const slice = chunkMap.slice(index, index + requestsInParallelCount);
-            console.log('slice:');
-            console.log(slice);
+            const slice = chunkMap.slice(i, i + requestsInParallelCount);
             const bufferSize = slice.reduce(
               (currentVal, { encryptedSegmentSize }) =>
                 currentVal + (encryptedSegmentSize as number),
@@ -995,28 +987,22 @@ export class TDF extends EventEmitter {
               slice[0].encryptedOffset,
               bufferSize
             );
-            console.log('buffer:');
-            console.log(buffer);
-            for (const currentSlice of slice) {
-              const { encryptedOffset, encryptedSegmentSize, hash } = currentSlice;
+            for (const index in slice) {
+              const { encryptedOffset, encryptedSegmentSize } = slice[index];
 
               const offset =
                 slice[0].encryptedOffset === 0
                   ? encryptedOffset
                   : encryptedOffset % slice[0].encryptedOffset;
-              const encryptedChunk = (buffer as Uint8Array).subarray(
-                offset,
-                offset + (encryptedSegmentSize as number)
-              );
-              console.log('encryptedChunk, reconstructedKeyBinary, hash');
-              console.log(encryptedChunk, reconstructedKeyBinary, hash);
-              currentSlice.decryptedChunk = await this.decryptChunk(
+              const encryptedChunk = new Uint8Array(buffer.slice(offset, offset + (encryptedSegmentSize as number)));
+
+              slice[index].decryptedChunk = await this.decryptChunk(
                 encryptedChunk,
                 reconstructedKeyBinary,
-                hash,
+                slice[index]['hash']
               );
-              if (currentSlice._resolve) {
-                (currentSlice._resolve as (value: unknown) => void)(null);
+              if (slice[index]._resolve) {
+                (slice[index]._resolve as (value: unknown) => void)(null);
               }
             }
             buffer = null;
@@ -1026,7 +1012,7 @@ export class TDF extends EventEmitter {
               e
             );
           }
-        })(i)
+        })()
       );
     }
   }
