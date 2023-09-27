@@ -7,19 +7,19 @@ export { keySplit, keyMerge } from './keysplit.js';
 export { streamToBuffer } from '../client/DecoratedReadableStream.js';
 export * from './chunkers.js';
 
-export type SupportedEncoding = 'hex' | 'utf8' | 'utf-8' | 'binary' | 'latin1' |'base64';
+export type SupportedEncoding = 'hex' | 'utf8' | 'utf-8' | 'binary' | 'latin1' | 'base64';
 
-const hexSliceLookupTable = (() =>{
-  const alphabet = '0123456789abcdef'
-  const table = new Array(256)
+const hexSliceLookupTable = (() => {
+  const alphabet = '0123456789abcdef';
+  const table = new Array(256);
   for (let i = 0; i < 16; ++i) {
-    const i16 = i * 16
+    const i16 = i * 16;
     for (let j = 0; j < 16; ++j) {
-      table[i16 + j] = alphabet[i] + alphabet[j]
+      table[i16 + j] = alphabet[i] + alphabet[j];
     }
   }
-  return table
-})()
+  return table;
+})();
 
 export function base64ToBuffer(b64: string): Uint8Array {
   return Uint8Array.from(atob(b64).split(''), (c) => c.charCodeAt(0));
@@ -124,19 +124,24 @@ function base64Slice(buf: Uint8Array, start: number, end: number): string {
 }
 
 // https://github.com/feross/buffer/blob/master/index.js#L483
-export function buffToString(buffer: Uint8Array, encoding: SupportedEncoding = 'utf8', start = 0, end = buffer.length) {
+export function buffToString(
+  buffer: Uint8Array,
+  encoding: SupportedEncoding = 'utf8',
+  start = 0,
+  end = buffer.length
+) {
   if (start < 0) {
-    start = 0
+    start = 0;
   }
 
   if (end > buffer.length) {
-    end = buffer.length
+    end = buffer.length;
   }
 
   // Return early if start > buffer.length. Done here to prevent potential uint32
   // coercion fail below.
   if (start > buffer.length || end <= 0 || end <= start) {
-    return ''
+    return '';
   }
 
   switch (encoding) {
@@ -165,13 +170,7 @@ export function utf8Slice(buf: Uint8Array, start: number, end: number): string {
   while (i < end) {
     const firstByte = buf[i];
     let codePoint: number | null = null;
-    let bytesPerSequence = firstByte > 0xEF
-      ? 4
-      : firstByte > 0xDF
-        ? 3
-        : firstByte > 0xBF
-          ? 2
-          : 1;
+    let bytesPerSequence = firstByte > 0xef ? 4 : firstByte > 0xdf ? 3 : firstByte > 0xbf ? 2 : 1;
 
     if (i + bytesPerSequence <= end) {
       let secondByte, thirdByte, fourthByte, tempCodePoint;
@@ -184,9 +183,9 @@ export function utf8Slice(buf: Uint8Array, start: number, end: number): string {
           break;
         case 2:
           secondByte = buf[i + 1];
-          if ((secondByte & 0xC0) === 0x80) {
-            tempCodePoint = (firstByte & 0x1F) << 0x6 | (secondByte & 0x3F);
-            if (tempCodePoint > 0x7F) {
+          if ((secondByte & 0xc0) === 0x80) {
+            tempCodePoint = ((firstByte & 0x1f) << 0x6) | (secondByte & 0x3f);
+            if (tempCodePoint > 0x7f) {
               codePoint = tempCodePoint;
             }
           }
@@ -194,9 +193,10 @@ export function utf8Slice(buf: Uint8Array, start: number, end: number): string {
         case 3:
           secondByte = buf[i + 1];
           thirdByte = buf[i + 2];
-          if ((secondByte & 0xC0) === 0x80 && (thirdByte & 0xC0) === 0x80) {
-            tempCodePoint = (firstByte & 0xF) << 0xC | (secondByte & 0x3F) << 0x6 | (thirdByte & 0x3F);
-            if (tempCodePoint > 0x7FF && (tempCodePoint < 0xD800 || tempCodePoint > 0xDFFF)) {
+          if ((secondByte & 0xc0) === 0x80 && (thirdByte & 0xc0) === 0x80) {
+            tempCodePoint =
+              ((firstByte & 0xf) << 0xc) | ((secondByte & 0x3f) << 0x6) | (thirdByte & 0x3f);
+            if (tempCodePoint > 0x7ff && (tempCodePoint < 0xd800 || tempCodePoint > 0xdfff)) {
               codePoint = tempCodePoint;
             }
           }
@@ -205,9 +205,17 @@ export function utf8Slice(buf: Uint8Array, start: number, end: number): string {
           secondByte = buf[i + 1];
           thirdByte = buf[i + 2];
           fourthByte = buf[i + 3];
-          if ((secondByte & 0xC0) === 0x80 && (thirdByte & 0xC0) === 0x80 && (fourthByte & 0xC0) === 0x80) {
-            tempCodePoint = (firstByte & 0xF) << 0x12 | (secondByte & 0x3F) << 0xC | (thirdByte & 0x3F) << 0x6 | (fourthByte & 0x3F);
-            if (tempCodePoint > 0xFFFF && tempCodePoint < 0x110000) {
+          if (
+            (secondByte & 0xc0) === 0x80 &&
+            (thirdByte & 0xc0) === 0x80 &&
+            (fourthByte & 0xc0) === 0x80
+          ) {
+            tempCodePoint =
+              ((firstByte & 0xf) << 0x12) |
+              ((secondByte & 0x3f) << 0xc) |
+              ((thirdByte & 0x3f) << 0x6) |
+              (fourthByte & 0x3f);
+            if (tempCodePoint > 0xffff && tempCodePoint < 0x110000) {
               codePoint = tempCodePoint;
             }
           }
@@ -217,13 +225,13 @@ export function utf8Slice(buf: Uint8Array, start: number, end: number): string {
     if (codePoint === null) {
       // we did not generate a valid codePoint so insert a
       // replacement char (U+FFFD) and advance only 1 byte
-      codePoint = 0xFFFD;
+      codePoint = 0xfffd;
       bytesPerSequence = 1;
-    } else if (codePoint > 0xFFFF) {
+    } else if (codePoint > 0xffff) {
       // encode to utf16 (surrogate pair dance)
       codePoint -= 0x10000;
-      res.push((codePoint >>> 10 & 0x3FF) | 0xD800);
-      codePoint = 0xDC00 | (codePoint & 0x3FF);
+      res.push(((codePoint >>> 10) & 0x3ff) | 0xd800);
+      codePoint = 0xdc00 | (codePoint & 0x3ff);
     }
 
     res.push(codePoint);
@@ -246,31 +254,27 @@ function decodeCodePointsArray(codePoints: number[]): string {
   let res = '';
   let i = 0;
   while (i < len) {
-    res += String.fromCharCode.apply(
-      String,
-      codePoints.slice(i, (i += MAX_ARGUMENTS_LENGTH))
-    );
+    res += String.fromCharCode.apply(String, codePoints.slice(i, (i += MAX_ARGUMENTS_LENGTH)));
   }
   return res;
 }
 
-const INVALID_BASE64_RE = /[^+/0-9A-Za-z-_]/g
+const INVALID_BASE64_RE = /[^+/0-9A-Za-z-_]/g;
 
-function base64clean (str: string) {
+function base64clean(str: string) {
   // Node takes equal signs as end of the Base64 encoding
-  str = str.split('=')[0]
+  str = str.split('=')[0];
   // Node strips out invalid characters like \n and \t from the string, base64-js does not
-  str = str.trim().replace(INVALID_BASE64_RE, '')
+  str = str.trim().replace(INVALID_BASE64_RE, '');
   // Node converts strings with length < 2 to ''
-  if (str.length < 2) return ''
+  if (str.length < 2) return '';
   // Node allows for non-padded base64 strings (missing trailing ===), base64-js does not
   while (str.length % 4 !== 0) {
-    str = str + '='
+    str = str + '=';
   }
-  return str
+  return str;
 }
 
 export function base64ToBytes(str: string) {
-  return toByteArray(base64clean(str))
+  return toByteArray(base64clean(str));
 }
-

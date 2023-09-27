@@ -480,7 +480,7 @@ export class TDF extends EventEmitter {
         // simple hmac is the default
         return await this.cryptoService.hmac(
           buffToString(new Uint8Array(unwrappedKeyBinary.asArrayBuffer()), 'hex'),
-          buffToString(new Uint8Array(payloadBinary.asArrayBuffer()), 'utf-8'),
+          buffToString(new Uint8Array(payloadBinary.asArrayBuffer()), 'utf-8')
         );
       default:
         throw new IllegalArgumentError(`Unsupported signature alg [${algorithmType}]`);
@@ -781,7 +781,9 @@ export class TDF extends EventEmitter {
     if (upsertResponse) {
       plaintextStream.upsertResponse = upsertResponse;
       plaintextStream.tdfSize = totalByteCount;
-      plaintextStream.KEK = payloadKey ? null : buffToString(Uint8Array.from(kek.payload.asByteArray()), 'base64');
+      plaintextStream.KEK = payloadKey
+        ? null
+        : buffToString(Uint8Array.from(kek.payload.asByteArray()), 'base64');
       plaintextStream.algorithm = manifest.encryptionInformation.method.algorithm;
     }
 
@@ -994,7 +996,9 @@ export class TDF extends EventEmitter {
                 slice[0].encryptedOffset === 0
                   ? encryptedOffset
                   : encryptedOffset % slice[0].encryptedOffset;
-              const encryptedChunk = new Uint8Array(buffer.slice(offset, offset + (encryptedSegmentSize as number)));
+              const encryptedChunk = new Uint8Array(
+                buffer.slice(offset, offset + (encryptedSegmentSize as number))
+              );
 
               slice[index].decryptedChunk = await this.decryptChunk(
                 encryptedChunk,

@@ -172,7 +172,9 @@ class StringBinary extends Binary {
 
   asString(encoding?: SupportedEncoding): string {
     if (encoding) {
-      throw new Error('Method doesnt accept encoding param, it returns binary string in original format')
+      throw new Error(
+        'Method doesnt accept encoding param, it returns binary string in original format'
+      );
     }
     return this.value;
   }

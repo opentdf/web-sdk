@@ -273,7 +273,7 @@ export function parseCDBuffer(cdBuffer: Uint8Array): CentralDirectory {
  */
 function bufferToString(buffer: Uint8Array, start: number, end: number, isUtf8: boolean): string {
   if (isUtf8) {
-    return buffToString(buffer, 'utf-8', start, end)
+    return buffToString(buffer, 'utf-8', start, end);
   }
 
   let result = '';
