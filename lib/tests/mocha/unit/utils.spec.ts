@@ -45,5 +45,4 @@ describe('Buffer Conversion Functions', () => {
       expect(result).to.equal('𝄞');
     });
   });
-
 });
