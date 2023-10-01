@@ -118,6 +118,7 @@ export interface ClientConfig {
   entityObjectEndpoint?: string;
   fileStreamServiceWorker?: string;
   progressHandler?: (bytesProcessed: number) => void;
+  originTrialTokens?: string[];
 }
 
 /*
@@ -203,6 +204,8 @@ export class Client {
   readonly authProvider?: AuthProvider | AppIdAuthProvider;
 
   readonly readerUrl?: string;
+
+  readonly originTrialTokens: string[];
 
   readonly fileStreamServiceWorker?: string;
 
@@ -302,6 +305,7 @@ export class Client {
     } else {
       this.kasPublicKey = fetchKasPubKey(this.kasEndpoint);
     }
+    this.originTrialTokens = clientConfig.originTrialTokens ?? [];
   }
 
   /**
@@ -420,7 +424,12 @@ export class Client {
     if (!tdf.manifest) {
       throw new Error('Missing manifest in encrypt function');
     }
-    const htmlBuf = TDF.wrapHtml(await stream.toBuffer(), tdf.manifest, this.readerUrl ?? '');
+    const htmlBuf = TDF.wrapHtml(
+      await stream.toBuffer(),
+      tdf.manifest,
+      this.readerUrl ?? '',
+      this.originTrialTokens
+    );
 
     if (output) {
       output.push(htmlBuf);

@@ -186,7 +186,8 @@ export class TDF extends EventEmitter {
   static wrapHtml(
     payload: Uint8Array,
     manifest: Manifest | string,
-    transferUrl: string
+    transferUrl: string,
+    originTrialTokens?: string[]
   ): Uint8Array {
     const { origin } = new URL(transferUrl);
     const exportManifest: string =
@@ -196,6 +197,7 @@ export class TDF extends EventEmitter {
       transferUrl,
       transferBaseUrl: origin,
       manifest: base64.encode(exportManifest),
+      originTrialTokens,
       payload: buffToString(payload, 'base64'),
     });
 

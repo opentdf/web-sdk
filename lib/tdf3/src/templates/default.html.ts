@@ -1,17 +1,32 @@
 import { escHtml, escJavaScript } from './escaper.js';
+
+const otMeta = (originTrialTokens?: string[]) => {
+  if (!originTrialTokens) {
+    return '';
+  }
+  return originTrialTokens
+    .map(
+      (tok) => `
+    <meta http-equiv="origin-trial" content="${tok}" />`
+    )
+    .join(',');
+};
+
 export default ({
   manifest,
+  originTrialTokens,
   payload,
   transferUrl,
   transferBaseUrl,
 }: {
   manifest: string;
+  originTrialTokens?: string[];
   payload: string;
   transferUrl: string;
   transferBaseUrl: string;
 }) => `<html>
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8">${otMeta(originTrialTokens)}
   </head>
   <body style="font-family: Arial; color: #2D323B; overflow: hidden; margin: 0; height: 100%; background-color: white;">
     <input id="data-input" type="hidden" value="${escHtml(payload)}">
