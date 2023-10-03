@@ -7,6 +7,7 @@ import {
   streamToBuffer,
   isAppIdProviderCheck,
   type Chunker,
+  distributeKeys
 } from '../utils/index.js';
 import { base64 } from '../../../src/encodings/index.js';
 import { TDF } from '../tdf.js';
@@ -331,6 +332,7 @@ export class Client {
     windowSize,
     eo,
     payloadKey,
+    distributeKeysMiddleware = distributeKeys,
   }: Omit<EncryptParams, 'output'>): Promise<DecoratedReadableStream>;
   async encrypt({
     scope,
@@ -343,6 +345,7 @@ export class Client {
     windowSize,
     eo,
     payloadKey,
+    distributeKeysMiddleware = distributeKeys,
   }: EncryptParams & { output: NodeJS.WriteStream }): Promise<void>;
   async encrypt({
     scope = { attributes: [], dissem: [] },
@@ -356,6 +359,7 @@ export class Client {
     windowSize = DEFAULT_SEGMENT_SIZE,
     eo,
     payloadKey,
+    distributeKeysMiddleware = distributeKeys,
   }: EncryptParams): Promise<DecoratedReadableStream | void> {
     if (asHtml) {
       if (rcaSource) {
@@ -400,13 +404,16 @@ export class Client {
       metadata,
     });
 
+    const { keyForEncryption, keyForManifest, keyForLink } = await distributeKeysMiddleware(!!rcaSource, payloadKey)
+
     const byteLimit = asHtml ? HTML_BYTE_LIMIT : GLOBAL_BYTE_LIMIT;
-    const stream = await tdf.writeStream(
+    const stream = await tdf.writeStream({
       byteLimit,
-      !!rcaSource,
-      payloadKey,
-      this.clientConfig.progressHandler
-    );
+      progressHandler: this.clientConfig.progressHandler,
+      keyForEncryption,
+      keyForManifest,
+      keyForLink,
+    });
     // Looks like invalid calls | stream.upsertResponse equals empty array?
     if (rcaSource) {
       stream.policyUuid = policyObject.uuid;

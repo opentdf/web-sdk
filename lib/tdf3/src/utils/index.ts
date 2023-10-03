@@ -1,5 +1,11 @@
 import { toByteArray, fromByteArray } from 'base64-js';
 import { AppIdAuthProvider, AuthProvider } from '../../../src/auth/auth.js';
+import { Binary } from '../binary.js';
+import * as WebCryptoService from '../crypto/index.js';
+import { type EncryptResult } from '../crypto/declarations.js';
+import { KeyInfo } from '../models/index.js';
+
+import { TDF } from '../tdf.js';
 
 export { ZipReader, readUInt64LE } from './zip-reader.js';
 export { ZipWriter } from './zip-writer.js';
@@ -277,4 +283,52 @@ function base64clean(str: string) {
 
 export function base64ToBytes(str: string) {
   return toByteArray(base64clean(str));
+}
+
+/**
+ *
+ * Default distribution fo keys.
+ * 1) usual usecase, function called without params, generates key, it returned both KeyForEncryption and KeyForManifest.
+ *   `KeyForEncryption === KeyForManifest` produces true;
+ * 2) RCA usecase. Function called without payloadKey, with isRca as true, generates TWO keys. KeyForEncryption and KeyForManifest (now they different)
+ *    We encrypt KeyForEncryption with KeyForManifest. Result of it is KeyForLink.
+ * 3) CKS usecase. KeyForEncryption is payloadKey. KeyForManifest is other key.
+ *   `KeyForEncryption === KeyForManifest` produces false; No KeyForLink for RCA flow
+ *
+ * @param {Binary} payloadKey - Optional Binary parameter.
+ * @param {Boolean} isRca - Are we using RCA flow
+ *
+ * @returns {Object}:
+ * {
+ *   keyForEncryption: Binary;
+ *   keyForManifest: Binary;
+ *   keyForLink?: EncryptResult;
+ * }
+ */
+export async function distributeKeys(isRca = false, payloadKey?: Binary) : Promise<{
+  keyForEncryption: KeyInfo; keyForManifest: KeyInfo; keyForLink?: EncryptResult;
+}>{
+  const tdfService = TDF.create({ cryptoService: WebCryptoService });
+  tdfService.setEncryption({ type: 'split' });
+  if (!tdfService.encryptionInformation?.generateKey) {
+    throw new Error('Crypto service not initialised')
+  }
+
+  const [key1, key2] = await Promise.all([
+    tdfService.encryptionInformation.generateKey(), tdfService.encryptionInformation.generateKey(),
+  ]);
+
+  if (payloadKey) {
+    return { keyForEncryption: ({ unwrappedKeyBinary: payloadKey } as KeyInfo), keyForManifest: key2 }
+  } else if (isRca) {
+    const kek = await tdfService.encryptionInformation.encrypt(
+      key1.unwrappedKeyBinary,
+      key2.unwrappedKeyBinary,
+      key2.unwrappedKeyIvBinary
+    );
+
+    return { keyForEncryption: key1, keyForManifest: key2, keyForLink: kek }
+  } else {
+    return { keyForEncryption: key1, keyForManifest: key1 }
+  }
 }

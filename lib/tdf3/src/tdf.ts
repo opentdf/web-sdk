@@ -57,7 +57,7 @@ import {
   reqSignature,
 } from '../../src/auth/auth.js';
 import PolicyObject from '../../src/tdf/PolicyObject.js';
-import { type CryptoService, type DecryptResult } from './crypto/declarations.js';
+import { type CryptoService, type DecryptResult, EncryptResult } from './crypto/declarations.js';
 import { CentralDirectory } from './utils/zip-reader.js';
 
 // TODO: input validation on manifest JSON
@@ -576,12 +576,19 @@ export class TDF extends EventEmitter {
     );
   }
 
-  async writeStream(
+  async writeStream({
+    byteLimit,
+    progressHandler,
+    keyForEncryption,
+    keyForManifest,
+    keyForLink,
+  }:{
     byteLimit: number,
-    isRcaSource: boolean,
-    payloadKey?: Binary,
-    progressHandler?: (bytesProcessed: number) => void
-  ): Promise<DecoratedReadableStream> {
+    progressHandler?: (bytesProcessed: number) => void,
+    keyForEncryption: KeyInfo;
+    keyForManifest: KeyInfo;
+    keyForLink?: EncryptResult;
+  }): Promise<DecoratedReadableStream> {
     if (!this.contentStream) {
       throw new IllegalArgumentError('No input stream defined');
     }
@@ -618,20 +625,8 @@ export class TDF extends EventEmitter {
     if (!this.encryptionInformation) {
       throw new Error('Missing encryptionInformation');
     }
-    const keyInfo = await this.encryptionInformation.generateKey();
-    const kv = await this.encryptionInformation.generateKey();
 
-    if (!keyInfo || !kv) {
-      throw new Error('Missing generated keys');
-    }
-
-    const kek = await this.encryptionInformation.encrypt(
-      keyInfo.unwrappedKeyBinary,
-      kv.unwrappedKeyBinary,
-      kv.unwrappedKeyIvBinary
-    );
-
-    const manifest = await this._generateManifest(isRcaSource && !payloadKey ? kv : keyInfo);
+    const manifest = await this._generateManifest(keyForManifest);
     this.manifest = manifest;
 
     // For all remote key access objects, sync its policy
@@ -644,7 +639,7 @@ export class TDF extends EventEmitter {
     const { segmentSizeDefault } = this;
     const encryptedBlargh = await this.encryptionInformation.encrypt(
       Binary.fromArrayBuffer(new ArrayBuffer(segmentSizeDefault)),
-      keyInfo.unwrappedKeyBinary
+      keyForEncryption.unwrappedKeyBinary
     );
     const payloadBuffer = new Uint8Array(encryptedBlargh.payload.asByteArray());
     const encryptedSegmentSizeDefault = payloadBuffer.length;
@@ -719,7 +714,7 @@ export class TDF extends EventEmitter {
 
           // hash the concat of all hashes
           const payloadSigStr = await self.getSignature(
-            payloadKey || keyInfo.unwrappedKeyBinary,
+            keyForEncryption.unwrappedKeyBinary,
             Binary.fromString(aggregateHash),
             self.integrityAlgorithm
           );
@@ -781,9 +776,7 @@ export class TDF extends EventEmitter {
     if (upsertResponse) {
       plaintextStream.upsertResponse = upsertResponse;
       plaintextStream.tdfSize = totalByteCount;
-      plaintextStream.KEK = payloadKey
-        ? null
-        : buffToString(Uint8Array.from(kek.payload.asByteArray()), 'base64');
+      plaintextStream.KEK = keyForLink ? buffToString(Uint8Array.from(keyForLink.payload.asByteArray()), 'base64') : null;
       plaintextStream.algorithm = manifest.encryptionInformation.method.algorithm;
     }
 
@@ -815,11 +808,11 @@ export class TDF extends EventEmitter {
       // Don't pass in an IV here. The encrypt function will generate one for you, ensuring that each segment has a unique IV.
       const encryptedResult = await encryptionInformation.encrypt(
         Binary.fromArrayBuffer(chunk.buffer),
-        payloadKey || keyInfo.unwrappedKeyBinary
+        keyForEncryption.unwrappedKeyBinary
       );
       const payloadBuffer = new Uint8Array(encryptedResult.payload.asByteArray());
       const payloadSigStr = await self.getSignature(
-        payloadKey || keyInfo.unwrappedKeyBinary,
+        keyForEncryption.unwrappedKeyBinary,
         encryptedResult.payload,
         self.segmentIntegrityAlgorithm
       );

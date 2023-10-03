@@ -2,6 +2,10 @@ import { AttributeValidator } from './validation.js';
 import { AttributeObject, Policy } from '../models/index.js';
 import { type RcaParams, type RcaLink, type Metadata } from '../tdf.js';
 import { Binary } from '../binary.js';
+import { type EncryptResult } from '../crypto/declarations.js';
+
+import { KeyInfo } from '../models/index.js';
+
 
 import { IllegalArgumentError } from '../errors.js';
 import { PemKeyPair } from '../crypto/declarations.js';
@@ -31,6 +35,11 @@ export type EncryptParams = {
   mimeType?: string;
   eo?: EntityObject;
   payloadKey?: Binary;
+  distributeKeysMiddleware: (isRca?: boolean, payloadKey?: Binary) => Promise<{
+    keyForEncryption: KeyInfo;
+    keyForManifest: KeyInfo;
+    keyForLink?: EncryptResult;
+  }>;
 };
 
 // 'Readonly<EncryptParams>': scope, metadata, offline, windowSize, asHtml
