@@ -10,6 +10,7 @@ import { KeyInfo } from '../models/index.js';
 import { IllegalArgumentError } from '../errors.js';
 import { PemKeyPair } from '../crypto/declarations.js';
 import { EntityObject } from '../../../src/tdf/EntityObject.js';
+import { DecoratedReadableStream } from './DecoratedReadableStream';
 
 export const DEFAULT_SEGMENT_SIZE: number = 1024 * 1024;
 export type Scope = {
@@ -35,11 +36,11 @@ export type EncryptParams = {
   mimeType?: string;
   eo?: EntityObject;
   payloadKey?: Binary;
-  distributeKeysMiddleware: (isRca?: boolean, payloadKey?: Binary) => Promise<{
+  keyMiddleware: (...args: unknown[]) => Promise<{
     keyForEncryption: KeyInfo;
     keyForManifest: KeyInfo;
-    keyForLink?: EncryptResult;
   }>;
+  streamMiddleware: (...args: unknown[]) => Promise<DecoratedReadableStream>;
 };
 
 // 'Readonly<EncryptParams>': scope, metadata, offline, windowSize, asHtml

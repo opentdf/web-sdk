@@ -7,7 +7,7 @@ import {
   streamToBuffer,
   isAppIdProviderCheck,
   type Chunker,
-  distributeKeys
+  keyMiddleware,
 } from '../utils/index.js';
 import { base64 } from '../../../src/encodings/index.js';
 import { TDF } from '../tdf.js';
@@ -331,8 +331,8 @@ export class Client {
     offline,
     windowSize,
     eo,
-    payloadKey,
-    distributeKeysMiddleware = distributeKeys,
+    keyMiddleware = keyMiddleware,
+    streamMiddleware = stream => stream,
   }: Omit<EncryptParams, 'output'>): Promise<DecoratedReadableStream>;
   async encrypt({
     scope,
@@ -344,8 +344,8 @@ export class Client {
     output,
     windowSize,
     eo,
-    payloadKey,
-    distributeKeysMiddleware = distributeKeys,
+    keyMiddleware = keyMiddleware,
+    streamMiddleware = stream => stream,
   }: EncryptParams & { output: NodeJS.WriteStream }): Promise<void>;
   async encrypt({
     scope = { attributes: [], dissem: [] },
@@ -355,23 +355,11 @@ export class Client {
     mimeType,
     offline = false,
     output,
-    rcaSource,
     windowSize = DEFAULT_SEGMENT_SIZE,
     eo,
-    payloadKey,
-    distributeKeysMiddleware = distributeKeys,
+    keyMiddleware = keyMiddleware,
+    streamMiddleware = stream => stream,
   }: EncryptParams): Promise<DecoratedReadableStream | void> {
-    if (asHtml) {
-      if (rcaSource) {
-        throw new Error('rca links should be used only with zip format');
-      }
-      if (!this.readerUrl) {
-        throw new Error('html container missing required parameter: [readerUrl]');
-      }
-    }
-    if (rcaSource && !this.kasEndpoint) {
-      throw new Error('rca links require a kasEndpoint url to be set');
-    }
     const sessionKeys = await this.sessionKeys;
     const kasPublicKey = await this.kasPublicKey;
     const policyObject = this._createPolicyObject(scope);
@@ -404,20 +392,16 @@ export class Client {
       metadata,
     });
 
-    const { keyForEncryption, keyForManifest, keyForLink } = await distributeKeysMiddleware(!!rcaSource, payloadKey)
+    const { keyForEncryption, keyForManifest } = await keyMiddleware();
 
     const byteLimit = asHtml ? HTML_BYTE_LIMIT : GLOBAL_BYTE_LIMIT;
-    const stream = await tdf.writeStream({
+    const stream = streamMiddleware(await tdf.writeStream({
       byteLimit,
       progressHandler: this.clientConfig.progressHandler,
       keyForEncryption,
       keyForManifest,
-      keyForLink,
-    });
-    // Looks like invalid calls | stream.upsertResponse equals empty array?
-    if (rcaSource) {
-      stream.policyUuid = policyObject.uuid;
-    }
+    }));
+
     if (!asHtml) {
       return stream;
     }

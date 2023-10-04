@@ -57,7 +57,7 @@ import {
   reqSignature,
 } from '../../src/auth/auth.js';
 import PolicyObject from '../../src/tdf/PolicyObject.js';
-import { type CryptoService, type DecryptResult, EncryptResult } from './crypto/declarations.js';
+import { type CryptoService, type DecryptResult } from './crypto/declarations.js';
 import { CentralDirectory } from './utils/zip-reader.js';
 
 // TODO: input validation on manifest JSON
@@ -581,13 +581,11 @@ export class TDF extends EventEmitter {
     progressHandler,
     keyForEncryption,
     keyForManifest,
-    keyForLink,
   }:{
     byteLimit: number,
     progressHandler?: (bytesProcessed: number) => void,
     keyForEncryption: KeyInfo;
     keyForManifest: KeyInfo;
-    keyForLink?: EncryptResult;
   }): Promise<DecoratedReadableStream> {
     if (!this.contentStream) {
       throw new IllegalArgumentError('No input stream defined');
@@ -776,7 +774,6 @@ export class TDF extends EventEmitter {
     if (upsertResponse) {
       plaintextStream.upsertResponse = upsertResponse;
       plaintextStream.tdfSize = totalByteCount;
-      plaintextStream.KEK = keyForLink ? buffToString(Uint8Array.from(keyForLink.payload.asByteArray()), 'base64') : null;
       plaintextStream.algorithm = manifest.encryptionInformation.method.algorithm;
     }
 
