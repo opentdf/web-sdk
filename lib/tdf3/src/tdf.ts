@@ -6,6 +6,7 @@ import { exportSPKI, importPKCS8, importX509 } from 'jose';
 import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
 import { EntityObject } from '../../src/tdf/EntityObject.js';
 import { validateSecureUrl } from '../../src/utils.js';
+import { DecryptParams } from './client/builders.js';
 
 import {
   AttributeSet,
@@ -29,7 +30,6 @@ import {
   isAppIdProviderCheck,
   keyMerge,
   buffToString,
-  base64ToBytes,
   concatUint8,
 } from './utils/index.js';
 import { Binary } from './binary.js';
@@ -75,14 +75,7 @@ export type EncryptionOptions = {
   cipher?: string;
 };
 
-export type RcaParams = {
-  pu: string;
-  wu: string;
-  wk: string;
-  al: string;
-};
-
-export type RcaLink = string;
+type KeyMiddleware = DecryptParams['keyMiddleware'];
 
 export type Metadata = {
   connectOptions?: {
@@ -1015,12 +1008,13 @@ export class TDF extends EventEmitter {
    * readStream
    *
    * @param {Object} chunker - A function object for getting data in a series of typed array objects
-   * @param {Stream} outputStream - The writable stream we should put the new bits into
-   * @param {Object} rcaParams - Optional field to specify if file is stored on S3
+   * @param {Stream} keyMiddleware - The writable stream we should put the new bits into
+   * @param {Function} progressHandler - Function that gives info on how many bytes processed
+   * @param {String} fileStreamServiceWorker
    */
   async readStream(
     chunker: Chunker,
-    rcaParams?: RcaParams,
+    keyMiddleware: KeyMiddleware,
     progressHandler?: (bytesProcessed: number) => void,
     fileStreamServiceWorker?: string
   ) {
@@ -1031,29 +1025,19 @@ export class TDF extends EventEmitter {
 
     const { segments } = this.manifest.encryptionInformation.integrityInformation;
     const unwrapResult = await this.unwrapKey(this.manifest);
-    let { reconstructedKeyBinary } = unwrapResult;
+    const { reconstructedKeyBinary } = unwrapResult;
+    const keyForDecryption = await keyMiddleware(reconstructedKeyBinary);
     const { metadata } = unwrapResult;
 
     const defaultSegmentSize =
       this.manifest?.encryptionInformation?.integrityInformation?.encryptedSegmentSizeDefault;
     const encryptedSegmentSizeDefault = defaultSegmentSize || DEFAULT_SEGMENT_SIZE;
 
-    if (rcaParams && rcaParams.wk) {
-      const { wk, al } = rcaParams;
-      this.encryptionInformation = new SplitKey(this.createCipher(al.toLowerCase()));
-
-      const decodedReconstructedKeyBinary = await this.encryptionInformation.decrypt(
-        Uint8Array.from(base64ToBytes(wk)),
-        reconstructedKeyBinary
-      );
-      reconstructedKeyBinary = decodedReconstructedKeyBinary.payload;
-    }
-
     // check the combined string of hashes
     const integrityAlgorithmType =
       this.manifest.encryptionInformation.integrityInformation.rootSignature.alg;
     const payloadSigStr = await this.getSignature(
-      reconstructedKeyBinary,
+      keyForDecryption,
       Binary.fromString(segments.map((segment) => base64.decode(segment.hash)).join('')),
       integrityAlgorithmType
     );
@@ -1082,7 +1066,7 @@ export class TDF extends EventEmitter {
       Array.from(this.chunkMap.values()),
       centralDirectory,
       zipReader,
-      reconstructedKeyBinary
+      keyForDecryption
     ).catch((e) => {
       throw new Error(e);
     });
@@ -1116,18 +1100,6 @@ export class TDF extends EventEmitter {
     };
 
     const outputStream = new DecoratedReadableStream(underlyingSource);
-
-    if (rcaParams && rcaParams.wu) {
-      const res = await axios.head(rcaParams.wu);
-
-      const length = parseInt(res?.headers?.['content-length'] as string, 10);
-
-      if (length) {
-        outputStream.fileSize = length;
-      } else {
-        console.log('Unable to retrieve total fileSize');
-      }
-    }
 
     outputStream.manifest = this.manifest;
     if (outputStream.emit) {
