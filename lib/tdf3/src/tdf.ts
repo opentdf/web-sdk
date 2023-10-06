@@ -1014,7 +1014,7 @@ export class TDF extends EventEmitter {
    */
   async readStream(
     chunker: Chunker,
-    keyMiddleware: KeyMiddleware = (async (key) => key),
+    keyMiddleware: KeyMiddleware = async (key) => key,
     progressHandler?: (bytesProcessed: number) => void,
     fileStreamServiceWorker?: string
   ) {
