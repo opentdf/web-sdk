@@ -395,12 +395,14 @@ export class Client {
     const { keyForEncryption, keyForManifest } = await keyMiddleware();
 
     const byteLimit = asHtml ? HTML_BYTE_LIMIT : GLOBAL_BYTE_LIMIT;
-    const stream = await streamMiddleware(await tdf.writeStream({
-      byteLimit,
-      progressHandler: this.clientConfig.progressHandler,
-      keyForEncryption,
-      keyForManifest,
-    }));
+    const stream = await streamMiddleware(
+      await tdf.writeStream({
+        byteLimit,
+        progressHandler: this.clientConfig.progressHandler,
+        keyForEncryption,
+        keyForManifest,
+      })
+    );
 
     if (!asHtml) {
       return stream;
@@ -441,7 +443,7 @@ export class Client {
     eo,
     source,
     keyMiddleware = async (key) => key,
-    streamMiddleware = async stream => stream,
+    streamMiddleware = async (stream) => stream,
   }: DecryptParams): Promise<DecoratedReadableStream> {
     const sessionKeys = await this.sessionKeys;
     let entityObject;
@@ -464,12 +466,14 @@ export class Client {
 
     // Await in order to catch any errors from this call.
     // TODO: Write error event to stream and don't await.
-    return await streamMiddleware(await tdf.readStream(
-      chunker,
-      keyMiddleware,
-      this.clientConfig.progressHandler,
-      this.clientConfig.fileStreamServiceWorker
-    ));
+    return await streamMiddleware(
+      await tdf.readStream(
+        chunker,
+        keyMiddleware,
+        this.clientConfig.progressHandler,
+        this.clientConfig.fileStreamServiceWorker
+      )
+    );
   }
 
   /**

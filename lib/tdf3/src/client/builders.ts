@@ -5,7 +5,6 @@ import { Binary } from '../binary.js';
 
 import { KeyInfo } from '../models/index.js';
 
-
 import { IllegalArgumentError } from '../errors.js';
 import { PemKeyPair } from '../crypto/declarations.js';
 import { EntityObject } from '../../../src/tdf/EntityObject.js';

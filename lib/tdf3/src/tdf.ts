@@ -574,9 +574,9 @@ export class TDF extends EventEmitter {
     progressHandler,
     keyForEncryption,
     keyForManifest,
-  }:{
-    byteLimit: number,
-    progressHandler?: (bytesProcessed: number) => void,
+  }: {
+    byteLimit: number;
+    progressHandler?: (bytesProcessed: number) => void;
     keyForEncryption: KeyInfo;
     keyForManifest: KeyInfo;
   }): Promise<DecoratedReadableStream> {

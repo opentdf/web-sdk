@@ -294,13 +294,14 @@ export function base64ToBytes(str: string) {
  *   keyForManifest: Binary;
  * }
  */
-export async function keyMiddleware() : Promise<{
-  keyForEncryption: KeyInfo; keyForManifest: KeyInfo;
-}>{
+export async function keyMiddleware(): Promise<{
+  keyForEncryption: KeyInfo;
+  keyForManifest: KeyInfo;
+}> {
   const tdfService = TDF.create({ cryptoService: WebCryptoService });
   tdfService.setEncryption({ type: 'split' });
   if (!tdfService.encryptionInformation?.generateKey) {
-    throw new Error('Crypto service not initialised')
+    throw new Error('Crypto service not initialised');
   }
 
   const key1 = await tdfService.encryptionInformation.generateKey();
