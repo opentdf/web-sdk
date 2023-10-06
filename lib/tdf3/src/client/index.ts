@@ -442,9 +442,12 @@ export class Client {
   async decrypt({
     eo,
     source,
-    keyMiddleware = async (key) => key,
-    streamMiddleware = async (stream) => stream,
+    keyMiddleware,
+    streamMiddleware,
   }: DecryptParams): Promise<DecoratedReadableStream> {
+    streamMiddleware = streamMiddleware || (async (stream) => stream);
+    keyMiddleware = keyMiddleware || (async (key) => key);
+
     const sessionKeys = await this.sessionKeys;
     let entityObject;
     if (eo && eo.publicKey == sessionKeys.keypair.publicKey) {

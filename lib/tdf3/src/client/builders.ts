@@ -33,11 +33,11 @@ export type EncryptParams = {
   mimeType?: string;
   eo?: EntityObject;
   payloadKey?: Binary;
-  keyMiddleware: (...args: unknown[]) => Promise<{
+  keyMiddleware?: (...args: unknown[]) => Promise<{
     keyForEncryption: KeyInfo;
     keyForManifest: KeyInfo;
   }>;
-  streamMiddleware: (stream: DecoratedReadableStream) => Promise<DecoratedReadableStream>;
+  streamMiddleware?: (stream: DecoratedReadableStream) => Promise<DecoratedReadableStream>;
 };
 
 // 'Readonly<EncryptParams>': scope, metadata, offline, windowSize, asHtml
@@ -478,8 +478,8 @@ export type DecryptParams = {
   source: DecryptSource;
   opts?: { keypair: PemKeyPair };
   eo?: EntityObject;
-  keyMiddleware: (key: Binary) => Promise<Binary>;
-  streamMiddleware: (stream: DecoratedReadableStream) => Promise<DecoratedReadableStream>;
+  keyMiddleware?: (key: Binary) => Promise<Binary>;
+  streamMiddleware?: (stream: DecoratedReadableStream) => Promise<DecoratedReadableStream>;
 } & Pick<EncryptParams, 'contentLength' | 'keypair'>;
 
 /**
