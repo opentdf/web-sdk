@@ -1,6 +1,6 @@
 import Header from './Header.js';
 import { getBitLength } from './Ciphers.js';
-import InvalidPayloadError from '../errors/InvalidPayloadError.js';
+import { InvalidPayloadError } from '../../errors.js';
 
 /**
  * Payload
@@ -57,7 +57,7 @@ export default class Payload {
     const inRange = length >= this.MIN_LENGTH && length <= this.MAX_NANO_TDF_ENCRYPT_PAYLOAD_SIZE;
 
     if (!inRange) {
-      throw new InvalidPayloadError(inRange);
+      throw new InvalidPayloadError('Payload Length Out Of Range');
     }
 
     /**
@@ -71,7 +71,7 @@ export default class Payload {
     offset += Payload.IV_LEN;
 
     if (iv.byteLength != 3) {
-      throw new InvalidPayloadError(inRange);
+      throw new InvalidPayloadError('Invalid Payload Length');
     }
 
     if (!legacyTDF) {
@@ -93,7 +93,7 @@ export default class Payload {
     );
 
     if (ciphertextWithAuthTag.byteLength + Payload.LENGTH_LEN !== length) {
-      throw new InvalidPayloadError(inRange);
+      throw new InvalidPayloadError('Invalid Payload Length');
     }
 
     /**

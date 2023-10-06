@@ -28,7 +28,7 @@ import {
 } from './builders.js';
 import * as defaultCryptoService from '../crypto/index.js';
 import { Policy } from '../models/index.js';
-import { TdfError } from '../errors.js';
+import { TdfError } from '../../../src/errors.js';
 import { rsaPkcs1Sha256 } from '../crypto/index.js';
 
 const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.

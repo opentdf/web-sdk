@@ -43,7 +43,7 @@ import {
   PolicyIntegrityError,
   TdfDecryptError,
   TdfPayloadExtractionError,
-} from './errors.js';
+} from '../../src/errors.js';
 import { htmlWrapperTemplate } from './templates/index.js';
 
 // configurable
