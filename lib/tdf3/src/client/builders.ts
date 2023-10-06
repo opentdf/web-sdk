@@ -3,7 +3,7 @@ import { AttributeObject, Policy } from '../models/index.js';
 import { type RcaParams, type RcaLink, type Metadata } from '../tdf.js';
 import { Binary } from '../binary.js';
 
-import { IllegalArgumentError } from '../errors.js';
+import { IllegalArgumentError } from '../../../src/errors.js';
 import { PemKeyPair } from '../crypto/declarations.js';
 import { EntityObject } from '../../../src/tdf/EntityObject.js';
 

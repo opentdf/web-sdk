@@ -13,7 +13,7 @@ import {
   MIN_ASYMMETRIC_KEY_SIZE_BITS,
   PemKeyPair,
 } from './declarations.js';
-import { TdfDecryptError } from '../errors.js';
+import { TdfDecryptError } from '../../../src/errors.js';
 import { formatAsPem, removePemFormatting } from './crypto-utils.js';
 import { encodeArrayBuffer as hexEncode } from '../../../src/encodings/hex.js';
 import {
