@@ -294,7 +294,7 @@ export class Client {
         pem: clientConfig.kasPublicKey,
       });
     } else {
-      this.kasPublicKey = fetchKasPublicKey(this.kasEndpoint);
+      this.kasPublicKey = fetchKasPublicKey(this.kasEndpoint, false);
     }
   }
 

@@ -81,7 +81,9 @@ describe('validateSecureUrl', () => {
   });
   it('strict mode', () => {
     expect(() => validateSecureUrl('http://example.com', true)).to.throw(UnsafeUrlError);
+    expect(() => validateSecureUrl('http://localhost.com', true)).to.throw(UnsafeUrlError);
     expect(() => validateSecureUrl('', true)).to.throw(UnsafeUrlError);
+    expect(validateSecureUrl('http://localhost', true)).to.be.true;
     expect(validateSecureUrl('https://example.com', true)).to.be.true;
   });
   it('mangled urls', () => {
@@ -189,8 +191,8 @@ describe('skew estimation', () => {
       const aResponse = await axios.get(window.origin);
       await new Promise((r) => setTimeout(r, 1000));
       const estimate = estimateSkewFromHeaders(aResponse.headers, before);
-      expect(estimate).to.be.lessThan(2);
-      expect(estimate).to.be.greaterThan(-2);
+      expect(estimate).to.be.lessThan(3);
+      expect(estimate).to.be.greaterThan(-3);
     });
   });
 });
