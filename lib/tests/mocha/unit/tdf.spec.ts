@@ -111,7 +111,6 @@ describe('TDF', () => {
   });
 });
 
-
 describe('fetchKasPublicKey', async () => {
   it('missing kas names throw', async () => {
     try {
@@ -121,7 +120,6 @@ describe('fetchKasPublicKey', async () => {
       expect(e).to.be.an.instanceof(TdfError);
     }
   });
-
 
   it('unsafe kas names throw', async () => {
     let failed = false;

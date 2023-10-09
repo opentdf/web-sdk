@@ -234,7 +234,9 @@ export class Client {
       this.allowedKases.forEach((k) => validateSecureUrl(k, true));
     } else {
       if (!validateSecureUrl(this.kasEndpoint)) {
-        throw new TdfError(`Invalid KAS endpoint [${this.kasEndpoint}]; to force, please list it among allowedKases`);
+        throw new TdfError(
+          `Invalid KAS endpoint [${this.kasEndpoint}]; to force, please list it among allowedKases`
+        );
       }
       this.allowedKases = [this.kasEndpoint];
     }
@@ -289,7 +291,7 @@ export class Client {
       this.kasPublicKey = Promise.resolve({
         url: this.kasEndpoint,
         algorithm: 'rsa:2048',
-        pem: clientConfig.kasPublicKey
+        pem: clientConfig.kasPublicKey,
       });
     } else {
       this.kasPublicKey = fetchKasPublicKey(this.kasEndpoint);

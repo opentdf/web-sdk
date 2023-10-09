@@ -17,7 +17,7 @@ export class Wrapped {
     public readonly url: string,
     public readonly kid: string | undefined,
     public readonly publicKey: string,
-    public readonly metadata: unknown,
+    public readonly metadata: unknown
   ) {}
 
   async write(

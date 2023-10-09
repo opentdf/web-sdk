@@ -130,14 +130,14 @@ type TDFConfiguration = {
 
 export type RewrapRequest = {
   signedRequestToken: string;
-}
+};
 
 export type KasPublicKeyInfo = {
   url: string;
   algorithm: KasPublicKeyAlgorithm;
   kid?: string;
   pem: string;
-}
+};
 
 export type KasPublicKeyAlgorithm = 'ec:secp256r1' | 'rsa:2048';
 
@@ -147,19 +147,22 @@ type KasPublicKeyParams = {
   algorithm?: KasPublicKeyAlgorithm;
   fmt?: KasPublicKeyFormat;
   v?: '1' | '2';
-}
+};
 
 export type RewrapResponse = {
   entityWrappedKey: string;
   sessionPublicKey: string;
-}
-
+};
 
 /**
  * If we have KAS url but not public key we can fetch it from KAS, fetching
  * the value from `${kas}/kas_public_key`.
  */
-export async function fetchKasPublicKey(kas: string, strict=true, algorithm?: KasPublicKeyAlgorithm): Promise<KasPublicKeyInfo> {
+export async function fetchKasPublicKey(
+  kas: string,
+  strict = true,
+  algorithm?: KasPublicKeyAlgorithm
+): Promise<KasPublicKeyInfo> {
   if (!kas) {
     throw new TdfError('KAS definition not found');
   }
@@ -170,8 +173,13 @@ export async function fetchKasPublicKey(kas: string, strict=true, algorithm?: Ka
       params.algorithm = algorithm;
     }
     params.v = '2';
-    const response: { data: string | KasPublicKeyInfo } = await axios.get(`${kas}/kas_public_key`, { params });
-    const pem = (typeof response.data === 'string') ? await TDF.extractPemFromKeyString(response.data) : response.data.pem;
+    const response: { data: string | KasPublicKeyInfo } = await axios.get(`${kas}/kas_public_key`, {
+      params,
+    });
+    const pem =
+      typeof response.data === 'string'
+        ? await TDF.extractPemFromKeyString(response.data)
+        : response.data.pem;
     const info: KasPublicKeyInfo = { url: kas, algorithm: algorithm || 'rsa:2048', pem };
     if (typeof response.data !== 'string' && response.data.kid) {
       info.kid = response.data.kid;
@@ -184,7 +192,6 @@ export async function fetchKasPublicKey(kas: string, strict=true, algorithm?: Ka
     );
   }
 }
-
 
 export class TDF extends EventEmitter {
   policy?: Policy;
