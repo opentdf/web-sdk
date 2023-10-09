@@ -167,12 +167,37 @@ export async function fetchKasPublicKey(
     throw new TdfError('KAS definition not found');
   }
   validateSecureUrl(kas, strict);
+  const infoStatic = { url: kas, algorithm: algorithm || 'rsa:2048' };
+  const params: KasPublicKeyParams = {};
+  if (algorithm) {
+    params.algorithm = algorithm;
+  }
   try {
-    const params: KasPublicKeyParams = {};
-    if (algorithm) {
-      params.algorithm = algorithm;
+    const response: { data: string | KasPublicKeyInfo } = await axios.get(`${kas}/kas_public_key`, {
+      params: {
+        ...params,
+        v: '2',
+      },
+    });
+    const pem =
+      typeof response.data === 'string'
+        ? await TDF.extractPemFromKeyString(response.data)
+        : response.data.pem;
+    return {
+      pem,
+      ...infoStatic,
+      ...(typeof response.data !== 'string' && response.data.kid && { kid: response.data.kid }),
+    };
+  } catch (cause) {
+    if (cause?.response?.status != 400) {
+      throw new TdfError(
+        `Retrieving KAS public key [${kas}] failed [${cause.name}] [${cause.message}]`,
+        cause
+      );
     }
-    params.v = '2';
+  }
+  // Retry with v1 params
+  try {
     const response: { data: string | KasPublicKeyInfo } = await axios.get(`${kas}/kas_public_key`, {
       params,
     });
@@ -180,11 +205,12 @@ export async function fetchKasPublicKey(
       typeof response.data === 'string'
         ? await TDF.extractPemFromKeyString(response.data)
         : response.data.pem;
-    const info: KasPublicKeyInfo = { url: kas, algorithm: algorithm || 'rsa:2048', pem };
-    if (typeof response.data !== 'string' && response.data.kid) {
-      info.kid = response.data.kid;
-    }
-    return info;
+    // future proof: allow v2 response even if not specified.
+    return {
+      pem,
+      ...infoStatic,
+      ...(typeof response.data !== 'string' && response.data.kid && { kid: response.data.kid }),
+    };
   } catch (cause) {
     throw new TdfError(
       `Retrieving KAS public key [${kas}] failed [${cause.name}] [${cause.message}]`,
