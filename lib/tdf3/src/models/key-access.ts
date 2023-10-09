@@ -15,8 +15,9 @@ export class Wrapped {
 
   constructor(
     public readonly url: string,
+    public readonly kid: string | undefined,
     public readonly publicKey: string,
-    public readonly metadata: unknown
+    public readonly metadata: unknown,
   ) {}
 
   async write(
@@ -44,6 +45,9 @@ export class Wrapped {
       encryptedMetadata: base64.encode(encryptedMetadataStr),
       policyBinding: base64.encode(policyBinding),
     };
+    if (this.kid) {
+      this.keyAccessObject.kid = this.kid;
+    }
 
     return this.keyAccessObject;
   }
@@ -57,6 +61,7 @@ export class Remote {
 
   constructor(
     public readonly url: string,
+    public readonly kid: string | undefined,
     public readonly publicKey: string,
     public readonly metadata: unknown
   ) {}
@@ -88,6 +93,9 @@ export class Remote {
       encryptedMetadata: base64.encode(encryptedMetadataStr),
       policyBinding: base64.encode(policyBinding),
     };
+    if (this.kid) {
+      this.keyAccessObject.kid = this.kid;
+    }
     return this.keyAccessObject;
   }
 }
@@ -97,6 +105,7 @@ export type KeyAccess = Remote | Wrapped;
 export type KeyAccessObject = {
   type: KeyAccessType;
   url: string;
+  kid?: string;
   protocol: 'kas';
   wrappedKey?: string;
   policyBinding?: string;
