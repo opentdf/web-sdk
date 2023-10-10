@@ -160,13 +160,13 @@ export type RewrapResponse = {
  */
 export async function fetchKasPublicKey(
   kas: string,
-  strict = true,
   algorithm?: KasPublicKeyAlgorithm
 ): Promise<KasPublicKeyInfo> {
   if (!kas) {
     throw new TdfError('KAS definition not found');
   }
-  validateSecureUrl(kas, strict);
+  // Logs insecure KAS. Secure is enforced in constructor
+  validateSecureUrl(kas);
   const infoStatic = { url: kas, algorithm: algorithm || 'rsa:2048' };
   const params: KasPublicKeyParams = {};
   if (algorithm) {
@@ -243,7 +243,8 @@ export class TDF extends EventEmitter {
 
     if (configuration.allowedKases) {
       this.allowedKases = [...configuration.allowedKases];
-      this.allowedKases.forEach((k) => validateSecureUrl(k, false));
+      // Logs insecure KASen. Is there a good way to enforce this?
+      this.allowedKases.forEach(validateSecureUrl);
     }
     this.attributeSet = new AttributeSet();
     this.cryptoService = configuration.cryptoService;
@@ -321,7 +322,7 @@ export class TDF extends EventEmitter {
    * @deprecated use {@link fetchKasPublicKey} to get a key identifier as well as value
    */
   static async getPublicKeyFromKeyAccessServer(url: string): Promise<string> {
-    const response = await fetchKasPublicKey(url, false);
+    const response = await fetchKasPublicKey(url);
     return response.pem;
   }
 
@@ -474,8 +475,10 @@ export class TDF extends EventEmitter {
 
   setAllowedKases(kases: string[]) {
     this.allowedKases = [...kases];
-    if (!this.allowedKases.every((k) => validateSecureUrl(k, false))) {
-      throw new UnsafeUrlError('allowed KAS must be secure URLs', this.allowedKases.join(' '));
+    const unsafeKases = this.allowedKases.filter((k) => !validateSecureUrl(k));
+    if (unsafeKases.length) {
+      const unsafeKasList = unsafeKases.join(' ');
+      throw new UnsafeUrlError(`allowed KAS must be secure URLs [${unsafeKasList}]`, unsafeKasList);
     }
     return this;
   }

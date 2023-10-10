@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { TDF, fetchKasPublicKey } from '../../../tdf3/src/tdf.js';
 import * as cryptoService from '../../../tdf3/src/crypto/index.js';
 import { AesGcmCipher } from '../../../tdf3/src/ciphers/aes-gcm-cipher.js';
-import { TdfError, UnsafeUrlError } from '../../../src/errors.js';
+import { TdfError } from '../../../src/errors.js';
 const sampleCert = `
 -----BEGIN CERTIFICATE-----
 MIIFnjCCA4YCCQCnKw0cfbMLJTANBgkqhkiG9w0BAQsFADCBkDELMAkGA1UEBhMC
@@ -121,19 +121,8 @@ describe('fetchKasPublicKey', async () => {
     }
   });
 
-  it('unsafe kas names throw', async () => {
-    let failed = false;
-    try {
-      await fetchKasPublicKey('http://example.com');
-      failed = true;
-    } catch (e) {
-      expect(e).to.be.an.instanceof(UnsafeUrlError);
-    }
-    expect(failed).to.be.false;
-  });
-
   it('localhost kas is valid', async () => {
-    const pk2 = await fetchKasPublicKey('http://localhost:3000', false);
+    const pk2 = await fetchKasPublicKey('http://localhost:3000');
     expect(pk2.pem).to.include('BEGIN CERTIFICATE');
     expect(pk2.kid).to.equal('kid-a');
   });

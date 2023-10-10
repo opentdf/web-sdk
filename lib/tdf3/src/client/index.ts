@@ -231,7 +231,7 @@ export class Client {
       if (!validateSecureUrl(this.kasEndpoint) && !this.allowedKases.includes(this.kasEndpoint)) {
         throw new TdfError(`Invalid KAS endpoint [${this.kasEndpoint}]`);
       }
-      this.allowedKases.forEach((k) => validateSecureUrl(k, true));
+      this.allowedKases.forEach(validateSecureUrl);
     } else {
       if (!validateSecureUrl(this.kasEndpoint)) {
         throw new TdfError(
@@ -294,7 +294,7 @@ export class Client {
         pem: clientConfig.kasPublicKey,
       });
     } else {
-      this.kasPublicKey = fetchKasPublicKey(this.kasEndpoint, false);
+      this.kasPublicKey = fetchKasPublicKey(this.kasEndpoint);
     }
   }
 

@@ -9,7 +9,6 @@ import {
   safeUrlCheck,
   validateSecureUrl,
 } from '../../src/utils.js';
-import { UnsafeUrlError } from '../../src/errors.js';
 
 describe('rstrip', () => {
   describe('default', () => {
@@ -78,13 +77,6 @@ describe('validateSecureUrl', () => {
     expect(validateSecureUrl('http://svc.cluster.local')).to.be.true;
     expect(validateSecureUrl('http://amz.svc.cluster.local')).to.be.true;
     expect(validateSecureUrl('http://somesvc.cluster.local')).to.be.false;
-  });
-  it('strict mode', () => {
-    expect(() => validateSecureUrl('http://example.com', true)).to.throw(UnsafeUrlError);
-    expect(() => validateSecureUrl('http://localhost.com', true)).to.throw(UnsafeUrlError);
-    expect(() => validateSecureUrl('', true)).to.throw(UnsafeUrlError);
-    expect(validateSecureUrl('http://localhost', true)).to.be.true;
-    expect(validateSecureUrl('https://example.com', true)).to.be.true;
   });
   it('mangled urls', () => {
     expect(validateSecureUrl('///hey.you')).to.be.false;

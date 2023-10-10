@@ -15,7 +15,7 @@ import { UnsafeUrlError } from './errors.js';
  * @param url remote service to validate
  * @returns the url is local or `https`
  */
-export function validateSecureUrl(url: string, strict?: boolean): boolean {
+export function validateSecureUrl(url: string): boolean {
   const httpsRegex = /^https:/;
   if (/^http:\/\/(localhost|127\.0\.0\.1)(:[0-9]{1,5})?($|\/)/.test(url)) {
     console.warn(`Development URL detected: [${url}]`);
@@ -25,9 +25,6 @@ export function validateSecureUrl(url: string, strict?: boolean): boolean {
   ) {
     console.info(`Internal URL detected: [${url}]`);
   } else if (!httpsRegex.test(url)) {
-    if (strict) {
-      throw new UnsafeUrlError(`KAS must be secure: [${url}]`, url);
-    }
     console.error(`Insecure KAS URL loaded. Are you running in a secure environment? [${url}]`);
     return false;
   }
