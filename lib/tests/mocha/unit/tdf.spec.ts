@@ -1,8 +1,9 @@
 import { expect } from 'chai';
 
-import { TDF } from '../../../tdf3/src/index.js';
+import { TDF, fetchKasPublicKey } from '../../../tdf3/src/tdf.js';
 import * as cryptoService from '../../../tdf3/src/crypto/index.js';
 import { AesGcmCipher } from '../../../tdf3/src/ciphers/aes-gcm-cipher.js';
+import { TdfError } from '../../../src/errors.js';
 const sampleCert = `
 -----BEGIN CERTIFICATE-----
 MIIFnjCCA4YCCQCnKw0cfbMLJTANBgkqhkiG9w0BAQsFADCBkDELMAkGA1UEBhMC
@@ -107,5 +108,22 @@ describe('TDF', () => {
   it('should ensure that policy id is uuid format', async () => {
     const uuid = await TDF.create({ cryptoService }).generatePolicyUuid();
     expect(uuid).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+  });
+});
+
+describe('fetchKasPublicKey', async () => {
+  it('missing kas names throw', async () => {
+    try {
+      await fetchKasPublicKey('');
+      expect.fail('did not throw');
+    } catch (e) {
+      expect(e).to.be.an.instanceof(TdfError);
+    }
+  });
+
+  it('localhost kas is valid', async () => {
+    const pk2 = await fetchKasPublicKey('http://localhost:3000');
+    expect(pk2.pem).to.include('BEGIN CERTIFICATE');
+    expect(pk2.kid).to.equal('kid-a');
   });
 });

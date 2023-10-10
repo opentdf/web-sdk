@@ -9,7 +9,7 @@ import {
   type Chunker,
 } from '../utils/index.js';
 import { base64 } from '../../../src/encodings/index.js';
-import { TDF } from '../tdf.js';
+import { fetchKasPublicKey, KasPublicKeyInfo, TDF } from '../tdf.js';
 import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-provider.js';
 import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider.js';
 import { CryptoService, PemKeyPair } from '../crypto/declarations.js';
@@ -157,24 +157,6 @@ export async function createSessionKeys({
   return { keypair: k2, signingKeys };
 }
 
-/**
- * If we have KAS url but not public key we can fetch it from KAS, fetching
- * the value from `${kas}/kas_public_key`.
- */
-export async function fetchKasPubKey(kas: string): Promise<string> {
-  if (!kas) {
-    throw new TdfError('KAS definition not found');
-  }
-  try {
-    return await TDF.getPublicKeyFromKeyAccessServer(kas);
-  } catch (cause) {
-    throw new TdfError(
-      `Retrieving KAS public key [${kas}] failed [${cause.name}] [${cause.message}]`,
-      cause
-    );
-  }
-}
-
 export type SessionKeys = {
   keypair: PemKeyPair;
   signingKeys?: CryptoKeyPair;
@@ -194,7 +176,7 @@ export class Client {
    */
   readonly allowedKases: string[];
 
-  readonly kasPublicKey: Promise<string>;
+  readonly kasPublicKey: Promise<KasPublicKeyInfo>;
 
   readonly easEndpoint?: string;
 
@@ -246,10 +228,18 @@ export class Client {
 
     if (clientConfig.allowedKases) {
       this.allowedKases = [...clientConfig.allowedKases];
+      if (!validateSecureUrl(this.kasEndpoint) && !this.allowedKases.includes(this.kasEndpoint)) {
+        throw new TdfError(`Invalid KAS endpoint [${this.kasEndpoint}]`);
+      }
+      this.allowedKases.forEach(validateSecureUrl);
     } else {
+      if (!validateSecureUrl(this.kasEndpoint)) {
+        throw new TdfError(
+          `Invalid KAS endpoint [${this.kasEndpoint}]; to force, please list it among allowedKases`
+        );
+      }
       this.allowedKases = [this.kasEndpoint];
     }
-    this.allowedKases.forEach(validateSecureUrl);
 
     this.authProvider = config.authProvider;
     this.clientConfig = clientConfig;
@@ -298,9 +288,13 @@ export class Client {
       });
     }
     if (clientConfig.kasPublicKey) {
-      this.kasPublicKey = Promise.resolve(clientConfig.kasPublicKey);
+      this.kasPublicKey = Promise.resolve({
+        url: this.kasEndpoint,
+        algorithm: 'rsa:2048',
+        pem: clientConfig.kasPublicKey,
+      });
     } else {
-      this.kasPublicKey = fetchKasPubKey(this.kasEndpoint);
+      this.kasPublicKey = fetchKasPublicKey(this.kasEndpoint);
     }
   }
 
@@ -395,8 +389,9 @@ export class Client {
     }
     await tdf.addKeyAccess({
       type: offline ? 'wrapped' : 'remote',
-      url: this.kasEndpoint,
-      publicKey: kasPublicKey,
+      url: kasPublicKey.url,
+      kid: kasPublicKey.kid,
+      publicKey: kasPublicKey.pem,
       metadata,
     });
 

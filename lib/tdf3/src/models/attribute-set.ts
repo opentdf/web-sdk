@@ -6,6 +6,7 @@ const verbose = false;
 export type AttributeObject = {
   attribute: string;
   kasUrl: string;
+  kid?: string;
   pubKey: string;
   displayName?: string;
   isDefault?: boolean;
@@ -21,6 +22,7 @@ const ATTRIBUTE_OBJECT_SCHEMA: JSONSchemaType<AttributeObject> = {
     isDefault: { type: 'boolean', nullable: true },
     pubKey: { type: 'string' },
     kasUrl: { type: 'string' },
+    kid: { type: 'string', nullable: true },
     jwt: { type: 'string', nullable: true },
   },
   required: ['attribute', 'pubKey', 'kasUrl'],
