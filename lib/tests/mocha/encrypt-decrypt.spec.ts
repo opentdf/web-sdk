@@ -5,6 +5,7 @@ import { createSandbox } from 'sinon';
 import { assert } from 'chai';
 import { Binary } from '../../tdf3/src/binary.js';
 import { HttpRequest } from '../../src/auth/auth.js';
+import { SplitKey } from '../../tdf3/src/models/encryption-information.js'
 const Mocks = getMocks();
 
 const authProvider = {
@@ -22,6 +23,11 @@ describe('encrypt decrypt test', async function () {
     const sandbox = createSandbox();
     try {
       const tdf1 = TDF.create({ cryptoService });
+      tdf1.setEncryption({ type: 'split' });
+      const key1 = await (tdf1.encryptionInformation as SplitKey).generateKey();
+
+      const keyMiddleware = async () => ({ keyForEncryption: key1, keyForManifest: key1 });
+
       sandbox.replace(
         TDF,
         'create',
@@ -52,6 +58,7 @@ describe('encrypt decrypt test', async function () {
         metadata: Mocks.getMetadataObject(),
         offline: true,
         scope,
+        keyMiddleware,
         source: new ReadableStream({
           start(controller) {
             controller.enqueue(new TextEncoder().encode(expectedVal));
