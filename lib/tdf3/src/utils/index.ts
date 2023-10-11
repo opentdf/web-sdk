@@ -304,7 +304,7 @@ export async function keyMiddleware(): Promise<{
     throw new Error('Crypto service not initialised');
   }
 
-  const key1 = await tdfService.encryptionInformation.generateKey();
+  const key = await tdfService.encryptionInformation.generateKey();
 
-  return { keyForEncryption: key1, keyForManifest: key1 };
+  return { keyForEncryption: key, keyForManifest: key };
 }
