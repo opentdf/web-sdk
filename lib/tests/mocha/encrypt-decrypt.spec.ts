@@ -5,7 +5,7 @@ import { createSandbox } from 'sinon';
 import { assert } from 'chai';
 import { Binary } from '../../tdf3/src/binary.js';
 import { HttpRequest } from '../../src/auth/auth.js';
-import { SplitKey } from '../../tdf3/src/models/encryption-information.js'
+import { SplitKey } from '../../tdf3/src/models/encryption-information.js';
 const Mocks = getMocks();
 
 const authProvider = {
