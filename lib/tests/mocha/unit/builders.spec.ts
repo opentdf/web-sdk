@@ -1,4 +1,4 @@
-import { expect, assert } from 'chai';
+import { expect } from 'chai';
 
 import { type AttributeObject } from '../../../src/tdf/index.js';
 import { EncryptParamsBuilder } from '../../../tdf3/src/client/builders.js';
@@ -53,13 +53,6 @@ describe('EncyptParamsBuilder', () => {
         Error,
         /attribute is in invalid format/
       );
-    });
-
-    it('should use remoteStorage param', () => {
-      const paramsBuilder = new EncryptParamsBuilder();
-      paramsBuilder.withRcaSource();
-      const res = paramsBuilder.build();
-      assert.deepStrictEqual(res.rcaSource, true, 'param rcaSource should be present');
     });
   });
 });

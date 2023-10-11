@@ -7,6 +7,7 @@ import {
   streamToBuffer,
   isAppIdProviderCheck,
   type Chunker,
+  keyMiddleware as defaultKeyMiddleware,
 } from '../utils/index.js';
 import { base64 } from '../../../src/encodings/index.js';
 import { fetchKasPublicKey, KasPublicKeyInfo, TDF } from '../tdf.js';
@@ -309,10 +310,10 @@ export class Client {
    * @param [mimeType] mime type of source. defaults to `unknown`
    * @param [offline] Where to store the policy. Defaults to `false` - which results in `upsert` events to store/update a policy
    * @param [output] output stream. Created and returned iff not passed in
-   * @param [rcaSource] RCA source information. Optional.
    * @param [windowSize] - segment size in bytes. Defaults to a a million bytes.
+   * @param [keyMiddleware] - function that handle keys
+   * @param [streamMiddleware] - function that handle stream
    * @param [eo] - (deprecated) entity object
-   * @param [payloadKey] - Separate key for payload; not saved. Used to support external party key storage.
    * @return a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} a new stream containing the TDF ciphertext, if output is not passed in as a paramter
    */
   async encrypt({
@@ -324,7 +325,8 @@ export class Client {
     offline,
     windowSize,
     eo,
-    payloadKey,
+    keyMiddleware = defaultKeyMiddleware,
+    streamMiddleware = async (stream: DecoratedReadableStream) => stream,
   }: Omit<EncryptParams, 'output'>): Promise<DecoratedReadableStream>;
   async encrypt({
     scope,
@@ -336,7 +338,8 @@ export class Client {
     output,
     windowSize,
     eo,
-    payloadKey,
+    keyMiddleware = defaultKeyMiddleware,
+    streamMiddleware = async (stream: DecoratedReadableStream) => stream,
   }: EncryptParams & { output: NodeJS.WriteStream }): Promise<void>;
   async encrypt({
     scope = { attributes: [], dissem: [] },
@@ -346,22 +349,11 @@ export class Client {
     mimeType,
     offline = false,
     output,
-    rcaSource,
     windowSize = DEFAULT_SEGMENT_SIZE,
     eo,
-    payloadKey,
+    keyMiddleware = defaultKeyMiddleware,
+    streamMiddleware = async (stream: DecoratedReadableStream) => stream,
   }: EncryptParams): Promise<DecoratedReadableStream | void> {
-    if (asHtml) {
-      if (rcaSource) {
-        throw new Error('rca links should be used only with zip format');
-      }
-      if (!this.readerUrl) {
-        throw new Error('html container missing required parameter: [readerUrl]');
-      }
-    }
-    if (rcaSource && !this.kasEndpoint) {
-      throw new Error('rca links require a kasEndpoint url to be set');
-    }
     const sessionKeys = await this.sessionKeys;
     const kasPublicKey = await this.kasPublicKey;
     const policyObject = this._createPolicyObject(scope);
@@ -395,17 +387,18 @@ export class Client {
       metadata,
     });
 
+    const { keyForEncryption, keyForManifest } = await keyMiddleware();
+
     const byteLimit = asHtml ? HTML_BYTE_LIMIT : GLOBAL_BYTE_LIMIT;
-    const stream = await tdf.writeStream(
-      byteLimit,
-      !!rcaSource,
-      payloadKey,
-      this.clientConfig.progressHandler
+    const stream = await streamMiddleware(
+      await tdf.writeStream({
+        byteLimit,
+        progressHandler: this.clientConfig.progressHandler,
+        keyForEncryption,
+        keyForManifest,
+      })
     );
-    // Looks like invalid calls | stream.upsertResponse equals empty array?
-    if (rcaSource) {
-      stream.policyUuid = policyObject.uuid;
-    }
+
     if (!asHtml) {
       return stream;
     }
@@ -434,14 +427,22 @@ export class Client {
   /**
    * Decrypt TDF ciphertext into plaintext. One of the core operations of the Virtru SDK.
    *
-   * @param params
+   * @param params keyMiddleware fucntion to process key
+   * @param params streamMiddleware fucntion to process streamMiddleware
    * @param params.source A data stream object, one of remote, stream, buffer, etc. types.
-   * @param params.rcaSource RCA source information
    * @param params.eo Optional entity object (legacy AuthZ)
    * @return a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} stream containing the decrypted plaintext.
    * @see DecryptParamsBuilder
    */
-  async decrypt({ eo, source, rcaSource }: DecryptParams): Promise<DecoratedReadableStream> {
+  async decrypt({
+    eo,
+    source,
+    keyMiddleware,
+    streamMiddleware,
+  }: DecryptParams): Promise<DecoratedReadableStream> {
+    streamMiddleware = streamMiddleware || (async (stream) => stream);
+    keyMiddleware = keyMiddleware || (async (key) => key);
+
     const sessionKeys = await this.sessionKeys;
     let entityObject;
     if (eo && eo.publicKey == sessionKeys.keypair.publicKey) {
@@ -463,11 +464,13 @@ export class Client {
 
     // Await in order to catch any errors from this call.
     // TODO: Write error event to stream and don't await.
-    return tdf.readStream(
-      chunker,
-      rcaSource,
-      this.clientConfig.progressHandler,
-      this.clientConfig.fileStreamServiceWorker
+    return await streamMiddleware(
+      await tdf.readStream(
+        chunker,
+        keyMiddleware,
+        this.clientConfig.progressHandler,
+        this.clientConfig.fileStreamServiceWorker
+      )
     );
   }
 

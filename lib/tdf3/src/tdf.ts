@@ -6,6 +6,7 @@ import { exportSPKI, importPKCS8, importX509 } from 'jose';
 import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
 import { EntityObject } from '../../src/tdf/EntityObject.js';
 import { validateSecureUrl } from '../../src/utils.js';
+import { DecryptParams } from './client/builders.js';
 
 import {
   AttributeSet,
@@ -29,7 +30,6 @@ import {
   isAppIdProviderCheck,
   keyMerge,
   buffToString,
-  base64ToBytes,
   concatUint8,
 } from './utils/index.js';
 import { Binary } from './binary.js';
@@ -77,14 +77,7 @@ export type EncryptionOptions = {
   cipher?: string;
 };
 
-export type RcaParams = {
-  pu: string;
-  wu: string;
-  wk: string;
-  al: string;
-};
-
-export type RcaLink = string;
+type KeyMiddleware = DecryptParams['keyMiddleware'];
 
 export type Metadata = {
   connectOptions?: {
@@ -679,12 +672,17 @@ export class TDF extends EventEmitter {
     );
   }
 
-  async writeStream(
-    byteLimit: number,
-    isRcaSource: boolean,
-    payloadKey?: Binary,
-    progressHandler?: (bytesProcessed: number) => void
-  ): Promise<DecoratedReadableStream> {
+  async writeStream({
+    byteLimit,
+    progressHandler,
+    keyForEncryption,
+    keyForManifest,
+  }: {
+    byteLimit: number;
+    progressHandler?: (bytesProcessed: number) => void;
+    keyForEncryption: KeyInfo;
+    keyForManifest: KeyInfo;
+  }): Promise<DecoratedReadableStream> {
     if (!this.contentStream) {
       throw new IllegalArgumentError('No input stream defined');
     }
@@ -721,20 +719,8 @@ export class TDF extends EventEmitter {
     if (!this.encryptionInformation) {
       throw new Error('Missing encryptionInformation');
     }
-    const keyInfo = await this.encryptionInformation.generateKey();
-    const kv = await this.encryptionInformation.generateKey();
 
-    if (!keyInfo || !kv) {
-      throw new Error('Missing generated keys');
-    }
-
-    const kek = await this.encryptionInformation.encrypt(
-      keyInfo.unwrappedKeyBinary,
-      kv.unwrappedKeyBinary,
-      kv.unwrappedKeyIvBinary
-    );
-
-    const manifest = await this._generateManifest(isRcaSource && !payloadKey ? kv : keyInfo);
+    const manifest = await this._generateManifest(keyForManifest);
     this.manifest = manifest;
 
     // For all remote key access objects, sync its policy
@@ -747,7 +733,7 @@ export class TDF extends EventEmitter {
     const { segmentSizeDefault } = this;
     const encryptedBlargh = await this.encryptionInformation.encrypt(
       Binary.fromArrayBuffer(new ArrayBuffer(segmentSizeDefault)),
-      keyInfo.unwrappedKeyBinary
+      keyForEncryption.unwrappedKeyBinary
     );
     const payloadBuffer = new Uint8Array(encryptedBlargh.payload.asByteArray());
     const encryptedSegmentSizeDefault = payloadBuffer.length;
@@ -822,7 +808,7 @@ export class TDF extends EventEmitter {
 
           // hash the concat of all hashes
           const payloadSigStr = await self.getSignature(
-            payloadKey || keyInfo.unwrappedKeyBinary,
+            keyForEncryption.unwrappedKeyBinary,
             Binary.fromString(aggregateHash),
             self.integrityAlgorithm
           );
@@ -884,9 +870,6 @@ export class TDF extends EventEmitter {
     if (upsertResponse) {
       plaintextStream.upsertResponse = upsertResponse;
       plaintextStream.tdfSize = totalByteCount;
-      plaintextStream.KEK = payloadKey
-        ? null
-        : buffToString(Uint8Array.from(kek.payload.asByteArray()), 'base64');
       plaintextStream.algorithm = manifest.encryptionInformation.method.algorithm;
     }
 
@@ -918,11 +901,11 @@ export class TDF extends EventEmitter {
       // Don't pass in an IV here. The encrypt function will generate one for you, ensuring that each segment has a unique IV.
       const encryptedResult = await encryptionInformation.encrypt(
         Binary.fromArrayBuffer(chunk.buffer),
-        payloadKey || keyInfo.unwrappedKeyBinary
+        keyForEncryption.unwrappedKeyBinary
       );
       const payloadBuffer = new Uint8Array(encryptedResult.payload.asByteArray());
       const payloadSigStr = await self.getSignature(
-        payloadKey || keyInfo.unwrappedKeyBinary,
+        keyForEncryption.unwrappedKeyBinary,
         encryptedResult.payload,
         self.segmentIntegrityAlgorithm
       );
@@ -1128,12 +1111,13 @@ export class TDF extends EventEmitter {
    * readStream
    *
    * @param {Object} chunker - A function object for getting data in a series of typed array objects
-   * @param {Stream} outputStream - The writable stream we should put the new bits into
-   * @param {Object} rcaParams - Optional field to specify if file is stored on S3
+   * @param {Stream} keyMiddleware - The writable stream we should put the new bits into
+   * @param {Function} progressHandler - Function that gives info on how many bytes processed
+   * @param {String} fileStreamServiceWorker
    */
   async readStream(
     chunker: Chunker,
-    rcaParams?: RcaParams,
+    keyMiddleware: KeyMiddleware = async (key) => key,
     progressHandler?: (bytesProcessed: number) => void,
     fileStreamServiceWorker?: string
   ) {
@@ -1144,29 +1128,19 @@ export class TDF extends EventEmitter {
 
     const { segments } = this.manifest.encryptionInformation.integrityInformation;
     const unwrapResult = await this.unwrapKey(this.manifest);
-    let { reconstructedKeyBinary } = unwrapResult;
+    const { reconstructedKeyBinary } = unwrapResult;
+    const keyForDecryption = await keyMiddleware(reconstructedKeyBinary);
     const { metadata } = unwrapResult;
 
     const defaultSegmentSize =
       this.manifest?.encryptionInformation?.integrityInformation?.encryptedSegmentSizeDefault;
     const encryptedSegmentSizeDefault = defaultSegmentSize || DEFAULT_SEGMENT_SIZE;
 
-    if (rcaParams && rcaParams.wk) {
-      const { wk, al } = rcaParams;
-      this.encryptionInformation = new SplitKey(this.createCipher(al.toLowerCase()));
-
-      const decodedReconstructedKeyBinary = await this.encryptionInformation.decrypt(
-        Uint8Array.from(base64ToBytes(wk)),
-        reconstructedKeyBinary
-      );
-      reconstructedKeyBinary = decodedReconstructedKeyBinary.payload;
-    }
-
     // check the combined string of hashes
     const integrityAlgorithmType =
       this.manifest.encryptionInformation.integrityInformation.rootSignature.alg;
     const payloadSigStr = await this.getSignature(
-      reconstructedKeyBinary,
+      keyForDecryption,
       Binary.fromString(segments.map((segment) => base64.decode(segment.hash)).join('')),
       integrityAlgorithmType
     );
@@ -1195,7 +1169,7 @@ export class TDF extends EventEmitter {
       Array.from(this.chunkMap.values()),
       centralDirectory,
       zipReader,
-      reconstructedKeyBinary
+      keyForDecryption
     ).catch((e) => {
       throw new Error(e);
     });
@@ -1229,18 +1203,6 @@ export class TDF extends EventEmitter {
     };
 
     const outputStream = new DecoratedReadableStream(underlyingSource);
-
-    if (rcaParams && rcaParams.wu) {
-      const res = await axios.head(rcaParams.wu);
-
-      const length = parseInt(res?.headers?.['content-length'] as string, 10);
-
-      if (length) {
-        outputStream.fileSize = length;
-      } else {
-        console.log('Unable to retrieve total fileSize');
-      }
-    }
 
     outputStream.manifest = this.manifest;
     if (outputStream.emit) {
