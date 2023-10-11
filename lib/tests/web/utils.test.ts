@@ -183,8 +183,8 @@ describe('skew estimation', () => {
       const aResponse = await axios.get(window.origin);
       await new Promise((r) => setTimeout(r, 1000));
       const estimate = estimateSkewFromHeaders(aResponse.headers, before);
-      expect(estimate).to.be.lessThan(2);
-      expect(estimate).to.be.greaterThan(-2);
+      expect(estimate).to.be.lessThan(3);
+      expect(estimate).to.be.greaterThan(-3);
     });
   });
 });

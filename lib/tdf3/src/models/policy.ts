@@ -1,4 +1,4 @@
-import { PolicyIntegrityError } from '../errors.js';
+import { PolicyIntegrityError } from '../../../src/errors.js';
 import { AttributeObject } from './attribute-set.js';
 
 export const CURRENT_VERSION = '1.1.0';

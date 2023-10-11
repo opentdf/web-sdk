@@ -42,8 +42,10 @@ import {
   ManifestIntegrityError,
   PolicyIntegrityError,
   TdfDecryptError,
+  TdfError,
   TdfPayloadExtractionError,
-} from './errors.js';
+  UnsafeUrlError,
+} from '../../src/errors.js';
 import { htmlWrapperTemplate } from './templates/index.js';
 
 // configurable
@@ -87,6 +89,7 @@ export type Metadata = {
 export type AddKeyAccess = {
   type: KeyAccessType;
   url?: string;
+  kid?: string;
   publicKey: string;
   attributeUrl?: string;
   metadata?: Metadata;
@@ -118,6 +121,97 @@ type TDFConfiguration = {
   cryptoService: CryptoService;
 };
 
+export type RewrapRequest = {
+  signedRequestToken: string;
+};
+
+export type KasPublicKeyInfo = {
+  url: string;
+  algorithm: KasPublicKeyAlgorithm;
+  kid?: string;
+  pem: string;
+};
+
+export type KasPublicKeyAlgorithm = 'ec:secp256r1' | 'rsa:2048';
+
+export type KasPublicKeyFormat = 'pkcs8' | 'jwks';
+
+type KasPublicKeyParams = {
+  algorithm?: KasPublicKeyAlgorithm;
+  fmt?: KasPublicKeyFormat;
+  v?: '1' | '2';
+};
+
+export type RewrapResponse = {
+  entityWrappedKey: string;
+  sessionPublicKey: string;
+};
+
+/**
+ * If we have KAS url but not public key we can fetch it from KAS, fetching
+ * the value from `${kas}/kas_public_key`.
+ */
+export async function fetchKasPublicKey(
+  kas: string,
+  algorithm?: KasPublicKeyAlgorithm
+): Promise<KasPublicKeyInfo> {
+  if (!kas) {
+    throw new TdfError('KAS definition not found');
+  }
+  // Logs insecure KAS. Secure is enforced in constructor
+  validateSecureUrl(kas);
+  const infoStatic = { url: kas, algorithm: algorithm || 'rsa:2048' };
+  const params: KasPublicKeyParams = {};
+  if (algorithm) {
+    params.algorithm = algorithm;
+  }
+  try {
+    const response: { data: string | KasPublicKeyInfo } = await axios.get(`${kas}/kas_public_key`, {
+      params: {
+        ...params,
+        v: '2',
+      },
+    });
+    const pem =
+      typeof response.data === 'string'
+        ? await TDF.extractPemFromKeyString(response.data)
+        : response.data.pem;
+    return {
+      pem,
+      ...infoStatic,
+      ...(typeof response.data !== 'string' && response.data.kid && { kid: response.data.kid }),
+    };
+  } catch (cause) {
+    if (cause?.response?.status != 400) {
+      throw new TdfError(
+        `Retrieving KAS public key [${kas}] failed [${cause.name}] [${cause.message}]`,
+        cause
+      );
+    }
+  }
+  // Retry with v1 params
+  try {
+    const response: { data: string | KasPublicKeyInfo } = await axios.get(`${kas}/kas_public_key`, {
+      params,
+    });
+    const pem =
+      typeof response.data === 'string'
+        ? await TDF.extractPemFromKeyString(response.data)
+        : response.data.pem;
+    // future proof: allow v2 response even if not specified.
+    return {
+      pem,
+      ...infoStatic,
+      ...(typeof response.data !== 'string' && response.data.kid && { kid: response.data.kid }),
+    };
+  } catch (cause) {
+    throw new TdfError(
+      `Retrieving KAS public key [${kas}] failed [${cause.name}] [${cause.message}]`,
+      cause
+    );
+  }
+}
+
 export class TDF extends EventEmitter {
   policy?: Policy;
   mimeType?: string;
@@ -142,6 +236,7 @@ export class TDF extends EventEmitter {
 
     if (configuration.allowedKases) {
       this.allowedKases = [...configuration.allowedKases];
+      // Logs insecure KASen. Is there a good way to enforce this?
       this.allowedKases.forEach(validateSecureUrl);
     }
     this.attributeSet = new AttributeSet();
@@ -215,11 +310,13 @@ export class TDF extends EventEmitter {
     }
   }
 
-  // return a PEM-encoded string from the provided KAS server
+  /**
+   * Get the current KAS public key, as a PEM-encoded string.
+   * @deprecated use {@link fetchKasPublicKey} to get a key identifier as well as value
+   */
   static async getPublicKeyFromKeyAccessServer(url: string): Promise<string> {
-    validateSecureUrl(url);
-    const kasPublicKeyRequest: { data: string } = await axios.get(`${url}/kas_public_key`);
-    return TDF.extractPemFromKeyString(kasPublicKeyRequest.data);
+    const response = await fetchKasPublicKey(url);
+    return response.pem;
   }
 
   static async extractPemFromKeyString(keyString: string): Promise<string> {
@@ -296,24 +393,26 @@ export class TDF extends EventEmitter {
    * @param  {String} options.attributeUrl - URL of the attribute to use for pubKey and kasUrl. Omit to use default.
    * @param  {String} options.url - directly set the KAS URL
    * @param  {String} options.publicKey - directly set the (KAS) public key
+   * @param  {String?} options.kid - Key identifier of KAS public key
    * @param  {String? Object?} options.metadata - Metadata. Appears to be dead code.
    * @return {<TDF>}- this instance
    */
-  async addKeyAccess({ type, url, publicKey, attributeUrl, metadata }: AddKeyAccess) {
+  async addKeyAccess({ type, url, publicKey, kid, attributeUrl, metadata }: AddKeyAccess) {
     // TODO - run down metadata parameter. Clean it out if it isn't used this way anymore.
 
     /** Internal function to keep it DRY */
     function createKeyAccess(
       type: KeyAccessType,
       kasUrl: string,
+      kasKeyIdentifier: string | undefined,
       pubKey: string,
       metadata?: Metadata
     ) {
       switch (type) {
         case 'wrapped':
-          return new KeyAccessWrapped(kasUrl, pubKey, metadata);
+          return new KeyAccessWrapped(kasUrl, kasKeyIdentifier, pubKey, metadata);
         case 'remote':
-          return new KeyAccessRemote(kasUrl, pubKey, metadata);
+          return new KeyAccessRemote(kasUrl, kasKeyIdentifier, pubKey, metadata);
         default:
           throw new KeyAccessError(`TDF.addKeyAccess: Key access type ${type} is unknown`);
       }
@@ -336,7 +435,7 @@ export class TDF extends EventEmitter {
       if (attr && attr.kasUrl && attr.pubKey) {
         loadKeyAccess(
           this.encryptionInformation,
-          createKeyAccess(type, attr.kasUrl, attr.pubKey, metadata)
+          createKeyAccess(type, attr.kasUrl, attr.kid, attr.pubKey, metadata)
         );
         return this;
       }
@@ -346,7 +445,7 @@ export class TDF extends EventEmitter {
     if (url && publicKey) {
       loadKeyAccess(
         this.encryptionInformation,
-        createKeyAccess(type, url, await TDF.extractPemFromKeyString(publicKey), metadata)
+        createKeyAccess(type, url, kid, await TDF.extractPemFromKeyString(publicKey), metadata)
       );
       return this;
     }
@@ -358,7 +457,7 @@ export class TDF extends EventEmitter {
       if (pubKey && kasUrl) {
         loadKeyAccess(
           this.encryptionInformation,
-          createKeyAccess(type, kasUrl, await TDF.extractPemFromKeyString(pubKey), metadata)
+          createKeyAccess(type, kasUrl, kid, await TDF.extractPemFromKeyString(pubKey), metadata)
         );
         return this;
       }
@@ -369,7 +468,11 @@ export class TDF extends EventEmitter {
 
   setAllowedKases(kases: string[]) {
     this.allowedKases = [...kases];
-    this.allowedKases.forEach(validateSecureUrl);
+    const unsafeKases = this.allowedKases.filter((k) => !validateSecureUrl(k));
+    if (unsafeKases.length) {
+      const unsafeKasList = unsafeKases.join(' ');
+      throw new UnsafeUrlError(`allowed KAS must be secure URLs [${unsafeKasList}]`, unsafeKasList);
+    }
     return this;
   }
 

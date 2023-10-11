@@ -3,7 +3,7 @@ import EmbeddedPolicy from './EmbeddedPolicy.js';
 import RemotePolicy from './RemotePolicy.js';
 import PolicyTypeEnum from '../../enum/PolicyTypeEnum.js';
 import { lengthOfBinding } from '../../helpers/calculateByCipher.js';
-import InvalidPolicyTypeError from '../../errors/InvalidPolicyTypeError.js';
+import { InvalidPolicyTypeError } from '../../../errors.js';
 import CurveNameEnum from '../../enum/CurveNameEnum.js';
 
 function parse(
