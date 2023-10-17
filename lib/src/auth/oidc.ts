@@ -1,6 +1,6 @@
 import { default as dpopFn } from 'dpop';
 import { HttpRequest, withHeaders } from './auth.js';
-import { IllegalArgumentError } from '../../tdf3/src/errors.js';
+import { IllegalArgumentError } from '../errors.js';
 import { rstrip } from '../utils.js';
 
 /**

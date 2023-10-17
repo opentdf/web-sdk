@@ -6,6 +6,7 @@ import { exportSPKI, importPKCS8, importX509 } from 'jose';
 import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
 import { EntityObject } from '../../src/tdf/EntityObject.js';
 import { validateSecureUrl } from '../../src/utils.js';
+import { DecryptParams } from './client/builders.js';
 
 import {
   AttributeSet,
@@ -29,7 +30,6 @@ import {
   isAppIdProviderCheck,
   keyMerge,
   buffToString,
-  base64ToBytes,
   concatUint8,
 } from './utils/index.js';
 import { Binary } from './binary.js';
@@ -42,8 +42,10 @@ import {
   ManifestIntegrityError,
   PolicyIntegrityError,
   TdfDecryptError,
+  TdfError,
   TdfPayloadExtractionError,
-} from './errors.js';
+  UnsafeUrlError,
+} from '../../src/errors.js';
 import { htmlWrapperTemplate } from './templates/index.js';
 
 // configurable
@@ -75,14 +77,7 @@ export type EncryptionOptions = {
   cipher?: string;
 };
 
-export type RcaParams = {
-  pu: string;
-  wu: string;
-  wk: string;
-  al: string;
-};
-
-export type RcaLink = string;
+type KeyMiddleware = DecryptParams['keyMiddleware'];
 
 export type Metadata = {
   connectOptions?: {
@@ -94,6 +89,7 @@ export type Metadata = {
 export type AddKeyAccess = {
   type: KeyAccessType;
   url?: string;
+  kid?: string;
   publicKey: string;
   attributeUrl?: string;
   metadata?: Metadata;
@@ -125,6 +121,97 @@ type TDFConfiguration = {
   cryptoService: CryptoService;
 };
 
+export type RewrapRequest = {
+  signedRequestToken: string;
+};
+
+export type KasPublicKeyInfo = {
+  url: string;
+  algorithm: KasPublicKeyAlgorithm;
+  kid?: string;
+  pem: string;
+};
+
+export type KasPublicKeyAlgorithm = 'ec:secp256r1' | 'rsa:2048';
+
+export type KasPublicKeyFormat = 'pkcs8' | 'jwks';
+
+type KasPublicKeyParams = {
+  algorithm?: KasPublicKeyAlgorithm;
+  fmt?: KasPublicKeyFormat;
+  v?: '1' | '2';
+};
+
+export type RewrapResponse = {
+  entityWrappedKey: string;
+  sessionPublicKey: string;
+};
+
+/**
+ * If we have KAS url but not public key we can fetch it from KAS, fetching
+ * the value from `${kas}/kas_public_key`.
+ */
+export async function fetchKasPublicKey(
+  kas: string,
+  algorithm?: KasPublicKeyAlgorithm
+): Promise<KasPublicKeyInfo> {
+  if (!kas) {
+    throw new TdfError('KAS definition not found');
+  }
+  // Logs insecure KAS. Secure is enforced in constructor
+  validateSecureUrl(kas);
+  const infoStatic = { url: kas, algorithm: algorithm || 'rsa:2048' };
+  const params: KasPublicKeyParams = {};
+  if (algorithm) {
+    params.algorithm = algorithm;
+  }
+  try {
+    const response: { data: string | KasPublicKeyInfo } = await axios.get(`${kas}/kas_public_key`, {
+      params: {
+        ...params,
+        v: '2',
+      },
+    });
+    const pem =
+      typeof response.data === 'string'
+        ? await TDF.extractPemFromKeyString(response.data)
+        : response.data.pem;
+    return {
+      pem,
+      ...infoStatic,
+      ...(typeof response.data !== 'string' && response.data.kid && { kid: response.data.kid }),
+    };
+  } catch (cause) {
+    if (cause?.response?.status != 400) {
+      throw new TdfError(
+        `Retrieving KAS public key [${kas}] failed [${cause.name}] [${cause.message}]`,
+        cause
+      );
+    }
+  }
+  // Retry with v1 params
+  try {
+    const response: { data: string | KasPublicKeyInfo } = await axios.get(`${kas}/kas_public_key`, {
+      params,
+    });
+    const pem =
+      typeof response.data === 'string'
+        ? await TDF.extractPemFromKeyString(response.data)
+        : response.data.pem;
+    // future proof: allow v2 response even if not specified.
+    return {
+      pem,
+      ...infoStatic,
+      ...(typeof response.data !== 'string' && response.data.kid && { kid: response.data.kid }),
+    };
+  } catch (cause) {
+    throw new TdfError(
+      `Retrieving KAS public key [${kas}] failed [${cause.name}] [${cause.message}]`,
+      cause
+    );
+  }
+}
+
 export class TDF extends EventEmitter {
   policy?: Policy;
   mimeType?: string;
@@ -149,6 +236,7 @@ export class TDF extends EventEmitter {
 
     if (configuration.allowedKases) {
       this.allowedKases = [...configuration.allowedKases];
+      // Logs insecure KASen. Is there a good way to enforce this?
       this.allowedKases.forEach(validateSecureUrl);
     }
     this.attributeSet = new AttributeSet();
@@ -222,11 +310,13 @@ export class TDF extends EventEmitter {
     }
   }
 
-  // return a PEM-encoded string from the provided KAS server
+  /**
+   * Get the current KAS public key, as a PEM-encoded string.
+   * @deprecated use {@link fetchKasPublicKey} to get a key identifier as well as value
+   */
   static async getPublicKeyFromKeyAccessServer(url: string): Promise<string> {
-    validateSecureUrl(url);
-    const kasPublicKeyRequest: { data: string } = await axios.get(`${url}/kas_public_key`);
-    return TDF.extractPemFromKeyString(kasPublicKeyRequest.data);
+    const response = await fetchKasPublicKey(url);
+    return response.pem;
   }
 
   static async extractPemFromKeyString(keyString: string): Promise<string> {
@@ -303,24 +393,26 @@ export class TDF extends EventEmitter {
    * @param  {String} options.attributeUrl - URL of the attribute to use for pubKey and kasUrl. Omit to use default.
    * @param  {String} options.url - directly set the KAS URL
    * @param  {String} options.publicKey - directly set the (KAS) public key
+   * @param  {String?} options.kid - Key identifier of KAS public key
    * @param  {String? Object?} options.metadata - Metadata. Appears to be dead code.
    * @return {<TDF>}- this instance
    */
-  async addKeyAccess({ type, url, publicKey, attributeUrl, metadata }: AddKeyAccess) {
+  async addKeyAccess({ type, url, publicKey, kid, attributeUrl, metadata }: AddKeyAccess) {
     // TODO - run down metadata parameter. Clean it out if it isn't used this way anymore.
 
     /** Internal function to keep it DRY */
     function createKeyAccess(
       type: KeyAccessType,
       kasUrl: string,
+      kasKeyIdentifier: string | undefined,
       pubKey: string,
       metadata?: Metadata
     ) {
       switch (type) {
         case 'wrapped':
-          return new KeyAccessWrapped(kasUrl, pubKey, metadata);
+          return new KeyAccessWrapped(kasUrl, kasKeyIdentifier, pubKey, metadata);
         case 'remote':
-          return new KeyAccessRemote(kasUrl, pubKey, metadata);
+          return new KeyAccessRemote(kasUrl, kasKeyIdentifier, pubKey, metadata);
         default:
           throw new KeyAccessError(`TDF.addKeyAccess: Key access type ${type} is unknown`);
       }
@@ -343,7 +435,7 @@ export class TDF extends EventEmitter {
       if (attr && attr.kasUrl && attr.pubKey) {
         loadKeyAccess(
           this.encryptionInformation,
-          createKeyAccess(type, attr.kasUrl, attr.pubKey, metadata)
+          createKeyAccess(type, attr.kasUrl, attr.kid, attr.pubKey, metadata)
         );
         return this;
       }
@@ -353,7 +445,7 @@ export class TDF extends EventEmitter {
     if (url && publicKey) {
       loadKeyAccess(
         this.encryptionInformation,
-        createKeyAccess(type, url, await TDF.extractPemFromKeyString(publicKey), metadata)
+        createKeyAccess(type, url, kid, await TDF.extractPemFromKeyString(publicKey), metadata)
       );
       return this;
     }
@@ -365,7 +457,7 @@ export class TDF extends EventEmitter {
       if (pubKey && kasUrl) {
         loadKeyAccess(
           this.encryptionInformation,
-          createKeyAccess(type, kasUrl, await TDF.extractPemFromKeyString(pubKey), metadata)
+          createKeyAccess(type, kasUrl, kid, await TDF.extractPemFromKeyString(pubKey), metadata)
         );
         return this;
       }
@@ -376,7 +468,11 @@ export class TDF extends EventEmitter {
 
   setAllowedKases(kases: string[]) {
     this.allowedKases = [...kases];
-    this.allowedKases.forEach(validateSecureUrl);
+    const unsafeKases = this.allowedKases.filter((k) => !validateSecureUrl(k));
+    if (unsafeKases.length) {
+      const unsafeKasList = unsafeKases.join(' ');
+      throw new UnsafeUrlError(`allowed KAS must be secure URLs [${unsafeKasList}]`, unsafeKasList);
+    }
     return this;
   }
 
@@ -576,12 +672,17 @@ export class TDF extends EventEmitter {
     );
   }
 
-  async writeStream(
-    byteLimit: number,
-    isRcaSource: boolean,
-    payloadKey?: Binary,
-    progressHandler?: (bytesProcessed: number) => void
-  ): Promise<DecoratedReadableStream> {
+  async writeStream({
+    byteLimit,
+    progressHandler,
+    keyForEncryption,
+    keyForManifest,
+  }: {
+    byteLimit: number;
+    progressHandler?: (bytesProcessed: number) => void;
+    keyForEncryption: KeyInfo;
+    keyForManifest: KeyInfo;
+  }): Promise<DecoratedReadableStream> {
     if (!this.contentStream) {
       throw new IllegalArgumentError('No input stream defined');
     }
@@ -618,20 +719,8 @@ export class TDF extends EventEmitter {
     if (!this.encryptionInformation) {
       throw new Error('Missing encryptionInformation');
     }
-    const keyInfo = await this.encryptionInformation.generateKey();
-    const kv = await this.encryptionInformation.generateKey();
 
-    if (!keyInfo || !kv) {
-      throw new Error('Missing generated keys');
-    }
-
-    const kek = await this.encryptionInformation.encrypt(
-      keyInfo.unwrappedKeyBinary,
-      kv.unwrappedKeyBinary,
-      kv.unwrappedKeyIvBinary
-    );
-
-    const manifest = await this._generateManifest(isRcaSource && !payloadKey ? kv : keyInfo);
+    const manifest = await this._generateManifest(keyForManifest);
     this.manifest = manifest;
 
     // For all remote key access objects, sync its policy
@@ -644,7 +733,7 @@ export class TDF extends EventEmitter {
     const { segmentSizeDefault } = this;
     const encryptedBlargh = await this.encryptionInformation.encrypt(
       Binary.fromArrayBuffer(new ArrayBuffer(segmentSizeDefault)),
-      keyInfo.unwrappedKeyBinary
+      keyForEncryption.unwrappedKeyBinary
     );
     const payloadBuffer = new Uint8Array(encryptedBlargh.payload.asByteArray());
     const encryptedSegmentSizeDefault = payloadBuffer.length;
@@ -719,7 +808,7 @@ export class TDF extends EventEmitter {
 
           // hash the concat of all hashes
           const payloadSigStr = await self.getSignature(
-            payloadKey || keyInfo.unwrappedKeyBinary,
+            keyForEncryption.unwrappedKeyBinary,
             Binary.fromString(aggregateHash),
             self.integrityAlgorithm
           );
@@ -781,9 +870,6 @@ export class TDF extends EventEmitter {
     if (upsertResponse) {
       plaintextStream.upsertResponse = upsertResponse;
       plaintextStream.tdfSize = totalByteCount;
-      plaintextStream.KEK = payloadKey
-        ? null
-        : buffToString(Uint8Array.from(kek.payload.asByteArray()), 'base64');
       plaintextStream.algorithm = manifest.encryptionInformation.method.algorithm;
     }
 
@@ -815,11 +901,11 @@ export class TDF extends EventEmitter {
       // Don't pass in an IV here. The encrypt function will generate one for you, ensuring that each segment has a unique IV.
       const encryptedResult = await encryptionInformation.encrypt(
         Binary.fromArrayBuffer(chunk.buffer),
-        payloadKey || keyInfo.unwrappedKeyBinary
+        keyForEncryption.unwrappedKeyBinary
       );
       const payloadBuffer = new Uint8Array(encryptedResult.payload.asByteArray());
       const payloadSigStr = await self.getSignature(
-        payloadKey || keyInfo.unwrappedKeyBinary,
+        keyForEncryption.unwrappedKeyBinary,
         encryptedResult.payload,
         self.segmentIntegrityAlgorithm
       );
@@ -1048,12 +1134,13 @@ export class TDF extends EventEmitter {
    * readStream
    *
    * @param {Object} chunker - A function object for getting data in a series of typed array objects
-   * @param {Stream} outputStream - The writable stream we should put the new bits into
-   * @param {Object} rcaParams - Optional field to specify if file is stored on S3
+   * @param {Stream} keyMiddleware - The writable stream we should put the new bits into
+   * @param {Function} progressHandler - Function that gives info on how many bytes processed
+   * @param {String} fileStreamServiceWorker
    */
   async readStream(
     chunker: Chunker,
-    rcaParams?: RcaParams,
+    keyMiddleware: KeyMiddleware = async (key) => key,
     progressHandler?: (bytesProcessed: number) => void,
     fileStreamServiceWorker?: string
   ) {
@@ -1064,29 +1151,19 @@ export class TDF extends EventEmitter {
 
     const { segments } = this.manifest.encryptionInformation.integrityInformation;
     const unwrapResult = await this.unwrapKey(this.manifest);
-    let { reconstructedKeyBinary } = unwrapResult;
+    const { reconstructedKeyBinary } = unwrapResult;
+    const keyForDecryption = await keyMiddleware(reconstructedKeyBinary);
     const { metadata } = unwrapResult;
 
     const defaultSegmentSize =
       this.manifest?.encryptionInformation?.integrityInformation?.encryptedSegmentSizeDefault;
     const encryptedSegmentSizeDefault = defaultSegmentSize || DEFAULT_SEGMENT_SIZE;
 
-    if (rcaParams && rcaParams.wk) {
-      const { wk, al } = rcaParams;
-      this.encryptionInformation = new SplitKey(this.createCipher(al.toLowerCase()));
-
-      const decodedReconstructedKeyBinary = await this.encryptionInformation.decrypt(
-        Uint8Array.from(base64ToBytes(wk)),
-        reconstructedKeyBinary
-      );
-      reconstructedKeyBinary = decodedReconstructedKeyBinary.payload;
-    }
-
     // check the combined string of hashes
     const integrityAlgorithmType =
       this.manifest.encryptionInformation.integrityInformation.rootSignature.alg;
     const payloadSigStr = await this.getSignature(
-      reconstructedKeyBinary,
+      keyForDecryption,
       Binary.fromString(segments.map((segment) => base64.decode(segment.hash)).join('')),
       integrityAlgorithmType
     );
@@ -1115,7 +1192,7 @@ export class TDF extends EventEmitter {
       Array.from(this.chunkMap.values()),
       centralDirectory,
       zipReader,
-      reconstructedKeyBinary
+      keyForDecryption
     ).catch((e) => {
       throw new Error(e);
     });
@@ -1149,18 +1226,6 @@ export class TDF extends EventEmitter {
     };
 
     const outputStream = new DecoratedReadableStream(underlyingSource);
-
-    if (rcaParams && rcaParams.wu) {
-      const res = await axios.head(rcaParams.wu);
-
-      const length = parseInt(res?.headers?.['content-length'] as string, 10);
-
-      if (length) {
-        outputStream.fileSize = length;
-      } else {
-        console.log('Unable to retrieve total fileSize');
-      }
-    }
 
     outputStream.manifest = this.manifest;
     if (outputStream.emit) {

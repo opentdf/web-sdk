@@ -82,6 +82,7 @@ export default class Client {
     dpopEnabled = false
   ) {
     this.authProvider = authProvider;
+    // TODO Disallow http KAS. For now just log as error
     validateSecureUrl(kasUrl);
     this.kasUrl = kasUrl;
     this.allowedKases = [kasUrl];

@@ -18,7 +18,7 @@ function scrubCause(error?: Error, d?: number): { cause?: Error } {
 export class TdfError extends Error {
   override name = 'TdfError';
 
-  constructor(message: string, cause?: Error) {
+  constructor(message?: string, cause?: Error) {
     super(message, scrubCause(cause));
     // Error is funny (only on ES5? So  guess just IE11 we have to worry about?)
     // https://github.com/Microsoft/TypeScript-wiki/blob/main/Breaking-Changes.md#extending-built-ins-like-error-array-and-map-may-no-longer-work
@@ -62,12 +62,40 @@ export class IllegalArgumentError extends Error {}
 
 export class IllegalEnvError extends Error {}
 
+export class InvalidCipherError extends TdfError {
+  override name = 'InvalidCipherError';
+}
+
+export class InvalidCurveNameError extends TdfError {
+  override name = 'InvalidCurveNameError';
+}
+
+export class InvalidDataTypeError extends TdfError {
+  override name = 'InvalidDataTypeError';
+}
+
+export class InvalidEphemeralKeyError extends TdfError {
+  override name = 'InvalidEphemeralKeyError';
+}
+
+export class InvalidPayloadError extends TdfError {
+  override name = 'InvalidPayloadError';
+}
+
+export class InvalidPolicyTypeError extends TdfError {
+  override name = 'InvalidPolicyTypeError';
+}
+
 export class ManifestIntegrityError extends TdfError {
   override name = 'ManifestIntegrityError';
 }
 
 export class PolicyIntegrityError extends TdfError {
   override name = 'PolicyIntegrityError';
+}
+
+export class SignatureError extends TdfError {
+  override name = 'SignatureError';
 }
 
 export class TdfCorruptError extends TdfError {

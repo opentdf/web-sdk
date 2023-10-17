@@ -5,7 +5,7 @@ import { DecoratedReadableStream } from '../../tdf3/src/client/DecoratedReadable
 describe('client wrapper tests', function () {
   it('client params safe from updating', function () {
     const config = {
-      kasEndpoint: 'kasUrl',
+      kasEndpoint: 'https://kasUrl',
       clientId: 'id',
     };
     const client = new TDF.Client(config);
@@ -118,7 +118,7 @@ describe('client wrapper tests', function () {
   it('encrypt error', async function () {
     const encryptParams = new TDF.EncryptParamsBuilder().withStringSource('hello world').build();
     const config = {
-      kasEndpoint: 'kasUrl',
+      kasEndpoint: 'https://kasUrl',
       clientId: 'id',
     };
     const client = new TDF.Client(config);
@@ -133,7 +133,7 @@ describe('client wrapper tests', function () {
   it('decrypt error', async function () {
     const decryptParams = new TDF.DecryptParamsBuilder().withStringSource('not a tdf').build();
     const config = {
-      kasEndpoint: 'kasUrl',
+      kasEndpoint: 'https://kasUrl',
       clientId: 'id',
     };
     const client = new TDF.Client(config);

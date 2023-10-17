@@ -1,5 +1,9 @@
 import { toByteArray, fromByteArray } from 'base64-js';
 import { AppIdAuthProvider, AuthProvider } from '../../../src/auth/auth.js';
+import * as WebCryptoService from '../crypto/index.js';
+import { KeyInfo } from '../models/index.js';
+
+import { TDF } from '../tdf.js';
 
 export { ZipReader, readUInt64LE } from './zip-reader.js';
 export { ZipWriter } from './zip-writer.js';
@@ -277,4 +281,30 @@ function base64clean(str: string) {
 
 export function base64ToBytes(str: string) {
   return toByteArray(base64clean(str));
+}
+
+/**
+ *
+ * Function generates key, it returned both KeyForEncryption and KeyForManifest.
+ *   `KeyForEncryption === KeyForManifest` produces true;
+ *
+ * @returns {Object}:
+ * {
+ *   keyForEncryption: Binary;
+ *   keyForManifest: Binary;
+ * }
+ */
+export async function keyMiddleware(): Promise<{
+  keyForEncryption: KeyInfo;
+  keyForManifest: KeyInfo;
+}> {
+  const tdfService = TDF.create({ cryptoService: WebCryptoService });
+  tdfService.setEncryption({ type: 'split' });
+  if (!tdfService.encryptionInformation?.generateKey) {
+    throw new Error('Crypto service not initialised');
+  }
+
+  const key = await tdfService.encryptionInformation.generateKey();
+
+  return { keyForEncryption: key, keyForManifest: key };
 }
