@@ -983,18 +983,15 @@ export class TDF extends EventEmitter {
                 currentVal + (encryptedSegmentSize as number),
               0
             );
-            const start = performance.now();
             const buffer: Uint8Array | null = await zipReader.getPayloadSegment(
               centralDirectory,
               '0.payload',
               slice[0].encryptedOffset,
               bufferSize
-            )
+            );
             if (buffer) {
-              this.sliceAndDecrypt({ buffer, reconstructedKeyBinary, slice })
+              this.sliceAndDecrypt({ buffer, reconstructedKeyBinary, slice });
             }
-            const end = performance.now();
-            console.log(`time for one group chunk to download is ${end - start}`)
           } catch (e) {
             throw new TdfDecryptError(
               'Error decrypting payload. This suggests the key used to decrypt the payload is not correct.',
@@ -1002,13 +999,19 @@ export class TDF extends EventEmitter {
             );
           }
         })()
-      )
+      );
     }
   }
 
-  async sliceAndDecrypt({ buffer, reconstructedKeyBinary, slice }: { buffer: Uint8Array; reconstructedKeyBinary: Binary; slice: Chunk[] }) {
-    const start = performance.now();
-
+  async sliceAndDecrypt({
+    buffer,
+    reconstructedKeyBinary,
+    slice,
+  }: {
+    buffer: Uint8Array;
+    reconstructedKeyBinary: Binary;
+    slice: Chunk[];
+  }) {
     const batchSize = 10;
     let promises = [];
 
@@ -1024,25 +1027,21 @@ export class TDF extends EventEmitter {
       );
 
       promises.push(
-        this.decryptChunk(
-          encryptedChunk,
-          reconstructedKeyBinary,
-          slice[index]['hash']
-        ).then((decryptedChunk) => {
-          if (!decryptedChunk) return;
-          slice[index].decryptedChunk = decryptedChunk;
-          if (slice[index]._resolve) {
-            (slice[index]._resolve as (value: unknown) => void)(null);
+        this.decryptChunk(encryptedChunk, reconstructedKeyBinary, slice[index]['hash']).then(
+          (decryptedChunk) => {
+            if (!decryptedChunk) return;
+            slice[index].decryptedChunk = decryptedChunk;
+            if (slice[index]._resolve) {
+              (slice[index]._resolve as (value: unknown) => void)(null);
+            }
           }
-        })
-      )
+        )
+      );
       if (promises.length === batchSize) {
         await Promise.all(promises);
         promises = [];
       }
     }
-    const end = performance.now();
-    console.log(`time for one group chunk to decrypt is ${end - start}`)
   }
 
   /**
