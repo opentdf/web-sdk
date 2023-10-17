@@ -124,7 +124,7 @@ describe('TDF sliceAndDecrypt', () => {
     const _resolveSpy = sinon.spy();
 
     const buffer = new Uint8Array(100); // Mock buffer data
-    const reconstructedKeyBinary = Binary.fromString('someKey')
+    const reconstructedKeyBinary = Binary.fromString('someKey');
     const slice = [
       {
         encryptedOffset: 0,
@@ -144,16 +144,20 @@ describe('TDF sliceAndDecrypt', () => {
     await tdf.sliceAndDecrypt({ buffer, reconstructedKeyBinary, slice });
 
     assert.isTrue(decryptChunkSpy.calledTwice);
-    assert.isTrue(decryptChunkSpy.firstCall.calledWithMatch(
-      sinon.match(isUint8Array),
-      sinon.match.same(reconstructedKeyBinary),
-      'mockHash1'
-    ));
-    assert.isTrue(decryptChunkSpy.secondCall.calledWithMatch(
-      sinon.match(isUint8Array),
-      sinon.match.same(reconstructedKeyBinary),
-      'mockHash2'
-    ));
+    assert.isTrue(
+      decryptChunkSpy.firstCall.calledWithMatch(
+        sinon.match(isUint8Array),
+        sinon.match.same(reconstructedKeyBinary),
+        'mockHash1'
+      )
+    );
+    assert.isTrue(
+      decryptChunkSpy.secondCall.calledWithMatch(
+        sinon.match(isUint8Array),
+        sinon.match.same(reconstructedKeyBinary),
+        'mockHash2'
+      )
+    );
 
     sinon.restore();
   });
