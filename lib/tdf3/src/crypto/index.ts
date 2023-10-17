@@ -29,6 +29,25 @@ export const isSupported = typeof globalThis?.crypto !== 'undefined';
 export const method = 'http://www.w3.org/2001/04/xmlenc#aes256-cbc';
 export const name = 'BrowserNativeCryptoService';
 
+window.activeWorkers = new Set();
+
+const workerScript = `
+self.onmessage = async (event) => {
+  const { key, encryptedPayload, algo } = event.data;
+
+  try {
+    const decryptedData = await crypto.subtle.decrypt(
+      algo,
+      key,
+      encryptedPayload
+    );
+    self.postMessage({ success: true, data: decryptedData });
+  } catch (error) {
+    self.postMessage({ success: false, error: error.message });
+  }
+};
+`;
+
 /**
  * Get a DOMString representing the algorithm to use for an
  * asymmetric key generation.
@@ -274,17 +293,30 @@ async function _doDecrypt(
   const importedKey = await _importKey(key, algoDomString);
   algoDomString.iv = iv.asArrayBuffer();
 
-  const decrypted = await crypto.subtle
-    .decrypt(algoDomString, importedKey, payloadBuffer)
-    // Catching this error so we can specifically check for OperationError
-    .catch((err) => {
-      if (err.name === 'OperationError') {
-        throw new TdfDecryptError(err);
-      }
+  const workerBlob = new Blob([workerScript], { type: 'application/javascript' });
+  const worker = new Worker(URL.createObjectURL(workerBlob));
+  window.activeWorkers.add(worker);
+  console.log(`Number of active workers: ${window.activeWorkers.size}`);
 
-      throw err;
+  return new Promise((resolve, reject) => {
+    worker.onmessage = (event) => {
+      const { success, data, error } = event.data;
+      worker.terminate();
+      window.activeWorkers.delete(worker);
+      console.log(`Number of active workers: ${window.activeWorkers.size}`);
+      if (success) {
+        resolve({ payload: Binary.fromArrayBuffer(data) } as DecryptResult);
+      } else {
+        reject(new TdfDecryptError(error));
+      }
+    };
+
+    worker.postMessage({
+      key: importedKey,
+      encryptedPayload: payloadBuffer,
+      algo: algoDomString,
     });
-  return { payload: Binary.fromArrayBuffer(decrypted) };
+  });
 }
 
 function _importKey(key: Binary, algorithm: AesCbcParams | AesGcmParams) {
