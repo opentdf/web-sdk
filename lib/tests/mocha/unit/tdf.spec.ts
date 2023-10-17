@@ -120,7 +120,6 @@ describe('TDF sliceAndDecrypt', () => {
   }
 
   it('should call decryptChunk with proper arguments', async () => {
-    const decryptChunkSpy = sinon.spy(TDF.prototype, 'decryptChunk');
     const _resolveSpy = sinon.spy();
 
     const buffer = new Uint8Array(100); // Mock buffer data
@@ -141,9 +140,10 @@ describe('TDF sliceAndDecrypt', () => {
     ];
 
     const tdf = TDF.create({ cryptoService });
+    const decryptChunkSpy = sinon.spy();
+    tdf.decryptChunk = async (...args) => decryptChunkSpy(...args);
     await tdf.sliceAndDecrypt({ buffer, reconstructedKeyBinary, slice });
 
-    assert.isTrue(decryptChunkSpy.calledTwice);
     assert.isTrue(
       decryptChunkSpy.firstCall.calledWithMatch(
         sinon.match(isUint8Array),
@@ -159,6 +159,28 @@ describe('TDF sliceAndDecrypt', () => {
       )
     );
 
+    sinon.restore();
+  });
+
+  it('should call decryptChunk number of times that slice length is ', async () => {
+    const _resolveSpy = sinon.spy();
+
+    const buffer = new Uint8Array(500); // Mock buffer data
+    const reconstructedKeyBinary = Binary.fromString('someKey');
+    // Create a slice array of length 10
+    const slice = Array.from({ length: 10 }).map((_, index) => ({
+      encryptedOffset: index * 5,
+      encryptedSegmentSize: 5,
+      hash: `mockHash${index + 1}`,
+      _resolve: _resolveSpy,
+    }));
+
+    const tdf = TDF.create({ cryptoService });
+    const decryptChunkSpy = sinon.spy();
+    tdf.decryptChunk = async (...args) => decryptChunkSpy(...args);
+    await tdf.sliceAndDecrypt({ buffer, reconstructedKeyBinary, slice });
+
+    assert.equal(decryptChunkSpy.callCount, slice.length);
     sinon.restore();
   });
 });
