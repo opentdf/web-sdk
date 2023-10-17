@@ -965,60 +965,74 @@ export class TDF extends EventEmitter {
     zipReader: ZipReader,
     reconstructedKeyBinary: Binary
   ) {
-    const requestsInParallelCount = 100;
-    let requests = [];
-    const maxLength = 3;
+    const chunksInOneDownload = 500;
 
-    for (let i = 0; i < chunkMap.length; i += requestsInParallelCount) {
-      if (requests.length === maxLength) {
-        await Promise.all(requests);
-        requests = [];
+    for (let i = 0; i < chunkMap.length; i += chunksInOneDownload) {
+      try {
+        const slice = chunkMap.slice(i, i + chunksInOneDownload);
+        const bufferSize = slice.reduce(
+          (currentVal, { encryptedSegmentSize }) =>
+            currentVal + (encryptedSegmentSize as number),
+          0
+        );
+        const start = performance.now();
+        const buffer: Uint8Array | null = await zipReader.getPayloadSegment(
+          centralDirectory,
+          '0.payload',
+          slice[0].encryptedOffset,
+          bufferSize
+        )
+        if (buffer) {
+          this.sliceAndDecrypt({ buffer, reconstructedKeyBinary, slice })
+        }
+        const end = performance.now();
+        console.log(`time for one group chunk to download is ${end - start}`)
+      } catch (e) {
+        throw new TdfDecryptError(
+          'Error decrypting payload. This suggests the key used to decrypt the payload is not correct.',
+          e
+        );
       }
-      requests.push(
-        (async () => {
-          try {
-            const slice = chunkMap.slice(i, i + requestsInParallelCount);
-            const bufferSize = slice.reduce(
-              (currentVal, { encryptedSegmentSize }) =>
-                currentVal + (encryptedSegmentSize as number),
-              0
-            );
-            let buffer: Uint8Array | null = await zipReader.getPayloadSegment(
-              centralDirectory,
-              '0.payload',
-              slice[0].encryptedOffset,
-              bufferSize
-            );
-            for (const index in slice) {
-              const { encryptedOffset, encryptedSegmentSize } = slice[index];
-
-              const offset =
-                slice[0].encryptedOffset === 0
-                  ? encryptedOffset
-                  : encryptedOffset % slice[0].encryptedOffset;
-              const encryptedChunk = new Uint8Array(
-                buffer.slice(offset, offset + (encryptedSegmentSize as number))
-              );
-
-              slice[index].decryptedChunk = await this.decryptChunk(
-                encryptedChunk,
-                reconstructedKeyBinary,
-                slice[index]['hash']
-              );
-              if (slice[index]._resolve) {
-                (slice[index]._resolve as (value: unknown) => void)(null);
-              }
-            }
-            buffer = null;
-          } catch (e) {
-            throw new TdfDecryptError(
-              'Error decrypting payload. This suggests the key used to decrypt the payload is not correct.',
-              e
-            );
-          }
-        })()
-      );
     }
+  }
+
+  async sliceAndDecrypt({ buffer, reconstructedKeyBinary, slice }: { buffer: Uint8Array; reconstructedKeyBinary: Binary; slice: Chunk[] }) {
+    const start = performance.now();
+
+    const batchSize = 10; // Start with 10 as a batch size
+    let promises = [];
+
+    for (const index in slice) {
+      const { encryptedOffset, encryptedSegmentSize } = slice[index];
+
+      const offset =
+        slice[0].encryptedOffset === 0
+          ? encryptedOffset
+          : encryptedOffset % slice[0].encryptedOffset;
+      const encryptedChunk = new Uint8Array(
+        buffer.slice(offset, offset + (encryptedSegmentSize as number))
+      );
+
+      promises.push(
+        this.decryptChunk(
+          encryptedChunk,
+          reconstructedKeyBinary,
+          slice[index]['hash']
+        ).then((decryptedChunk) => {
+          if (!decryptedChunk) return;
+          slice[index].decryptedChunk = decryptedChunk;
+          if (slice[index]._resolve) {
+            (slice[index]._resolve as (value: unknown) => void)(null);
+          }
+        })
+      )
+      if (promises.length === batchSize) {
+        await Promise.all(promises);
+        promises = [];
+      }
+    }
+    const end = performance.now();
+    console.log(`time for one group chunk to decrypt is ${end - start}`)
   }
 
   /**

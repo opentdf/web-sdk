@@ -505,7 +505,7 @@ export type DecryptParams = {
  </pre>
  */
 class DecryptParamsBuilder {
-  private _params: Partial<DecryptParams>;
+  _params: Partial<DecryptParams>;
 
   constructor(to_copy: Partial<DecryptParams> = {}) {
     this._params = {
