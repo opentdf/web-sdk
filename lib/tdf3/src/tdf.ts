@@ -966,40 +966,50 @@ export class TDF extends EventEmitter {
     reconstructedKeyBinary: Binary
   ) {
     const chunksInOneDownload = 500;
+    let requests = [];
+    const maxLength = 3;
 
     for (let i = 0; i < chunkMap.length; i += chunksInOneDownload) {
-      try {
-        const slice = chunkMap.slice(i, i + chunksInOneDownload);
-        const bufferSize = slice.reduce(
-          (currentVal, { encryptedSegmentSize }) =>
-            currentVal + (encryptedSegmentSize as number),
-          0
-        );
-        const start = performance.now();
-        const buffer: Uint8Array | null = await zipReader.getPayloadSegment(
-          centralDirectory,
-          '0.payload',
-          slice[0].encryptedOffset,
-          bufferSize
-        )
-        if (buffer) {
-          this.sliceAndDecrypt({ buffer, reconstructedKeyBinary, slice })
-        }
-        const end = performance.now();
-        console.log(`time for one group chunk to download is ${end - start}`)
-      } catch (e) {
-        throw new TdfDecryptError(
-          'Error decrypting payload. This suggests the key used to decrypt the payload is not correct.',
-          e
-        );
+      if (requests.length === maxLength) {
+        await Promise.all(requests);
+        requests = [];
       }
+      requests.push(
+        (async () => {
+          try {
+            const slice = chunkMap.slice(i, i + chunksInOneDownload);
+            const bufferSize = slice.reduce(
+              (currentVal, { encryptedSegmentSize }) =>
+                currentVal + (encryptedSegmentSize as number),
+              0
+            );
+            const start = performance.now();
+            const buffer: Uint8Array | null = await zipReader.getPayloadSegment(
+              centralDirectory,
+              '0.payload',
+              slice[0].encryptedOffset,
+              bufferSize
+            )
+            if (buffer) {
+              this.sliceAndDecrypt({ buffer, reconstructedKeyBinary, slice })
+            }
+            const end = performance.now();
+            console.log(`time for one group chunk to download is ${end - start}`)
+          } catch (e) {
+            throw new TdfDecryptError(
+              'Error decrypting payload. This suggests the key used to decrypt the payload is not correct.',
+              e
+            );
+          }
+        })()
+      )
     }
   }
 
   async sliceAndDecrypt({ buffer, reconstructedKeyBinary, slice }: { buffer: Uint8Array; reconstructedKeyBinary: Binary; slice: Chunk[] }) {
     const start = performance.now();
 
-    const batchSize = 10; // Start with 10 as a batch size
+    const batchSize = 10;
     let promises = [];
 
     for (const index in slice) {
