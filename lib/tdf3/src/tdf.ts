@@ -1051,11 +1051,11 @@ export class TDF extends EventEmitter {
     zipReader: ZipReader,
     reconstructedKeyBinary: Binary
   ) {
-    const requestsInParallelCount = 100;
+    const chunksInOneDownload = 500;
     let requests = [];
     const maxLength = 3;
 
-    for (let i = 0; i < chunkMap.length; i += requestsInParallelCount) {
+    for (let i = 0; i < chunkMap.length; i += chunksInOneDownload) {
       if (requests.length === maxLength) {
         await Promise.all(requests);
         requests = [];
@@ -1063,39 +1063,21 @@ export class TDF extends EventEmitter {
       requests.push(
         (async () => {
           try {
-            const slice = chunkMap.slice(i, i + requestsInParallelCount);
+            const slice = chunkMap.slice(i, i + chunksInOneDownload);
             const bufferSize = slice.reduce(
               (currentVal, { encryptedSegmentSize }) =>
                 currentVal + (encryptedSegmentSize as number),
               0
             );
-            let buffer: Uint8Array | null = await zipReader.getPayloadSegment(
+            const buffer: Uint8Array | null = await zipReader.getPayloadSegment(
               centralDirectory,
               '0.payload',
               slice[0].encryptedOffset,
               bufferSize
             );
-            for (const index in slice) {
-              const { encryptedOffset, encryptedSegmentSize } = slice[index];
-
-              const offset =
-                slice[0].encryptedOffset === 0
-                  ? encryptedOffset
-                  : encryptedOffset % slice[0].encryptedOffset;
-              const encryptedChunk = new Uint8Array(
-                buffer.slice(offset, offset + (encryptedSegmentSize as number))
-              );
-
-              slice[index].decryptedChunk = await this.decryptChunk(
-                encryptedChunk,
-                reconstructedKeyBinary,
-                slice[index]['hash']
-              );
-              if (slice[index]._resolve) {
-                (slice[index]._resolve as (value: unknown) => void)(null);
-              }
+            if (buffer) {
+              this.sliceAndDecrypt({ buffer, reconstructedKeyBinary, slice });
             }
-            buffer = null;
           } catch (e) {
             throw new TdfDecryptError(
               'Error decrypting payload. This suggests the key used to decrypt the payload is not correct.',
@@ -1104,6 +1086,37 @@ export class TDF extends EventEmitter {
           }
         })()
       );
+    }
+  }
+
+  async sliceAndDecrypt({
+    buffer,
+    reconstructedKeyBinary,
+    slice,
+  }: {
+    buffer: Uint8Array;
+    reconstructedKeyBinary: Binary;
+    slice: Chunk[];
+  }) {
+    for (const index in slice) {
+      const { encryptedOffset, encryptedSegmentSize } = slice[index];
+
+      const offset =
+        slice[0].encryptedOffset === 0
+          ? encryptedOffset
+          : encryptedOffset % slice[0].encryptedOffset;
+      const encryptedChunk = new Uint8Array(
+        buffer.slice(offset, offset + (encryptedSegmentSize as number))
+      );
+
+      slice[index].decryptedChunk = await this.decryptChunk(
+        encryptedChunk,
+        reconstructedKeyBinary,
+        slice[index]['hash']
+      );
+      if (slice[index]._resolve) {
+        (slice[index]._resolve as (value: unknown) => void)(null);
+      }
     }
   }
 
