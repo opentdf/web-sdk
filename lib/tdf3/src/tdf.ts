@@ -1098,9 +1098,6 @@ export class TDF extends EventEmitter {
     reconstructedKeyBinary: Binary;
     slice: Chunk[];
   }) {
-    const batchSize = 10;
-    let promises = [];
-
     for (const index in slice) {
       const { encryptedOffset, encryptedSegmentSize } = slice[index];
 
@@ -1112,20 +1109,13 @@ export class TDF extends EventEmitter {
         buffer.slice(offset, offset + (encryptedSegmentSize as number))
       );
 
-      promises.push(
-        this.decryptChunk(encryptedChunk, reconstructedKeyBinary, slice[index]['hash']).then(
-          (decryptedChunk) => {
-            if (!decryptedChunk) return;
-            slice[index].decryptedChunk = decryptedChunk;
-            if (slice[index]._resolve) {
-              (slice[index]._resolve as (value: unknown) => void)(null);
-            }
-          }
-        )
+      slice[index].decryptedChunk = await this.decryptChunk(
+        encryptedChunk,
+        reconstructedKeyBinary,
+        slice[index]['hash']
       );
-      if (promises.length === batchSize) {
-        await Promise.all(promises);
-        promises = [];
+      if (slice[index]._resolve) {
+        (slice[index]._resolve as (value: unknown) => void)(null);
       }
     }
   }
