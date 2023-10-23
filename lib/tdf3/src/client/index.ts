@@ -18,7 +18,14 @@ import { AuthProvider, AppIdAuthProvider, HttpRequest } from '../../../src/auth/
 import EAS from '../../../src/auth/Eas.js';
 import { validateSecureUrl } from '../../../src/utils.js';
 
-import { EncryptParams, DecryptParams, type Scope } from './builders.js';
+import {
+  EncryptParams,
+  DecryptParams,
+  type Scope,
+  DecryptStreamMiddleware,
+  EncryptKeyMiddleware,
+  EncryptStreamMiddleware
+} from './builders.js';
 import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 
 import {
@@ -31,6 +38,7 @@ import * as defaultCryptoService from '../crypto/index.js';
 import { Policy } from '../models/index.js';
 import { TdfError } from '../../../src/errors.js';
 import { rsaPkcs1Sha256 } from '../crypto/index.js';
+import { Binary } from '../binary.js';
 
 const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
 const HTML_BYTE_LIMIT = 100 * 1000 * 1000; // 100 MB, see WS-9476.
@@ -387,10 +395,10 @@ export class Client {
       metadata,
     });
 
-    const { keyForEncryption, keyForManifest } = await keyMiddleware();
+    const { keyForEncryption, keyForManifest } = await (keyMiddleware as EncryptKeyMiddleware)();
 
     const byteLimit = asHtml ? HTML_BYTE_LIMIT : GLOBAL_BYTE_LIMIT;
-    const stream = await streamMiddleware(
+    const stream = await (streamMiddleware as EncryptStreamMiddleware)(
       await tdf.writeStream({
         byteLimit,
         progressHandler: this.clientConfig.progressHandler,
@@ -437,12 +445,9 @@ export class Client {
   async decrypt({
     eo,
     source,
-    keyMiddleware,
-    streamMiddleware,
+    keyMiddleware = async (key: Binary) => key,
+    streamMiddleware = async (stream: DecoratedReadableStream) => stream,
   }: DecryptParams): Promise<DecoratedReadableStream> {
-    streamMiddleware = streamMiddleware || (async (stream) => stream);
-    keyMiddleware = keyMiddleware || (async (key) => key);
-
     const sessionKeys = await this.sessionKeys;
     let entityObject;
     if (eo && eo.publicKey == sessionKeys.keypair.publicKey) {
@@ -464,7 +469,7 @@ export class Client {
 
     // Await in order to catch any errors from this call.
     // TODO: Write error event to stream and don't await.
-    return await streamMiddleware(
+    return await (streamMiddleware as DecryptStreamMiddleware) (
       await tdf.readStream(
         chunker,
         keyMiddleware,

@@ -5,6 +5,10 @@ import {
   DecryptParamsBuilder,
   type DecryptSource,
   type EncryptParams,
+  type EncryptKeyMiddleware,
+  type EncryptStreamMiddleware,
+  type DecryptKeyMiddleware,
+  type DecryptStreamMiddleware,
   EncryptParamsBuilder,
 } from './src/client/builders.js';
 import { type SessionKeys, type ClientConfig, createSessionKeys } from './src/client/index.js';
@@ -42,6 +46,10 @@ export type {
   EncryptResult,
   HttpMethod,
   PemKeyPair,
+  EncryptKeyMiddleware,
+  EncryptStreamMiddleware,
+  DecryptKeyMiddleware,
+  DecryptStreamMiddleware,
 };
 
 export {
