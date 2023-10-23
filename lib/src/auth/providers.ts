@@ -134,7 +134,6 @@ export const clientAuthProvider = async (clientConfig: OIDCCredentials): Promise
 };
 
 export * from './auth.js';
-export * from './OIDCCredentials.js';
 export { OIDCClientCredentialsProvider } from './oidc-clientcredentials-provider.js';
 export { OIDCExternalJwtProvider } from './oidc-externaljwt-provider.js';
 export { OIDCRefreshTokenProvider } from './oidc-refreshtoken-provider.js';

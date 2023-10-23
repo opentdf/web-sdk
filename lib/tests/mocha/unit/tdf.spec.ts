@@ -1,9 +1,12 @@
-import { expect } from 'chai';
+import { expect, assert } from 'chai';
+import sinon from 'sinon';
 
 import { TDF, fetchKasPublicKey } from '../../../tdf3/src/tdf.js';
 import * as cryptoService from '../../../tdf3/src/crypto/index.js';
 import { AesGcmCipher } from '../../../tdf3/src/ciphers/aes-gcm-cipher.js';
 import { TdfError } from '../../../src/errors.js';
+import { Binary } from '../../../tdf3/src/binary.js';
+
 const sampleCert = `
 -----BEGIN CERTIFICATE-----
 MIIFnjCCA4YCCQCnKw0cfbMLJTANBgkqhkiG9w0BAQsFADCBkDELMAkGA1UEBhMC
@@ -108,6 +111,77 @@ describe('TDF', () => {
   it('should ensure that policy id is uuid format', async () => {
     const uuid = await TDF.create({ cryptoService }).generatePolicyUuid();
     expect(uuid).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+  });
+});
+
+describe('TDF sliceAndDecrypt', () => {
+  function isUint8Array(obj: any): obj is Uint8Array {
+    return obj instanceof Uint8Array;
+  }
+
+  it('should call decryptChunk with proper arguments', async () => {
+    const _resolveSpy = sinon.spy();
+
+    const buffer = new Uint8Array(100); // Mock buffer data
+    const reconstructedKeyBinary = Binary.fromString('someKey');
+    const slice = [
+      {
+        encryptedOffset: 0,
+        encryptedSegmentSize: 5,
+        hash: 'mockHash1',
+        _resolve: _resolveSpy,
+      },
+      {
+        encryptedOffset: 5,
+        encryptedSegmentSize: 5,
+        hash: 'mockHash2',
+        _resolve: _resolveSpy,
+      },
+    ];
+
+    const tdf = TDF.create({ cryptoService });
+    const decryptChunkSpy = sinon.spy();
+    tdf.decryptChunk = async (...args) => decryptChunkSpy(...args);
+    await tdf.sliceAndDecrypt({ buffer, reconstructedKeyBinary, slice });
+
+    assert.isTrue(
+      decryptChunkSpy.firstCall.calledWithMatch(
+        sinon.match(isUint8Array),
+        sinon.match.same(reconstructedKeyBinary),
+        'mockHash1'
+      )
+    );
+    assert.isTrue(
+      decryptChunkSpy.secondCall.calledWithMatch(
+        sinon.match(isUint8Array),
+        sinon.match.same(reconstructedKeyBinary),
+        'mockHash2'
+      )
+    );
+
+    sinon.restore();
+  });
+
+  it('should call decryptChunk number of times that slice length is ', async () => {
+    const _resolveSpy = sinon.spy();
+
+    const buffer = new Uint8Array(500); // Mock buffer data
+    const reconstructedKeyBinary = Binary.fromString('someKey');
+    // Create a slice array of length 10
+    const slice = Array.from({ length: 10 }).map((_, index) => ({
+      encryptedOffset: index * 5,
+      encryptedSegmentSize: 5,
+      hash: `mockHash${index + 1}`,
+      _resolve: _resolveSpy,
+    }));
+
+    const tdf = TDF.create({ cryptoService });
+    const decryptChunkSpy = sinon.spy();
+    tdf.decryptChunk = async (...args) => decryptChunkSpy(...args);
+    await tdf.sliceAndDecrypt({ buffer, reconstructedKeyBinary, slice });
+
+    assert.equal(decryptChunkSpy.callCount, slice.length);
+    sinon.restore();
   });
 });
 
