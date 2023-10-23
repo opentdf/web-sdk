@@ -24,7 +24,7 @@ import {
   type Scope,
   DecryptStreamMiddleware,
   EncryptKeyMiddleware,
-  EncryptStreamMiddleware
+  EncryptStreamMiddleware,
 } from './builders.js';
 import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 
@@ -469,7 +469,7 @@ export class Client {
 
     // Await in order to catch any errors from this call.
     // TODO: Write error event to stream and don't await.
-    return await (streamMiddleware as DecryptStreamMiddleware) (
+    return await (streamMiddleware as DecryptStreamMiddleware)(
       await tdf.readStream(
         chunker,
         keyMiddleware,

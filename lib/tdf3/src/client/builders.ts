@@ -16,13 +16,14 @@ export type Scope = {
   attributes?: AttributeObject[];
 };
 
-
 export type EncryptKeyMiddleware = (...args: unknown[]) => Promise<{
   keyForEncryption: KeyInfo;
   keyForManifest: KeyInfo;
-}>
+}>;
 
-export type EncryptStreamMiddleware = (stream: DecoratedReadableStream) => Promise<DecoratedReadableStream>;
+export type EncryptStreamMiddleware = (
+  stream: DecoratedReadableStream
+) => Promise<DecoratedReadableStream>;
 
 export type EncryptParams = {
   source: ReadableStream<Uint8Array>;
@@ -471,9 +472,11 @@ class EncryptParamsBuilder {
   }
 }
 
-export type DecryptKeyMiddleware = (key: Binary) => Promise<Binary>
+export type DecryptKeyMiddleware = (key: Binary) => Promise<Binary>;
 
-export type DecryptStreamMiddleware = (stream: DecoratedReadableStream) => Promise<DecoratedReadableStream>;
+export type DecryptStreamMiddleware = (
+  stream: DecoratedReadableStream
+) => Promise<DecoratedReadableStream>;
 
 export type DecryptSource =
   | { type: 'buffer'; location: Uint8Array }
