@@ -25,6 +25,7 @@ import {
   type EncryptionInformation,
 } from './src/models/encryption-information.js';
 import { AuthProvider, AppIdAuthProvider, type HttpMethod, HttpRequest } from '../src/auth/auth.js';
+import { AesGcmCipher } from './src/ciphers/aes-gcm-cipher.js';
 import {
   NanoTDFClient,
   NanoTDFDatasetClient,
@@ -53,6 +54,7 @@ export type {
 };
 
 export {
+  AesGcmCipher,
   Algorithms,
   AppIdAuthProvider,
   AuthProvider,
