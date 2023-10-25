@@ -168,8 +168,8 @@ export async function decryptWithPrivateKey(
   encryptedPayload: Binary,
   privateKey: string
 ): Promise<Binary> {
-  console.assert(typeof encryptedPayload === 'object');
-  console.assert(typeof privateKey === 'string');
+  console.assert(typeof encryptedPayload === 'object', 'encryptedPayload must be object');
+  console.assert(typeof privateKey === 'string', 'privateKey must be string');
 
   const algoDomString = rsaOaepSha1();
 

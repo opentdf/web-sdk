@@ -18,7 +18,7 @@ import {
   type EncryptResult,
   type PemKeyPair,
 } from './src/crypto/declarations.js';
-import { Client, Errors, TDF, TDF3Client } from './src/index.js';
+import { Client, Errors, TDF3Client } from './src/index.js';
 import {
   type KeyInfo,
   SplitKey,
@@ -35,8 +35,6 @@ import {
 } from '../src/index.js';
 import { Algorithms, type AlgorithmName, type AlgorithmUrn } from './src/ciphers/algorithms.js';
 import { type Chunker } from './src/utils/chunkers.js';
-
-window.TDF = TDF;
 
 export type {
   AlgorithmName,
@@ -76,7 +74,6 @@ export {
   NanoTDFDatasetClient,
   SessionKeys,
   SplitKey,
-  TDF,
   TDF3Client,
   clientType,
   createSessionKeys,

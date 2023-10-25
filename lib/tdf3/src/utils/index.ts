@@ -1,9 +1,9 @@
 import { toByteArray, fromByteArray } from 'base64-js';
 import { AppIdAuthProvider, AuthProvider } from '../../../src/auth/auth.js';
 import * as WebCryptoService from '../crypto/index.js';
-import { KeyInfo } from '../models/index.js';
+import { KeyInfo, SplitKey } from '../models/index.js';
 
-import { TDF } from '../tdf.js';
+import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
 
 export { ZipReader, readUInt64LE } from './zip-reader.js';
 export { ZipWriter } from './zip-writer.js';
@@ -298,13 +298,11 @@ export async function keyMiddleware(): Promise<{
   keyForEncryption: KeyInfo;
   keyForManifest: KeyInfo;
 }> {
-  const tdfService = TDF.create({ cryptoService: WebCryptoService });
-  tdfService.setEncryption({ type: 'split' });
-  if (!tdfService.encryptionInformation?.generateKey) {
+  const cipher = new AesGcmCipher(WebCryptoService);
+  const encryptionInformation = new SplitKey(cipher);
+  if (!encryptionInformation?.generateKey) {
     throw new Error('Crypto service not initialised');
   }
-
-  const key = await tdfService.encryptionInformation.generateKey();
-
+  const key = await encryptionInformation.generateKey();
   return { keyForEncryption: key, keyForManifest: key };
 }

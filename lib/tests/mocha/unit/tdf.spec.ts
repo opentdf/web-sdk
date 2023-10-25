@@ -1,11 +1,7 @@
-import { expect, assert } from 'chai';
-import sinon from 'sinon';
+import { expect } from 'chai';
 
-import { TDF, fetchKasPublicKey } from '../../../tdf3/src/tdf.js';
-import * as cryptoService from '../../../tdf3/src/crypto/index.js';
-import { AesGcmCipher } from '../../../tdf3/src/ciphers/aes-gcm-cipher.js';
+import * as TDF from '../../../tdf3/src/tdf.js';
 import { TdfError } from '../../../src/errors.js';
-import { Binary } from '../../../tdf3/src/binary.js';
 
 const sampleCert = `
 -----BEGIN CERTIFICATE-----
@@ -44,22 +40,6 @@ HJg=
 `.trim();
 
 describe('TDF', () => {
-  it('constructs', () => {
-    const actual = new TDF({ cryptoService });
-    expect(actual).to.be.an.instanceof(TDF);
-  });
-
-  it('creates', () => {
-    const actual = TDF.create({ cryptoService });
-    expect(actual).to.be.an.instanceof(TDF);
-  });
-
-  it('allowedKases', () => {
-    const cfg = { allowedKases: ['https://local.virtru.com'], cryptoService };
-    const actual = TDF.create(cfg);
-    expect(actual.allowedKases).to.contain('https://local.virtru.com');
-  });
-
   it('Encodes the postMessage origin properly in wrapHtml', () => {
     const cipherText = 'abcezas123';
     const transferUrl = 'https://local.virtru.com/start?htmlProtocol=1';
@@ -81,19 +61,6 @@ describe('TDF', () => {
     expect(TDF.unwrapHtml(new TextDecoder().decode(wrapped))).to.eql(cipherText);
   });
 
-  it('should fail on invalid cypher param', () => {
-    try {
-      TDF.create({ cryptoService }).createCipher('nonexistent cypher');
-    } catch (e) {
-      expect(e.message).to.include('nonexistent cypher');
-    }
-  });
-
-  it('should return cypher', () => {
-    const cypher = TDF.create({ cryptoService }).createCipher('aes-256-gcm');
-    expect(cypher instanceof AesGcmCipher).to.equal(true);
-  });
-
   it('should return key', async () => {
     const pem = await TDF.extractPemFromKeyString(sampleCert);
     expect(pem).to.include('-----BEGIN PUBLIC KEY-----');
@@ -107,88 +74,12 @@ describe('TDF', () => {
     const pem = await TDF.extractPemFromKeyString(sampleKey);
     expect(pem).to.equal(sampleKey);
   });
-
-  it('should ensure that policy id is uuid format', async () => {
-    const uuid = await TDF.create({ cryptoService }).generatePolicyUuid();
-    expect(uuid).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
-  });
-});
-
-describe('TDF sliceAndDecrypt', () => {
-  function isUint8Array(obj: any): obj is Uint8Array {
-    return obj instanceof Uint8Array;
-  }
-
-  it('should call decryptChunk with proper arguments', async () => {
-    const _resolveSpy = sinon.spy();
-
-    const buffer = new Uint8Array(100); // Mock buffer data
-    const reconstructedKeyBinary = Binary.fromString('someKey');
-    const slice = [
-      {
-        encryptedOffset: 0,
-        encryptedSegmentSize: 5,
-        hash: 'mockHash1',
-        _resolve: _resolveSpy,
-      },
-      {
-        encryptedOffset: 5,
-        encryptedSegmentSize: 5,
-        hash: 'mockHash2',
-        _resolve: _resolveSpy,
-      },
-    ];
-
-    const tdf = TDF.create({ cryptoService });
-    const decryptChunkSpy = sinon.spy();
-    tdf.decryptChunk = async (...args) => decryptChunkSpy(...args);
-    await tdf.sliceAndDecrypt({ buffer, reconstructedKeyBinary, slice });
-
-    assert.isTrue(
-      decryptChunkSpy.firstCall.calledWithMatch(
-        sinon.match(isUint8Array),
-        sinon.match.same(reconstructedKeyBinary),
-        'mockHash1'
-      )
-    );
-    assert.isTrue(
-      decryptChunkSpy.secondCall.calledWithMatch(
-        sinon.match(isUint8Array),
-        sinon.match.same(reconstructedKeyBinary),
-        'mockHash2'
-      )
-    );
-
-    sinon.restore();
-  });
-
-  it('should call decryptChunk number of times that slice length is ', async () => {
-    const _resolveSpy = sinon.spy();
-
-    const buffer = new Uint8Array(500); // Mock buffer data
-    const reconstructedKeyBinary = Binary.fromString('someKey');
-    // Create a slice array of length 10
-    const slice = Array.from({ length: 10 }).map((_, index) => ({
-      encryptedOffset: index * 5,
-      encryptedSegmentSize: 5,
-      hash: `mockHash${index + 1}`,
-      _resolve: _resolveSpy,
-    }));
-
-    const tdf = TDF.create({ cryptoService });
-    const decryptChunkSpy = sinon.spy();
-    tdf.decryptChunk = async (...args) => decryptChunkSpy(...args);
-    await tdf.sliceAndDecrypt({ buffer, reconstructedKeyBinary, slice });
-
-    assert.equal(decryptChunkSpy.callCount, slice.length);
-    sinon.restore();
-  });
 });
 
 describe('fetchKasPublicKey', async () => {
   it('missing kas names throw', async () => {
     try {
-      await fetchKasPublicKey('');
+      await TDF.fetchKasPublicKey('');
       expect.fail('did not throw');
     } catch (e) {
       expect(e).to.be.an.instanceof(TdfError);
@@ -196,7 +87,7 @@ describe('fetchKasPublicKey', async () => {
   });
 
   it('localhost kas is valid', async () => {
-    const pk2 = await fetchKasPublicKey('http://localhost:3000');
+    const pk2 = await TDF.fetchKasPublicKey('http://localhost:3000');
     expect(pk2.pem).to.include('BEGIN CERTIFICATE');
     expect(pk2.kid).to.equal('kid-a');
   });

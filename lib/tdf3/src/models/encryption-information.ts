@@ -9,6 +9,7 @@ import {
   type DecryptResult,
   type EncryptResult,
 } from '../crypto/declarations.js';
+import { IntegrityAlgorithm } from '../tdf.js';
 
 export type KeyInfo = {
   readonly unwrappedKeyBinary: Binary;
@@ -28,10 +29,10 @@ export type EncryptionInformation = {
   readonly keyAccess: KeyAccessObject[];
   readonly integrityInformation: {
     readonly rootSignature: {
-      alg: string;
+      alg: IntegrityAlgorithm;
       sig: string;
     };
-    segmentHashAlg: string;
+    segmentHashAlg?: IntegrityAlgorithm;
     segments: Segment[];
     segmentSizeDefault?: number;
     encryptedSegmentSizeDefault?: number;
@@ -150,7 +151,7 @@ export class SplitKey {
           alg: 'HS256',
           sig: '',
         },
-        segmentHashAlg: '',
+        segmentHashAlg: 'GMAC',
         segments: [],
       },
       policy: policyForManifest,
