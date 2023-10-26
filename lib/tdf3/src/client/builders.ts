@@ -1,9 +1,7 @@
 import { AttributeValidator } from './validation.js';
-import { AttributeObject, Policy } from '../models/index.js';
+import { AttributeObject, KeyInfo, Policy } from '../models/index.js';
 import { type Metadata } from '../tdf.js';
 import { Binary } from '../binary.js';
-
-import { KeyInfo } from '../models/index.js';
 
 import { IllegalArgumentError } from '../../../src/errors.js';
 import { PemKeyPair } from '../crypto/declarations.js';
@@ -17,6 +15,15 @@ export type Scope = {
   policyObject?: Policy;
   attributes?: AttributeObject[];
 };
+
+export type EncryptKeyMiddleware = (...args: unknown[]) => Promise<{
+  keyForEncryption: KeyInfo;
+  keyForManifest: KeyInfo;
+}>;
+
+export type EncryptStreamMiddleware = (
+  stream: DecoratedReadableStream
+) => Promise<DecoratedReadableStream>;
 
 export type EncryptParams = {
   source: ReadableStream<Uint8Array>;
@@ -33,11 +40,8 @@ export type EncryptParams = {
   mimeType?: string;
   eo?: EntityObject;
   payloadKey?: Binary;
-  keyMiddleware?: (...args: unknown[]) => Promise<{
-    keyForEncryption: KeyInfo;
-    keyForManifest: KeyInfo;
-  }>;
-  streamMiddleware?: (stream: DecoratedReadableStream) => Promise<DecoratedReadableStream>;
+  keyMiddleware?: EncryptKeyMiddleware;
+  streamMiddleware?: EncryptStreamMiddleware;
 };
 
 // 'Readonly<EncryptParams>': scope, metadata, offline, windowSize, asHtml
@@ -468,6 +472,12 @@ class EncryptParamsBuilder {
   }
 }
 
+export type DecryptKeyMiddleware = (key: Binary) => Promise<Binary>;
+
+export type DecryptStreamMiddleware = (
+  stream: DecoratedReadableStream
+) => Promise<DecoratedReadableStream>;
+
 export type DecryptSource =
   | { type: 'buffer'; location: Uint8Array }
   | { type: 'remote'; location: string }
@@ -478,8 +488,8 @@ export type DecryptParams = {
   source: DecryptSource;
   opts?: { keypair: PemKeyPair };
   eo?: EntityObject;
-  keyMiddleware?: (key: Binary) => Promise<Binary>;
-  streamMiddleware?: (stream: DecoratedReadableStream) => Promise<DecoratedReadableStream>;
+  keyMiddleware?: DecryptKeyMiddleware;
+  streamMiddleware?: DecryptStreamMiddleware;
 } & Pick<EncryptParams, 'contentLength' | 'keypair'>;
 
 /**

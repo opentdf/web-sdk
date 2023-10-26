@@ -5,6 +5,10 @@ import {
   DecryptParamsBuilder,
   type DecryptSource,
   type EncryptParams,
+  type EncryptKeyMiddleware,
+  type EncryptStreamMiddleware,
+  type DecryptKeyMiddleware,
+  type DecryptStreamMiddleware,
   EncryptParamsBuilder,
 } from './src/client/builders.js';
 import { type SessionKeys, type ClientConfig, createSessionKeys } from './src/client/index.js';
@@ -21,6 +25,7 @@ import {
   type EncryptionInformation,
 } from './src/models/encryption-information.js';
 import { AuthProvider, AppIdAuthProvider, type HttpMethod, HttpRequest } from '../src/auth/auth.js';
+import { AesGcmCipher } from './src/ciphers/aes-gcm-cipher.js';
 import {
   NanoTDFClient,
   NanoTDFDatasetClient,
@@ -42,9 +47,14 @@ export type {
   EncryptResult,
   HttpMethod,
   PemKeyPair,
+  EncryptKeyMiddleware,
+  EncryptStreamMiddleware,
+  DecryptKeyMiddleware,
+  DecryptStreamMiddleware,
 };
 
 export {
+  AesGcmCipher,
   Algorithms,
   AppIdAuthProvider,
   AuthProvider,
