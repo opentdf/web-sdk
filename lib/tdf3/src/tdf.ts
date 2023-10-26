@@ -177,7 +177,7 @@ export type KasPublicKeyInfo = {
   url: string;
   algorithm: KasPublicKeyAlgorithm;
   kid?: string;
-  pem: string;
+  publicKey: string;
 };
 
 export type KasPublicKeyAlgorithm = 'ec:secp256r1' | 'rsa:2048';
@@ -220,12 +220,12 @@ export async function fetchKasPublicKey(
         v: '2',
       },
     });
-    const pem =
+    const publicKey =
       typeof response.data === 'string'
         ? await extractPemFromKeyString(response.data)
-        : response.data.pem;
+        : response.data.publicKey;
     return {
-      pem,
+      publicKey,
       ...infoStatic,
       ...(typeof response.data !== 'string' && response.data.kid && { kid: response.data.kid }),
     };
@@ -242,13 +242,13 @@ export async function fetchKasPublicKey(
     const response: { data: string | KasPublicKeyInfo } = await axios.get(`${kas}/kas_public_key`, {
       params,
     });
-    const pem =
+    const publicKey =
       typeof response.data === 'string'
         ? await extractPemFromKeyString(response.data)
-        : response.data.pem;
+        : response.data.publicKey;
     // future proof: allow v2 response even if not specified.
     return {
-      pem,
+      publicKey,
       ...infoStatic,
       ...(typeof response.data !== 'string' && response.data.kid && { kid: response.data.kid }),
     };
@@ -728,6 +728,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
   };
 
   const plaintextStream = new DecoratedReadableStream(underlingSource);
+  plaintextStream.manifest = manifest;
 
   if (upsertResponse) {
     plaintextStream.upsertResponse = upsertResponse;

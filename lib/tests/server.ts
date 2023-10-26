@@ -72,8 +72,8 @@ const kas: RequestListener = async (req, res) => {
       const v2 = '2' == url.searchParams.get('v');
       res.setHeader('Content-Type', 'application/json');
       res.statusCode = 200;
-      const pem = Mocks.kasPublicKey;
-      res.end(JSON.stringify(v2 ? { kid, pem } : pem));
+      const publicKey = Mocks.kasPublicKey;
+      res.end(JSON.stringify(v2 ? { kid, publicKey } : publicKey));
     } else if (url.pathname === '/v2/rewrap') {
       if (req.method !== 'POST') {
         res.writeHead(405);

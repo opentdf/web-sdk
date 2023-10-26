@@ -88,7 +88,7 @@ describe('fetchKasPublicKey', async () => {
 
   it('localhost kas is valid', async () => {
     const pk2 = await TDF.fetchKasPublicKey('http://localhost:3000');
-    expect(pk2.pem).to.include('BEGIN CERTIFICATE');
+    expect(pk2.publicKey).to.include('BEGIN CERTIFICATE');
     expect(pk2.kid).to.equal('kid-a');
   });
 });

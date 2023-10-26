@@ -330,7 +330,7 @@ export class Client {
       this.kasPublicKey = Promise.resolve({
         url: this.kasEndpoint,
         algorithm: 'rsa:2048',
-        pem: clientConfig.kasPublicKey,
+        publicKey: clientConfig.kasPublicKey,
       });
     } else {
       this.kasPublicKey = fetchKasPublicKey(this.kasEndpoint);
@@ -415,7 +415,7 @@ export class Client {
         type: offline ? 'wrapped' : 'remote',
         url: kasPublicKey.url,
         kid: kasPublicKey.kid,
-        publicKey: kasPublicKey.pem,
+        publicKey: kasPublicKey.publicKey,
         metadata,
       })
     );
