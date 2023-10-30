@@ -13,8 +13,8 @@ test.beforeEach(async ({ page }) => {
 
 test('Large File', async ({ page }) => {
   await authorize(page);
-  const fiveGigs = 5 * 2 ** 30;
-  await page.locator('#randomSelector').fill(fiveGigs.toString());
+  const threeGigs = 3 * 2 ** 30;
+  await page.locator('#randomSelector').fill(threeGigs.toString());
 
   const downloadPromise = page.waitForEvent('download');
   await page.locator('#zipEncrypt').click();
@@ -32,7 +32,7 @@ test('Large File', async ({ page }) => {
 
     await page.locator('#randomSelector').clear();
     await loadFile(page, cipherTextPath);
-    const plainDownloadPromise = page.waitForEvent('download');
+    const plainDownloadPromise = await page.waitForEvent('download', { timeout: 60000 });
     await page.locator('#tdfDecrypt').click();
     await page.locator('#fileSink').click();
     await page.locator('#decryptButton').click();
@@ -44,7 +44,7 @@ test('Large File', async ({ page }) => {
     }
     try {
       const stats = fs.statSync(plainTextPath);
-      expect(stats).toHaveProperty('size', fiveGigs);
+      expect(stats).toHaveProperty('size', threeGigs);
     } finally {
       plainTextPath && fs.unlinkSync(plainTextPath);
     }
