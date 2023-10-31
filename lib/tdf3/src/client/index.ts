@@ -10,7 +10,17 @@ import {
   keyMiddleware as defaultKeyMiddleware,
 } from '../utils/index.js';
 import { base64 } from '../../../src/encodings/index.js';
-import { fetchKasPublicKey, KasPublicKeyInfo, TDF } from '../tdf.js';
+import {
+  buildKeyAccess,
+  EncryptConfiguration,
+  fetchKasPublicKey,
+  KasPublicKeyInfo,
+  unwrapHtml,
+  validatePolicyObject,
+  readStream,
+  wrapHtml,
+  writeStream,
+} from '../tdf.js';
 import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-provider.js';
 import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider.js';
 import { CryptoService, PemKeyPair } from '../crypto/declarations.js';
@@ -35,10 +45,12 @@ import {
   EncryptParamsBuilder,
 } from './builders.js';
 import * as defaultCryptoService from '../crypto/index.js';
-import { Policy } from '../models/index.js';
+import { AttributeSet, Policy, SplitKey } from '../models/index.js';
 import { TdfError } from '../../../src/errors.js';
 import { rsaPkcs1Sha256 } from '../crypto/index.js';
 import { Binary } from '../binary.js';
+import { EntityObject } from 'src/tdf/EntityObject.js';
+import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
 
 const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
 const HTML_BYTE_LIMIT = 100 * 1000 * 1000; // 100 MB, see WS-9476.
@@ -96,7 +108,7 @@ const makeChunkable = async (source: DecryptSource) => {
   // Unwrap if it's html.
   // If NOT zip (html), convert/dump to buffer, unwrap, and continue.
   const htmlBuf = buf ?? (await initialChunker());
-  const zipBuf = TDF.unwrapHtml(htmlBuf);
+  const zipBuf = unwrapHtml(htmlBuf);
   return fromBuffer(zipBuf);
 };
 
@@ -170,6 +182,24 @@ export type SessionKeys = {
   keypair: PemKeyPair;
   signingKeys?: CryptoKeyPair;
 };
+
+/*
+ * Create a policy object for an encrypt operation.
+ */
+function asPolicy(scope: Scope): Policy {
+  if (scope.policyObject) {
+    // use the client override if provided
+    return scope.policyObject;
+  }
+  const policyId = scope.policyId ?? v4();
+  return {
+    uuid: policyId,
+    body: {
+      dataAttributes: scope.attributes ?? [],
+      dissem: scope.dissem ?? [],
+    },
+  };
+}
 
 export class Client {
   readonly cryptoService: CryptoService;
@@ -300,7 +330,7 @@ export class Client {
       this.kasPublicKey = Promise.resolve({
         url: this.kasEndpoint,
         algorithm: 'rsa:2048',
-        pem: clientConfig.kasPublicKey,
+        publicKey: clientConfig.kasPublicKey,
       });
     } else {
       this.kasPublicKey = fetchKasPublicKey(this.kasEndpoint);
@@ -364,48 +394,54 @@ export class Client {
   }: EncryptParams): Promise<DecoratedReadableStream | void> {
     const sessionKeys = await this.sessionKeys;
     const kasPublicKey = await this.kasPublicKey;
-    const policyObject = this._createPolicyObject(scope);
+    const policyObject = asPolicy(scope);
+    validatePolicyObject(policyObject);
 
     // TODO: Refactor underlying builder to remove some of this unnecessary config.
 
-    const tdf = TDF.create({
-      allowedKases: this.allowedKases,
-      cryptoService: this.cryptoService,
-    })
-      .setPrivateKey(sessionKeys.keypair.privateKey)
-      .setPublicKey(sessionKeys.keypair.publicKey)
-      .setEncryption({
-        type: 'split',
-        cipher: 'aes-256-gcm',
-      })
-      .setDefaultSegmentSize(windowSize)
-      // set root sig and segment types
-      .setIntegrityAlgorithm('hs256', 'gmac')
-      .addContentStream(source, mimeType)
-      .setPolicy(policyObject)
-      .setAuthProvider(this.authProvider);
-    if (eo) {
-      tdf.setEntity(eo);
-    }
-    await tdf.addKeyAccess({
-      type: offline ? 'wrapped' : 'remote',
-      url: kasPublicKey.url,
-      kid: kasPublicKey.kid,
-      publicKey: kasPublicKey.pem,
-      metadata,
-    });
-
-    const { keyForEncryption, keyForManifest } = await (keyMiddleware as EncryptKeyMiddleware)();
-
     const byteLimit = asHtml ? HTML_BYTE_LIMIT : GLOBAL_BYTE_LIMIT;
-    const stream = await (streamMiddleware as EncryptStreamMiddleware)(
-      await tdf.writeStream({
-        byteLimit,
-        progressHandler: this.clientConfig.progressHandler,
-        keyForEncryption,
-        keyForManifest,
+    const encryptionInformation = new SplitKey(new AesGcmCipher(this.cryptoService));
+    let attributeSet: undefined | AttributeSet;
+    let entity: undefined | EntityObject;
+    if (eo) {
+      entity = eo;
+      const s = new AttributeSet();
+      eo.attributes.forEach((attr) => s.addJwtAttribute(attr));
+      attributeSet = s;
+    }
+    encryptionInformation.keyAccess.push(
+      await buildKeyAccess({
+        attributeSet,
+        type: offline ? 'wrapped' : 'remote',
+        url: kasPublicKey.url,
+        kid: kasPublicKey.kid,
+        publicKey: kasPublicKey.publicKey,
+        metadata,
       })
     );
+    const { keyForEncryption, keyForManifest } = await (keyMiddleware as EncryptKeyMiddleware)();
+    const ecfg: EncryptConfiguration = {
+      allowedKases: this.allowedKases,
+      attributeSet,
+      byteLimit,
+      cryptoService: this.cryptoService,
+      encryptionInformation,
+      entity,
+      privateKey: sessionKeys.keypair.privateKey,
+      publicKey: sessionKeys.keypair.publicKey,
+      segmentSizeDefault: windowSize,
+      integrityAlgorithm: 'HS256',
+      segmentIntegrityAlgorithm: 'GMAC',
+      contentStream: source,
+      mimeType,
+      policy: policyObject,
+      authProvider: this.authProvider,
+      progressHandler: this.clientConfig.progressHandler,
+      keyForEncryption,
+      keyForManifest,
+    };
+
+    const stream = await (streamMiddleware as EncryptStreamMiddleware)(await writeStream(ecfg));
 
     if (!asHtml) {
       return stream;
@@ -413,10 +449,10 @@ export class Client {
 
     // Wrap if it's html.
     // FIXME: Support streaming for html format.
-    if (!tdf.manifest) {
+    if (!stream.manifest) {
       throw new Error('Missing manifest in encrypt function');
     }
-    const htmlBuf = TDF.wrapHtml(await stream.toBuffer(), tdf.manifest, this.readerUrl ?? '');
+    const htmlBuf = wrapHtml(await stream.toBuffer(), stream.manifest, this.readerUrl ?? '');
 
     if (output) {
       output.push(htmlBuf);
@@ -457,25 +493,25 @@ export class Client {
         publicKey: sessionKeys.keypair.publicKey,
       });
     }
-    const tdf = TDF.create({ cryptoService: this.cryptoService })
-      .setPrivateKey(sessionKeys.keypair.privateKey)
-      .setPublicKey(sessionKeys.keypair.publicKey)
-      .setAllowedKases(this.allowedKases)
-      .setAuthProvider(this.authProvider);
-    if (entityObject) {
-      tdf.setEntity(entityObject);
+    if (!this.authProvider) {
+      throw new Error('AuthProvider missing');
     }
     const chunker = await makeChunkable(source);
 
     // Await in order to catch any errors from this call.
     // TODO: Write error event to stream and don't await.
     return await (streamMiddleware as DecryptStreamMiddleware)(
-      await tdf.readStream(
+      await readStream({
+        ...sessionKeys.keypair,
+        allowedKases: this.allowedKases,
+        authProvider: this.authProvider,
         chunker,
+        cryptoService: this.cryptoService,
+        entity: entityObject,
+        fileStreamServiceWorker: this.clientConfig.fileStreamServiceWorker,
         keyMiddleware,
-        this.clientConfig.progressHandler,
-        this.clientConfig.fileStreamServiceWorker
-      )
+        progressHandler: this.clientConfig.progressHandler,
+      })
     );
   }
 
@@ -496,24 +532,6 @@ export class Client {
     const manifest = await zipHelper.getManifest(centralDirectory, '0.manifest.json');
     const policyJson = base64.decode(manifest.encryptionInformation.policy);
     return JSON.parse(policyJson).uuid;
-  }
-
-  /*
-   * Create a policy object for an encrypt operation.
-   */
-  _createPolicyObject(scope: Scope): Policy {
-    if (scope.policyObject) {
-      // use the client override if provided
-      return scope.policyObject;
-    }
-    const policyId = scope.policyId ?? v4();
-    return {
-      uuid: policyId,
-      body: {
-        dataAttributes: scope.attributes ?? [],
-        dissem: scope.dissem ?? [],
-      },
-    };
   }
 }
 

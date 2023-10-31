@@ -30,7 +30,7 @@ const scenarios = {
 };
 
 for (const [name, { encryptSelector, decryptSelector }] of Object.entries(scenarios)) {
-  test(name, async ({ page }) => {
+  test(`roundtrip ${name}`, async ({ page }) => {
     page.on('download', (download) =>
       download.path().then((r) => console.log(`Saves ${download.suggestedFilename()} as ${r}`))
     );

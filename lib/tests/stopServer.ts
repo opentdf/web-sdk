@@ -1,4 +1,4 @@
-const http = require('http');
+import http from 'node:http';
 
 (() => {
   const options = {
@@ -17,4 +17,4 @@ const http = require('http');
   });
 
   req.end();
-})()
+})();
