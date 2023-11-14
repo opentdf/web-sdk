@@ -1,6 +1,5 @@
-/* eslint-disable no-undef */
-import { webcrypto } from 'crypto';
-import { ReadableStream } from 'stream/web';
+import { webcrypto } from 'node:crypto';
+import { ReadableStream } from 'node:stream/web';
 import { JSDOM } from 'jsdom';
 
 if (typeof globalThis.ReadableStream === 'undefined') {
@@ -24,12 +23,7 @@ function copyProps(src: string, target: Record<string, unknown>) {
   Object.defineProperties(target, props);
 }
 
-globalThis.document ??= {
-  // @ts-expect-error: safda not valid
-  createElement: console.log,
-  // @ts-expect-error: safda not valid
-  documentElement: { style: {} },
-};
+globalThis.document ??= window.document;
 
 // @ts-expect-error: safda not valid
 globalThis.window ??= window;
