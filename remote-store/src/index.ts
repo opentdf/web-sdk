@@ -1,7 +1,6 @@
 import {
   S3Client,
   GetObjectCommand,
-  HeadObjectCommand,
   S3ClientConfig,
   AbortMultipartUploadCommandOutput,
   CompleteMultipartUploadCommandOutput,
@@ -92,19 +91,6 @@ export const setRemoteStoreAsStream = async (
   }
 
   const s3 = new S3Client(storageParams);
-
-  const s3Metadata = await s3.send(
-    new HeadObjectCommand({
-      Key: FILE_NAME,
-      Bucket: BUCKET_NAME,
-    })
-  );
-
-  if (typeof s3Metadata.ContentLength === 'number') {
-    if ((builder as DecryptParamsBuilder).setContentLength) {
-      (builder as DecryptParamsBuilder).setContentLength(s3Metadata.ContentLength);
-    }
-  }
 
   const s3download = await s3.send(
     new GetObjectCommand({
