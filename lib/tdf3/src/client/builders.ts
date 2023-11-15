@@ -32,7 +32,6 @@ export type EncryptParams = {
   scope?: Scope;
   metadata?: Metadata;
   keypair?: CryptoKeyPair;
-  contentLength?: number;
   offline?: boolean;
   windowSize?: number;
   asHtml?: boolean;
@@ -72,15 +71,6 @@ class EncryptParamsBuilder {
     }
   ) {
     this._params = { ...params };
-  }
-
-  setContentLength(contentLength: number) {
-    this._params.contentLength = contentLength;
-  }
-
-  withContentLength(contentLength: number) {
-    this.setContentLength(contentLength);
-    return this;
   }
 
   getStreamSource(): EncryptParams['source'] | undefined {
@@ -485,12 +475,11 @@ export type DecryptSource =
   | { type: 'file-browser'; location: Blob };
 
 export type DecryptParams = {
-  source: DecryptSource;
-  opts?: { keypair: PemKeyPair };
   eo?: EntityObject;
+  source: DecryptSource;
   keyMiddleware?: DecryptKeyMiddleware;
   streamMiddleware?: DecryptStreamMiddleware;
-} & Pick<EncryptParams, 'contentLength' | 'keypair'>;
+};
 
 /**
  * A builder capable of constructing the necessary parameters object for a
@@ -516,15 +505,6 @@ class DecryptParamsBuilder {
     this._params = {
       ...to_copy,
     };
-  }
-
-  setContentLength(contentLength: number) {
-    this._params.contentLength = contentLength;
-  }
-
-  withContentLength(contentLength: number) {
-    this.setContentLength(contentLength);
-    return this;
   }
 
   getStreamSource(): DecryptSource | undefined {
