@@ -4,8 +4,7 @@ import Header from './models/Header.js';
 import Payload from './models/Payload.js';
 import Signature from './models/Signature.js';
 import EncodingEnum from './enum/EncodingEnum.js';
-import InvalidDataTypeError from './errors/InvalidDataTypeError.js';
-import SignatureError from './errors/SignatureError.js';
+import { InvalidDataTypeError, SignatureError } from '../errors.js';
 
 // Defaults when none set during encryption
 
@@ -67,10 +66,10 @@ export default class NanoTDF {
 
     // Singature checking
     if (!header.hasSignature && signature.length > 0) {
-      throw new SignatureError(header.hasSignature);
+      throw new SignatureError("Found signature when there shouldn't be one");
     }
     if (header.hasSignature && signature.length === 0) {
-      throw new SignatureError(header.hasSignature);
+      throw new SignatureError('Could not find signature');
     }
 
     return new NanoTDF(header, payload, signature);

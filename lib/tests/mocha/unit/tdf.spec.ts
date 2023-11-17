@@ -1,8 +1,8 @@
 import { expect } from 'chai';
 
-import { TDF } from '../../../tdf3/src/index.js';
-import * as cryptoService from '../../../tdf3/src/crypto/index.js';
-import { AesGcmCipher } from '../../../tdf3/src/ciphers/aes-gcm-cipher.js';
+import * as TDF from '../../../tdf3/src/tdf.js';
+import { TdfError } from '../../../src/errors.js';
+
 const sampleCert = `
 -----BEGIN CERTIFICATE-----
 MIIFnjCCA4YCCQCnKw0cfbMLJTANBgkqhkiG9w0BAQsFADCBkDELMAkGA1UEBhMC
@@ -40,22 +40,6 @@ HJg=
 `.trim();
 
 describe('TDF', () => {
-  it('constructs', () => {
-    const actual = new TDF({ cryptoService });
-    expect(actual).to.be.an.instanceof(TDF);
-  });
-
-  it('creates', () => {
-    const actual = TDF.create({ cryptoService });
-    expect(actual).to.be.an.instanceof(TDF);
-  });
-
-  it('allowedKases', () => {
-    const cfg = { allowedKases: ['https://local.virtru.com'], cryptoService };
-    const actual = TDF.create(cfg);
-    expect(actual.allowedKases).to.contain('https://local.virtru.com');
-  });
-
   it('Encodes the postMessage origin properly in wrapHtml', () => {
     const cipherText = 'abcezas123';
     const transferUrl = 'https://local.virtru.com/start?htmlProtocol=1';
@@ -77,19 +61,6 @@ describe('TDF', () => {
     expect(TDF.unwrapHtml(new TextDecoder().decode(wrapped))).to.eql(cipherText);
   });
 
-  it('should fail on invalid cypher param', () => {
-    try {
-      TDF.create({ cryptoService }).createCipher('nonexistent cypher');
-    } catch (e) {
-      expect(e.message).to.include('nonexistent cypher');
-    }
-  });
-
-  it('should return cypher', () => {
-    const cypher = TDF.create({ cryptoService }).createCipher('aes-256-gcm');
-    expect(cypher instanceof AesGcmCipher).to.equal(true);
-  });
-
   it('should return key', async () => {
     const pem = await TDF.extractPemFromKeyString(sampleCert);
     expect(pem).to.include('-----BEGIN PUBLIC KEY-----');
@@ -103,9 +74,21 @@ describe('TDF', () => {
     const pem = await TDF.extractPemFromKeyString(sampleKey);
     expect(pem).to.equal(sampleKey);
   });
+});
 
-  it('should ensure that policy id is uuid format', async () => {
-    const uuid = await TDF.create({ cryptoService }).generatePolicyUuid();
-    expect(uuid).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+describe('fetchKasPublicKey', async () => {
+  it('missing kas names throw', async () => {
+    try {
+      await TDF.fetchKasPublicKey('');
+      expect.fail('did not throw');
+    } catch (e) {
+      expect(e).to.be.an.instanceof(TdfError);
+    }
+  });
+
+  it('localhost kas is valid', async () => {
+    const pk2 = await TDF.fetchKasPublicKey('http://localhost:3000');
+    expect(pk2.publicKey).to.include('BEGIN CERTIFICATE');
+    expect(pk2.kid).to.equal('kid-a');
   });
 });

@@ -1,11 +1,12 @@
 import { AttributeValidator } from './validation.js';
-import { AttributeObject, Policy } from '../models/index.js';
-import { type RcaParams, type RcaLink, type Metadata } from '../tdf.js';
+import { AttributeObject, KeyInfo, Policy } from '../models/index.js';
+import { type Metadata } from '../tdf.js';
 import { Binary } from '../binary.js';
 
-import { IllegalArgumentError } from '../errors.js';
+import { IllegalArgumentError } from '../../../src/errors.js';
 import { PemKeyPair } from '../crypto/declarations.js';
 import { EntityObject } from '../../../src/tdf/EntityObject.js';
+import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 
 export const DEFAULT_SEGMENT_SIZE: number = 1024 * 1024;
 export type Scope = {
@@ -15,6 +16,15 @@ export type Scope = {
   attributes?: AttributeObject[];
 };
 
+export type EncryptKeyMiddleware = (...args: unknown[]) => Promise<{
+  keyForEncryption: KeyInfo;
+  keyForManifest: KeyInfo;
+}>;
+
+export type EncryptStreamMiddleware = (
+  stream: DecoratedReadableStream
+) => Promise<DecoratedReadableStream>;
+
 export type EncryptParams = {
   source: ReadableStream<Uint8Array>;
   opts?: { keypair: PemKeyPair };
@@ -22,15 +32,15 @@ export type EncryptParams = {
   scope?: Scope;
   metadata?: Metadata;
   keypair?: CryptoKeyPair;
-  contentLength?: number;
   offline?: boolean;
   windowSize?: number;
   asHtml?: boolean;
-  rcaSource?: boolean;
   getPolicyId?: () => Scope['policyId'];
   mimeType?: string;
   eo?: EntityObject;
   payloadKey?: Binary;
+  keyMiddleware?: EncryptKeyMiddleware;
+  streamMiddleware?: EncryptStreamMiddleware;
 };
 
 // 'Readonly<EncryptParams>': scope, metadata, offline, windowSize, asHtml
@@ -58,19 +68,9 @@ class EncryptParamsBuilder {
       offline: false,
       windowSize: DEFAULT_SEGMENT_SIZE,
       asHtml: false,
-      rcaSource: false,
     }
   ) {
     this._params = { ...params };
-  }
-
-  setContentLength(contentLength: number) {
-    this._params.contentLength = contentLength;
-  }
-
-  withContentLength(contentLength: number) {
-    this.setContentLength(contentLength);
-    return this;
   }
 
   getStreamSource(): EncryptParams['source'] | undefined {
@@ -423,18 +423,6 @@ class EncryptParamsBuilder {
   }
 
   /**
-   * @param isRcaSource{boolean}
-   */
-  setRcaSource(isRcaSource: boolean) {
-    this._params.rcaSource = isRcaSource;
-  }
-
-  withRcaSource(): EncryptParamsBuilder {
-    this.setRcaSource(true);
-    return this;
-  }
-
-  /**
    * Gets the (consumer provided) mime type of the file to be protected
    */
   getMimeType(): string | undefined {
@@ -474,6 +462,12 @@ class EncryptParamsBuilder {
   }
 }
 
+export type DecryptKeyMiddleware = (key: Binary) => Promise<Binary>;
+
+export type DecryptStreamMiddleware = (
+  stream: DecoratedReadableStream
+) => Promise<DecoratedReadableStream>;
+
 export type DecryptSource =
   | { type: 'buffer'; location: Uint8Array }
   | { type: 'remote'; location: string }
@@ -481,11 +475,11 @@ export type DecryptSource =
   | { type: 'file-browser'; location: Blob };
 
 export type DecryptParams = {
-  source: DecryptSource;
-  opts?: { keypair: PemKeyPair };
-  rcaSource?: RcaParams;
   eo?: EntityObject;
-} & Pick<EncryptParams, 'contentLength' | 'keypair'>;
+  source: DecryptSource;
+  keyMiddleware?: DecryptKeyMiddleware;
+  streamMiddleware?: DecryptStreamMiddleware;
+};
 
 /**
  * A builder capable of constructing the necessary parameters object for a
@@ -511,15 +505,6 @@ class DecryptParamsBuilder {
     this._params = {
       ...to_copy,
     };
-  }
-
-  setContentLength(contentLength: number) {
-    this._params.contentLength = contentLength;
-  }
-
-  withContentLength(contentLength: number) {
-    this.setContentLength(contentLength);
-    return this;
   }
 
   getStreamSource(): DecryptSource | undefined {
@@ -648,39 +633,6 @@ class DecryptParamsBuilder {
    */
   withArrayBufferSource(arraybuffer: ArrayBuffer): DecryptParamsBuilder {
     this.setArrayBufferSource(arraybuffer);
-    return this;
-  }
-
-  /**
-   * @param rcaParams
-   */
-  setRcaSource(rcaParams: RcaParams | RcaLink) {
-    let params;
-
-    if (typeof rcaParams === 'object') {
-      params = { ...rcaParams };
-    } else if (typeof rcaParams === 'string') {
-      params = Object.fromEntries(new URLSearchParams(rcaParams));
-    }
-
-    if (!params?.pu || !params?.wu) {
-      throw new Error(`RCA link [${rcaParams}] is missing parameters!`);
-    }
-
-    const { pu, wu, wk, al } = params;
-
-    this.setUrlSource(wu);
-
-    this._params.rcaSource = { pu, wu, wk, al };
-  }
-
-  /**
-   * Use it with .withStreamSource
-   * @param rcaParams
-   * @returns {DecryptParamsBuilder}
-   */
-  withRcaSource(rcaParams: RcaParams | RcaLink): DecryptParamsBuilder {
-    this.setRcaSource(rcaParams);
     return this;
   }
 

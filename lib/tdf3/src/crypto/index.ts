@@ -14,7 +14,7 @@ import {
   MIN_ASYMMETRIC_KEY_SIZE_BITS,
   PemKeyPair,
 } from './declarations.js';
-import { TdfDecryptError } from '../errors.js';
+import { TdfDecryptError } from '../../../src/errors.js';
 import { formatAsPem, removePemFormatting } from './crypto-utils.js';
 import { encodeArrayBuffer as hexEncode } from '../../../src/encodings/hex.js';
 import {
@@ -169,8 +169,8 @@ export async function decryptWithPrivateKey(
   encryptedPayload: Binary,
   privateKey: string
 ): Promise<Binary> {
-  console.assert(typeof encryptedPayload === 'object');
-  console.assert(typeof privateKey === 'string');
+  console.assert(typeof encryptedPayload === 'object', 'encryptedPayload must be object');
+  console.assert(typeof privateKey === 'string', 'privateKey must be string');
 
   const algoDomString = rsaOaepSha1();
 

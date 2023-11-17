@@ -1,5 +1,5 @@
 import { type AxiosResponseHeaders, type RawAxiosResponseHeaders } from 'axios';
-import { UnsafeUrlError } from '../tdf3/src/errors.js';
+import { UnsafeUrlError } from './errors.js';
 
 /**
  * Check to see if the given URL is 'secure'. This assumes:

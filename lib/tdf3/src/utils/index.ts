@@ -1,5 +1,9 @@
 import { toByteArray, fromByteArray } from 'base64-js';
 import { AppIdAuthProvider, AuthProvider } from '../../../src/auth/auth.js';
+import * as WebCryptoService from '../crypto/index.js';
+import { KeyInfo, SplitKey } from '../models/index.js';
+
+import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
 
 export { ZipReader, readUInt64LE } from './zip-reader.js';
 export { ZipWriter } from './zip-writer.js';
@@ -277,4 +281,28 @@ function base64clean(str: string) {
 
 export function base64ToBytes(str: string) {
   return toByteArray(base64clean(str));
+}
+
+/**
+ *
+ * Function generates key, it returned both KeyForEncryption and KeyForManifest.
+ *   `KeyForEncryption === KeyForManifest` produces true;
+ *
+ * @returns {Object}:
+ * {
+ *   keyForEncryption: Binary;
+ *   keyForManifest: Binary;
+ * }
+ */
+export async function keyMiddleware(): Promise<{
+  keyForEncryption: KeyInfo;
+  keyForManifest: KeyInfo;
+}> {
+  const cipher = new AesGcmCipher(WebCryptoService);
+  const encryptionInformation = new SplitKey(cipher);
+  if (!encryptionInformation?.generateKey) {
+    throw new Error('Crypto service not initialised');
+  }
+  const key = await encryptionInformation.generateKey();
+  return { keyForEncryption: key, keyForManifest: key };
 }

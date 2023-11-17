@@ -10,8 +10,7 @@ import CurveNameEnum from '../enum/CurveNameEnum.js';
 // Helpers
 import { lengthOfPublicKey } from '../helpers/calculateByCurve.js';
 import DefaultParams from './DefaultParams.js';
-// Errors
-import InvalidEphemeralKeyError from '../errors/InvalidEphemeralKeyError.js';
+import { InvalidEphemeralKeyError } from '../../errors.js';
 
 /**
  * NanoTDF Header

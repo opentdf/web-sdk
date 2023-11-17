@@ -27,7 +27,6 @@ export class DecoratedReadableStream {
   on: EventEmitter['on'];
   emit: EventEmitter['emit'];
   metadata?: Metadata;
-  contentLength?: number;
   manifest: Manifest;
   upsertResponse?: UpsertResponse;
   fileStreamServiceWorker?: string;
@@ -110,7 +109,6 @@ export class DecoratedReadableStream {
     }
 
     const fileStream = streamSaver.createWriteStream(filepath, {
-      ...(this.contentLength && { size: this.contentLength }),
       writableStrategy: { highWaterMark: 1 },
       readableStrategy: { highWaterMark: 1 },
     });
