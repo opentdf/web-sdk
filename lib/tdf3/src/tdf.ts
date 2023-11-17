@@ -5,6 +5,7 @@ import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
 import { EntityObject } from '../../src/tdf/EntityObject.js';
 import { validateSecureUrl } from '../../src/utils.js';
 import { DecryptParams } from './client/builders.js';
+// import pLimit from 'p-limit';
 
 import {
   AttributeSet,
@@ -217,7 +218,7 @@ export async function fetchKasPublicKey(
     const response: { data: string | KasPublicKeyInfo } = await axios.get(`${kas}/kas_public_key`, {
       params: {
         ...params,
-        v: '2',
+        // v: '2',
       },
     });
     const publicKey =
@@ -981,6 +982,10 @@ export async function sliceAndDecrypt({
   cryptoService: CryptoService;
   segmentIntegrityAlgorithm: IntegrityAlgorithm;
 }) {
+  // const limit = pLimit(100);
+
+  const promises = [];
+
   for (const index in slice) {
     const { encryptedOffset, encryptedSegmentSize } = slice[index];
 
@@ -990,18 +995,28 @@ export async function sliceAndDecrypt({
       buffer.slice(offset, offset + (encryptedSegmentSize as number))
     );
 
-    slice[index].decryptedChunk = await decryptChunk(
-      encryptedChunk,
-      reconstructedKeyBinary,
-      slice[index]['hash'],
-      cipher,
-      segmentIntegrityAlgorithm,
-      cryptoService
-    );
-    if (slice[index]._resolve) {
-      (slice[index]._resolve as (value: unknown) => void)(null);
-    }
+    promises.push(
+      // limit(
+      //   () => (
+          decryptChunk(
+            encryptedChunk,
+            reconstructedKeyBinary,
+            slice[index]['hash'],
+            cipher,
+            segmentIntegrityAlgorithm,
+            cryptoService
+          ).then((decryptedChunk) => {
+            if (!decryptedChunk) return;
+            slice[index].decryptedChunk = decryptedChunk;
+            if (slice[index]._resolve) {
+              (slice[index]._resolve as (value: unknown) => void)(null);
+            }
+          })
+      //   )
+      // )
+    )
   }
+  await Promise.all(promises);
 }
 
 export async function readStream(cfg: DecryptConfiguration) {
@@ -1061,7 +1076,8 @@ export async function readStream(cfg: DecryptConfiguration) {
 
   const cipher = new AesGcmCipher(cfg.cryptoService);
 
-  await updateChunkQueue(
+  // no await here
+  updateChunkQueue(
     Array.from(chunkMap.values()),
     centralDirectory,
     zipReader,

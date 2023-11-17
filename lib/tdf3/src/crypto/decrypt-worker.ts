@@ -1,4 +1,4 @@
-import { TdfDecryptError } from '../errors.js';
+import { TdfDecryptError } from '../../../src/errors.js';
 
 const maxWorkers = navigator?.hardwareConcurrency || 4;
 
@@ -8,24 +8,22 @@ interface DecryptData {
   algo: AesCbcParams | AesGcmParams;
 }
 
-const workerScript = async (event: { data: DecryptData }) => {
-  const { key, encryptedPayload, algo } = event.data;
+const workerScript = `
+  self.onmessage = async (event) => {
+    const { key, encryptedPayload, algo } = event.data;
 
-  try {
-    const decryptedData = await crypto.subtle.decrypt(
-      algo,
-      key,
-      encryptedPayload
-    );
-    self.postMessage({ success: true, data: decryptedData });
-  } catch (error) {
-    self.postMessage({ success: false, error: error.message });
-  }
-};
+    try {
+      const decryptedData = await crypto.subtle.decrypt(algo, key, encryptedPayload);
+      self.postMessage({ success: true, data: decryptedData });
+    } catch (error) {
+      self.postMessage({ success: false, error: error.message });
+    }
+  };
+`;
 
-const workerBlob = new Blob([`(${workerScript.toString()})()`], { type: 'application/javascript' });
+const workerBlob = new Blob([workerScript], { type: 'application/javascript' });
 const workerUrl = URL.createObjectURL(workerBlob);
-const workersArray: Worker[] = new Array(maxWorkers).fill(new Worker(workerUrl));
+const workersArray: Worker[] = Array.from({ length: maxWorkers }, () => new Worker(workerUrl));
 
 interface WorkersQueue {
   freeWorkers: Worker[];
