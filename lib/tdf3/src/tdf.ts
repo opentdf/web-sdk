@@ -996,25 +996,23 @@ export async function sliceAndDecrypt({
     );
 
     promises.push(
-      limit(
-        () => (
-          decryptChunk(
-            encryptedChunk,
-            reconstructedKeyBinary,
-            slice[index]['hash'],
-            cipher,
-            segmentIntegrityAlgorithm,
-            cryptoService
-          ).then((decryptedChunk) => {
-            if (!decryptedChunk) return;
-            slice[index].decryptedChunk = decryptedChunk;
-            if (slice[index]._resolve) {
-              (slice[index]._resolve as (value: unknown) => void)(null);
-            }
-          })
-        )
+      limit(() =>
+        decryptChunk(
+          encryptedChunk,
+          reconstructedKeyBinary,
+          slice[index]['hash'],
+          cipher,
+          segmentIntegrityAlgorithm,
+          cryptoService
+        ).then((decryptedChunk) => {
+          if (!decryptedChunk) return;
+          slice[index].decryptedChunk = decryptedChunk;
+          if (slice[index]._resolve) {
+            (slice[index]._resolve as (value: unknown) => void)(null);
+          }
+        })
       )
-    )
+    );
   }
   await Promise.all(promises);
 }

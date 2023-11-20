@@ -29,7 +29,7 @@ interface WorkersQueue {
   freeWorkers: Worker[];
   resolvers: ((worker: Worker) => void)[];
   push: (worker: Worker) => void;
-  pop: () => Promise<Worker>,
+  pop: () => Promise<Worker>;
 }
 
 const workersQueue: WorkersQueue = {
@@ -54,8 +54,8 @@ const workersQueue: WorkersQueue = {
         this.resolvers.push(resolve);
       }
     });
-  }
-}
+  },
+};
 
 export async function decrypt(data: DecryptData): Promise<ArrayBuffer> {
   const worker: Worker = await workersQueue.pop();
@@ -64,7 +64,7 @@ export async function decrypt(data: DecryptData): Promise<ArrayBuffer> {
       const { success, data, error } = event.data;
       workersQueue.push(worker);
       if (success) {
-        resolve((data as ArrayBuffer));
+        resolve(data as ArrayBuffer);
       } else {
         reject(new TdfDecryptError(error));
       }
@@ -72,4 +72,4 @@ export async function decrypt(data: DecryptData): Promise<ArrayBuffer> {
 
     worker.postMessage(data);
   });
-};
+}

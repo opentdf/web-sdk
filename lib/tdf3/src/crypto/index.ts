@@ -276,11 +276,13 @@ async function _doDecrypt(
   algoDomString.iv = iv.asArrayBuffer();
 
   try {
-    const decrypted = (
-      navigator?.hardwareConcurrency
-        ? await workerDecrypt({ key: importedKey, encryptedPayload: payloadBuffer, algo: algoDomString })
-        : await crypto.subtle.decrypt(algoDomString, importedKey, payloadBuffer)
-    )
+    const decrypted = navigator?.hardwareConcurrency
+      ? await workerDecrypt({
+          key: importedKey,
+          encryptedPayload: payloadBuffer,
+          algo: algoDomString,
+        })
+      : await crypto.subtle.decrypt(algoDomString, importedKey, payloadBuffer);
 
     return { payload: Binary.fromArrayBuffer(decrypted) };
   } catch (err) {
