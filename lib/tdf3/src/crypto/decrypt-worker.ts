@@ -1,6 +1,6 @@
 import { TdfDecryptError } from '../../../src/errors.js';
 
-const maxWorkers = navigator?.hardwareConcurrency || 4;
+const maxWorkers = navigator?.hardwareConcurrency || 4; // save fallback number
 
 interface DecryptData {
   key: CryptoKey;

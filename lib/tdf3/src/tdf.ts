@@ -5,7 +5,7 @@ import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
 import { EntityObject } from '../../src/tdf/EntityObject.js';
 import { validateSecureUrl } from '../../src/utils.js';
 import { DecryptParams } from './client/builders.js';
-// import pLimit from 'p-limit';
+import pLimit from 'p-limit';
 
 import {
   AttributeSet,
@@ -923,7 +923,7 @@ async function updateChunkQueue(
   segmentIntegrityAlgorithm: IntegrityAlgorithm,
   cryptoService: CryptoService
 ) {
-  const chunksInOneDownload = 500;
+  const chunksInOneDownload = 300;
   let requests = [];
   const maxLength = 3;
 
@@ -982,7 +982,7 @@ export async function sliceAndDecrypt({
   cryptoService: CryptoService;
   segmentIntegrityAlgorithm: IntegrityAlgorithm;
 }) {
-  // const limit = pLimit(100);
+  const limit = pLimit(navigator.hardwareConcurrency || 4); // save fallback number
 
   const promises = [];
 
@@ -996,8 +996,8 @@ export async function sliceAndDecrypt({
     );
 
     promises.push(
-      // limit(
-      //   () => (
+      limit(
+        () => (
           decryptChunk(
             encryptedChunk,
             reconstructedKeyBinary,
@@ -1012,8 +1012,8 @@ export async function sliceAndDecrypt({
               (slice[index]._resolve as (value: unknown) => void)(null);
             }
           })
-      //   )
-      // )
+        )
+      )
     )
   }
   await Promise.all(promises);
