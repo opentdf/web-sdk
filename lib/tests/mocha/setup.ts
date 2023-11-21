@@ -12,6 +12,13 @@ if (typeof globalThis.crypto === 'undefined') {
   globalThis.crypto = webcrypto;
 }
 
+if (typeof globalThis.Worker === 'undefined') {
+  // @ts-expect-error: custom Worker class
+  globalThis.Worker = class Worker {
+    constructor() {}
+  };
+}
+
 const jsdom = new JSDOM('<!doctype html><html><body></body></html>');
 const { window } = jsdom;
 

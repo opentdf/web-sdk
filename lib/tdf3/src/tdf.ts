@@ -218,7 +218,7 @@ export async function fetchKasPublicKey(
     const response: { data: string | KasPublicKeyInfo } = await axios.get(`${kas}/kas_public_key`, {
       params: {
         ...params,
-        // v: '2',
+        v: '2',
       },
     });
     const publicKey =
