@@ -10,21 +10,8 @@ import {
 } from './nanotdf/index.js';
 import { keyAgreement } from './nanotdf-crypto/index.js';
 import { TypedArray, createAttribute, Policy } from './tdf/index.js';
-import { AuthProvider } from './auth/auth.js';
 import { fetchECKasPubKey } from './access.js';
 import { ClientConfig } from './nanotdf/Client.js';
-import { pemToCryptoPublicKey } from './utils.js';
-
-async function fetchKasPubKey(kasUrl: string): Promise<CryptoKey> {
-  const kasPubKeyResponse = await fetch(`${kasUrl}/kas_public_key?algorithm=ec:secp256r1`);
-  if (!kasPubKeyResponse.ok) {
-    throw new Error(
-      `Unable to validate KAS [${kasUrl}]. Received [${kasPubKeyResponse.status}:${kasPubKeyResponse.statusText}]`
-    );
-  }
-  const pem = await kasPubKeyResponse.json();
-  return pemToCryptoPublicKey(pem);
-}
 
 /**
  * NanoTDF SDK Client
