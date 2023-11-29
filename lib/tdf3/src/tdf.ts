@@ -18,6 +18,8 @@ import {
   UpsertResponse,
   Wrapped as KeyAccessWrapped,
   KeyAccess,
+  KeyAccessObject,
+  SplitType,
 } from './models/index.js';
 import { base64 } from '../../src/encodings/index.js';
 import {
@@ -69,7 +71,7 @@ export type EncryptionOptions = {
   /**
    * Defaults to `split`, the currently only implmented key wrap algorithm.
    */
-  type?: string;
+  type?: SplitType;
   // Defaults to AES-256-GCM for the encryption.
   cipher?: string;
 };
@@ -91,6 +93,7 @@ export type BuildKeyAccess = {
   publicKey: string;
   attributeUrl?: string;
   metadata?: Metadata;
+  split?: string;
 };
 
 type Segment = {
@@ -341,6 +344,7 @@ export async function buildKeyAccess({
   kid,
   attributeUrl,
   metadata,
+  split = '',
 }: BuildKeyAccess): Promise<KeyAccess> {
   /** Internal function to keep it DRY */
   function createKeyAccess(
@@ -352,9 +356,9 @@ export async function buildKeyAccess({
   ) {
     switch (type) {
       case 'wrapped':
-        return new KeyAccessWrapped(kasUrl, kasKeyIdentifier, pubKey, metadata);
+        return new KeyAccessWrapped(kasUrl, kasKeyIdentifier, pubKey, metadata, split);
       case 'remote':
-        return new KeyAccessRemote(kasUrl, kasKeyIdentifier, pubKey, metadata);
+        return new KeyAccessRemote(kasUrl, kasKeyIdentifier, pubKey, metadata, split);
       default:
         throw new KeyAccessError(`buildKeyAccess: Key access type ${type} is unknown`);
     }
@@ -801,6 +805,29 @@ async function loadTDFStream(
   return { manifest, zipReader, centralDirectory };
 }
 
+export function splitLookupTableFactory(keyAccess: KeyAccessObject[], allowedKases: string[]): Record<string, Record<string, KeyAccessObject>> {
+  const splitIds = new Set(keyAccess.map(({split}) => split || ''));
+  const accessibleSplits = new Set(keyAccess.filter(({url}) => allowedKases.includes(url)).map(({split}) => split));
+  if (splitIds.size > accessibleSplits.size) {
+    const disallowedKases = new Set(keyAccess.filter(({url}) => !allowedKases.includes(url)).map(({url}) => url));
+    throw new KasDecryptError(
+      `Unreconstructable key - disallowed KASes include: [${JSON.stringify(disallowedKases)}] from splitIds [${JSON.stringify(splitIds)}]`
+    );
+  }
+  const splitPotentials: Record<string, Record<string, KeyAccessObject>> = Object.fromEntries([...splitIds].map(s => [s, {}]));
+  for (const kao of keyAccess) {
+    const disjunction  = splitPotentials[kao.split || ''];
+    if (kao.url in disjunction) {
+      throw new KasDecryptError(`TODO: Fallback to no split ids. Repetition found for [${kao.url}] on split [${kao.split}]`);
+    }
+    if (allowedKases.includes(kao.url)) {
+      disjunction[kao.url] = kao;
+    }
+  }
+  return splitPotentials;
+  
+}
+
 async function unwrapKey({
   manifest,
   allowedKases,
@@ -819,9 +846,11 @@ async function unwrapKey({
   cryptoService: CryptoService;
 }) {
   if (authProvider === undefined) {
-    throw new Error('Upsert can be done without auth provider');
+    throw new KasDecryptError('Upsert can be done without auth provider');
   }
   const { keyAccess } = manifest.encryptionInformation;
+  const splitPotentials = splitLookupTableFactory(keyAccess, allowedKases);
+
   let responseMetadata;
   const isAppIdProvider = authProvider && isAppIdProviderCheck(authProvider);
   const pkKeyLike = await importPKCS8(privateKey, 'RS256');
@@ -829,10 +858,15 @@ async function unwrapKey({
   // TODO: logic that runs on multiple KAS's
 
   const rewrappedKeys = await Promise.all(
-    keyAccess.map(async (keySplitInfo) => {
-      if (!allowedKases.includes(keySplitInfo.url)) {
-        throw new KasUpsertError(`Unexpected KAS url: [${keySplitInfo.url}]`);
+    Object.entries(splitPotentials).map(async ([splitId, potentials]) => {
+      if (!potentials || !Object.keys(potentials).length) {
+        throw new KasDecryptError(
+          `Unreconstructable key - no valid KAS found for split ${JSON.stringify(splitId)}`
+          );
       }
+      // TODO: If we have multiple ways of getting a value, try the 'best' way
+      // or maybe retry across all potential ways
+      const [keySplitInfo] = Object.values(potentials);
       const url = `${keySplitInfo.url}/${isAppIdProvider ? '' : 'v2/'}rewrap`;
 
       const requestBodyStr = JSON.stringify({

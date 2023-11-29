@@ -17,7 +17,8 @@ export class Wrapped {
     public readonly url: string,
     public readonly kid: string | undefined,
     public readonly publicKey: string,
-    public readonly metadata: unknown
+    public readonly metadata: unknown,
+    public readonly split: string
   ) {}
 
   async write(
@@ -48,6 +49,9 @@ export class Wrapped {
     if (this.kid) {
       this.keyAccessObject.kid = this.kid;
     }
+    if (this.split?.length) {
+      this.keyAccessObject.split = this.split;
+    }
 
     return this.keyAccessObject;
   }
@@ -63,7 +67,8 @@ export class Remote {
     public readonly url: string,
     public readonly kid: string | undefined,
     public readonly publicKey: string,
-    public readonly metadata: unknown
+    public readonly metadata: unknown,
+    public readonly split: string
   ) {}
 
   async write(
@@ -103,6 +108,7 @@ export class Remote {
 export type KeyAccess = Remote | Wrapped;
 
 export type KeyAccessObject = {
+  split?: string;
   type: KeyAccessType;
   url: string;
   kid?: string;

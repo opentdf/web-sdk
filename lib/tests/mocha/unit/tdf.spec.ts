@@ -76,6 +76,14 @@ describe('TDF', () => {
   });
 });
 
+describe('splitLookupTableFactory', () => {
+  it('throws when empty', () => {
+    
+  });
+});
+
+describe('', () => {});
+
 describe('fetchKasPublicKey', async () => {
   it('missing kas names throw', async () => {
     try {

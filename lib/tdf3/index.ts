@@ -10,6 +10,7 @@ import {
   type DecryptKeyMiddleware,
   type DecryptStreamMiddleware,
   EncryptParamsBuilder,
+  type SplitStep,
 } from './src/client/builders.js';
 import { type SessionKeys, type ClientConfig, createSessionKeys } from './src/client/index.js';
 import {
@@ -49,6 +50,7 @@ export type {
   EncryptStreamMiddleware,
   DecryptKeyMiddleware,
   DecryptStreamMiddleware,
+  SplitStep,
 };
 
 export {
