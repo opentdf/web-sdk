@@ -11,16 +11,7 @@ import {
 import { keyAgreement, extractPublicFromCertToCrypto } from './nanotdf-crypto/index.js';
 import { TypedArray, createAttribute, Policy } from './tdf/index.js';
 import { AuthProvider } from './auth/auth.js';
-
-async function fetchKasPubKey(kasUrl: string): Promise<string> {
-  const kasPubKeyResponse = await fetch(`${kasUrl}/kas_public_key?algorithm=ec:secp256r1`);
-  if (!kasPubKeyResponse.ok) {
-    throw new Error(
-      `Unable to validate KAS [${kasUrl}]. Received [${kasPubKeyResponse.status}:${kasPubKeyResponse.statusText}]`
-    );
-  }
-  return kasPubKeyResponse.json();
-}
+import { fetchECKasPubKey } from './access.js';
 
 /**
  * NanoTDF SDK Client
@@ -129,7 +120,7 @@ export class NanoTDFClient extends Client {
     delete this.iv;
 
     if (!this.kasPubKey) {
-      this.kasPubKey = await fetchKasPubKey(this.kasUrl);
+      this.kasPubKey = await fetchECKasPubKey(this.kasUrl);
     }
 
     // Create a policy for the tdf
@@ -253,7 +244,7 @@ export class NanoTDFDatasetClient extends Client {
       const ephemeralKeyPair = await this.generateEphemeralKeyPair();
 
       if (!this.kasPubKey) {
-        this.kasPubKey = await fetchKasPubKey(this.kasUrl);
+        this.kasPubKey = await fetchECKasPubKey(this.kasUrl);
       }
 
       // Create a policy for the tdf

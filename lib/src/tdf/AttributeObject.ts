@@ -15,11 +15,11 @@ export function createAttribute(
   kasUrl: string
 ): AttributeObject {
   return {
-    attribute: attribute,
+    attribute,
     isDefault: false,
     displayName: '',
-    pubKey: pubKey,
-    kasUrl: kasUrl,
+    pubKey,
+    kasUrl,
     schemaVersion: '1.1.0',
   };
 }

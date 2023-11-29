@@ -11,7 +11,7 @@ import {
 } from '../nanotdf-crypto/index.js';
 import getHkdfSalt from './helpers/getHkdfSalt.js';
 import DefaultParams from './models/DefaultParams.js';
-import { fetchWrappedKey } from '../kas.js';
+import { fetchWrappedKey } from '../access.js';
 import { AuthProvider, reqSignature } from '../auth/providers.js';
 import { safeUrlCheck, validateSecureUrl } from '../utils.js';
 
