@@ -3,7 +3,7 @@ import * as base64 from '../encodings/base64.js';
 import { generateKeyPair, keyAgreement } from '../nanotdf-crypto/index.js';
 import getHkdfSalt from './helpers/getHkdfSalt.js';
 import DefaultParams from './models/DefaultParams.js';
-import { fetchWrappedKey } from '../kas.js';
+import { fetchWrappedKey } from '../access.js';
 import { AuthProvider, isAuthProvider, reqSignature } from '../auth/providers.js';
 import {
   cryptoPublicToPem,

@@ -48,3 +48,14 @@ export async function fetchWrappedKey(
 
   return response.json();
 }
+
+export async function fetchECKasPubKey(kasEndpoint: string): Promise<string> {
+  const kasPubKeyResponse = await fetch(`${kasEndpoint}/kas_public_key?algorithm=ec:secp256r1`);
+  if (!kasPubKeyResponse.ok) {
+    throw new Error(
+      `Unable to validate KAS [${kasEndpoint}]. Received [${kasPubKeyResponse.status}:${kasPubKeyResponse.statusText}]`
+    );
+  }
+  return kasPubKeyResponse.json();
+}
+

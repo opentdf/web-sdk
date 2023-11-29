@@ -17,11 +17,11 @@ export async function createAttribute(
   kasUrl: string
 ): Promise<AttributeObject> {
   return {
-    attribute: attribute,
+    attribute,
     isDefault: false,
     displayName: '',
     pubKey: await cryptoPublicToPem(pubKey),
-    kasUrl: kasUrl,
+    kasUrl,
     schemaVersion: '1.1.0',
   };
 }

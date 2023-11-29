@@ -10,6 +10,8 @@ import {
 } from './nanotdf/index.js';
 import { keyAgreement } from './nanotdf-crypto/index.js';
 import { TypedArray, createAttribute, Policy } from './tdf/index.js';
+import { AuthProvider } from './auth/auth.js';
+import { fetchECKasPubKey } from './access.js';
 import { ClientConfig } from './nanotdf/Client.js';
 import { pemToCryptoPublicKey } from './utils.js';
 
@@ -132,7 +134,7 @@ export class NanoTDFClient extends Client {
     delete this.iv;
 
     if (!this.kasPubKey) {
-      this.kasPubKey = await fetchKasPubKey(this.kasUrl);
+      this.kasPubKey = await fetchECKasPubKey(this.kasUrl);
     }
 
     // Create a policy for the tdf
@@ -259,7 +261,7 @@ export class NanoTDFDatasetClient extends Client {
       const ephemeralKeyPair = await this.ephemeralKeyPair;
 
       if (!this.kasPubKey) {
-        this.kasPubKey = await fetchKasPubKey(this.kasUrl);
+        this.kasPubKey = await fetchECKasPubKey(this.kasUrl);
       }
 
       // Create a policy for the tdf
