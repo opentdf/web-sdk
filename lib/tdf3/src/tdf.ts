@@ -1061,7 +1061,8 @@ export async function readStream(cfg: DecryptConfiguration) {
 
   const cipher = new AesGcmCipher(cfg.cryptoService);
 
-  await updateChunkQueue(
+  // Not waiting for Promise to resolve
+  updateChunkQueue(
     Array.from(chunkMap.values()),
     centralDirectory,
     zipReader,
