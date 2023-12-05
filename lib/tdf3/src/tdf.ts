@@ -112,6 +112,7 @@ type Chunk = {
   encryptedSegmentSize?: number;
   decryptedChunk?: null | DecryptResult;
   _resolve?: (value: unknown) => void;
+  _reject?: (value: unknown) => void;
 };
 
 export type TDFConfiguration = {
@@ -946,7 +947,7 @@ async function updateChunkQueue(
             bufferSize
           );
           if (buffer) {
-            sliceAndDecrypt({
+            await sliceAndDecrypt({
               buffer,
               cryptoService,
               reconstructedKeyBinary,
@@ -982,7 +983,7 @@ export async function sliceAndDecrypt({
   segmentIntegrityAlgorithm: IntegrityAlgorithm;
 }) {
   for (const index in slice) {
-    const { encryptedOffset, encryptedSegmentSize } = slice[index];
+    const { encryptedOffset, encryptedSegmentSize, _resolve, _reject } = slice[index];
 
     const offset =
       slice[0].encryptedOffset === 0 ? encryptedOffset : encryptedOffset % slice[0].encryptedOffset;
@@ -990,17 +991,19 @@ export async function sliceAndDecrypt({
       buffer.slice(offset, offset + (encryptedSegmentSize as number))
     );
 
-    slice[index].decryptedChunk = await decryptChunk(
+    await decryptChunk(
       encryptedChunk,
       reconstructedKeyBinary,
       slice[index]['hash'],
       cipher,
       segmentIntegrityAlgorithm,
       cryptoService
-    );
-    if (slice[index]._resolve) {
-      (slice[index]._resolve as (value: unknown) => void)(null);
-    }
+    )
+      .then(result => {
+        slice[index].decryptedChunk = result;
+        return null;
+      })
+      .then(_resolve, _reject);
   }
 }
 
@@ -1082,8 +1085,9 @@ export async function readStream(cfg: DecryptConfiguration) {
 
       const [hash, chunk] = chunkMap.entries().next().value;
       if (!chunk.decryptedChunk) {
-        await new Promise((resolve) => {
+        await new Promise((resolve, reject) => {
           chunk._resolve = resolve;
+          chunk._reject = reject;
         });
       }
       const decryptedSegment = chunk.decryptedChunk;
