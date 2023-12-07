@@ -947,7 +947,7 @@ async function updateChunkQueue(
             bufferSize
           );
           if (buffer) {
-            await sliceAndDecrypt({
+            sliceAndDecrypt({
               buffer,
               cryptoService,
               reconstructedKeyBinary,
