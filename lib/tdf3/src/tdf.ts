@@ -999,7 +999,7 @@ export async function sliceAndDecrypt({
       segmentIntegrityAlgorithm,
       cryptoService
     )
-      .then(result => {
+      .then((result) => {
         slice[index].decryptedChunk = result;
         return null;
       })
