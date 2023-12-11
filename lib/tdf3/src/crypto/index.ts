@@ -5,6 +5,7 @@
  */
 
 import { Algorithms } from '../ciphers/index.js';
+import { decrypt as workerDecrypt } from './decrypt-worker.js';
 import { Binary } from '../binary.js';
 import {
   CryptoService,
@@ -274,17 +275,23 @@ async function _doDecrypt(
   const importedKey = await _importKey(key, algoDomString);
   algoDomString.iv = iv.asArrayBuffer();
 
-  const decrypted = await crypto.subtle
-    .decrypt(algoDomString, importedKey, payloadBuffer)
-    // Catching this error so we can specifically check for OperationError
-    .catch((err) => {
-      if (err.name === 'OperationError') {
-        throw new TdfDecryptError(err);
-      }
+  try {
+    const decrypted = navigator?.hardwareConcurrency
+      ? await workerDecrypt({
+          key: importedKey,
+          encryptedPayload: payloadBuffer,
+          algo: algoDomString,
+        })
+      : await crypto.subtle.decrypt(algoDomString, importedKey, payloadBuffer);
 
-      throw err;
-    });
-  return { payload: Binary.fromArrayBuffer(decrypted) };
+    return { payload: Binary.fromArrayBuffer(decrypted) };
+  } catch (err) {
+    if (err.name === 'OperationError') {
+      throw new TdfDecryptError(err);
+    }
+
+    throw err;
+  }
 }
 
 function _importKey(key: Binary, algorithm: AesCbcParams | AesGcmParams) {

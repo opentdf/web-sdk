@@ -1,5 +1,3 @@
-import './mocha/setup.js';
-
 import * as jose from 'jose';
 import { IncomingMessage, RequestListener, createServer } from 'node:http';
 
