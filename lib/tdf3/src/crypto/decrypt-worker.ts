@@ -32,7 +32,7 @@ interface WorkersQueue {
   pop: () => Promise<Worker>;
 }
 
-const workersQueue: WorkersQueue = {
+export const workersQueue: WorkersQueue = {
   freeWorkers: [...workersArray],
   resolvers: [],
 
