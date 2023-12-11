@@ -111,7 +111,9 @@ type Chunk = {
   encryptedOffset: number;
   encryptedSegmentSize?: number;
   decryptedChunk?: null | DecryptResult;
+  promise: Promise<unknown>;
   _resolve?: (value: unknown) => void;
+  _reject?: (value: unknown) => void;
 };
 
 export type TDFConfiguration = {
@@ -982,7 +984,7 @@ export async function sliceAndDecrypt({
   segmentIntegrityAlgorithm: IntegrityAlgorithm;
 }) {
   for (const index in slice) {
-    const { encryptedOffset, encryptedSegmentSize } = slice[index];
+    const { encryptedOffset, encryptedSegmentSize, _resolve, _reject } = slice[index];
 
     const offset =
       slice[0].encryptedOffset === 0 ? encryptedOffset : encryptedOffset % slice[0].encryptedOffset;
@@ -990,17 +992,19 @@ export async function sliceAndDecrypt({
       buffer.slice(offset, offset + (encryptedSegmentSize as number))
     );
 
-    slice[index].decryptedChunk = await decryptChunk(
+    await decryptChunk(
       encryptedChunk,
       reconstructedKeyBinary,
       slice[index]['hash'],
       cipher,
       segmentIntegrityAlgorithm,
       cryptoService
-    );
-    if (slice[index]._resolve) {
-      (slice[index]._resolve as (value: unknown) => void)(null);
-    }
+    )
+      .then((result) => {
+        slice[index].decryptedChunk = result;
+        return null;
+      })
+      .then(_resolve, _reject);
   }
 }
 
@@ -1049,11 +1053,21 @@ export async function readStream(cfg: DecryptConfiguration) {
   let mapOfRequestsOffset = 0;
   const chunkMap = new Map(
     segments.map(({ hash, encryptedSegmentSize = encryptedSegmentSizeDefault }) => {
-      const result = {
-        hash,
-        encryptedOffset: mapOfRequestsOffset,
-        encryptedSegmentSize,
-      } as Chunk;
+      const result = (() => {
+        let _resolve, _reject;
+        const chunk: Chunk = {
+          hash,
+          encryptedOffset: mapOfRequestsOffset,
+          encryptedSegmentSize,
+          promise: new Promise((resolve, reject) => {
+            _resolve = resolve;
+            _reject = reject;
+          }),
+        };
+        chunk._resolve = _resolve;
+        chunk._reject = _reject;
+        return chunk;
+      })();
       mapOfRequestsOffset += encryptedSegmentSize || encryptedSegmentSizeDefault;
       return [hash, result];
     })
@@ -1061,7 +1075,8 @@ export async function readStream(cfg: DecryptConfiguration) {
 
   const cipher = new AesGcmCipher(cfg.cryptoService);
 
-  await updateChunkQueue(
+  // Not waiting for Promise to resolve
+  updateChunkQueue(
     Array.from(chunkMap.values()),
     centralDirectory,
     zipReader,
@@ -1081,9 +1096,7 @@ export async function readStream(cfg: DecryptConfiguration) {
 
       const [hash, chunk] = chunkMap.entries().next().value;
       if (!chunk.decryptedChunk) {
-        await new Promise((resolve) => {
-          chunk._resolve = resolve;
-        });
+        await chunk.promise;
       }
       const decryptedSegment = chunk.decryptedChunk;
 
