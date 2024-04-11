@@ -2,7 +2,7 @@ import { clsx } from 'clsx';
 import { useState, useEffect, type ChangeEvent } from 'react';
 import { showSaveFilePicker } from 'native-file-system-adapter';
 import './App.css';
-import { TDF3Client, type DecryptSource, NanoTDFClient, AuthProviders } from '@opentdf/client';
+import { TDF3Client, type DecryptSource, NanoTDFClient } from '@opentdf/client';
 import { type SessionInformation, OidcClient } from './session.js';
 
 function decryptedFileName(encryptedFileName: string): string {
@@ -30,7 +30,7 @@ function decryptedFileExtension(encryptedFileName: string): string {
 }
 
 const oidcClient = new OidcClient(
-  'http://localhost:65432/auth/realms/tdf',
+  'http://localhost:65432/auth/realms/opentdf',
   'browsertest',
   'otdf-sample-web-app'
 );
@@ -316,6 +316,8 @@ function App() {
       }),
     };
   };
+  // http://localhost:65432/auth/realms/opentdf/protocol/openid-connect/token
+  // http://localhost:65432/auth/realms/opentdf/protocol/openid-connect/token
 
   const handleEncrypt = async () => {
     if (!inputSource) {
@@ -329,12 +331,6 @@ function App() {
     }
     const inputFileName = fileNameFor(inputSource);
     console.log(`Encrypting [${inputFileName}] as ${encryptContainerType} to ${sinkType}`);
-    const authProvider = await AuthProviders.refreshAuthProvider({
-      exchange: 'refresh',
-      clientId: oidcClient.clientId,
-      oidcOrigin: oidcClient.host,
-      refreshToken,
-    });
     switch (encryptContainerType) {
       case 'nano': {
         if ('url' in inputSource) {
@@ -344,7 +340,7 @@ function App() {
           'file' in inputSource
             ? await inputSource.file.arrayBuffer()
             : randomArrayBuffer(inputSource);
-        const nanoClient = new NanoTDFClient(authProvider, 'http://localhost:65432/api/kas');
+        const nanoClient = new NanoTDFClient(oidcClient, 'http://localhost:65432/kas');
         setDownloadState('Encrypting...');
         switch (sinkType) {
           case 'file':
@@ -375,8 +371,9 @@ function App() {
       }
       case 'html': {
         const client = new TDF3Client({
-          authProvider,
-          kasEndpoint: 'http://localhost:65432/api/kas',
+          authProvider: oidcClient,
+          dpopKeys: oidcClient.getSigningKey(),
+          kasEndpoint: 'http://localhost:65432/kas',
           readerUrl: 'https://secure.virtru.com/start?htmlProtocol=1',
         });
         let source: ReadableStream<Uint8Array>, size: number;
@@ -443,8 +440,9 @@ function App() {
       }
       case 'tdf': {
         const client = new TDF3Client({
-          authProvider,
-          kasEndpoint: 'http://localhost:65432/api/kas',
+          authProvider: oidcClient,
+          dpopKeys: oidcClient.getSigningKey(),
+          kasEndpoint: 'http://localhost:65432/kas',
         });
         const sc = new AbortController();
         setStreamController(sc);
@@ -521,12 +519,6 @@ function App() {
     console.log(
       `Decrypting ${decryptContainerType} ${JSON.stringify(inputSource)} to ${sinkType} ${dfn}`
     );
-    const authProvider = await AuthProviders.refreshAuthProvider({
-      exchange: 'refresh',
-      clientId: oidcClient.clientId,
-      oidcOrigin: oidcClient.host,
-      refreshToken: authState.user.refreshToken,
-    });
     let f;
     if (sinkType === 'fsapi') {
       f = await getNewFileHandle(decryptedFileExtension(fileNameFor(inputSource)), dfn);
@@ -534,8 +526,9 @@ function App() {
     switch (decryptContainerType) {
       case 'tdf': {
         const client = new TDF3Client({
-          authProvider,
-          kasEndpoint: 'http://localhost:65432/api/kas',
+          authProvider: oidcClient,
+          dpopKeys: oidcClient.getSigningKey(),
+          kasEndpoint: 'http://localhost:65432/kas',
         });
         try {
           const sc = new AbortController();
@@ -587,7 +580,7 @@ function App() {
         if ('url' in inputSource) {
           throw new Error('Unsupported : fetch the url I guess?');
         }
-        const nanoClient = new NanoTDFClient(authProvider, 'http://localhost:65432/api/kas');
+        const nanoClient = new NanoTDFClient(oidcClient, 'http://localhost:65432/kas');
         try {
           const cipherText =
             'file' in inputSource

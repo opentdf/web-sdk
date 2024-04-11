@@ -1,0 +1,12 @@
+go 1.22.2
+
+use (
+	../opentdf-v2-poc/protocol/go
+	../opentdf-v2-poc/sdk
+	../opentdf-v2-poc/service
+)
+
+// replace (
+// 	github.com/opentdf/platform/protocol/go@v0.1.0 => ../opentdf-v2-poc/protocol/go
+// 	github.com/opentdf/platform/service@v0.1.0 => ../opentdf-v2-poc/service
+// )

@@ -109,3 +109,6 @@ dist
 
 # temporary folders
 **/temp/
+
+# For integration testing
+/platform

@@ -1,19 +1,52 @@
 #!/usr/bin/env bash
+# Initialize and monitor a test environment, optionally running several tests
+# This bring up
 
 set -x
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null && pwd)"
-ROOT_DIR="$(cd "${APP_DIR}/../../.." >/dev/null && pwd)"
+ROOT_DIR="$(cd "${APP_DIR}/.." >/dev/null && pwd)"
 WEB_APP_DIR="$(cd "${ROOT_DIR}/web-app" >/dev/null && pwd)"
 
-app_version=$(cd "${ROOT_DIR}/lib" && node -p "require('./package.json').version")
-echo "[INFO] App version: ${app_version}"
+SERVICE_VERSION=v0.1.0
+SERVICE_MOD="github.com/opentdf/platform/service@${SERVICE_VERSION}"
+
+_renew_stuff() {
+  if ! curl -o "${APP_DIR}/init-temp-keys.sh" "https://raw.githubusercontent.com/opentdf/platform/main/.github/scripts/init-temp-keys.sh"; then
+    echo "ERROR downloading latest init-temp-keys.sh"
+    return 1
+  fi
+  chmod +x "${APP_DIR}/init-temp-keys.sh"
+}
+
+_run_platform() {
+  if ! cd "${ROOT_DIR}"; then
+    echo "[ERROR] unable to find home"
+    return 1
+  fi
+  if ! ./scripts/init-temp-keys.sh; then
+    echo "[ERROR] unable to initialize keys"
+    return 1
+  fi
+  if ! docker compose -f .github/workflows/roundtrip/docker-compose.yaml up -d --wait --wait-timeout 240; then
+    echo "[ERROR] unable to initialize keys"
+    return 1
+  fi
+  if ! go run "${SERVICE_MOD}" provision keycloak; then
+    echo "[ERROR] unable to provision keycloak"
+    # return 1
+  fi
+  go run "${SERVICE_MOD}" start &
+  os_pid=$!
+  trap "kill -2 ${os_pid}" 2
+  trap "kill -15 ${os_pid}" 15
+}
 
 _wait-for() {
   echo "[INFO] In retry loop for quickstarted opentdf backend..."
   limit=5
   for i in $(seq 1 $limit); do
-    if curl --show-error --fail --insecure http://localhost:65432; then
+    if curl --show-error --fail --insecure http://localhost:8080; then
       return 0
     fi
     if [[ $i == "$limit" ]]; then
@@ -72,6 +105,11 @@ _init_server() {
 
 if ! _init_server; then
   echo "[ERROR] Couldn't run web app server"
+  exit 2
+fi
+
+if ! _run_platform; then
+  echo "[ERROR] Couldn't run backend"
   exit 2
 fi
 

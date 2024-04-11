@@ -154,7 +154,7 @@ jobs:
           kubectl: '1.30.0'
           helm: '3.14.4'
           tilt: '0.33.13'
-      - run: |
+      - run: |s
           kubectl version --client
           kustomize version
           tilt version
@@ -171,6 +171,34 @@ jobs:
           OPENTDF_INGRESS_HOST_PORT: "5432"
           PLAYWRIGHT_TESTS_TO_RUN: roundtrip
         run: tilt ci
+
+  platform-roundtrip:
+    needs:
+      - web-app
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .github/workflows/roundtrip
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: './web-app/package-lock.json'
+      - uses: actions/download-artifact@v3
+        with:
+          name: opentdf-client-lib
+          path: lib/
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+        with:
+          go-version: "1.22"
+      - env:
+          OPENTDF_SERVICES_AUTHORIZATION_URL: "http://localhost:65432/"
+          PLAYWRIGHT_TESTS_TO_RUN: roundtrip
+        run: |-
+          ./.github/workflows/roundtrip/wait-and-test.sh
 
   deliver-ghp:
     needs: [lib, web-app, scripts, backend-roundtrip]

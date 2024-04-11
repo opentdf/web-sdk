@@ -15,8 +15,8 @@ export default defineConfig({
   server: {
     port: 65432,
     proxy: {
-      '/api': 'http://localhost:5432',
-      '/auth': 'http://localhost:5432',
+      '/kas': 'http://localhost:8080',
+      '/auth': 'http://localhost:8888',
     },
   },
 });
