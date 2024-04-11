@@ -207,10 +207,45 @@ jobs:
           kubernetes-version: 1.30.0
       - name: Run tilt ci
         env:
-          TEST_SCRIPT: ./wait-and-test.sh
-          OPENTDF_INGRESS_HOST_PORT: "5432"
+          TEST_SCRIPT: ./wait-and-test.sh backend
+          OPENTDF_INGRESS_HOST_PORT: '5432'
           PLAYWRIGHT_TESTS_TO_RUN: roundtrip
         run: tilt ci
+
+  platform-roundtrip:
+    needs:
+      - cli
+      - lib
+      - web-app
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .github/workflows/roundtrip
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './web-app/package-lock.json'
+      - uses: actions/download-artifact@v4
+        with:
+          name: opentdf-client-lib
+          path: lib/
+      - uses: actions/download-artifact@v4
+        with:
+          name: opentdf-cli
+          path: cli/
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+        with:
+          go-version: '1.22'
+      - run: docker compose up -d --wait --wait-timeout 240
+      - env:
+          OPENTDF_SERVICES_AUTHORIZATION_URL: 'http://localhost:65432/'
+          PLAYWRIGHT_TESTS_TO_RUN: roundtrip
+        run: |-
+          ./wait-and-test.sh platform
 
   deliver-ghp:
     needs:
@@ -219,6 +254,7 @@ jobs:
       - web-app
       - scripts
       - backend-roundtrip
+      - platform-roundtrip
     runs-on: ubuntu-latest
     timeout-minutes: 5
     # To publish from a release or feature branch, remove the ref == condition below
@@ -260,8 +296,8 @@ jobs:
           with version=[${{ steps.guess-build-metadata.outputs.FULL_VERSION }}]"
       - run: >-
           .github/workflows/publish-to.sh
-          ${{ steps.guess-build-metadata.outputs.FULL_VERSION }}
-          ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
+            ${{ steps.guess-build-metadata.outputs.FULL_VERSION }}
+            ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: echo "- [Client Library](https://github.com/opentdf/client-web/pkgs/npm/client)">>$GITHUB_STEP_SUMMARY
