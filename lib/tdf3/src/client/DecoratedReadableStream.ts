@@ -1,4 +1,4 @@
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'eventemitter3';
 import streamSaver from 'streamsaver';
 import { fileSave } from 'browser-fs-access';
 import { isFirefox } from '../../../src/utils.js';
