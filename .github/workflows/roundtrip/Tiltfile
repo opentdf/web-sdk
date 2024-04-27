@@ -1,0 +1,132 @@
+load("ext://helm_remote", "helm_remote")
+load("ext://helm_resource", "helm_resource", "helm_repo")
+
+BACKEND_CHART_TAG = "1.6.0"
+
+EXTERNAL_URL = os.getenv("OPENTDF_EXTERNAL_URL", "http://localhost:65432")
+INGRESS_HOST_PORT = os.getenv("OPENTDF_INGRESS_HOST_PORT", "65432")
+
+CONTAINER_REGISTRY = os.environ.get("CONTAINER_REGISTRY", "ghcr.io")
+POSTGRES_PASSWORD = "myPostgresPassword"
+OIDC_CLIENT_SECRET = "myclientsecret"
+opaPolicyPullSecret = os.environ.get("CR_PAT")
+
+
+TESTS_DIR = os.getcwd()
+
+
+def from_dotenv(path, key):
+    # Read a variable from a `.env` file
+    return str(local('. "{}" && echo "${}"'.format(path, key))).strip()
+
+
+all_secrets = read_yaml("./mocks/mock-secrets.yaml")
+
+
+def prefix_list(prefix, list):
+    return [x for y in zip([prefix] * len(list), list) for x in y]
+
+
+def dict_to_equals_list(dict):
+    return ["%s=%s" % (k, v) for k, v in dict.items()]
+
+
+def dict_to_helm_set_list(dict):
+    combined = dict_to_equals_list(dict)
+    return prefix_list("--set", combined)
+
+
+
+
+def ingress(external_port="65432"):
+    helm_repo(
+        "k8s-in",
+        "https://kubernetes.github.io/ingress-nginx",
+        labels="utility",
+    )
+    helm_resource(
+        "ingress-nginx",
+        "k8s-in/ingress-nginx",
+        flags=[
+            "--version",
+            "4.0.16",
+        ]
+        + dict_to_helm_set_list(
+            {
+                "controller.config.large-client-header-buffers": "20 32k",
+                "controller.admissionWebhooks.enabled": "false",
+            }
+        ),
+        labels="third-party",
+        port_forwards="{}:80".format(external_port),
+        resource_deps=["k8s-in"],
+    )
+
+# values: list of values files
+# set: dictionary of value_name: value pairs
+# extra_helm_parameters: only valid when devmode=False; passed to underlying `helm update` command
+def backend(values=[], set={}, resource_deps=[]):
+    set_values = {
+        "entity-resolution.secret.keycloak.clientSecret": "123-456",
+        "secrets.opaPolicyPullSecret": opaPolicyPullSecret,
+        "secrets.oidcClientSecret": OIDC_CLIENT_SECRET,
+        "secrets.postgres.dbPassword": POSTGRES_PASSWORD,
+        "kas.auth.http://localhost:65432/auth/realms/tdf.discoveryBaseUrl": "http://keycloak-http/auth/realms/tdf",
+        "kas.envConfig.ecCert": all_secrets["KAS_EC_SECP256R1_CERTIFICATE"],
+        "kas.envConfig.cert": all_secrets["KAS_CERTIFICATE"],
+        "kas.envConfig.ecPrivKey": all_secrets["KAS_EC_SECP256R1_PRIVATE_KEY"],
+        "kas.envConfig.privKey": all_secrets["KAS_PRIVATE_KEY"],
+        "kas.extraConfigMapData.KAS_URL": "http://localhost:65432/api/kas",
+    }
+    set_values.update(set)
+
+    helm_remote(
+        "backend",
+        repo_name="oci://ghcr.io/opentdf/charts",
+        values=values,
+        version=BACKEND_CHART_TAG,
+        set=dict_to_equals_list(set_values),
+    )
+    for x in ["attributes", "entitlement-store"]:
+        k8s_resource(x, labels="opentdf", resource_deps=["postgresql"])
+    k8s_resource(
+        "kas",
+        labels="opentdf",
+        resource_deps=["attributes", "keycloak"],
+        port_forwards="9000:5000"
+    )
+
+def opentdf_cluster_with_ingress(external_port=65432):
+    ingress(external_port=external_port)
+
+    backend(
+        set={
+            ("%s.ingress.enabled" % s): "true"
+            for s in [
+                "attributes",
+                "entitlements",
+                "kas",
+                "keycloak",
+                "entitlement-store",
+            ]
+        },
+        values=[TESTS_DIR + "/mocks/values.yaml"],
+        resource_deps=["ingress-nginx"],
+    )
+
+
+
+opentdf_cluster_with_ingress(
+    external_port=INGRESS_HOST_PORT,
+)
+
+
+# ability to pass in custom test script with path to script as env var
+# e.g.: CI=1 TEST_SCRIPT=tests/wait-and-test.sh tilt up
+if "TEST_SCRIPT" in os.environ and os.environ.get("CI"):
+    local_resource(
+        "passed-in-test-script",
+        os.environ.get("TEST_SCRIPT"),
+        labels="tests",
+        resource_deps=["ingress-nginx", "kas", "keycloak-bootstrap"],
+    )
