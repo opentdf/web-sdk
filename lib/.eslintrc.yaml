@@ -8,6 +8,7 @@ overrides:
       - '*.spec.ts'
     rules:
       '@typescript-eslint/ban-ts-comment': 'off'
+ignores: ['lib/proto/**/*.ts']
 parserOptions:
   project: ['**/tsconfig.json']
 root: true
