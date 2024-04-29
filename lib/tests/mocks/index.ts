@@ -1,8 +1,9 @@
 import { SignJWT, importPKCS8, JWTPayload } from 'jose';
 import { v4 } from 'uuid';
 
-import { AttributeSet } from '../../tdf3/src/models/attribute-set.js';
 import { AttributeObject } from '../../src/tdf/AttributeObject.js';
+import { toCryptoKeyPair } from '../../tdf3/src/crypto/crypto-utils.js';
+import { AttributeSet } from '../../tdf3/src/models/attribute-set.js';
 
 type CreateAttributePayload = {
   attribute: string;
@@ -62,6 +63,45 @@ ghWsBqUmyg/rZoggL5H1V166hvoLPKU7SrCInZ8Wd6x4rsNDaxNiC9El102pKXu4
 wCiqJZ0XwklGkH9X0Z5x0txc68tqmSlE/z4i/96oxMp0C2thWfy90ub85f5FrB9m
 tN5S0umLPkMUJ6zBIxh1RQK1ZYjfuKij+EEimbqtte9rYyQr3Q==
 -----END CERTIFICATE-----`;
+
+const entityPrivateKey = `-----BEGIN PRIVATE KEY-----
+MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDLXwR+Lr7e9IQu
+lsrnyAID28nFm2hEdHrTjKLvTuHqfNOxNI1SDmY3O3+dazBbOWghYKADsQ82knL2
+VifiHVnouHESB/TAVxq7HT8LX10LpZE93onoQjvPvvqC2hJX+EA1QEZKNpJgI58B
+VgTxJnYXNvp8SHFpXP7V0RWFPV0GzNt6zH9qJwIn/u8KaXAR5QfCOyLyb0LM9M9y
+MSNuseLvBhSP/Ju+kzf1mDBFGBn9cZdmx0vGJsmKXHWhLmBj0iilxShaLt3ejsm4
+x0ExnSPGRWCvaGJQeptt9ETNnFnX8SjBd/3AmJebf/l4IABr7aRNw6u5xlfM07gn
+fwKgXP/DAgMBAAECggEADInMpJzsLqHDnn20f8rAeQ1taK32pTXLNsy2ZOunmQXe
+JVA4oET7/06/ROzNW+pzpY8n/mJFrlckGFTie5nUp7jrW7G64LreDog0kVZtTaEF
+DdvxA61Fs76yAixAskS/bKkMTFoF90Bq9rGfd2CoKjE9CzmKKHVPzs3ntkG8wQT3
+C1ClT8Ce4Y+aNjLd+i47xIxNenHKfezZOriteKxVWna23fl3ISXr7e1LDI75qhcY
+l3NY+EtwHKm2tGW5ukGUsNqkFRIW+kulclb+xpaL/hRKf+FiE4h/0B5MLN8eVXNf
+8z2A31cbXRTqzcDYLRuz1ykHfBX6ZG/6eL3t+VqCEQKBgQD44o5kdM8mIcxcruI7
+TT5tE/cUr4CQnus6NEbMj8WpfGG17GBVVIy/6cXh8+UhiFHbWAJb1wXejs9vUZZw
+6hE7uWcOuwoY5F7hl9idWryrIUut+7a8YASYTDMrI77p7Sjin5NQvRppyH1io1Yi
+fl9+8MJ5FQYVTI3OnqI3v/hBEwKBgQDRL19MEVH9h4NmXh7wRkz0iXM5dM9mpI9C
+daUjv/wH2dlI5SpZkqqgOZ2X2qdgrZdwX33q2z1nSRzbWMjvcfDkJvwexZ995XYH
+ffI2Yd1sydUCLJ796vnGphJOpvasKqqIjnYDWXi/uhepw7xYJkTPzmy1P/MzjcbS
+JDEsHSfMkQKBgF9rTLhK6FhwQM+P5QBjXvmm2+W8W4gWxYxtGm+290tBepyq4UwV
+vFifodQ9E63Fe8yic1UOnRt0mSbOmuTzeGPzcwV8xCRC+fV3p/68GPVrMH6lsKuM
+DHbvT/bMH5fD6xbnoy0jMws3aIr2oEFdPfOHDqgpXUmxLfT3cK37FYytAoGAU1/n
+QsFQhZViiQWQnUHX4Et8cnUdSRLjyqBrTqFxiYuJsCUuyP7NJQlxx5mtxrnJt09I
+N7hkc+tPJhnwFIe8dKMZMAaieCJh9cB8LrK492hGjxRL1na2UTfV6iVgAeULjVwC
+q3kYyIoabl6GjjfKi20CJQe1HmIu0Yj9VFDWkRECgYAe0j6P2Kkb/BBdVArme1PK
+at1tabfCj99bPEIJgMN0ASU5WU34PVPx4TPiYO40t/ckprslBJAqS4uDwhltiw7q
+oFbMAKcie6QXgQkuVPwVjVw6tyJz4mWO8k+XU+9eC+lDq0KHMvXDDabtjYVBQR8g
+V5v5HTYXvWh5SG1ZrFLLmw==
+-----END PRIVATE KEY-----`;
+
+const entityPublicKey = `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAy18Efi6+3vSELpbK58gC
+A9vJxZtoRHR604yi707h6nzTsTSNUg5mNzt/nWswWzloIWCgA7EPNpJy9lYn4h1Z
+6LhxEgf0wFcaux0/C19dC6WRPd6J6EI7z776gtoSV/hANUBGSjaSYCOfAVYE8SZ2
+Fzb6fEhxaVz+1dEVhT1dBszbesx/aicCJ/7vCmlwEeUHwjsi8m9CzPTPcjEjbrHi
+7wYUj/ybvpM39ZgwRRgZ/XGXZsdLxibJilx1oS5gY9IopcUoWi7d3o7JuMdBMZ0j
+xkVgr2hiUHqbbfREzZxZ1/EowXf9wJiXm3/5eCAAa+2kTcOrucZXzNO4J38CoFz/
+wwIDAQAB
+-----END PUBLIC KEY-----`;
 
 export default function getMocks() {
   return Object.create({
@@ -145,43 +185,16 @@ ghWsBqUmyg/rZoggL5H1V166hvoLPKU7SrCInZ8Wd6x4rsNDaxNiC9El102pKXu4
 wCiqJZ0XwklGkH9X0Z5x0txc68tqmSlE/z4i/96oxMp0C2thWfy90ub85f5FrB9m
 tN5S0umLPkMUJ6zBIxh1RQK1ZYjfuKij+EEimbqtte9rYyQr3Q==
 -----END CERTIFICATE-----`,
-    entityPrivateKey: `-----BEGIN PRIVATE KEY-----
-MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDLXwR+Lr7e9IQu
-lsrnyAID28nFm2hEdHrTjKLvTuHqfNOxNI1SDmY3O3+dazBbOWghYKADsQ82knL2
-VifiHVnouHESB/TAVxq7HT8LX10LpZE93onoQjvPvvqC2hJX+EA1QEZKNpJgI58B
-VgTxJnYXNvp8SHFpXP7V0RWFPV0GzNt6zH9qJwIn/u8KaXAR5QfCOyLyb0LM9M9y
-MSNuseLvBhSP/Ju+kzf1mDBFGBn9cZdmx0vGJsmKXHWhLmBj0iilxShaLt3ejsm4
-x0ExnSPGRWCvaGJQeptt9ETNnFnX8SjBd/3AmJebf/l4IABr7aRNw6u5xlfM07gn
-fwKgXP/DAgMBAAECggEADInMpJzsLqHDnn20f8rAeQ1taK32pTXLNsy2ZOunmQXe
-JVA4oET7/06/ROzNW+pzpY8n/mJFrlckGFTie5nUp7jrW7G64LreDog0kVZtTaEF
-DdvxA61Fs76yAixAskS/bKkMTFoF90Bq9rGfd2CoKjE9CzmKKHVPzs3ntkG8wQT3
-C1ClT8Ce4Y+aNjLd+i47xIxNenHKfezZOriteKxVWna23fl3ISXr7e1LDI75qhcY
-l3NY+EtwHKm2tGW5ukGUsNqkFRIW+kulclb+xpaL/hRKf+FiE4h/0B5MLN8eVXNf
-8z2A31cbXRTqzcDYLRuz1ykHfBX6ZG/6eL3t+VqCEQKBgQD44o5kdM8mIcxcruI7
-TT5tE/cUr4CQnus6NEbMj8WpfGG17GBVVIy/6cXh8+UhiFHbWAJb1wXejs9vUZZw
-6hE7uWcOuwoY5F7hl9idWryrIUut+7a8YASYTDMrI77p7Sjin5NQvRppyH1io1Yi
-fl9+8MJ5FQYVTI3OnqI3v/hBEwKBgQDRL19MEVH9h4NmXh7wRkz0iXM5dM9mpI9C
-daUjv/wH2dlI5SpZkqqgOZ2X2qdgrZdwX33q2z1nSRzbWMjvcfDkJvwexZ995XYH
-ffI2Yd1sydUCLJ796vnGphJOpvasKqqIjnYDWXi/uhepw7xYJkTPzmy1P/MzjcbS
-JDEsHSfMkQKBgF9rTLhK6FhwQM+P5QBjXvmm2+W8W4gWxYxtGm+290tBepyq4UwV
-vFifodQ9E63Fe8yic1UOnRt0mSbOmuTzeGPzcwV8xCRC+fV3p/68GPVrMH6lsKuM
-DHbvT/bMH5fD6xbnoy0jMws3aIr2oEFdPfOHDqgpXUmxLfT3cK37FYytAoGAU1/n
-QsFQhZViiQWQnUHX4Et8cnUdSRLjyqBrTqFxiYuJsCUuyP7NJQlxx5mtxrnJt09I
-N7hkc+tPJhnwFIe8dKMZMAaieCJh9cB8LrK492hGjxRL1na2UTfV6iVgAeULjVwC
-q3kYyIoabl6GjjfKi20CJQe1HmIu0Yj9VFDWkRECgYAe0j6P2Kkb/BBdVArme1PK
-at1tabfCj99bPEIJgMN0ASU5WU34PVPx4TPiYO40t/ckprslBJAqS4uDwhltiw7q
-oFbMAKcie6QXgQkuVPwVjVw6tyJz4mWO8k+XU+9eC+lDq0KHMvXDDabtjYVBQR8g
-V5v5HTYXvWh5SG1ZrFLLmw==
------END PRIVATE KEY-----`,
-    entityPublicKey: `-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAy18Efi6+3vSELpbK58gC
-A9vJxZtoRHR604yi707h6nzTsTSNUg5mNzt/nWswWzloIWCgA7EPNpJy9lYn4h1Z
-6LhxEgf0wFcaux0/C19dC6WRPd6J6EI7z776gtoSV/hANUBGSjaSYCOfAVYE8SZ2
-Fzb6fEhxaVz+1dEVhT1dBszbesx/aicCJ/7vCmlwEeUHwjsi8m9CzPTPcjEjbrHi
-7wYUj/ybvpM39ZgwRRgZ/XGXZsdLxibJilx1oS5gY9IopcUoWi7d3o7JuMdBMZ0j
-xkVgr2hiUHqbbfREzZxZ1/EowXf9wJiXm3/5eCAAa+2kTcOrucZXzNO4J38CoFz/
-wwIDAQAB
------END PUBLIC KEY-----`,
+    entityPrivateKey,
+    entityPublicKey,
+
+    async entityKeyPair(): Promise<CryptoKeyPair> {
+      return toCryptoKeyPair({
+        privateKey: entityPrivateKey,
+        publicKey: entityPublicKey,
+      });
+    },
+
     createAttribute({
       attribute = 'https://api.virtru.com/attr/default/value/default',
       displayName = 'Default Attribute',

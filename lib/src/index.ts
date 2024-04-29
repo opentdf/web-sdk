@@ -10,7 +10,7 @@ import {
 } from './nanotdf/index.js';
 import { keyAgreement, extractPublicFromCertToCrypto } from './nanotdf-crypto/index.js';
 import { TypedArray, createAttribute, Policy } from './tdf/index.js';
-import { AuthProvider } from './auth/auth.js';
+import { type AuthProvider } from './auth/auth.js';
 
 async function fetchKasPubKey(kasUrl: string): Promise<string> {
   const kasPubKeyResponse = await fetch(`${kasUrl}/kas_public_key?algorithm=ec:secp256r1`);

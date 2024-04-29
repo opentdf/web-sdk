@@ -78,9 +78,10 @@ describe('CryptoService DI', () => {
           },
         }),
       });
-      expect.fail();
     } catch (e) {
-      expect(e.message).to.include('Function not implemented');
+      expect(() => {
+        throw e;
+      }).to.throw('Function not implemented');
     }
   });
 });

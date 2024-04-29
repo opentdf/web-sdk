@@ -1,7 +1,7 @@
 import { default as dpopFn } from 'dpop';
 import { HttpRequest, withHeaders } from './auth.js';
 import { IllegalArgumentError } from '../errors.js';
-import { rstrip } from '../utils.js';
+import { cryptoPublicToPem, rstrip } from '../utils.js';
 
 /**
  * Common fields used by all OIDC credentialing flows.
@@ -11,9 +11,6 @@ export type CommonCredentials = {
   clientId: string;
   /** The endpoint of the OIDC IdP to authenticate against, ex. 'https://virtru.com/auth' */
   oidcOrigin: string;
-
-  /** the client's public key, base64 encoded. Will be bound to the OIDC token. Deprecated. If not set in the constructor, */
-  clientPubKey?: string;
 
   /** the client's public key, base64 encoded. Will be bound to the OIDC token. Deprecated. If not set in the constructor, */
   signingKey?: CryptoKeyPair;
@@ -92,8 +89,6 @@ export class AccessToken {
 
   signingKey?: CryptoKeyPair;
 
-  clientPubKey?: string;
-
   extraHeaders: Record<string, string> = {};
 
   currentAccessToken?: string;
@@ -118,7 +113,6 @@ export class AccessToken {
     this.request = request;
     this.baseUrl = rstrip(cfg.oidcOrigin, '/');
     this.signingKey = cfg.signingKey;
-    this.clientPubKey = cfg.clientPubKey;
   }
 
   /**
@@ -151,17 +145,12 @@ export class AccessToken {
       'Content-Type': 'application/x-www-form-urlencoded',
       Accept: 'application/json',
     };
-    if (this.clientPubKey) {
-      headers['X-VirtruPubKey'] = this.clientPubKey;
-    } else {
+    if (!this.signingKey) {
       throw new IllegalArgumentError('No signature configured');
     }
-    if (this.signingKey) {
-      headers.DPoP = await dpopFn(this.signingKey, url, 'POST');
-    }
-    if (!this.clientPubKey && !this.signingKey) {
-      throw new IllegalArgumentError('No signature configured');
-    }
+    const clientPubKey = await cryptoPublicToPem(this.signingKey.publicKey);
+    headers['X-VirtruPubKey'] = clientPubKey;
+    headers.DPoP = await dpopFn(this.signingKey, url, 'POST');
     return (this.request || fetch)(url, {
       method: 'POST',
       headers,
@@ -243,18 +232,14 @@ export class AccessToken {
    *
    * Calling this function will trigger a forcible token refresh using the cached refresh token, and contact the auth server.
    */
-  async refreshTokenClaimsWithClientPubkeyIfNeeded(
-    clientPubKey: string,
-    signingKey?: CryptoKeyPair
-  ): Promise<void> {
+  async refreshTokenClaimsWithClientPubkeyIfNeeded(signingKey: CryptoKeyPair): Promise<void> {
     // If we already have a token, and the pubkey changes,
     // we need to force a refresh now - otherwise
     // we can wait until we create the token for the first time
-    if (this.currentAccessToken && clientPubKey === this.clientPubKey) {
+    if (this.currentAccessToken && signingKey === this.signingKey) {
       return;
     }
     delete this.currentAccessToken;
-    this.clientPubKey = clientPubKey;
     this.signingKey = signingKey;
   }
 
@@ -286,7 +271,7 @@ export class AccessToken {
   }
 
   async withCreds(httpReq: HttpRequest): Promise<HttpRequest> {
-    if (!this.clientPubKey && !this.signingKey) {
+    if (!this.signingKey) {
       throw new Error(
         'Client public key was not set via `updateClientPublicKey` or passed in via constructor, cannot fetch OIDC token with valid Virtru claims'
       );

@@ -1,7 +1,6 @@
 import { type TypedArray } from '../tdf/index.js';
 import * as base64 from '../encodings/base64.js';
 import {
-  cryptoPublicToPem,
   decrypt,
   enums as cryptoEnums,
   generateKeyPair,
@@ -13,7 +12,7 @@ import getHkdfSalt from './helpers/getHkdfSalt.js';
 import DefaultParams from './models/DefaultParams.js';
 import { fetchWrappedKey } from '../kas.js';
 import { AuthProvider, reqSignature } from '../auth/providers.js';
-import { safeUrlCheck, validateSecureUrl } from '../utils.js';
+import { cryptoPublicToPem, safeUrlCheck, validateSecureUrl } from '../utils.js';
 
 const { KeyUsageType, AlgorithmName, NamedCurve } = cryptoEnums;
 
@@ -167,11 +166,7 @@ export default class Client {
       throw new Error('Unexpected state');
     }
 
-    const signerPubKey = await cryptoPublicToPem(signer.publicKey);
-    await this.authProvider.updateClientPublicKey(
-      base64.encode(signerPubKey),
-      this.dpopEnabled ? signer : undefined
-    );
+    await this.authProvider.updateClientPublicKey(signer);
   }
 
   /**

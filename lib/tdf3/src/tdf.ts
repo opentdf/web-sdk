@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { unsigned } from './utils/buffer-crc32.js';
-import { exportSPKI, importPKCS8, importX509 } from 'jose';
+import { exportSPKI, importX509 } from 'jose';
 import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
 import { EntityObject } from '../../src/tdf/EntityObject.js';
 import { validateSecureUrl } from '../../src/utils.js';
@@ -48,7 +48,7 @@ import { htmlWrapperTemplate } from './templates/index.js';
 // TODO: remove dependencies from ciphers so that we can open-source instead of relying on other Virtru libs
 import { AesGcmCipher } from './ciphers/index.js';
 import {
-  AuthProvider,
+  type AuthProvider,
   AppIdAuthProvider,
   HttpRequest,
   type HttpMethod,
@@ -58,6 +58,7 @@ import PolicyObject from '../../src/tdf/PolicyObject.js';
 import { type CryptoService, type DecryptResult } from './crypto/declarations.js';
 import { CentralDirectory } from './utils/zip-reader.js';
 import { SymmetricCipher } from './ciphers/symmetric-cipher-base.js';
+import { cryptoToPem } from './crypto/crypto-utils.js';
 
 // TODO: input validation on manifest JSON
 const DEFAULT_SEGMENT_SIZE = 1024 * 1024;
@@ -126,8 +127,7 @@ export type IntegrityAlgorithm = 'GMAC' | 'HS256';
 export type EncryptConfiguration = {
   allowedKases?: string[];
   cryptoService: CryptoService;
-  privateKey: string;
-  publicKey: string;
+  dpopKeys: CryptoKeyPair;
   encryptionInformation: SplitKey;
   segmentSizeDefault: number;
   integrityAlgorithm: IntegrityAlgorithm;
@@ -150,8 +150,7 @@ export type DecryptConfiguration = {
   cryptoService: CryptoService;
   entity?: EntityObject;
 
-  privateKey: string;
-  publicKey: string;
+  dpopKeys: CryptoKeyPair;
 
   chunker: Chunker;
   keyMiddleware: KeyMiddleware;
@@ -583,7 +582,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
   if (!manifest) {
     throw new Error('Please use "loadTDFStream" first to load a manifest.');
   }
-  const pkKeyLike = (await importPKCS8(cfg.privateKey, 'RS256')) as CryptoKey;
+  const pkKeyLike = cfg.dpopKeys.privateKey;
 
   const upsertResponse = await upsert({
     allowedKases: cfg.allowedKases || [],
@@ -805,16 +804,14 @@ async function unwrapKey({
   manifest,
   allowedKases,
   authProvider,
-  publicKey,
-  privateKey,
+  dpopKeys,
   entity,
   cryptoService,
 }: {
   manifest: Manifest;
   allowedKases: string[];
   authProvider: AuthProvider | AppIdAuthProvider;
-  publicKey: string;
-  privateKey: string;
+  dpopKeys: CryptoKeyPair;
   entity: EntityObject | undefined;
   cryptoService: CryptoService;
 }) {
@@ -824,7 +821,7 @@ async function unwrapKey({
   const { keyAccess } = manifest.encryptionInformation;
   let responseMetadata;
   const isAppIdProvider = authProvider && isAppIdProviderCheck(authProvider);
-  const pkKeyLike = await importPKCS8(privateKey, 'RS256');
+  // const pkKeyLike = await importPKCS8(privateKey, 'RS256');
   // Get key access information to know the KAS URLS
   // TODO: logic that runs on multiple KAS's
 
@@ -835,15 +832,20 @@ async function unwrapKey({
       }
       const url = `${keySplitInfo.url}/${isAppIdProvider ? '' : 'v2/'}rewrap`;
 
+      const clientPublicKey = await cryptoToPem(dpopKeys.publicKey);
+
       const requestBodyStr = JSON.stringify({
         algorithm: 'RS256',
         keyAccess: keySplitInfo,
         policy: manifest.encryptionInformation.policy,
-        clientPublicKey: publicKey,
+        clientPublicKey,
       });
 
       const jwtPayload = { requestBody: requestBodyStr };
-      const signedRequestToken = await reqSignature(isAppIdProvider ? {} : jwtPayload, pkKeyLike);
+      const signedRequestToken = await reqSignature(
+        isAppIdProvider ? {} : jwtPayload,
+        dpopKeys.privateKey
+      );
 
       let requestBody;
       if (isAppIdProvider) {
@@ -852,7 +854,7 @@ async function unwrapKey({
           policy: manifest.encryptionInformation.policy,
           entity: {
             ...entity,
-            publicKey: publicKey,
+            publicKey: clientPublicKey,
           },
           authToken: signedRequestToken,
         };
@@ -873,6 +875,7 @@ async function unwrapKey({
         } = await axios.post(httpReq.url, httpReq.body, { headers: httpReq.headers });
         responseMetadata = metadata;
         const key = Binary.fromString(base64.decode(entityWrappedKey));
+        const { privateKey } = await cryptoService.cryptoToPemPair(dpopKeys);
         const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(key, privateKey);
         return new Uint8Array(decryptedKeyBinary.asByteArray());
       } catch (e) {
@@ -1025,8 +1028,7 @@ export async function readStream(cfg: DecryptConfiguration) {
     manifest,
     authProvider: cfg.authProvider,
     allowedKases: cfg.allowedKases,
-    publicKey: cfg.publicKey,
-    privateKey: cfg.privateKey,
+    dpopKeys: cfg.dpopKeys,
     entity: cfg.entity,
     cryptoService: cfg.cryptoService,
   });

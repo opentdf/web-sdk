@@ -36,7 +36,7 @@ describe('encrypt decrypt test', async function () {
     // });
     const client = new Client.Client({
       kasEndpoint: kasUrl,
-      keypair: { publicKey: Mocks.entityPublicKey, privateKey: Mocks.entityPrivateKey },
+      dpopKeys: Mocks.entityKeyPair(),
       clientId: 'id',
       authProvider,
     });
