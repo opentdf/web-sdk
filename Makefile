@@ -56,3 +56,4 @@ toolcheck:
 proto-generate:
 	rm -rf lib/proto
 	buf generate https://github.com/opentdf/platform.git\#branch\=main,subdir\=service --exclude-path authorization/idp_plugin.proto
+	
