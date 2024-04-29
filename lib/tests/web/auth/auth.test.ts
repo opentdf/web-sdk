@@ -83,7 +83,10 @@ describe('AccessToken', () => {
   describe('exchanging refresh token for token with TDF claims', () => {
     describe('using client credentials', () => {
       it('passes client creds with refresh grant type to token endpoint', async () => {
-        const signingKey = await crypto.subtle.generateKey(algorithmSigner, true, ['sign', 'verify']);
+        const signingKey = await crypto.subtle.generateKey(algorithmSigner, true, [
+          'sign',
+          'verify',
+        ]);
         const mf = mockFetch({ access_token: 'fdfsdffsdf' });
         const accessToken = new AccessToken(
           {
@@ -112,7 +115,10 @@ describe('AccessToken', () => {
     });
     describe('using browser flow', () => {
       it('passes only refresh token with refresh grant type to token endpoint', async () => {
-        const signingKey = await crypto.subtle.generateKey(algorithmSigner, true, ['sign', 'verify']);
+        const signingKey = await crypto.subtle.generateKey(algorithmSigner, true, [
+          'sign',
+          'verify',
+        ]);
         const mf = mockFetch({ access_token: 'fake_token' });
         const accessToken = new AccessToken(
           {
@@ -140,7 +146,10 @@ describe('AccessToken', () => {
   describe('exchanging external JWT for token with TDF claims', () => {
     describe('using client credentials', () => {
       it('passes client creds and JWT with exchange grant type to token endpoint', async () => {
-        const signingKey = await crypto.subtle.generateKey(algorithmSigner, true, ['sign', 'verify']);
+        const signingKey = await crypto.subtle.generateKey(algorithmSigner, true, [
+          'sign',
+          'verify',
+        ]);
         const mf = mockFetch({ access_token: 'fake_token' });
         const accessToken = new AccessToken(
           {
