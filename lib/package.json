@@ -67,7 +67,7 @@
     "buffer": "^6.0.3",
     "buffer-crc32": "^0.2.13",
     "dpop": "^1.2.0",
-    "events": "^3.3.0",
+    "eventemitter3": "^5.0.1",
     "jose": "^4.14.4",
     "streamsaver": "^2.0.6",
     "uuid": "~9.0.0"

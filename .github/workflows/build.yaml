@@ -144,19 +144,16 @@ jobs:
         with:
           name: opentdf-client-lib
           path: lib/
-      - name: Git clone backend
-        run: |
-          git clone https://github.com/opentdf/opentdf.git
-      - uses: yokawasa/action-setup-kube-tools@v0.9.2
+      - uses: yokawasa/action-setup-kube-tools@v0.11.1
         with:
           setup-tools: |
             kubectl
             helm
             tilt
           # This should be in sync with the minikube-deployed kube version below
-          kubectl: '1.23.1'
-          helm: '3.8.0'
-          tilt: '0.26.2'
+          kubectl: '1.30.0'
+          helm: '3.14.4'
+          tilt: '0.33.13'
       - run: |
           kubectl version --client
           kustomize version
@@ -165,18 +162,15 @@ jobs:
         id: minikube
         uses: medyagh/setup-minikube@master
         with:
-          minikube-version: 1.25.1
+          minikube-version: 1.33.0
           # This should be in sync with the setup-tools version above
-          kubernetes-version: 1.23.1
+          kubernetes-version: 1.30.0
       - name: Run tilt ci
         env:
-          #path relative to the quickstart Tiltfile
-          TEST_SCRIPT: ../../wait-and-test.sh
+          TEST_SCRIPT: ./wait-and-test.sh
           OPENTDF_INGRESS_HOST_PORT: "5432"
-          OPENTDF_LOAD_FRONTEND: "false"
           PLAYWRIGHT_TESTS_TO_RUN: roundtrip
-        run: |-
-          tilt ci --file opentdf/quickstart/Tiltfile
+        run: tilt ci
 
   deliver-ghp:
     needs: [lib, web-app, scripts, backend-roundtrip]
