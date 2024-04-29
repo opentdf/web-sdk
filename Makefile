@@ -46,3 +46,13 @@ format license-check lint test: ci
 
 doc:
 	cd lib && npm run doc
+
+toolcheck:
+	@echo "Checking for required tools..."
+	@which buf > /dev/null || (echo "buf not found, please install it from https://docs.buf.build/installation" && exit 1)
+	@which protoc-gen-grpc-gateway-ts > /dev/null || (echo "protoc-gen-grpc-gateway-ts not found, run  'go install github.com/grpc-ecosystem/protoc-gen-grpc-gateway-ts@v1.1.2'" && exit 1)
+	@golangci-lint --version | grep "version v\?1.5[67]" > /dev/null || (echo "golangci-lint version must be v1.55 [$$(golangci-lint --version)]" && exit 1)
+
+proto-generate:
+	rm -rf lib/proto
+	buf generate https://github.com/opentdf/platform.git\#branch\=main,subdir\=service --exclude-path authorization/idp_plugin.proto
