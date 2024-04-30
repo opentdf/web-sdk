@@ -54,6 +54,6 @@ toolcheck:
 	@golangci-lint --version | grep "version v\?1.5[67]" > /dev/null || (echo "golangci-lint version must be v1.55 [$$(golangci-lint --version)]" && exit 1)
 
 proto-generate:
-	rm -rf lib/proto
-	buf generate https://github.com/opentdf/platform.git\#branch\=main,subdir\=service
+	rm -rf lib/gen
+	npx buf generate --template lib/buf.gen.yaml https://github.com/opentdf/platform.git\#branch\=main,subdir\=service --output lib
 	

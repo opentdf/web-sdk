@@ -59,6 +59,11 @@
     "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))"
   },
   "dependencies": {
+    "@bufbuild/buf": "^1.31.0",
+    "@bufbuild/protobuf": "^1.9.0",
+    "@bufbuild/protoc-gen-es": "^1.9.0",
+    "@connectrpc/connect": "^1.4.0",
+    "@connectrpc/protoc-gen-connect-es": "^1.4.0",
     "ajv": "^8.12.0",
     "axios": "^1.6.1",
     "axios-retry": "^3.9.0",
