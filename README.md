@@ -66,3 +66,5 @@ Our native gRPC service functions are generated from `proto` definitions in the 
 The `Makefile` provides command scripts to invoke `Buf` with the `buf.gen.yaml` config.
 
 For convenience, the `make toolcheck` script checks if you have the necessary dependencies for the proto generation.
+
+Once this script passes, you can generate the gRPC service functions by running `make proto-generate`.
