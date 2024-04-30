@@ -165,7 +165,7 @@ export async function createSessionKeys({
   if (dpopKeys) {
     signingKeys = await dpopKeys;
   } else {
-    const keys = await cryptoService.generateKeyPair();
+    const keys = await cryptoService.generateSigningKeyPair();
     // signingKeys = await crypto.subtle.generateKey(rsaPkcs1Sha256(), true, ['sign']);
     signingKeys = await toCryptoKeyPair(keys);
   }

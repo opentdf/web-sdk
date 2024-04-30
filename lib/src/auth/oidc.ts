@@ -1,5 +1,6 @@
 import { default as dpopFn } from 'dpop';
 import { HttpRequest, withHeaders } from './auth.js';
+import { base64 } from '../encodings/index.js';
 import { IllegalArgumentError } from '../errors.js';
 import { cryptoPublicToPem, rstrip } from '../utils.js';
 
@@ -149,7 +150,7 @@ export class AccessToken {
       throw new IllegalArgumentError('No signature configured');
     }
     const clientPubKey = await cryptoPublicToPem(this.signingKey.publicKey);
-    headers['X-VirtruPubKey'] = clientPubKey;
+    headers['X-VirtruPubKey'] = base64.encode(clientPubKey);
     headers.DPoP = await dpopFn(this.signingKey, url, 'POST');
     return (this.request || fetch)(url, {
       method: 'POST',

@@ -52,6 +52,9 @@ describe('CryptoService DI', () => {
       generateKeyPair: function (size?: number | undefined): Promise<CryptoKeyPair> {
         throw new Error('Function not implemented.');
       },
+      generateSigningKeyPair: function (): Promise<CryptoKeyPair> {
+        throw new Error('Function not implemented.');
+      },
       hmac: function (key: string, content: string): Promise<string> {
         throw new Error('Function not implemented.');
       },
