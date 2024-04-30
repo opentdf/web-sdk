@@ -58,3 +58,11 @@ nvm use
 make test
 make start
 ```
+
+### Generation
+
+Our native gRPC service functions are generated from `proto` definitions in the [platform](https://github.com/opentdf/platform) repo using [Buf](https://buf.build/docs/introduction).
+
+The `Makefile` provides command scripts to invoke `Buf` with the `buf.gen.yaml` config.
+
+For convenience, the `make toolcheck` script checks if you have the necessary dependencies for the proto generation.
