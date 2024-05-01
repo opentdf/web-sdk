@@ -1,4 +1,3 @@
-import { IllegalArgumentError } from '../../../src/errors.js';
 import { base64 } from '../../../src/encodings/index.js';
 import { type AnyKeyPair, type PemKeyPair } from './declarations.js';
 import { rsaPkcs1Sha256 } from './index.js';
