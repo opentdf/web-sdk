@@ -58,7 +58,6 @@ import PolicyObject from '../../src/tdf/PolicyObject.js';
 import { type CryptoService, type DecryptResult } from './crypto/declarations.js';
 import { CentralDirectory } from './utils/zip-reader.js';
 import { SymmetricCipher } from './ciphers/symmetric-cipher-base.js';
-import { cryptoToPem } from './crypto/crypto-utils.js';
 
 // TODO: input validation on manifest JSON
 const DEFAULT_SEGMENT_SIZE = 1024 * 1024;
@@ -824,6 +823,10 @@ async function unwrapKey({
   // const pkKeyLike = await importPKCS8(privateKey, 'RS256');
   // Get key access information to know the KAS URLS
   // TODO: logic that runs on multiple KAS's
+  const ephemeralEncryptionKeys = await cryptoService.cryptoToPemPair(
+    await cryptoService.generateKeyPair()
+  );
+  const clientPublicKey = ephemeralEncryptionKeys.publicKey;
 
   const rewrappedKeys = await Promise.all(
     keyAccess.map(async (keySplitInfo) => {
@@ -831,8 +834,6 @@ async function unwrapKey({
         throw new KasUpsertError(`Unexpected KAS url: [${keySplitInfo.url}]`);
       }
       const url = `${keySplitInfo.url}/${isAppIdProvider ? '' : 'v2/'}rewrap`;
-
-      const clientPublicKey = await cryptoToPem(dpopKeys.publicKey);
 
       const requestBodyStr = JSON.stringify({
         algorithm: 'RS256',
@@ -875,8 +876,10 @@ async function unwrapKey({
         } = await axios.post(httpReq.url, httpReq.body, { headers: httpReq.headers });
         responseMetadata = metadata;
         const key = Binary.fromString(base64.decode(entityWrappedKey));
-        const { privateKey } = await cryptoService.cryptoToPemPair(dpopKeys);
-        const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(key, privateKey);
+        const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(
+          key,
+          ephemeralEncryptionKeys.privateKey
+        );
         return new Uint8Array(decryptedKeyBinary.asByteArray());
       } catch (e) {
         console.error(e);
