@@ -820,20 +820,18 @@ async function unwrapKey({
   const { keyAccess } = manifest.encryptionInformation;
   let responseMetadata;
   const isAppIdProvider = authProvider && isAppIdProviderCheck(authProvider);
-  // const pkKeyLike = await importPKCS8(privateKey, 'RS256');
   // Get key access information to know the KAS URLS
-  // TODO: logic that runs on multiple KAS's
-  const ephemeralEncryptionKeys = await cryptoService.cryptoToPemPair(
-    await cryptoService.generateKeyPair()
-  );
-  const clientPublicKey = ephemeralEncryptionKeys.publicKey;
-
   const rewrappedKeys = await Promise.all(
     keyAccess.map(async (keySplitInfo) => {
       if (!allowedKases.includes(keySplitInfo.url)) {
         throw new KasUpsertError(`Unexpected KAS url: [${keySplitInfo.url}]`);
       }
       const url = `${keySplitInfo.url}/${isAppIdProvider ? '' : 'v2/'}rewrap`;
+
+      const ephemeralEncryptionKeys = await cryptoService.cryptoToPemPair(
+        await cryptoService.generateKeyPair()
+      );
+      const clientPublicKey = ephemeralEncryptionKeys.publicKey;
 
       const requestBodyStr = JSON.stringify({
         algorithm: 'RS256',
