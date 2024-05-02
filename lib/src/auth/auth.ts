@@ -80,7 +80,7 @@ export async function reqSignature(
  * ephemeral key, to be included in
  * [the claims object](https://github.com/opentdf/spec/blob/main/schema/ClaimsObject.md).
  */
-export abstract class AuthProvider {
+export type AuthProvider = {
   /**
    * This function should be called if the consumer of this auth provider
    * changes the client keypair, or wishes to set the keypair after creating
@@ -90,19 +90,18 @@ export abstract class AuthProvider {
    * using the cached refresh token, and update the auth server config with the
    * current key.
    *
-   * @param clientPubkey the client's public key, base64 encoded
    * @param signingKey the client signing key pair. Will be bound
    * to the OIDC token and require a DPoP header, when set.
    */
-  abstract updateClientPublicKey(clientPubkey: string, signingKey?: CryptoKeyPair): Promise<void>;
+  updateClientPublicKey(signingKey?: CryptoKeyPair): Promise<void>;
 
   /**
    * Augment the provided http request with custom auth info to be used by backend services.
    *
    * @param httpReq - Required. An http request pre-populated with the data public key.
    */
-  abstract withCreds(httpReq: HttpRequest): Promise<HttpRequest>;
-}
+  withCreds(httpReq: HttpRequest): Promise<HttpRequest>;
+};
 
 /**
  * An AuthProvider encapsulates all logic necessary to authenticate to a backend service, in the

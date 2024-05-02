@@ -1,3 +1,7 @@
+import { base64 } from '../../../src/encodings/index.js';
+import { type AnyKeyPair, type PemKeyPair } from './declarations.js';
+import { rsaPkcs1Sha256 } from './index.js';
+
 /**
  * Validates a specified key size
  * @param size in bits requested
@@ -53,10 +57,62 @@ export const formatAsPem = (base64KeyString: string, label: string): string => {
  * @return String with formatting removed
  */
 export const removePemFormatting = (input: string): string => {
+  if (typeof input !== 'string') {
+    console.error('Not a pem string', input);
+    return input;
+  }
   const oneLiner = input.replace(/[\n\r]/g, '');
   // https://www.rfc-editor.org/rfc/rfc7468#section-2
   return oneLiner.replace(
     /-----(?:BEGIN|END)\s(?:RSA\s)?(?:PUBLIC|PRIVATE|CERTIFICATE)\sKEY-----/g,
     ''
   );
+};
+
+const PEMRE =
+  /-----BEGIN\s((?:RSA\s)?(?:PUBLIC\sKEY|PRIVATE\sKEY|CERTIFICATE))-----[\s0-9A-Za-z+/=]+-----END\s\1-----/;
+
+export const isPemKeyPair = (i: AnyKeyPair): i is PemKeyPair => {
+  const { privateKey, publicKey } = i;
+  if (typeof privateKey !== 'string' || typeof publicKey !== 'string') {
+    return false;
+  }
+  const privateMatch = PEMRE.exec(privateKey);
+  if (!privateMatch || !privateMatch[1] || privateMatch[1].indexOf('PRIVATE KEY') < 0) {
+    return false;
+  }
+  const publicMatch = PEMRE.exec(publicKey);
+  if (!publicMatch || !publicMatch[1] || publicMatch[1].indexOf('PRIVATE') >= 0) {
+    return false;
+  }
+  return true;
+};
+
+export const isCryptoKeyPair = (i: AnyKeyPair): i is CryptoKeyPair => {
+  const { privateKey, publicKey } = i;
+  if (typeof privateKey !== 'object' || typeof publicKey !== 'object') {
+    return false;
+  }
+  if (!(privateKey instanceof CryptoKey) || !(publicKey instanceof CryptoKey)) {
+    return false;
+  }
+  return privateKey.type === 'private' && publicKey.type === 'public';
+};
+
+export const toCryptoKeyPair = async (input: AnyKeyPair): Promise<CryptoKeyPair> => {
+  if (isCryptoKeyPair(input)) {
+    return input;
+  }
+  if (!isPemKeyPair(input)) {
+    throw new Error('invalid keypair');
+  }
+  const k = [input.publicKey, input.privateKey]
+    .map(removePemFormatting)
+    .map((e) => base64.decodeArrayBuffer(e));
+  const algorithm = rsaPkcs1Sha256();
+  const [publicKey, privateKey] = await Promise.all([
+    crypto.subtle.importKey('spki', k[0], algorithm, true, ['verify']),
+    crypto.subtle.importKey('pkcs8', k[1], algorithm, true, ['sign']),
+  ]);
+  return { privateKey, publicKey };
 };

@@ -23,10 +23,15 @@ import {
 } from '../tdf.js';
 import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-provider.js';
 import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider.js';
-import { CryptoService, PemKeyPair } from '../crypto/declarations.js';
-import { AuthProvider, AppIdAuthProvider, HttpRequest } from '../../../src/auth/auth.js';
+import { CryptoService } from '../crypto/declarations.js';
+import {
+  type AuthProvider,
+  AppIdAuthProvider,
+  HttpRequest,
+  withHeaders,
+} from '../../../src/auth/auth.js';
 import EAS from '../../../src/auth/Eas.js';
-import { validateSecureUrl } from '../../../src/utils.js';
+import { cryptoPublicToPem, validateSecureUrl } from '../../../src/utils.js';
 
 import {
   EncryptParams,
@@ -47,10 +52,10 @@ import {
 import * as defaultCryptoService from '../crypto/index.js';
 import { AttributeSet, Policy, SplitKey } from '../models/index.js';
 import { TdfError } from '../../../src/errors.js';
-import { rsaPkcs1Sha256 } from '../crypto/index.js';
 import { Binary } from '../binary.js';
 import { EntityObject } from 'src/tdf/EntityObject.js';
 import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
+import { toCryptoKeyPair } from '../crypto/crypto-utils.js';
 
 const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
 const HTML_BYTE_LIMIT = 100 * 1000 * 1000; // 100 MB, see WS-9476.
@@ -114,11 +119,10 @@ const makeChunkable = async (source: DecryptSource) => {
 
 export interface ClientConfig {
   cryptoService?: CryptoService;
-  // WARNING please do not use this except for testing purposes.
-  keypair?: PemKeyPair;
   organizationName?: string;
   clientId?: string;
   dpopEnabled?: boolean;
+  dpopKeys?: Promise<CryptoKeyPair>;
   kasEndpoint?: string;
   /**
    * List of allowed KASes to connect to for rewrap requests.
@@ -149,22 +153,21 @@ export interface ClientConfig {
  */
 export async function createSessionKeys({
   authProvider,
+  // FIXME use cryptoservice to generate keys again
   cryptoService,
-  dpopEnabled,
-  keypair,
+  dpopKeys,
 }: {
   authProvider?: AuthProvider | AppIdAuthProvider;
   cryptoService: CryptoService;
-  dpopEnabled?: boolean;
-  keypair?: PemKeyPair;
-}): Promise<SessionKeys> {
-  //If clientconfig has keypair, assume auth provider was already set up with pubkey and bail
-  const k2 =
-    keypair ?? (await cryptoService.cryptoToPemPair(await cryptoService.generateKeyPair()));
-  let signingKeys;
-
-  if (dpopEnabled) {
-    signingKeys = await crypto.subtle.generateKey(rsaPkcs1Sha256(), true, ['sign']);
+  dpopKeys?: Promise<CryptoKeyPair>;
+}): Promise<CryptoKeyPair> {
+  let signingKeys: CryptoKeyPair;
+  if (dpopKeys) {
+    signingKeys = await dpopKeys;
+  } else {
+    const keys = await cryptoService.generateSigningKeyPair();
+    // signingKeys = await crypto.subtle.generateKey(rsaPkcs1Sha256(), true, ['sign']);
+    signingKeys = await toCryptoKeyPair(keys);
   }
 
   // This will contact the auth server and forcibly refresh the auth token claims,
@@ -173,15 +176,10 @@ export async function createSessionKeys({
   // a formatted raw PEM string isn't a valid header value and sending it raw makes keycloak's
   // header parser barf. There are more subtle ways to solve this, but this works for now.
   if (authProvider && !isAppIdProviderCheck(authProvider)) {
-    await authProvider?.updateClientPublicKey(base64.encode(k2.publicKey), signingKeys);
+    await authProvider?.updateClientPublicKey(signingKeys);
   }
-  return { keypair: k2, signingKeys };
+  return signingKeys;
 }
-
-export type SessionKeys = {
-  keypair: PemKeyPair;
-  signingKeys?: CryptoKeyPair;
-};
 
 /*
  * Create a policy object for an encrypt operation.
@@ -228,9 +226,9 @@ export class Client {
   readonly fileStreamServiceWorker?: string;
 
   /**
-   * Session keys.
+   * Session binding keys. Used for DPoP and signed request bodies.
    */
-  readonly sessionKeys: Promise<SessionKeys>;
+  readonly dpopKeys: Promise<CryptoKeyPair>;
 
   readonly eas?: EAS;
 
@@ -251,7 +249,7 @@ export class Client {
   constructor(config: ClientConfig) {
     const clientConfig = { ...defaultClientConfig, ...config };
     this.cryptoService = clientConfig.cryptoService;
-    this.dpopEnabled = !!clientConfig.dpopEnabled;
+    this.dpopEnabled = !!(clientConfig.dpopEnabled || clientConfig.dpopKeys);
 
     clientConfig.readerUrl && (this.readerUrl = clientConfig.readerUrl);
 
@@ -316,16 +314,11 @@ export class Client {
         });
       }
     }
-    if (clientConfig.keypair) {
-      this.sessionKeys = Promise.resolve({ keypair: clientConfig.keypair });
-    } else {
-      this.sessionKeys = createSessionKeys({
-        authProvider: this.authProvider,
-        cryptoService: this.cryptoService,
-        dpopEnabled: this.dpopEnabled,
-        keypair: clientConfig.keypair,
-      });
-    }
+    this.dpopKeys = createSessionKeys({
+      authProvider: this.authProvider,
+      cryptoService: this.cryptoService,
+      dpopKeys: clientConfig.dpopKeys,
+    });
     if (clientConfig.kasPublicKey) {
       this.kasPublicKey = Promise.resolve({
         url: this.kasEndpoint,
@@ -392,7 +385,7 @@ export class Client {
     keyMiddleware = defaultKeyMiddleware,
     streamMiddleware = async (stream: DecoratedReadableStream) => stream,
   }: EncryptParams): Promise<DecoratedReadableStream | void> {
-    const sessionKeys = await this.sessionKeys;
+    const dpopKeys = await this.dpopKeys;
     const kasPublicKey = await this.kasPublicKey;
     const policyObject = asPolicy(scope);
     validatePolicyObject(policyObject);
@@ -425,10 +418,9 @@ export class Client {
       attributeSet,
       byteLimit,
       cryptoService: this.cryptoService,
+      dpopKeys,
       encryptionInformation,
       entity,
-      privateKey: sessionKeys.keypair.privateKey,
-      publicKey: sessionKeys.keypair.publicKey,
       segmentSizeDefault: windowSize,
       integrityAlgorithm: 'HS256',
       segmentIntegrityAlgorithm: 'GMAC',
@@ -484,14 +476,17 @@ export class Client {
     keyMiddleware = async (key: Binary) => key,
     streamMiddleware = async (stream: DecoratedReadableStream) => stream,
   }: DecryptParams): Promise<DecoratedReadableStream> {
-    const sessionKeys = await this.sessionKeys;
+    const dpopKeys = await this.dpopKeys;
     let entityObject;
-    if (eo && eo.publicKey == sessionKeys.keypair.publicKey) {
-      entityObject = eo;
-    } else if (this.eas) {
-      entityObject = await this.eas.fetchEntityObject({
-        publicKey: sessionKeys.keypair.publicKey,
-      });
+    if (this.eas || eo) {
+      const sessionPublicKey = await cryptoPublicToPem(dpopKeys.publicKey);
+      if (eo && eo.publicKey == sessionPublicKey) {
+        entityObject = eo;
+      } else if (this.eas) {
+        entityObject = await this.eas.fetchEntityObject({
+          publicKey: sessionPublicKey,
+        });
+      }
     }
     if (!this.authProvider) {
       throw new Error('AuthProvider missing');
@@ -502,11 +497,11 @@ export class Client {
     // TODO: Write error event to stream and don't await.
     return await (streamMiddleware as DecryptStreamMiddleware)(
       await readStream({
-        ...sessionKeys.keypair,
         allowedKases: this.allowedKases,
         authProvider: this.authProvider,
         chunker,
         cryptoService: this.cryptoService,
+        dpopKeys,
         entity: entityObject,
         fileStreamServiceWorker: this.clientConfig.fileStreamServiceWorker,
         keyMiddleware,
@@ -535,12 +530,14 @@ export class Client {
   }
 }
 
+export type { AuthProvider };
+
 export {
-  AuthProvider,
   AppIdAuthProvider,
   DecryptParamsBuilder,
   DecryptSource,
   EncryptParamsBuilder,
   HttpRequest,
   fromDataSource,
+  withHeaders,
 };

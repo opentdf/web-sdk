@@ -28,6 +28,13 @@ function mockFetch(
   return fake.resolves({ json, ok, status, statusText, text });
 }
 
+const algorithmSigner = {
+  name: 'RSASSA-PKCS1-v1_5',
+  hash: 'SHA-256',
+  modulusLength: 2048,
+  publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
+};
+
 // Due to Jest mocks not working with ESModules currently,
 // these tests use poor man's mocking
 describe('AccessToken', () => {
@@ -76,11 +83,10 @@ describe('AccessToken', () => {
   describe('exchanging refresh token for token with TDF claims', () => {
     describe('using client credentials', () => {
       it('passes client creds with refresh grant type to token endpoint', async () => {
-        const mockKeyPair = await crypto.subtle.generateKey(
-          { name: 'ECDSA', namedCurve: 'P-256' },
-          true,
-          ['sign']
-        );
+        const signingKey = await crypto.subtle.generateKey(algorithmSigner, true, [
+          'sign',
+          'verify',
+        ]);
         const mf = mockFetch({ access_token: 'fdfsdffsdf' });
         const accessToken = new AccessToken(
           {
@@ -88,8 +94,7 @@ describe('AccessToken', () => {
             oidcOrigin: 'https://auth.invalid/auth/realms/yeet/',
             clientId: 'myid',
             refreshToken: 'refresh',
-            signingKey: mockKeyPair,
-            clientPubKey: 'fake-pub-key',
+            signingKey,
           },
           mf
         );
@@ -104,20 +109,24 @@ describe('AccessToken', () => {
           client_id: 'myid',
           refresh_token: 'refresh',
         });
-        expect(mf.lastCall.lastArg.headers).to.have.property('X-VirtruPubKey', 'fake-pub-key');
+        expect(mf.lastCall.lastArg.headers).to.have.property('X-VirtruPubKey');
         expect(mf.lastCall.lastArg.headers).to.have.property('DPoP');
       });
     });
     describe('using browser flow', () => {
       it('passes only refresh token with refresh grant type to token endpoint', async () => {
+        const signingKey = await crypto.subtle.generateKey(algorithmSigner, true, [
+          'sign',
+          'verify',
+        ]);
         const mf = mockFetch({ access_token: 'fake_token' });
         const accessToken = new AccessToken(
           {
             oidcOrigin: 'https://auth.invalid',
             exchange: 'refresh',
             clientId: 'browserclient',
-            clientPubKey: 'fake-pub-key',
             refreshToken: 'fakeRefreshToken',
+            signingKey,
           },
           mf
         );
@@ -137,14 +146,18 @@ describe('AccessToken', () => {
   describe('exchanging external JWT for token with TDF claims', () => {
     describe('using client credentials', () => {
       it('passes client creds and JWT with exchange grant type to token endpoint', async () => {
+        const signingKey = await crypto.subtle.generateKey(algorithmSigner, true, [
+          'sign',
+          'verify',
+        ]);
         const mf = mockFetch({ access_token: 'fake_token' });
         const accessToken = new AccessToken(
           {
             oidcOrigin: 'https://auth.invalid//',
             clientId: 'myid',
             exchange: 'external',
-            clientPubKey: 'fake-pub-key',
             externalJwt: 'subject.token',
+            signingKey,
           },
           mf
         );
@@ -164,14 +177,15 @@ describe('AccessToken', () => {
 
     describe('using browser flow', () => {
       it('passes only external JWT with exchange grant type to token endpoint', async () => {
+        const signingKey = await crypto.subtle.generateKey(algorithmSigner, true, ['sign']);
         const mf = mockFetch({ access_token: 'fake_token' });
         const accessToken = new AccessToken(
           {
             exchange: 'external',
             oidcOrigin: 'https://auth.invalid',
             clientId: 'browserclient',
-            clientPubKey: 'fake-pub-key',
             externalJwt: 'fdfsdffsdf',
+            signingKey,
           },
           mf
         );
@@ -194,6 +208,7 @@ describe('AccessToken', () => {
   describe('get token', () => {
     describe('clientCredentials and no cached tokenset', () => {
       it('should call token endpoint using client credentials if no cached tokenset', async () => {
+        const signingKey = await crypto.subtle.generateKey(algorithmSigner, true, ['sign']);
         const mf = mockFetch({ access_token: 'notreal' });
         const accessTokenClient = new AccessToken(
           {
@@ -201,7 +216,7 @@ describe('AccessToken', () => {
             clientId: 'myid',
             clientSecret: 'mysecret',
             exchange: 'client',
-            clientPubKey: 'fake-pub-key',
+            signingKey,
           },
           mf
         );
@@ -238,6 +253,7 @@ describe('AccessToken', () => {
 
   describe('cached tokenset', () => {
     it('should call userinfo endpoint and return cached tokenset', async () => {
+      const signingKey = await crypto.subtle.generateKey(algorithmSigner, true, ['sign']);
       const mf = mockFetch({ access_token: 'notreal' });
       const accessTokenClient = new AccessToken(
         {
@@ -245,7 +261,7 @@ describe('AccessToken', () => {
           clientId: 'myid',
           clientSecret: 'mysecret',
           exchange: 'client',
-          clientPubKey: 'fake-pub-key',
+          signingKey,
         },
         mf
       );
@@ -260,6 +276,7 @@ describe('AccessToken', () => {
       // expect(mf.callCount).to.eql(0);
     });
     it('should attempt to refresh token if userinfo call throws error', async () => {
+      const signingKey = await crypto.subtle.generateKey(algorithmSigner, true, ['sign']);
       const json = fake.resolves({ access_token: 'a' });
       const mf = fake((url: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
         if (!init) {
@@ -276,7 +293,7 @@ describe('AccessToken', () => {
           clientId: 'myid',
           clientSecret: 'mysecret',
           exchange: 'client',
-          clientPubKey: 'fake-pub-key',
+          signingKey,
         },
         mf
       );

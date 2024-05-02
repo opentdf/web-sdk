@@ -75,6 +75,8 @@ export type CryptoService = {
    */
   generateKeyPair: (size?: number) => Promise<AnyKeyPair>;
 
+  generateSigningKeyPair: () => Promise<AnyKeyPair>;
+
   /**
    * Create an HMAC SHA256 hash
    */

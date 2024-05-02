@@ -1,4 +1,4 @@
-import { AuthProvider, type HttpRequest } from './auth.js';
+import { type AuthProvider, type HttpRequest } from './auth.js';
 import { AccessToken, type RefreshTokenCredentials } from './oidc.js';
 
 export class OIDCRefreshTokenProvider implements AuthProvider {
@@ -25,8 +25,8 @@ export class OIDCRefreshTokenProvider implements AuthProvider {
     this.refreshToken = refreshToken;
   }
 
-  async updateClientPublicKey(clientPubkey: string, signingKey?: CryptoKeyPair): Promise<void> {
-    await this.oidcAuth.refreshTokenClaimsWithClientPubkeyIfNeeded(clientPubkey, signingKey);
+  async updateClientPublicKey(signingKey: CryptoKeyPair): Promise<void> {
+    await this.oidcAuth.refreshTokenClaimsWithClientPubkeyIfNeeded(signingKey);
   }
 
   async withCreds(httpReq: HttpRequest): Promise<HttpRequest> {

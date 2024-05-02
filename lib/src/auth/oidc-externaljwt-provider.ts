@@ -1,4 +1,4 @@
-import { AuthProvider, type HttpRequest } from './auth.js';
+import { type AuthProvider, type HttpRequest } from './auth.js';
 import { AccessToken, type ExternalJwtCredentials } from './oidc.js';
 
 export class OIDCExternalJwtProvider implements AuthProvider {
@@ -26,8 +26,8 @@ export class OIDCExternalJwtProvider implements AuthProvider {
     this.externalJwt = externalJwt;
   }
 
-  async updateClientPublicKey(clientPubKey: string, signingKey?: CryptoKeyPair): Promise<void> {
-    this.oidcAuth.refreshTokenClaimsWithClientPubkeyIfNeeded(clientPubKey, signingKey);
+  async updateClientPublicKey(signingKey: CryptoKeyPair): Promise<void> {
+    this.oidcAuth.refreshTokenClaimsWithClientPubkeyIfNeeded(signingKey);
   }
 
   async withCreds(httpReq: HttpRequest): Promise<HttpRequest> {

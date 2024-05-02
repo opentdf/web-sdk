@@ -1,6 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
-import { AuthProvider, HttpRequest, withHeaders } from '../../src/auth/auth.js';
+import { type AuthProvider, HttpRequest, withHeaders } from '../../src/auth/auth.js';
 
 import { NanoTDFClient } from '../../src/index.js';
 

@@ -1,5 +1,6 @@
 import { type AxiosResponseHeaders, type RawAxiosResponseHeaders } from 'axios';
 import { UnsafeUrlError } from './errors.js';
+import { base64 } from './encodings/index.js';
 
 /**
  * Check to see if the given URL is 'secure'. This assumes:
@@ -111,3 +112,27 @@ export const estimateSkewFromHeaders = (headers: AnyHeaders, dateNowBefore?: num
 
   return Math.round((deltaBefore + deltaAfter) / 2);
 };
+
+export function addNewLines(str: string): string {
+  if (!str) {
+    return str;
+  }
+  let inputString = str;
+  let finalString = '';
+  while (inputString.length > 0) {
+    finalString += inputString.substring(0, 64) + '\r\n';
+    inputString = inputString.substring(64);
+  }
+  return finalString;
+}
+
+export async function cryptoPublicToPem(publicKey: CryptoKey): Promise<string> {
+  if (publicKey.type !== 'public') {
+    throw new TypeError('Incorrect key type');
+  }
+
+  const exportedPublicKey = await crypto.subtle.exportKey('spki', publicKey);
+  const b64 = base64.encodeArrayBuffer(exportedPublicKey);
+  const pem = addNewLines(b64);
+  return `-----BEGIN PUBLIC KEY-----\r\n${pem}-----END PUBLIC KEY-----`;
+}

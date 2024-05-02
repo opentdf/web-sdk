@@ -11,7 +11,7 @@ import {
   type DecryptStreamMiddleware,
   EncryptParamsBuilder,
 } from './src/client/builders.js';
-import { type SessionKeys, type ClientConfig, createSessionKeys } from './src/client/index.js';
+import { type ClientConfig, createSessionKeys } from './src/client/index.js';
 import {
   type CryptoService,
   type DecryptResult,
@@ -24,7 +24,13 @@ import {
   SplitKey,
   type EncryptionInformation,
 } from './src/models/encryption-information.js';
-import { AuthProvider, AppIdAuthProvider, type HttpMethod, HttpRequest } from '../src/auth/auth.js';
+import {
+  AuthProvider,
+  AppIdAuthProvider,
+  type HttpMethod,
+  HttpRequest,
+  withHeaders,
+} from '../src/auth/auth.js';
 import { AesGcmCipher } from './src/ciphers/aes-gcm-cipher.js';
 import {
   NanoTDFClient,
@@ -39,6 +45,7 @@ import { type Chunker } from './src/utils/chunkers.js';
 export type {
   AlgorithmName,
   AlgorithmUrn,
+  AuthProvider,
   Chunker,
   CryptoService,
   DecryptResult,
@@ -55,7 +62,6 @@ export {
   AesGcmCipher,
   Algorithms,
   AppIdAuthProvider,
-  AuthProvider,
   AuthProviders,
   Binary,
   Client,
@@ -72,11 +78,11 @@ export {
   KeyInfo,
   NanoTDFClient,
   NanoTDFDatasetClient,
-  SessionKeys,
   SplitKey,
   TDF3Client,
   clientType,
   createSessionKeys,
+  withHeaders,
   version,
 };
 

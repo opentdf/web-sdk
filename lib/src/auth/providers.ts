@@ -6,7 +6,7 @@ import {
 } from './oidc.js';
 import { OIDCClientCredentialsProvider } from './oidc-clientcredentials-provider.js';
 import { OIDCExternalJwtProvider } from './oidc-externaljwt-provider.js';
-import { AuthProvider } from './auth.js';
+import { type AuthProvider } from './auth.js';
 import { OIDCRefreshTokenProvider } from './oidc-refreshtoken-provider.js';
 import { isBrowser } from '../utils.js';
 
@@ -91,7 +91,6 @@ export const refreshAuthProvider = async (
 /**
  * Generate an auth provder.
  * @param clientConfig OIDC client credentials
- * @param clientPubKey Client identification
  * @returns a promise for a new auth provider with the requested excahnge type
  */
 export const clientAuthProvider = async (clientConfig: OIDCCredentials): Promise<AuthProvider> => {

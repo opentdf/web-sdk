@@ -28,9 +28,6 @@ Start a local, blank cluster. See [Integrate](https://github.com/opentdf/opentdf
   const cipherText = await client.encrypt(plainText);
   const clearText = await client.decrypt(cipherText);
 ```
-### Examples
-
-Review examples to see how to integrate. See [Examples](https://github.com/opentdf/opentdf/tree/main/examples)
 
 ## Distribute
 
@@ -58,3 +55,4 @@ nvm use
 make test
 make start
 ```
+

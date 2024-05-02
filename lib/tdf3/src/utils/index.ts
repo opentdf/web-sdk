@@ -1,5 +1,5 @@
 import { toByteArray, fromByteArray } from 'base64-js';
-import { AppIdAuthProvider, AuthProvider } from '../../../src/auth/auth.js';
+import { AppIdAuthProvider, type AuthProvider } from '../../../src/auth/auth.js';
 import * as WebCryptoService from '../crypto/index.js';
 import { KeyInfo, SplitKey } from '../models/index.js';
 
