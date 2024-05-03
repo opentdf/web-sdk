@@ -2,7 +2,7 @@ import { clsx } from 'clsx';
 import { useState, useEffect, type ChangeEvent } from 'react';
 import { showSaveFilePicker } from 'native-file-system-adapter';
 import './App.css';
-import { TDF3Client, type DecryptSource, NanoTDFClient } from '@opentdf/client';
+import { type Chunker, type DecryptSource, NanoTDFClient, TDF3Client } from '@opentdf/client';
 import { type SessionInformation, OidcClient } from './session.js';
 import { c } from './config.js';
 
@@ -62,6 +62,7 @@ async function getNewFileHandle(
     ],
     suggestedName,
   };
+  //@ts-expect-error //TS2739: not a complete file picker interface
   return showSaveFilePicker(options);
 }
 
@@ -629,6 +630,8 @@ function App() {
     let source;
     if ('file' in inputSource) {
       source = inputSource.file.stream() as unknown as ReadableStream<Uint8Array>;
+    } else if ('type' in inputSource) {
+      throw new Error('Unimplemented');
     } else {
       const sc = new AbortController();
       setStreamController(sc);
@@ -725,7 +728,7 @@ function App() {
             {hasFileInput ? (
               <div id="details">
                 <h2>
-                  {'file' in inputSource ? inputSource.file.name : inputSource.url.toString()}
+                  {'file' in inputSource ? inputSource.file.name : '[rand]'}
                 </h2>
                 {'file' in inputSource && (
                   <>

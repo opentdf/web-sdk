@@ -403,13 +403,13 @@ export class OidcClient implements AuthProvider {
     }
     const { accessToken } = user;
     const { signingKey } = this;
-    if (!signingKey) {
+    if (!signingKey || !signingKey.publicKey) {
       console.error('missing DPoP key');
       return httpReq;
     }
     console.info(
       `signing request for ${httpReq.url} with DPoP key ${JSON.stringify(
-        await crypto.subtle.exportKey('jwk', this.signingKey.publicKey)
+        await crypto.subtle.exportKey('jwk', signingKey.publicKey)
       )}`
     );
     const dpopToken = await dpopFn(
@@ -419,9 +419,6 @@ export class OidcClient implements AuthProvider {
       /* nonce */ undefined,
       accessToken
     );
-    if (this.wrapperPubKey) {
-      httpReq = withHeaders(httpReq, { 'X-VirtruPubKey': this.wrapperPubKey });
-    }
     // TODO: Consider: only set DPoP if cnf.jkt is present in access token?
     return withHeaders(httpReq, { Authorization: `Bearer ${accessToken}`, DPoP: dpopToken });
   }

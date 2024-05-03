@@ -167,7 +167,7 @@ jobs:
           kubernetes-version: 1.30.0
       - name: Run tilt ci
         env:
-          TEST_SCRIPT: ./wait-and-test.sh
+          TEST_SCRIPT: ./wait-and-test.sh backend
           OPENTDF_INGRESS_HOST_PORT: "5432"
           PLAYWRIGHT_TESTS_TO_RUN: roundtrip
         run: tilt ci
@@ -198,7 +198,7 @@ jobs:
           OPENTDF_SERVICES_AUTHORIZATION_URL: "http://localhost:65432/"
           PLAYWRIGHT_TESTS_TO_RUN: roundtrip
         run: |-
-          ./.github/workflows/roundtrip/wait-and-test.sh
+          ./.github/workflows/roundtrip/wait-and-test.sh platform
 
   deliver-ghp:
     needs: [lib, web-app, scripts, backend-roundtrip]
