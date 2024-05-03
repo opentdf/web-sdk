@@ -89,7 +89,7 @@ describe('AttributeSet', function () {
     assert.equal(aSet.attributes[0], expected);
   });
 
-  it.skip('should not add one with additional fields (malformed)', () => {
+  it('should not add one with additional fields (malformed)', () => {
     const aSet = new AttributeSet();
     const expected = Mocks.createAttribute({});
     expected.addedField = 'Potential mallware';
@@ -134,7 +134,7 @@ describe('AttributeSet', function () {
     assert.equal(aSet.attributes[0], expected);
   });
 
-  it.skip('should not add an attribute object with "attribute" missing ', () => {
+  it('should not add an attribute object with "attribute" missing ', () => {
     const aSet = new AttributeSet();
     const expected = Mocks.createAttribute({});
     delete expected.attribute;
@@ -142,7 +142,7 @@ describe('AttributeSet', function () {
     assert.equal(aSet.attributes.length, 0);
   });
 
-  it.skip('should not add an attribute object with "pubKey" missing ', () => {
+  it('should not add an attribute object with "pubKey" missing ', () => {
     const aSet = new AttributeSet();
     const expected = Mocks.createAttribute({});
     delete expected.pubKey;
@@ -150,7 +150,7 @@ describe('AttributeSet', function () {
     assert.equal(aSet.attributes.length, 0);
   });
 
-  it.skip('should not add an attribute object with "kasUrl" missing ', () => {
+  it('should not add an attribute object with "kasUrl" missing ', () => {
     const aSet = new AttributeSet();
     const expected = Mocks.createAttribute({});
     delete expected.kasUrl;
