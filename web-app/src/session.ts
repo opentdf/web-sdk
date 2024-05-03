@@ -250,18 +250,25 @@ export class OidcClient implements AuthProvider {
     window.location.href = whereto;
   }
 
+  _cs?: Promise<SessionInformation>;
+
   async currentSession(): Promise<SessionInformation> {
-    const s = await this.handleRedirect();
-    if (s) {
-      console.log('redirected');
-      return s;
+    if (!this._cs) {
+      this._cs = (async (): Promise<SessionInformation> => {
+        const s = await this.handleRedirect();
+        if (s) {
+          console.log('redirected');
+          return s;
+        }
+        const sessions = await this.loadSessions();
+        if (!sessions?.lastRequest) {
+          return { sessionState: 'start' };
+        }
+        const thisSession = sessions.requests[sessions.lastRequest];
+        return thisSession;
+      })();
     }
-    const sessions = await this.loadSessions();
-    if (!sessions?.lastRequest) {
-      return { sessionState: 'start' };
-    }
-    const thisSession = sessions.requests[sessions.lastRequest];
-    return thisSession;
+    return this._cs;
   }
 
   async currentUser(): Promise<User | undefined> {

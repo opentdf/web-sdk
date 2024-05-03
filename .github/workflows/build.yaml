@@ -198,7 +198,7 @@ jobs:
           OPENTDF_SERVICES_AUTHORIZATION_URL: "http://localhost:65432/"
           PLAYWRIGHT_TESTS_TO_RUN: roundtrip
         run: |-
-          ./.github/workflows/roundtrip/wait-and-test.sh platform
+          ./wait-and-test.sh platform
 
   deliver-ghp:
     needs: [lib, web-app, scripts, backend-roundtrip]
