@@ -154,7 +154,7 @@ jobs:
           kubectl: '1.30.0'
           helm: '3.14.4'
           tilt: '0.33.13'
-      - run: |s
+      - run: |
           kubectl version --client
           kustomize version
           tilt version
