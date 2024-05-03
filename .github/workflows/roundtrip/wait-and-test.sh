@@ -9,6 +9,16 @@ WEB_APP_DIR="$(cd "${ROOT_DIR}/web-app" >/dev/null && pwd)"
 app_version=$(cd "${ROOT_DIR}/lib" && node -p "require('./package.json').version")
 echo "[INFO] App version: ${app_version}"
 
+if [ $1 = backend ]; then
+  VITE_PROXY='{"/api":"http://localhost:5432","/auth":"http://localhost:5432"}'
+  VITE_TDF_CFG='{oidc:{host:"http://localhost:65432/auth/realms/tdf",clientId:"browsertest"},kas:"http://localhost:65432/api/kas",reader:"https://secure.virtru.com/start?htmlProtocol=1"}'
+else
+  VITE_PROXY='{"/kas":"http://localhost:8080","/auth":"http://localhost:8888"}'
+  VITE_TDF_CFG='{oidc:{host:"http://localhost:65432/auth/realms/opentdf",clientId:"browsertest"},kas:"http://localhost:65432/kas",reader:"https://secure.virtru.com/start?htmlProtocol=1"}'
+fi
+export VITE_PROXY
+export VITE_TDF_CFG
+
 _wait-for() {
   echo "[INFO] In retry loop for quickstarted opentdf backend..."
   limit=5
