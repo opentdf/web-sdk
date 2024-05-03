@@ -30,11 +30,7 @@ function decryptedFileExtension(encryptedFileName: string): string {
   return m[2];
 }
 
-const oidcClient = new OidcClient(
-  c.oidc.host,
-  c.oidc.clientId,
-  'otdf-sample-web-app'
-);
+const oidcClient = new OidcClient(c.oidc.host, c.oidc.clientId, 'otdf-sample-web-app');
 
 function saver(blob: Blob, name: string) {
   const a = document.createElement('a');
@@ -727,9 +723,7 @@ function App() {
             <legend>Source</legend>
             {hasFileInput ? (
               <div id="details">
-                <h2>
-                  {'file' in inputSource ? inputSource.file.name : '[rand]'}
-                </h2>
+                <h2>{'file' in inputSource ? inputSource.file.name : '[rand]'}</h2>
                 {'file' in inputSource && (
                   <>
                     <div id="contentType">Content Type: {inputSource.file.type}</div>
