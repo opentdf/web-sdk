@@ -40,6 +40,8 @@ const validator = (() => {
 export class AttributeSet {
   attributes: AttributeObject[];
 
+  verbose: boolean = false;
+
   defaultAttribute?: AttributeObject;
 
   constructor() {
@@ -101,7 +103,7 @@ export class AttributeSet {
     if (!result) {
       // TODO: Determine if an error should be thrown
       // console.log("WARNING - AttributeSet.addAttribute: AttributeObject is malformed. AddAttribute failed:");
-      if (verbose) console.log(attrObj);
+      if (this.verbose) console.log(attrObj);
       return null;
     }
     // Check for duplicate entries to assure idempotency.

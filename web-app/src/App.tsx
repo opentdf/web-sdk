@@ -336,7 +336,11 @@ function App() {
           'file' in inputSource
             ? await inputSource.file.arrayBuffer()
             : randomArrayBuffer(inputSource);
-        const nanoClient = new NanoTDFClient(oidcClient, c.kas);
+        const nanoClient = new NanoTDFClient({
+          authProvider: oidcClient,
+          kasEndpoint: c.kas,
+          dpopKeys: oidcClient.getSigningKey(),
+        });
         setDownloadState('Encrypting...');
         switch (sinkType) {
           case 'file':
@@ -576,7 +580,11 @@ function App() {
         if ('url' in inputSource) {
           throw new Error('Unsupported : fetch the url I guess?');
         }
-        const nanoClient = new NanoTDFClient(oidcClient, c.kas);
+        const nanoClient = new NanoTDFClient({
+          authProvider: oidcClient,
+          kasEndpoint: c.kas,
+          dpopKeys: oidcClient.getSigningKey(),
+        });
         try {
           const cipherText =
             'file' in inputSource
