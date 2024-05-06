@@ -206,6 +206,7 @@ jobs:
             tcp:localhost:8080
           log-output-if: true
           wait-for: 90s
+          working-directory: .github/workflows/roundtrip
       - env:
           OPENTDF_SERVICES_AUTHORIZATION_URL: 'http://localhost:65432/'
           PLAYWRIGHT_TESTS_TO_RUN: roundtrip
