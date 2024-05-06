@@ -5,9 +5,12 @@ set -x
 if ! which kcadm.sh; then
   KCADM_URL=https://github.com/keycloak/keycloak/releases/download/${KC_VERSION}/keycloak-${KC_VERSION}.zip
   echo "DOWNLOADING ${KCADM_URL}"
-  curl -o kc.zip "${KCADM_URL}"
-  unzip kc.zip -d keycloak-${KC_VERSION}
-  ls
+  if ! curl --output kc.zip --fail --location "${KCADM_URL}"; then
+    echo "DOWNLOADING ${KCADM_URL}"
+  fi
+  ls -l
+  unzip ./kc.zip -d keycloak-${KC_VERSION}
+  ls -l
   export PATH=$PATH:$(pwd)/keycloak-${KC_VERSION}/bin
 fi
 
