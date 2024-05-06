@@ -26,9 +26,8 @@ if ! which kcadm.sh; then
   fi
 fi
 
-kcadm.sh config credentials --server http://localhost:65432/auth --realm master --user admin <<EOF
-changeme
-EOF
+kcadm.sh config credentials --server http://localhost:65432/auth \
+  --realm master --user admin --password changeme
 
 kcadm.sh create clients -r opentdf \
   -s clientId=browsertest \

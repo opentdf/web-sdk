@@ -112,3 +112,5 @@ dist
 
 # For integration testing
 /platform
+.github/workflows/roundtrip/kc.zip
+/.github/workflows/roundtrip/keycloak-24.0.3
