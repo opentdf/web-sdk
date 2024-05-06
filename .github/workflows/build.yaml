@@ -214,7 +214,12 @@ jobs:
           ./wait-and-test.sh platform
 
   deliver-ghp:
-    needs: [lib, web-app, scripts, backend-roundtrip]
+    needs:
+      - lib
+      - web-app
+      - scripts
+      - backend-roundtrip
+      - platform-roundtrip
     runs-on: ubuntu-latest
     timeout-minutes: 5
     # To publish from a release or feature branch, remove the ref == condition below
