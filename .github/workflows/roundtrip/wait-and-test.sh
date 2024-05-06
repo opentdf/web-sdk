@@ -93,6 +93,10 @@ _init_platform() {
     echo "[ERROR] unable to provision keycloak"
     return 1
   fi
+  if ! ./config-demo-idp.sh; then
+    echo "[ERROR] unable to provision keycloak"
+    return 1
+  fi
   if ! ./init-temp-keys.sh; then
     echo "[ERROR] unable to initialize keys"
     return 1
