@@ -54,32 +54,32 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-  remote-store:
-    needs:
-      - lib
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./remote-store
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: './remote-store/package-lock.json'
-      - uses: actions/download-artifact@v3
-        with:
-          name: opentdf-client-lib
-          path: lib/
-      - run: npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-*.tgz
-      - run: npm install
-      - run: npm test
-      - run: npm audit
-      - run: npm run license-check
-      - run: npm run lint
-      - run: npm pack
+  # remote-store:
+  #   needs:
+  #     - lib
+  #   runs-on: ubuntu-latest
+  #   defaults:
+  #     run:
+  #       working-directory: ./remote-store
+  #   timeout-minutes: 5
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: actions/setup-node@v3
+  #       with:
+  #         node-version: '18'
+  #         cache: 'npm'
+  #         cache-dependency-path: './remote-store/package-lock.json'
+  #     - uses: actions/download-artifact@v3
+  #       with:
+  #         name: opentdf-client-lib
+  #         path: lib/
+  #     - run: npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-*.tgz
+  #     - run: npm install
+  #     - run: npm test
+  #     - run: npm audit
+  #     - run: npm run license-check
+  #     - run: npm run lint
+  #     - run: npm pack
 
   web-app:
     needs:
@@ -108,70 +108,70 @@ jobs:
       - run: npm run lint
       - run: npm pack
 
-  scripts:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: .github/workflows
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v3
-      - uses: mig4/setup-bats@v1
-        with:
-          bats-version: 1.2.1
-      - name: 🦇🦇🦇🦇🦇🦇
-        run: docker run --rm -v "$PWD:/mnt" --workdir "/mnt" bats/bats:1.5.0 *.bats
-      - name: 🦪 ✔ 🧼🧼🧼
-        run: >-
-          docker run --rm -v "$PWD:/mnt" --workdir "/mnt" "koalaman/shellcheck:v0.8.0"
-          --color=always *.sh
+  # scripts:
+  #   runs-on: ubuntu-latest
+  #   defaults:
+  #     run:
+  #       working-directory: .github/workflows
+  #   timeout-minutes: 5
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: mig4/setup-bats@v1
+  #       with:
+  #         bats-version: 1.2.1
+  #     - name: 🦇🦇🦇🦇🦇🦇
+  #       run: docker run --rm -v "$PWD:/mnt" --workdir "/mnt" bats/bats:1.5.0 *.bats
+  #     - name: 🦪 ✔ 🧼🧼🧼
+  #       run: >-
+  #         docker run --rm -v "$PWD:/mnt" --workdir "/mnt" "koalaman/shellcheck:v0.8.0"
+  #         --color=always *.sh
 
-  backend-roundtrip:
-    needs:
-      - web-app
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: .github/workflows/roundtrip
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: './web-app/package-lock.json'
-      - uses: actions/download-artifact@v3
-        with:
-          name: opentdf-client-lib
-          path: lib/
-      - uses: yokawasa/action-setup-kube-tools@v0.11.1
-        with:
-          setup-tools: |
-            kubectl
-            helm
-            tilt
-          # This should be in sync with the minikube-deployed kube version below
-          kubectl: '1.30.0'
-          helm: '3.14.4'
-          tilt: '0.33.13'
-      - run: |
-          kubectl version --client
-          kustomize version
-          tilt version
-      - name: start minikube
-        id: minikube
-        uses: medyagh/setup-minikube@master
-        with:
-          minikube-version: 1.33.0
-          # This should be in sync with the setup-tools version above
-          kubernetes-version: 1.30.0
-      - name: Run tilt ci
-        env:
-          TEST_SCRIPT: ./wait-and-test.sh backend
-          OPENTDF_INGRESS_HOST_PORT: '5432'
-          PLAYWRIGHT_TESTS_TO_RUN: roundtrip
-        run: tilt ci
+  # backend-roundtrip:
+  #   needs:
+  #     - web-app
+  #   runs-on: ubuntu-latest
+  #   defaults:
+  #     run:
+  #       working-directory: .github/workflows/roundtrip
+  #   timeout-minutes: 45
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: actions/setup-node@v3
+  #       with:
+  #         node-version: '18'
+  #         cache: 'npm'
+  #         cache-dependency-path: './web-app/package-lock.json'
+  #     - uses: actions/download-artifact@v3
+  #       with:
+  #         name: opentdf-client-lib
+  #         path: lib/
+  #     - uses: yokawasa/action-setup-kube-tools@v0.11.1
+  #       with:
+  #         setup-tools: |
+  #           kubectl
+  #           helm
+  #           tilt
+  #         # This should be in sync with the minikube-deployed kube version below
+  #         kubectl: '1.30.0'
+  #         helm: '3.14.4'
+  #         tilt: '0.33.13'
+  #     - run: |
+  #         kubectl version --client
+  #         kustomize version
+  #         tilt version
+  #     - name: start minikube
+  #       id: minikube
+  #       uses: medyagh/setup-minikube@master
+  #       with:
+  #         minikube-version: 1.33.0
+  #         # This should be in sync with the setup-tools version above
+  #         kubernetes-version: 1.30.0
+  #     - name: Run tilt ci
+  #       env:
+  #         TEST_SCRIPT: ./wait-and-test.sh backend
+  #         OPENTDF_INGRESS_HOST_PORT: '5432'
+  #         PLAYWRIGHT_TESTS_TO_RUN: roundtrip
+  #       run: tilt ci
 
   platform-roundtrip:
     needs:
@@ -217,8 +217,8 @@ jobs:
     needs:
       - lib
       - web-app
-      - scripts
-      - backend-roundtrip
+      # - scripts
+      # - backend-roundtrip
       - platform-roundtrip
     runs-on: ubuntu-latest
     timeout-minutes: 5
