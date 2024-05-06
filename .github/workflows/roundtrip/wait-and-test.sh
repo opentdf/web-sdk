@@ -82,7 +82,6 @@ _init_webapp() {
   done
 }
 
-
 _init_platform() {
   output=$(mktemp)
   if ! cd "${APP_DIR}"; then
@@ -138,8 +137,6 @@ if [ $1 = platform ]; then
     exit 2
   fi
 fi
-
-
 
 if ! cd "${WEB_APP_DIR}"; then
   echo "[ERROR] Couldn't cd to web-app dir, [${WEB_APP_DIR}]"

@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 set -x
 
 : "${KC_VERSION:=24.0.3}"
@@ -6,12 +8,22 @@ if ! which kcadm.sh; then
   KCADM_URL=https://github.com/keycloak/keycloak/releases/download/${KC_VERSION}/keycloak-${KC_VERSION}.zip
   echo "DOWNLOADING ${KCADM_URL}"
   if ! curl --output kc.zip --fail --location "${KCADM_URL}"; then
-    echo "DOWNLOADING ${KCADM_URL}"
+    echo "[ERROR] Failed to download ${KCADM_URL}"
+    exit 3
   fi
   ls -l
-  unzip ./kc.zip -d keycloak-${KC_VERSION}
+  if ! unzip ./kc.zip; then
+    echo "[ERROR] Failed to unzip file from ${KCADM_URL}"
+    exit 3
+  fi
   ls -l
-  export PATH=$PATH:$(pwd)/keycloak-${KC_VERSION}/bin
+  ls -l "$(pwd)/keycloak-${KC_VERSION}/bin"
+  PATH=$PATH:"$(pwd)/keycloak-${KC_VERSION}/bin"
+  export PATH
+  if ! which kcadm.sh; then
+    echo "[ERROR] Failed to find kcadm.sh"
+    exit 3
+  fi
 fi
 
 kcadm.sh config credentials --server http://localhost:65432/auth --realm master --user admin <<EOF
