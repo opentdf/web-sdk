@@ -21,15 +21,15 @@ export VITE_TDF_CFG
 
 # VITE_PROXY='{"/api":"http://localhost:5432","/auth":"http://localhost:5432"}' VITE_TDF_CFG='{"oidc":{"host":"http://localhost:65432/auth/realms/tdf","clientId":"browsertest"},"kas":"http://localhost:65432/api/kas","reader":"https://secure.virtru.com/start?htmlProtocol=1"}' npm run dev
 
-_wait-for() {
+_wait_for() {
   echo "[INFO] In retry loop for quickstarted opentdf backend..."
   limit=5
   for i in $(seq 1 $limit); do
-    if curl --show-error --fail --insecure http://localhost:65432; then
+    if curl --show-error --fail --insecure "$1"; then
       return 0
     fi
     if [[ $i == "$limit" ]]; then
-      echo "[WARN] Breaking _wait-for loop as we are at limit"
+      echo "[WARN] Breaking _wait_for loop as we are at limit"
       break
     fi
     sleep_for=$((10 + i * i * 2))
@@ -40,7 +40,7 @@ _wait-for() {
   exit 1
 }
 
-_init_server() {
+_init_webapp() {
   output=$(mktemp)
   if ! cd "${WEB_APP_DIR}"; then
     echo "[ERROR] unable to cd ${WEB_APP_DIR}"
@@ -72,7 +72,7 @@ _init_server() {
       exit 1
     fi
     if [[ $i == "$limit" ]]; then
-      echo "[WARN] Breaking _init_server loop after ${limit} iterations"
+      echo "[WARN] Breaking _init_webapp loop after ${limit} iterations"
       cat "${output}"
       break
     fi
@@ -82,14 +82,60 @@ _init_server() {
   done
 }
 
-if ! _init_server; then
+
+_init_platform() {
+  output=$(mktemp)
+  if ! cd "${APP_DIR}"; then
+    echo "[ERROR] unable to cd ${APP_DIR}"
+    exit 2
+  fi
+  if ! go run github.com/opentdf/platform/service@latest provision keycloak; then
+    echo "[ERROR] unable to provision keycloak"
+    return 1
+  fi
+  if ! ./init-temp-keys.sh; then
+    echo "[ERROR] unable to initialize keys"
+    return 1
+  fi
+  go run github.com/opentdf/platform/service@latest start &>"$output" &
+  server_pid=$!
+  echo "Platform pid: $server_pid"
+  echo "Output: $output"
+  echo "Wait:"
+  limit=5
+  for i in $(seq 1 $limit); do
+    if grep -q -i 'starting http server' "$output"; then
+      return 0
+    fi
+    if ! ps $server_pid >/dev/null; then
+      echo "The server died" >&2
+      cat "${output}"
+      exit 1
+    fi
+    if [[ $i == "$limit" ]]; then
+      echo "[WARN] Breaking _init_platform loop after ${limit} iterations"
+      cat "${output}"
+      break
+    fi
+    sleep_for=$((5 + i * i * 2))
+    echo "[INFO] retrying in ${sleep_for} seconds... ( ${i} / $limit ) ..."
+    sleep ${sleep_for}
+  done
+}
+
+if ! _init_webapp; then
   echo "[ERROR] Couldn't run web app server"
   exit 2
 fi
 
-if ! _wait-for; then
-  exit 1
+if [ $1 = platform ]; then
+  if ! _init_platform; then
+    echo "[ERROR] Couldn't run platform"
+    exit 2
+  fi
 fi
+
+
 
 if ! cd "${WEB_APP_DIR}"; then
   echo "[ERROR] Couldn't cd to web-app dir, [${WEB_APP_DIR}]"
