@@ -388,7 +388,6 @@ function App() {
             source = inputSource.file.stream() as unknown as ReadableStream<Uint8Array>;
             break;
           case 'bytes':
-
             size = inputSource.length;
             source = randomStream(inputSource);
             break;
