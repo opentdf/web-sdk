@@ -56,3 +56,20 @@ make test
 make start
 ```
 
+## Use the platform
+
+### Generate Typescript code from platform protobufs
+```
+scripts/platform.sh
+```
+This will clone the platform repo and generate Typescript code in `lib/src/platform`.
+
+### Import Typescript code
+
+```
+import { GetAttributeRequest } from './lib/src/platform/policy/attributes/attributes_pb';
+const request = new GetAttributeRequest(<request data>);
+```
+
+This is an example to import a `GetAttributeRequest` to request attribute information.
+
