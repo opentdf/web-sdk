@@ -3,11 +3,18 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
-import { Message, proto3 } from "@bufbuild/protobuf";
-import { ActiveStateEnum, MetadataMutable, MetadataUpdateEnum } from "../../common/common_pb.js";
-import { Attribute, AttributeRuleTypeEnum, Value } from "../objects_pb.js";
-import { AttributeValueSelector } from "../selectors_pb.js";
+import type {
+  BinaryReadOptions,
+  FieldList,
+  JsonReadOptions,
+  JsonValue,
+  PartialMessage,
+  PlainMessage,
+} from '@bufbuild/protobuf';
+import { Message, proto3 } from '@bufbuild/protobuf';
+import { ActiveStateEnum, MetadataMutable, MetadataUpdateEnum } from '../../common/common_pb.js';
+import { Attribute, AttributeRuleTypeEnum, Value } from '../objects_pb.js';
+import { AttributeValueSelector } from '../selectors_pb.js';
 
 /**
  * @generated from message policy.attributes.AttributeKeyAccessServer
@@ -16,12 +23,12 @@ export class AttributeKeyAccessServer extends Message<AttributeKeyAccessServer> 
   /**
    * @generated from field: string attribute_id = 1;
    */
-  attributeId = "";
+  attributeId = '';
 
   /**
    * @generated from field: string key_access_server_id = 2;
    */
-  keyAccessServerId = "";
+  keyAccessServerId = '';
 
   constructor(data?: PartialMessage<AttributeKeyAccessServer>) {
     super();
@@ -29,25 +36,37 @@ export class AttributeKeyAccessServer extends Message<AttributeKeyAccessServer> 
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.AttributeKeyAccessServer";
+  static readonly typeName = 'policy.attributes.AttributeKeyAccessServer';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "attribute_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "key_access_server_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: 'attribute_id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: 'key_access_server_id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AttributeKeyAccessServer {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): AttributeKeyAccessServer {
     return new AttributeKeyAccessServer().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AttributeKeyAccessServer {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): AttributeKeyAccessServer {
     return new AttributeKeyAccessServer().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AttributeKeyAccessServer {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): AttributeKeyAccessServer {
     return new AttributeKeyAccessServer().fromJsonString(jsonString, options);
   }
 
-  static equals(a: AttributeKeyAccessServer | PlainMessage<AttributeKeyAccessServer> | undefined, b: AttributeKeyAccessServer | PlainMessage<AttributeKeyAccessServer> | undefined): boolean {
+  static equals(
+    a: AttributeKeyAccessServer | PlainMessage<AttributeKeyAccessServer> | undefined,
+    b: AttributeKeyAccessServer | PlainMessage<AttributeKeyAccessServer> | undefined
+  ): boolean {
     return proto3.util.equals(AttributeKeyAccessServer, a, b);
   }
 }
@@ -59,12 +78,12 @@ export class ValueKeyAccessServer extends Message<ValueKeyAccessServer> {
   /**
    * @generated from field: string value_id = 1;
    */
-  valueId = "";
+  valueId = '';
 
   /**
    * @generated from field: string key_access_server_id = 2;
    */
-  keyAccessServerId = "";
+  keyAccessServerId = '';
 
   constructor(data?: PartialMessage<ValueKeyAccessServer>) {
     super();
@@ -72,10 +91,10 @@ export class ValueKeyAccessServer extends Message<ValueKeyAccessServer> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.ValueKeyAccessServer";
+  static readonly typeName = 'policy.attributes.ValueKeyAccessServer';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "value_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "key_access_server_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: 'value_id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: 'key_access_server_id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ValueKeyAccessServer {
@@ -86,11 +105,17 @@ export class ValueKeyAccessServer extends Message<ValueKeyAccessServer> {
     return new ValueKeyAccessServer().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ValueKeyAccessServer {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): ValueKeyAccessServer {
     return new ValueKeyAccessServer().fromJsonString(jsonString, options);
   }
 
-  static equals(a: ValueKeyAccessServer | PlainMessage<ValueKeyAccessServer> | undefined, b: ValueKeyAccessServer | PlainMessage<ValueKeyAccessServer> | undefined): boolean {
+  static equals(
+    a: ValueKeyAccessServer | PlainMessage<ValueKeyAccessServer> | undefined,
+    b: ValueKeyAccessServer | PlainMessage<ValueKeyAccessServer> | undefined
+  ): boolean {
     return proto3.util.equals(ValueKeyAccessServer, a, b);
   }
 }
@@ -111,7 +136,7 @@ export class ListAttributesRequest extends Message<ListAttributesRequest> {
    *
    * @generated from field: string namespace = 2;
    */
-  namespace = "";
+  namespace = '';
 
   constructor(data?: PartialMessage<ListAttributesRequest>) {
     super();
@@ -119,13 +144,16 @@ export class ListAttributesRequest extends Message<ListAttributesRequest> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.ListAttributesRequest";
+  static readonly typeName = 'policy.attributes.ListAttributesRequest';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "state", kind: "enum", T: proto3.getEnumType(ActiveStateEnum) },
-    { no: 2, name: "namespace", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: 'state', kind: 'enum', T: proto3.getEnumType(ActiveStateEnum) },
+    { no: 2, name: 'namespace', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListAttributesRequest {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): ListAttributesRequest {
     return new ListAttributesRequest().fromBinary(bytes, options);
   }
 
@@ -133,11 +161,17 @@ export class ListAttributesRequest extends Message<ListAttributesRequest> {
     return new ListAttributesRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListAttributesRequest {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): ListAttributesRequest {
     return new ListAttributesRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(a: ListAttributesRequest | PlainMessage<ListAttributesRequest> | undefined, b: ListAttributesRequest | PlainMessage<ListAttributesRequest> | undefined): boolean {
+  static equals(
+    a: ListAttributesRequest | PlainMessage<ListAttributesRequest> | undefined,
+    b: ListAttributesRequest | PlainMessage<ListAttributesRequest> | undefined
+  ): boolean {
     return proto3.util.equals(ListAttributesRequest, a, b);
   }
 }
@@ -157,24 +191,36 @@ export class ListAttributesResponse extends Message<ListAttributesResponse> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.ListAttributesResponse";
+  static readonly typeName = 'policy.attributes.ListAttributesResponse';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "attributes", kind: "message", T: Attribute, repeated: true },
+    { no: 1, name: 'attributes', kind: 'message', T: Attribute, repeated: true },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListAttributesResponse {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): ListAttributesResponse {
     return new ListAttributesResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListAttributesResponse {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): ListAttributesResponse {
     return new ListAttributesResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListAttributesResponse {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): ListAttributesResponse {
     return new ListAttributesResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(a: ListAttributesResponse | PlainMessage<ListAttributesResponse> | undefined, b: ListAttributesResponse | PlainMessage<ListAttributesResponse> | undefined): boolean {
+  static equals(
+    a: ListAttributesResponse | PlainMessage<ListAttributesResponse> | undefined,
+    b: ListAttributesResponse | PlainMessage<ListAttributesResponse> | undefined
+  ): boolean {
     return proto3.util.equals(ListAttributesResponse, a, b);
   }
 }
@@ -186,7 +232,7 @@ export class GetAttributeRequest extends Message<GetAttributeRequest> {
   /**
    * @generated from field: string id = 1;
    */
-  id = "";
+  id = '';
 
   constructor(data?: PartialMessage<GetAttributeRequest>) {
     super();
@@ -194,9 +240,9 @@ export class GetAttributeRequest extends Message<GetAttributeRequest> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.GetAttributeRequest";
+  static readonly typeName = 'policy.attributes.GetAttributeRequest';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: 'id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetAttributeRequest {
@@ -207,11 +253,17 @@ export class GetAttributeRequest extends Message<GetAttributeRequest> {
     return new GetAttributeRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetAttributeRequest {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): GetAttributeRequest {
     return new GetAttributeRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(a: GetAttributeRequest | PlainMessage<GetAttributeRequest> | undefined, b: GetAttributeRequest | PlainMessage<GetAttributeRequest> | undefined): boolean {
+  static equals(
+    a: GetAttributeRequest | PlainMessage<GetAttributeRequest> | undefined,
+    b: GetAttributeRequest | PlainMessage<GetAttributeRequest> | undefined
+  ): boolean {
     return proto3.util.equals(GetAttributeRequest, a, b);
   }
 }
@@ -231,9 +283,9 @@ export class GetAttributeResponse extends Message<GetAttributeResponse> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.GetAttributeResponse";
+  static readonly typeName = 'policy.attributes.GetAttributeResponse';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "attribute", kind: "message", T: Attribute },
+    { no: 1, name: 'attribute', kind: 'message', T: Attribute },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetAttributeResponse {
@@ -244,11 +296,17 @@ export class GetAttributeResponse extends Message<GetAttributeResponse> {
     return new GetAttributeResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetAttributeResponse {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): GetAttributeResponse {
     return new GetAttributeResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(a: GetAttributeResponse | PlainMessage<GetAttributeResponse> | undefined, b: GetAttributeResponse | PlainMessage<GetAttributeResponse> | undefined): boolean {
+  static equals(
+    a: GetAttributeResponse | PlainMessage<GetAttributeResponse> | undefined,
+    b: GetAttributeResponse | PlainMessage<GetAttributeResponse> | undefined
+  ): boolean {
     return proto3.util.equals(GetAttributeResponse, a, b);
   }
 }
@@ -262,12 +320,12 @@ export class CreateAttributeRequest extends Message<CreateAttributeRequest> {
    *
    * @generated from field: string namespace_id = 1;
    */
-  namespaceId = "";
+  namespaceId = '';
 
   /**
    * @generated from field: string name = 2;
    */
-  name = "";
+  name = '';
 
   /**
    * @generated from field: policy.AttributeRuleTypeEnum rule = 3;
@@ -295,28 +353,40 @@ export class CreateAttributeRequest extends Message<CreateAttributeRequest> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.CreateAttributeRequest";
+  static readonly typeName = 'policy.attributes.CreateAttributeRequest';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "namespace_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "rule", kind: "enum", T: proto3.getEnumType(AttributeRuleTypeEnum) },
-    { no: 4, name: "values", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
-    { no: 100, name: "metadata", kind: "message", T: MetadataMutable },
+    { no: 1, name: 'namespace_id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: 'name', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: 'rule', kind: 'enum', T: proto3.getEnumType(AttributeRuleTypeEnum) },
+    { no: 4, name: 'values', kind: 'scalar', T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 100, name: 'metadata', kind: 'message', T: MetadataMutable },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateAttributeRequest {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): CreateAttributeRequest {
     return new CreateAttributeRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CreateAttributeRequest {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): CreateAttributeRequest {
     return new CreateAttributeRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CreateAttributeRequest {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): CreateAttributeRequest {
     return new CreateAttributeRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(a: CreateAttributeRequest | PlainMessage<CreateAttributeRequest> | undefined, b: CreateAttributeRequest | PlainMessage<CreateAttributeRequest> | undefined): boolean {
+  static equals(
+    a: CreateAttributeRequest | PlainMessage<CreateAttributeRequest> | undefined,
+    b: CreateAttributeRequest | PlainMessage<CreateAttributeRequest> | undefined
+  ): boolean {
     return proto3.util.equals(CreateAttributeRequest, a, b);
   }
 }
@@ -336,24 +406,36 @@ export class CreateAttributeResponse extends Message<CreateAttributeResponse> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.CreateAttributeResponse";
+  static readonly typeName = 'policy.attributes.CreateAttributeResponse';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "attribute", kind: "message", T: Attribute },
+    { no: 1, name: 'attribute', kind: 'message', T: Attribute },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateAttributeResponse {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): CreateAttributeResponse {
     return new CreateAttributeResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CreateAttributeResponse {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): CreateAttributeResponse {
     return new CreateAttributeResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CreateAttributeResponse {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): CreateAttributeResponse {
     return new CreateAttributeResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(a: CreateAttributeResponse | PlainMessage<CreateAttributeResponse> | undefined, b: CreateAttributeResponse | PlainMessage<CreateAttributeResponse> | undefined): boolean {
+  static equals(
+    a: CreateAttributeResponse | PlainMessage<CreateAttributeResponse> | undefined,
+    b: CreateAttributeResponse | PlainMessage<CreateAttributeResponse> | undefined
+  ): boolean {
     return proto3.util.equals(CreateAttributeResponse, a, b);
   }
 }
@@ -367,7 +449,7 @@ export class UpdateAttributeRequest extends Message<UpdateAttributeRequest> {
    *
    * @generated from field: string id = 1;
    */
-  id = "";
+  id = '';
 
   /**
    * Optional
@@ -387,26 +469,43 @@ export class UpdateAttributeRequest extends Message<UpdateAttributeRequest> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.UpdateAttributeRequest";
+  static readonly typeName = 'policy.attributes.UpdateAttributeRequest';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 100, name: "metadata", kind: "message", T: MetadataMutable },
-    { no: 101, name: "metadata_update_behavior", kind: "enum", T: proto3.getEnumType(MetadataUpdateEnum) },
+    { no: 1, name: 'id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 100, name: 'metadata', kind: 'message', T: MetadataMutable },
+    {
+      no: 101,
+      name: 'metadata_update_behavior',
+      kind: 'enum',
+      T: proto3.getEnumType(MetadataUpdateEnum),
+    },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateAttributeRequest {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): UpdateAttributeRequest {
     return new UpdateAttributeRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UpdateAttributeRequest {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): UpdateAttributeRequest {
     return new UpdateAttributeRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UpdateAttributeRequest {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): UpdateAttributeRequest {
     return new UpdateAttributeRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(a: UpdateAttributeRequest | PlainMessage<UpdateAttributeRequest> | undefined, b: UpdateAttributeRequest | PlainMessage<UpdateAttributeRequest> | undefined): boolean {
+  static equals(
+    a: UpdateAttributeRequest | PlainMessage<UpdateAttributeRequest> | undefined,
+    b: UpdateAttributeRequest | PlainMessage<UpdateAttributeRequest> | undefined
+  ): boolean {
     return proto3.util.equals(UpdateAttributeRequest, a, b);
   }
 }
@@ -426,24 +525,36 @@ export class UpdateAttributeResponse extends Message<UpdateAttributeResponse> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.UpdateAttributeResponse";
+  static readonly typeName = 'policy.attributes.UpdateAttributeResponse';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "attribute", kind: "message", T: Attribute },
+    { no: 1, name: 'attribute', kind: 'message', T: Attribute },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateAttributeResponse {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): UpdateAttributeResponse {
     return new UpdateAttributeResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UpdateAttributeResponse {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): UpdateAttributeResponse {
     return new UpdateAttributeResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UpdateAttributeResponse {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): UpdateAttributeResponse {
     return new UpdateAttributeResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(a: UpdateAttributeResponse | PlainMessage<UpdateAttributeResponse> | undefined, b: UpdateAttributeResponse | PlainMessage<UpdateAttributeResponse> | undefined): boolean {
+  static equals(
+    a: UpdateAttributeResponse | PlainMessage<UpdateAttributeResponse> | undefined,
+    b: UpdateAttributeResponse | PlainMessage<UpdateAttributeResponse> | undefined
+  ): boolean {
     return proto3.util.equals(UpdateAttributeResponse, a, b);
   }
 }
@@ -455,7 +566,7 @@ export class DeactivateAttributeRequest extends Message<DeactivateAttributeReque
   /**
    * @generated from field: string id = 1;
    */
-  id = "";
+  id = '';
 
   constructor(data?: PartialMessage<DeactivateAttributeRequest>) {
     super();
@@ -463,24 +574,36 @@ export class DeactivateAttributeRequest extends Message<DeactivateAttributeReque
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.DeactivateAttributeRequest";
+  static readonly typeName = 'policy.attributes.DeactivateAttributeRequest';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: 'id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeactivateAttributeRequest {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): DeactivateAttributeRequest {
     return new DeactivateAttributeRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeactivateAttributeRequest {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): DeactivateAttributeRequest {
     return new DeactivateAttributeRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeactivateAttributeRequest {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): DeactivateAttributeRequest {
     return new DeactivateAttributeRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(a: DeactivateAttributeRequest | PlainMessage<DeactivateAttributeRequest> | undefined, b: DeactivateAttributeRequest | PlainMessage<DeactivateAttributeRequest> | undefined): boolean {
+  static equals(
+    a: DeactivateAttributeRequest | PlainMessage<DeactivateAttributeRequest> | undefined,
+    b: DeactivateAttributeRequest | PlainMessage<DeactivateAttributeRequest> | undefined
+  ): boolean {
     return proto3.util.equals(DeactivateAttributeRequest, a, b);
   }
 }
@@ -500,24 +623,36 @@ export class DeactivateAttributeResponse extends Message<DeactivateAttributeResp
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.DeactivateAttributeResponse";
+  static readonly typeName = 'policy.attributes.DeactivateAttributeResponse';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "attribute", kind: "message", T: Attribute },
+    { no: 1, name: 'attribute', kind: 'message', T: Attribute },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeactivateAttributeResponse {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): DeactivateAttributeResponse {
     return new DeactivateAttributeResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeactivateAttributeResponse {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): DeactivateAttributeResponse {
     return new DeactivateAttributeResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeactivateAttributeResponse {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): DeactivateAttributeResponse {
     return new DeactivateAttributeResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(a: DeactivateAttributeResponse | PlainMessage<DeactivateAttributeResponse> | undefined, b: DeactivateAttributeResponse | PlainMessage<DeactivateAttributeResponse> | undefined): boolean {
+  static equals(
+    a: DeactivateAttributeResponse | PlainMessage<DeactivateAttributeResponse> | undefined,
+    b: DeactivateAttributeResponse | PlainMessage<DeactivateAttributeResponse> | undefined
+  ): boolean {
     return proto3.util.equals(DeactivateAttributeResponse, a, b);
   }
 }
@@ -533,7 +668,7 @@ export class GetAttributeValueRequest extends Message<GetAttributeValueRequest> 
   /**
    * @generated from field: string id = 1;
    */
-  id = "";
+  id = '';
 
   constructor(data?: PartialMessage<GetAttributeValueRequest>) {
     super();
@@ -541,24 +676,36 @@ export class GetAttributeValueRequest extends Message<GetAttributeValueRequest> 
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.GetAttributeValueRequest";
+  static readonly typeName = 'policy.attributes.GetAttributeValueRequest';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: 'id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetAttributeValueRequest {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): GetAttributeValueRequest {
     return new GetAttributeValueRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetAttributeValueRequest {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): GetAttributeValueRequest {
     return new GetAttributeValueRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetAttributeValueRequest {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): GetAttributeValueRequest {
     return new GetAttributeValueRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(a: GetAttributeValueRequest | PlainMessage<GetAttributeValueRequest> | undefined, b: GetAttributeValueRequest | PlainMessage<GetAttributeValueRequest> | undefined): boolean {
+  static equals(
+    a: GetAttributeValueRequest | PlainMessage<GetAttributeValueRequest> | undefined,
+    b: GetAttributeValueRequest | PlainMessage<GetAttributeValueRequest> | undefined
+  ): boolean {
     return proto3.util.equals(GetAttributeValueRequest, a, b);
   }
 }
@@ -578,24 +725,36 @@ export class GetAttributeValueResponse extends Message<GetAttributeValueResponse
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.GetAttributeValueResponse";
+  static readonly typeName = 'policy.attributes.GetAttributeValueResponse';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "value", kind: "message", T: Value },
+    { no: 1, name: 'value', kind: 'message', T: Value },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetAttributeValueResponse {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): GetAttributeValueResponse {
     return new GetAttributeValueResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetAttributeValueResponse {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): GetAttributeValueResponse {
     return new GetAttributeValueResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetAttributeValueResponse {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): GetAttributeValueResponse {
     return new GetAttributeValueResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(a: GetAttributeValueResponse | PlainMessage<GetAttributeValueResponse> | undefined, b: GetAttributeValueResponse | PlainMessage<GetAttributeValueResponse> | undefined): boolean {
+  static equals(
+    a: GetAttributeValueResponse | PlainMessage<GetAttributeValueResponse> | undefined,
+    b: GetAttributeValueResponse | PlainMessage<GetAttributeValueResponse> | undefined
+  ): boolean {
     return proto3.util.equals(GetAttributeValueResponse, a, b);
   }
 }
@@ -607,7 +766,7 @@ export class ListAttributeValuesRequest extends Message<ListAttributeValuesReque
   /**
    * @generated from field: string attribute_id = 1;
    */
-  attributeId = "";
+  attributeId = '';
 
   /**
    * ACTIVE by default when not specified
@@ -622,25 +781,37 @@ export class ListAttributeValuesRequest extends Message<ListAttributeValuesReque
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.ListAttributeValuesRequest";
+  static readonly typeName = 'policy.attributes.ListAttributeValuesRequest';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "attribute_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "state", kind: "enum", T: proto3.getEnumType(ActiveStateEnum) },
+    { no: 1, name: 'attribute_id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: 'state', kind: 'enum', T: proto3.getEnumType(ActiveStateEnum) },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListAttributeValuesRequest {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): ListAttributeValuesRequest {
     return new ListAttributeValuesRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListAttributeValuesRequest {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): ListAttributeValuesRequest {
     return new ListAttributeValuesRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListAttributeValuesRequest {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): ListAttributeValuesRequest {
     return new ListAttributeValuesRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(a: ListAttributeValuesRequest | PlainMessage<ListAttributeValuesRequest> | undefined, b: ListAttributeValuesRequest | PlainMessage<ListAttributeValuesRequest> | undefined): boolean {
+  static equals(
+    a: ListAttributeValuesRequest | PlainMessage<ListAttributeValuesRequest> | undefined,
+    b: ListAttributeValuesRequest | PlainMessage<ListAttributeValuesRequest> | undefined
+  ): boolean {
     return proto3.util.equals(ListAttributeValuesRequest, a, b);
   }
 }
@@ -660,24 +831,36 @@ export class ListAttributeValuesResponse extends Message<ListAttributeValuesResp
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.ListAttributeValuesResponse";
+  static readonly typeName = 'policy.attributes.ListAttributeValuesResponse';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "values", kind: "message", T: Value, repeated: true },
+    { no: 1, name: 'values', kind: 'message', T: Value, repeated: true },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListAttributeValuesResponse {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): ListAttributeValuesResponse {
     return new ListAttributeValuesResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListAttributeValuesResponse {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): ListAttributeValuesResponse {
     return new ListAttributeValuesResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListAttributeValuesResponse {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): ListAttributeValuesResponse {
     return new ListAttributeValuesResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(a: ListAttributeValuesResponse | PlainMessage<ListAttributeValuesResponse> | undefined, b: ListAttributeValuesResponse | PlainMessage<ListAttributeValuesResponse> | undefined): boolean {
+  static equals(
+    a: ListAttributeValuesResponse | PlainMessage<ListAttributeValuesResponse> | undefined,
+    b: ListAttributeValuesResponse | PlainMessage<ListAttributeValuesResponse> | undefined
+  ): boolean {
     return proto3.util.equals(ListAttributeValuesResponse, a, b);
   }
 }
@@ -691,12 +874,12 @@ export class CreateAttributeValueRequest extends Message<CreateAttributeValueReq
    *
    * @generated from field: string attribute_id = 1;
    */
-  attributeId = "";
+  attributeId = '';
 
   /**
    * @generated from field: string value = 2;
    */
-  value = "";
+  value = '';
 
   /**
    * Optional
@@ -718,27 +901,39 @@ export class CreateAttributeValueRequest extends Message<CreateAttributeValueReq
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.CreateAttributeValueRequest";
+  static readonly typeName = 'policy.attributes.CreateAttributeValueRequest';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "attribute_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "value", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "members", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
-    { no: 100, name: "metadata", kind: "message", T: MetadataMutable },
+    { no: 1, name: 'attribute_id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: 'value', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: 'members', kind: 'scalar', T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 100, name: 'metadata', kind: 'message', T: MetadataMutable },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateAttributeValueRequest {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): CreateAttributeValueRequest {
     return new CreateAttributeValueRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CreateAttributeValueRequest {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): CreateAttributeValueRequest {
     return new CreateAttributeValueRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CreateAttributeValueRequest {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): CreateAttributeValueRequest {
     return new CreateAttributeValueRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(a: CreateAttributeValueRequest | PlainMessage<CreateAttributeValueRequest> | undefined, b: CreateAttributeValueRequest | PlainMessage<CreateAttributeValueRequest> | undefined): boolean {
+  static equals(
+    a: CreateAttributeValueRequest | PlainMessage<CreateAttributeValueRequest> | undefined,
+    b: CreateAttributeValueRequest | PlainMessage<CreateAttributeValueRequest> | undefined
+  ): boolean {
     return proto3.util.equals(CreateAttributeValueRequest, a, b);
   }
 }
@@ -758,24 +953,36 @@ export class CreateAttributeValueResponse extends Message<CreateAttributeValueRe
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.CreateAttributeValueResponse";
+  static readonly typeName = 'policy.attributes.CreateAttributeValueResponse';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "value", kind: "message", T: Value },
+    { no: 1, name: 'value', kind: 'message', T: Value },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateAttributeValueResponse {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): CreateAttributeValueResponse {
     return new CreateAttributeValueResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CreateAttributeValueResponse {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): CreateAttributeValueResponse {
     return new CreateAttributeValueResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CreateAttributeValueResponse {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): CreateAttributeValueResponse {
     return new CreateAttributeValueResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(a: CreateAttributeValueResponse | PlainMessage<CreateAttributeValueResponse> | undefined, b: CreateAttributeValueResponse | PlainMessage<CreateAttributeValueResponse> | undefined): boolean {
+  static equals(
+    a: CreateAttributeValueResponse | PlainMessage<CreateAttributeValueResponse> | undefined,
+    b: CreateAttributeValueResponse | PlainMessage<CreateAttributeValueResponse> | undefined
+  ): boolean {
     return proto3.util.equals(CreateAttributeValueResponse, a, b);
   }
 }
@@ -787,7 +994,7 @@ export class UpdateAttributeValueRequest extends Message<UpdateAttributeValueReq
   /**
    * @generated from field: string id = 1;
    */
-  id = "";
+  id = '';
 
   /**
    * Optional
@@ -814,27 +1021,44 @@ export class UpdateAttributeValueRequest extends Message<UpdateAttributeValueReq
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.UpdateAttributeValueRequest";
+  static readonly typeName = 'policy.attributes.UpdateAttributeValueRequest';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 4, name: "members", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
-    { no: 100, name: "metadata", kind: "message", T: MetadataMutable },
-    { no: 101, name: "metadata_update_behavior", kind: "enum", T: proto3.getEnumType(MetadataUpdateEnum) },
+    { no: 1, name: 'id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: 'members', kind: 'scalar', T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 100, name: 'metadata', kind: 'message', T: MetadataMutable },
+    {
+      no: 101,
+      name: 'metadata_update_behavior',
+      kind: 'enum',
+      T: proto3.getEnumType(MetadataUpdateEnum),
+    },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateAttributeValueRequest {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): UpdateAttributeValueRequest {
     return new UpdateAttributeValueRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UpdateAttributeValueRequest {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): UpdateAttributeValueRequest {
     return new UpdateAttributeValueRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UpdateAttributeValueRequest {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): UpdateAttributeValueRequest {
     return new UpdateAttributeValueRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(a: UpdateAttributeValueRequest | PlainMessage<UpdateAttributeValueRequest> | undefined, b: UpdateAttributeValueRequest | PlainMessage<UpdateAttributeValueRequest> | undefined): boolean {
+  static equals(
+    a: UpdateAttributeValueRequest | PlainMessage<UpdateAttributeValueRequest> | undefined,
+    b: UpdateAttributeValueRequest | PlainMessage<UpdateAttributeValueRequest> | undefined
+  ): boolean {
     return proto3.util.equals(UpdateAttributeValueRequest, a, b);
   }
 }
@@ -854,24 +1078,36 @@ export class UpdateAttributeValueResponse extends Message<UpdateAttributeValueRe
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.UpdateAttributeValueResponse";
+  static readonly typeName = 'policy.attributes.UpdateAttributeValueResponse';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "value", kind: "message", T: Value },
+    { no: 1, name: 'value', kind: 'message', T: Value },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateAttributeValueResponse {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): UpdateAttributeValueResponse {
     return new UpdateAttributeValueResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UpdateAttributeValueResponse {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): UpdateAttributeValueResponse {
     return new UpdateAttributeValueResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UpdateAttributeValueResponse {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): UpdateAttributeValueResponse {
     return new UpdateAttributeValueResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(a: UpdateAttributeValueResponse | PlainMessage<UpdateAttributeValueResponse> | undefined, b: UpdateAttributeValueResponse | PlainMessage<UpdateAttributeValueResponse> | undefined): boolean {
+  static equals(
+    a: UpdateAttributeValueResponse | PlainMessage<UpdateAttributeValueResponse> | undefined,
+    b: UpdateAttributeValueResponse | PlainMessage<UpdateAttributeValueResponse> | undefined
+  ): boolean {
     return proto3.util.equals(UpdateAttributeValueResponse, a, b);
   }
 }
@@ -883,7 +1119,7 @@ export class DeactivateAttributeValueRequest extends Message<DeactivateAttribute
   /**
    * @generated from field: string id = 1;
    */
-  id = "";
+  id = '';
 
   constructor(data?: PartialMessage<DeactivateAttributeValueRequest>) {
     super();
@@ -891,24 +1127,36 @@ export class DeactivateAttributeValueRequest extends Message<DeactivateAttribute
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.DeactivateAttributeValueRequest";
+  static readonly typeName = 'policy.attributes.DeactivateAttributeValueRequest';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: 'id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeactivateAttributeValueRequest {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): DeactivateAttributeValueRequest {
     return new DeactivateAttributeValueRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeactivateAttributeValueRequest {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): DeactivateAttributeValueRequest {
     return new DeactivateAttributeValueRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeactivateAttributeValueRequest {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): DeactivateAttributeValueRequest {
     return new DeactivateAttributeValueRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(a: DeactivateAttributeValueRequest | PlainMessage<DeactivateAttributeValueRequest> | undefined, b: DeactivateAttributeValueRequest | PlainMessage<DeactivateAttributeValueRequest> | undefined): boolean {
+  static equals(
+    a: DeactivateAttributeValueRequest | PlainMessage<DeactivateAttributeValueRequest> | undefined,
+    b: DeactivateAttributeValueRequest | PlainMessage<DeactivateAttributeValueRequest> | undefined
+  ): boolean {
     return proto3.util.equals(DeactivateAttributeValueRequest, a, b);
   }
 }
@@ -928,24 +1176,39 @@ export class DeactivateAttributeValueResponse extends Message<DeactivateAttribut
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.DeactivateAttributeValueResponse";
+  static readonly typeName = 'policy.attributes.DeactivateAttributeValueResponse';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "value", kind: "message", T: Value },
+    { no: 1, name: 'value', kind: 'message', T: Value },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeactivateAttributeValueResponse {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): DeactivateAttributeValueResponse {
     return new DeactivateAttributeValueResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeactivateAttributeValueResponse {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): DeactivateAttributeValueResponse {
     return new DeactivateAttributeValueResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeactivateAttributeValueResponse {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): DeactivateAttributeValueResponse {
     return new DeactivateAttributeValueResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(a: DeactivateAttributeValueResponse | PlainMessage<DeactivateAttributeValueResponse> | undefined, b: DeactivateAttributeValueResponse | PlainMessage<DeactivateAttributeValueResponse> | undefined): boolean {
+  static equals(
+    a:
+      | DeactivateAttributeValueResponse
+      | PlainMessage<DeactivateAttributeValueResponse>
+      | undefined,
+    b: DeactivateAttributeValueResponse | PlainMessage<DeactivateAttributeValueResponse> | undefined
+  ): boolean {
     return proto3.util.equals(DeactivateAttributeValueResponse, a, b);
   }
 }
@@ -973,25 +1236,37 @@ export class GetAttributeValuesByFqnsRequest extends Message<GetAttributeValuesB
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.GetAttributeValuesByFqnsRequest";
+  static readonly typeName = 'policy.attributes.GetAttributeValuesByFqnsRequest';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "fqns", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
-    { no: 2, name: "with_value", kind: "message", T: AttributeValueSelector },
+    { no: 1, name: 'fqns', kind: 'scalar', T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 2, name: 'with_value', kind: 'message', T: AttributeValueSelector },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetAttributeValuesByFqnsRequest {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): GetAttributeValuesByFqnsRequest {
     return new GetAttributeValuesByFqnsRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetAttributeValuesByFqnsRequest {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): GetAttributeValuesByFqnsRequest {
     return new GetAttributeValuesByFqnsRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetAttributeValuesByFqnsRequest {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): GetAttributeValuesByFqnsRequest {
     return new GetAttributeValuesByFqnsRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(a: GetAttributeValuesByFqnsRequest | PlainMessage<GetAttributeValuesByFqnsRequest> | undefined, b: GetAttributeValuesByFqnsRequest | PlainMessage<GetAttributeValuesByFqnsRequest> | undefined): boolean {
+  static equals(
+    a: GetAttributeValuesByFqnsRequest | PlainMessage<GetAttributeValuesByFqnsRequest> | undefined,
+    b: GetAttributeValuesByFqnsRequest | PlainMessage<GetAttributeValuesByFqnsRequest> | undefined
+  ): boolean {
     return proto3.util.equals(GetAttributeValuesByFqnsRequest, a, b);
   }
 }
@@ -1013,24 +1288,45 @@ export class GetAttributeValuesByFqnsResponse extends Message<GetAttributeValues
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.GetAttributeValuesByFqnsResponse";
+  static readonly typeName = 'policy.attributes.GetAttributeValuesByFqnsResponse';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "fqn_attribute_values", kind: "map", K: 9 /* ScalarType.STRING */, V: {kind: "message", T: GetAttributeValuesByFqnsResponse_AttributeAndValue} },
+    {
+      no: 1,
+      name: 'fqn_attribute_values',
+      kind: 'map',
+      K: 9 /* ScalarType.STRING */,
+      V: { kind: 'message', T: GetAttributeValuesByFqnsResponse_AttributeAndValue },
+    },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetAttributeValuesByFqnsResponse {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): GetAttributeValuesByFqnsResponse {
     return new GetAttributeValuesByFqnsResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetAttributeValuesByFqnsResponse {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): GetAttributeValuesByFqnsResponse {
     return new GetAttributeValuesByFqnsResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetAttributeValuesByFqnsResponse {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): GetAttributeValuesByFqnsResponse {
     return new GetAttributeValuesByFqnsResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(a: GetAttributeValuesByFqnsResponse | PlainMessage<GetAttributeValuesByFqnsResponse> | undefined, b: GetAttributeValuesByFqnsResponse | PlainMessage<GetAttributeValuesByFqnsResponse> | undefined): boolean {
+  static equals(
+    a:
+      | GetAttributeValuesByFqnsResponse
+      | PlainMessage<GetAttributeValuesByFqnsResponse>
+      | undefined,
+    b: GetAttributeValuesByFqnsResponse | PlainMessage<GetAttributeValuesByFqnsResponse> | undefined
+  ): boolean {
     return proto3.util.equals(GetAttributeValuesByFqnsResponse, a, b);
   }
 }
@@ -1055,25 +1351,46 @@ export class GetAttributeValuesByFqnsResponse_AttributeAndValue extends Message<
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.GetAttributeValuesByFqnsResponse.AttributeAndValue";
+  static readonly typeName = 'policy.attributes.GetAttributeValuesByFqnsResponse.AttributeAndValue';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "attribute", kind: "message", T: Attribute },
-    { no: 2, name: "value", kind: "message", T: Value },
+    { no: 1, name: 'attribute', kind: 'message', T: Attribute },
+    { no: 2, name: 'value', kind: 'message', T: Value },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetAttributeValuesByFqnsResponse_AttributeAndValue {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): GetAttributeValuesByFqnsResponse_AttributeAndValue {
     return new GetAttributeValuesByFqnsResponse_AttributeAndValue().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetAttributeValuesByFqnsResponse_AttributeAndValue {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): GetAttributeValuesByFqnsResponse_AttributeAndValue {
     return new GetAttributeValuesByFqnsResponse_AttributeAndValue().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetAttributeValuesByFqnsResponse_AttributeAndValue {
-    return new GetAttributeValuesByFqnsResponse_AttributeAndValue().fromJsonString(jsonString, options);
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): GetAttributeValuesByFqnsResponse_AttributeAndValue {
+    return new GetAttributeValuesByFqnsResponse_AttributeAndValue().fromJsonString(
+      jsonString,
+      options
+    );
   }
 
-  static equals(a: GetAttributeValuesByFqnsResponse_AttributeAndValue | PlainMessage<GetAttributeValuesByFqnsResponse_AttributeAndValue> | undefined, b: GetAttributeValuesByFqnsResponse_AttributeAndValue | PlainMessage<GetAttributeValuesByFqnsResponse_AttributeAndValue> | undefined): boolean {
+  static equals(
+    a:
+      | GetAttributeValuesByFqnsResponse_AttributeAndValue
+      | PlainMessage<GetAttributeValuesByFqnsResponse_AttributeAndValue>
+      | undefined,
+    b:
+      | GetAttributeValuesByFqnsResponse_AttributeAndValue
+      | PlainMessage<GetAttributeValuesByFqnsResponse_AttributeAndValue>
+      | undefined
+  ): boolean {
     return proto3.util.equals(GetAttributeValuesByFqnsResponse_AttributeAndValue, a, b);
   }
 }
@@ -1093,24 +1410,42 @@ export class AssignKeyAccessServerToAttributeRequest extends Message<AssignKeyAc
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.AssignKeyAccessServerToAttributeRequest";
+  static readonly typeName = 'policy.attributes.AssignKeyAccessServerToAttributeRequest';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "attribute_key_access_server", kind: "message", T: AttributeKeyAccessServer },
+    { no: 1, name: 'attribute_key_access_server', kind: 'message', T: AttributeKeyAccessServer },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AssignKeyAccessServerToAttributeRequest {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): AssignKeyAccessServerToAttributeRequest {
     return new AssignKeyAccessServerToAttributeRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AssignKeyAccessServerToAttributeRequest {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): AssignKeyAccessServerToAttributeRequest {
     return new AssignKeyAccessServerToAttributeRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AssignKeyAccessServerToAttributeRequest {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): AssignKeyAccessServerToAttributeRequest {
     return new AssignKeyAccessServerToAttributeRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(a: AssignKeyAccessServerToAttributeRequest | PlainMessage<AssignKeyAccessServerToAttributeRequest> | undefined, b: AssignKeyAccessServerToAttributeRequest | PlainMessage<AssignKeyAccessServerToAttributeRequest> | undefined): boolean {
+  static equals(
+    a:
+      | AssignKeyAccessServerToAttributeRequest
+      | PlainMessage<AssignKeyAccessServerToAttributeRequest>
+      | undefined,
+    b:
+      | AssignKeyAccessServerToAttributeRequest
+      | PlainMessage<AssignKeyAccessServerToAttributeRequest>
+      | undefined
+  ): boolean {
     return proto3.util.equals(AssignKeyAccessServerToAttributeRequest, a, b);
   }
 }
@@ -1130,24 +1465,42 @@ export class AssignKeyAccessServerToAttributeResponse extends Message<AssignKeyA
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.AssignKeyAccessServerToAttributeResponse";
+  static readonly typeName = 'policy.attributes.AssignKeyAccessServerToAttributeResponse';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "attribute_key_access_server", kind: "message", T: AttributeKeyAccessServer },
+    { no: 1, name: 'attribute_key_access_server', kind: 'message', T: AttributeKeyAccessServer },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AssignKeyAccessServerToAttributeResponse {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): AssignKeyAccessServerToAttributeResponse {
     return new AssignKeyAccessServerToAttributeResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AssignKeyAccessServerToAttributeResponse {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): AssignKeyAccessServerToAttributeResponse {
     return new AssignKeyAccessServerToAttributeResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AssignKeyAccessServerToAttributeResponse {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): AssignKeyAccessServerToAttributeResponse {
     return new AssignKeyAccessServerToAttributeResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(a: AssignKeyAccessServerToAttributeResponse | PlainMessage<AssignKeyAccessServerToAttributeResponse> | undefined, b: AssignKeyAccessServerToAttributeResponse | PlainMessage<AssignKeyAccessServerToAttributeResponse> | undefined): boolean {
+  static equals(
+    a:
+      | AssignKeyAccessServerToAttributeResponse
+      | PlainMessage<AssignKeyAccessServerToAttributeResponse>
+      | undefined,
+    b:
+      | AssignKeyAccessServerToAttributeResponse
+      | PlainMessage<AssignKeyAccessServerToAttributeResponse>
+      | undefined
+  ): boolean {
     return proto3.util.equals(AssignKeyAccessServerToAttributeResponse, a, b);
   }
 }
@@ -1167,24 +1520,42 @@ export class RemoveKeyAccessServerFromAttributeRequest extends Message<RemoveKey
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.RemoveKeyAccessServerFromAttributeRequest";
+  static readonly typeName = 'policy.attributes.RemoveKeyAccessServerFromAttributeRequest';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "attribute_key_access_server", kind: "message", T: AttributeKeyAccessServer },
+    { no: 1, name: 'attribute_key_access_server', kind: 'message', T: AttributeKeyAccessServer },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RemoveKeyAccessServerFromAttributeRequest {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): RemoveKeyAccessServerFromAttributeRequest {
     return new RemoveKeyAccessServerFromAttributeRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RemoveKeyAccessServerFromAttributeRequest {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): RemoveKeyAccessServerFromAttributeRequest {
     return new RemoveKeyAccessServerFromAttributeRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RemoveKeyAccessServerFromAttributeRequest {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): RemoveKeyAccessServerFromAttributeRequest {
     return new RemoveKeyAccessServerFromAttributeRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(a: RemoveKeyAccessServerFromAttributeRequest | PlainMessage<RemoveKeyAccessServerFromAttributeRequest> | undefined, b: RemoveKeyAccessServerFromAttributeRequest | PlainMessage<RemoveKeyAccessServerFromAttributeRequest> | undefined): boolean {
+  static equals(
+    a:
+      | RemoveKeyAccessServerFromAttributeRequest
+      | PlainMessage<RemoveKeyAccessServerFromAttributeRequest>
+      | undefined,
+    b:
+      | RemoveKeyAccessServerFromAttributeRequest
+      | PlainMessage<RemoveKeyAccessServerFromAttributeRequest>
+      | undefined
+  ): boolean {
     return proto3.util.equals(RemoveKeyAccessServerFromAttributeRequest, a, b);
   }
 }
@@ -1204,24 +1575,42 @@ export class RemoveKeyAccessServerFromAttributeResponse extends Message<RemoveKe
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.RemoveKeyAccessServerFromAttributeResponse";
+  static readonly typeName = 'policy.attributes.RemoveKeyAccessServerFromAttributeResponse';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "attribute_key_access_server", kind: "message", T: AttributeKeyAccessServer },
+    { no: 1, name: 'attribute_key_access_server', kind: 'message', T: AttributeKeyAccessServer },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RemoveKeyAccessServerFromAttributeResponse {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): RemoveKeyAccessServerFromAttributeResponse {
     return new RemoveKeyAccessServerFromAttributeResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RemoveKeyAccessServerFromAttributeResponse {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): RemoveKeyAccessServerFromAttributeResponse {
     return new RemoveKeyAccessServerFromAttributeResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RemoveKeyAccessServerFromAttributeResponse {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): RemoveKeyAccessServerFromAttributeResponse {
     return new RemoveKeyAccessServerFromAttributeResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(a: RemoveKeyAccessServerFromAttributeResponse | PlainMessage<RemoveKeyAccessServerFromAttributeResponse> | undefined, b: RemoveKeyAccessServerFromAttributeResponse | PlainMessage<RemoveKeyAccessServerFromAttributeResponse> | undefined): boolean {
+  static equals(
+    a:
+      | RemoveKeyAccessServerFromAttributeResponse
+      | PlainMessage<RemoveKeyAccessServerFromAttributeResponse>
+      | undefined,
+    b:
+      | RemoveKeyAccessServerFromAttributeResponse
+      | PlainMessage<RemoveKeyAccessServerFromAttributeResponse>
+      | undefined
+  ): boolean {
     return proto3.util.equals(RemoveKeyAccessServerFromAttributeResponse, a, b);
   }
 }
@@ -1241,24 +1630,42 @@ export class AssignKeyAccessServerToValueRequest extends Message<AssignKeyAccess
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.AssignKeyAccessServerToValueRequest";
+  static readonly typeName = 'policy.attributes.AssignKeyAccessServerToValueRequest';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "value_key_access_server", kind: "message", T: ValueKeyAccessServer },
+    { no: 1, name: 'value_key_access_server', kind: 'message', T: ValueKeyAccessServer },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AssignKeyAccessServerToValueRequest {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): AssignKeyAccessServerToValueRequest {
     return new AssignKeyAccessServerToValueRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AssignKeyAccessServerToValueRequest {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): AssignKeyAccessServerToValueRequest {
     return new AssignKeyAccessServerToValueRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AssignKeyAccessServerToValueRequest {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): AssignKeyAccessServerToValueRequest {
     return new AssignKeyAccessServerToValueRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(a: AssignKeyAccessServerToValueRequest | PlainMessage<AssignKeyAccessServerToValueRequest> | undefined, b: AssignKeyAccessServerToValueRequest | PlainMessage<AssignKeyAccessServerToValueRequest> | undefined): boolean {
+  static equals(
+    a:
+      | AssignKeyAccessServerToValueRequest
+      | PlainMessage<AssignKeyAccessServerToValueRequest>
+      | undefined,
+    b:
+      | AssignKeyAccessServerToValueRequest
+      | PlainMessage<AssignKeyAccessServerToValueRequest>
+      | undefined
+  ): boolean {
     return proto3.util.equals(AssignKeyAccessServerToValueRequest, a, b);
   }
 }
@@ -1278,24 +1685,42 @@ export class AssignKeyAccessServerToValueResponse extends Message<AssignKeyAcces
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.AssignKeyAccessServerToValueResponse";
+  static readonly typeName = 'policy.attributes.AssignKeyAccessServerToValueResponse';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "value_key_access_server", kind: "message", T: ValueKeyAccessServer },
+    { no: 1, name: 'value_key_access_server', kind: 'message', T: ValueKeyAccessServer },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AssignKeyAccessServerToValueResponse {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): AssignKeyAccessServerToValueResponse {
     return new AssignKeyAccessServerToValueResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AssignKeyAccessServerToValueResponse {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): AssignKeyAccessServerToValueResponse {
     return new AssignKeyAccessServerToValueResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AssignKeyAccessServerToValueResponse {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): AssignKeyAccessServerToValueResponse {
     return new AssignKeyAccessServerToValueResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(a: AssignKeyAccessServerToValueResponse | PlainMessage<AssignKeyAccessServerToValueResponse> | undefined, b: AssignKeyAccessServerToValueResponse | PlainMessage<AssignKeyAccessServerToValueResponse> | undefined): boolean {
+  static equals(
+    a:
+      | AssignKeyAccessServerToValueResponse
+      | PlainMessage<AssignKeyAccessServerToValueResponse>
+      | undefined,
+    b:
+      | AssignKeyAccessServerToValueResponse
+      | PlainMessage<AssignKeyAccessServerToValueResponse>
+      | undefined
+  ): boolean {
     return proto3.util.equals(AssignKeyAccessServerToValueResponse, a, b);
   }
 }
@@ -1315,24 +1740,42 @@ export class RemoveKeyAccessServerFromValueRequest extends Message<RemoveKeyAcce
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.RemoveKeyAccessServerFromValueRequest";
+  static readonly typeName = 'policy.attributes.RemoveKeyAccessServerFromValueRequest';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "value_key_access_server", kind: "message", T: ValueKeyAccessServer },
+    { no: 1, name: 'value_key_access_server', kind: 'message', T: ValueKeyAccessServer },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RemoveKeyAccessServerFromValueRequest {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): RemoveKeyAccessServerFromValueRequest {
     return new RemoveKeyAccessServerFromValueRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RemoveKeyAccessServerFromValueRequest {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): RemoveKeyAccessServerFromValueRequest {
     return new RemoveKeyAccessServerFromValueRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RemoveKeyAccessServerFromValueRequest {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): RemoveKeyAccessServerFromValueRequest {
     return new RemoveKeyAccessServerFromValueRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(a: RemoveKeyAccessServerFromValueRequest | PlainMessage<RemoveKeyAccessServerFromValueRequest> | undefined, b: RemoveKeyAccessServerFromValueRequest | PlainMessage<RemoveKeyAccessServerFromValueRequest> | undefined): boolean {
+  static equals(
+    a:
+      | RemoveKeyAccessServerFromValueRequest
+      | PlainMessage<RemoveKeyAccessServerFromValueRequest>
+      | undefined,
+    b:
+      | RemoveKeyAccessServerFromValueRequest
+      | PlainMessage<RemoveKeyAccessServerFromValueRequest>
+      | undefined
+  ): boolean {
     return proto3.util.equals(RemoveKeyAccessServerFromValueRequest, a, b);
   }
 }
@@ -1352,25 +1795,42 @@ export class RemoveKeyAccessServerFromValueResponse extends Message<RemoveKeyAcc
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.attributes.RemoveKeyAccessServerFromValueResponse";
+  static readonly typeName = 'policy.attributes.RemoveKeyAccessServerFromValueResponse';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "value_key_access_server", kind: "message", T: ValueKeyAccessServer },
+    { no: 1, name: 'value_key_access_server', kind: 'message', T: ValueKeyAccessServer },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RemoveKeyAccessServerFromValueResponse {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): RemoveKeyAccessServerFromValueResponse {
     return new RemoveKeyAccessServerFromValueResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RemoveKeyAccessServerFromValueResponse {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): RemoveKeyAccessServerFromValueResponse {
     return new RemoveKeyAccessServerFromValueResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RemoveKeyAccessServerFromValueResponse {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): RemoveKeyAccessServerFromValueResponse {
     return new RemoveKeyAccessServerFromValueResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(a: RemoveKeyAccessServerFromValueResponse | PlainMessage<RemoveKeyAccessServerFromValueResponse> | undefined, b: RemoveKeyAccessServerFromValueResponse | PlainMessage<RemoveKeyAccessServerFromValueResponse> | undefined): boolean {
+  static equals(
+    a:
+      | RemoveKeyAccessServerFromValueResponse
+      | PlainMessage<RemoveKeyAccessServerFromValueResponse>
+      | undefined,
+    b:
+      | RemoveKeyAccessServerFromValueResponse
+      | PlainMessage<RemoveKeyAccessServerFromValueResponse>
+      | undefined
+  ): boolean {
     return proto3.util.equals(RemoveKeyAccessServerFromValueResponse, a, b);
   }
 }
-
