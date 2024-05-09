@@ -46,14 +46,14 @@ function initSandbox() {
   return sandbox;
 }
 
-const kasUrl = 'http://localhost:65432/api/kas';
+const kasEndpoint = 'http://localhost:65432/api/kas';
 
 describe('Local roundtrip Tests', () => {
   it('roundtrip string', async () => {
     // const sandbox = initSandbox();
     const sandbox = initSandbox();
     try {
-      const client = new NanoTDFClient(authProvider, kasUrl);
+      const client = new NanoTDFClient({ authProvider, kasEndpoint });
       const keyAgreementSpy = sandbox.spy(globalThis.crypto.subtle, 'deriveKey');
       sandbox.stub(client, 'rewrapKey').callsFake(async () => keyAgreementSpy.lastCall.returnValue);
       const cipherText = await client.encrypt('hello world');

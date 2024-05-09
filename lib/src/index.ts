@@ -10,7 +10,7 @@ import {
 } from './nanotdf/index.js';
 import { keyAgreement, extractPublicFromCertToCrypto } from './nanotdf-crypto/index.js';
 import { TypedArray, createAttribute, Policy } from './tdf/index.js';
-import { type AuthProvider } from './auth/auth.js';
+import { ClientConfig } from './nanotdf/Client.js';
 
 async function fetchKasPubKey(kasUrl: string): Promise<string> {
   const kasPubKeyResponse = await fetch(`${kasUrl}/kas_public_key?algorithm=ec:secp256r1`);
@@ -33,13 +33,14 @@ async function fetchKasPubKey(kasUrl: string): Promise<string> {
  * const KAS_URL = 'http://localhost:65432/api/kas/';
  *
  * const ciphertext = '...';
- * const client = new NanoTDFClient(
- *   await clientSecretAuthProvider({
+ * const client = new NanoTDFClient({
+ *   authProvider: await clientSecretAuthProvider({
  *     clientId: 'tdf-client',
  *     clientSecret: '123-456',
  *     oidcOrigin: OIDC_ENDPOINT,
  *   }),
- *   KAS_URL
+ *   kasEndpoint: KAS_URL
+ *  }
  * );
  * client.decrypt(ciphertext)
  *   .then(plaintext => {
@@ -120,9 +121,9 @@ export class NanoTDFClient extends Client {
    */
   async encrypt(data: string | TypedArray | ArrayBuffer): Promise<ArrayBuffer> {
     // For encrypt always generate the client ephemeralKeyPair
-    const ephemeralKeyPair = await this.generateEphemeralKeyPair();
-
+    const ephemeralKeyPair = await this.ephemeralKeyPair;
     const initializationVector = this.iv;
+
     if (typeof initializationVector !== 'number') {
       throw new Error('NanoTDF clients are single use. Please generate a new client and keypair.');
     }
@@ -174,6 +175,10 @@ export class NanoTDFClient extends Client {
   }
 }
 
+export type DatasetConfig = ClientConfig & {
+  maxKeyIterations?: number;
+};
+
 /**
  * NanoTDF Dataset SDK Client
  *
@@ -186,15 +191,15 @@ export class NanoTDFClient extends Client {
  * const KAS_URL = 'http://localhost:65432/api/kas/';
  *
  * const ciphertext = '...';
- * const client = new NanoTDFDatasetClient.default(
- *   await clientSecretAuthProvider({
+ * const client = new NanoTDFDatasetClient({
+ *   authProvider: await clientSecretAuthProvider({
  *     clientId: 'tdf-client',
  *     clientSecret: '123-456',
  *     exchange: 'client',
  *     oidcOrigin: OIDC_ENDPOINT,
  *   }),
- *   KAS_URL
- * );
+ *   kasEndpoint: KAS_URL,
+ * });
  * const plaintext = client.decrypt(ciphertext);
  * console.log('Plaintext', plaintext);
  * ```
@@ -223,19 +228,18 @@ export class NanoTDFDatasetClient extends Client {
    * @param ephemeralKeyPair (optional) ephemeral key pair to use
    * @param maxKeyIterations Max iteration to performe without a key rotation
    */
-  constructor(
-    authProvider: AuthProvider,
-    kasUrl: string,
-    maxKeyIterations: number = NanoTDFDatasetClient.NTDF_MAX_KEY_ITERATIONS,
-    ephemeralKeyPair?: Required<Readonly<CryptoKeyPair>>
-  ) {
-    if (maxKeyIterations > NanoTDFDatasetClient.NTDF_MAX_KEY_ITERATIONS) {
-      throw new Error('Key iteration exceeds max iterations(8388606)');
+  constructor(opts: DatasetConfig) {
+    if (
+      opts.maxKeyIterations &&
+      opts.maxKeyIterations > NanoTDFDatasetClient.NTDF_MAX_KEY_ITERATIONS
+    ) {
+      throw new Error(
+        `Key iteration exceeds max iterations(${NanoTDFDatasetClient.NTDF_MAX_KEY_ITERATIONS})`
+      );
     }
+    super(opts);
 
-    super(authProvider, kasUrl, ephemeralKeyPair);
-
-    this.maxKeyIteration = maxKeyIterations;
+    this.maxKeyIteration = opts.maxKeyIterations || NanoTDFDatasetClient.NTDF_MAX_KEY_ITERATIONS;
     this.keyIterationCount = 0;
   }
 
@@ -250,7 +254,7 @@ export class NanoTDFDatasetClient extends Client {
     // Intial encrypt
     if (this.keyIterationCount == 0) {
       // For encrypt always generate the client ephemeralKeyPair
-      const ephemeralKeyPair = await this.generateEphemeralKeyPair();
+      const ephemeralKeyPair = await this.ephemeralKeyPair;
 
       if (!this.kasPubKey) {
         this.kasPubKey = await fetchKasPubKey(this.kasUrl);
