@@ -20,7 +20,7 @@ def fill(f, size):
 
 if __name__ == "__main__":
     n = int(sys.argv[1])
-    digits = math.ceil(math.log(n) / math.log(10))
+    digits = math.ceil(math.log(n+1) / math.log(10))
     for x in range(1, n + 1):
         infix = f"{x}".rjust(digits, "0")
         with open(f"s-{infix}.txt", "w") as file:
