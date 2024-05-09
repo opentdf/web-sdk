@@ -79,7 +79,7 @@ type RandomInputSource = {
 };
 
 type InputSource = FileInputSource | UrlInputSource | RandomInputSource;
-type SinkType = 'file' | 'fsapi' | 'none';
+type SinkType = 'file' | 'fsapi' | 'memory' | 'none';
 
 function fileNameFor(inputSource: InputSource) {
   if (!inputSource) {
@@ -207,7 +207,7 @@ function App() {
   const [decryptContainerType, setDecryptContainerType] = useState<Containers>('tdf');
   const [downloadState, setDownloadState] = useState<string | undefined>();
   const [encryptContainerType, setEncryptContainerType] = useState<Containers>('tdf');
-  const [inputSource, setInputSource] = useState<InputSource | undefined>();
+  const [inputSources, setInputSources] = useState<InputSource[]>([]);
   const [sinkType, setSinkType] = useState<SinkType>('file');
   const [streamController, setStreamController] = useState<CurrentDataController>();
 
@@ -232,26 +232,27 @@ function App() {
   const setFileHandler = (event: ChangeEvent<HTMLInputElement>) => {
     const target = event.target as HTMLInputElement;
     if (target.files?.length) {
-      const [file] = target.files;
-      setInputSource({ type: 'file', file });
+      const fileArray = Array.from(target.files);
+      const srcs = fileArray.map((file): FileInputSource => ({ type: 'file', file }));
+      setInputSources(srcs);
     } else {
-      setInputSource(undefined);
+      setInputSources([]);
     }
   };
   const setRandomHandler = (event: ChangeEvent<HTMLInputElement>) => {
     const target = event.target as HTMLInputElement;
     if (target.value && target.validity.valid) {
-      setInputSource({ type: 'bytes', length: parseInt(target.value) });
+      setInputSources([{ type: 'bytes', length: parseInt(target.value) }]);
     } else {
-      setInputSource(undefined);
+      setInputSources([]);
     }
   };
   const setUrlHandler = (event: ChangeEvent<HTMLInputElement>) => {
     const target = event.target as HTMLInputElement;
     if (target.value && target.validity.valid) {
-      setInputSource({ type: 'url', url: new URL(target.value) });
+      setInputSources([{ type: 'url', url: new URL(target.value) }]);
     } else {
-      setInputSource(undefined);
+      setInputSources([]);
     }
   };
 
@@ -319,7 +320,7 @@ function App() {
   };
 
   const handleEncrypt = async () => {
-    if (!inputSource) {
+    if (!inputSources.length) {
       console.warn('No input source selected');
       return false;
     }
@@ -328,197 +329,201 @@ function App() {
       console.warn('PLEASE LOG IN');
       return false;
     }
-    const inputFileName = fileNameFor(inputSource);
-    console.log(`Encrypting [${inputFileName}] as ${encryptContainerType} to ${sinkType}`);
-    switch (encryptContainerType) {
-      case 'nano': {
-        if ('url' in inputSource) {
-          throw new Error('Unsupported : fetch the url I guess?');
-        }
-        const plainText =
-          'file' in inputSource
-            ? await inputSource.file.arrayBuffer()
-            : randomArrayBuffer(inputSource);
-        const nanoClient = new NanoTDFClient({
-          authProvider: oidcClient,
-          kasEndpoint: c.kas,
-          dpopKeys: oidcClient.getSigningKey(),
-        });
-        setDownloadState('Encrypting...');
-        switch (sinkType) {
-          case 'file':
-            {
-              const cipherText = await nanoClient.encrypt(plainText);
-              saver(new Blob([cipherText]), `${inputFileName}.ntdf`);
-            }
-            break;
-          case 'fsapi':
-            {
-              const file = await getNewFileHandle('ntdf', `${inputFileName}.ntdf`);
-              const cipherText = await nanoClient.encrypt(plainText);
-              const writable = await file.createWritable();
-              try {
-                await writable.write(cipherText);
-                setDownloadState('Encrypt Complete');
-              } catch (e) {
-                setDownloadState(`Encrypt Failed: ${e}`);
-              } finally {
-                await writable.close();
-              }
-            }
-            break;
-          case 'none':
-            break;
-        }
-        break;
-      }
-      case 'html': {
-        const client = new TDF3Client({
-          authProvider: oidcClient,
-          dpopKeys: oidcClient.getSigningKey(),
-          kasEndpoint: c.kas,
-          readerUrl: c.reader,
-        });
-        let source: ReadableStream<Uint8Array>, size: number;
-        const sc = new AbortController();
-        setStreamController(sc);
-        switch (inputSource.type) {
-          case 'file':
-            size = inputSource.file.size;
-            source = inputSource.file.stream() as unknown as ReadableStream<Uint8Array>;
-            break;
-          case 'bytes':
-            size = inputSource.length;
-            source = randomStream(inputSource);
-            break;
-          case 'url':
-            // NOTE: Attaching the signal to the pipeline (in pipeTo, below)
-            // is insufficient (at least in Chrome) to abort the fetch itself.
-            // So aborting a sink in a pipeline does *NOT* cancel its sources
-            const fr = await fetch(inputSource.url, { signal: sc.signal });
-            if (!fr.ok) {
-              throw Error(
-                `Error on fetch [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`
-              );
-            }
-            if (!fr.body) {
-              throw Error(
-                `Failed to fetch input [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`
-              );
-            }
-            size = parseInt(fr.headers.get('Content-Length') || '-1');
-            source = fr.body;
-            break;
-        }
-        try {
-          const downloadName = `${inputFileName}.tdf.html`;
-          let f;
-          if (sinkType == 'fsapi') {
-            f = await getNewFileHandle('html', downloadName);
+    for (const inputSource of inputSources) {
+      const inputFileName = fileNameFor(inputSource);
+      console.log(`Encrypting [${inputFileName}] as ${encryptContainerType} to ${sinkType}`);
+      switch (encryptContainerType) {
+        case 'nano': {
+          if ('url' in inputSource) {
+            throw new Error('Unsupported : fetch the url I guess?');
           }
-          const progressTransformers = makeProgressPair(size, 'Encrypt');
-          const cipherText = await client.encrypt({
-            source: source.pipeThrough(progressTransformers.reader),
-            offline: true,
-            asHtml: true,
+          const plainText =
+            'file' in inputSource
+              ? await inputSource.file.arrayBuffer()
+              : randomArrayBuffer(inputSource);
+          const nanoClient = new NanoTDFClient({
+            authProvider: oidcClient,
+            kasEndpoint: c.kas,
+            dpopKeys: oidcClient.getSigningKey(),
           });
-          cipherText.stream = cipherText.stream.pipeThrough(progressTransformers.writer);
+          setDownloadState('Encrypting...');
           switch (sinkType) {
             case 'file':
-              await cipherText.toFile(downloadName, { signal: sc.signal });
+              {
+                const cipherText = await nanoClient.encrypt(plainText);
+                saver(new Blob([cipherText]), `${inputFileName}.ntdf`);
+              }
               break;
             case 'fsapi':
-              if (!f) {
-                throw new Error();
+              {
+                const file = await getNewFileHandle('ntdf', `${inputFileName}.ntdf`);
+                const cipherText = await nanoClient.encrypt(plainText);
+                const writable = await file.createWritable();
+                try {
+                  await writable.write(cipherText);
+                  setDownloadState('Encrypt Complete');
+                } catch (e) {
+                  setDownloadState(`Encrypt Failed: ${e}`);
+                } finally {
+                  await writable.close();
+                }
               }
-              const writable = await f.createWritable();
-              await cipherText.stream.pipeTo(writable, { signal: sc.signal });
               break;
             case 'none':
-              await cipherText.stream.pipeTo(drain(), { signal: sc.signal });
               break;
           }
-        } catch (e) {
-          setDownloadState(`Encrypt Failed: ${e}`);
-          console.error('Encrypt Failed', e);
+          break;
         }
-        setStreamController(undefined);
-        break;
-      }
-      case 'tdf': {
-        const client = new TDF3Client({
-          authProvider: oidcClient,
-          dpopKeys: oidcClient.getSigningKey(),
-          kasEndpoint: c.kas,
-        });
-        const sc = new AbortController();
-        setStreamController(sc);
-        let source: ReadableStream<Uint8Array>, size: number;
-        switch (inputSource.type) {
-          case 'file':
-            size = inputSource.file.size;
-            source = inputSource.file.stream() as unknown as ReadableStream<Uint8Array>;
-            break;
-          case 'bytes':
-            size = inputSource.length;
-            source = randomStream(inputSource);
-            break;
-          case 'url':
-            const fr = await fetch(inputSource.url, { signal: sc.signal });
-            if (!fr.ok) {
-              throw Error(
-                `Error on fetch [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`
-              );
-            }
-            if (!fr.body) {
-              throw Error(
-                `Failed to fetch input [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`
-              );
-            }
-            size = parseInt(fr.headers.get('Content-Length') || '-1');
-            source = fr.body;
-            break;
-        }
-        try {
-          let f;
-          const downloadName = `${inputFileName}.tdf`;
-          if (sinkType === 'fsapi') {
-            f = await getNewFileHandle('tdf', downloadName);
-          }
-          const progressTransformers = makeProgressPair(size, 'Encrypt');
-          const cipherText = await client.encrypt({
-            source: source.pipeThrough(progressTransformers.reader),
-            offline: true,
+        case 'html': {
+          const client = new TDF3Client({
+            authProvider: oidcClient,
+            dpopKeys: oidcClient.getSigningKey(),
+            kasEndpoint: c.kas,
+            readerUrl: c.reader,
           });
-          cipherText.stream = cipherText.stream.pipeThrough(progressTransformers.writer);
-          switch (sinkType) {
+          let source: ReadableStream<Uint8Array>, size: number;
+          const sc = new AbortController();
+          setStreamController(sc);
+          switch (inputSource.type) {
             case 'file':
-              await cipherText.toFile(downloadName, { signal: sc.signal });
+              size = inputSource.file.size;
+              source = inputSource.file.stream() as unknown as ReadableStream<Uint8Array>;
               break;
-            case 'fsapi':
-              if (!f) {
-                throw new Error();
+
+            case 'bytes':
+              size = inputSource.length;
+              source = randomStream(inputSource);
+              break;
+
+            case 'url':
+              // NOTE: Attaching the signal to the pipeline (in pipeTo, below)
+              // is insufficient (at least in Chrome) to abort the fetch itself.
+              // So aborting a sink in a pipeline does *NOT* cancel its sources
+              const fr = await fetch(inputSource.url, { signal: sc.signal });
+              if (!fr.ok) {
+                throw Error(
+                  `Error on fetch [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`
+                );
               }
-              const writable = await f.createWritable();
-              await cipherText.stream.pipeTo(writable, { signal: sc.signal });
-              break;
-            case 'none':
-              await cipherText.stream.pipeTo(drain(), { signal: sc.signal });
+              if (!fr.body) {
+                throw Error(
+                  `Failed to fetch input [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`
+                );
+              }
+              size = parseInt(fr.headers.get('Content-Length') || '-1');
+              source = fr.body;
               break;
           }
-        } catch (e) {
-          setDownloadState(`Encrypt Failed: ${e}`);
-          console.error('Encrypt Failed', e);
+          try {
+            const downloadName = `${inputFileName}.tdf.html`;
+            let f;
+            if (sinkType == 'fsapi') {
+              f = await getNewFileHandle('html', downloadName);
+            }
+            const progressTransformers = makeProgressPair(size, 'Encrypt');
+            const cipherText = await client.encrypt({
+              source: source.pipeThrough(progressTransformers.reader),
+              offline: true,
+              asHtml: true,
+            });
+            cipherText.stream = cipherText.stream.pipeThrough(progressTransformers.writer);
+            switch (sinkType) {
+              case 'file':
+                await cipherText.toFile(downloadName, { signal: sc.signal });
+                break;
+              case 'fsapi':
+                if (!f) {
+                  throw new Error();
+                }
+                const writable = await f.createWritable();
+                await cipherText.stream.pipeTo(writable, { signal: sc.signal });
+                break;
+              case 'none':
+                await cipherText.stream.pipeTo(drain(), { signal: sc.signal });
+                break;
+            }
+          } catch (e) {
+            setDownloadState(`Encrypt Failed: ${e}`);
+            console.error('Encrypt Failed', e);
+          }
+          setStreamController(undefined);
+          break;
         }
-        setStreamController(undefined);
-        break;
+        case 'tdf': {
+          const client = new TDF3Client({
+            authProvider: oidcClient,
+            dpopKeys: oidcClient.getSigningKey(),
+            kasEndpoint: c.kas,
+          });
+          const sc = new AbortController();
+          setStreamController(sc);
+          let source: ReadableStream<Uint8Array>, size: number;
+          switch (inputSource.type) {
+            case 'file':
+              size = inputSource.file.size;
+              source = inputSource.file.stream() as unknown as ReadableStream<Uint8Array>;
+              break;
+            case 'bytes':
+              size = inputSource.length;
+              source = randomStream(inputSource);
+              break;
+            case 'url':
+              const fr = await fetch(inputSource.url, { signal: sc.signal });
+              if (!fr.ok) {
+                throw Error(
+                  `Error on fetch [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`
+                );
+              }
+              if (!fr.body) {
+                throw Error(
+                  `Failed to fetch input [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`
+                );
+              }
+              size = parseInt(fr.headers.get('Content-Length') || '-1');
+              source = fr.body;
+              break;
+          }
+          try {
+            let f;
+            const downloadName = `${inputFileName}.tdf`;
+            if (sinkType === 'fsapi') {
+              f = await getNewFileHandle('tdf', downloadName);
+            }
+            const progressTransformers = makeProgressPair(size, 'Encrypt');
+            const cipherText = await client.encrypt({
+              source: source.pipeThrough(progressTransformers.reader),
+              offline: true,
+            });
+            cipherText.stream = cipherText.stream.pipeThrough(progressTransformers.writer);
+            switch (sinkType) {
+              case 'file':
+                await cipherText.toFile(downloadName, { signal: sc.signal });
+                break;
+              case 'fsapi':
+                if (!f) {
+                  throw new Error();
+                }
+                const writable = await f.createWritable();
+                await cipherText.stream.pipeTo(writable, { signal: sc.signal });
+                break;
+              case 'none':
+                await cipherText.stream.pipeTo(drain(), { signal: sc.signal });
+                break;
+            }
+          } catch (e) {
+            setDownloadState(`Encrypt Failed: ${e}`);
+            console.error('Encrypt Failed', e);
+          }
+          setStreamController(undefined);
+          break;
+        }
       }
     }
     return true;
   };
 
   const handleDecrypt = async () => {
-    if (!inputSource) {
+    if (!inputSources.length) {
       console.log('PLEASE SELECT FILE');
       return false;
     }
@@ -526,110 +531,112 @@ function App() {
       console.error('decrypt while logged out doesnt work');
       return false;
     }
-    const dfn = decryptedFileName(fileNameFor(inputSource));
-    console.log(
-      `Decrypting ${decryptContainerType} ${JSON.stringify(inputSource)} to ${sinkType} ${dfn}`
-    );
-    let f;
-    if (sinkType === 'fsapi') {
-      f = await getNewFileHandle(decryptedFileExtension(fileNameFor(inputSource)), dfn);
-    }
-    switch (decryptContainerType) {
-      case 'tdf': {
-        const client = new TDF3Client({
-          authProvider: oidcClient,
-          dpopKeys: oidcClient.getSigningKey(),
-          kasEndpoint: c.kas,
-        });
-        try {
-          const sc = new AbortController();
-          setStreamController(sc);
-          let source: DecryptSource;
-          let size: number;
-          switch (inputSource.type) {
-            case 'file':
-              size = inputSource.file.size;
-              source = { type: 'file-browser', location: inputSource.file };
-              break;
-            case 'bytes':
-              size = inputSource.length;
-              source = { type: 'chunker', location: randomChunker(inputSource) };
-              break;
-            case 'url':
-              const hr = await fetch(inputSource.url, { method: 'HEAD' });
-              size = parseInt(hr.headers.get('Content-Length') || '-1');
-              source = { type: 'remote', location: inputSource.url.toString() };
-              break;
-          }
-          const progressTransformers = makeProgressPair(size, 'Decrypt');
-          // XXX chunker doesn't have an equivalent 'stream' interaface
-          // so we kinda fake it with percentages by tracking output, which should
-          // strictly be smaller than the input file.
-          const plainText = await client.decrypt({ source });
-          plainText.stream = plainText.stream
-            .pipeThrough(progressTransformers.reader)
-            .pipeThrough(progressTransformers.writer);
-          switch (sinkType) {
-            case 'file':
-              await plainText.toFile(dfn, { signal: sc.signal });
-              break;
-            case 'fsapi':
-              if (!f) {
-                throw new Error();
-              }
-              const writable = await f.createWritable();
-              await plainText.stream.pipeTo(writable, { signal: sc.signal });
-              break;
-            case 'none':
-              await plainText.stream.pipeTo(drain(), { signal: sc.signal });
-              break;
-          }
-        } catch (e) {
-          console.error('Decrypt Failed', e);
-          setDownloadState(`Decrypt Failed: ${e}`);
-        }
-        setStreamController(undefined);
-        break;
+    for (const inputSource of inputSources) {
+      const dfn = decryptedFileName(fileNameFor(inputSource));
+      console.log(
+        `Decrypting ${decryptContainerType} ${JSON.stringify(inputSource)} to ${sinkType} ${dfn}`
+      );
+      let f;
+      if (sinkType === 'fsapi') {
+        f = await getNewFileHandle(decryptedFileExtension(fileNameFor(inputSource)), dfn);
       }
-      case 'nano': {
-        if ('url' in inputSource) {
-          throw new Error('Unsupported : fetch the url I guess?');
-        }
-        const nanoClient = new NanoTDFClient({
-          authProvider: oidcClient,
-          kasEndpoint: c.kas,
-          dpopKeys: oidcClient.getSigningKey(),
-        });
-        try {
-          const cipherText =
-            'file' in inputSource
-              ? await inputSource.file.arrayBuffer()
-              : randomArrayBuffer(inputSource);
-          const plainText = await nanoClient.decrypt(cipherText);
-          switch (sinkType) {
-            case 'file':
-              saver(new Blob([plainText]), dfn);
-              break;
-            case 'fsapi':
-              if (!f) {
-                throw new Error();
-              }
-              const writable = await f.createWritable();
-              try {
-                await writable.write(plainText);
-                setDownloadState('Decrypt Complete');
-              } finally {
-                await writable.close();
-              }
-              break;
-            case 'none':
-              break;
+      switch (decryptContainerType) {
+        case 'tdf': {
+          const client = new TDF3Client({
+            authProvider: oidcClient,
+            dpopKeys: oidcClient.getSigningKey(),
+            kasEndpoint: c.kas,
+          });
+          try {
+            const sc = new AbortController();
+            setStreamController(sc);
+            let source: DecryptSource;
+            let size: number;
+            switch (inputSource.type) {
+              case 'file':
+                size = inputSource.file.size;
+                source = { type: 'file-browser', location: inputSource.file };
+                break;
+              case 'bytes':
+                size = inputSource.length;
+                source = { type: 'chunker', location: randomChunker(inputSource) };
+                break;
+              case 'url':
+                const hr = await fetch(inputSource.url, { method: 'HEAD' });
+                size = parseInt(hr.headers.get('Content-Length') || '-1');
+                source = { type: 'remote', location: inputSource.url.toString() };
+                break;
+            }
+            const progressTransformers = makeProgressPair(size, 'Decrypt');
+            // XXX chunker doesn't have an equivalent 'stream' interaface
+            // so we kinda fake it with percentages by tracking output, which should
+            // strictly be smaller than the input file.
+            const plainText = await client.decrypt({ source });
+            plainText.stream = plainText.stream
+              .pipeThrough(progressTransformers.reader)
+              .pipeThrough(progressTransformers.writer);
+            switch (sinkType) {
+              case 'file':
+                await plainText.toFile(dfn, { signal: sc.signal });
+                break;
+              case 'fsapi':
+                if (!f) {
+                  throw new Error();
+                }
+                const writable = await f.createWritable();
+                await plainText.stream.pipeTo(writable, { signal: sc.signal });
+                break;
+              case 'none':
+                await plainText.stream.pipeTo(drain(), { signal: sc.signal });
+                break;
+            }
+          } catch (e) {
+            console.error('Decrypt Failed', e);
+            setDownloadState(`Decrypt Failed: ${e}`);
           }
-        } catch (e) {
-          console.error('Decrypt Failed', e);
-          setDownloadState(`Decrypt Failed: ${e}`);
+          setStreamController(undefined);
+          break;
         }
-        break;
+        case 'nano': {
+          if ('url' in inputSource) {
+            throw new Error('Unsupported : fetch the url I guess?');
+          }
+          const nanoClient = new NanoTDFClient({
+            authProvider: oidcClient,
+            kasEndpoint: c.kas,
+            dpopKeys: oidcClient.getSigningKey(),
+          });
+          try {
+            const cipherText =
+              'file' in inputSource
+                ? await inputSource.file.arrayBuffer()
+                : randomArrayBuffer(inputSource);
+            const plainText = await nanoClient.decrypt(cipherText);
+            switch (sinkType) {
+              case 'file':
+                saver(new Blob([plainText]), dfn);
+                break;
+              case 'fsapi':
+                if (!f) {
+                  throw new Error();
+                }
+                const writable = await f.createWritable();
+                try {
+                  await writable.write(plainText);
+                  setDownloadState('Decrypt Complete');
+                } finally {
+                  await writable.close();
+                }
+                break;
+              case 'none':
+                break;
+            }
+          } catch (e) {
+            console.error('Decrypt Failed', e);
+            setDownloadState(`Decrypt Failed: ${e}`);
+          }
+          break;
+        }
       }
     }
     return false;
@@ -653,7 +660,19 @@ function App() {
       <pre id="user_token">{JSON.stringify(authState?.user, null, ' ')}</pre>
     );
 
-  const hasFileInput = inputSource && 'file' in inputSource;
+  const detailsList = inputSources.map((inputSource) => (
+    <>
+      <h2>{fileNameFor(inputSource)}</h2>
+      {inputSource.type == 'file' && (
+        <>
+          <div id="contentType">Content Type: {inputSource.file.type}</div>
+          <div>Last Modified: {new Date(inputSource.file.lastModified).toLocaleString()}</div>
+          <div>Size: {new Intl.NumberFormat().format(inputSource.file.size)} bytes</div>
+        </>
+      )}
+    </>
+  ));
+
   return (
     <div className="App">
       <div className="header">
@@ -667,22 +686,13 @@ function App() {
         <div className="config horizontal-flow">
           <fieldset className="input">
             <legend>Source</legend>
-            {hasFileInput ? (
+            {inputSources.length ? (
               <div id="details">
-                <h2>{'file' in inputSource ? inputSource.file.name : '[rand]'}</h2>
-                {'file' in inputSource && (
-                  <>
-                    <div id="contentType">Content Type: {inputSource.file.type}</div>
-                    <div>
-                      Last Modified: {new Date(inputSource.file.lastModified).toLocaleString()}
-                    </div>
-                    <div>Size: {new Intl.NumberFormat().format(inputSource.file.size)} bytes</div>
-                  </>
-                )}
+                {detailsList}
                 <button
                   id="clearFile"
                   onClick={() => {
-                    setInputSource(undefined);
+                    setInputSources([]);
                     setDownloadState(undefined);
                   }}
                   type="button"
@@ -693,9 +703,17 @@ function App() {
             ) : (
               <>
                 <label htmlFor="fileSelector">Select file:</label>
-                <input type="file" name="file" id="fileSelector" onChange={setFileHandler} />
+                <input
+                  type="file"
+                  name="file"
+                  id="fileSelector"
+                  onChange={setFileHandler}
+                  multiple
+                />
                 <div>OR</div>
-                <div className={clsx({ selected: inputSource && 'url' in inputSource })}>
+                <div
+                  className={clsx({ selected: inputSources.length && 'url' in inputSources[0] })}
+                >
                   <label htmlFor="urlSelector">Load from URL:</label>
                   <input
                     id="urlSelector"
@@ -706,7 +724,9 @@ function App() {
                   />
                 </div>
                 <div>OR:</div>
-                <div className={clsx({ selected: inputSource && 'length' in inputSource })}>
+                <div
+                  className={clsx({ selected: inputSources.length && 'length' in inputSources[0] })}
+                >
                   <label htmlFor="randomSelector">Random Bytes:</label>
                   <input
                     id="randomSelector"
@@ -774,7 +794,7 @@ function App() {
             </button>
           </div>
         )}
-        {inputSource && !streamController && (
+        {inputSources.length && !streamController && (
           <div className="action">
             <form className="column">
               <h2>Encrypt</h2>
