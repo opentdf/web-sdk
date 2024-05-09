@@ -5,6 +5,9 @@ import './App.css';
 import { type Chunker, type DecryptSource, NanoTDFClient, TDF3Client } from '@opentdf/client';
 import { type SessionInformation, OidcClient } from './session.js';
 import { c } from './config.js';
+import pLimit from 'p-limit';
+
+const limit = pLimit(16);
 
 function decryptedFileName(encryptedFileName: string): string {
   // Groups: 1 file 'name' bit
@@ -390,40 +393,48 @@ function App() {
       }
       setDownloadState('Encrypt Complete');
     }
-    for (const inputSource of inputSources) {
-      const inputFileName = fileNameFor(inputSource);
-      console.log(`Encrypting [${inputFileName}] as ${encryptContainerType} to ${sinkType}`);
-      switch (encryptContainerType) {
-        case 'nano': {
+    let promises;
+    switch (encryptContainerType) {
+      case 'nano': {
+        promises = inputSources.map((inputSource): () => Promise<void> => async () => {
           const nanoClient = new NanoTDFClient({
             authProvider: oidcClient,
             kasEndpoint: c.kas,
             dpopKeys: oidcClient.getSigningKey(),
           });
+          const inputFileName = fileNameFor(inputSource);
+          console.log(`Encrypting [${inputFileName}] as ${encryptContainerType} to ${sinkType}`);
           await encryptNano(nanoClient, inputSource, inputFileName);
-          break;
-        }
-        case 'html': {
-          const client = new TDF3Client({
-            authProvider: oidcClient,
-            dpopKeys: oidcClient.getSigningKey(),
-            kasEndpoint: c.kas,
-            readerUrl: c.reader,
-          });
+        });
+        break;
+      }
+      case 'html': {
+        const client = new TDF3Client({
+          authProvider: oidcClient,
+          dpopKeys: oidcClient.getSigningKey(),
+          kasEndpoint: c.kas,
+          readerUrl: c.reader,
+        });
+        promises = inputSources.map((inputSource): () => Promise<void> => async () => {
+          const inputFileName = fileNameFor(inputSource);
           await encryptTdfHtml(inputSource, inputFileName, client);
-          break;
-        }
-        case 'tdf': {
-          const client = new TDF3Client({
-            authProvider: oidcClient,
-            dpopKeys: oidcClient.getSigningKey(),
-            kasEndpoint: c.kas,
-          });
+        });
+        break;
+      }
+      case 'tdf': {
+        const client = new TDF3Client({
+          authProvider: oidcClient,
+          dpopKeys: oidcClient.getSigningKey(),
+          kasEndpoint: c.kas,
+        });
+        promises = inputSources.map((inputSource): () => Promise<void> => async () => {
+          const inputFileName = fileNameFor(inputSource);
           await encryptTdf(inputSource, inputFileName, client);
-          break;
-        }
+        });
+        break;
       }
     }
+    await Promise.all(promises.map(limit));
 
     if (memory.length) {
       setInputSources(memory);
@@ -604,11 +615,16 @@ function App() {
           await writable.close();
         }
         break;
+      case 'memory':
+        memory.push({ type: 'memory', name: dfn, src: cipherText });
+        break;
       case 'none':
         break;
     }
   }
 
+  let promises: (() => Promise<void>)[];
+  const memory = [];
   const handleDecrypt = async () => {
     if (!inputSources.length) {
       console.log('PLEASE SELECT FILE');
@@ -619,40 +635,42 @@ function App() {
       return false;
     }
 
-    for (const inputSource of inputSources) {
-      const dfn = decryptedFileName(fileNameFor(inputSource));
-      console.log(
-        `Decrypting ${decryptContainerType} ${JSON.stringify(inputSource)} to ${sinkType} ${dfn}`
-      );
-      switch (decryptContainerType) {
-        case 'tdf': {
-          const client = new TDF3Client({
-            authProvider: oidcClient,
-            dpopKeys: oidcClient.getSigningKey(),
-            kasEndpoint: c.kas,
-          });
-
+    switch (decryptContainerType) {
+      case 'tdf': {
+        const client = new TDF3Client({
+          authProvider: oidcClient,
+          dpopKeys: oidcClient.getSigningKey(),
+          kasEndpoint: c.kas,
+        });
+        promises = inputSources.map((inputSource): () => Promise<void> => async () => {
+          const dfn = decryptedFileName(fileNameFor(inputSource));
+          console.log(
+            `Decrypting ${decryptContainerType} ${JSON.stringify(inputSource)} to ${sinkType} ${dfn}`
+          );
           await decryptTdf(client, inputSource, dfn);
-          break;
-        }
-        case 'nano': {
+        });
+        break;
+      }
+      case 'nano': {
+        const nanoClient = new NanoTDFClient({
+          authProvider: oidcClient,
+          kasEndpoint: c.kas,
+          dpopKeys: oidcClient.getSigningKey(),
+        });
+        promises = inputSources.map((inputSource): () => Promise<void> => async () => {
           if ('url' in inputSource) {
             throw new Error('Unsupported : fetch the url I guess?');
           }
-          const nanoClient = new NanoTDFClient({
-            authProvider: oidcClient,
-            kasEndpoint: c.kas,
-            dpopKeys: oidcClient.getSigningKey(),
-          });
-          try {
-            await decryptNano(nanoClient, inputSource, dfn);
-          } catch (e) {
-            console.error('Decrypt Failed', e);
-            setDownloadState(`Decrypt Failed: ${e}`);
-          }
-          break;
-        }
+          const dfn = decryptedFileName(fileNameFor(inputSource));
+          await decryptNano(nanoClient, inputSource, dfn);
+        });
+        break;
       }
+    }
+    await Promise.all(promises.map(limit));
+
+    if (memory.length) {
+      setInputSources(memory);
     }
     return false;
 
