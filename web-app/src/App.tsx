@@ -361,8 +361,8 @@ function App() {
         'file' == inputSource.type
           ? await inputSource.file.arrayBuffer()
           : 'memory' == inputSource.type
-          ? inputSource.src
-          : randomArrayBuffer(inputSource);
+            ? inputSource.src
+            : randomArrayBuffer(inputSource);
       setDownloadState('Encrypting...');
       const cipherText = await nanoClient.encrypt(plainText);
       switch (sinkType) {
@@ -587,8 +587,8 @@ function App() {
       'file' == inputSource.type
         ? await inputSource.file.arrayBuffer()
         : 'memory' == inputSource.type
-        ? inputSource.src
-        : randomArrayBuffer(inputSource);
+          ? inputSource.src
+          : randomArrayBuffer(inputSource);
     const plainText = await nanoClient.decrypt(cipherText);
     switch (sinkType) {
       case 'file':
@@ -674,6 +674,10 @@ function App() {
           case 'bytes':
             size = inputSource.length;
             source = { type: 'chunker', location: randomChunker(inputSource) };
+            break;
+          case 'memory':
+            size = inputSource.src.byteLength;
+            source = { type: 'buffer', location: new Uint8Array(inputSource.src) };
             break;
           case 'url':
             const hr = await fetch(inputSource.url, { method: 'HEAD' });
