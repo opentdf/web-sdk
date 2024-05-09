@@ -371,11 +371,7 @@ export class OidcClient implements AuthProvider {
         await crypto.subtle.exportKey('jwk', signingKey.publicKey)
       )}`
     );
-    headers.DPoP = await dpopFn(
-      signingKey,
-      config.token_endpoint,
-      'POST'
-    );
+    headers.DPoP = await dpopFn(signingKey, config.token_endpoint, 'POST');
     const response = await fetch(config.token_endpoint, {
       method: 'POST',
       headers,
