@@ -11,7 +11,7 @@ import {
 import getHkdfSalt from './helpers/getHkdfSalt.js';
 import DefaultParams from './models/DefaultParams.js';
 import { fetchWrappedKey } from '../kas.js';
-import { AuthProvider, reqSignature } from '../auth/providers.js';
+import { AuthProvider, isAuthProvider, reqSignature } from '../auth/providers.js';
 import { cryptoPublicToPem, safeUrlCheck, validateSecureUrl } from '../utils.js';
 
 const { KeyUsageType, AlgorithmName, NamedCurve } = cryptoEnums;
@@ -127,32 +127,53 @@ export default class Client {
    * cannot be changed. If a new ephemeral key is desired it a new client should be initialized.
    * There is no performance impact for creating a new client IFF the ephemeral key pair is provided.
    */
-  constructor({
-    authProvider,
-    ephemeralKeyPair,
-    kasEndpoint,
-    dpopEnabled,
-    dpopKeys,
-  }: ClientConfig) {
-    this.authProvider = authProvider;
-    // TODO Disallow http KAS. For now just log as error
-    validateSecureUrl(kasEndpoint);
-    this.kasUrl = kasEndpoint;
-    this.allowedKases = [kasEndpoint];
-    this.kasPubKey = '';
-    this.dpopEnabled = !!dpopEnabled;
-    if (dpopKeys) {
-      this.requestSignerKeyPair = dpopKeys;
-    } else {
-      this.requestSignerKeyPair = generateSignerKeyPair();
-    }
+  constructor(
+    optsOrOldAuthProvider: AuthProvider | ClientConfig,
+    kasUrl?: string,
+    ephemeralKeyPair?: CryptoKeyPair,
+    dpopEnabled = false
+  ) {
+    if (isAuthProvider(optsOrOldAuthProvider)) {
+      this.authProvider = optsOrOldAuthProvider;
+      if (!kasUrl) {
+        throw new Error('please specify kasEndpoint');
+      }
+      // TODO Disallow http KAS. For now just log as error
+      validateSecureUrl(kasUrl);
+      this.kasUrl = kasUrl;
+      this.allowedKases = [kasUrl];
+      this.kasPubKey = '';
+      this.dpopEnabled = dpopEnabled;
 
-    if (ephemeralKeyPair) {
-      this.ephemeralKeyPair = ephemeralKeyPair;
+      if (ephemeralKeyPair) {
+        this.ephemeralKeyPair = Promise.resolve(ephemeralKeyPair);
+      } else {
+        this.ephemeralKeyPair = generateEphemeralKeyPair();
+      }
+      this.iv = 1;
     } else {
-      this.ephemeralKeyPair = generateEphemeralKeyPair();
+      const { authProvider, dpopEnabled, dpopKeys, ephemeralKeyPair, kasEndpoint } =
+        optsOrOldAuthProvider;
+      this.authProvider = authProvider;
+      // TODO Disallow http KAS. For now just log as error
+      validateSecureUrl(kasEndpoint);
+      this.kasUrl = kasEndpoint;
+      this.allowedKases = [kasEndpoint];
+      this.kasPubKey = '';
+      this.dpopEnabled = !!dpopEnabled;
+      if (dpopKeys) {
+        this.requestSignerKeyPair = dpopKeys;
+      } else {
+        this.requestSignerKeyPair = generateSignerKeyPair();
+      }
+
+      if (ephemeralKeyPair) {
+        this.ephemeralKeyPair = ephemeralKeyPair;
+      } else {
+        this.ephemeralKeyPair = generateEphemeralKeyPair();
+      }
+      this.iv = 1;
     }
-    this.iv = 1;
   }
 
   /**
