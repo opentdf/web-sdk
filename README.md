@@ -67,8 +67,30 @@ This will clone the platform repo and generate Typescript code in `lib/src/platf
 ### Import Typescript code
 
 ```
+
 import { GetAttributeRequest } from './lib/src/platform/policy/attributes/attributes_pb';
-const request = new GetAttributeRequest(<request data>);
+import { Attribute, AttributeRuleTypeEnum } from './lib/src/platform/policy/objects_pb';
+
+const attrData = {
+    name: "my-attr",
+    rule: AttributeRuleTypeEnum.ALL_OF,
+    namespace: {name: 'my-namespace'},
+    values: [{value: 'my-value'}],
+    active: true,
+    extraField: 'this will be ignored' // only proto defined fields are respected
+}
+const attr = new Attribute(attrData);
+console.log(attr.toJson());
+
+// {
+//     namespace: { name: 'my-namespace' },
+//     name: 'my-attr',
+//     rule: 'ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF',
+//     values: [ { value: 'my-value' } ],
+//     active: true
+// }
+
+const req = new GetAttributeRequest({id: 'uuid-here'});
 ```
 
 This is an example to import a `GetAttributeRequest` to request attribute information.
