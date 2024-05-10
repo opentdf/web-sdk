@@ -77,7 +77,7 @@ const attrData = {
     namespace: {name: 'my-namespace'},
     values: [{value: 'my-value'}],
     active: true,
-    extraField: 'this will be ignored' // only proto defined fields are respected
+    extraField: 'this will be ignored' // only proto defined fields and value types are respected
 }
 const attr = new Attribute(attrData);
 console.log(attr.toJson());
