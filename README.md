@@ -93,5 +93,5 @@ console.log(attr.toJson());
 const req = new GetAttributeRequest({id: 'uuid-here'});
 ```
 
-This is an example to import a `GetAttributeRequest` to request attribute information.
+This is an example to instantiate an `Attribute` and create a `GetAttributeRequest`.
 
