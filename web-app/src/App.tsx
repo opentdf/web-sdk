@@ -2,8 +2,9 @@ import { clsx } from 'clsx';
 import { useState, useEffect, type ChangeEvent } from 'react';
 import { showSaveFilePicker } from 'native-file-system-adapter';
 import './App.css';
-import { TDF3Client, type DecryptSource, NanoTDFClient, AuthProviders } from '@opentdf/client';
+import { type Chunker, type DecryptSource, NanoTDFClient, TDF3Client } from '@opentdf/client';
 import { type SessionInformation, OidcClient } from './session.js';
+import { c } from './config.js';
 
 function decryptedFileName(encryptedFileName: string): string {
   // Groups: 1 file 'name' bit
@@ -29,11 +30,7 @@ function decryptedFileExtension(encryptedFileName: string): string {
   return m[2];
 }
 
-const oidcClient = new OidcClient(
-  'http://localhost:65432/auth/realms/tdf',
-  'browsertest',
-  'otdf-sample-web-app'
-);
+const oidcClient = new OidcClient(c.oidc.host, c.oidc.clientId, 'otdf-sample-web-app');
 
 function saver(blob: Blob, name: string) {
   const a = document.createElement('a');
@@ -61,23 +58,27 @@ async function getNewFileHandle(
     ],
     suggestedName,
   };
+  //@ts-expect-error //TS2739: not a complete file picker interface
   return showSaveFilePicker(options);
 }
 
 type Containers = 'html' | 'tdf' | 'nano';
 type CurrentDataController = AbortController | undefined;
-type FileInputSource = { file: File };
+type FileInputSource = {
+  type: 'file';
+  file: File;
+};
 type UrlInputSource = {
+  type: 'url';
   url: URL;
 };
 
-type RandomType = 'bytes';
 type RandomInputSource = {
-  type: RandomType;
+  type: 'bytes';
   length: number;
 };
 
-type InputSource = FileInputSource | UrlInputSource | RandomInputSource | undefined;
+type InputSource = FileInputSource | UrlInputSource | RandomInputSource;
 type SinkType = 'file' | 'fsapi' | 'none';
 
 function fileNameFor(inputSource: InputSource) {
@@ -206,7 +207,7 @@ function App() {
   const [decryptContainerType, setDecryptContainerType] = useState<Containers>('tdf');
   const [downloadState, setDownloadState] = useState<string | undefined>();
   const [encryptContainerType, setEncryptContainerType] = useState<Containers>('tdf');
-  const [inputSource, setInputSource] = useState<InputSource>();
+  const [inputSource, setInputSource] = useState<InputSource | undefined>();
   const [sinkType, setSinkType] = useState<SinkType>('file');
   const [streamController, setStreamController] = useState<CurrentDataController>();
 
@@ -232,7 +233,7 @@ function App() {
     const target = event.target as HTMLInputElement;
     if (target.files?.length) {
       const [file] = target.files;
-      setInputSource({ file });
+      setInputSource({ type: 'file', file });
     } else {
       setInputSource(undefined);
     }
@@ -248,7 +249,7 @@ function App() {
   const setUrlHandler = (event: ChangeEvent<HTMLInputElement>) => {
     const target = event.target as HTMLInputElement;
     if (target.value && target.validity.valid) {
-      setInputSource({ url: new URL(target.value) });
+      setInputSource({ type: 'url', url: new URL(target.value) });
     } else {
       setInputSource(undefined);
     }
@@ -329,12 +330,6 @@ function App() {
     }
     const inputFileName = fileNameFor(inputSource);
     console.log(`Encrypting [${inputFileName}] as ${encryptContainerType} to ${sinkType}`);
-    const authProvider = await AuthProviders.refreshAuthProvider({
-      exchange: 'refresh',
-      clientId: oidcClient.clientId,
-      oidcOrigin: oidcClient.host,
-      refreshToken,
-    });
     switch (encryptContainerType) {
       case 'nano': {
         if ('url' in inputSource) {
@@ -344,7 +339,11 @@ function App() {
           'file' in inputSource
             ? await inputSource.file.arrayBuffer()
             : randomArrayBuffer(inputSource);
-        const nanoClient = new NanoTDFClient(authProvider, 'http://localhost:65432/api/kas');
+        const nanoClient = new NanoTDFClient({
+          authProvider: oidcClient,
+          kasEndpoint: c.kas,
+          dpopKeys: oidcClient.getSigningKey(),
+        });
         setDownloadState('Encrypting...');
         switch (sinkType) {
           case 'file':
@@ -375,36 +374,41 @@ function App() {
       }
       case 'html': {
         const client = new TDF3Client({
-          authProvider,
-          kasEndpoint: 'http://localhost:65432/api/kas',
-          readerUrl: 'https://secure.virtru.com/start?htmlProtocol=1',
+          authProvider: oidcClient,
+          dpopKeys: oidcClient.getSigningKey(),
+          kasEndpoint: c.kas,
+          readerUrl: c.reader,
         });
         let source: ReadableStream<Uint8Array>, size: number;
         const sc = new AbortController();
         setStreamController(sc);
-        if ('file' in inputSource) {
-          size = inputSource.file.size;
-          source = inputSource.file.stream() as unknown as ReadableStream<Uint8Array>;
-        } else if ('type' in inputSource) {
-          size = inputSource.length;
-          source = randomStream(inputSource);
-        } else {
-          // NOTE: Attaching the signal to the pipeline (in pipeTo, below)
-          // is insufficient (at least in Chrome) to abort the fetch itself.
-          // So aborting a sink in a pipeline does *NOT* cancel its sources
-          const fr = await fetch(inputSource.url, { signal: sc.signal });
-          if (!fr.ok) {
-            throw Error(
-              `Error on fetch [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`
-            );
-          }
-          if (!fr.body) {
-            throw Error(
-              `Failed to fetch input [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`
-            );
-          }
-          size = parseInt(fr.headers.get('Content-Length') || '-1');
-          source = fr.body;
+        switch (inputSource.type) {
+          case 'file':
+            size = inputSource.file.size;
+            source = inputSource.file.stream() as unknown as ReadableStream<Uint8Array>;
+            break;
+          case 'bytes':
+            size = inputSource.length;
+            source = randomStream(inputSource);
+            break;
+          case 'url':
+            // NOTE: Attaching the signal to the pipeline (in pipeTo, below)
+            // is insufficient (at least in Chrome) to abort the fetch itself.
+            // So aborting a sink in a pipeline does *NOT* cancel its sources
+            const fr = await fetch(inputSource.url, { signal: sc.signal });
+            if (!fr.ok) {
+              throw Error(
+                `Error on fetch [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`
+              );
+            }
+            if (!fr.body) {
+              throw Error(
+                `Failed to fetch input [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`
+              );
+            }
+            size = parseInt(fr.headers.get('Content-Length') || '-1');
+            source = fr.body;
+            break;
         }
         try {
           const downloadName = `${inputFileName}.tdf.html`;
@@ -443,32 +447,37 @@ function App() {
       }
       case 'tdf': {
         const client = new TDF3Client({
-          authProvider,
-          kasEndpoint: 'http://localhost:65432/api/kas',
+          authProvider: oidcClient,
+          dpopKeys: oidcClient.getSigningKey(),
+          kasEndpoint: c.kas,
         });
         const sc = new AbortController();
         setStreamController(sc);
         let source: ReadableStream<Uint8Array>, size: number;
-        if ('file' in inputSource) {
-          size = inputSource.file.size;
-          source = inputSource.file.stream() as unknown as ReadableStream<Uint8Array>;
-        } else if ('type' in inputSource) {
-          size = inputSource.length;
-          source = randomStream(inputSource);
-        } else {
-          const fr = await fetch(inputSource.url, { signal: sc.signal });
-          if (!fr.ok) {
-            throw Error(
-              `Error on fetch [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`
-            );
-          }
-          if (!fr.body) {
-            throw Error(
-              `Failed to fetch input [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`
-            );
-          }
-          size = parseInt(fr.headers.get('Content-Length') || '-1');
-          source = fr.body;
+        switch (inputSource.type) {
+          case 'file':
+            size = inputSource.file.size;
+            source = inputSource.file.stream() as unknown as ReadableStream<Uint8Array>;
+            break;
+          case 'bytes':
+            size = inputSource.length;
+            source = randomStream(inputSource);
+            break;
+          case 'url':
+            const fr = await fetch(inputSource.url, { signal: sc.signal });
+            if (!fr.ok) {
+              throw Error(
+                `Error on fetch [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`
+              );
+            }
+            if (!fr.body) {
+              throw Error(
+                `Failed to fetch input [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`
+              );
+            }
+            size = parseInt(fr.headers.get('Content-Length') || '-1');
+            source = fr.body;
+            break;
         }
         try {
           let f;
@@ -521,12 +530,6 @@ function App() {
     console.log(
       `Decrypting ${decryptContainerType} ${JSON.stringify(inputSource)} to ${sinkType} ${dfn}`
     );
-    const authProvider = await AuthProviders.refreshAuthProvider({
-      exchange: 'refresh',
-      clientId: oidcClient.clientId,
-      oidcOrigin: oidcClient.host,
-      refreshToken: authState.user.refreshToken,
-    });
     let f;
     if (sinkType === 'fsapi') {
       f = await getNewFileHandle(decryptedFileExtension(fileNameFor(inputSource)), dfn);
@@ -534,24 +537,29 @@ function App() {
     switch (decryptContainerType) {
       case 'tdf': {
         const client = new TDF3Client({
-          authProvider,
-          kasEndpoint: 'http://localhost:65432/api/kas',
+          authProvider: oidcClient,
+          dpopKeys: oidcClient.getSigningKey(),
+          kasEndpoint: c.kas,
         });
         try {
           const sc = new AbortController();
           setStreamController(sc);
           let source: DecryptSource;
           let size: number;
-          if ('file' in inputSource) {
-            size = inputSource.file.size;
-            source = { type: 'file-browser', location: inputSource.file };
-          } else if ('type' in inputSource) {
-            size = inputSource.length;
-            source = { type: 'chunker', location: randomChunker(inputSource) };
-          } else {
-            const hr = await fetch(inputSource.url, { method: 'HEAD' });
-            size = parseInt(hr.headers.get('Content-Length') || '-1');
-            source = { type: 'remote', location: inputSource.url.toString() };
+          switch (inputSource.type) {
+            case 'file':
+              size = inputSource.file.size;
+              source = { type: 'file-browser', location: inputSource.file };
+              break;
+            case 'bytes':
+              size = inputSource.length;
+              source = { type: 'chunker', location: randomChunker(inputSource) };
+              break;
+            case 'url':
+              const hr = await fetch(inputSource.url, { method: 'HEAD' });
+              size = parseInt(hr.headers.get('Content-Length') || '-1');
+              source = { type: 'remote', location: inputSource.url.toString() };
+              break;
           }
           const progressTransformers = makeProgressPair(size, 'Decrypt');
           // XXX chunker doesn't have an equivalent 'stream' interaface
@@ -587,7 +595,11 @@ function App() {
         if ('url' in inputSource) {
           throw new Error('Unsupported : fetch the url I guess?');
         }
-        const nanoClient = new NanoTDFClient(authProvider, 'http://localhost:65432/api/kas');
+        const nanoClient = new NanoTDFClient({
+          authProvider: oidcClient,
+          kasEndpoint: c.kas,
+          dpopKeys: oidcClient.getSigningKey(),
+        });
         try {
           const cipherText =
             'file' in inputSource
@@ -621,81 +633,6 @@ function App() {
       }
     }
     return false;
-  };
-
-  const handleScan = async () => {
-    const searchTerm = 'service workers';
-    // Chars to show either side of the result in the match
-    const contextBefore = 30;
-    const contextAfter = 30;
-    const caseInsensitive = true;
-
-    if (!inputSource) {
-      console.warn('PLEASE SELECT FILE ∨ URL');
-      return false;
-    }
-    let source;
-    if ('file' in inputSource) {
-      source = inputSource.file.stream() as unknown as ReadableStream<Uint8Array>;
-    } else {
-      const sc = new AbortController();
-      setStreamController(sc);
-      const fr = await fetch(inputSource.url, { cache: 'no-store', signal: sc.signal });
-      console.log(`Received headers ${fr.headers}`);
-      if (!fr.ok) {
-        throw Error(
-          `Error on fetch [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`
-        );
-      }
-      if (!fr.body) {
-        throw Error(
-          `Failed to fetch input [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`
-        );
-      }
-      source = fr.body;
-    }
-    const reader = source.getReader();
-
-    const decoder = new TextDecoder();
-    const toMatch = caseInsensitive ? searchTerm.toLowerCase() : searchTerm;
-    const bufferSize = Math.max(toMatch.length - 1, contextBefore);
-
-    let bytesReceived = 0;
-    let buffer = '';
-    let matchFoundAt = -1;
-
-    while (true) {
-      const { value: chunk, done } = await reader.read();
-      if (done) {
-        console.log('Failed to find match');
-        return;
-      }
-      bytesReceived += chunk.length;
-      console.log(`Received ${bytesReceived.toLocaleString()} bytes of data so far`);
-      buffer += decoder.decode(chunk, { stream: true });
-
-      // already found match & just context-gathering?
-      if (matchFoundAt === -1) {
-        matchFoundAt = (caseInsensitive ? buffer.toLowerCase() : buffer).indexOf(toMatch);
-      }
-
-      if (matchFoundAt === -1) {
-        buffer = buffer.slice(-bufferSize);
-      } else if (buffer.slice(matchFoundAt + toMatch.length).length >= contextAfter) {
-        console.log("Here's the match:");
-        console.log(
-          buffer.slice(
-            Math.max(0, matchFoundAt - contextBefore),
-            matchFoundAt + toMatch.length + contextAfter
-          )
-        );
-        console.log('Cancelling fetch');
-        reader.cancel();
-        return;
-      } else {
-        console.log('Found match, but need more context…');
-      }
-    }
   };
 
   const SessionInfo =
@@ -732,9 +669,7 @@ function App() {
             <legend>Source</legend>
             {hasFileInput ? (
               <div id="details">
-                <h2>
-                  {'file' in inputSource ? inputSource.file.name : inputSource.url.toString()}
-                </h2>
+                <h2>{'file' in inputSource ? inputSource.file.name : '[rand]'}</h2>
                 {'file' in inputSource && (
                   <>
                     <div id="contentType">Content Type: {inputSource.file.type}</div>
@@ -877,9 +812,6 @@ function App() {
                 </div>
                 <button id="encryptButton" onClick={() => handleEncrypt()} type="button">
                   Encrypt
-                </button>
-                <button id="scanButton" onClick={() => handleScan()} type="button">
-                  DEMO
                 </button>
               </div>
             </form>

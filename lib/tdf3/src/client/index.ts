@@ -95,14 +95,20 @@ const makeChunkable = async (source: DecryptSource) => {
   // we don't support streams anyways (see zipreader.js)
   let initialChunker: Chunker;
   let buf = null;
-  if (source.type === 'stream') {
-    buf = await streamToBuffer(source.location);
-    initialChunker = fromBuffer(buf);
-  } else if (source.type === 'buffer') {
-    buf = source.location;
-    initialChunker = fromBuffer(buf);
-  } else {
-    initialChunker = await fromDataSource(source);
+  switch (source.type) {
+    case 'stream':
+      buf = await streamToBuffer(source.location);
+      initialChunker = fromBuffer(buf);
+      break;
+    case 'buffer':
+      buf = source.location;
+      initialChunker = fromBuffer(buf);
+      break;
+    case 'chunker':
+      initialChunker = source.location;
+      break;
+    default:
+      initialChunker = await fromDataSource(source);
   }
 
   const magic: string = await getFirstTwoBytes(initialChunker);

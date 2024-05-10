@@ -103,6 +103,13 @@ export type AuthProvider = {
   withCreds(httpReq: HttpRequest): Promise<HttpRequest>;
 };
 
+export function isAuthProvider(a?: unknown): a is AuthProvider {
+  if (!a || typeof a != 'object') {
+    return false;
+  }
+  return 'withCreds' in a;
+}
+
 /**
  * An AuthProvider encapsulates all logic necessary to authenticate to a backend service, in the
  * vein of <a href="https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/Credentials.html">AWS.Credentials</a>.
