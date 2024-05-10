@@ -22,7 +22,7 @@ if [[ $# -gt 0 ]]; then
     m="$1"
     shift
     case "$m" in
-      cjs|commonjs)
+      cjs | commonjs)
         fixup "$m" commonjs
         ;;
       es* | node*)

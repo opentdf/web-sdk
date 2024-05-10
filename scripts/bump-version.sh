@@ -37,8 +37,8 @@ done
 
 # multiplatform `sed -i`: https://unix.stackexchange.com/a/92907
 case $(sed --help 2>&1) in
-  *GNU*) sed_i () { sed -i "$@"; };;
-  *) sed_i () { sed -i '' "$@"; };;
+  *GNU*) sed_i() { sed -i "$@"; } ;;
+  *) sed_i() { sed -i '' "$@"; } ;;
 esac
 
 if ! sed_i "s/version=${old_version}/version=${new_version}/" "Makefile"; then
