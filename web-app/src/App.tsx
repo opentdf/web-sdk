@@ -364,8 +364,8 @@ function App() {
         'file' == inputSource.type
           ? await inputSource.file.arrayBuffer()
           : 'memory' == inputSource.type
-            ? inputSource.src
-            : randomArrayBuffer(inputSource);
+          ? inputSource.src
+          : randomArrayBuffer(inputSource);
       setDownloadState('Encrypting...');
       const cipherText = await nanoClient.encrypt(plainText);
       switch (sinkType) {
@@ -396,7 +396,7 @@ function App() {
     let promises;
     switch (encryptContainerType) {
       case 'nano': {
-        promises = inputSources.map((inputSource): () => Promise<void> => async () => {
+        promises = inputSources.map((inputSource): (() => Promise<void>) => async () => {
           const nanoClient = new NanoTDFClient({
             authProvider: oidcClient,
             kasEndpoint: c.kas,
@@ -415,7 +415,7 @@ function App() {
           kasEndpoint: c.kas,
           readerUrl: c.reader,
         });
-        promises = inputSources.map((inputSource): () => Promise<void> => async () => {
+        promises = inputSources.map((inputSource): (() => Promise<void>) => async () => {
           const inputFileName = fileNameFor(inputSource);
           await encryptTdfHtml(inputSource, inputFileName, client);
         });
@@ -427,7 +427,7 @@ function App() {
           dpopKeys: oidcClient.getSigningKey(),
           kasEndpoint: c.kas,
         });
-        promises = inputSources.map((inputSource): () => Promise<void> => async () => {
+        promises = inputSources.map((inputSource): (() => Promise<void>) => async () => {
           const inputFileName = fileNameFor(inputSource);
           await encryptTdf(inputSource, inputFileName, client);
         });
@@ -594,8 +594,8 @@ function App() {
       'file' == inputSource.type
         ? await inputSource.file.arrayBuffer()
         : 'memory' == inputSource.type
-          ? inputSource.src
-          : randomArrayBuffer(inputSource);
+        ? inputSource.src
+        : randomArrayBuffer(inputSource);
     const plainText = await nanoClient.decrypt(cipherText);
     switch (sinkType) {
       case 'file':
@@ -637,10 +637,12 @@ function App() {
           dpopKeys: oidcClient.getSigningKey(),
           kasEndpoint: c.kas,
         });
-        promises = inputSources.map((inputSource): () => Promise<void> => async () => {
+        promises = inputSources.map((inputSource): (() => Promise<void>) => async () => {
           const dfn = decryptedFileName(fileNameFor(inputSource));
           console.log(
-            `Decrypting ${decryptContainerType} ${JSON.stringify(inputSource)} to ${sinkType} ${dfn}`
+            `Decrypting ${decryptContainerType} ${JSON.stringify(
+              inputSource
+            )} to ${sinkType} ${dfn}`
           );
           await decryptTdf(client, inputSource, dfn);
         });
@@ -652,7 +654,7 @@ function App() {
           kasEndpoint: c.kas,
           dpopKeys: oidcClient.getSigningKey(),
         });
-        promises = inputSources.map((inputSource): () => Promise<void> => async () => {
+        promises = inputSources.map((inputSource): (() => Promise<void>) => async () => {
           if ('url' in inputSource) {
             throw new Error('Unsupported : fetch the url I guess?');
           }
@@ -680,52 +682,52 @@ function App() {
       if (sinkType === 'fsapi') {
         f = await getNewFileHandle(decryptedFileExtension(fileNameFor(inputSource)), dfn);
       }
-        const sc = new AbortController();
-        setStreamController(sc);
-        let source: DecryptSource;
-        let size: number;
-        switch (inputSource.type) {
-          case 'file':
-            size = inputSource.file.size;
-            source = { type: 'file-browser', location: inputSource.file };
-            break;
-          case 'bytes':
-            size = inputSource.length;
-            source = { type: 'chunker', location: randomChunker(inputSource) };
-            break;
-          case 'memory':
-            size = inputSource.src.byteLength;
-            source = { type: 'buffer', location: new Uint8Array(inputSource.src) };
-            break;
-          case 'url':
-            const hr = await fetch(inputSource.url, { method: 'HEAD' });
-            size = parseInt(hr.headers.get('Content-Length') || '-1');
-            source = { type: 'remote', location: inputSource.url.toString() };
-            break;
-        }
-        const progressTransformers = makeProgressPair(size, 'Decrypt');
-        // XXX chunker doesn't have an equivalent 'stream' interaface
-        // so we kinda fake it with percentages by tracking output, which should
-        // strictly be smaller than the input file.
-        const plainText = await client.decrypt({ source });
-        plainText.stream = plainText.stream
-          .pipeThrough(progressTransformers.reader)
-          .pipeThrough(progressTransformers.writer);
-        switch (sinkType) {
-          case 'file':
-            await plainText.toFile(dfn, { signal: sc.signal });
-            break;
-          case 'fsapi':
-            if (!f) {
-              throw new Error();
-            }
-            const writable = await f.createWritable();
-            await plainText.stream.pipeTo(writable, { signal: sc.signal });
-            break;
-          case 'none':
-            await plainText.stream.pipeTo(drain(), { signal: sc.signal });
-            break;
-        }
+      const sc = new AbortController();
+      setStreamController(sc);
+      let source: DecryptSource;
+      let size: number;
+      switch (inputSource.type) {
+        case 'file':
+          size = inputSource.file.size;
+          source = { type: 'file-browser', location: inputSource.file };
+          break;
+        case 'bytes':
+          size = inputSource.length;
+          source = { type: 'chunker', location: randomChunker(inputSource) };
+          break;
+        case 'memory':
+          size = inputSource.src.byteLength;
+          source = { type: 'buffer', location: new Uint8Array(inputSource.src) };
+          break;
+        case 'url':
+          const hr = await fetch(inputSource.url, { method: 'HEAD' });
+          size = parseInt(hr.headers.get('Content-Length') || '-1');
+          source = { type: 'remote', location: inputSource.url.toString() };
+          break;
+      }
+      const progressTransformers = makeProgressPair(size, 'Decrypt');
+      // XXX chunker doesn't have an equivalent 'stream' interaface
+      // so we kinda fake it with percentages by tracking output, which should
+      // strictly be smaller than the input file.
+      const plainText = await client.decrypt({ source });
+      plainText.stream = plainText.stream
+        .pipeThrough(progressTransformers.reader)
+        .pipeThrough(progressTransformers.writer);
+      switch (sinkType) {
+        case 'file':
+          await plainText.toFile(dfn, { signal: sc.signal });
+          break;
+        case 'fsapi':
+          if (!f) {
+            throw new Error();
+          }
+          const writable = await f.createWritable();
+          await plainText.stream.pipeTo(writable, { signal: sc.signal });
+          break;
+        case 'none':
+          await plainText.stream.pipeTo(drain(), { signal: sc.signal });
+          break;
+      }
     }
   };
 
