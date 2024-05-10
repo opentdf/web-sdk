@@ -11,10 +11,63 @@ import {
 import getHkdfSalt from './helpers/getHkdfSalt.js';
 import DefaultParams from './models/DefaultParams.js';
 import { fetchWrappedKey } from '../kas.js';
-import { AuthProvider, reqSignature } from '../auth/providers.js';
+import { AuthProvider, isAuthProvider, reqSignature } from '../auth/providers.js';
 import { cryptoPublicToPem, safeUrlCheck, validateSecureUrl } from '../utils.js';
 
 const { KeyUsageType, AlgorithmName, NamedCurve } = cryptoEnums;
+
+export interface ClientConfig {
+  authProvider: AuthProvider;
+  dpopEnabled?: boolean;
+  dpopKeys?: Promise<CryptoKeyPair>;
+  ephemeralKeyPair?: Promise<CryptoKeyPair>;
+  kasEndpoint: string;
+}
+
+function toJWSAlg(c: CryptoKey): string {
+  const { algorithm } = c;
+  switch (algorithm.name) {
+    case 'RSASSA-PKCS1-v1_5':
+    case 'RSA-PSS':
+    case 'RSA-OAEP': {
+      const r = algorithm as RsaHashedKeyGenParams;
+      switch (r.modulusLength) {
+        case 2048:
+          return 'RS256';
+        case 3072:
+          return 'RS384';
+        case 3072:
+          return 'RS512';
+      }
+    }
+    case 'ECDSA':
+    case 'ECDH': {
+      return 'ES256';
+    }
+  }
+  throw new Error(`Unsupported key algorithm ${JSON.stringify(algorithm)}`);
+}
+
+async function generateEphemeralKeyPair(): Promise<CryptoKeyPair> {
+  const { publicKey, privateKey } = await generateKeyPair();
+  if (!privateKey || !publicKey) {
+    throw Error('Key pair generation failed');
+  }
+  return { publicKey, privateKey };
+}
+
+async function generateSignerKeyPair(): Promise<CryptoKeyPair> {
+  const { publicKey, privateKey } = await generateKeyPair({
+    type: AlgorithmName.ECDSA,
+    curve: NamedCurve.P256,
+    keyUsages: [KeyUsageType.Sign, KeyUsageType.Verify],
+    isExtractable: true,
+  });
+  if (!privateKey || !publicKey) {
+    throw Error('Signer key pair generation failed');
+  }
+  return { publicKey, privateKey };
+}
 
 /**
  * A Client encapsulates sessions interacting with TDF3 and nanoTDF backends, KAS and any
@@ -63,8 +116,8 @@ export default class Client {
   readonly dpopEnabled: boolean;
   dissems: string[] = [];
   dataAttributes: string[] = [];
-  protected ephemeralKeyPair?: Required<Readonly<CryptoKeyPair>>;
-  protected requestSignerKeyPair?: Required<Readonly<CryptoKeyPair>>;
+  protected ephemeralKeyPair: Promise<CryptoKeyPair>;
+  protected requestSignerKeyPair: Promise<CryptoKeyPair>;
   protected iv?: number;
 
   /**
@@ -75,58 +128,52 @@ export default class Client {
    * There is no performance impact for creating a new client IFF the ephemeral key pair is provided.
    */
   constructor(
-    authProvider: AuthProvider,
-    kasUrl: string,
-    ephemeralKeyPair?: Required<Readonly<CryptoKeyPair>>,
+    optsOrOldAuthProvider: AuthProvider | ClientConfig,
+    kasUrl?: string,
+    ephemeralKeyPair?: CryptoKeyPair,
     dpopEnabled = false
   ) {
-    this.authProvider = authProvider;
-    // TODO Disallow http KAS. For now just log as error
-    validateSecureUrl(kasUrl);
-    this.kasUrl = kasUrl;
-    this.allowedKases = [kasUrl];
-    this.kasPubKey = '';
-    this.dpopEnabled = dpopEnabled;
+    if (isAuthProvider(optsOrOldAuthProvider)) {
+      this.authProvider = optsOrOldAuthProvider;
+      if (!kasUrl) {
+        throw new Error('please specify kasEndpoint');
+      }
+      // TODO Disallow http KAS. For now just log as error
+      validateSecureUrl(kasUrl);
+      this.kasUrl = kasUrl;
+      this.allowedKases = [kasUrl];
+      this.kasPubKey = '';
+      this.dpopEnabled = dpopEnabled;
 
-    if (ephemeralKeyPair) {
-      this.ephemeralKeyPair = ephemeralKeyPair;
+      if (ephemeralKeyPair) {
+        this.ephemeralKeyPair = Promise.resolve(ephemeralKeyPair);
+      } else {
+        this.ephemeralKeyPair = generateEphemeralKeyPair();
+      }
+      this.iv = 1;
+    } else {
+      const { authProvider, dpopEnabled, dpopKeys, ephemeralKeyPair, kasEndpoint } =
+        optsOrOldAuthProvider;
+      this.authProvider = authProvider;
+      // TODO Disallow http KAS. For now just log as error
+      validateSecureUrl(kasEndpoint);
+      this.kasUrl = kasEndpoint;
+      this.allowedKases = [kasEndpoint];
+      this.kasPubKey = '';
+      this.dpopEnabled = !!dpopEnabled;
+      if (dpopKeys) {
+        this.requestSignerKeyPair = dpopKeys;
+      } else {
+        this.requestSignerKeyPair = generateSignerKeyPair();
+      }
+
+      if (ephemeralKeyPair) {
+        this.ephemeralKeyPair = ephemeralKeyPair;
+      } else {
+        this.ephemeralKeyPair = generateEphemeralKeyPair();
+      }
       this.iv = 1;
     }
-  }
-
-  /**
-   * Get ephemeral key pair
-   *
-   * Returns the ephemeral key pair to be used in other clients or undefined if not set or generated
-   *
-   * @security allow returning ephemeral key pair has unknown security risks.
-   */
-  getEphemeralKeyPair(): CryptoKeyPair | undefined {
-    return this.ephemeralKeyPair;
-  }
-
-  async generateEphemeralKeyPair(): Promise<Required<Readonly<CryptoKeyPair>>> {
-    const { publicKey, privateKey } = await generateKeyPair();
-    if (!privateKey || !publicKey) {
-      throw Error('Key pair generation failed');
-    }
-    this.ephemeralKeyPair = { publicKey, privateKey };
-    this.iv = 1;
-    return { publicKey, privateKey };
-  }
-
-  async generateSignerKeyPair(): Promise<Required<Readonly<CryptoKeyPair>>> {
-    const { publicKey, privateKey } = await generateKeyPair({
-      type: AlgorithmName.ECDSA,
-      curve: NamedCurve.P256,
-      keyUsages: [KeyUsageType.Sign, KeyUsageType.Verify],
-      isExtractable: true,
-    });
-    if (!privateKey || !publicKey) {
-      throw Error('Signer key pair generation failed');
-    }
-    this.requestSignerKeyPair = { publicKey, privateKey };
-    return { publicKey, privateKey };
   }
 
   /**
@@ -150,18 +197,7 @@ export default class Client {
    * either be set on the first call or passed in the constructor.
    */
   async fetchOIDCToken(): Promise<void> {
-    // Generate the ephemeral key pair if not set
-    const promises: Promise<Required<Readonly<CryptoKeyPair>>>[] = [];
-    if (!this.ephemeralKeyPair) {
-      promises.push(this.generateEphemeralKeyPair());
-    }
-
-    if (!this.requestSignerKeyPair) {
-      promises.push(this.generateSignerKeyPair());
-    }
-    await Promise.all(promises);
-
-    const signer = this.requestSignerKeyPair;
+    const signer = await this.requestSignerKeyPair;
     if (!signer) {
       throw new Error('Unexpected state');
     }
@@ -190,13 +226,15 @@ export default class Client {
 
     // Ensure the ephemeral key pair has been set or generated (see createOidcServiceProvider)
     await this.fetchOIDCToken();
+    const ephemeralKeyPair = await this.ephemeralKeyPair;
+    const requestSignerKeyPair = await this.requestSignerKeyPair;
 
     // Ensure the ephemeral key pair has been set or generated (see fetchEntityObject)
-    if (!this.ephemeralKeyPair?.privateKey) {
+    if (!ephemeralKeyPair?.privateKey) {
       throw new Error('Ephemeral key has not been set or generated');
     }
 
-    if (!this.requestSignerKeyPair?.privateKey) {
+    if (!requestSignerKeyPair?.privateKey) {
       throw new Error('Signer key has not been set or generated');
     }
 
@@ -210,13 +248,13 @@ export default class Client {
           protocol: Client.KAS_PROTOCOL,
           header: base64.encodeArrayBuffer(nanoTdfHeader),
         },
-        clientPublicKey: await cryptoPublicToPem(this.ephemeralKeyPair.publicKey),
+        clientPublicKey: await cryptoPublicToPem(ephemeralKeyPair.publicKey),
       });
 
       const jwtPayload = { requestBody: requestBodyStr };
       const requestBody = {
-        signedRequestToken: await reqSignature(jwtPayload, this.requestSignerKeyPair.privateKey, {
-          alg: AlgorithmName.ES256,
+        signedRequestToken: await reqSignature(jwtPayload, requestSignerKeyPair.privateKey, {
+          alg: toJWSAlg(requestSignerKeyPair.publicKey),
         }),
       };
 
@@ -239,10 +277,10 @@ export default class Client {
       const iv = entityWrappedKey.subarray(0, ivLength);
       const encryptedSharedKey = entityWrappedKey.subarray(ivLength);
 
-      let publicKey;
+      let kasPublicKey;
       try {
         // Get session public key as crypto key
-        publicKey = await pemPublicToCrypto(wrappedKey.sessionPublicKey);
+        kasPublicKey = await pemPublicToCrypto(wrappedKey.sessionPublicKey);
       } catch (cause) {
         throw new Error(
           `PEM Public Key to crypto public key failed. Is PEM formatted correctly?\n Caused by: ${cause.message}`,
@@ -257,12 +295,13 @@ export default class Client {
       } catch (e) {
         throw new Error(`Salting hkdf failed\n Caused by: ${e.message}`);
       }
+      const { privateKey } = await this.ephemeralKeyPair;
 
       // Get the unwrapping key
       const unwrappingKey = await keyAgreement(
         // Ephemeral private key
-        this.ephemeralKeyPair.privateKey,
-        publicKey,
+        privateKey,
+        kasPublicKey,
         hkdfSalt
       );
 

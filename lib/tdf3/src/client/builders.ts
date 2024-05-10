@@ -7,6 +7,7 @@ import { IllegalArgumentError } from '../../../src/errors.js';
 import { PemKeyPair } from '../crypto/declarations.js';
 import { EntityObject } from '../../../src/tdf/EntityObject.js';
 import { DecoratedReadableStream } from './DecoratedReadableStream.js';
+import { type Chunker } from '../utils/chunkers.js';
 
 export const DEFAULT_SEGMENT_SIZE: number = 1024 * 1024;
 export type Scope = {
@@ -470,6 +471,7 @@ export type DecryptStreamMiddleware = (
 
 export type DecryptSource =
   | { type: 'buffer'; location: Uint8Array }
+  | { type: 'chunker'; location: Chunker }
   | { type: 'remote'; location: string }
   | { type: 'stream'; location: ReadableStream<Uint8Array> }
   | { type: 'file-browser'; location: Blob };
