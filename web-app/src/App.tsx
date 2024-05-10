@@ -1,5 +1,5 @@
 import { clsx } from 'clsx';
-import { useState, useEffect, type ChangeEvent } from 'react';
+import { useState, useEffect, type ChangeEvent, useRef } from 'react';
 import { showSaveFilePicker } from 'native-file-system-adapter';
 import './App.css';
 import { type Chunker, type DecryptSource, NanoTDFClient, TDF3Client } from '@opentdf/client';
@@ -75,7 +75,7 @@ async function getNewFileHandle(
 }
 
 type Containers = 'html' | 'tdf' | 'nano';
-type CurrentDataController = AbortController | undefined;
+type CurrentDataControllers = Record<string, AbortController>;
 type FileInputSource = {
   type: 'file';
   file: File;
@@ -230,7 +230,7 @@ function App() {
   const [encryptContainerType, setEncryptContainerType] = useState<Containers>('tdf');
   const [inputSources, setInputSources] = useState<InputSource[]>([]);
   const [sinkType, setSinkType] = useState<SinkType>('file');
-  const [streamController, setStreamController] = useState<CurrentDataController>();
+  const streamControllers = useRef<CurrentDataControllers>({});
 
   const handleContainerFormatRadioChange =
     (handler: typeof setDecryptContainerType) => (e: ChangeEvent<HTMLInputElement>) => {
@@ -449,7 +449,7 @@ function App() {
     ) {
       let source: ReadableStream<Uint8Array>, size: number;
       const sc = new AbortController();
-      setStreamController(sc);
+      streamControllers.current[inputFileName] = sc;
       switch (inputSource.type) {
         case 'file':
           size = inputSource.file.size;
@@ -514,16 +514,14 @@ function App() {
             await cipherText.stream.pipeTo(drain(), { signal: sc.signal });
             break;
         }
-      } catch (e) {
-        setDownloadState(`Encrypt Failed: ${e}`);
-        console.error('Encrypt Failed', e);
+      } finally {
+        delete streamControllers.current[inputFileName];
       }
-      setStreamController(undefined);
     }
 
     async function encryptTdf(inputSource: InputSource, inputFileName: string, client: TDF3Client) {
       const sc = new AbortController();
-      setStreamController(sc);
+      streamControllers.current[inputFileName] = sc;
       let source: ReadableStream<Uint8Array>, size: number;
       switch (inputSource.type) {
         case 'file':
@@ -582,11 +580,9 @@ function App() {
             await cipherText.stream.pipeTo(drain(), { signal: sc.signal });
             break;
         }
-      } catch (e) {
-        setDownloadState(`Encrypt Failed: ${e}`);
-        console.error('Encrypt Failed', e);
+      } finally {
+        delete streamControllers.current[inputFileName];
       }
-      setStreamController(undefined);
     }
   };
   async function decryptNano(
@@ -610,7 +606,6 @@ function App() {
         const writable = await f.createWritable();
         try {
           await writable.write(plainText);
-          setDownloadState('Decrypt Complete');
         } finally {
           await writable.close();
         }
@@ -624,7 +619,7 @@ function App() {
   }
 
   let promises: (() => Promise<void>)[];
-  const memory = [];
+  const memory: MemoryInputSource[] = [];
   const handleDecrypt = async () => {
     if (!inputSources.length) {
       console.log('PLEASE SELECT FILE');
@@ -667,7 +662,13 @@ function App() {
         break;
       }
     }
-    await Promise.all(promises.map(limit));
+    try {
+      await Promise.all(promises.map(limit));
+      setDownloadState('Decrypt Complete');
+    } catch (e) {
+      console.error('Decrypt Failed', e);
+      setDownloadState(`Decrypt Failed: ${e}`);
+    }
 
     if (memory.length) {
       setInputSources(memory);
@@ -679,7 +680,6 @@ function App() {
       if (sinkType === 'fsapi') {
         f = await getNewFileHandle(decryptedFileExtension(fileNameFor(inputSource)), dfn);
       }
-      try {
         const sc = new AbortController();
         setStreamController(sc);
         let source: DecryptSource;
@@ -726,11 +726,6 @@ function App() {
             await plainText.stream.pipeTo(drain(), { signal: sc.signal });
             break;
         }
-      } catch (e) {
-        console.error('Decrypt Failed', e);
-        setDownloadState(`Decrypt Failed: ${e}`);
-      }
-      setStreamController(undefined);
     }
   };
 
