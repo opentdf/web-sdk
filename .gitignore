@@ -109,3 +109,5 @@ dist
 
 # temporary folders
 **/temp/
+/web-app/tests/smallfiles
+.DS_Store

@@ -1,5 +1,7 @@
 import { decodeJwt } from 'jose';
+import { default as dpopFn } from 'dpop';
 import { base64 } from '@opentdf/client/encodings';
+import { AuthProvider, HttpRequest, withHeaders } from '@opentdf/client';
 
 export type OpenidConfiguration = {
   issuer: string;
@@ -89,10 +91,23 @@ export type Sessions = {
   requests: Record<string, AuthRequestState>;
   /** state for most recent request */
   lastRequest?: string;
+  /** DPoP key */
+  k?: string[];
 };
 
 function getTimestampInSeconds() {
   return Math.floor(Date.now() / 1000);
+}
+
+function rsaPkcs1Sha256(): RsaHashedKeyGenParams {
+  return {
+    name: 'RSASSA-PKCS1-v1_5',
+    hash: {
+      name: 'SHA-256',
+    },
+    modulusLength: 2048,
+    publicExponent: new Uint8Array([0x01, 0x00, 0x01]), // 24 bit representation of 65537
+  };
 }
 
 const extractAuthorizationResponse = (url: string): AuthorizationResponse | null => {
@@ -152,12 +167,13 @@ async function fetchConfig(server: string): Promise<unknown> {
   return response.json();
 }
 
-export class OidcClient {
+export class OidcClient implements AuthProvider {
   clientId: string;
   host: string;
   scope: string;
   sessionIdentifier: string;
   _sessions?: Sessions;
+  signingKey?: CryptoKeyPair;
 
   constructor(host: string, clientId: string, sessionIdentifier: string) {
     this.clientId = clientId;
@@ -189,7 +205,7 @@ export class OidcClient {
     return this._sessions;
   }
 
-  async storeSessions() {
+  storeSessions() {
     sessionStorage.setItem(this.ssk('sessions'), JSON.stringify(this._sessions));
   }
 
@@ -234,18 +250,25 @@ export class OidcClient {
     window.location.href = whereto;
   }
 
+  _cs?: Promise<SessionInformation>;
+
   async currentSession(): Promise<SessionInformation> {
-    const s = await this.handleRedirect();
-    if (s) {
-      console.log('redirected');
-      return s;
+    if (!this._cs) {
+      this._cs = (async (): Promise<SessionInformation> => {
+        const s = await this.handleRedirect();
+        if (s) {
+          console.log('redirected');
+          return s;
+        }
+        const sessions = await this.loadSessions();
+        if (!sessions?.lastRequest) {
+          return { sessionState: 'start' };
+        }
+        const thisSession = sessions.requests[sessions.lastRequest];
+        return thisSession;
+      })();
     }
-    const sessions = await this.loadSessions();
-    if (!sessions?.lastRequest) {
-      return { sessionState: 'start' };
-    }
-    const thisSession = sessions.requests[sessions.lastRequest];
-    return thisSession;
+    return this._cs;
   }
 
   async currentUser(): Promise<User | undefined> {
@@ -271,6 +294,8 @@ export class OidcClient {
       console.log('Ignoring repeated redirect code');
       return;
     }
+    currentSession.usedCodes.push(response.code);
+    this.storeSessions();
     try {
       currentSession.user = await this._makeAccessTokenRequest({
         grantType: 'authorization_code',
@@ -286,6 +311,24 @@ export class OidcClient {
       // history state should still be cleaned up regardless
       window.history.replaceState({}, '', window.location.pathname);
     }
+  }
+
+  async getSigningKey(): Promise<CryptoKeyPair> {
+    if (this.signingKey) {
+      return this.signingKey;
+    }
+    if (this._sessions?.k) {
+      const k = this._sessions?.k.map((e) => base64.decodeArrayBuffer(e));
+      const algorithm = rsaPkcs1Sha256();
+      const [publicKey, privateKey] = await Promise.all([
+        crypto.subtle.importKey('spki', k[0], algorithm, true, ['verify']),
+        crypto.subtle.importKey('pkcs8', k[1], algorithm, false, ['sign']),
+      ]);
+      this.signingKey = { privateKey, publicKey };
+    } else {
+      this.signingKey = await crypto.subtle.generateKey(rsaPkcs1Sha256(), true, ['sign']);
+    }
+    return this.signingKey;
   }
 
   private async _makeAccessTokenRequest(options: {
@@ -312,11 +355,26 @@ export class OidcClient {
     if (!config) {
       throw new Error('Unable to autoconfigure OIDC');
     }
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    };
+    const signingKey = await this.getSigningKey();
+    if (this._sessions && this.signingKey) {
+      const k = await Promise.all([
+        crypto.subtle.exportKey('spki', this.signingKey.publicKey),
+        crypto.subtle.exportKey('pkcs8', this.signingKey.privateKey),
+      ]);
+      this._sessions.k = k.map((e) => base64.encodeArrayBuffer(e));
+    }
+    console.info(
+      `signing token request with DPoP key ${JSON.stringify(
+        await crypto.subtle.exportKey('jwk', signingKey.publicKey)
+      )}`
+    );
+    headers.DPoP = await dpopFn(signingKey, config.token_endpoint, 'POST');
     const response = await fetch(config.token_endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
+      headers,
       body: params,
       credentials: 'include',
     });
@@ -334,5 +392,37 @@ export class OidcClient {
       idToken: id_token,
       refreshToken: refresh_token,
     };
+  }
+
+  async updateClientPublicKey(signingKey: CryptoKeyPair): Promise<void> {
+    this.signingKey = signingKey;
+  }
+
+  async withCreds(httpReq: HttpRequest): Promise<HttpRequest> {
+    const user = await this.currentUser();
+    if (!user) {
+      console.error('Not logged in');
+      return httpReq;
+    }
+    const { accessToken } = user;
+    const { signingKey } = this;
+    if (!signingKey || !signingKey.publicKey) {
+      console.error('missing DPoP key');
+      return httpReq;
+    }
+    console.info(
+      `signing request for ${httpReq.url} with DPoP key ${JSON.stringify(
+        await crypto.subtle.exportKey('jwk', signingKey.publicKey)
+      )}`
+    );
+    const dpopToken = await dpopFn(
+      signingKey,
+      httpReq.url,
+      httpReq.method,
+      /* nonce */ undefined,
+      accessToken
+    );
+    // TODO: Consider: only set DPoP if cnf.jkt is present in access token?
+    return withHeaders(httpReq, { Authorization: `Bearer ${accessToken}`, DPoP: dpopToken });
   }
 }
