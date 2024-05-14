@@ -29,7 +29,7 @@ jobs:
           cache-dependency-path: './lib/package-lock.json'
       - run: npm ci
       - run: npm test
-      - uses: fingerprintjs/action-coverage-report-md@v1
+      - uses: fingerprintjs/action-coverage-report-md@v2
         id: coverage-md
         with:
           srcBasePath: './'
@@ -114,14 +114,11 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - uses: mig4/setup-bats@v1
-        with:
-          bats-version: 1.2.1
       - name: 🦇🦇🦇🦇🦇🦇
-        run: docker run --rm -v "$PWD:/mnt" --workdir "/mnt" bats/bats:1.5.0 *.bats
+        run: docker run --rm -v "$PWD:/mnt" --workdir "/mnt" bats/bats:1.11.0 *.bats
       - name: 🦪 ✔ 🧼🧼🧼
         run: >-
-          docker run --rm -v "$PWD:/mnt" --workdir "/mnt" "koalaman/shellcheck:v0.8.0"
+          docker run --rm -v "$PWD:/mnt" --workdir "/mnt" "koalaman/shellcheck:v0.10.0"
           --color=always *.sh
 
   backend-roundtrip:
