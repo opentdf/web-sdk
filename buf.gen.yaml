@@ -1,6 +1,9 @@
 # Learn more: https://docs.buf.build/configuration/v1/buf-gen-yaml
 version: v1
 plugins:
-   - plugin: es
+   - name: es
      opt: target=ts
      out: lib/src/platform
+   - name: connect-es # alternatively buf.build/grpc/web:v1.5.0
+     out: lib/src/platform
+     opt: target=ts

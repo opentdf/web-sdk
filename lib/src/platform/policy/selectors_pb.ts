@@ -3,15 +3,8 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import type {
-  BinaryReadOptions,
-  FieldList,
-  JsonReadOptions,
-  JsonValue,
-  PartialMessage,
-  PlainMessage,
-} from '@bufbuild/protobuf';
-import { Message, proto3 } from '@bufbuild/protobuf';
+import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
+import { Message, proto3 } from "@bufbuild/protobuf";
 
 /**
  * @generated from message policy.AttributeNamespaceSelector
@@ -28,41 +21,24 @@ export class AttributeNamespaceSelector extends Message<AttributeNamespaceSelect
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.AttributeNamespaceSelector';
+  static readonly typeName = "policy.AttributeNamespaceSelector";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    {
-      no: 10,
-      name: 'with_attributes',
-      kind: 'message',
-      T: AttributeNamespaceSelector_AttributeSelector,
-    },
+    { no: 10, name: "with_attributes", kind: "message", T: AttributeNamespaceSelector_AttributeSelector },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): AttributeNamespaceSelector {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AttributeNamespaceSelector {
     return new AttributeNamespaceSelector().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): AttributeNamespaceSelector {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AttributeNamespaceSelector {
     return new AttributeNamespaceSelector().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): AttributeNamespaceSelector {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AttributeNamespaceSelector {
     return new AttributeNamespaceSelector().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: AttributeNamespaceSelector | PlainMessage<AttributeNamespaceSelector> | undefined,
-    b: AttributeNamespaceSelector | PlainMessage<AttributeNamespaceSelector> | undefined
-  ): boolean {
+  static equals(a: AttributeNamespaceSelector | PlainMessage<AttributeNamespaceSelector> | undefined, b: AttributeNamespaceSelector | PlainMessage<AttributeNamespaceSelector> | undefined): boolean {
     return proto3.util.equals(AttributeNamespaceSelector, a, b);
   }
 }
@@ -87,48 +63,25 @@ export class AttributeNamespaceSelector_AttributeSelector extends Message<Attrib
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.AttributeNamespaceSelector.AttributeSelector';
+  static readonly typeName = "policy.AttributeNamespaceSelector.AttributeSelector";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'with_key_access_grants', kind: 'scalar', T: 8 /* ScalarType.BOOL */ },
-    {
-      no: 10,
-      name: 'with_values',
-      kind: 'message',
-      T: AttributeNamespaceSelector_AttributeSelector_ValueSelector,
-    },
+    { no: 1, name: "with_key_access_grants", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 10, name: "with_values", kind: "message", T: AttributeNamespaceSelector_AttributeSelector_ValueSelector },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): AttributeNamespaceSelector_AttributeSelector {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AttributeNamespaceSelector_AttributeSelector {
     return new AttributeNamespaceSelector_AttributeSelector().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): AttributeNamespaceSelector_AttributeSelector {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AttributeNamespaceSelector_AttributeSelector {
     return new AttributeNamespaceSelector_AttributeSelector().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): AttributeNamespaceSelector_AttributeSelector {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AttributeNamespaceSelector_AttributeSelector {
     return new AttributeNamespaceSelector_AttributeSelector().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a:
-      | AttributeNamespaceSelector_AttributeSelector
-      | PlainMessage<AttributeNamespaceSelector_AttributeSelector>
-      | undefined,
-    b:
-      | AttributeNamespaceSelector_AttributeSelector
-      | PlainMessage<AttributeNamespaceSelector_AttributeSelector>
-      | undefined
-  ): boolean {
+  static equals(a: AttributeNamespaceSelector_AttributeSelector | PlainMessage<AttributeNamespaceSelector_AttributeSelector> | undefined, b: AttributeNamespaceSelector_AttributeSelector | PlainMessage<AttributeNamespaceSelector_AttributeSelector> | undefined): boolean {
     return proto3.util.equals(AttributeNamespaceSelector_AttributeSelector, a, b);
   }
 }
@@ -158,53 +111,26 @@ export class AttributeNamespaceSelector_AttributeSelector_ValueSelector extends 
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.AttributeNamespaceSelector.AttributeSelector.ValueSelector';
+  static readonly typeName = "policy.AttributeNamespaceSelector.AttributeSelector.ValueSelector";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'with_key_access_grants', kind: 'scalar', T: 8 /* ScalarType.BOOL */ },
-    { no: 2, name: 'with_subject_maps', kind: 'scalar', T: 8 /* ScalarType.BOOL */ },
-    { no: 3, name: 'with_resource_maps', kind: 'scalar', T: 8 /* ScalarType.BOOL */ },
+    { no: 1, name: "with_key_access_grants", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "with_subject_maps", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 3, name: "with_resource_maps", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): AttributeNamespaceSelector_AttributeSelector_ValueSelector {
-    return new AttributeNamespaceSelector_AttributeSelector_ValueSelector().fromBinary(
-      bytes,
-      options
-    );
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AttributeNamespaceSelector_AttributeSelector_ValueSelector {
+    return new AttributeNamespaceSelector_AttributeSelector_ValueSelector().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): AttributeNamespaceSelector_AttributeSelector_ValueSelector {
-    return new AttributeNamespaceSelector_AttributeSelector_ValueSelector().fromJson(
-      jsonValue,
-      options
-    );
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AttributeNamespaceSelector_AttributeSelector_ValueSelector {
+    return new AttributeNamespaceSelector_AttributeSelector_ValueSelector().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): AttributeNamespaceSelector_AttributeSelector_ValueSelector {
-    return new AttributeNamespaceSelector_AttributeSelector_ValueSelector().fromJsonString(
-      jsonString,
-      options
-    );
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AttributeNamespaceSelector_AttributeSelector_ValueSelector {
+    return new AttributeNamespaceSelector_AttributeSelector_ValueSelector().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a:
-      | AttributeNamespaceSelector_AttributeSelector_ValueSelector
-      | PlainMessage<AttributeNamespaceSelector_AttributeSelector_ValueSelector>
-      | undefined,
-    b:
-      | AttributeNamespaceSelector_AttributeSelector_ValueSelector
-      | PlainMessage<AttributeNamespaceSelector_AttributeSelector_ValueSelector>
-      | undefined
-  ): boolean {
+  static equals(a: AttributeNamespaceSelector_AttributeSelector_ValueSelector | PlainMessage<AttributeNamespaceSelector_AttributeSelector_ValueSelector> | undefined, b: AttributeNamespaceSelector_AttributeSelector_ValueSelector | PlainMessage<AttributeNamespaceSelector_AttributeSelector_ValueSelector> | undefined): boolean {
     return proto3.util.equals(AttributeNamespaceSelector_AttributeSelector_ValueSelector, a, b);
   }
 }
@@ -234,43 +160,26 @@ export class AttributeDefinitionSelector extends Message<AttributeDefinitionSele
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.AttributeDefinitionSelector';
+  static readonly typeName = "policy.AttributeDefinitionSelector";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'with_key_access_grants', kind: 'scalar', T: 8 /* ScalarType.BOOL */ },
-    {
-      no: 10,
-      name: 'with_namespace',
-      kind: 'message',
-      T: AttributeDefinitionSelector_NamespaceSelector,
-    },
-    { no: 11, name: 'with_values', kind: 'message', T: AttributeDefinitionSelector_ValueSelector },
+    { no: 1, name: "with_key_access_grants", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 10, name: "with_namespace", kind: "message", T: AttributeDefinitionSelector_NamespaceSelector },
+    { no: 11, name: "with_values", kind: "message", T: AttributeDefinitionSelector_ValueSelector },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): AttributeDefinitionSelector {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AttributeDefinitionSelector {
     return new AttributeDefinitionSelector().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): AttributeDefinitionSelector {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AttributeDefinitionSelector {
     return new AttributeDefinitionSelector().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): AttributeDefinitionSelector {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AttributeDefinitionSelector {
     return new AttributeDefinitionSelector().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: AttributeDefinitionSelector | PlainMessage<AttributeDefinitionSelector> | undefined,
-    b: AttributeDefinitionSelector | PlainMessage<AttributeDefinitionSelector> | undefined
-  ): boolean {
+  static equals(a: AttributeDefinitionSelector | PlainMessage<AttributeDefinitionSelector> | undefined, b: AttributeDefinitionSelector | PlainMessage<AttributeDefinitionSelector> | undefined): boolean {
     return proto3.util.equals(AttributeDefinitionSelector, a, b);
   }
 }
@@ -285,40 +194,23 @@ export class AttributeDefinitionSelector_NamespaceSelector extends Message<Attri
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.AttributeDefinitionSelector.NamespaceSelector';
-  static readonly fields: FieldList = proto3.util.newFieldList(() => []);
+  static readonly typeName = "policy.AttributeDefinitionSelector.NamespaceSelector";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): AttributeDefinitionSelector_NamespaceSelector {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AttributeDefinitionSelector_NamespaceSelector {
     return new AttributeDefinitionSelector_NamespaceSelector().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): AttributeDefinitionSelector_NamespaceSelector {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AttributeDefinitionSelector_NamespaceSelector {
     return new AttributeDefinitionSelector_NamespaceSelector().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): AttributeDefinitionSelector_NamespaceSelector {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AttributeDefinitionSelector_NamespaceSelector {
     return new AttributeDefinitionSelector_NamespaceSelector().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a:
-      | AttributeDefinitionSelector_NamespaceSelector
-      | PlainMessage<AttributeDefinitionSelector_NamespaceSelector>
-      | undefined,
-    b:
-      | AttributeDefinitionSelector_NamespaceSelector
-      | PlainMessage<AttributeDefinitionSelector_NamespaceSelector>
-      | undefined
-  ): boolean {
+  static equals(a: AttributeDefinitionSelector_NamespaceSelector | PlainMessage<AttributeDefinitionSelector_NamespaceSelector> | undefined, b: AttributeDefinitionSelector_NamespaceSelector | PlainMessage<AttributeDefinitionSelector_NamespaceSelector> | undefined): boolean {
     return proto3.util.equals(AttributeDefinitionSelector_NamespaceSelector, a, b);
   }
 }
@@ -348,44 +240,26 @@ export class AttributeDefinitionSelector_ValueSelector extends Message<Attribute
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.AttributeDefinitionSelector.ValueSelector';
+  static readonly typeName = "policy.AttributeDefinitionSelector.ValueSelector";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'with_key_access_grants', kind: 'scalar', T: 8 /* ScalarType.BOOL */ },
-    { no: 2, name: 'with_subject_maps', kind: 'scalar', T: 8 /* ScalarType.BOOL */ },
-    { no: 3, name: 'with_resource_maps', kind: 'scalar', T: 8 /* ScalarType.BOOL */ },
+    { no: 1, name: "with_key_access_grants", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "with_subject_maps", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 3, name: "with_resource_maps", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): AttributeDefinitionSelector_ValueSelector {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AttributeDefinitionSelector_ValueSelector {
     return new AttributeDefinitionSelector_ValueSelector().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): AttributeDefinitionSelector_ValueSelector {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AttributeDefinitionSelector_ValueSelector {
     return new AttributeDefinitionSelector_ValueSelector().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): AttributeDefinitionSelector_ValueSelector {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AttributeDefinitionSelector_ValueSelector {
     return new AttributeDefinitionSelector_ValueSelector().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a:
-      | AttributeDefinitionSelector_ValueSelector
-      | PlainMessage<AttributeDefinitionSelector_ValueSelector>
-      | undefined,
-    b:
-      | AttributeDefinitionSelector_ValueSelector
-      | PlainMessage<AttributeDefinitionSelector_ValueSelector>
-      | undefined
-  ): boolean {
+  static equals(a: AttributeDefinitionSelector_ValueSelector | PlainMessage<AttributeDefinitionSelector_ValueSelector> | undefined, b: AttributeDefinitionSelector_ValueSelector | PlainMessage<AttributeDefinitionSelector_ValueSelector> | undefined): boolean {
     return proto3.util.equals(AttributeDefinitionSelector_ValueSelector, a, b);
   }
 }
@@ -420,44 +294,27 @@ export class AttributeValueSelector extends Message<AttributeValueSelector> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.AttributeValueSelector';
+  static readonly typeName = "policy.AttributeValueSelector";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'with_key_access_grants', kind: 'scalar', T: 8 /* ScalarType.BOOL */ },
-    { no: 2, name: 'with_subject_maps', kind: 'scalar', T: 8 /* ScalarType.BOOL */ },
-    { no: 3, name: 'with_resource_maps', kind: 'scalar', T: 8 /* ScalarType.BOOL */ },
-    {
-      no: 10,
-      name: 'with_attribute',
-      kind: 'message',
-      T: AttributeValueSelector_AttributeSelector,
-    },
+    { no: 1, name: "with_key_access_grants", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "with_subject_maps", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 3, name: "with_resource_maps", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 10, name: "with_attribute", kind: "message", T: AttributeValueSelector_AttributeSelector },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): AttributeValueSelector {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AttributeValueSelector {
     return new AttributeValueSelector().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): AttributeValueSelector {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AttributeValueSelector {
     return new AttributeValueSelector().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): AttributeValueSelector {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AttributeValueSelector {
     return new AttributeValueSelector().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: AttributeValueSelector | PlainMessage<AttributeValueSelector> | undefined,
-    b: AttributeValueSelector | PlainMessage<AttributeValueSelector> | undefined
-  ): boolean {
+  static equals(a: AttributeValueSelector | PlainMessage<AttributeValueSelector> | undefined, b: AttributeValueSelector | PlainMessage<AttributeValueSelector> | undefined): boolean {
     return proto3.util.equals(AttributeValueSelector, a, b);
   }
 }
@@ -482,48 +339,25 @@ export class AttributeValueSelector_AttributeSelector extends Message<AttributeV
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.AttributeValueSelector.AttributeSelector';
+  static readonly typeName = "policy.AttributeValueSelector.AttributeSelector";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'with_key_access_grants', kind: 'scalar', T: 8 /* ScalarType.BOOL */ },
-    {
-      no: 10,
-      name: 'with_namespace',
-      kind: 'message',
-      T: AttributeValueSelector_AttributeSelector_NamespaceSelector,
-    },
+    { no: 1, name: "with_key_access_grants", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 10, name: "with_namespace", kind: "message", T: AttributeValueSelector_AttributeSelector_NamespaceSelector },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): AttributeValueSelector_AttributeSelector {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AttributeValueSelector_AttributeSelector {
     return new AttributeValueSelector_AttributeSelector().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): AttributeValueSelector_AttributeSelector {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AttributeValueSelector_AttributeSelector {
     return new AttributeValueSelector_AttributeSelector().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): AttributeValueSelector_AttributeSelector {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AttributeValueSelector_AttributeSelector {
     return new AttributeValueSelector_AttributeSelector().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a:
-      | AttributeValueSelector_AttributeSelector
-      | PlainMessage<AttributeValueSelector_AttributeSelector>
-      | undefined,
-    b:
-      | AttributeValueSelector_AttributeSelector
-      | PlainMessage<AttributeValueSelector_AttributeSelector>
-      | undefined
-  ): boolean {
+  static equals(a: AttributeValueSelector_AttributeSelector | PlainMessage<AttributeValueSelector_AttributeSelector> | undefined, b: AttributeValueSelector_AttributeSelector | PlainMessage<AttributeValueSelector_AttributeSelector> | undefined): boolean {
     return proto3.util.equals(AttributeValueSelector_AttributeSelector, a, b);
   }
 }
@@ -538,49 +372,24 @@ export class AttributeValueSelector_AttributeSelector_NamespaceSelector extends 
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.AttributeValueSelector.AttributeSelector.NamespaceSelector';
-  static readonly fields: FieldList = proto3.util.newFieldList(() => []);
+  static readonly typeName = "policy.AttributeValueSelector.AttributeSelector.NamespaceSelector";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): AttributeValueSelector_AttributeSelector_NamespaceSelector {
-    return new AttributeValueSelector_AttributeSelector_NamespaceSelector().fromBinary(
-      bytes,
-      options
-    );
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AttributeValueSelector_AttributeSelector_NamespaceSelector {
+    return new AttributeValueSelector_AttributeSelector_NamespaceSelector().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): AttributeValueSelector_AttributeSelector_NamespaceSelector {
-    return new AttributeValueSelector_AttributeSelector_NamespaceSelector().fromJson(
-      jsonValue,
-      options
-    );
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AttributeValueSelector_AttributeSelector_NamespaceSelector {
+    return new AttributeValueSelector_AttributeSelector_NamespaceSelector().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): AttributeValueSelector_AttributeSelector_NamespaceSelector {
-    return new AttributeValueSelector_AttributeSelector_NamespaceSelector().fromJsonString(
-      jsonString,
-      options
-    );
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AttributeValueSelector_AttributeSelector_NamespaceSelector {
+    return new AttributeValueSelector_AttributeSelector_NamespaceSelector().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a:
-      | AttributeValueSelector_AttributeSelector_NamespaceSelector
-      | PlainMessage<AttributeValueSelector_AttributeSelector_NamespaceSelector>
-      | undefined,
-    b:
-      | AttributeValueSelector_AttributeSelector_NamespaceSelector
-      | PlainMessage<AttributeValueSelector_AttributeSelector_NamespaceSelector>
-      | undefined
-  ): boolean {
+  static equals(a: AttributeValueSelector_AttributeSelector_NamespaceSelector | PlainMessage<AttributeValueSelector_AttributeSelector_NamespaceSelector> | undefined, b: AttributeValueSelector_AttributeSelector_NamespaceSelector | PlainMessage<AttributeValueSelector_AttributeSelector_NamespaceSelector> | undefined): boolean {
     return proto3.util.equals(AttributeValueSelector_AttributeSelector_NamespaceSelector, a, b);
   }
 }
+

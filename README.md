@@ -70,6 +70,12 @@ This will clone the platform repo and generate Typescript code in `lib/src/platf
 
 import { GetAttributeRequest } from './lib/src/platform/policy/attributes/attributes_pb';
 import { Attribute, AttributeRuleTypeEnum } from './lib/src/platform/policy/objects_pb';
+import {
+    createConnectTransport,
+} from '@connectrpc/connect-web'
+import {
+    createPromiseClient,
+} from '@connectrpc/connect'
 
 const attrData = {
     name: "my-attr",
@@ -91,6 +97,12 @@ console.log(attr.toJson());
 // }
 
 const req = new GetAttributeRequest({id: 'uuid-here'});
+const client = createPromiseClient(
+    AttributesService,
+    createConnectTransport({
+        baseUrl: 'localhost:8080',
+    })
+)
 ```
 
 This is an example to instantiate an `Attribute` and create a `GetAttributeRequest`.

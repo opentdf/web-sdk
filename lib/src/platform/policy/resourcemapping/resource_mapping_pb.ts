@@ -3,17 +3,10 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import type {
-  BinaryReadOptions,
-  FieldList,
-  JsonReadOptions,
-  JsonValue,
-  PartialMessage,
-  PlainMessage,
-} from '@bufbuild/protobuf';
-import { Message, proto3 } from '@bufbuild/protobuf';
-import { ResourceMapping } from '../objects_pb.js';
-import { MetadataMutable, MetadataUpdateEnum } from '../../common/common_pb.js';
+import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
+import { Message, proto3 } from "@bufbuild/protobuf";
+import { ResourceMapping } from "../objects_pb.js";
+import { MetadataMutable, MetadataUpdateEnum } from "../../common/common_pb.js";
 
 /**
  * @generated from message policy.resourcemapping.ListResourceMappingsRequest
@@ -25,34 +18,23 @@ export class ListResourceMappingsRequest extends Message<ListResourceMappingsReq
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.resourcemapping.ListResourceMappingsRequest';
-  static readonly fields: FieldList = proto3.util.newFieldList(() => []);
+  static readonly typeName = "policy.resourcemapping.ListResourceMappingsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): ListResourceMappingsRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListResourceMappingsRequest {
     return new ListResourceMappingsRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): ListResourceMappingsRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListResourceMappingsRequest {
     return new ListResourceMappingsRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): ListResourceMappingsRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListResourceMappingsRequest {
     return new ListResourceMappingsRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: ListResourceMappingsRequest | PlainMessage<ListResourceMappingsRequest> | undefined,
-    b: ListResourceMappingsRequest | PlainMessage<ListResourceMappingsRequest> | undefined
-  ): boolean {
+  static equals(a: ListResourceMappingsRequest | PlainMessage<ListResourceMappingsRequest> | undefined, b: ListResourceMappingsRequest | PlainMessage<ListResourceMappingsRequest> | undefined): boolean {
     return proto3.util.equals(ListResourceMappingsRequest, a, b);
   }
 }
@@ -72,36 +54,24 @@ export class ListResourceMappingsResponse extends Message<ListResourceMappingsRe
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.resourcemapping.ListResourceMappingsResponse';
+  static readonly typeName = "policy.resourcemapping.ListResourceMappingsResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'resource_mappings', kind: 'message', T: ResourceMapping, repeated: true },
+    { no: 1, name: "resource_mappings", kind: "message", T: ResourceMapping, repeated: true },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): ListResourceMappingsResponse {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListResourceMappingsResponse {
     return new ListResourceMappingsResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): ListResourceMappingsResponse {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListResourceMappingsResponse {
     return new ListResourceMappingsResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): ListResourceMappingsResponse {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListResourceMappingsResponse {
     return new ListResourceMappingsResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: ListResourceMappingsResponse | PlainMessage<ListResourceMappingsResponse> | undefined,
-    b: ListResourceMappingsResponse | PlainMessage<ListResourceMappingsResponse> | undefined
-  ): boolean {
+  static equals(a: ListResourceMappingsResponse | PlainMessage<ListResourceMappingsResponse> | undefined, b: ListResourceMappingsResponse | PlainMessage<ListResourceMappingsResponse> | undefined): boolean {
     return proto3.util.equals(ListResourceMappingsResponse, a, b);
   }
 }
@@ -113,7 +83,7 @@ export class GetResourceMappingRequest extends Message<GetResourceMappingRequest
   /**
    * @generated from field: string id = 1;
    */
-  id = '';
+  id = "";
 
   constructor(data?: PartialMessage<GetResourceMappingRequest>) {
     super();
@@ -121,36 +91,24 @@ export class GetResourceMappingRequest extends Message<GetResourceMappingRequest
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.resourcemapping.GetResourceMappingRequest';
+  static readonly typeName = "policy.resourcemapping.GetResourceMappingRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): GetResourceMappingRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetResourceMappingRequest {
     return new GetResourceMappingRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): GetResourceMappingRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetResourceMappingRequest {
     return new GetResourceMappingRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): GetResourceMappingRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetResourceMappingRequest {
     return new GetResourceMappingRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: GetResourceMappingRequest | PlainMessage<GetResourceMappingRequest> | undefined,
-    b: GetResourceMappingRequest | PlainMessage<GetResourceMappingRequest> | undefined
-  ): boolean {
+  static equals(a: GetResourceMappingRequest | PlainMessage<GetResourceMappingRequest> | undefined, b: GetResourceMappingRequest | PlainMessage<GetResourceMappingRequest> | undefined): boolean {
     return proto3.util.equals(GetResourceMappingRequest, a, b);
   }
 }
@@ -170,36 +128,24 @@ export class GetResourceMappingResponse extends Message<GetResourceMappingRespon
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.resourcemapping.GetResourceMappingResponse';
+  static readonly typeName = "policy.resourcemapping.GetResourceMappingResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'resource_mapping', kind: 'message', T: ResourceMapping },
+    { no: 1, name: "resource_mapping", kind: "message", T: ResourceMapping },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): GetResourceMappingResponse {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetResourceMappingResponse {
     return new GetResourceMappingResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): GetResourceMappingResponse {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetResourceMappingResponse {
     return new GetResourceMappingResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): GetResourceMappingResponse {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetResourceMappingResponse {
     return new GetResourceMappingResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: GetResourceMappingResponse | PlainMessage<GetResourceMappingResponse> | undefined,
-    b: GetResourceMappingResponse | PlainMessage<GetResourceMappingResponse> | undefined
-  ): boolean {
+  static equals(a: GetResourceMappingResponse | PlainMessage<GetResourceMappingResponse> | undefined, b: GetResourceMappingResponse | PlainMessage<GetResourceMappingResponse> | undefined): boolean {
     return proto3.util.equals(GetResourceMappingResponse, a, b);
   }
 }
@@ -242,7 +188,7 @@ export class CreateResourceMappingRequest extends Message<CreateResourceMappingR
    *
    * @generated from field: string attribute_value_id = 1;
    */
-  attributeValueId = '';
+  attributeValueId = "";
 
   /**
    * @generated from field: repeated string terms = 2;
@@ -262,38 +208,26 @@ export class CreateResourceMappingRequest extends Message<CreateResourceMappingR
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.resourcemapping.CreateResourceMappingRequest';
+  static readonly typeName = "policy.resourcemapping.CreateResourceMappingRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'attribute_value_id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: 'terms', kind: 'scalar', T: 9 /* ScalarType.STRING */, repeated: true },
-    { no: 100, name: 'metadata', kind: 'message', T: MetadataMutable },
+    { no: 1, name: "attribute_value_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "terms", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 100, name: "metadata", kind: "message", T: MetadataMutable },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): CreateResourceMappingRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateResourceMappingRequest {
     return new CreateResourceMappingRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): CreateResourceMappingRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CreateResourceMappingRequest {
     return new CreateResourceMappingRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): CreateResourceMappingRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CreateResourceMappingRequest {
     return new CreateResourceMappingRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: CreateResourceMappingRequest | PlainMessage<CreateResourceMappingRequest> | undefined,
-    b: CreateResourceMappingRequest | PlainMessage<CreateResourceMappingRequest> | undefined
-  ): boolean {
+  static equals(a: CreateResourceMappingRequest | PlainMessage<CreateResourceMappingRequest> | undefined, b: CreateResourceMappingRequest | PlainMessage<CreateResourceMappingRequest> | undefined): boolean {
     return proto3.util.equals(CreateResourceMappingRequest, a, b);
   }
 }
@@ -313,36 +247,24 @@ export class CreateResourceMappingResponse extends Message<CreateResourceMapping
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.resourcemapping.CreateResourceMappingResponse';
+  static readonly typeName = "policy.resourcemapping.CreateResourceMappingResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'resource_mapping', kind: 'message', T: ResourceMapping },
+    { no: 1, name: "resource_mapping", kind: "message", T: ResourceMapping },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): CreateResourceMappingResponse {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateResourceMappingResponse {
     return new CreateResourceMappingResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): CreateResourceMappingResponse {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CreateResourceMappingResponse {
     return new CreateResourceMappingResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): CreateResourceMappingResponse {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CreateResourceMappingResponse {
     return new CreateResourceMappingResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: CreateResourceMappingResponse | PlainMessage<CreateResourceMappingResponse> | undefined,
-    b: CreateResourceMappingResponse | PlainMessage<CreateResourceMappingResponse> | undefined
-  ): boolean {
+  static equals(a: CreateResourceMappingResponse | PlainMessage<CreateResourceMappingResponse> | undefined, b: CreateResourceMappingResponse | PlainMessage<CreateResourceMappingResponse> | undefined): boolean {
     return proto3.util.equals(CreateResourceMappingResponse, a, b);
   }
 }
@@ -356,14 +278,14 @@ export class UpdateResourceMappingRequest extends Message<UpdateResourceMappingR
    *
    * @generated from field: string id = 1;
    */
-  id = '';
+  id = "";
 
   /**
    * Optional
    *
    * @generated from field: string attribute_value_id = 4;
    */
-  attributeValueId = '';
+  attributeValueId = "";
 
   /**
    * @generated from field: repeated string terms = 5;
@@ -388,45 +310,28 @@ export class UpdateResourceMappingRequest extends Message<UpdateResourceMappingR
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.resourcemapping.UpdateResourceMappingRequest';
+  static readonly typeName = "policy.resourcemapping.UpdateResourceMappingRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
-    { no: 4, name: 'attribute_value_id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
-    { no: 5, name: 'terms', kind: 'scalar', T: 9 /* ScalarType.STRING */, repeated: true },
-    { no: 100, name: 'metadata', kind: 'message', T: MetadataMutable },
-    {
-      no: 101,
-      name: 'metadata_update_behavior',
-      kind: 'enum',
-      T: proto3.getEnumType(MetadataUpdateEnum),
-    },
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "attribute_value_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "terms", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 100, name: "metadata", kind: "message", T: MetadataMutable },
+    { no: 101, name: "metadata_update_behavior", kind: "enum", T: proto3.getEnumType(MetadataUpdateEnum) },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): UpdateResourceMappingRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateResourceMappingRequest {
     return new UpdateResourceMappingRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): UpdateResourceMappingRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UpdateResourceMappingRequest {
     return new UpdateResourceMappingRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): UpdateResourceMappingRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UpdateResourceMappingRequest {
     return new UpdateResourceMappingRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: UpdateResourceMappingRequest | PlainMessage<UpdateResourceMappingRequest> | undefined,
-    b: UpdateResourceMappingRequest | PlainMessage<UpdateResourceMappingRequest> | undefined
-  ): boolean {
+  static equals(a: UpdateResourceMappingRequest | PlainMessage<UpdateResourceMappingRequest> | undefined, b: UpdateResourceMappingRequest | PlainMessage<UpdateResourceMappingRequest> | undefined): boolean {
     return proto3.util.equals(UpdateResourceMappingRequest, a, b);
   }
 }
@@ -446,36 +351,24 @@ export class UpdateResourceMappingResponse extends Message<UpdateResourceMapping
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.resourcemapping.UpdateResourceMappingResponse';
+  static readonly typeName = "policy.resourcemapping.UpdateResourceMappingResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'resource_mapping', kind: 'message', T: ResourceMapping },
+    { no: 1, name: "resource_mapping", kind: "message", T: ResourceMapping },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): UpdateResourceMappingResponse {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateResourceMappingResponse {
     return new UpdateResourceMappingResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): UpdateResourceMappingResponse {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UpdateResourceMappingResponse {
     return new UpdateResourceMappingResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): UpdateResourceMappingResponse {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UpdateResourceMappingResponse {
     return new UpdateResourceMappingResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: UpdateResourceMappingResponse | PlainMessage<UpdateResourceMappingResponse> | undefined,
-    b: UpdateResourceMappingResponse | PlainMessage<UpdateResourceMappingResponse> | undefined
-  ): boolean {
+  static equals(a: UpdateResourceMappingResponse | PlainMessage<UpdateResourceMappingResponse> | undefined, b: UpdateResourceMappingResponse | PlainMessage<UpdateResourceMappingResponse> | undefined): boolean {
     return proto3.util.equals(UpdateResourceMappingResponse, a, b);
   }
 }
@@ -487,7 +380,7 @@ export class DeleteResourceMappingRequest extends Message<DeleteResourceMappingR
   /**
    * @generated from field: string id = 1;
    */
-  id = '';
+  id = "";
 
   constructor(data?: PartialMessage<DeleteResourceMappingRequest>) {
     super();
@@ -495,36 +388,24 @@ export class DeleteResourceMappingRequest extends Message<DeleteResourceMappingR
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.resourcemapping.DeleteResourceMappingRequest';
+  static readonly typeName = "policy.resourcemapping.DeleteResourceMappingRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): DeleteResourceMappingRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeleteResourceMappingRequest {
     return new DeleteResourceMappingRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): DeleteResourceMappingRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeleteResourceMappingRequest {
     return new DeleteResourceMappingRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): DeleteResourceMappingRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeleteResourceMappingRequest {
     return new DeleteResourceMappingRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: DeleteResourceMappingRequest | PlainMessage<DeleteResourceMappingRequest> | undefined,
-    b: DeleteResourceMappingRequest | PlainMessage<DeleteResourceMappingRequest> | undefined
-  ): boolean {
+  static equals(a: DeleteResourceMappingRequest | PlainMessage<DeleteResourceMappingRequest> | undefined, b: DeleteResourceMappingRequest | PlainMessage<DeleteResourceMappingRequest> | undefined): boolean {
     return proto3.util.equals(DeleteResourceMappingRequest, a, b);
   }
 }
@@ -544,36 +425,25 @@ export class DeleteResourceMappingResponse extends Message<DeleteResourceMapping
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.resourcemapping.DeleteResourceMappingResponse';
+  static readonly typeName = "policy.resourcemapping.DeleteResourceMappingResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'resource_mapping', kind: 'message', T: ResourceMapping },
+    { no: 1, name: "resource_mapping", kind: "message", T: ResourceMapping },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): DeleteResourceMappingResponse {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeleteResourceMappingResponse {
     return new DeleteResourceMappingResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): DeleteResourceMappingResponse {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeleteResourceMappingResponse {
     return new DeleteResourceMappingResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): DeleteResourceMappingResponse {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeleteResourceMappingResponse {
     return new DeleteResourceMappingResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: DeleteResourceMappingResponse | PlainMessage<DeleteResourceMappingResponse> | undefined,
-    b: DeleteResourceMappingResponse | PlainMessage<DeleteResourceMappingResponse> | undefined
-  ): boolean {
+  static equals(a: DeleteResourceMappingResponse | PlainMessage<DeleteResourceMappingResponse> | undefined, b: DeleteResourceMappingResponse | PlainMessage<DeleteResourceMappingResponse> | undefined): boolean {
     return proto3.util.equals(DeleteResourceMappingResponse, a, b);
   }
 }
+
