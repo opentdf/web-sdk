@@ -3,9 +3,16 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
-import { Any, Message, proto3, Struct } from "@bufbuild/protobuf";
-import { Entity } from "../authorization/authorization_pb.js";
+import type {
+  BinaryReadOptions,
+  FieldList,
+  JsonReadOptions,
+  JsonValue,
+  PartialMessage,
+  PlainMessage,
+} from '@bufbuild/protobuf';
+import { Any, Message, proto3, Struct } from '@bufbuild/protobuf';
+import { Entity } from '../authorization/authorization_pb.js';
 
 /**
  *
@@ -38,24 +45,36 @@ export class ResolveEntitiesRequest extends Message<ResolveEntitiesRequest> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "entityresolution.ResolveEntitiesRequest";
+  static readonly typeName = 'entityresolution.ResolveEntitiesRequest';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "entities", kind: "message", T: Entity, repeated: true },
+    { no: 1, name: 'entities', kind: 'message', T: Entity, repeated: true },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ResolveEntitiesRequest {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): ResolveEntitiesRequest {
     return new ResolveEntitiesRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ResolveEntitiesRequest {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): ResolveEntitiesRequest {
     return new ResolveEntitiesRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ResolveEntitiesRequest {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): ResolveEntitiesRequest {
     return new ResolveEntitiesRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(a: ResolveEntitiesRequest | PlainMessage<ResolveEntitiesRequest> | undefined, b: ResolveEntitiesRequest | PlainMessage<ResolveEntitiesRequest> | undefined): boolean {
+  static equals(
+    a: ResolveEntitiesRequest | PlainMessage<ResolveEntitiesRequest> | undefined,
+    b: ResolveEntitiesRequest | PlainMessage<ResolveEntitiesRequest> | undefined
+  ): boolean {
     return proto3.util.equals(ResolveEntitiesRequest, a, b);
   }
 }
@@ -74,7 +93,7 @@ export class EntityRepresentation extends Message<EntityRepresentation> {
    *
    * @generated from field: string original_id = 2;
    */
-  originalId = "";
+  originalId = '';
 
   constructor(data?: PartialMessage<EntityRepresentation>) {
     super();
@@ -82,10 +101,10 @@ export class EntityRepresentation extends Message<EntityRepresentation> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "entityresolution.EntityRepresentation";
+  static readonly typeName = 'entityresolution.EntityRepresentation';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "additional_props", kind: "message", T: Struct, repeated: true },
-    { no: 2, name: "original_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: 'additional_props', kind: 'message', T: Struct, repeated: true },
+    { no: 2, name: 'original_id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): EntityRepresentation {
@@ -96,11 +115,17 @@ export class EntityRepresentation extends Message<EntityRepresentation> {
     return new EntityRepresentation().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): EntityRepresentation {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): EntityRepresentation {
     return new EntityRepresentation().fromJsonString(jsonString, options);
   }
 
-  static equals(a: EntityRepresentation | PlainMessage<EntityRepresentation> | undefined, b: EntityRepresentation | PlainMessage<EntityRepresentation> | undefined): boolean {
+  static equals(
+    a: EntityRepresentation | PlainMessage<EntityRepresentation> | undefined,
+    b: EntityRepresentation | PlainMessage<EntityRepresentation> | undefined
+  ): boolean {
     return proto3.util.equals(EntityRepresentation, a, b);
   }
 }
@@ -136,24 +161,42 @@ export class ResolveEntitiesResponse extends Message<ResolveEntitiesResponse> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "entityresolution.ResolveEntitiesResponse";
+  static readonly typeName = 'entityresolution.ResolveEntitiesResponse';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "entity_representations", kind: "message", T: EntityRepresentation, repeated: true },
+    {
+      no: 1,
+      name: 'entity_representations',
+      kind: 'message',
+      T: EntityRepresentation,
+      repeated: true,
+    },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ResolveEntitiesResponse {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): ResolveEntitiesResponse {
     return new ResolveEntitiesResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ResolveEntitiesResponse {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): ResolveEntitiesResponse {
     return new ResolveEntitiesResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ResolveEntitiesResponse {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): ResolveEntitiesResponse {
     return new ResolveEntitiesResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(a: ResolveEntitiesResponse | PlainMessage<ResolveEntitiesResponse> | undefined, b: ResolveEntitiesResponse | PlainMessage<ResolveEntitiesResponse> | undefined): boolean {
+  static equals(
+    a: ResolveEntitiesResponse | PlainMessage<ResolveEntitiesResponse> | undefined,
+    b: ResolveEntitiesResponse | PlainMessage<ResolveEntitiesResponse> | undefined
+  ): boolean {
     return proto3.util.equals(ResolveEntitiesResponse, a, b);
   }
 }
@@ -170,7 +213,7 @@ export class EntityNotFoundError extends Message<EntityNotFoundError> {
   /**
    * @generated from field: string message = 2;
    */
-  message = "";
+  message = '';
 
   /**
    * @generated from field: repeated google.protobuf.Any details = 3;
@@ -180,7 +223,7 @@ export class EntityNotFoundError extends Message<EntityNotFoundError> {
   /**
    * @generated from field: string entity = 4;
    */
-  entity = "";
+  entity = '';
 
   constructor(data?: PartialMessage<EntityNotFoundError>) {
     super();
@@ -188,12 +231,12 @@ export class EntityNotFoundError extends Message<EntityNotFoundError> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "entityresolution.EntityNotFoundError";
+  static readonly typeName = 'entityresolution.EntityNotFoundError';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "code", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 2, name: "message", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "details", kind: "message", T: Any, repeated: true },
-    { no: 4, name: "entity", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: 'code', kind: 'scalar', T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: 'message', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: 'details', kind: 'message', T: Any, repeated: true },
+    { no: 4, name: 'entity', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): EntityNotFoundError {
@@ -204,12 +247,17 @@ export class EntityNotFoundError extends Message<EntityNotFoundError> {
     return new EntityNotFoundError().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): EntityNotFoundError {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): EntityNotFoundError {
     return new EntityNotFoundError().fromJsonString(jsonString, options);
   }
 
-  static equals(a: EntityNotFoundError | PlainMessage<EntityNotFoundError> | undefined, b: EntityNotFoundError | PlainMessage<EntityNotFoundError> | undefined): boolean {
+  static equals(
+    a: EntityNotFoundError | PlainMessage<EntityNotFoundError> | undefined,
+    b: EntityNotFoundError | PlainMessage<EntityNotFoundError> | undefined
+  ): boolean {
     return proto3.util.equals(EntityNotFoundError, a, b);
   }
 }
-

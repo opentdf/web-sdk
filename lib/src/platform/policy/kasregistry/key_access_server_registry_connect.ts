@@ -3,20 +3,31 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { CreateKeyAccessServerRequest, CreateKeyAccessServerResponse, DeleteKeyAccessServerRequest, DeleteKeyAccessServerResponse, GetKeyAccessServerRequest, GetKeyAccessServerResponse, ListKeyAccessServersRequest, ListKeyAccessServersResponse, UpdateKeyAccessServerRequest, UpdateKeyAccessServerResponse } from "./key_access_server_registry_pb.js";
-import { MethodKind } from "@bufbuild/protobuf";
+import {
+  CreateKeyAccessServerRequest,
+  CreateKeyAccessServerResponse,
+  DeleteKeyAccessServerRequest,
+  DeleteKeyAccessServerResponse,
+  GetKeyAccessServerRequest,
+  GetKeyAccessServerResponse,
+  ListKeyAccessServersRequest,
+  ListKeyAccessServersResponse,
+  UpdateKeyAccessServerRequest,
+  UpdateKeyAccessServerResponse,
+} from './key_access_server_registry_pb.js';
+import { MethodKind } from '@bufbuild/protobuf';
 
 /**
  * @generated from service policy.kasregistry.KeyAccessServerRegistryService
  */
 export const KeyAccessServerRegistryService = {
-  typeName: "policy.kasregistry.KeyAccessServerRegistryService",
+  typeName: 'policy.kasregistry.KeyAccessServerRegistryService',
   methods: {
     /**
      * @generated from rpc policy.kasregistry.KeyAccessServerRegistryService.ListKeyAccessServers
      */
     listKeyAccessServers: {
-      name: "ListKeyAccessServers",
+      name: 'ListKeyAccessServers',
       I: ListKeyAccessServersRequest,
       O: ListKeyAccessServersResponse,
       kind: MethodKind.Unary,
@@ -25,7 +36,7 @@ export const KeyAccessServerRegistryService = {
      * @generated from rpc policy.kasregistry.KeyAccessServerRegistryService.GetKeyAccessServer
      */
     getKeyAccessServer: {
-      name: "GetKeyAccessServer",
+      name: 'GetKeyAccessServer',
       I: GetKeyAccessServerRequest,
       O: GetKeyAccessServerResponse,
       kind: MethodKind.Unary,
@@ -34,7 +45,7 @@ export const KeyAccessServerRegistryService = {
      * @generated from rpc policy.kasregistry.KeyAccessServerRegistryService.CreateKeyAccessServer
      */
     createKeyAccessServer: {
-      name: "CreateKeyAccessServer",
+      name: 'CreateKeyAccessServer',
       I: CreateKeyAccessServerRequest,
       O: CreateKeyAccessServerResponse,
       kind: MethodKind.Unary,
@@ -43,7 +54,7 @@ export const KeyAccessServerRegistryService = {
      * @generated from rpc policy.kasregistry.KeyAccessServerRegistryService.UpdateKeyAccessServer
      */
     updateKeyAccessServer: {
-      name: "UpdateKeyAccessServer",
+      name: 'UpdateKeyAccessServer',
       I: UpdateKeyAccessServerRequest,
       O: UpdateKeyAccessServerResponse,
       kind: MethodKind.Unary,
@@ -52,11 +63,10 @@ export const KeyAccessServerRegistryService = {
      * @generated from rpc policy.kasregistry.KeyAccessServerRegistryService.DeleteKeyAccessServer
      */
     deleteKeyAccessServer: {
-      name: "DeleteKeyAccessServer",
+      name: 'DeleteKeyAccessServer',
       I: DeleteKeyAccessServerRequest,
       O: DeleteKeyAccessServerResponse,
       kind: MethodKind.Unary,
     },
-  }
+  },
 } as const;
-

@@ -3,14 +3,37 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { CreateSubjectConditionSetRequest, CreateSubjectConditionSetResponse, CreateSubjectMappingRequest, CreateSubjectMappingResponse, DeleteSubjectConditionSetRequest, DeleteSubjectConditionSetResponse, DeleteSubjectMappingRequest, DeleteSubjectMappingResponse, GetSubjectConditionSetRequest, GetSubjectConditionSetResponse, GetSubjectMappingRequest, GetSubjectMappingResponse, ListSubjectConditionSetsRequest, ListSubjectConditionSetsResponse, ListSubjectMappingsRequest, ListSubjectMappingsResponse, MatchSubjectMappingsRequest, MatchSubjectMappingsResponse, UpdateSubjectConditionSetRequest, UpdateSubjectConditionSetResponse, UpdateSubjectMappingRequest, UpdateSubjectMappingResponse } from "./subject_mapping_pb.js";
-import { MethodKind } from "@bufbuild/protobuf";
+import {
+  CreateSubjectConditionSetRequest,
+  CreateSubjectConditionSetResponse,
+  CreateSubjectMappingRequest,
+  CreateSubjectMappingResponse,
+  DeleteSubjectConditionSetRequest,
+  DeleteSubjectConditionSetResponse,
+  DeleteSubjectMappingRequest,
+  DeleteSubjectMappingResponse,
+  GetSubjectConditionSetRequest,
+  GetSubjectConditionSetResponse,
+  GetSubjectMappingRequest,
+  GetSubjectMappingResponse,
+  ListSubjectConditionSetsRequest,
+  ListSubjectConditionSetsResponse,
+  ListSubjectMappingsRequest,
+  ListSubjectMappingsResponse,
+  MatchSubjectMappingsRequest,
+  MatchSubjectMappingsResponse,
+  UpdateSubjectConditionSetRequest,
+  UpdateSubjectConditionSetResponse,
+  UpdateSubjectMappingRequest,
+  UpdateSubjectMappingResponse,
+} from './subject_mapping_pb.js';
+import { MethodKind } from '@bufbuild/protobuf';
 
 /**
  * @generated from service policy.subjectmapping.SubjectMappingService
  */
 export const SubjectMappingService = {
-  typeName: "policy.subjectmapping.SubjectMappingService",
+  typeName: 'policy.subjectmapping.SubjectMappingService',
   methods: {
     /**
      * Find matching Subject Mappings for a given Subject
@@ -18,7 +41,7 @@ export const SubjectMappingService = {
      * @generated from rpc policy.subjectmapping.SubjectMappingService.MatchSubjectMappings
      */
     matchSubjectMappings: {
-      name: "MatchSubjectMappings",
+      name: 'MatchSubjectMappings',
       I: MatchSubjectMappingsRequest,
       O: MatchSubjectMappingsResponse,
       kind: MethodKind.Unary,
@@ -27,7 +50,7 @@ export const SubjectMappingService = {
      * @generated from rpc policy.subjectmapping.SubjectMappingService.ListSubjectMappings
      */
     listSubjectMappings: {
-      name: "ListSubjectMappings",
+      name: 'ListSubjectMappings',
       I: ListSubjectMappingsRequest,
       O: ListSubjectMappingsResponse,
       kind: MethodKind.Unary,
@@ -36,7 +59,7 @@ export const SubjectMappingService = {
      * @generated from rpc policy.subjectmapping.SubjectMappingService.GetSubjectMapping
      */
     getSubjectMapping: {
-      name: "GetSubjectMapping",
+      name: 'GetSubjectMapping',
       I: GetSubjectMappingRequest,
       O: GetSubjectMappingResponse,
       kind: MethodKind.Unary,
@@ -45,7 +68,7 @@ export const SubjectMappingService = {
      * @generated from rpc policy.subjectmapping.SubjectMappingService.CreateSubjectMapping
      */
     createSubjectMapping: {
-      name: "CreateSubjectMapping",
+      name: 'CreateSubjectMapping',
       I: CreateSubjectMappingRequest,
       O: CreateSubjectMappingResponse,
       kind: MethodKind.Unary,
@@ -54,7 +77,7 @@ export const SubjectMappingService = {
      * @generated from rpc policy.subjectmapping.SubjectMappingService.UpdateSubjectMapping
      */
     updateSubjectMapping: {
-      name: "UpdateSubjectMapping",
+      name: 'UpdateSubjectMapping',
       I: UpdateSubjectMappingRequest,
       O: UpdateSubjectMappingResponse,
       kind: MethodKind.Unary,
@@ -63,7 +86,7 @@ export const SubjectMappingService = {
      * @generated from rpc policy.subjectmapping.SubjectMappingService.DeleteSubjectMapping
      */
     deleteSubjectMapping: {
-      name: "DeleteSubjectMapping",
+      name: 'DeleteSubjectMapping',
       I: DeleteSubjectMappingRequest,
       O: DeleteSubjectMappingResponse,
       kind: MethodKind.Unary,
@@ -72,7 +95,7 @@ export const SubjectMappingService = {
      * @generated from rpc policy.subjectmapping.SubjectMappingService.ListSubjectConditionSets
      */
     listSubjectConditionSets: {
-      name: "ListSubjectConditionSets",
+      name: 'ListSubjectConditionSets',
       I: ListSubjectConditionSetsRequest,
       O: ListSubjectConditionSetsResponse,
       kind: MethodKind.Unary,
@@ -81,7 +104,7 @@ export const SubjectMappingService = {
      * @generated from rpc policy.subjectmapping.SubjectMappingService.GetSubjectConditionSet
      */
     getSubjectConditionSet: {
-      name: "GetSubjectConditionSet",
+      name: 'GetSubjectConditionSet',
       I: GetSubjectConditionSetRequest,
       O: GetSubjectConditionSetResponse,
       kind: MethodKind.Unary,
@@ -90,7 +113,7 @@ export const SubjectMappingService = {
      * @generated from rpc policy.subjectmapping.SubjectMappingService.CreateSubjectConditionSet
      */
     createSubjectConditionSet: {
-      name: "CreateSubjectConditionSet",
+      name: 'CreateSubjectConditionSet',
       I: CreateSubjectConditionSetRequest,
       O: CreateSubjectConditionSetResponse,
       kind: MethodKind.Unary,
@@ -99,7 +122,7 @@ export const SubjectMappingService = {
      * @generated from rpc policy.subjectmapping.SubjectMappingService.UpdateSubjectConditionSet
      */
     updateSubjectConditionSet: {
-      name: "UpdateSubjectConditionSet",
+      name: 'UpdateSubjectConditionSet',
       I: UpdateSubjectConditionSetRequest,
       O: UpdateSubjectConditionSetResponse,
       kind: MethodKind.Unary,
@@ -108,11 +131,10 @@ export const SubjectMappingService = {
      * @generated from rpc policy.subjectmapping.SubjectMappingService.DeleteSubjectConditionSet
      */
     deleteSubjectConditionSet: {
-      name: "DeleteSubjectConditionSet",
+      name: 'DeleteSubjectConditionSet',
       I: DeleteSubjectConditionSetRequest,
       O: DeleteSubjectConditionSetResponse,
       kind: MethodKind.Unary,
     },
-  }
+  },
 } as const;
-
