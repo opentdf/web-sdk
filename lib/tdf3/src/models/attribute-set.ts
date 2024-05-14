@@ -1,8 +1,6 @@
 import Ajv, { JSONSchemaType } from 'ajv';
 import { decodeJwt } from 'jose';
 
-const verbose = false;
-
 export type AttributeObject = {
   attribute: string;
   kasUrl: string;
@@ -41,6 +39,8 @@ const validator = (() => {
 
 export class AttributeSet {
   attributes: AttributeObject[];
+
+  verbose: boolean = false;
 
   defaultAttribute?: AttributeObject;
 
@@ -103,7 +103,7 @@ export class AttributeSet {
     if (!result) {
       // TODO: Determine if an error should be thrown
       // console.log("WARNING - AttributeSet.addAttribute: AttributeObject is malformed. AddAttribute failed:");
-      if (verbose) console.log(attrObj);
+      if (this.verbose) console.log(attrObj);
       return null;
     }
     // Check for duplicate entries to assure idempotency.

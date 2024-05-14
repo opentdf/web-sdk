@@ -15,7 +15,7 @@ TDF3 with JSON envelopes.
     oidcOrigin: keycloakUrl,
   }
   const authProvider = await AuthProviders.refreshAuthProvider(oidcCredentials);
-  const client = new NanoTDFClient(authProvider, access);
+  const client = new NanoTDFClient({authProvider, kasEndpoint});
   const cipherText = await client.encrypt(plainText);
   const clearText = await client.decrypt(cipherText);
 ```
