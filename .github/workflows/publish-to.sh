@@ -8,7 +8,7 @@ t="${2}"
 
 cd lib
 for f in {,tdf3/}src/version.ts; do
-  if ! sed "s/export const version = \'[^']\{1,\}\';\$/export const version = \'${v}\';/" $f >${f}.tmp; then
+  if ! sed "s/export const version = \'[^']\{1,\}\';\$/export const version = \'${v}\';/" "${f}" >"${f}.tmp"; then
     echo "Failed to insert version [${v}] into file [$f]"
     exit 1
   fi

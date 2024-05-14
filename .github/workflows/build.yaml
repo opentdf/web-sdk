@@ -19,17 +19,17 @@ jobs:
         working-directory: ./lib
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: ${{ !fromJSON(env.do_sonarscan) && 1 || 0 }}
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: '18'
           cache: 'npm'
           cache-dependency-path: './lib/package-lock.json'
       - run: npm ci
       - run: npm test
-      - uses: fingerprintjs/action-coverage-report-md@v1
+      - uses: fingerprintjs/action-coverage-report-md@v2
         id: coverage-md
         with:
           srcBasePath: './'
@@ -41,7 +41,7 @@ jobs:
       - run: npm run license-check
       - run: npm run lint
       - run: npm pack
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: opentdf-client-lib
           path: ./lib/opentdf-client-*.tgz
@@ -61,13 +61,13 @@ jobs:
         working-directory: ./remote-store
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '18'
           cache: 'npm'
           cache-dependency-path: './remote-store/package-lock.json'
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: opentdf-client-lib
           path: lib/
@@ -88,13 +88,13 @@ jobs:
         working-directory: ./web-app
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '18'
           cache: 'npm'
           cache-dependency-path: './web-app/package-lock.json'
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: opentdf-client-lib
           path: lib/
@@ -113,15 +113,12 @@ jobs:
         working-directory: .github/workflows
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v3
-      - uses: mig4/setup-bats@v1
-        with:
-          bats-version: 1.2.1
+      - uses: actions/checkout@v4
       - name: 🦇🦇🦇🦇🦇🦇
-        run: docker run --rm -v "$PWD:/mnt" --workdir "/mnt" bats/bats:1.5.0 *.bats
+        run: docker run --rm -v "$PWD:/mnt" --workdir "/mnt" bats/bats:1.11.0 *.bats
       - name: 🦪 ✔ 🧼🧼🧼
         run: >-
-          docker run --rm -v "$PWD:/mnt" --workdir "/mnt" "koalaman/shellcheck:v0.8.0"
+          docker run --rm -v "$PWD:/mnt" --workdir "/mnt" "koalaman/shellcheck:v0.10.0"
           --color=always *.sh
 
   backend-roundtrip:
@@ -133,13 +130,13 @@ jobs:
         working-directory: .github/workflows/roundtrip
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '18'
           cache: 'npm'
           cache-dependency-path: './web-app/package-lock.json'
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: opentdf-client-lib
           path: lib/
@@ -185,8 +182,8 @@ jobs:
       DIST_TAG: ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
       TARGET_VERSION: ${{ steps.check-version.outputs.TARGET_VERSION }}
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '18.x'
           registry-url: https://npm.pkg.github.com
@@ -242,8 +239,8 @@ jobs:
       || (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/'))
       || (github.event_name == 'release' && startsWith(github.ref, 'refs/tags/'))
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '18.x'
           registry-url: 'https://registry.npmjs.org'
