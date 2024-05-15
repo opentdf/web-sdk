@@ -1,7 +1,9 @@
 name: Build, Test, and Deliver Client
 
 env:
-  do_sonarscan: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
+  do_sonarscan: >-
+    ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name ==
+    github.repository }}
 
 on:
   pull_request:
@@ -10,7 +12,8 @@ on:
       - main
       - release/[0-9]+.[0-9]+.[0-9]+
   release:
-    types: [created]
+    types:
+      - created
 jobs:
   lib:
     runs-on: ubuntu-latest
@@ -34,7 +37,7 @@ jobs:
         with:
           srcBasePath: './'
           textReportPath: './lib/coverage/coverage.txt'
-      - run: echo "${MARKDOWN_REPORT}" >> $GITHUB_STEP_SUMMARY
+      - run: echo "${MARKDOWN_REPORT}" >>$GITHUB_STEP_SUMMARY
         env:
           MARKDOWN_REPORT: '${{ steps.coverage-md.outputs.markdownReport }}'
       - run: npm audit --omit dev && npm audit --audit-level high
@@ -169,14 +172,18 @@ jobs:
         run: tilt ci
 
   deliver-ghp:
-    needs: [lib, web-app, scripts, backend-roundtrip]
+    needs:
+      - lib
+      - web-app
+      - scripts
+      - backend-roundtrip
     runs-on: ubuntu-latest
     timeout-minutes: 5
     # To publish from a release or feature branch, remove the ref == condition below
     if: >-
-      (github.event_name == 'push' && github.ref == 'refs/heads/main')
-      || (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/'))
-      || (github.event_name == 'release' && startsWith(github.ref, 'refs/tags/'))
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')) ||
+      (github.event_name == 'release' && startsWith(github.ref, 'refs/tags/'))
     outputs:
       FULL_VERSION: ${{ steps.guess-build-metadata.outputs.FULL_VERSION }}
       DIST_TAG: ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
@@ -205,18 +212,22 @@ jobs:
       - run: make test
       - run: make doc
       - run: >-
-          echo "::notice file=lib/package.json::Will be published to [GitHub Packages](https://github.com/opentdf/client-web/pkgs/npm/client)as ${{ steps.guess-build-metadata.outputs.DIST_TAG }} with version=[${{ steps.guess-build-metadata.outputs.FULL_VERSION }}]"
+          echo "::notice file=lib/package.json::Will be published to
+          [GitHub Packages](https://github.com/opentdf/client-web/pkgs/npm/client)
+          as ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
+          with version=[${{ steps.guess-build-metadata.outputs.FULL_VERSION }}]"
       - run: >-
           .github/workflows/publish-to.sh
           ${{ steps.guess-build-metadata.outputs.FULL_VERSION }}
           ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: echo "- [Client Library](https://github.com/opentdf/client-web/pkgs/npm/client)">>$GITHUB_STEP_SUMMARY
+      - run:
+          echo "- [Client
+          Library](https://github.com/opentdf/client-web/pkgs/npm/client)">>$GITHUB_STEP_SUMMARY
       - name: trigger xtest
         run: >-
-          curl -XPOST
-          -u "virtru-cloudnative:${{secrets.PERSONAL_ACCESS_TOKEN}}"
+          curl -XPOST -u "virtru-cloudnative:${{secrets.PERSONAL_ACCESS_TOKEN}}"
           -H "Accept: application/vnd.github.everest-preview+json"
           -H "Content-Type: application/json"
           "https://api.github.com/repos/opentdf/backend/dispatches"
@@ -235,9 +246,9 @@ jobs:
     environment: npmjs
     needs: deliver-ghp
     if: >-
-      (github.event_name == 'push' && github.ref == 'refs/heads/main')
-      || (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/'))
-      || (github.event_name == 'release' && startsWith(github.ref, 'refs/tags/'))
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')) ||
+      (github.event_name == 'release' && startsWith(github.ref, 'refs/tags/'))
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -246,10 +257,16 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       - run: make all
       - run: >-
-          .github/workflows/publish-to.sh ${{ needs.deliver-ghp.outputs.FULL_VERSION }}
-          ${{ needs.deliver-ghp.outputs.DIST_TAG }}
+          .github/workflows/publish-to.sh ${{ needs.deliver-ghp.outputs.FULL_VERSION }} ${{
+          needs.deliver-ghp.outputs.DIST_TAG }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - run: echo "- [Client Library](https://www.npmjs.com/package/@opentdf/client/v/${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
-      - run: echo "- [Remote Store](https://www.npmjs.com/package/@opentdf/remote-store/v/${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
-      - run: echo "- [unpkg](https://unpkg.com/browse/@opentdf/client@${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
+      - run: >-
+          echo "- [Client Library](https://www.npmjs.com/package/@opentdf/client/v/${{
+          needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
+      - run: >-
+          echo "- [Remote Store](https://www.npmjs.com/package/@opentdf/remote-store/v/${{
+          needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
+      - run: >-
+          echo "- [unpkg](https://unpkg.com/browse/@opentdf/client@${{
+          needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
