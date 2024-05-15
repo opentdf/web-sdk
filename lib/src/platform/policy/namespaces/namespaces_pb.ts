@@ -3,10 +3,17 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
-import { Message, proto3 } from "@bufbuild/protobuf";
-import { Namespace } from "../objects_pb.js";
-import { ActiveStateEnum, MetadataMutable, MetadataUpdateEnum } from "../../common/common_pb.js";
+import type {
+  BinaryReadOptions,
+  FieldList,
+  JsonReadOptions,
+  JsonValue,
+  PartialMessage,
+  PlainMessage,
+} from '@bufbuild/protobuf';
+import { Message, proto3 } from '@bufbuild/protobuf';
+import { Namespace } from '../objects_pb.js';
+import { ActiveStateEnum, MetadataMutable, MetadataUpdateEnum } from '../../common/common_pb.js';
 
 /**
  * @generated from message policy.namespaces.GetNamespaceRequest
@@ -15,7 +22,7 @@ export class GetNamespaceRequest extends Message<GetNamespaceRequest> {
   /**
    * @generated from field: string id = 1;
    */
-  id = "";
+  id = '';
 
   constructor(data?: PartialMessage<GetNamespaceRequest>) {
     super();
@@ -23,9 +30,9 @@ export class GetNamespaceRequest extends Message<GetNamespaceRequest> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.namespaces.GetNamespaceRequest";
+  static readonly typeName = 'policy.namespaces.GetNamespaceRequest';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: 'id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetNamespaceRequest {
@@ -36,11 +43,17 @@ export class GetNamespaceRequest extends Message<GetNamespaceRequest> {
     return new GetNamespaceRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetNamespaceRequest {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): GetNamespaceRequest {
     return new GetNamespaceRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(a: GetNamespaceRequest | PlainMessage<GetNamespaceRequest> | undefined, b: GetNamespaceRequest | PlainMessage<GetNamespaceRequest> | undefined): boolean {
+  static equals(
+    a: GetNamespaceRequest | PlainMessage<GetNamespaceRequest> | undefined,
+    b: GetNamespaceRequest | PlainMessage<GetNamespaceRequest> | undefined
+  ): boolean {
     return proto3.util.equals(GetNamespaceRequest, a, b);
   }
 }
@@ -60,9 +73,9 @@ export class GetNamespaceResponse extends Message<GetNamespaceResponse> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.namespaces.GetNamespaceResponse";
+  static readonly typeName = 'policy.namespaces.GetNamespaceResponse';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "namespace", kind: "message", T: Namespace },
+    { no: 1, name: 'namespace', kind: 'message', T: Namespace },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetNamespaceResponse {
@@ -73,11 +86,17 @@ export class GetNamespaceResponse extends Message<GetNamespaceResponse> {
     return new GetNamespaceResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetNamespaceResponse {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): GetNamespaceResponse {
     return new GetNamespaceResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(a: GetNamespaceResponse | PlainMessage<GetNamespaceResponse> | undefined, b: GetNamespaceResponse | PlainMessage<GetNamespaceResponse> | undefined): boolean {
+  static equals(
+    a: GetNamespaceResponse | PlainMessage<GetNamespaceResponse> | undefined,
+    b: GetNamespaceResponse | PlainMessage<GetNamespaceResponse> | undefined
+  ): boolean {
     return proto3.util.equals(GetNamespaceResponse, a, b);
   }
 }
@@ -99,12 +118,15 @@ export class ListNamespacesRequest extends Message<ListNamespacesRequest> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.namespaces.ListNamespacesRequest";
+  static readonly typeName = 'policy.namespaces.ListNamespacesRequest';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "state", kind: "enum", T: proto3.getEnumType(ActiveStateEnum) },
+    { no: 1, name: 'state', kind: 'enum', T: proto3.getEnumType(ActiveStateEnum) },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListNamespacesRequest {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): ListNamespacesRequest {
     return new ListNamespacesRequest().fromBinary(bytes, options);
   }
 
@@ -112,11 +134,17 @@ export class ListNamespacesRequest extends Message<ListNamespacesRequest> {
     return new ListNamespacesRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListNamespacesRequest {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): ListNamespacesRequest {
     return new ListNamespacesRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(a: ListNamespacesRequest | PlainMessage<ListNamespacesRequest> | undefined, b: ListNamespacesRequest | PlainMessage<ListNamespacesRequest> | undefined): boolean {
+  static equals(
+    a: ListNamespacesRequest | PlainMessage<ListNamespacesRequest> | undefined,
+    b: ListNamespacesRequest | PlainMessage<ListNamespacesRequest> | undefined
+  ): boolean {
     return proto3.util.equals(ListNamespacesRequest, a, b);
   }
 }
@@ -136,24 +164,36 @@ export class ListNamespacesResponse extends Message<ListNamespacesResponse> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.namespaces.ListNamespacesResponse";
+  static readonly typeName = 'policy.namespaces.ListNamespacesResponse';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "namespaces", kind: "message", T: Namespace, repeated: true },
+    { no: 1, name: 'namespaces', kind: 'message', T: Namespace, repeated: true },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListNamespacesResponse {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): ListNamespacesResponse {
     return new ListNamespacesResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListNamespacesResponse {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): ListNamespacesResponse {
     return new ListNamespacesResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListNamespacesResponse {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): ListNamespacesResponse {
     return new ListNamespacesResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(a: ListNamespacesResponse | PlainMessage<ListNamespacesResponse> | undefined, b: ListNamespacesResponse | PlainMessage<ListNamespacesResponse> | undefined): boolean {
+  static equals(
+    a: ListNamespacesResponse | PlainMessage<ListNamespacesResponse> | undefined,
+    b: ListNamespacesResponse | PlainMessage<ListNamespacesResponse> | undefined
+  ): boolean {
     return proto3.util.equals(ListNamespacesResponse, a, b);
   }
 }
@@ -167,7 +207,7 @@ export class CreateNamespaceRequest extends Message<CreateNamespaceRequest> {
    *
    * @generated from field: string name = 1;
    */
-  name = "";
+  name = '';
 
   /**
    * Optional
@@ -182,25 +222,37 @@ export class CreateNamespaceRequest extends Message<CreateNamespaceRequest> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.namespaces.CreateNamespaceRequest";
+  static readonly typeName = 'policy.namespaces.CreateNamespaceRequest';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 100, name: "metadata", kind: "message", T: MetadataMutable },
+    { no: 1, name: 'name', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 100, name: 'metadata', kind: 'message', T: MetadataMutable },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateNamespaceRequest {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): CreateNamespaceRequest {
     return new CreateNamespaceRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CreateNamespaceRequest {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): CreateNamespaceRequest {
     return new CreateNamespaceRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CreateNamespaceRequest {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): CreateNamespaceRequest {
     return new CreateNamespaceRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(a: CreateNamespaceRequest | PlainMessage<CreateNamespaceRequest> | undefined, b: CreateNamespaceRequest | PlainMessage<CreateNamespaceRequest> | undefined): boolean {
+  static equals(
+    a: CreateNamespaceRequest | PlainMessage<CreateNamespaceRequest> | undefined,
+    b: CreateNamespaceRequest | PlainMessage<CreateNamespaceRequest> | undefined
+  ): boolean {
     return proto3.util.equals(CreateNamespaceRequest, a, b);
   }
 }
@@ -220,24 +272,36 @@ export class CreateNamespaceResponse extends Message<CreateNamespaceResponse> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.namespaces.CreateNamespaceResponse";
+  static readonly typeName = 'policy.namespaces.CreateNamespaceResponse';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "namespace", kind: "message", T: Namespace },
+    { no: 1, name: 'namespace', kind: 'message', T: Namespace },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateNamespaceResponse {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): CreateNamespaceResponse {
     return new CreateNamespaceResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CreateNamespaceResponse {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): CreateNamespaceResponse {
     return new CreateNamespaceResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CreateNamespaceResponse {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): CreateNamespaceResponse {
     return new CreateNamespaceResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(a: CreateNamespaceResponse | PlainMessage<CreateNamespaceResponse> | undefined, b: CreateNamespaceResponse | PlainMessage<CreateNamespaceResponse> | undefined): boolean {
+  static equals(
+    a: CreateNamespaceResponse | PlainMessage<CreateNamespaceResponse> | undefined,
+    b: CreateNamespaceResponse | PlainMessage<CreateNamespaceResponse> | undefined
+  ): boolean {
     return proto3.util.equals(CreateNamespaceResponse, a, b);
   }
 }
@@ -251,7 +315,7 @@ export class UpdateNamespaceRequest extends Message<UpdateNamespaceRequest> {
    *
    * @generated from field: string id = 1;
    */
-  id = "";
+  id = '';
 
   /**
    * Optional
@@ -271,26 +335,43 @@ export class UpdateNamespaceRequest extends Message<UpdateNamespaceRequest> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.namespaces.UpdateNamespaceRequest";
+  static readonly typeName = 'policy.namespaces.UpdateNamespaceRequest';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 100, name: "metadata", kind: "message", T: MetadataMutable },
-    { no: 101, name: "metadata_update_behavior", kind: "enum", T: proto3.getEnumType(MetadataUpdateEnum) },
+    { no: 1, name: 'id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 100, name: 'metadata', kind: 'message', T: MetadataMutable },
+    {
+      no: 101,
+      name: 'metadata_update_behavior',
+      kind: 'enum',
+      T: proto3.getEnumType(MetadataUpdateEnum),
+    },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateNamespaceRequest {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): UpdateNamespaceRequest {
     return new UpdateNamespaceRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UpdateNamespaceRequest {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): UpdateNamespaceRequest {
     return new UpdateNamespaceRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UpdateNamespaceRequest {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): UpdateNamespaceRequest {
     return new UpdateNamespaceRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(a: UpdateNamespaceRequest | PlainMessage<UpdateNamespaceRequest> | undefined, b: UpdateNamespaceRequest | PlainMessage<UpdateNamespaceRequest> | undefined): boolean {
+  static equals(
+    a: UpdateNamespaceRequest | PlainMessage<UpdateNamespaceRequest> | undefined,
+    b: UpdateNamespaceRequest | PlainMessage<UpdateNamespaceRequest> | undefined
+  ): boolean {
     return proto3.util.equals(UpdateNamespaceRequest, a, b);
   }
 }
@@ -310,24 +391,36 @@ export class UpdateNamespaceResponse extends Message<UpdateNamespaceResponse> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.namespaces.UpdateNamespaceResponse";
+  static readonly typeName = 'policy.namespaces.UpdateNamespaceResponse';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "namespace", kind: "message", T: Namespace },
+    { no: 1, name: 'namespace', kind: 'message', T: Namespace },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateNamespaceResponse {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): UpdateNamespaceResponse {
     return new UpdateNamespaceResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UpdateNamespaceResponse {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): UpdateNamespaceResponse {
     return new UpdateNamespaceResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UpdateNamespaceResponse {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): UpdateNamespaceResponse {
     return new UpdateNamespaceResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(a: UpdateNamespaceResponse | PlainMessage<UpdateNamespaceResponse> | undefined, b: UpdateNamespaceResponse | PlainMessage<UpdateNamespaceResponse> | undefined): boolean {
+  static equals(
+    a: UpdateNamespaceResponse | PlainMessage<UpdateNamespaceResponse> | undefined,
+    b: UpdateNamespaceResponse | PlainMessage<UpdateNamespaceResponse> | undefined
+  ): boolean {
     return proto3.util.equals(UpdateNamespaceResponse, a, b);
   }
 }
@@ -339,7 +432,7 @@ export class DeactivateNamespaceRequest extends Message<DeactivateNamespaceReque
   /**
    * @generated from field: string id = 1;
    */
-  id = "";
+  id = '';
 
   constructor(data?: PartialMessage<DeactivateNamespaceRequest>) {
     super();
@@ -347,24 +440,36 @@ export class DeactivateNamespaceRequest extends Message<DeactivateNamespaceReque
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.namespaces.DeactivateNamespaceRequest";
+  static readonly typeName = 'policy.namespaces.DeactivateNamespaceRequest';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: 'id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeactivateNamespaceRequest {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): DeactivateNamespaceRequest {
     return new DeactivateNamespaceRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeactivateNamespaceRequest {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): DeactivateNamespaceRequest {
     return new DeactivateNamespaceRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeactivateNamespaceRequest {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): DeactivateNamespaceRequest {
     return new DeactivateNamespaceRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(a: DeactivateNamespaceRequest | PlainMessage<DeactivateNamespaceRequest> | undefined, b: DeactivateNamespaceRequest | PlainMessage<DeactivateNamespaceRequest> | undefined): boolean {
+  static equals(
+    a: DeactivateNamespaceRequest | PlainMessage<DeactivateNamespaceRequest> | undefined,
+    b: DeactivateNamespaceRequest | PlainMessage<DeactivateNamespaceRequest> | undefined
+  ): boolean {
     return proto3.util.equals(DeactivateNamespaceRequest, a, b);
   }
 }
@@ -379,24 +484,34 @@ export class DeactivateNamespaceResponse extends Message<DeactivateNamespaceResp
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.namespaces.DeactivateNamespaceResponse";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-  ]);
+  static readonly typeName = 'policy.namespaces.DeactivateNamespaceResponse';
+  static readonly fields: FieldList = proto3.util.newFieldList(() => []);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeactivateNamespaceResponse {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): DeactivateNamespaceResponse {
     return new DeactivateNamespaceResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeactivateNamespaceResponse {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): DeactivateNamespaceResponse {
     return new DeactivateNamespaceResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeactivateNamespaceResponse {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): DeactivateNamespaceResponse {
     return new DeactivateNamespaceResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(a: DeactivateNamespaceResponse | PlainMessage<DeactivateNamespaceResponse> | undefined, b: DeactivateNamespaceResponse | PlainMessage<DeactivateNamespaceResponse> | undefined): boolean {
+  static equals(
+    a: DeactivateNamespaceResponse | PlainMessage<DeactivateNamespaceResponse> | undefined,
+    b: DeactivateNamespaceResponse | PlainMessage<DeactivateNamespaceResponse> | undefined
+  ): boolean {
     return proto3.util.equals(DeactivateNamespaceResponse, a, b);
   }
 }
-

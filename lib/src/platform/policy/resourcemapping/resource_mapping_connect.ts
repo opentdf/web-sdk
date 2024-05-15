@@ -3,8 +3,19 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { CreateResourceMappingRequest, CreateResourceMappingResponse, DeleteResourceMappingRequest, DeleteResourceMappingResponse, GetResourceMappingRequest, GetResourceMappingResponse, ListResourceMappingsRequest, ListResourceMappingsResponse, UpdateResourceMappingRequest, UpdateResourceMappingResponse } from "./resource_mapping_pb.js";
-import { MethodKind } from "@bufbuild/protobuf";
+import {
+  CreateResourceMappingRequest,
+  CreateResourceMappingResponse,
+  DeleteResourceMappingRequest,
+  DeleteResourceMappingResponse,
+  GetResourceMappingRequest,
+  GetResourceMappingResponse,
+  ListResourceMappingsRequest,
+  ListResourceMappingsResponse,
+  UpdateResourceMappingRequest,
+  UpdateResourceMappingResponse,
+} from './resource_mapping_pb.js';
+import { MethodKind } from '@bufbuild/protobuf';
 
 /**
  *
@@ -13,7 +24,7 @@ import { MethodKind } from "@bufbuild/protobuf";
  * @generated from service policy.resourcemapping.ResourceMappingService
  */
 export const ResourceMappingService = {
-  typeName: "policy.resourcemapping.ResourceMappingService",
+  typeName: 'policy.resourcemapping.ResourceMappingService',
   methods: {
     /**
      *
@@ -55,7 +66,7 @@ export const ResourceMappingService = {
      * @generated from rpc policy.resourcemapping.ResourceMappingService.ListResourceMappings
      */
     listResourceMappings: {
-      name: "ListResourceMappings",
+      name: 'ListResourceMappings',
       I: ListResourceMappingsRequest,
       O: ListResourceMappingsResponse,
       kind: MethodKind.Unary,
@@ -100,7 +111,7 @@ export const ResourceMappingService = {
      * @generated from rpc policy.resourcemapping.ResourceMappingService.GetResourceMapping
      */
     getResourceMapping: {
-      name: "GetResourceMapping",
+      name: 'GetResourceMapping',
       I: GetResourceMappingRequest,
       O: GetResourceMappingResponse,
       kind: MethodKind.Unary,
@@ -151,7 +162,7 @@ export const ResourceMappingService = {
      * @generated from rpc policy.resourcemapping.ResourceMappingService.CreateResourceMapping
      */
     createResourceMapping: {
-      name: "CreateResourceMapping",
+      name: 'CreateResourceMapping',
       I: CreateResourceMappingRequest,
       O: CreateResourceMappingResponse,
       kind: MethodKind.Unary,
@@ -204,7 +215,7 @@ export const ResourceMappingService = {
      * @generated from rpc policy.resourcemapping.ResourceMappingService.UpdateResourceMapping
      */
     updateResourceMapping: {
-      name: "UpdateResourceMapping",
+      name: 'UpdateResourceMapping',
       I: UpdateResourceMappingRequest,
       O: UpdateResourceMappingResponse,
       kind: MethodKind.Unary,
@@ -249,11 +260,10 @@ export const ResourceMappingService = {
      * @generated from rpc policy.resourcemapping.ResourceMappingService.DeleteResourceMapping
      */
     deleteResourceMapping: {
-      name: "DeleteResourceMapping",
+      name: 'DeleteResourceMapping',
       I: DeleteResourceMappingRequest,
       O: DeleteResourceMappingResponse,
       kind: MethodKind.Unary,
     },
-  }
+  },
 } as const;
-

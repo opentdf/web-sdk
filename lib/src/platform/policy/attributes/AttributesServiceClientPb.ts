@@ -10,25 +10,24 @@
 // 	protoc              v0.0.0
 // source: policy/attributes/attributes.proto
 
-
 /* eslint-disable */
 // @ts-nocheck
-
 
 import * as grpcWeb from 'grpc-web';
 
 import * as policy_attributes_attributes_pb from '../../policy/attributes/attributes_pb'; // proto import: "policy/attributes/attributes.proto"
 
-
 export class AttributesServiceClient {
   client_: grpcWeb.AbstractClientBase;
   hostname_: string;
-  credentials_: null | { [index: string]: string; };
-  options_: null | { [index: string]: any; };
+  credentials_: null | { [index: string]: string };
+  options_: null | { [index: string]: any };
 
-  constructor (hostname: string,
-               credentials?: null | { [index: string]: string; },
-               options?: null | { [index: string]: any; }) {
+  constructor(
+    hostname: string,
+    credentials?: null | { [index: string]: string },
+    options?: null | { [index: string]: any }
+  ) {
     if (!options) options = {};
     if (!credentials) credentials = {};
     options['format'] = 'binary';
@@ -52,34 +51,41 @@ export class AttributesServiceClient {
 
   listAttributes(
     request: policy_attributes_attributes_pb.ListAttributesRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_attributes_attributes_pb.ListAttributesResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_attributes_attributes_pb.ListAttributesResponse>;
 
   listAttributes(
     request: policy_attributes_attributes_pb.ListAttributesRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_attributes_attributes_pb.ListAttributesResponse) => void): grpcWeb.ClientReadableStream<policy_attributes_attributes_pb.ListAttributesResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_attributes_attributes_pb.ListAttributesResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_attributes_attributes_pb.ListAttributesResponse>;
 
   listAttributes(
     request: policy_attributes_attributes_pb.ListAttributesRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_attributes_attributes_pb.ListAttributesResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_attributes_attributes_pb.ListAttributesResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.attributes.AttributesService/ListAttributes',
+        this.hostname_ + '/policy.attributes.AttributesService/ListAttributes',
         request,
         metadata || {},
         this.methodDescriptorListAttributes,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.attributes.AttributesService/ListAttributes',
-    request,
-    metadata || {},
-    this.methodDescriptorListAttributes);
+      this.hostname_ + '/policy.attributes.AttributesService/ListAttributes',
+      request,
+      metadata || {},
+      this.methodDescriptorListAttributes
+    );
   }
 
   methodDescriptorListAttributeValues = new grpcWeb.MethodDescriptor(
@@ -95,34 +101,41 @@ export class AttributesServiceClient {
 
   listAttributeValues(
     request: policy_attributes_attributes_pb.ListAttributeValuesRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_attributes_attributes_pb.ListAttributeValuesResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_attributes_attributes_pb.ListAttributeValuesResponse>;
 
   listAttributeValues(
     request: policy_attributes_attributes_pb.ListAttributeValuesRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_attributes_attributes_pb.ListAttributeValuesResponse) => void): grpcWeb.ClientReadableStream<policy_attributes_attributes_pb.ListAttributeValuesResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_attributes_attributes_pb.ListAttributeValuesResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_attributes_attributes_pb.ListAttributeValuesResponse>;
 
   listAttributeValues(
     request: policy_attributes_attributes_pb.ListAttributeValuesRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_attributes_attributes_pb.ListAttributeValuesResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_attributes_attributes_pb.ListAttributeValuesResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.attributes.AttributesService/ListAttributeValues',
+        this.hostname_ + '/policy.attributes.AttributesService/ListAttributeValues',
         request,
         metadata || {},
         this.methodDescriptorListAttributeValues,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.attributes.AttributesService/ListAttributeValues',
-    request,
-    metadata || {},
-    this.methodDescriptorListAttributeValues);
+      this.hostname_ + '/policy.attributes.AttributesService/ListAttributeValues',
+      request,
+      metadata || {},
+      this.methodDescriptorListAttributeValues
+    );
   }
 
   methodDescriptorGetAttribute = new grpcWeb.MethodDescriptor(
@@ -138,34 +151,41 @@ export class AttributesServiceClient {
 
   getAttribute(
     request: policy_attributes_attributes_pb.GetAttributeRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_attributes_attributes_pb.GetAttributeResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_attributes_attributes_pb.GetAttributeResponse>;
 
   getAttribute(
     request: policy_attributes_attributes_pb.GetAttributeRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_attributes_attributes_pb.GetAttributeResponse) => void): grpcWeb.ClientReadableStream<policy_attributes_attributes_pb.GetAttributeResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_attributes_attributes_pb.GetAttributeResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_attributes_attributes_pb.GetAttributeResponse>;
 
   getAttribute(
     request: policy_attributes_attributes_pb.GetAttributeRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_attributes_attributes_pb.GetAttributeResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_attributes_attributes_pb.GetAttributeResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.attributes.AttributesService/GetAttribute',
+        this.hostname_ + '/policy.attributes.AttributesService/GetAttribute',
         request,
         metadata || {},
         this.methodDescriptorGetAttribute,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.attributes.AttributesService/GetAttribute',
-    request,
-    metadata || {},
-    this.methodDescriptorGetAttribute);
+      this.hostname_ + '/policy.attributes.AttributesService/GetAttribute',
+      request,
+      metadata || {},
+      this.methodDescriptorGetAttribute
+    );
   }
 
   methodDescriptorGetAttributeValuesByFqns = new grpcWeb.MethodDescriptor(
@@ -181,34 +201,41 @@ export class AttributesServiceClient {
 
   getAttributeValuesByFqns(
     request: policy_attributes_attributes_pb.GetAttributeValuesByFqnsRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_attributes_attributes_pb.GetAttributeValuesByFqnsResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_attributes_attributes_pb.GetAttributeValuesByFqnsResponse>;
 
   getAttributeValuesByFqns(
     request: policy_attributes_attributes_pb.GetAttributeValuesByFqnsRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_attributes_attributes_pb.GetAttributeValuesByFqnsResponse) => void): grpcWeb.ClientReadableStream<policy_attributes_attributes_pb.GetAttributeValuesByFqnsResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_attributes_attributes_pb.GetAttributeValuesByFqnsResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_attributes_attributes_pb.GetAttributeValuesByFqnsResponse>;
 
   getAttributeValuesByFqns(
     request: policy_attributes_attributes_pb.GetAttributeValuesByFqnsRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_attributes_attributes_pb.GetAttributeValuesByFqnsResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_attributes_attributes_pb.GetAttributeValuesByFqnsResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.attributes.AttributesService/GetAttributeValuesByFqns',
+        this.hostname_ + '/policy.attributes.AttributesService/GetAttributeValuesByFqns',
         request,
         metadata || {},
         this.methodDescriptorGetAttributeValuesByFqns,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.attributes.AttributesService/GetAttributeValuesByFqns',
-    request,
-    metadata || {},
-    this.methodDescriptorGetAttributeValuesByFqns);
+      this.hostname_ + '/policy.attributes.AttributesService/GetAttributeValuesByFqns',
+      request,
+      metadata || {},
+      this.methodDescriptorGetAttributeValuesByFqns
+    );
   }
 
   methodDescriptorCreateAttribute = new grpcWeb.MethodDescriptor(
@@ -224,34 +251,41 @@ export class AttributesServiceClient {
 
   createAttribute(
     request: policy_attributes_attributes_pb.CreateAttributeRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_attributes_attributes_pb.CreateAttributeResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_attributes_attributes_pb.CreateAttributeResponse>;
 
   createAttribute(
     request: policy_attributes_attributes_pb.CreateAttributeRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_attributes_attributes_pb.CreateAttributeResponse) => void): grpcWeb.ClientReadableStream<policy_attributes_attributes_pb.CreateAttributeResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_attributes_attributes_pb.CreateAttributeResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_attributes_attributes_pb.CreateAttributeResponse>;
 
   createAttribute(
     request: policy_attributes_attributes_pb.CreateAttributeRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_attributes_attributes_pb.CreateAttributeResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_attributes_attributes_pb.CreateAttributeResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.attributes.AttributesService/CreateAttribute',
+        this.hostname_ + '/policy.attributes.AttributesService/CreateAttribute',
         request,
         metadata || {},
         this.methodDescriptorCreateAttribute,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.attributes.AttributesService/CreateAttribute',
-    request,
-    metadata || {},
-    this.methodDescriptorCreateAttribute);
+      this.hostname_ + '/policy.attributes.AttributesService/CreateAttribute',
+      request,
+      metadata || {},
+      this.methodDescriptorCreateAttribute
+    );
   }
 
   methodDescriptorUpdateAttribute = new grpcWeb.MethodDescriptor(
@@ -267,34 +301,41 @@ export class AttributesServiceClient {
 
   updateAttribute(
     request: policy_attributes_attributes_pb.UpdateAttributeRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_attributes_attributes_pb.UpdateAttributeResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_attributes_attributes_pb.UpdateAttributeResponse>;
 
   updateAttribute(
     request: policy_attributes_attributes_pb.UpdateAttributeRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_attributes_attributes_pb.UpdateAttributeResponse) => void): grpcWeb.ClientReadableStream<policy_attributes_attributes_pb.UpdateAttributeResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_attributes_attributes_pb.UpdateAttributeResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_attributes_attributes_pb.UpdateAttributeResponse>;
 
   updateAttribute(
     request: policy_attributes_attributes_pb.UpdateAttributeRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_attributes_attributes_pb.UpdateAttributeResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_attributes_attributes_pb.UpdateAttributeResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.attributes.AttributesService/UpdateAttribute',
+        this.hostname_ + '/policy.attributes.AttributesService/UpdateAttribute',
         request,
         metadata || {},
         this.methodDescriptorUpdateAttribute,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.attributes.AttributesService/UpdateAttribute',
-    request,
-    metadata || {},
-    this.methodDescriptorUpdateAttribute);
+      this.hostname_ + '/policy.attributes.AttributesService/UpdateAttribute',
+      request,
+      metadata || {},
+      this.methodDescriptorUpdateAttribute
+    );
   }
 
   methodDescriptorDeactivateAttribute = new grpcWeb.MethodDescriptor(
@@ -310,34 +351,41 @@ export class AttributesServiceClient {
 
   deactivateAttribute(
     request: policy_attributes_attributes_pb.DeactivateAttributeRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_attributes_attributes_pb.DeactivateAttributeResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_attributes_attributes_pb.DeactivateAttributeResponse>;
 
   deactivateAttribute(
     request: policy_attributes_attributes_pb.DeactivateAttributeRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_attributes_attributes_pb.DeactivateAttributeResponse) => void): grpcWeb.ClientReadableStream<policy_attributes_attributes_pb.DeactivateAttributeResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_attributes_attributes_pb.DeactivateAttributeResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_attributes_attributes_pb.DeactivateAttributeResponse>;
 
   deactivateAttribute(
     request: policy_attributes_attributes_pb.DeactivateAttributeRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_attributes_attributes_pb.DeactivateAttributeResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_attributes_attributes_pb.DeactivateAttributeResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.attributes.AttributesService/DeactivateAttribute',
+        this.hostname_ + '/policy.attributes.AttributesService/DeactivateAttribute',
         request,
         metadata || {},
         this.methodDescriptorDeactivateAttribute,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.attributes.AttributesService/DeactivateAttribute',
-    request,
-    metadata || {},
-    this.methodDescriptorDeactivateAttribute);
+      this.hostname_ + '/policy.attributes.AttributesService/DeactivateAttribute',
+      request,
+      metadata || {},
+      this.methodDescriptorDeactivateAttribute
+    );
   }
 
   methodDescriptorGetAttributeValue = new grpcWeb.MethodDescriptor(
@@ -353,34 +401,41 @@ export class AttributesServiceClient {
 
   getAttributeValue(
     request: policy_attributes_attributes_pb.GetAttributeValueRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_attributes_attributes_pb.GetAttributeValueResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_attributes_attributes_pb.GetAttributeValueResponse>;
 
   getAttributeValue(
     request: policy_attributes_attributes_pb.GetAttributeValueRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_attributes_attributes_pb.GetAttributeValueResponse) => void): grpcWeb.ClientReadableStream<policy_attributes_attributes_pb.GetAttributeValueResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_attributes_attributes_pb.GetAttributeValueResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_attributes_attributes_pb.GetAttributeValueResponse>;
 
   getAttributeValue(
     request: policy_attributes_attributes_pb.GetAttributeValueRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_attributes_attributes_pb.GetAttributeValueResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_attributes_attributes_pb.GetAttributeValueResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.attributes.AttributesService/GetAttributeValue',
+        this.hostname_ + '/policy.attributes.AttributesService/GetAttributeValue',
         request,
         metadata || {},
         this.methodDescriptorGetAttributeValue,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.attributes.AttributesService/GetAttributeValue',
-    request,
-    metadata || {},
-    this.methodDescriptorGetAttributeValue);
+      this.hostname_ + '/policy.attributes.AttributesService/GetAttributeValue',
+      request,
+      metadata || {},
+      this.methodDescriptorGetAttributeValue
+    );
   }
 
   methodDescriptorCreateAttributeValue = new grpcWeb.MethodDescriptor(
@@ -396,34 +451,41 @@ export class AttributesServiceClient {
 
   createAttributeValue(
     request: policy_attributes_attributes_pb.CreateAttributeValueRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_attributes_attributes_pb.CreateAttributeValueResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_attributes_attributes_pb.CreateAttributeValueResponse>;
 
   createAttributeValue(
     request: policy_attributes_attributes_pb.CreateAttributeValueRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_attributes_attributes_pb.CreateAttributeValueResponse) => void): grpcWeb.ClientReadableStream<policy_attributes_attributes_pb.CreateAttributeValueResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_attributes_attributes_pb.CreateAttributeValueResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_attributes_attributes_pb.CreateAttributeValueResponse>;
 
   createAttributeValue(
     request: policy_attributes_attributes_pb.CreateAttributeValueRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_attributes_attributes_pb.CreateAttributeValueResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_attributes_attributes_pb.CreateAttributeValueResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.attributes.AttributesService/CreateAttributeValue',
+        this.hostname_ + '/policy.attributes.AttributesService/CreateAttributeValue',
         request,
         metadata || {},
         this.methodDescriptorCreateAttributeValue,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.attributes.AttributesService/CreateAttributeValue',
-    request,
-    metadata || {},
-    this.methodDescriptorCreateAttributeValue);
+      this.hostname_ + '/policy.attributes.AttributesService/CreateAttributeValue',
+      request,
+      metadata || {},
+      this.methodDescriptorCreateAttributeValue
+    );
   }
 
   methodDescriptorUpdateAttributeValue = new grpcWeb.MethodDescriptor(
@@ -439,34 +501,41 @@ export class AttributesServiceClient {
 
   updateAttributeValue(
     request: policy_attributes_attributes_pb.UpdateAttributeValueRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_attributes_attributes_pb.UpdateAttributeValueResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_attributes_attributes_pb.UpdateAttributeValueResponse>;
 
   updateAttributeValue(
     request: policy_attributes_attributes_pb.UpdateAttributeValueRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_attributes_attributes_pb.UpdateAttributeValueResponse) => void): grpcWeb.ClientReadableStream<policy_attributes_attributes_pb.UpdateAttributeValueResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_attributes_attributes_pb.UpdateAttributeValueResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_attributes_attributes_pb.UpdateAttributeValueResponse>;
 
   updateAttributeValue(
     request: policy_attributes_attributes_pb.UpdateAttributeValueRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_attributes_attributes_pb.UpdateAttributeValueResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_attributes_attributes_pb.UpdateAttributeValueResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.attributes.AttributesService/UpdateAttributeValue',
+        this.hostname_ + '/policy.attributes.AttributesService/UpdateAttributeValue',
         request,
         metadata || {},
         this.methodDescriptorUpdateAttributeValue,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.attributes.AttributesService/UpdateAttributeValue',
-    request,
-    metadata || {},
-    this.methodDescriptorUpdateAttributeValue);
+      this.hostname_ + '/policy.attributes.AttributesService/UpdateAttributeValue',
+      request,
+      metadata || {},
+      this.methodDescriptorUpdateAttributeValue
+    );
   }
 
   methodDescriptorDeactivateAttributeValue = new grpcWeb.MethodDescriptor(
@@ -482,34 +551,41 @@ export class AttributesServiceClient {
 
   deactivateAttributeValue(
     request: policy_attributes_attributes_pb.DeactivateAttributeValueRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_attributes_attributes_pb.DeactivateAttributeValueResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_attributes_attributes_pb.DeactivateAttributeValueResponse>;
 
   deactivateAttributeValue(
     request: policy_attributes_attributes_pb.DeactivateAttributeValueRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_attributes_attributes_pb.DeactivateAttributeValueResponse) => void): grpcWeb.ClientReadableStream<policy_attributes_attributes_pb.DeactivateAttributeValueResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_attributes_attributes_pb.DeactivateAttributeValueResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_attributes_attributes_pb.DeactivateAttributeValueResponse>;
 
   deactivateAttributeValue(
     request: policy_attributes_attributes_pb.DeactivateAttributeValueRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_attributes_attributes_pb.DeactivateAttributeValueResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_attributes_attributes_pb.DeactivateAttributeValueResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.attributes.AttributesService/DeactivateAttributeValue',
+        this.hostname_ + '/policy.attributes.AttributesService/DeactivateAttributeValue',
         request,
         metadata || {},
         this.methodDescriptorDeactivateAttributeValue,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.attributes.AttributesService/DeactivateAttributeValue',
-    request,
-    metadata || {},
-    this.methodDescriptorDeactivateAttributeValue);
+      this.hostname_ + '/policy.attributes.AttributesService/DeactivateAttributeValue',
+      request,
+      metadata || {},
+      this.methodDescriptorDeactivateAttributeValue
+    );
   }
 
   methodDescriptorAssignKeyAccessServerToAttribute = new grpcWeb.MethodDescriptor(
@@ -525,34 +601,41 @@ export class AttributesServiceClient {
 
   assignKeyAccessServerToAttribute(
     request: policy_attributes_attributes_pb.AssignKeyAccessServerToAttributeRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_attributes_attributes_pb.AssignKeyAccessServerToAttributeResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_attributes_attributes_pb.AssignKeyAccessServerToAttributeResponse>;
 
   assignKeyAccessServerToAttribute(
     request: policy_attributes_attributes_pb.AssignKeyAccessServerToAttributeRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_attributes_attributes_pb.AssignKeyAccessServerToAttributeResponse) => void): grpcWeb.ClientReadableStream<policy_attributes_attributes_pb.AssignKeyAccessServerToAttributeResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_attributes_attributes_pb.AssignKeyAccessServerToAttributeResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_attributes_attributes_pb.AssignKeyAccessServerToAttributeResponse>;
 
   assignKeyAccessServerToAttribute(
     request: policy_attributes_attributes_pb.AssignKeyAccessServerToAttributeRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_attributes_attributes_pb.AssignKeyAccessServerToAttributeResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_attributes_attributes_pb.AssignKeyAccessServerToAttributeResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.attributes.AttributesService/AssignKeyAccessServerToAttribute',
+        this.hostname_ + '/policy.attributes.AttributesService/AssignKeyAccessServerToAttribute',
         request,
         metadata || {},
         this.methodDescriptorAssignKeyAccessServerToAttribute,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.attributes.AttributesService/AssignKeyAccessServerToAttribute',
-    request,
-    metadata || {},
-    this.methodDescriptorAssignKeyAccessServerToAttribute);
+      this.hostname_ + '/policy.attributes.AttributesService/AssignKeyAccessServerToAttribute',
+      request,
+      metadata || {},
+      this.methodDescriptorAssignKeyAccessServerToAttribute
+    );
   }
 
   methodDescriptorRemoveKeyAccessServerFromAttribute = new grpcWeb.MethodDescriptor(
@@ -568,34 +651,41 @@ export class AttributesServiceClient {
 
   removeKeyAccessServerFromAttribute(
     request: policy_attributes_attributes_pb.RemoveKeyAccessServerFromAttributeRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_attributes_attributes_pb.RemoveKeyAccessServerFromAttributeResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_attributes_attributes_pb.RemoveKeyAccessServerFromAttributeResponse>;
 
   removeKeyAccessServerFromAttribute(
     request: policy_attributes_attributes_pb.RemoveKeyAccessServerFromAttributeRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_attributes_attributes_pb.RemoveKeyAccessServerFromAttributeResponse) => void): grpcWeb.ClientReadableStream<policy_attributes_attributes_pb.RemoveKeyAccessServerFromAttributeResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_attributes_attributes_pb.RemoveKeyAccessServerFromAttributeResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_attributes_attributes_pb.RemoveKeyAccessServerFromAttributeResponse>;
 
   removeKeyAccessServerFromAttribute(
     request: policy_attributes_attributes_pb.RemoveKeyAccessServerFromAttributeRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_attributes_attributes_pb.RemoveKeyAccessServerFromAttributeResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_attributes_attributes_pb.RemoveKeyAccessServerFromAttributeResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.attributes.AttributesService/RemoveKeyAccessServerFromAttribute',
+        this.hostname_ + '/policy.attributes.AttributesService/RemoveKeyAccessServerFromAttribute',
         request,
         metadata || {},
         this.methodDescriptorRemoveKeyAccessServerFromAttribute,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.attributes.AttributesService/RemoveKeyAccessServerFromAttribute',
-    request,
-    metadata || {},
-    this.methodDescriptorRemoveKeyAccessServerFromAttribute);
+      this.hostname_ + '/policy.attributes.AttributesService/RemoveKeyAccessServerFromAttribute',
+      request,
+      metadata || {},
+      this.methodDescriptorRemoveKeyAccessServerFromAttribute
+    );
   }
 
   methodDescriptorAssignKeyAccessServerToValue = new grpcWeb.MethodDescriptor(
@@ -611,34 +701,41 @@ export class AttributesServiceClient {
 
   assignKeyAccessServerToValue(
     request: policy_attributes_attributes_pb.AssignKeyAccessServerToValueRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_attributes_attributes_pb.AssignKeyAccessServerToValueResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_attributes_attributes_pb.AssignKeyAccessServerToValueResponse>;
 
   assignKeyAccessServerToValue(
     request: policy_attributes_attributes_pb.AssignKeyAccessServerToValueRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_attributes_attributes_pb.AssignKeyAccessServerToValueResponse) => void): grpcWeb.ClientReadableStream<policy_attributes_attributes_pb.AssignKeyAccessServerToValueResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_attributes_attributes_pb.AssignKeyAccessServerToValueResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_attributes_attributes_pb.AssignKeyAccessServerToValueResponse>;
 
   assignKeyAccessServerToValue(
     request: policy_attributes_attributes_pb.AssignKeyAccessServerToValueRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_attributes_attributes_pb.AssignKeyAccessServerToValueResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_attributes_attributes_pb.AssignKeyAccessServerToValueResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.attributes.AttributesService/AssignKeyAccessServerToValue',
+        this.hostname_ + '/policy.attributes.AttributesService/AssignKeyAccessServerToValue',
         request,
         metadata || {},
         this.methodDescriptorAssignKeyAccessServerToValue,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.attributes.AttributesService/AssignKeyAccessServerToValue',
-    request,
-    metadata || {},
-    this.methodDescriptorAssignKeyAccessServerToValue);
+      this.hostname_ + '/policy.attributes.AttributesService/AssignKeyAccessServerToValue',
+      request,
+      metadata || {},
+      this.methodDescriptorAssignKeyAccessServerToValue
+    );
   }
 
   methodDescriptorRemoveKeyAccessServerFromValue = new grpcWeb.MethodDescriptor(
@@ -654,35 +751,40 @@ export class AttributesServiceClient {
 
   removeKeyAccessServerFromValue(
     request: policy_attributes_attributes_pb.RemoveKeyAccessServerFromValueRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_attributes_attributes_pb.RemoveKeyAccessServerFromValueResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_attributes_attributes_pb.RemoveKeyAccessServerFromValueResponse>;
 
   removeKeyAccessServerFromValue(
     request: policy_attributes_attributes_pb.RemoveKeyAccessServerFromValueRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_attributes_attributes_pb.RemoveKeyAccessServerFromValueResponse) => void): grpcWeb.ClientReadableStream<policy_attributes_attributes_pb.RemoveKeyAccessServerFromValueResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_attributes_attributes_pb.RemoveKeyAccessServerFromValueResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_attributes_attributes_pb.RemoveKeyAccessServerFromValueResponse>;
 
   removeKeyAccessServerFromValue(
     request: policy_attributes_attributes_pb.RemoveKeyAccessServerFromValueRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_attributes_attributes_pb.RemoveKeyAccessServerFromValueResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_attributes_attributes_pb.RemoveKeyAccessServerFromValueResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.attributes.AttributesService/RemoveKeyAccessServerFromValue',
+        this.hostname_ + '/policy.attributes.AttributesService/RemoveKeyAccessServerFromValue',
         request,
         metadata || {},
         this.methodDescriptorRemoveKeyAccessServerFromValue,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.attributes.AttributesService/RemoveKeyAccessServerFromValue',
-    request,
-    metadata || {},
-    this.methodDescriptorRemoveKeyAccessServerFromValue);
+      this.hostname_ + '/policy.attributes.AttributesService/RemoveKeyAccessServerFromValue',
+      request,
+      metadata || {},
+      this.methodDescriptorRemoveKeyAccessServerFromValue
+    );
   }
-
 }
-

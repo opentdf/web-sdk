@@ -10,26 +10,25 @@
 // 	protoc              v0.0.0
 // source: kas/kas.proto
 
-
 /* eslint-disable */
 // @ts-nocheck
-
 
 import * as grpcWeb from 'grpc-web';
 
 import * as google_protobuf_wrappers_pb from 'google-protobuf/google/protobuf/wrappers_pb'; // proto import: "google/protobuf/wrappers.proto"
 import * as kas_kas_pb from '../kas/kas_pb'; // proto import: "kas/kas.proto"
 
-
 export class AccessServiceClient {
   client_: grpcWeb.AbstractClientBase;
   hostname_: string;
-  credentials_: null | { [index: string]: string; };
-  options_: null | { [index: string]: any; };
+  credentials_: null | { [index: string]: string };
+  options_: null | { [index: string]: any };
 
-  constructor (hostname: string,
-               credentials?: null | { [index: string]: string; },
-               options?: null | { [index: string]: any; }) {
+  constructor(
+    hostname: string,
+    credentials?: null | { [index: string]: string },
+    options?: null | { [index: string]: any }
+  ) {
     if (!options) options = {};
     if (!credentials) credentials = {};
     options['format'] = 'binary';
@@ -53,34 +52,35 @@ export class AccessServiceClient {
 
   info(
     request: kas_kas_pb.InfoRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<kas_kas_pb.InfoResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<kas_kas_pb.InfoResponse>;
 
   info(
     request: kas_kas_pb.InfoRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: kas_kas_pb.InfoResponse) => void): grpcWeb.ClientReadableStream<kas_kas_pb.InfoResponse>;
+    callback: (err: grpcWeb.RpcError, response: kas_kas_pb.InfoResponse) => void
+  ): grpcWeb.ClientReadableStream<kas_kas_pb.InfoResponse>;
 
   info(
     request: kas_kas_pb.InfoRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: kas_kas_pb.InfoResponse) => void) {
+    callback?: (err: grpcWeb.RpcError, response: kas_kas_pb.InfoResponse) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/kas.AccessService/Info',
+        this.hostname_ + '/kas.AccessService/Info',
         request,
         metadata || {},
         this.methodDescriptorInfo,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/kas.AccessService/Info',
-    request,
-    metadata || {},
-    this.methodDescriptorInfo);
+      this.hostname_ + '/kas.AccessService/Info',
+      request,
+      metadata || {},
+      this.methodDescriptorInfo
+    );
   }
 
   methodDescriptorPublicKey = new grpcWeb.MethodDescriptor(
@@ -96,34 +96,35 @@ export class AccessServiceClient {
 
   publicKey(
     request: kas_kas_pb.PublicKeyRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<kas_kas_pb.PublicKeyResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<kas_kas_pb.PublicKeyResponse>;
 
   publicKey(
     request: kas_kas_pb.PublicKeyRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: kas_kas_pb.PublicKeyResponse) => void): grpcWeb.ClientReadableStream<kas_kas_pb.PublicKeyResponse>;
+    callback: (err: grpcWeb.RpcError, response: kas_kas_pb.PublicKeyResponse) => void
+  ): grpcWeb.ClientReadableStream<kas_kas_pb.PublicKeyResponse>;
 
   publicKey(
     request: kas_kas_pb.PublicKeyRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: kas_kas_pb.PublicKeyResponse) => void) {
+    callback?: (err: grpcWeb.RpcError, response: kas_kas_pb.PublicKeyResponse) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/kas.AccessService/PublicKey',
+        this.hostname_ + '/kas.AccessService/PublicKey',
         request,
         metadata || {},
         this.methodDescriptorPublicKey,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/kas.AccessService/PublicKey',
-    request,
-    metadata || {},
-    this.methodDescriptorPublicKey);
+      this.hostname_ + '/kas.AccessService/PublicKey',
+      request,
+      metadata || {},
+      this.methodDescriptorPublicKey
+    );
   }
 
   methodDescriptorLegacyPublicKey = new grpcWeb.MethodDescriptor(
@@ -139,34 +140,35 @@ export class AccessServiceClient {
 
   legacyPublicKey(
     request: kas_kas_pb.LegacyPublicKeyRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<google_protobuf_wrappers_pb.StringValue>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<google_protobuf_wrappers_pb.StringValue>;
 
   legacyPublicKey(
     request: kas_kas_pb.LegacyPublicKeyRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: google_protobuf_wrappers_pb.StringValue) => void): grpcWeb.ClientReadableStream<google_protobuf_wrappers_pb.StringValue>;
+    callback: (err: grpcWeb.RpcError, response: google_protobuf_wrappers_pb.StringValue) => void
+  ): grpcWeb.ClientReadableStream<google_protobuf_wrappers_pb.StringValue>;
 
   legacyPublicKey(
     request: kas_kas_pb.LegacyPublicKeyRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: google_protobuf_wrappers_pb.StringValue) => void) {
+    callback?: (err: grpcWeb.RpcError, response: google_protobuf_wrappers_pb.StringValue) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/kas.AccessService/LegacyPublicKey',
+        this.hostname_ + '/kas.AccessService/LegacyPublicKey',
         request,
         metadata || {},
         this.methodDescriptorLegacyPublicKey,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/kas.AccessService/LegacyPublicKey',
-    request,
-    metadata || {},
-    this.methodDescriptorLegacyPublicKey);
+      this.hostname_ + '/kas.AccessService/LegacyPublicKey',
+      request,
+      metadata || {},
+      this.methodDescriptorLegacyPublicKey
+    );
   }
 
   methodDescriptorRewrap = new grpcWeb.MethodDescriptor(
@@ -182,35 +184,34 @@ export class AccessServiceClient {
 
   rewrap(
     request: kas_kas_pb.RewrapRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<kas_kas_pb.RewrapResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<kas_kas_pb.RewrapResponse>;
 
   rewrap(
     request: kas_kas_pb.RewrapRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: kas_kas_pb.RewrapResponse) => void): grpcWeb.ClientReadableStream<kas_kas_pb.RewrapResponse>;
+    callback: (err: grpcWeb.RpcError, response: kas_kas_pb.RewrapResponse) => void
+  ): grpcWeb.ClientReadableStream<kas_kas_pb.RewrapResponse>;
 
   rewrap(
     request: kas_kas_pb.RewrapRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: kas_kas_pb.RewrapResponse) => void) {
+    callback?: (err: grpcWeb.RpcError, response: kas_kas_pb.RewrapResponse) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/kas.AccessService/Rewrap',
+        this.hostname_ + '/kas.AccessService/Rewrap',
         request,
         metadata || {},
         this.methodDescriptorRewrap,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/kas.AccessService/Rewrap',
-    request,
-    metadata || {},
-    this.methodDescriptorRewrap);
+      this.hostname_ + '/kas.AccessService/Rewrap',
+      request,
+      metadata || {},
+      this.methodDescriptorRewrap
+    );
   }
-
 }
-

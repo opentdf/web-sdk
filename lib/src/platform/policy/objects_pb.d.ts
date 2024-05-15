@@ -1,9 +1,8 @@
-import * as jspb from 'google-protobuf'
+import * as jspb from 'google-protobuf';
 
 import * as buf_validate_validate_pb from '../buf/validate/validate_pb'; // proto import: "buf/validate/validate.proto"
 import * as common_common_pb from '../common/common_pb'; // proto import: "common/common.proto"
 import * as google_protobuf_wrappers_pb from 'google-protobuf/google/protobuf/wrappers_pb'; // proto import: "google/protobuf/wrappers.proto"
-
 
 export class Namespace extends jspb.Message {
   getId(): string;
@@ -35,12 +34,12 @@ export class Namespace extends jspb.Message {
 
 export namespace Namespace {
   export type AsObject = {
-    id: string,
-    name: string,
-    fqn: string,
-    active?: google_protobuf_wrappers_pb.BoolValue.AsObject,
-    metadata?: common_common_pb.Metadata.AsObject,
-  }
+    id: string;
+    name: string;
+    fqn: string;
+    active?: google_protobuf_wrappers_pb.BoolValue.AsObject;
+    metadata?: common_common_pb.Metadata.AsObject;
+  };
 }
 
 export class Attribute extends jspb.Message {
@@ -91,16 +90,16 @@ export class Attribute extends jspb.Message {
 
 export namespace Attribute {
   export type AsObject = {
-    id: string,
-    namespace?: Namespace.AsObject,
-    name: string,
-    rule: AttributeRuleTypeEnum,
-    valuesList: Array<Value.AsObject>,
-    grantsList: Array<KeyAccessServer.AsObject>,
-    fqn: string,
-    active?: google_protobuf_wrappers_pb.BoolValue.AsObject,
-    metadata?: common_common_pb.Metadata.AsObject,
-  }
+    id: string;
+    namespace?: Namespace.AsObject;
+    name: string;
+    rule: AttributeRuleTypeEnum;
+    valuesList: Array<Value.AsObject>;
+    grantsList: Array<KeyAccessServer.AsObject>;
+    fqn: string;
+    active?: google_protobuf_wrappers_pb.BoolValue.AsObject;
+    metadata?: common_common_pb.Metadata.AsObject;
+  };
 }
 
 export class Value extends jspb.Message {
@@ -153,16 +152,16 @@ export class Value extends jspb.Message {
 
 export namespace Value {
   export type AsObject = {
-    id: string,
-    attribute?: Attribute.AsObject,
-    value: string,
-    membersList: Array<Value.AsObject>,
-    grantsList: Array<KeyAccessServer.AsObject>,
-    fqn: string,
-    active?: google_protobuf_wrappers_pb.BoolValue.AsObject,
-    subjectMappingsList: Array<SubjectMapping.AsObject>,
-    metadata?: common_common_pb.Metadata.AsObject,
-  }
+    id: string;
+    attribute?: Attribute.AsObject;
+    value: string;
+    membersList: Array<Value.AsObject>;
+    grantsList: Array<KeyAccessServer.AsObject>;
+    fqn: string;
+    active?: google_protobuf_wrappers_pb.BoolValue.AsObject;
+    subjectMappingsList: Array<SubjectMapping.AsObject>;
+    metadata?: common_common_pb.Metadata.AsObject;
+  };
 }
 
 export class Action extends jspb.Message {
@@ -184,17 +183,17 @@ export class Action extends jspb.Message {
 
 export namespace Action {
   export type AsObject = {
-    standard: Action.StandardAction,
-    custom: string,
-  }
+    standard: Action.StandardAction;
+    custom: string;
+  };
 
-  export enum StandardAction { 
+  export enum StandardAction {
     STANDARD_ACTION_UNSPECIFIED = 0,
     STANDARD_ACTION_DECRYPT = 1,
     STANDARD_ACTION_TRANSMIT = 2,
   }
 
-  export enum ValueCase { 
+  export enum ValueCase {
     VALUE_NOT_SET = 0,
     STANDARD = 1,
     CUSTOM = 2,
@@ -230,17 +229,20 @@ export class SubjectMapping extends jspb.Message {
   static toObject(includeInstance: boolean, msg: SubjectMapping): SubjectMapping.AsObject;
   static serializeBinaryToWriter(message: SubjectMapping, writer: jspb.BinaryWriter): void;
   static deserializeBinary(bytes: Uint8Array): SubjectMapping;
-  static deserializeBinaryFromReader(message: SubjectMapping, reader: jspb.BinaryReader): SubjectMapping;
+  static deserializeBinaryFromReader(
+    message: SubjectMapping,
+    reader: jspb.BinaryReader
+  ): SubjectMapping;
 }
 
 export namespace SubjectMapping {
   export type AsObject = {
-    id: string,
-    attributeValue?: Value.AsObject,
-    subjectConditionSet?: SubjectConditionSet.AsObject,
-    actionsList: Array<Action.AsObject>,
-    metadata?: common_common_pb.Metadata.AsObject,
-  }
+    id: string;
+    attributeValue?: Value.AsObject;
+    subjectConditionSet?: SubjectConditionSet.AsObject;
+    actionsList: Array<Action.AsObject>;
+    metadata?: common_common_pb.Metadata.AsObject;
+  };
 }
 
 export class Condition extends jspb.Message {
@@ -265,10 +267,10 @@ export class Condition extends jspb.Message {
 
 export namespace Condition {
   export type AsObject = {
-    subjectExternalSelectorValue: string,
-    operator: SubjectMappingOperatorEnum,
-    subjectExternalValuesList: Array<string>,
-  }
+    subjectExternalSelectorValue: string;
+    operator: SubjectMappingOperatorEnum;
+    subjectExternalValuesList: Array<string>;
+  };
 }
 
 export class ConditionGroup extends jspb.Message {
@@ -285,14 +287,17 @@ export class ConditionGroup extends jspb.Message {
   static toObject(includeInstance: boolean, msg: ConditionGroup): ConditionGroup.AsObject;
   static serializeBinaryToWriter(message: ConditionGroup, writer: jspb.BinaryWriter): void;
   static deserializeBinary(bytes: Uint8Array): ConditionGroup;
-  static deserializeBinaryFromReader(message: ConditionGroup, reader: jspb.BinaryReader): ConditionGroup;
+  static deserializeBinaryFromReader(
+    message: ConditionGroup,
+    reader: jspb.BinaryReader
+  ): ConditionGroup;
 }
 
 export namespace ConditionGroup {
   export type AsObject = {
-    conditionsList: Array<Condition.AsObject>,
-    booleanOperator: ConditionBooleanTypeEnum,
-  }
+    conditionsList: Array<Condition.AsObject>;
+    booleanOperator: ConditionBooleanTypeEnum;
+  };
 }
 
 export class SubjectSet extends jspb.Message {
@@ -311,8 +316,8 @@ export class SubjectSet extends jspb.Message {
 
 export namespace SubjectSet {
   export type AsObject = {
-    conditionGroupsList: Array<ConditionGroup.AsObject>,
-  }
+    conditionGroupsList: Array<ConditionGroup.AsObject>;
+  };
 }
 
 export class SubjectConditionSet extends jspb.Message {
@@ -334,15 +339,18 @@ export class SubjectConditionSet extends jspb.Message {
   static toObject(includeInstance: boolean, msg: SubjectConditionSet): SubjectConditionSet.AsObject;
   static serializeBinaryToWriter(message: SubjectConditionSet, writer: jspb.BinaryWriter): void;
   static deserializeBinary(bytes: Uint8Array): SubjectConditionSet;
-  static deserializeBinaryFromReader(message: SubjectConditionSet, reader: jspb.BinaryReader): SubjectConditionSet;
+  static deserializeBinaryFromReader(
+    message: SubjectConditionSet,
+    reader: jspb.BinaryReader
+  ): SubjectConditionSet;
 }
 
 export namespace SubjectConditionSet {
   export type AsObject = {
-    id: string,
-    subjectSetsList: Array<SubjectSet.AsObject>,
-    metadata?: common_common_pb.Metadata.AsObject,
-  }
+    id: string;
+    subjectSetsList: Array<SubjectSet.AsObject>;
+    metadata?: common_common_pb.Metadata.AsObject;
+  };
 }
 
 export class SubjectProperty extends jspb.Message {
@@ -357,14 +365,17 @@ export class SubjectProperty extends jspb.Message {
   static toObject(includeInstance: boolean, msg: SubjectProperty): SubjectProperty.AsObject;
   static serializeBinaryToWriter(message: SubjectProperty, writer: jspb.BinaryWriter): void;
   static deserializeBinary(bytes: Uint8Array): SubjectProperty;
-  static deserializeBinaryFromReader(message: SubjectProperty, reader: jspb.BinaryReader): SubjectProperty;
+  static deserializeBinaryFromReader(
+    message: SubjectProperty,
+    reader: jspb.BinaryReader
+  ): SubjectProperty;
 }
 
 export namespace SubjectProperty {
   export type AsObject = {
-    externalSelectorValue: string,
-    externalValue: string,
-  }
+    externalSelectorValue: string;
+    externalValue: string;
+  };
 }
 
 export class ResourceMapping extends jspb.Message {
@@ -391,16 +402,19 @@ export class ResourceMapping extends jspb.Message {
   static toObject(includeInstance: boolean, msg: ResourceMapping): ResourceMapping.AsObject;
   static serializeBinaryToWriter(message: ResourceMapping, writer: jspb.BinaryWriter): void;
   static deserializeBinary(bytes: Uint8Array): ResourceMapping;
-  static deserializeBinaryFromReader(message: ResourceMapping, reader: jspb.BinaryReader): ResourceMapping;
+  static deserializeBinaryFromReader(
+    message: ResourceMapping,
+    reader: jspb.BinaryReader
+  ): ResourceMapping;
 }
 
 export namespace ResourceMapping {
   export type AsObject = {
-    id: string,
-    metadata?: common_common_pb.Metadata.AsObject,
-    attributeValue?: Value.AsObject,
-    termsList: Array<string>,
-  }
+    id: string;
+    metadata?: common_common_pb.Metadata.AsObject;
+    attributeValue?: Value.AsObject;
+    termsList: Array<string>;
+  };
 }
 
 export class KeyAccessServer extends jspb.Message {
@@ -425,16 +439,19 @@ export class KeyAccessServer extends jspb.Message {
   static toObject(includeInstance: boolean, msg: KeyAccessServer): KeyAccessServer.AsObject;
   static serializeBinaryToWriter(message: KeyAccessServer, writer: jspb.BinaryWriter): void;
   static deserializeBinary(bytes: Uint8Array): KeyAccessServer;
-  static deserializeBinaryFromReader(message: KeyAccessServer, reader: jspb.BinaryReader): KeyAccessServer;
+  static deserializeBinaryFromReader(
+    message: KeyAccessServer,
+    reader: jspb.BinaryReader
+  ): KeyAccessServer;
 }
 
 export namespace KeyAccessServer {
   export type AsObject = {
-    id: string,
-    uri: string,
-    publicKey?: PublicKey.AsObject,
-    metadata?: common_common_pb.Metadata.AsObject,
-  }
+    id: string;
+    uri: string;
+    publicKey?: PublicKey.AsObject;
+    metadata?: common_common_pb.Metadata.AsObject;
+  };
 }
 
 export class PublicKey extends jspb.Message {
@@ -456,29 +473,29 @@ export class PublicKey extends jspb.Message {
 
 export namespace PublicKey {
   export type AsObject = {
-    remote: string,
-    local: string,
-  }
+    remote: string;
+    local: string;
+  };
 
-  export enum PublicKeyCase { 
+  export enum PublicKeyCase {
     PUBLIC_KEY_NOT_SET = 0,
     REMOTE = 1,
     LOCAL = 2,
   }
 }
 
-export enum AttributeRuleTypeEnum { 
+export enum AttributeRuleTypeEnum {
   ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED = 0,
   ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF = 1,
   ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF = 2,
   ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY = 3,
 }
-export enum SubjectMappingOperatorEnum { 
+export enum SubjectMappingOperatorEnum {
   SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED = 0,
   SUBJECT_MAPPING_OPERATOR_ENUM_IN = 1,
   SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN = 2,
 }
-export enum ConditionBooleanTypeEnum { 
+export enum ConditionBooleanTypeEnum {
   CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED = 0,
   CONDITION_BOOLEAN_TYPE_ENUM_AND = 1,
   CONDITION_BOOLEAN_TYPE_ENUM_OR = 2,

@@ -10,25 +10,24 @@
 // 	protoc              v0.0.0
 // source: policy/namespaces/namespaces.proto
 
-
 /* eslint-disable */
 // @ts-nocheck
-
 
 import * as grpcWeb from 'grpc-web';
 
 import * as policy_namespaces_namespaces_pb from '../../policy/namespaces/namespaces_pb'; // proto import: "policy/namespaces/namespaces.proto"
 
-
 export class NamespaceServiceClient {
   client_: grpcWeb.AbstractClientBase;
   hostname_: string;
-  credentials_: null | { [index: string]: string; };
-  options_: null | { [index: string]: any; };
+  credentials_: null | { [index: string]: string };
+  options_: null | { [index: string]: any };
 
-  constructor (hostname: string,
-               credentials?: null | { [index: string]: string; },
-               options?: null | { [index: string]: any; }) {
+  constructor(
+    hostname: string,
+    credentials?: null | { [index: string]: string },
+    options?: null | { [index: string]: any }
+  ) {
     if (!options) options = {};
     if (!credentials) credentials = {};
     options['format'] = 'binary';
@@ -52,34 +51,41 @@ export class NamespaceServiceClient {
 
   getNamespace(
     request: policy_namespaces_namespaces_pb.GetNamespaceRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_namespaces_namespaces_pb.GetNamespaceResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_namespaces_namespaces_pb.GetNamespaceResponse>;
 
   getNamespace(
     request: policy_namespaces_namespaces_pb.GetNamespaceRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_namespaces_namespaces_pb.GetNamespaceResponse) => void): grpcWeb.ClientReadableStream<policy_namespaces_namespaces_pb.GetNamespaceResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_namespaces_namespaces_pb.GetNamespaceResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_namespaces_namespaces_pb.GetNamespaceResponse>;
 
   getNamespace(
     request: policy_namespaces_namespaces_pb.GetNamespaceRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_namespaces_namespaces_pb.GetNamespaceResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_namespaces_namespaces_pb.GetNamespaceResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.namespaces.NamespaceService/GetNamespace',
+        this.hostname_ + '/policy.namespaces.NamespaceService/GetNamespace',
         request,
         metadata || {},
         this.methodDescriptorGetNamespace,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.namespaces.NamespaceService/GetNamespace',
-    request,
-    metadata || {},
-    this.methodDescriptorGetNamespace);
+      this.hostname_ + '/policy.namespaces.NamespaceService/GetNamespace',
+      request,
+      metadata || {},
+      this.methodDescriptorGetNamespace
+    );
   }
 
   methodDescriptorListNamespaces = new grpcWeb.MethodDescriptor(
@@ -95,34 +101,41 @@ export class NamespaceServiceClient {
 
   listNamespaces(
     request: policy_namespaces_namespaces_pb.ListNamespacesRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_namespaces_namespaces_pb.ListNamespacesResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_namespaces_namespaces_pb.ListNamespacesResponse>;
 
   listNamespaces(
     request: policy_namespaces_namespaces_pb.ListNamespacesRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_namespaces_namespaces_pb.ListNamespacesResponse) => void): grpcWeb.ClientReadableStream<policy_namespaces_namespaces_pb.ListNamespacesResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_namespaces_namespaces_pb.ListNamespacesResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_namespaces_namespaces_pb.ListNamespacesResponse>;
 
   listNamespaces(
     request: policy_namespaces_namespaces_pb.ListNamespacesRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_namespaces_namespaces_pb.ListNamespacesResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_namespaces_namespaces_pb.ListNamespacesResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.namespaces.NamespaceService/ListNamespaces',
+        this.hostname_ + '/policy.namespaces.NamespaceService/ListNamespaces',
         request,
         metadata || {},
         this.methodDescriptorListNamespaces,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.namespaces.NamespaceService/ListNamespaces',
-    request,
-    metadata || {},
-    this.methodDescriptorListNamespaces);
+      this.hostname_ + '/policy.namespaces.NamespaceService/ListNamespaces',
+      request,
+      metadata || {},
+      this.methodDescriptorListNamespaces
+    );
   }
 
   methodDescriptorCreateNamespace = new grpcWeb.MethodDescriptor(
@@ -138,34 +151,41 @@ export class NamespaceServiceClient {
 
   createNamespace(
     request: policy_namespaces_namespaces_pb.CreateNamespaceRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_namespaces_namespaces_pb.CreateNamespaceResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_namespaces_namespaces_pb.CreateNamespaceResponse>;
 
   createNamespace(
     request: policy_namespaces_namespaces_pb.CreateNamespaceRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_namespaces_namespaces_pb.CreateNamespaceResponse) => void): grpcWeb.ClientReadableStream<policy_namespaces_namespaces_pb.CreateNamespaceResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_namespaces_namespaces_pb.CreateNamespaceResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_namespaces_namespaces_pb.CreateNamespaceResponse>;
 
   createNamespace(
     request: policy_namespaces_namespaces_pb.CreateNamespaceRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_namespaces_namespaces_pb.CreateNamespaceResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_namespaces_namespaces_pb.CreateNamespaceResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.namespaces.NamespaceService/CreateNamespace',
+        this.hostname_ + '/policy.namespaces.NamespaceService/CreateNamespace',
         request,
         metadata || {},
         this.methodDescriptorCreateNamespace,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.namespaces.NamespaceService/CreateNamespace',
-    request,
-    metadata || {},
-    this.methodDescriptorCreateNamespace);
+      this.hostname_ + '/policy.namespaces.NamespaceService/CreateNamespace',
+      request,
+      metadata || {},
+      this.methodDescriptorCreateNamespace
+    );
   }
 
   methodDescriptorUpdateNamespace = new grpcWeb.MethodDescriptor(
@@ -181,34 +201,41 @@ export class NamespaceServiceClient {
 
   updateNamespace(
     request: policy_namespaces_namespaces_pb.UpdateNamespaceRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_namespaces_namespaces_pb.UpdateNamespaceResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_namespaces_namespaces_pb.UpdateNamespaceResponse>;
 
   updateNamespace(
     request: policy_namespaces_namespaces_pb.UpdateNamespaceRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_namespaces_namespaces_pb.UpdateNamespaceResponse) => void): grpcWeb.ClientReadableStream<policy_namespaces_namespaces_pb.UpdateNamespaceResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_namespaces_namespaces_pb.UpdateNamespaceResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_namespaces_namespaces_pb.UpdateNamespaceResponse>;
 
   updateNamespace(
     request: policy_namespaces_namespaces_pb.UpdateNamespaceRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_namespaces_namespaces_pb.UpdateNamespaceResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_namespaces_namespaces_pb.UpdateNamespaceResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.namespaces.NamespaceService/UpdateNamespace',
+        this.hostname_ + '/policy.namespaces.NamespaceService/UpdateNamespace',
         request,
         metadata || {},
         this.methodDescriptorUpdateNamespace,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.namespaces.NamespaceService/UpdateNamespace',
-    request,
-    metadata || {},
-    this.methodDescriptorUpdateNamespace);
+      this.hostname_ + '/policy.namespaces.NamespaceService/UpdateNamespace',
+      request,
+      metadata || {},
+      this.methodDescriptorUpdateNamespace
+    );
   }
 
   methodDescriptorDeactivateNamespace = new grpcWeb.MethodDescriptor(
@@ -224,35 +251,40 @@ export class NamespaceServiceClient {
 
   deactivateNamespace(
     request: policy_namespaces_namespaces_pb.DeactivateNamespaceRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_namespaces_namespaces_pb.DeactivateNamespaceResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_namespaces_namespaces_pb.DeactivateNamespaceResponse>;
 
   deactivateNamespace(
     request: policy_namespaces_namespaces_pb.DeactivateNamespaceRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_namespaces_namespaces_pb.DeactivateNamespaceResponse) => void): grpcWeb.ClientReadableStream<policy_namespaces_namespaces_pb.DeactivateNamespaceResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_namespaces_namespaces_pb.DeactivateNamespaceResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_namespaces_namespaces_pb.DeactivateNamespaceResponse>;
 
   deactivateNamespace(
     request: policy_namespaces_namespaces_pb.DeactivateNamespaceRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_namespaces_namespaces_pb.DeactivateNamespaceResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_namespaces_namespaces_pb.DeactivateNamespaceResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.namespaces.NamespaceService/DeactivateNamespace',
+        this.hostname_ + '/policy.namespaces.NamespaceService/DeactivateNamespace',
         request,
         metadata || {},
         this.methodDescriptorDeactivateNamespace,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.namespaces.NamespaceService/DeactivateNamespace',
-    request,
-    metadata || {},
-    this.methodDescriptorDeactivateNamespace);
+      this.hostname_ + '/policy.namespaces.NamespaceService/DeactivateNamespace',
+      request,
+      metadata || {},
+      this.methodDescriptorDeactivateNamespace
+    );
   }
-
 }
-

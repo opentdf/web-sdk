@@ -3,9 +3,16 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
-import { Any, Message, proto3 } from "@bufbuild/protobuf";
-import { Action } from "../policy/objects_pb.js";
+import type {
+  BinaryReadOptions,
+  FieldList,
+  JsonReadOptions,
+  JsonValue,
+  PartialMessage,
+  PlainMessage,
+} from '@bufbuild/protobuf';
+import { Any, Message, proto3 } from '@bufbuild/protobuf';
+import { Action } from '../policy/objects_pb.js';
 
 /**
  * PE (Person Entity) or NPE (Non-Person Entity)
@@ -18,56 +25,64 @@ export class Entity extends Message<Entity> {
    *
    * @generated from field: string id = 1;
    */
-  id = "";
+  id = '';
 
   /**
    * Standard entity types supported by the platform
    *
    * @generated from oneof authorization.Entity.entity_type
    */
-  entityType: {
-    /**
-     * @generated from field: string email_address = 2;
-     */
-    value: string;
-    case: "emailAddress";
-  } | {
-    /**
-     * @generated from field: string user_name = 3;
-     */
-    value: string;
-    case: "userName";
-  } | {
-    /**
-     * @generated from field: string remote_claims_url = 4;
-     */
-    value: string;
-    case: "remoteClaimsUrl";
-  } | {
-    /**
-     * @generated from field: string jwt = 5;
-     */
-    value: string;
-    case: "jwt";
-  } | {
-    /**
-     * @generated from field: google.protobuf.Any claims = 6;
-     */
-    value: Any;
-    case: "claims";
-  } | {
-    /**
-     * @generated from field: authorization.EntityCustom custom = 7;
-     */
-    value: EntityCustom;
-    case: "custom";
-  } | {
-    /**
-     * @generated from field: string client_id = 8;
-     */
-    value: string;
-    case: "clientId";
-  } | { case: undefined; value?: undefined } = { case: undefined };
+  entityType:
+    | {
+        /**
+         * @generated from field: string email_address = 2;
+         */
+        value: string;
+        case: 'emailAddress';
+      }
+    | {
+        /**
+         * @generated from field: string user_name = 3;
+         */
+        value: string;
+        case: 'userName';
+      }
+    | {
+        /**
+         * @generated from field: string remote_claims_url = 4;
+         */
+        value: string;
+        case: 'remoteClaimsUrl';
+      }
+    | {
+        /**
+         * @generated from field: string jwt = 5;
+         */
+        value: string;
+        case: 'jwt';
+      }
+    | {
+        /**
+         * @generated from field: google.protobuf.Any claims = 6;
+         */
+        value: Any;
+        case: 'claims';
+      }
+    | {
+        /**
+         * @generated from field: authorization.EntityCustom custom = 7;
+         */
+        value: EntityCustom;
+        case: 'custom';
+      }
+    | {
+        /**
+         * @generated from field: string client_id = 8;
+         */
+        value: string;
+        case: 'clientId';
+      }
+    | { case: undefined; value?: undefined } = { case: undefined };
 
   constructor(data?: PartialMessage<Entity>) {
     super();
@@ -75,16 +90,40 @@ export class Entity extends Message<Entity> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "authorization.Entity";
+  static readonly typeName = 'authorization.Entity';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "email_address", kind: "scalar", T: 9 /* ScalarType.STRING */, oneof: "entity_type" },
-    { no: 3, name: "user_name", kind: "scalar", T: 9 /* ScalarType.STRING */, oneof: "entity_type" },
-    { no: 4, name: "remote_claims_url", kind: "scalar", T: 9 /* ScalarType.STRING */, oneof: "entity_type" },
-    { no: 5, name: "jwt", kind: "scalar", T: 9 /* ScalarType.STRING */, oneof: "entity_type" },
-    { no: 6, name: "claims", kind: "message", T: Any, oneof: "entity_type" },
-    { no: 7, name: "custom", kind: "message", T: EntityCustom, oneof: "entity_type" },
-    { no: 8, name: "client_id", kind: "scalar", T: 9 /* ScalarType.STRING */, oneof: "entity_type" },
+    { no: 1, name: 'id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    {
+      no: 2,
+      name: 'email_address',
+      kind: 'scalar',
+      T: 9 /* ScalarType.STRING */,
+      oneof: 'entity_type',
+    },
+    {
+      no: 3,
+      name: 'user_name',
+      kind: 'scalar',
+      T: 9 /* ScalarType.STRING */,
+      oneof: 'entity_type',
+    },
+    {
+      no: 4,
+      name: 'remote_claims_url',
+      kind: 'scalar',
+      T: 9 /* ScalarType.STRING */,
+      oneof: 'entity_type',
+    },
+    { no: 5, name: 'jwt', kind: 'scalar', T: 9 /* ScalarType.STRING */, oneof: 'entity_type' },
+    { no: 6, name: 'claims', kind: 'message', T: Any, oneof: 'entity_type' },
+    { no: 7, name: 'custom', kind: 'message', T: EntityCustom, oneof: 'entity_type' },
+    {
+      no: 8,
+      name: 'client_id',
+      kind: 'scalar',
+      T: 9 /* ScalarType.STRING */,
+      oneof: 'entity_type',
+    },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Entity {
@@ -99,7 +138,10 @@ export class Entity extends Message<Entity> {
     return new Entity().fromJsonString(jsonString, options);
   }
 
-  static equals(a: Entity | PlainMessage<Entity> | undefined, b: Entity | PlainMessage<Entity> | undefined): boolean {
+  static equals(
+    a: Entity | PlainMessage<Entity> | undefined,
+    b: Entity | PlainMessage<Entity> | undefined
+  ): boolean {
     return proto3.util.equals(Entity, a, b);
   }
 }
@@ -121,9 +163,9 @@ export class EntityCustom extends Message<EntityCustom> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "authorization.EntityCustom";
+  static readonly typeName = 'authorization.EntityCustom';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "extension", kind: "message", T: Any },
+    { no: 1, name: 'extension', kind: 'message', T: Any },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): EntityCustom {
@@ -138,7 +180,10 @@ export class EntityCustom extends Message<EntityCustom> {
     return new EntityCustom().fromJsonString(jsonString, options);
   }
 
-  static equals(a: EntityCustom | PlainMessage<EntityCustom> | undefined, b: EntityCustom | PlainMessage<EntityCustom> | undefined): boolean {
+  static equals(
+    a: EntityCustom | PlainMessage<EntityCustom> | undefined,
+    b: EntityCustom | PlainMessage<EntityCustom> | undefined
+  ): boolean {
     return proto3.util.equals(EntityCustom, a, b);
   }
 }
@@ -154,7 +199,7 @@ export class EntityChain extends Message<EntityChain> {
    *
    * @generated from field: string id = 1;
    */
-  id = "";
+  id = '';
 
   /**
    * @generated from field: repeated authorization.Entity entities = 2;
@@ -167,10 +212,10 @@ export class EntityChain extends Message<EntityChain> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "authorization.EntityChain";
+  static readonly typeName = 'authorization.EntityChain';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "entities", kind: "message", T: Entity, repeated: true },
+    { no: 1, name: 'id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: 'entities', kind: 'message', T: Entity, repeated: true },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): EntityChain {
@@ -185,7 +230,10 @@ export class EntityChain extends Message<EntityChain> {
     return new EntityChain().fromJsonString(jsonString, options);
   }
 
-  static equals(a: EntityChain | PlainMessage<EntityChain> | undefined, b: EntityChain | PlainMessage<EntityChain> | undefined): boolean {
+  static equals(
+    a: EntityChain | PlainMessage<EntityChain> | undefined,
+    b: EntityChain | PlainMessage<EntityChain> | undefined
+  ): boolean {
     return proto3.util.equals(EntityChain, a, b);
   }
 }
@@ -260,11 +308,11 @@ export class DecisionRequest extends Message<DecisionRequest> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "authorization.DecisionRequest";
+  static readonly typeName = 'authorization.DecisionRequest';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "actions", kind: "message", T: Action, repeated: true },
-    { no: 2, name: "entity_chains", kind: "message", T: EntityChain, repeated: true },
-    { no: 3, name: "resource_attributes", kind: "message", T: ResourceAttribute, repeated: true },
+    { no: 1, name: 'actions', kind: 'message', T: Action, repeated: true },
+    { no: 2, name: 'entity_chains', kind: 'message', T: EntityChain, repeated: true },
+    { no: 3, name: 'resource_attributes', kind: 'message', T: ResourceAttribute, repeated: true },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DecisionRequest {
@@ -279,7 +327,10 @@ export class DecisionRequest extends Message<DecisionRequest> {
     return new DecisionRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(a: DecisionRequest | PlainMessage<DecisionRequest> | undefined, b: DecisionRequest | PlainMessage<DecisionRequest> | undefined): boolean {
+  static equals(
+    a: DecisionRequest | PlainMessage<DecisionRequest> | undefined,
+    b: DecisionRequest | PlainMessage<DecisionRequest> | undefined
+  ): boolean {
     return proto3.util.equals(DecisionRequest, a, b);
   }
 }
@@ -331,14 +382,14 @@ export class DecisionResponse extends Message<DecisionResponse> {
    *
    * @generated from field: string entity_chain_id = 1;
    */
-  entityChainId = "";
+  entityChainId = '';
 
   /**
    * ephemeral resource attributes id from the request
    *
    * @generated from field: string resource_attributes_id = 2;
    */
-  resourceAttributesId = "";
+  resourceAttributesId = '';
 
   /**
    * Action of the decision response
@@ -367,13 +418,13 @@ export class DecisionResponse extends Message<DecisionResponse> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "authorization.DecisionResponse";
+  static readonly typeName = 'authorization.DecisionResponse';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "entity_chain_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "resource_attributes_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "action", kind: "message", T: Action },
-    { no: 4, name: "decision", kind: "enum", T: proto3.getEnumType(DecisionResponse_Decision) },
-    { no: 5, name: "obligations", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 1, name: 'entity_chain_id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: 'resource_attributes_id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: 'action', kind: 'message', T: Action },
+    { no: 4, name: 'decision', kind: 'enum', T: proto3.getEnumType(DecisionResponse_Decision) },
+    { no: 5, name: 'obligations', kind: 'scalar', T: 9 /* ScalarType.STRING */, repeated: true },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DecisionResponse {
@@ -388,7 +439,10 @@ export class DecisionResponse extends Message<DecisionResponse> {
     return new DecisionResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(a: DecisionResponse | PlainMessage<DecisionResponse> | undefined, b: DecisionResponse | PlainMessage<DecisionResponse> | undefined): boolean {
+  static equals(
+    a: DecisionResponse | PlainMessage<DecisionResponse> | undefined,
+    b: DecisionResponse | PlainMessage<DecisionResponse> | undefined
+  ): boolean {
     return proto3.util.equals(DecisionResponse, a, b);
   }
 }
@@ -413,10 +467,10 @@ export enum DecisionResponse_Decision {
   PERMIT = 2,
 }
 // Retrieve enum metadata with: proto3.getEnumType(DecisionResponse_Decision)
-proto3.util.setEnumType(DecisionResponse_Decision, "authorization.DecisionResponse.Decision", [
-  { no: 0, name: "DECISION_UNSPECIFIED" },
-  { no: 1, name: "DECISION_DENY" },
-  { no: 2, name: "DECISION_PERMIT" },
+proto3.util.setEnumType(DecisionResponse_Decision, 'authorization.DecisionResponse.Decision', [
+  { no: 0, name: 'DECISION_UNSPECIFIED' },
+  { no: 1, name: 'DECISION_DENY' },
+  { no: 2, name: 'DECISION_PERMIT' },
 ]);
 
 /**
@@ -434,9 +488,9 @@ export class GetDecisionsRequest extends Message<GetDecisionsRequest> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "authorization.GetDecisionsRequest";
+  static readonly typeName = 'authorization.GetDecisionsRequest';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "decision_requests", kind: "message", T: DecisionRequest, repeated: true },
+    { no: 1, name: 'decision_requests', kind: 'message', T: DecisionRequest, repeated: true },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetDecisionsRequest {
@@ -447,11 +501,17 @@ export class GetDecisionsRequest extends Message<GetDecisionsRequest> {
     return new GetDecisionsRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetDecisionsRequest {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): GetDecisionsRequest {
     return new GetDecisionsRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(a: GetDecisionsRequest | PlainMessage<GetDecisionsRequest> | undefined, b: GetDecisionsRequest | PlainMessage<GetDecisionsRequest> | undefined): boolean {
+  static equals(
+    a: GetDecisionsRequest | PlainMessage<GetDecisionsRequest> | undefined,
+    b: GetDecisionsRequest | PlainMessage<GetDecisionsRequest> | undefined
+  ): boolean {
     return proto3.util.equals(GetDecisionsRequest, a, b);
   }
 }
@@ -471,9 +531,9 @@ export class GetDecisionsResponse extends Message<GetDecisionsResponse> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "authorization.GetDecisionsResponse";
+  static readonly typeName = 'authorization.GetDecisionsResponse';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "decision_responses", kind: "message", T: DecisionResponse, repeated: true },
+    { no: 1, name: 'decision_responses', kind: 'message', T: DecisionResponse, repeated: true },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetDecisionsResponse {
@@ -484,11 +544,17 @@ export class GetDecisionsResponse extends Message<GetDecisionsResponse> {
     return new GetDecisionsResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetDecisionsResponse {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): GetDecisionsResponse {
     return new GetDecisionsResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(a: GetDecisionsResponse | PlainMessage<GetDecisionsResponse> | undefined, b: GetDecisionsResponse | PlainMessage<GetDecisionsResponse> | undefined): boolean {
+  static equals(
+    a: GetDecisionsResponse | PlainMessage<GetDecisionsResponse> | undefined,
+    b: GetDecisionsResponse | PlainMessage<GetDecisionsResponse> | undefined
+  ): boolean {
     return proto3.util.equals(GetDecisionsResponse, a, b);
   }
 }
@@ -536,25 +602,37 @@ export class GetEntitlementsRequest extends Message<GetEntitlementsRequest> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "authorization.GetEntitlementsRequest";
+  static readonly typeName = 'authorization.GetEntitlementsRequest';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "entities", kind: "message", T: Entity, repeated: true },
-    { no: 2, name: "scope", kind: "message", T: ResourceAttribute, opt: true },
+    { no: 1, name: 'entities', kind: 'message', T: Entity, repeated: true },
+    { no: 2, name: 'scope', kind: 'message', T: ResourceAttribute, opt: true },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetEntitlementsRequest {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): GetEntitlementsRequest {
     return new GetEntitlementsRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetEntitlementsRequest {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): GetEntitlementsRequest {
     return new GetEntitlementsRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetEntitlementsRequest {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): GetEntitlementsRequest {
     return new GetEntitlementsRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(a: GetEntitlementsRequest | PlainMessage<GetEntitlementsRequest> | undefined, b: GetEntitlementsRequest | PlainMessage<GetEntitlementsRequest> | undefined): boolean {
+  static equals(
+    a: GetEntitlementsRequest | PlainMessage<GetEntitlementsRequest> | undefined,
+    b: GetEntitlementsRequest | PlainMessage<GetEntitlementsRequest> | undefined
+  ): boolean {
     return proto3.util.equals(GetEntitlementsRequest, a, b);
   }
 }
@@ -566,7 +644,7 @@ export class EntityEntitlements extends Message<EntityEntitlements> {
   /**
    * @generated from field: string entity_id = 1;
    */
-  entityId = "";
+  entityId = '';
 
   /**
    * @generated from field: repeated string attribute_value_fqns = 2;
@@ -579,10 +657,16 @@ export class EntityEntitlements extends Message<EntityEntitlements> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "authorization.EntityEntitlements";
+  static readonly typeName = 'authorization.EntityEntitlements';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "entity_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "attribute_value_fqns", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 1, name: 'entity_id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    {
+      no: 2,
+      name: 'attribute_value_fqns',
+      kind: 'scalar',
+      T: 9 /* ScalarType.STRING */,
+      repeated: true,
+    },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): EntityEntitlements {
@@ -593,11 +677,17 @@ export class EntityEntitlements extends Message<EntityEntitlements> {
     return new EntityEntitlements().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): EntityEntitlements {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): EntityEntitlements {
     return new EntityEntitlements().fromJsonString(jsonString, options);
   }
 
-  static equals(a: EntityEntitlements | PlainMessage<EntityEntitlements> | undefined, b: EntityEntitlements | PlainMessage<EntityEntitlements> | undefined): boolean {
+  static equals(
+    a: EntityEntitlements | PlainMessage<EntityEntitlements> | undefined,
+    b: EntityEntitlements | PlainMessage<EntityEntitlements> | undefined
+  ): boolean {
     return proto3.util.equals(EntityEntitlements, a, b);
   }
 }
@@ -619,9 +709,15 @@ export class ResourceAttribute extends Message<ResourceAttribute> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "authorization.ResourceAttribute";
+  static readonly typeName = 'authorization.ResourceAttribute';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 2, name: "attribute_value_fqns", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    {
+      no: 2,
+      name: 'attribute_value_fqns',
+      kind: 'scalar',
+      T: 9 /* ScalarType.STRING */,
+      repeated: true,
+    },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ResourceAttribute {
@@ -636,7 +732,10 @@ export class ResourceAttribute extends Message<ResourceAttribute> {
     return new ResourceAttribute().fromJsonString(jsonString, options);
   }
 
-  static equals(a: ResourceAttribute | PlainMessage<ResourceAttribute> | undefined, b: ResourceAttribute | PlainMessage<ResourceAttribute> | undefined): boolean {
+  static equals(
+    a: ResourceAttribute | PlainMessage<ResourceAttribute> | undefined,
+    b: ResourceAttribute | PlainMessage<ResourceAttribute> | undefined
+  ): boolean {
     return proto3.util.equals(ResourceAttribute, a, b);
   }
 }
@@ -683,25 +782,36 @@ export class GetEntitlementsResponse extends Message<GetEntitlementsResponse> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "authorization.GetEntitlementsResponse";
+  static readonly typeName = 'authorization.GetEntitlementsResponse';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "entitlements", kind: "message", T: EntityEntitlements, repeated: true },
+    { no: 1, name: 'entitlements', kind: 'message', T: EntityEntitlements, repeated: true },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetEntitlementsResponse {
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>
+  ): GetEntitlementsResponse {
     return new GetEntitlementsResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetEntitlementsResponse {
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>
+  ): GetEntitlementsResponse {
     return new GetEntitlementsResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetEntitlementsResponse {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): GetEntitlementsResponse {
     return new GetEntitlementsResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(a: GetEntitlementsResponse | PlainMessage<GetEntitlementsResponse> | undefined, b: GetEntitlementsResponse | PlainMessage<GetEntitlementsResponse> | undefined): boolean {
+  static equals(
+    a: GetEntitlementsResponse | PlainMessage<GetEntitlementsResponse> | undefined,
+    b: GetEntitlementsResponse | PlainMessage<GetEntitlementsResponse> | undefined
+  ): boolean {
     return proto3.util.equals(GetEntitlementsResponse, a, b);
   }
 }
-

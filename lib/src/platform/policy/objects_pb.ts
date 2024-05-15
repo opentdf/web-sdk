@@ -3,9 +3,16 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
-import { BoolValue, Message, proto3 } from "@bufbuild/protobuf";
-import { Metadata } from "../common/common_pb.js";
+import type {
+  BinaryReadOptions,
+  FieldList,
+  JsonReadOptions,
+  JsonValue,
+  PartialMessage,
+  PlainMessage,
+} from '@bufbuild/protobuf';
+import { BoolValue, Message, proto3 } from '@bufbuild/protobuf';
+import { Metadata } from '../common/common_pb.js';
 
 /**
  * buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
@@ -34,11 +41,11 @@ export enum AttributeRuleTypeEnum {
   HIERARCHY = 3,
 }
 // Retrieve enum metadata with: proto3.getEnumType(AttributeRuleTypeEnum)
-proto3.util.setEnumType(AttributeRuleTypeEnum, "policy.AttributeRuleTypeEnum", [
-  { no: 0, name: "ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED" },
-  { no: 1, name: "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF" },
-  { no: 2, name: "ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF" },
-  { no: 3, name: "ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY" },
+proto3.util.setEnumType(AttributeRuleTypeEnum, 'policy.AttributeRuleTypeEnum', [
+  { no: 0, name: 'ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED' },
+  { no: 1, name: 'ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF' },
+  { no: 2, name: 'ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF' },
+  { no: 3, name: 'ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY' },
 ]);
 
 /**
@@ -63,10 +70,10 @@ export enum SubjectMappingOperatorEnum {
   NOT_IN = 2,
 }
 // Retrieve enum metadata with: proto3.getEnumType(SubjectMappingOperatorEnum)
-proto3.util.setEnumType(SubjectMappingOperatorEnum, "policy.SubjectMappingOperatorEnum", [
-  { no: 0, name: "SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED" },
-  { no: 1, name: "SUBJECT_MAPPING_OPERATOR_ENUM_IN" },
-  { no: 2, name: "SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN" },
+proto3.util.setEnumType(SubjectMappingOperatorEnum, 'policy.SubjectMappingOperatorEnum', [
+  { no: 0, name: 'SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED' },
+  { no: 1, name: 'SUBJECT_MAPPING_OPERATOR_ENUM_IN' },
+  { no: 2, name: 'SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN' },
 ]);
 
 /**
@@ -91,10 +98,10 @@ export enum ConditionBooleanTypeEnum {
   OR = 2,
 }
 // Retrieve enum metadata with: proto3.getEnumType(ConditionBooleanTypeEnum)
-proto3.util.setEnumType(ConditionBooleanTypeEnum, "policy.ConditionBooleanTypeEnum", [
-  { no: 0, name: "CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED" },
-  { no: 1, name: "CONDITION_BOOLEAN_TYPE_ENUM_AND" },
-  { no: 2, name: "CONDITION_BOOLEAN_TYPE_ENUM_OR" },
+proto3.util.setEnumType(ConditionBooleanTypeEnum, 'policy.ConditionBooleanTypeEnum', [
+  { no: 0, name: 'CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED' },
+  { no: 1, name: 'CONDITION_BOOLEAN_TYPE_ENUM_AND' },
+  { no: 2, name: 'CONDITION_BOOLEAN_TYPE_ENUM_OR' },
 ]);
 
 /**
@@ -106,19 +113,19 @@ export class Namespace extends Message<Namespace> {
    *
    * @generated from field: string id = 1;
    */
-  id = "";
+  id = '';
 
   /**
    * used to partition Attribute Definitions, support by namespace AuthN and enable federation
    *
    * @generated from field: string name = 2;
    */
-  name = "";
+  name = '';
 
   /**
    * @generated from field: string fqn = 3;
    */
-  fqn = "";
+  fqn = '';
 
   /**
    * active by default until explicitly deactivated
@@ -138,13 +145,13 @@ export class Namespace extends Message<Namespace> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.Namespace";
+  static readonly typeName = 'policy.Namespace';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "fqn", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 4, name: "active", kind: "message", T: BoolValue },
-    { no: 5, name: "metadata", kind: "message", T: Metadata },
+    { no: 1, name: 'id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: 'name', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: 'fqn', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: 'active', kind: 'message', T: BoolValue },
+    { no: 5, name: 'metadata', kind: 'message', T: Metadata },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Namespace {
@@ -159,7 +166,10 @@ export class Namespace extends Message<Namespace> {
     return new Namespace().fromJsonString(jsonString, options);
   }
 
-  static equals(a: Namespace | PlainMessage<Namespace> | undefined, b: Namespace | PlainMessage<Namespace> | undefined): boolean {
+  static equals(
+    a: Namespace | PlainMessage<Namespace> | undefined,
+    b: Namespace | PlainMessage<Namespace> | undefined
+  ): boolean {
     return proto3.util.equals(Namespace, a, b);
   }
 }
@@ -171,7 +181,7 @@ export class Attribute extends Message<Attribute> {
   /**
    * @generated from field: string id = 1;
    */
-  id = "";
+  id = '';
 
   /**
    * namespace of the attribute
@@ -185,7 +195,7 @@ export class Attribute extends Message<Attribute> {
    *
    * @generated from field: string name = 3;
    */
-  name = "";
+  name = '';
 
   /**
    * attribute rule enum
@@ -207,7 +217,7 @@ export class Attribute extends Message<Attribute> {
   /**
    * @generated from field: string fqn = 7;
    */
-  fqn = "";
+  fqn = '';
 
   /**
    * active by default until explicitly deactivated
@@ -229,17 +239,17 @@ export class Attribute extends Message<Attribute> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.Attribute";
+  static readonly typeName = 'policy.Attribute';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "namespace", kind: "message", T: Namespace },
-    { no: 3, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 4, name: "rule", kind: "enum", T: proto3.getEnumType(AttributeRuleTypeEnum) },
-    { no: 5, name: "values", kind: "message", T: Value, repeated: true },
-    { no: 6, name: "grants", kind: "message", T: KeyAccessServer, repeated: true },
-    { no: 7, name: "fqn", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 8, name: "active", kind: "message", T: BoolValue },
-    { no: 100, name: "metadata", kind: "message", T: Metadata },
+    { no: 1, name: 'id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: 'namespace', kind: 'message', T: Namespace },
+    { no: 3, name: 'name', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: 'rule', kind: 'enum', T: proto3.getEnumType(AttributeRuleTypeEnum) },
+    { no: 5, name: 'values', kind: 'message', T: Value, repeated: true },
+    { no: 6, name: 'grants', kind: 'message', T: KeyAccessServer, repeated: true },
+    { no: 7, name: 'fqn', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 8, name: 'active', kind: 'message', T: BoolValue },
+    { no: 100, name: 'metadata', kind: 'message', T: Metadata },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Attribute {
@@ -254,7 +264,10 @@ export class Attribute extends Message<Attribute> {
     return new Attribute().fromJsonString(jsonString, options);
   }
 
-  static equals(a: Attribute | PlainMessage<Attribute> | undefined, b: Attribute | PlainMessage<Attribute> | undefined): boolean {
+  static equals(
+    a: Attribute | PlainMessage<Attribute> | undefined,
+    b: Attribute | PlainMessage<Attribute> | undefined
+  ): boolean {
     return proto3.util.equals(Attribute, a, b);
   }
 }
@@ -268,7 +281,7 @@ export class Value extends Message<Value> {
    *
    * @generated from field: string id = 1;
    */
-  id = "";
+  id = '';
 
   /**
    * @generated from field: policy.Attribute attribute = 2;
@@ -278,7 +291,7 @@ export class Value extends Message<Value> {
   /**
    * @generated from field: string value = 3;
    */
-  value = "";
+  value = '';
 
   /**
    * list of attribute values that this value is related to (attribute group)
@@ -297,7 +310,7 @@ export class Value extends Message<Value> {
   /**
    * @generated from field: string fqn = 6;
    */
-  fqn = "";
+  fqn = '';
 
   /**
    * active by default until explicitly deactivated
@@ -326,17 +339,17 @@ export class Value extends Message<Value> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.Value";
+  static readonly typeName = 'policy.Value';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "attribute", kind: "message", T: Attribute },
-    { no: 3, name: "value", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 4, name: "members", kind: "message", T: Value, repeated: true },
-    { no: 5, name: "grants", kind: "message", T: KeyAccessServer, repeated: true },
-    { no: 6, name: "fqn", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 7, name: "active", kind: "message", T: BoolValue },
-    { no: 8, name: "subject_mappings", kind: "message", T: SubjectMapping, repeated: true },
-    { no: 100, name: "metadata", kind: "message", T: Metadata },
+    { no: 1, name: 'id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: 'attribute', kind: 'message', T: Attribute },
+    { no: 3, name: 'value', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: 'members', kind: 'message', T: Value, repeated: true },
+    { no: 5, name: 'grants', kind: 'message', T: KeyAccessServer, repeated: true },
+    { no: 6, name: 'fqn', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: 'active', kind: 'message', T: BoolValue },
+    { no: 8, name: 'subject_mappings', kind: 'message', T: SubjectMapping, repeated: true },
+    { no: 100, name: 'metadata', kind: 'message', T: Metadata },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Value {
@@ -351,7 +364,10 @@ export class Value extends Message<Value> {
     return new Value().fromJsonString(jsonString, options);
   }
 
-  static equals(a: Value | PlainMessage<Value> | undefined, b: Value | PlainMessage<Value> | undefined): boolean {
+  static equals(
+    a: Value | PlainMessage<Value> | undefined,
+    b: Value | PlainMessage<Value> | undefined
+  ): boolean {
     return proto3.util.equals(Value, a, b);
   }
 }
@@ -365,19 +381,22 @@ export class Action extends Message<Action> {
   /**
    * @generated from oneof policy.Action.value
    */
-  value: {
-    /**
-     * @generated from field: policy.Action.StandardAction standard = 1;
-     */
-    value: Action_StandardAction;
-    case: "standard";
-  } | {
-    /**
-     * @generated from field: string custom = 2;
-     */
-    value: string;
-    case: "custom";
-  } | { case: undefined; value?: undefined } = { case: undefined };
+  value:
+    | {
+        /**
+         * @generated from field: policy.Action.StandardAction standard = 1;
+         */
+        value: Action_StandardAction;
+        case: 'standard';
+      }
+    | {
+        /**
+         * @generated from field: string custom = 2;
+         */
+        value: string;
+        case: 'custom';
+      }
+    | { case: undefined; value?: undefined } = { case: undefined };
 
   constructor(data?: PartialMessage<Action>) {
     super();
@@ -385,10 +404,16 @@ export class Action extends Message<Action> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.Action";
+  static readonly typeName = 'policy.Action';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "standard", kind: "enum", T: proto3.getEnumType(Action_StandardAction), oneof: "value" },
-    { no: 2, name: "custom", kind: "scalar", T: 9 /* ScalarType.STRING */, oneof: "value" },
+    {
+      no: 1,
+      name: 'standard',
+      kind: 'enum',
+      T: proto3.getEnumType(Action_StandardAction),
+      oneof: 'value',
+    },
+    { no: 2, name: 'custom', kind: 'scalar', T: 9 /* ScalarType.STRING */, oneof: 'value' },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Action {
@@ -403,7 +428,10 @@ export class Action extends Message<Action> {
     return new Action().fromJsonString(jsonString, options);
   }
 
-  static equals(a: Action | PlainMessage<Action> | undefined, b: Action | PlainMessage<Action> | undefined): boolean {
+  static equals(
+    a: Action | PlainMessage<Action> | undefined,
+    b: Action | PlainMessage<Action> | undefined
+  ): boolean {
     return proto3.util.equals(Action, a, b);
   }
 }
@@ -430,10 +458,10 @@ export enum Action_StandardAction {
   TRANSMIT = 2,
 }
 // Retrieve enum metadata with: proto3.getEnumType(Action_StandardAction)
-proto3.util.setEnumType(Action_StandardAction, "policy.Action.StandardAction", [
-  { no: 0, name: "STANDARD_ACTION_UNSPECIFIED" },
-  { no: 1, name: "STANDARD_ACTION_DECRYPT" },
-  { no: 2, name: "STANDARD_ACTION_TRANSMIT" },
+proto3.util.setEnumType(Action_StandardAction, 'policy.Action.StandardAction', [
+  { no: 0, name: 'STANDARD_ACTION_UNSPECIFIED' },
+  { no: 1, name: 'STANDARD_ACTION_DECRYPT' },
+  { no: 2, name: 'STANDARD_ACTION_TRANSMIT' },
 ]);
 
 /**
@@ -455,7 +483,7 @@ export class SubjectMapping extends Message<SubjectMapping> {
   /**
    * @generated from field: string id = 1;
    */
-  id = "";
+  id = '';
 
   /**
    * the Attribute Value mapped to; aka: "The Entity Entitlement Attribute"
@@ -489,13 +517,13 @@ export class SubjectMapping extends Message<SubjectMapping> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.SubjectMapping";
+  static readonly typeName = 'policy.SubjectMapping';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "attribute_value", kind: "message", T: Value },
-    { no: 3, name: "subject_condition_set", kind: "message", T: SubjectConditionSet },
-    { no: 4, name: "actions", kind: "message", T: Action, repeated: true },
-    { no: 100, name: "metadata", kind: "message", T: Metadata },
+    { no: 1, name: 'id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: 'attribute_value', kind: 'message', T: Value },
+    { no: 3, name: 'subject_condition_set', kind: 'message', T: SubjectConditionSet },
+    { no: 4, name: 'actions', kind: 'message', T: Action, repeated: true },
+    { no: 100, name: 'metadata', kind: 'message', T: Metadata },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SubjectMapping {
@@ -510,7 +538,10 @@ export class SubjectMapping extends Message<SubjectMapping> {
     return new SubjectMapping().fromJsonString(jsonString, options);
   }
 
-  static equals(a: SubjectMapping | PlainMessage<SubjectMapping> | undefined, b: SubjectMapping | PlainMessage<SubjectMapping> | undefined): boolean {
+  static equals(
+    a: SubjectMapping | PlainMessage<SubjectMapping> | undefined,
+    b: SubjectMapping | PlainMessage<SubjectMapping> | undefined
+  ): boolean {
     return proto3.util.equals(SubjectMapping, a, b);
   }
 }
@@ -541,7 +572,7 @@ export class Condition extends Message<Condition> {
    *
    * @generated from field: string subject_external_selector_value = 1;
    */
-  subjectExternalSelectorValue = "";
+  subjectExternalSelectorValue = '';
 
   /**
    * the evaluation operator of relation
@@ -563,11 +594,22 @@ export class Condition extends Message<Condition> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.Condition";
+  static readonly typeName = 'policy.Condition';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "subject_external_selector_value", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "operator", kind: "enum", T: proto3.getEnumType(SubjectMappingOperatorEnum) },
-    { no: 3, name: "subject_external_values", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    {
+      no: 1,
+      name: 'subject_external_selector_value',
+      kind: 'scalar',
+      T: 9 /* ScalarType.STRING */,
+    },
+    { no: 2, name: 'operator', kind: 'enum', T: proto3.getEnumType(SubjectMappingOperatorEnum) },
+    {
+      no: 3,
+      name: 'subject_external_values',
+      kind: 'scalar',
+      T: 9 /* ScalarType.STRING */,
+      repeated: true,
+    },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Condition {
@@ -582,7 +624,10 @@ export class Condition extends Message<Condition> {
     return new Condition().fromJsonString(jsonString, options);
   }
 
-  static equals(a: Condition | PlainMessage<Condition> | undefined, b: Condition | PlainMessage<Condition> | undefined): boolean {
+  static equals(
+    a: Condition | PlainMessage<Condition> | undefined,
+    b: Condition | PlainMessage<Condition> | undefined
+  ): boolean {
     return proto3.util.equals(Condition, a, b);
   }
 }
@@ -611,10 +656,15 @@ export class ConditionGroup extends Message<ConditionGroup> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.ConditionGroup";
+  static readonly typeName = 'policy.ConditionGroup';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "conditions", kind: "message", T: Condition, repeated: true },
-    { no: 2, name: "boolean_operator", kind: "enum", T: proto3.getEnumType(ConditionBooleanTypeEnum) },
+    { no: 1, name: 'conditions', kind: 'message', T: Condition, repeated: true },
+    {
+      no: 2,
+      name: 'boolean_operator',
+      kind: 'enum',
+      T: proto3.getEnumType(ConditionBooleanTypeEnum),
+    },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ConditionGroup {
@@ -629,7 +679,10 @@ export class ConditionGroup extends Message<ConditionGroup> {
     return new ConditionGroup().fromJsonString(jsonString, options);
   }
 
-  static equals(a: ConditionGroup | PlainMessage<ConditionGroup> | undefined, b: ConditionGroup | PlainMessage<ConditionGroup> | undefined): boolean {
+  static equals(
+    a: ConditionGroup | PlainMessage<ConditionGroup> | undefined,
+    b: ConditionGroup | PlainMessage<ConditionGroup> | undefined
+  ): boolean {
     return proto3.util.equals(ConditionGroup, a, b);
   }
 }
@@ -653,9 +706,9 @@ export class SubjectSet extends Message<SubjectSet> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.SubjectSet";
+  static readonly typeName = 'policy.SubjectSet';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "condition_groups", kind: "message", T: ConditionGroup, repeated: true },
+    { no: 1, name: 'condition_groups', kind: 'message', T: ConditionGroup, repeated: true },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SubjectSet {
@@ -670,7 +723,10 @@ export class SubjectSet extends Message<SubjectSet> {
     return new SubjectSet().fromJsonString(jsonString, options);
   }
 
-  static equals(a: SubjectSet | PlainMessage<SubjectSet> | undefined, b: SubjectSet | PlainMessage<SubjectSet> | undefined): boolean {
+  static equals(
+    a: SubjectSet | PlainMessage<SubjectSet> | undefined,
+    b: SubjectSet | PlainMessage<SubjectSet> | undefined
+  ): boolean {
     return proto3.util.equals(SubjectSet, a, b);
   }
 }
@@ -687,7 +743,7 @@ export class SubjectConditionSet extends Message<SubjectConditionSet> {
   /**
    * @generated from field: string id = 1;
    */
-  id = "";
+  id = '';
 
   /**
    * @generated from field: repeated policy.SubjectSet subject_sets = 3;
@@ -705,11 +761,11 @@ export class SubjectConditionSet extends Message<SubjectConditionSet> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.SubjectConditionSet";
+  static readonly typeName = 'policy.SubjectConditionSet';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "subject_sets", kind: "message", T: SubjectSet, repeated: true },
-    { no: 100, name: "metadata", kind: "message", T: Metadata },
+    { no: 1, name: 'id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: 'subject_sets', kind: 'message', T: SubjectSet, repeated: true },
+    { no: 100, name: 'metadata', kind: 'message', T: Metadata },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SubjectConditionSet {
@@ -720,11 +776,17 @@ export class SubjectConditionSet extends Message<SubjectConditionSet> {
     return new SubjectConditionSet().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SubjectConditionSet {
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>
+  ): SubjectConditionSet {
     return new SubjectConditionSet().fromJsonString(jsonString, options);
   }
 
-  static equals(a: SubjectConditionSet | PlainMessage<SubjectConditionSet> | undefined, b: SubjectConditionSet | PlainMessage<SubjectConditionSet> | undefined): boolean {
+  static equals(
+    a: SubjectConditionSet | PlainMessage<SubjectConditionSet> | undefined,
+    b: SubjectConditionSet | PlainMessage<SubjectConditionSet> | undefined
+  ): boolean {
     return proto3.util.equals(SubjectConditionSet, a, b);
   }
 }
@@ -745,12 +807,12 @@ export class SubjectProperty extends Message<SubjectProperty> {
   /**
    * @generated from field: string external_selector_value = 1;
    */
-  externalSelectorValue = "";
+  externalSelectorValue = '';
 
   /**
    * @generated from field: string external_value = 2;
    */
-  externalValue = "";
+  externalValue = '';
 
   constructor(data?: PartialMessage<SubjectProperty>) {
     super();
@@ -758,10 +820,10 @@ export class SubjectProperty extends Message<SubjectProperty> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.SubjectProperty";
+  static readonly typeName = 'policy.SubjectProperty';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "external_selector_value", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "external_value", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: 'external_selector_value', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: 'external_value', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SubjectProperty {
@@ -776,7 +838,10 @@ export class SubjectProperty extends Message<SubjectProperty> {
     return new SubjectProperty().fromJsonString(jsonString, options);
   }
 
-  static equals(a: SubjectProperty | PlainMessage<SubjectProperty> | undefined, b: SubjectProperty | PlainMessage<SubjectProperty> | undefined): boolean {
+  static equals(
+    a: SubjectProperty | PlainMessage<SubjectProperty> | undefined,
+    b: SubjectProperty | PlainMessage<SubjectProperty> | undefined
+  ): boolean {
     return proto3.util.equals(SubjectProperty, a, b);
   }
 }
@@ -791,7 +856,7 @@ export class ResourceMapping extends Message<ResourceMapping> {
   /**
    * @generated from field: string id = 1;
    */
-  id = "";
+  id = '';
 
   /**
    * @generated from field: common.Metadata metadata = 2;
@@ -814,12 +879,12 @@ export class ResourceMapping extends Message<ResourceMapping> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.ResourceMapping";
+  static readonly typeName = 'policy.ResourceMapping';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "metadata", kind: "message", T: Metadata },
-    { no: 3, name: "attribute_value", kind: "message", T: Value },
-    { no: 4, name: "terms", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 1, name: 'id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: 'metadata', kind: 'message', T: Metadata },
+    { no: 3, name: 'attribute_value', kind: 'message', T: Value },
+    { no: 4, name: 'terms', kind: 'scalar', T: 9 /* ScalarType.STRING */, repeated: true },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ResourceMapping {
@@ -834,7 +899,10 @@ export class ResourceMapping extends Message<ResourceMapping> {
     return new ResourceMapping().fromJsonString(jsonString, options);
   }
 
-  static equals(a: ResourceMapping | PlainMessage<ResourceMapping> | undefined, b: ResourceMapping | PlainMessage<ResourceMapping> | undefined): boolean {
+  static equals(
+    a: ResourceMapping | PlainMessage<ResourceMapping> | undefined,
+    b: ResourceMapping | PlainMessage<ResourceMapping> | undefined
+  ): boolean {
     return proto3.util.equals(ResourceMapping, a, b);
   }
 }
@@ -849,14 +917,14 @@ export class KeyAccessServer extends Message<KeyAccessServer> {
   /**
    * @generated from field: string id = 1;
    */
-  id = "";
+  id = '';
 
   /**
    * Address of a KAS instance
    *
    * @generated from field: string uri = 2;
    */
-  uri = "";
+  uri = '';
 
   /**
    * @generated from field: policy.PublicKey public_key = 3;
@@ -876,12 +944,12 @@ export class KeyAccessServer extends Message<KeyAccessServer> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.KeyAccessServer";
+  static readonly typeName = 'policy.KeyAccessServer';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "uri", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "public_key", kind: "message", T: PublicKey },
-    { no: 100, name: "metadata", kind: "message", T: Metadata },
+    { no: 1, name: 'id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: 'uri', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: 'public_key', kind: 'message', T: PublicKey },
+    { no: 100, name: 'metadata', kind: 'message', T: Metadata },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): KeyAccessServer {
@@ -896,7 +964,10 @@ export class KeyAccessServer extends Message<KeyAccessServer> {
     return new KeyAccessServer().fromJsonString(jsonString, options);
   }
 
-  static equals(a: KeyAccessServer | PlainMessage<KeyAccessServer> | undefined, b: KeyAccessServer | PlainMessage<KeyAccessServer> | undefined): boolean {
+  static equals(
+    a: KeyAccessServer | PlainMessage<KeyAccessServer> | undefined,
+    b: KeyAccessServer | PlainMessage<KeyAccessServer> | undefined
+  ): boolean {
     return proto3.util.equals(KeyAccessServer, a, b);
   }
 }
@@ -908,23 +979,26 @@ export class PublicKey extends Message<PublicKey> {
   /**
    * @generated from oneof policy.PublicKey.public_key
    */
-  publicKey: {
-    /**
-     * kas public key url - optional since can also be retrieved via public key
-     *
-     * @generated from field: string remote = 1;
-     */
-    value: string;
-    case: "remote";
-  } | {
-    /**
-     * public key - optional since can also be retrieved via url
-     *
-     * @generated from field: string local = 2;
-     */
-    value: string;
-    case: "local";
-  } | { case: undefined; value?: undefined } = { case: undefined };
+  publicKey:
+    | {
+        /**
+         * kas public key url - optional since can also be retrieved via public key
+         *
+         * @generated from field: string remote = 1;
+         */
+        value: string;
+        case: 'remote';
+      }
+    | {
+        /**
+         * public key - optional since can also be retrieved via url
+         *
+         * @generated from field: string local = 2;
+         */
+        value: string;
+        case: 'local';
+      }
+    | { case: undefined; value?: undefined } = { case: undefined };
 
   constructor(data?: PartialMessage<PublicKey>) {
     super();
@@ -932,10 +1006,10 @@ export class PublicKey extends Message<PublicKey> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "policy.PublicKey";
+  static readonly typeName = 'policy.PublicKey';
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "remote", kind: "scalar", T: 9 /* ScalarType.STRING */, oneof: "public_key" },
-    { no: 2, name: "local", kind: "scalar", T: 9 /* ScalarType.STRING */, oneof: "public_key" },
+    { no: 1, name: 'remote', kind: 'scalar', T: 9 /* ScalarType.STRING */, oneof: 'public_key' },
+    { no: 2, name: 'local', kind: 'scalar', T: 9 /* ScalarType.STRING */, oneof: 'public_key' },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PublicKey {
@@ -950,8 +1024,10 @@ export class PublicKey extends Message<PublicKey> {
     return new PublicKey().fromJsonString(jsonString, options);
   }
 
-  static equals(a: PublicKey | PlainMessage<PublicKey> | undefined, b: PublicKey | PlainMessage<PublicKey> | undefined): boolean {
+  static equals(
+    a: PublicKey | PlainMessage<PublicKey> | undefined,
+    b: PublicKey | PlainMessage<PublicKey> | undefined
+  ): boolean {
     return proto3.util.equals(PublicKey, a, b);
   }
 }
-

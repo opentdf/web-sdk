@@ -10,25 +10,24 @@
 // 	protoc              v0.0.0
 // source: authorization/authorization.proto
 
-
 /* eslint-disable */
 // @ts-nocheck
-
 
 import * as grpcWeb from 'grpc-web';
 
 import * as authorization_authorization_pb from '../authorization/authorization_pb'; // proto import: "authorization/authorization.proto"
 
-
 export class AuthorizationServiceClient {
   client_: grpcWeb.AbstractClientBase;
   hostname_: string;
-  credentials_: null | { [index: string]: string; };
-  options_: null | { [index: string]: any; };
+  credentials_: null | { [index: string]: string };
+  options_: null | { [index: string]: any };
 
-  constructor (hostname: string,
-               credentials?: null | { [index: string]: string; },
-               options?: null | { [index: string]: any; }) {
+  constructor(
+    hostname: string,
+    credentials?: null | { [index: string]: string },
+    options?: null | { [index: string]: any }
+  ) {
     if (!options) options = {};
     if (!credentials) credentials = {};
     options['format'] = 'binary';
@@ -52,34 +51,41 @@ export class AuthorizationServiceClient {
 
   getDecisions(
     request: authorization_authorization_pb.GetDecisionsRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<authorization_authorization_pb.GetDecisionsResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<authorization_authorization_pb.GetDecisionsResponse>;
 
   getDecisions(
     request: authorization_authorization_pb.GetDecisionsRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: authorization_authorization_pb.GetDecisionsResponse) => void): grpcWeb.ClientReadableStream<authorization_authorization_pb.GetDecisionsResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: authorization_authorization_pb.GetDecisionsResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<authorization_authorization_pb.GetDecisionsResponse>;
 
   getDecisions(
     request: authorization_authorization_pb.GetDecisionsRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: authorization_authorization_pb.GetDecisionsResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: authorization_authorization_pb.GetDecisionsResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/authorization.AuthorizationService/GetDecisions',
+        this.hostname_ + '/authorization.AuthorizationService/GetDecisions',
         request,
         metadata || {},
         this.methodDescriptorGetDecisions,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/authorization.AuthorizationService/GetDecisions',
-    request,
-    metadata || {},
-    this.methodDescriptorGetDecisions);
+      this.hostname_ + '/authorization.AuthorizationService/GetDecisions',
+      request,
+      metadata || {},
+      this.methodDescriptorGetDecisions
+    );
   }
 
   methodDescriptorGetEntitlements = new grpcWeb.MethodDescriptor(
@@ -95,35 +101,40 @@ export class AuthorizationServiceClient {
 
   getEntitlements(
     request: authorization_authorization_pb.GetEntitlementsRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<authorization_authorization_pb.GetEntitlementsResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<authorization_authorization_pb.GetEntitlementsResponse>;
 
   getEntitlements(
     request: authorization_authorization_pb.GetEntitlementsRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: authorization_authorization_pb.GetEntitlementsResponse) => void): grpcWeb.ClientReadableStream<authorization_authorization_pb.GetEntitlementsResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: authorization_authorization_pb.GetEntitlementsResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<authorization_authorization_pb.GetEntitlementsResponse>;
 
   getEntitlements(
     request: authorization_authorization_pb.GetEntitlementsRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: authorization_authorization_pb.GetEntitlementsResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: authorization_authorization_pb.GetEntitlementsResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/authorization.AuthorizationService/GetEntitlements',
+        this.hostname_ + '/authorization.AuthorizationService/GetEntitlements',
         request,
         metadata || {},
         this.methodDescriptorGetEntitlements,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/authorization.AuthorizationService/GetEntitlements',
-    request,
-    metadata || {},
-    this.methodDescriptorGetEntitlements);
+      this.hostname_ + '/authorization.AuthorizationService/GetEntitlements',
+      request,
+      metadata || {},
+      this.methodDescriptorGetEntitlements
+    );
   }
-
 }
-

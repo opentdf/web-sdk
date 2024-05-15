@@ -10,25 +10,24 @@
 // 	protoc              v0.0.0
 // source: entityresolution/entity_resolution.proto
 
-
 /* eslint-disable */
 // @ts-nocheck
-
 
 import * as grpcWeb from 'grpc-web';
 
 import * as entityresolution_entity_resolution_pb from '../entityresolution/entity_resolution_pb'; // proto import: "entityresolution/entity_resolution.proto"
 
-
 export class EntityResolutionServiceClient {
   client_: grpcWeb.AbstractClientBase;
   hostname_: string;
-  credentials_: null | { [index: string]: string; };
-  options_: null | { [index: string]: any; };
+  credentials_: null | { [index: string]: string };
+  options_: null | { [index: string]: any };
 
-  constructor (hostname: string,
-               credentials?: null | { [index: string]: string; },
-               options?: null | { [index: string]: any; }) {
+  constructor(
+    hostname: string,
+    credentials?: null | { [index: string]: string },
+    options?: null | { [index: string]: any }
+  ) {
     if (!options) options = {};
     if (!credentials) credentials = {};
     options['format'] = 'binary';
@@ -52,35 +51,40 @@ export class EntityResolutionServiceClient {
 
   resolveEntities(
     request: entityresolution_entity_resolution_pb.ResolveEntitiesRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<entityresolution_entity_resolution_pb.ResolveEntitiesResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<entityresolution_entity_resolution_pb.ResolveEntitiesResponse>;
 
   resolveEntities(
     request: entityresolution_entity_resolution_pb.ResolveEntitiesRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: entityresolution_entity_resolution_pb.ResolveEntitiesResponse) => void): grpcWeb.ClientReadableStream<entityresolution_entity_resolution_pb.ResolveEntitiesResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: entityresolution_entity_resolution_pb.ResolveEntitiesResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<entityresolution_entity_resolution_pb.ResolveEntitiesResponse>;
 
   resolveEntities(
     request: entityresolution_entity_resolution_pb.ResolveEntitiesRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: entityresolution_entity_resolution_pb.ResolveEntitiesResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: entityresolution_entity_resolution_pb.ResolveEntitiesResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/entityresolution.EntityResolutionService/ResolveEntities',
+        this.hostname_ + '/entityresolution.EntityResolutionService/ResolveEntities',
         request,
         metadata || {},
         this.methodDescriptorResolveEntities,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/entityresolution.EntityResolutionService/ResolveEntities',
-    request,
-    metadata || {},
-    this.methodDescriptorResolveEntities);
+      this.hostname_ + '/entityresolution.EntityResolutionService/ResolveEntities',
+      request,
+      metadata || {},
+      this.methodDescriptorResolveEntities
+    );
   }
-
 }
-

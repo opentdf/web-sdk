@@ -1,9 +1,8 @@
-import * as jspb from 'google-protobuf'
+import * as jspb from 'google-protobuf';
 
 import * as google_api_annotations_pb from '../google/api/annotations_pb'; // proto import: "google/api/annotations.proto"
 import * as google_protobuf_any_pb from 'google-protobuf/google/protobuf/any_pb'; // proto import: "google/protobuf/any.proto"
 import * as policy_objects_pb from '../policy/objects_pb'; // proto import: "policy/objects.proto"
-
 
 export class Entity extends jspb.Message {
   getId(): string;
@@ -46,17 +45,17 @@ export class Entity extends jspb.Message {
 
 export namespace Entity {
   export type AsObject = {
-    id: string,
-    emailAddress: string,
-    userName: string,
-    remoteClaimsUrl: string,
-    jwt: string,
-    claims?: google_protobuf_any_pb.Any.AsObject,
-    custom?: EntityCustom.AsObject,
-    clientId: string,
-  }
+    id: string;
+    emailAddress: string;
+    userName: string;
+    remoteClaimsUrl: string;
+    jwt: string;
+    claims?: google_protobuf_any_pb.Any.AsObject;
+    custom?: EntityCustom.AsObject;
+    clientId: string;
+  };
 
-  export enum EntityTypeCase { 
+  export enum EntityTypeCase {
     ENTITY_TYPE_NOT_SET = 0,
     EMAIL_ADDRESS = 2,
     USER_NAME = 3,
@@ -79,13 +78,16 @@ export class EntityCustom extends jspb.Message {
   static toObject(includeInstance: boolean, msg: EntityCustom): EntityCustom.AsObject;
   static serializeBinaryToWriter(message: EntityCustom, writer: jspb.BinaryWriter): void;
   static deserializeBinary(bytes: Uint8Array): EntityCustom;
-  static deserializeBinaryFromReader(message: EntityCustom, reader: jspb.BinaryReader): EntityCustom;
+  static deserializeBinaryFromReader(
+    message: EntityCustom,
+    reader: jspb.BinaryReader
+  ): EntityCustom;
 }
 
 export namespace EntityCustom {
   export type AsObject = {
-    extension?: google_protobuf_any_pb.Any.AsObject,
-  }
+    extension?: google_protobuf_any_pb.Any.AsObject;
+  };
 }
 
 export class EntityChain extends jspb.Message {
@@ -107,9 +109,9 @@ export class EntityChain extends jspb.Message {
 
 export namespace EntityChain {
   export type AsObject = {
-    id: string,
-    entitiesList: Array<Entity.AsObject>,
-  }
+    id: string;
+    entitiesList: Array<Entity.AsObject>;
+  };
 }
 
 export class DecisionRequest extends jspb.Message {
@@ -133,15 +135,18 @@ export class DecisionRequest extends jspb.Message {
   static toObject(includeInstance: boolean, msg: DecisionRequest): DecisionRequest.AsObject;
   static serializeBinaryToWriter(message: DecisionRequest, writer: jspb.BinaryWriter): void;
   static deserializeBinary(bytes: Uint8Array): DecisionRequest;
-  static deserializeBinaryFromReader(message: DecisionRequest, reader: jspb.BinaryReader): DecisionRequest;
+  static deserializeBinaryFromReader(
+    message: DecisionRequest,
+    reader: jspb.BinaryReader
+  ): DecisionRequest;
 }
 
 export namespace DecisionRequest {
   export type AsObject = {
-    actionsList: Array<policy_objects_pb.Action.AsObject>,
-    entityChainsList: Array<EntityChain.AsObject>,
-    resourceAttributesList: Array<ResourceAttribute.AsObject>,
-  }
+    actionsList: Array<policy_objects_pb.Action.AsObject>;
+    entityChainsList: Array<EntityChain.AsObject>;
+    resourceAttributesList: Array<ResourceAttribute.AsObject>;
+  };
 }
 
 export class DecisionResponse extends jspb.Message {
@@ -169,19 +174,22 @@ export class DecisionResponse extends jspb.Message {
   static toObject(includeInstance: boolean, msg: DecisionResponse): DecisionResponse.AsObject;
   static serializeBinaryToWriter(message: DecisionResponse, writer: jspb.BinaryWriter): void;
   static deserializeBinary(bytes: Uint8Array): DecisionResponse;
-  static deserializeBinaryFromReader(message: DecisionResponse, reader: jspb.BinaryReader): DecisionResponse;
+  static deserializeBinaryFromReader(
+    message: DecisionResponse,
+    reader: jspb.BinaryReader
+  ): DecisionResponse;
 }
 
 export namespace DecisionResponse {
   export type AsObject = {
-    entityChainId: string,
-    resourceAttributesId: string,
-    action?: policy_objects_pb.Action.AsObject,
-    decision: DecisionResponse.Decision,
-    obligationsList: Array<string>,
-  }
+    entityChainId: string;
+    resourceAttributesId: string;
+    action?: policy_objects_pb.Action.AsObject;
+    decision: DecisionResponse.Decision;
+    obligationsList: Array<string>;
+  };
 
-  export enum Decision { 
+  export enum Decision {
     DECISION_UNSPECIFIED = 0,
     DECISION_DENY = 1,
     DECISION_PERMIT = 2,
@@ -199,13 +207,16 @@ export class GetDecisionsRequest extends jspb.Message {
   static toObject(includeInstance: boolean, msg: GetDecisionsRequest): GetDecisionsRequest.AsObject;
   static serializeBinaryToWriter(message: GetDecisionsRequest, writer: jspb.BinaryWriter): void;
   static deserializeBinary(bytes: Uint8Array): GetDecisionsRequest;
-  static deserializeBinaryFromReader(message: GetDecisionsRequest, reader: jspb.BinaryReader): GetDecisionsRequest;
+  static deserializeBinaryFromReader(
+    message: GetDecisionsRequest,
+    reader: jspb.BinaryReader
+  ): GetDecisionsRequest;
 }
 
 export namespace GetDecisionsRequest {
   export type AsObject = {
-    decisionRequestsList: Array<DecisionRequest.AsObject>,
-  }
+    decisionRequestsList: Array<DecisionRequest.AsObject>;
+  };
 }
 
 export class GetDecisionsResponse extends jspb.Message {
@@ -216,16 +227,22 @@ export class GetDecisionsResponse extends jspb.Message {
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GetDecisionsResponse.AsObject;
-  static toObject(includeInstance: boolean, msg: GetDecisionsResponse): GetDecisionsResponse.AsObject;
+  static toObject(
+    includeInstance: boolean,
+    msg: GetDecisionsResponse
+  ): GetDecisionsResponse.AsObject;
   static serializeBinaryToWriter(message: GetDecisionsResponse, writer: jspb.BinaryWriter): void;
   static deserializeBinary(bytes: Uint8Array): GetDecisionsResponse;
-  static deserializeBinaryFromReader(message: GetDecisionsResponse, reader: jspb.BinaryReader): GetDecisionsResponse;
+  static deserializeBinaryFromReader(
+    message: GetDecisionsResponse,
+    reader: jspb.BinaryReader
+  ): GetDecisionsResponse;
 }
 
 export namespace GetDecisionsResponse {
   export type AsObject = {
-    decisionResponsesList: Array<DecisionResponse.AsObject>,
-  }
+    decisionResponsesList: Array<DecisionResponse.AsObject>;
+  };
 }
 
 export class GetEntitlementsRequest extends jspb.Message {
@@ -241,19 +258,25 @@ export class GetEntitlementsRequest extends jspb.Message {
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GetEntitlementsRequest.AsObject;
-  static toObject(includeInstance: boolean, msg: GetEntitlementsRequest): GetEntitlementsRequest.AsObject;
+  static toObject(
+    includeInstance: boolean,
+    msg: GetEntitlementsRequest
+  ): GetEntitlementsRequest.AsObject;
   static serializeBinaryToWriter(message: GetEntitlementsRequest, writer: jspb.BinaryWriter): void;
   static deserializeBinary(bytes: Uint8Array): GetEntitlementsRequest;
-  static deserializeBinaryFromReader(message: GetEntitlementsRequest, reader: jspb.BinaryReader): GetEntitlementsRequest;
+  static deserializeBinaryFromReader(
+    message: GetEntitlementsRequest,
+    reader: jspb.BinaryReader
+  ): GetEntitlementsRequest;
 }
 
 export namespace GetEntitlementsRequest {
   export type AsObject = {
-    entitiesList: Array<Entity.AsObject>,
-    scope?: ResourceAttribute.AsObject,
-  }
+    entitiesList: Array<Entity.AsObject>;
+    scope?: ResourceAttribute.AsObject;
+  };
 
-  export enum ScopeCase { 
+  export enum ScopeCase {
     _SCOPE_NOT_SET = 0,
     SCOPE = 2,
   }
@@ -273,14 +296,17 @@ export class EntityEntitlements extends jspb.Message {
   static toObject(includeInstance: boolean, msg: EntityEntitlements): EntityEntitlements.AsObject;
   static serializeBinaryToWriter(message: EntityEntitlements, writer: jspb.BinaryWriter): void;
   static deserializeBinary(bytes: Uint8Array): EntityEntitlements;
-  static deserializeBinaryFromReader(message: EntityEntitlements, reader: jspb.BinaryReader): EntityEntitlements;
+  static deserializeBinaryFromReader(
+    message: EntityEntitlements,
+    reader: jspb.BinaryReader
+  ): EntityEntitlements;
 }
 
 export namespace EntityEntitlements {
   export type AsObject = {
-    entityId: string,
-    attributeValueFqnsList: Array<string>,
-  }
+    entityId: string;
+    attributeValueFqnsList: Array<string>;
+  };
 }
 
 export class ResourceAttribute extends jspb.Message {
@@ -294,13 +320,16 @@ export class ResourceAttribute extends jspb.Message {
   static toObject(includeInstance: boolean, msg: ResourceAttribute): ResourceAttribute.AsObject;
   static serializeBinaryToWriter(message: ResourceAttribute, writer: jspb.BinaryWriter): void;
   static deserializeBinary(bytes: Uint8Array): ResourceAttribute;
-  static deserializeBinaryFromReader(message: ResourceAttribute, reader: jspb.BinaryReader): ResourceAttribute;
+  static deserializeBinaryFromReader(
+    message: ResourceAttribute,
+    reader: jspb.BinaryReader
+  ): ResourceAttribute;
 }
 
 export namespace ResourceAttribute {
   export type AsObject = {
-    attributeValueFqnsList: Array<string>,
-  }
+    attributeValueFqnsList: Array<string>;
+  };
 }
 
 export class GetEntitlementsResponse extends jspb.Message {
@@ -311,15 +340,20 @@ export class GetEntitlementsResponse extends jspb.Message {
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GetEntitlementsResponse.AsObject;
-  static toObject(includeInstance: boolean, msg: GetEntitlementsResponse): GetEntitlementsResponse.AsObject;
+  static toObject(
+    includeInstance: boolean,
+    msg: GetEntitlementsResponse
+  ): GetEntitlementsResponse.AsObject;
   static serializeBinaryToWriter(message: GetEntitlementsResponse, writer: jspb.BinaryWriter): void;
   static deserializeBinary(bytes: Uint8Array): GetEntitlementsResponse;
-  static deserializeBinaryFromReader(message: GetEntitlementsResponse, reader: jspb.BinaryReader): GetEntitlementsResponse;
+  static deserializeBinaryFromReader(
+    message: GetEntitlementsResponse,
+    reader: jspb.BinaryReader
+  ): GetEntitlementsResponse;
 }
 
 export namespace GetEntitlementsResponse {
   export type AsObject = {
-    entitlementsList: Array<EntityEntitlements.AsObject>,
-  }
+    entitlementsList: Array<EntityEntitlements.AsObject>;
+  };
 }
-

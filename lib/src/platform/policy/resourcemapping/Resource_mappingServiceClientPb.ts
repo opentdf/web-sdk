@@ -10,25 +10,24 @@
 // 	protoc              v0.0.0
 // source: policy/resourcemapping/resource_mapping.proto
 
-
 /* eslint-disable */
 // @ts-nocheck
-
 
 import * as grpcWeb from 'grpc-web';
 
 import * as policy_resourcemapping_resource_mapping_pb from '../../policy/resourcemapping/resource_mapping_pb'; // proto import: "policy/resourcemapping/resource_mapping.proto"
 
-
 export class ResourceMappingServiceClient {
   client_: grpcWeb.AbstractClientBase;
   hostname_: string;
-  credentials_: null | { [index: string]: string; };
-  options_: null | { [index: string]: any; };
+  credentials_: null | { [index: string]: string };
+  options_: null | { [index: string]: any };
 
-  constructor (hostname: string,
-               credentials?: null | { [index: string]: string; },
-               options?: null | { [index: string]: any; }) {
+  constructor(
+    hostname: string,
+    credentials?: null | { [index: string]: string },
+    options?: null | { [index: string]: any }
+  ) {
     if (!options) options = {};
     if (!credentials) credentials = {};
     options['format'] = 'binary';
@@ -52,34 +51,41 @@ export class ResourceMappingServiceClient {
 
   listResourceMappings(
     request: policy_resourcemapping_resource_mapping_pb.ListResourceMappingsRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_resourcemapping_resource_mapping_pb.ListResourceMappingsResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_resourcemapping_resource_mapping_pb.ListResourceMappingsResponse>;
 
   listResourceMappings(
     request: policy_resourcemapping_resource_mapping_pb.ListResourceMappingsRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_resourcemapping_resource_mapping_pb.ListResourceMappingsResponse) => void): grpcWeb.ClientReadableStream<policy_resourcemapping_resource_mapping_pb.ListResourceMappingsResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_resourcemapping_resource_mapping_pb.ListResourceMappingsResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_resourcemapping_resource_mapping_pb.ListResourceMappingsResponse>;
 
   listResourceMappings(
     request: policy_resourcemapping_resource_mapping_pb.ListResourceMappingsRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_resourcemapping_resource_mapping_pb.ListResourceMappingsResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_resourcemapping_resource_mapping_pb.ListResourceMappingsResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.resourcemapping.ResourceMappingService/ListResourceMappings',
+        this.hostname_ + '/policy.resourcemapping.ResourceMappingService/ListResourceMappings',
         request,
         metadata || {},
         this.methodDescriptorListResourceMappings,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.resourcemapping.ResourceMappingService/ListResourceMappings',
-    request,
-    metadata || {},
-    this.methodDescriptorListResourceMappings);
+      this.hostname_ + '/policy.resourcemapping.ResourceMappingService/ListResourceMappings',
+      request,
+      metadata || {},
+      this.methodDescriptorListResourceMappings
+    );
   }
 
   methodDescriptorGetResourceMapping = new grpcWeb.MethodDescriptor(
@@ -95,34 +101,41 @@ export class ResourceMappingServiceClient {
 
   getResourceMapping(
     request: policy_resourcemapping_resource_mapping_pb.GetResourceMappingRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_resourcemapping_resource_mapping_pb.GetResourceMappingResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_resourcemapping_resource_mapping_pb.GetResourceMappingResponse>;
 
   getResourceMapping(
     request: policy_resourcemapping_resource_mapping_pb.GetResourceMappingRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_resourcemapping_resource_mapping_pb.GetResourceMappingResponse) => void): grpcWeb.ClientReadableStream<policy_resourcemapping_resource_mapping_pb.GetResourceMappingResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_resourcemapping_resource_mapping_pb.GetResourceMappingResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_resourcemapping_resource_mapping_pb.GetResourceMappingResponse>;
 
   getResourceMapping(
     request: policy_resourcemapping_resource_mapping_pb.GetResourceMappingRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_resourcemapping_resource_mapping_pb.GetResourceMappingResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_resourcemapping_resource_mapping_pb.GetResourceMappingResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.resourcemapping.ResourceMappingService/GetResourceMapping',
+        this.hostname_ + '/policy.resourcemapping.ResourceMappingService/GetResourceMapping',
         request,
         metadata || {},
         this.methodDescriptorGetResourceMapping,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.resourcemapping.ResourceMappingService/GetResourceMapping',
-    request,
-    metadata || {},
-    this.methodDescriptorGetResourceMapping);
+      this.hostname_ + '/policy.resourcemapping.ResourceMappingService/GetResourceMapping',
+      request,
+      metadata || {},
+      this.methodDescriptorGetResourceMapping
+    );
   }
 
   methodDescriptorCreateResourceMapping = new grpcWeb.MethodDescriptor(
@@ -138,34 +151,41 @@ export class ResourceMappingServiceClient {
 
   createResourceMapping(
     request: policy_resourcemapping_resource_mapping_pb.CreateResourceMappingRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_resourcemapping_resource_mapping_pb.CreateResourceMappingResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_resourcemapping_resource_mapping_pb.CreateResourceMappingResponse>;
 
   createResourceMapping(
     request: policy_resourcemapping_resource_mapping_pb.CreateResourceMappingRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_resourcemapping_resource_mapping_pb.CreateResourceMappingResponse) => void): grpcWeb.ClientReadableStream<policy_resourcemapping_resource_mapping_pb.CreateResourceMappingResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_resourcemapping_resource_mapping_pb.CreateResourceMappingResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_resourcemapping_resource_mapping_pb.CreateResourceMappingResponse>;
 
   createResourceMapping(
     request: policy_resourcemapping_resource_mapping_pb.CreateResourceMappingRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_resourcemapping_resource_mapping_pb.CreateResourceMappingResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_resourcemapping_resource_mapping_pb.CreateResourceMappingResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.resourcemapping.ResourceMappingService/CreateResourceMapping',
+        this.hostname_ + '/policy.resourcemapping.ResourceMappingService/CreateResourceMapping',
         request,
         metadata || {},
         this.methodDescriptorCreateResourceMapping,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.resourcemapping.ResourceMappingService/CreateResourceMapping',
-    request,
-    metadata || {},
-    this.methodDescriptorCreateResourceMapping);
+      this.hostname_ + '/policy.resourcemapping.ResourceMappingService/CreateResourceMapping',
+      request,
+      metadata || {},
+      this.methodDescriptorCreateResourceMapping
+    );
   }
 
   methodDescriptorUpdateResourceMapping = new grpcWeb.MethodDescriptor(
@@ -181,34 +201,41 @@ export class ResourceMappingServiceClient {
 
   updateResourceMapping(
     request: policy_resourcemapping_resource_mapping_pb.UpdateResourceMappingRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_resourcemapping_resource_mapping_pb.UpdateResourceMappingResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_resourcemapping_resource_mapping_pb.UpdateResourceMappingResponse>;
 
   updateResourceMapping(
     request: policy_resourcemapping_resource_mapping_pb.UpdateResourceMappingRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_resourcemapping_resource_mapping_pb.UpdateResourceMappingResponse) => void): grpcWeb.ClientReadableStream<policy_resourcemapping_resource_mapping_pb.UpdateResourceMappingResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_resourcemapping_resource_mapping_pb.UpdateResourceMappingResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_resourcemapping_resource_mapping_pb.UpdateResourceMappingResponse>;
 
   updateResourceMapping(
     request: policy_resourcemapping_resource_mapping_pb.UpdateResourceMappingRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_resourcemapping_resource_mapping_pb.UpdateResourceMappingResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_resourcemapping_resource_mapping_pb.UpdateResourceMappingResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.resourcemapping.ResourceMappingService/UpdateResourceMapping',
+        this.hostname_ + '/policy.resourcemapping.ResourceMappingService/UpdateResourceMapping',
         request,
         metadata || {},
         this.methodDescriptorUpdateResourceMapping,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.resourcemapping.ResourceMappingService/UpdateResourceMapping',
-    request,
-    metadata || {},
-    this.methodDescriptorUpdateResourceMapping);
+      this.hostname_ + '/policy.resourcemapping.ResourceMappingService/UpdateResourceMapping',
+      request,
+      metadata || {},
+      this.methodDescriptorUpdateResourceMapping
+    );
   }
 
   methodDescriptorDeleteResourceMapping = new grpcWeb.MethodDescriptor(
@@ -224,35 +251,40 @@ export class ResourceMappingServiceClient {
 
   deleteResourceMapping(
     request: policy_resourcemapping_resource_mapping_pb.DeleteResourceMappingRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_resourcemapping_resource_mapping_pb.DeleteResourceMappingResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_resourcemapping_resource_mapping_pb.DeleteResourceMappingResponse>;
 
   deleteResourceMapping(
     request: policy_resourcemapping_resource_mapping_pb.DeleteResourceMappingRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_resourcemapping_resource_mapping_pb.DeleteResourceMappingResponse) => void): grpcWeb.ClientReadableStream<policy_resourcemapping_resource_mapping_pb.DeleteResourceMappingResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_resourcemapping_resource_mapping_pb.DeleteResourceMappingResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_resourcemapping_resource_mapping_pb.DeleteResourceMappingResponse>;
 
   deleteResourceMapping(
     request: policy_resourcemapping_resource_mapping_pb.DeleteResourceMappingRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_resourcemapping_resource_mapping_pb.DeleteResourceMappingResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_resourcemapping_resource_mapping_pb.DeleteResourceMappingResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.resourcemapping.ResourceMappingService/DeleteResourceMapping',
+        this.hostname_ + '/policy.resourcemapping.ResourceMappingService/DeleteResourceMapping',
         request,
         metadata || {},
         this.methodDescriptorDeleteResourceMapping,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.resourcemapping.ResourceMappingService/DeleteResourceMapping',
-    request,
-    metadata || {},
-    this.methodDescriptorDeleteResourceMapping);
+      this.hostname_ + '/policy.resourcemapping.ResourceMappingService/DeleteResourceMapping',
+      request,
+      metadata || {},
+      this.methodDescriptorDeleteResourceMapping
+    );
   }
-
 }
-

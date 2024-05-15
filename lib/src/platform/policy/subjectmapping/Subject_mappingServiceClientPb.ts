@@ -10,25 +10,24 @@
 // 	protoc              v0.0.0
 // source: policy/subjectmapping/subject_mapping.proto
 
-
 /* eslint-disable */
 // @ts-nocheck
-
 
 import * as grpcWeb from 'grpc-web';
 
 import * as policy_subjectmapping_subject_mapping_pb from '../../policy/subjectmapping/subject_mapping_pb'; // proto import: "policy/subjectmapping/subject_mapping.proto"
 
-
 export class SubjectMappingServiceClient {
   client_: grpcWeb.AbstractClientBase;
   hostname_: string;
-  credentials_: null | { [index: string]: string; };
-  options_: null | { [index: string]: any; };
+  credentials_: null | { [index: string]: string };
+  options_: null | { [index: string]: any };
 
-  constructor (hostname: string,
-               credentials?: null | { [index: string]: string; },
-               options?: null | { [index: string]: any; }) {
+  constructor(
+    hostname: string,
+    credentials?: null | { [index: string]: string },
+    options?: null | { [index: string]: any }
+  ) {
     if (!options) options = {};
     if (!credentials) credentials = {};
     options['format'] = 'binary';
@@ -52,34 +51,41 @@ export class SubjectMappingServiceClient {
 
   matchSubjectMappings(
     request: policy_subjectmapping_subject_mapping_pb.MatchSubjectMappingsRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_subjectmapping_subject_mapping_pb.MatchSubjectMappingsResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_subjectmapping_subject_mapping_pb.MatchSubjectMappingsResponse>;
 
   matchSubjectMappings(
     request: policy_subjectmapping_subject_mapping_pb.MatchSubjectMappingsRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_subjectmapping_subject_mapping_pb.MatchSubjectMappingsResponse) => void): grpcWeb.ClientReadableStream<policy_subjectmapping_subject_mapping_pb.MatchSubjectMappingsResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_subjectmapping_subject_mapping_pb.MatchSubjectMappingsResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_subjectmapping_subject_mapping_pb.MatchSubjectMappingsResponse>;
 
   matchSubjectMappings(
     request: policy_subjectmapping_subject_mapping_pb.MatchSubjectMappingsRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_subjectmapping_subject_mapping_pb.MatchSubjectMappingsResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_subjectmapping_subject_mapping_pb.MatchSubjectMappingsResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.subjectmapping.SubjectMappingService/MatchSubjectMappings',
+        this.hostname_ + '/policy.subjectmapping.SubjectMappingService/MatchSubjectMappings',
         request,
         metadata || {},
         this.methodDescriptorMatchSubjectMappings,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.subjectmapping.SubjectMappingService/MatchSubjectMappings',
-    request,
-    metadata || {},
-    this.methodDescriptorMatchSubjectMappings);
+      this.hostname_ + '/policy.subjectmapping.SubjectMappingService/MatchSubjectMappings',
+      request,
+      metadata || {},
+      this.methodDescriptorMatchSubjectMappings
+    );
   }
 
   methodDescriptorListSubjectMappings = new grpcWeb.MethodDescriptor(
@@ -95,34 +101,41 @@ export class SubjectMappingServiceClient {
 
   listSubjectMappings(
     request: policy_subjectmapping_subject_mapping_pb.ListSubjectMappingsRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_subjectmapping_subject_mapping_pb.ListSubjectMappingsResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_subjectmapping_subject_mapping_pb.ListSubjectMappingsResponse>;
 
   listSubjectMappings(
     request: policy_subjectmapping_subject_mapping_pb.ListSubjectMappingsRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_subjectmapping_subject_mapping_pb.ListSubjectMappingsResponse) => void): grpcWeb.ClientReadableStream<policy_subjectmapping_subject_mapping_pb.ListSubjectMappingsResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_subjectmapping_subject_mapping_pb.ListSubjectMappingsResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_subjectmapping_subject_mapping_pb.ListSubjectMappingsResponse>;
 
   listSubjectMappings(
     request: policy_subjectmapping_subject_mapping_pb.ListSubjectMappingsRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_subjectmapping_subject_mapping_pb.ListSubjectMappingsResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_subjectmapping_subject_mapping_pb.ListSubjectMappingsResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.subjectmapping.SubjectMappingService/ListSubjectMappings',
+        this.hostname_ + '/policy.subjectmapping.SubjectMappingService/ListSubjectMappings',
         request,
         metadata || {},
         this.methodDescriptorListSubjectMappings,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.subjectmapping.SubjectMappingService/ListSubjectMappings',
-    request,
-    metadata || {},
-    this.methodDescriptorListSubjectMappings);
+      this.hostname_ + '/policy.subjectmapping.SubjectMappingService/ListSubjectMappings',
+      request,
+      metadata || {},
+      this.methodDescriptorListSubjectMappings
+    );
   }
 
   methodDescriptorGetSubjectMapping = new grpcWeb.MethodDescriptor(
@@ -138,34 +151,41 @@ export class SubjectMappingServiceClient {
 
   getSubjectMapping(
     request: policy_subjectmapping_subject_mapping_pb.GetSubjectMappingRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_subjectmapping_subject_mapping_pb.GetSubjectMappingResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_subjectmapping_subject_mapping_pb.GetSubjectMappingResponse>;
 
   getSubjectMapping(
     request: policy_subjectmapping_subject_mapping_pb.GetSubjectMappingRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_subjectmapping_subject_mapping_pb.GetSubjectMappingResponse) => void): grpcWeb.ClientReadableStream<policy_subjectmapping_subject_mapping_pb.GetSubjectMappingResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_subjectmapping_subject_mapping_pb.GetSubjectMappingResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_subjectmapping_subject_mapping_pb.GetSubjectMappingResponse>;
 
   getSubjectMapping(
     request: policy_subjectmapping_subject_mapping_pb.GetSubjectMappingRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_subjectmapping_subject_mapping_pb.GetSubjectMappingResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_subjectmapping_subject_mapping_pb.GetSubjectMappingResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.subjectmapping.SubjectMappingService/GetSubjectMapping',
+        this.hostname_ + '/policy.subjectmapping.SubjectMappingService/GetSubjectMapping',
         request,
         metadata || {},
         this.methodDescriptorGetSubjectMapping,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.subjectmapping.SubjectMappingService/GetSubjectMapping',
-    request,
-    metadata || {},
-    this.methodDescriptorGetSubjectMapping);
+      this.hostname_ + '/policy.subjectmapping.SubjectMappingService/GetSubjectMapping',
+      request,
+      metadata || {},
+      this.methodDescriptorGetSubjectMapping
+    );
   }
 
   methodDescriptorCreateSubjectMapping = new grpcWeb.MethodDescriptor(
@@ -181,34 +201,41 @@ export class SubjectMappingServiceClient {
 
   createSubjectMapping(
     request: policy_subjectmapping_subject_mapping_pb.CreateSubjectMappingRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_subjectmapping_subject_mapping_pb.CreateSubjectMappingResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_subjectmapping_subject_mapping_pb.CreateSubjectMappingResponse>;
 
   createSubjectMapping(
     request: policy_subjectmapping_subject_mapping_pb.CreateSubjectMappingRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_subjectmapping_subject_mapping_pb.CreateSubjectMappingResponse) => void): grpcWeb.ClientReadableStream<policy_subjectmapping_subject_mapping_pb.CreateSubjectMappingResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_subjectmapping_subject_mapping_pb.CreateSubjectMappingResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_subjectmapping_subject_mapping_pb.CreateSubjectMappingResponse>;
 
   createSubjectMapping(
     request: policy_subjectmapping_subject_mapping_pb.CreateSubjectMappingRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_subjectmapping_subject_mapping_pb.CreateSubjectMappingResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_subjectmapping_subject_mapping_pb.CreateSubjectMappingResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.subjectmapping.SubjectMappingService/CreateSubjectMapping',
+        this.hostname_ + '/policy.subjectmapping.SubjectMappingService/CreateSubjectMapping',
         request,
         metadata || {},
         this.methodDescriptorCreateSubjectMapping,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.subjectmapping.SubjectMappingService/CreateSubjectMapping',
-    request,
-    metadata || {},
-    this.methodDescriptorCreateSubjectMapping);
+      this.hostname_ + '/policy.subjectmapping.SubjectMappingService/CreateSubjectMapping',
+      request,
+      metadata || {},
+      this.methodDescriptorCreateSubjectMapping
+    );
   }
 
   methodDescriptorUpdateSubjectMapping = new grpcWeb.MethodDescriptor(
@@ -224,34 +251,41 @@ export class SubjectMappingServiceClient {
 
   updateSubjectMapping(
     request: policy_subjectmapping_subject_mapping_pb.UpdateSubjectMappingRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_subjectmapping_subject_mapping_pb.UpdateSubjectMappingResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_subjectmapping_subject_mapping_pb.UpdateSubjectMappingResponse>;
 
   updateSubjectMapping(
     request: policy_subjectmapping_subject_mapping_pb.UpdateSubjectMappingRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_subjectmapping_subject_mapping_pb.UpdateSubjectMappingResponse) => void): grpcWeb.ClientReadableStream<policy_subjectmapping_subject_mapping_pb.UpdateSubjectMappingResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_subjectmapping_subject_mapping_pb.UpdateSubjectMappingResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_subjectmapping_subject_mapping_pb.UpdateSubjectMappingResponse>;
 
   updateSubjectMapping(
     request: policy_subjectmapping_subject_mapping_pb.UpdateSubjectMappingRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_subjectmapping_subject_mapping_pb.UpdateSubjectMappingResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_subjectmapping_subject_mapping_pb.UpdateSubjectMappingResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.subjectmapping.SubjectMappingService/UpdateSubjectMapping',
+        this.hostname_ + '/policy.subjectmapping.SubjectMappingService/UpdateSubjectMapping',
         request,
         metadata || {},
         this.methodDescriptorUpdateSubjectMapping,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.subjectmapping.SubjectMappingService/UpdateSubjectMapping',
-    request,
-    metadata || {},
-    this.methodDescriptorUpdateSubjectMapping);
+      this.hostname_ + '/policy.subjectmapping.SubjectMappingService/UpdateSubjectMapping',
+      request,
+      metadata || {},
+      this.methodDescriptorUpdateSubjectMapping
+    );
   }
 
   methodDescriptorDeleteSubjectMapping = new grpcWeb.MethodDescriptor(
@@ -267,34 +301,41 @@ export class SubjectMappingServiceClient {
 
   deleteSubjectMapping(
     request: policy_subjectmapping_subject_mapping_pb.DeleteSubjectMappingRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_subjectmapping_subject_mapping_pb.DeleteSubjectMappingResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_subjectmapping_subject_mapping_pb.DeleteSubjectMappingResponse>;
 
   deleteSubjectMapping(
     request: policy_subjectmapping_subject_mapping_pb.DeleteSubjectMappingRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_subjectmapping_subject_mapping_pb.DeleteSubjectMappingResponse) => void): grpcWeb.ClientReadableStream<policy_subjectmapping_subject_mapping_pb.DeleteSubjectMappingResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_subjectmapping_subject_mapping_pb.DeleteSubjectMappingResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_subjectmapping_subject_mapping_pb.DeleteSubjectMappingResponse>;
 
   deleteSubjectMapping(
     request: policy_subjectmapping_subject_mapping_pb.DeleteSubjectMappingRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_subjectmapping_subject_mapping_pb.DeleteSubjectMappingResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_subjectmapping_subject_mapping_pb.DeleteSubjectMappingResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.subjectmapping.SubjectMappingService/DeleteSubjectMapping',
+        this.hostname_ + '/policy.subjectmapping.SubjectMappingService/DeleteSubjectMapping',
         request,
         metadata || {},
         this.methodDescriptorDeleteSubjectMapping,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.subjectmapping.SubjectMappingService/DeleteSubjectMapping',
-    request,
-    metadata || {},
-    this.methodDescriptorDeleteSubjectMapping);
+      this.hostname_ + '/policy.subjectmapping.SubjectMappingService/DeleteSubjectMapping',
+      request,
+      metadata || {},
+      this.methodDescriptorDeleteSubjectMapping
+    );
   }
 
   methodDescriptorListSubjectConditionSets = new grpcWeb.MethodDescriptor(
@@ -310,34 +351,41 @@ export class SubjectMappingServiceClient {
 
   listSubjectConditionSets(
     request: policy_subjectmapping_subject_mapping_pb.ListSubjectConditionSetsRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_subjectmapping_subject_mapping_pb.ListSubjectConditionSetsResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_subjectmapping_subject_mapping_pb.ListSubjectConditionSetsResponse>;
 
   listSubjectConditionSets(
     request: policy_subjectmapping_subject_mapping_pb.ListSubjectConditionSetsRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_subjectmapping_subject_mapping_pb.ListSubjectConditionSetsResponse) => void): grpcWeb.ClientReadableStream<policy_subjectmapping_subject_mapping_pb.ListSubjectConditionSetsResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_subjectmapping_subject_mapping_pb.ListSubjectConditionSetsResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_subjectmapping_subject_mapping_pb.ListSubjectConditionSetsResponse>;
 
   listSubjectConditionSets(
     request: policy_subjectmapping_subject_mapping_pb.ListSubjectConditionSetsRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_subjectmapping_subject_mapping_pb.ListSubjectConditionSetsResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_subjectmapping_subject_mapping_pb.ListSubjectConditionSetsResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.subjectmapping.SubjectMappingService/ListSubjectConditionSets',
+        this.hostname_ + '/policy.subjectmapping.SubjectMappingService/ListSubjectConditionSets',
         request,
         metadata || {},
         this.methodDescriptorListSubjectConditionSets,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.subjectmapping.SubjectMappingService/ListSubjectConditionSets',
-    request,
-    metadata || {},
-    this.methodDescriptorListSubjectConditionSets);
+      this.hostname_ + '/policy.subjectmapping.SubjectMappingService/ListSubjectConditionSets',
+      request,
+      metadata || {},
+      this.methodDescriptorListSubjectConditionSets
+    );
   }
 
   methodDescriptorGetSubjectConditionSet = new grpcWeb.MethodDescriptor(
@@ -353,34 +401,41 @@ export class SubjectMappingServiceClient {
 
   getSubjectConditionSet(
     request: policy_subjectmapping_subject_mapping_pb.GetSubjectConditionSetRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_subjectmapping_subject_mapping_pb.GetSubjectConditionSetResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_subjectmapping_subject_mapping_pb.GetSubjectConditionSetResponse>;
 
   getSubjectConditionSet(
     request: policy_subjectmapping_subject_mapping_pb.GetSubjectConditionSetRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_subjectmapping_subject_mapping_pb.GetSubjectConditionSetResponse) => void): grpcWeb.ClientReadableStream<policy_subjectmapping_subject_mapping_pb.GetSubjectConditionSetResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_subjectmapping_subject_mapping_pb.GetSubjectConditionSetResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_subjectmapping_subject_mapping_pb.GetSubjectConditionSetResponse>;
 
   getSubjectConditionSet(
     request: policy_subjectmapping_subject_mapping_pb.GetSubjectConditionSetRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_subjectmapping_subject_mapping_pb.GetSubjectConditionSetResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_subjectmapping_subject_mapping_pb.GetSubjectConditionSetResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.subjectmapping.SubjectMappingService/GetSubjectConditionSet',
+        this.hostname_ + '/policy.subjectmapping.SubjectMappingService/GetSubjectConditionSet',
         request,
         metadata || {},
         this.methodDescriptorGetSubjectConditionSet,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.subjectmapping.SubjectMappingService/GetSubjectConditionSet',
-    request,
-    metadata || {},
-    this.methodDescriptorGetSubjectConditionSet);
+      this.hostname_ + '/policy.subjectmapping.SubjectMappingService/GetSubjectConditionSet',
+      request,
+      metadata || {},
+      this.methodDescriptorGetSubjectConditionSet
+    );
   }
 
   methodDescriptorCreateSubjectConditionSet = new grpcWeb.MethodDescriptor(
@@ -396,34 +451,41 @@ export class SubjectMappingServiceClient {
 
   createSubjectConditionSet(
     request: policy_subjectmapping_subject_mapping_pb.CreateSubjectConditionSetRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_subjectmapping_subject_mapping_pb.CreateSubjectConditionSetResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_subjectmapping_subject_mapping_pb.CreateSubjectConditionSetResponse>;
 
   createSubjectConditionSet(
     request: policy_subjectmapping_subject_mapping_pb.CreateSubjectConditionSetRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_subjectmapping_subject_mapping_pb.CreateSubjectConditionSetResponse) => void): grpcWeb.ClientReadableStream<policy_subjectmapping_subject_mapping_pb.CreateSubjectConditionSetResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_subjectmapping_subject_mapping_pb.CreateSubjectConditionSetResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_subjectmapping_subject_mapping_pb.CreateSubjectConditionSetResponse>;
 
   createSubjectConditionSet(
     request: policy_subjectmapping_subject_mapping_pb.CreateSubjectConditionSetRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_subjectmapping_subject_mapping_pb.CreateSubjectConditionSetResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_subjectmapping_subject_mapping_pb.CreateSubjectConditionSetResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.subjectmapping.SubjectMappingService/CreateSubjectConditionSet',
+        this.hostname_ + '/policy.subjectmapping.SubjectMappingService/CreateSubjectConditionSet',
         request,
         metadata || {},
         this.methodDescriptorCreateSubjectConditionSet,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.subjectmapping.SubjectMappingService/CreateSubjectConditionSet',
-    request,
-    metadata || {},
-    this.methodDescriptorCreateSubjectConditionSet);
+      this.hostname_ + '/policy.subjectmapping.SubjectMappingService/CreateSubjectConditionSet',
+      request,
+      metadata || {},
+      this.methodDescriptorCreateSubjectConditionSet
+    );
   }
 
   methodDescriptorUpdateSubjectConditionSet = new grpcWeb.MethodDescriptor(
@@ -439,34 +501,41 @@ export class SubjectMappingServiceClient {
 
   updateSubjectConditionSet(
     request: policy_subjectmapping_subject_mapping_pb.UpdateSubjectConditionSetRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_subjectmapping_subject_mapping_pb.UpdateSubjectConditionSetResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_subjectmapping_subject_mapping_pb.UpdateSubjectConditionSetResponse>;
 
   updateSubjectConditionSet(
     request: policy_subjectmapping_subject_mapping_pb.UpdateSubjectConditionSetRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_subjectmapping_subject_mapping_pb.UpdateSubjectConditionSetResponse) => void): grpcWeb.ClientReadableStream<policy_subjectmapping_subject_mapping_pb.UpdateSubjectConditionSetResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_subjectmapping_subject_mapping_pb.UpdateSubjectConditionSetResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_subjectmapping_subject_mapping_pb.UpdateSubjectConditionSetResponse>;
 
   updateSubjectConditionSet(
     request: policy_subjectmapping_subject_mapping_pb.UpdateSubjectConditionSetRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_subjectmapping_subject_mapping_pb.UpdateSubjectConditionSetResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_subjectmapping_subject_mapping_pb.UpdateSubjectConditionSetResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.subjectmapping.SubjectMappingService/UpdateSubjectConditionSet',
+        this.hostname_ + '/policy.subjectmapping.SubjectMappingService/UpdateSubjectConditionSet',
         request,
         metadata || {},
         this.methodDescriptorUpdateSubjectConditionSet,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.subjectmapping.SubjectMappingService/UpdateSubjectConditionSet',
-    request,
-    metadata || {},
-    this.methodDescriptorUpdateSubjectConditionSet);
+      this.hostname_ + '/policy.subjectmapping.SubjectMappingService/UpdateSubjectConditionSet',
+      request,
+      metadata || {},
+      this.methodDescriptorUpdateSubjectConditionSet
+    );
   }
 
   methodDescriptorDeleteSubjectConditionSet = new grpcWeb.MethodDescriptor(
@@ -482,35 +551,40 @@ export class SubjectMappingServiceClient {
 
   deleteSubjectConditionSet(
     request: policy_subjectmapping_subject_mapping_pb.DeleteSubjectConditionSetRequest,
-    metadata?: grpcWeb.Metadata | null): Promise<policy_subjectmapping_subject_mapping_pb.DeleteSubjectConditionSetResponse>;
+    metadata?: grpcWeb.Metadata | null
+  ): Promise<policy_subjectmapping_subject_mapping_pb.DeleteSubjectConditionSetResponse>;
 
   deleteSubjectConditionSet(
     request: policy_subjectmapping_subject_mapping_pb.DeleteSubjectConditionSetRequest,
     metadata: grpcWeb.Metadata | null,
-    callback: (err: grpcWeb.RpcError,
-               response: policy_subjectmapping_subject_mapping_pb.DeleteSubjectConditionSetResponse) => void): grpcWeb.ClientReadableStream<policy_subjectmapping_subject_mapping_pb.DeleteSubjectConditionSetResponse>;
+    callback: (
+      err: grpcWeb.RpcError,
+      response: policy_subjectmapping_subject_mapping_pb.DeleteSubjectConditionSetResponse
+    ) => void
+  ): grpcWeb.ClientReadableStream<policy_subjectmapping_subject_mapping_pb.DeleteSubjectConditionSetResponse>;
 
   deleteSubjectConditionSet(
     request: policy_subjectmapping_subject_mapping_pb.DeleteSubjectConditionSetRequest,
     metadata?: grpcWeb.Metadata | null,
-    callback?: (err: grpcWeb.RpcError,
-               response: policy_subjectmapping_subject_mapping_pb.DeleteSubjectConditionSetResponse) => void) {
+    callback?: (
+      err: grpcWeb.RpcError,
+      response: policy_subjectmapping_subject_mapping_pb.DeleteSubjectConditionSetResponse
+    ) => void
+  ) {
     if (callback !== undefined) {
       return this.client_.rpcCall(
-        this.hostname_ +
-          '/policy.subjectmapping.SubjectMappingService/DeleteSubjectConditionSet',
+        this.hostname_ + '/policy.subjectmapping.SubjectMappingService/DeleteSubjectConditionSet',
         request,
         metadata || {},
         this.methodDescriptorDeleteSubjectConditionSet,
-        callback);
+        callback
+      );
     }
     return this.client_.unaryCall(
-    this.hostname_ +
-      '/policy.subjectmapping.SubjectMappingService/DeleteSubjectConditionSet',
-    request,
-    metadata || {},
-    this.methodDescriptorDeleteSubjectConditionSet);
+      this.hostname_ + '/policy.subjectmapping.SubjectMappingService/DeleteSubjectConditionSet',
+      request,
+      metadata || {},
+      this.methodDescriptorDeleteSubjectConditionSet
+    );
   }
-
 }
-

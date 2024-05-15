@@ -3,24 +3,26 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { GetWellKnownConfigurationRequest, GetWellKnownConfigurationResponse } from "./wellknown_configuration_pb.js";
-import { MethodKind } from "@bufbuild/protobuf";
+import {
+  GetWellKnownConfigurationRequest,
+  GetWellKnownConfigurationResponse,
+} from './wellknown_configuration_pb.js';
+import { MethodKind } from '@bufbuild/protobuf';
 
 /**
  * @generated from service wellknownconfiguration.WellKnownService
  */
 export const WellKnownService = {
-  typeName: "wellknownconfiguration.WellKnownService",
+  typeName: 'wellknownconfiguration.WellKnownService',
   methods: {
     /**
      * @generated from rpc wellknownconfiguration.WellKnownService.GetWellKnownConfiguration
      */
     getWellKnownConfiguration: {
-      name: "GetWellKnownConfiguration",
+      name: 'GetWellKnownConfiguration',
       I: GetWellKnownConfigurationRequest,
       O: GetWellKnownConfigurationResponse,
       kind: MethodKind.Unary,
     },
-  }
+  },
 } as const;
-
