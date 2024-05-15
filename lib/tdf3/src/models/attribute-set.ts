@@ -2,9 +2,9 @@ import { decodeJwt } from 'jose';
 
 export type AttributeObject = {
   attribute: string;
-  kasUrl: string;
+  kasUrl?: string;
   kid?: string;
-  pubKey: string;
+  pubKey?: string;
   displayName?: string;
   isDefault?: boolean;
   jwt?: string;

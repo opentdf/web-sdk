@@ -1,5 +1,4 @@
-import { AttributeValidationError, IllegalArgumentError } from '../../../src/errors.js';
-import { AttributeObject } from '../models/attribute-set.js';
+import { AttributeValidationError } from '../../../src/errors.js';
 
 const sageGetMatch = (match: RegExpMatchArray | null) => (match ? match[0] : null);
 
@@ -36,7 +35,7 @@ const ATTR_NAMESPACE_PATTERN = `(${ATTR_AUTHORITY_PATTERN}${ATTR_NAME})`;
 // validate whole attribute e.g. https://example.com/attr/someattribute/value/somevalue
 export const ATTR_ATTRIBUTE_PATTERN = `^(${ATTR_NAMESPACE_PATTERN}${ATTR_VALUE})$`;
 
-const attributeValidation = (attr: unknown) => {
+export const validateAttributeObject = (attr: unknown): true | never => {
   const isObject = typeof attr === 'object';
   if (!isObject) {
     throw new AttributeValidationError(`attribute should be an object`);
@@ -48,6 +47,10 @@ const attributeValidation = (attr: unknown) => {
     throw new AttributeValidationError(`attribute prop should be a string`);
   }
 
+  return validateAttribute(attribute);
+};
+
+export function validateAttribute(attribute: string): true | never {
   if (!attribute.match(ATTR_ATTRIBUTE_PATTERN)) {
     throw new AttributeValidationError(`attribute is in invalid format [${attribute}]`);
   }
@@ -73,27 +76,4 @@ const attributeValidation = (attr: unknown) => {
   }
 
   return true;
-};
-
-type Attribute = { attribute: string };
-
-export function runAttributesValidation(attributes: Attribute[]): attributes is AttributeObject[] {
-  if (!Array.isArray(attributes)) {
-    throw new AttributeValidationError('Attributes should be of type Array');
-  }
-
-  attributes.forEach(attributeValidation);
-  return true;
 }
-
-export const AttributeValidator = (attributes: Attribute[]) => {
-  try {
-    runAttributesValidation(attributes);
-  } catch (err) {
-    if (err instanceof AttributeValidationError) {
-      throw new IllegalArgumentError(err.message);
-    } else {
-      throw err;
-    }
-  }
-};

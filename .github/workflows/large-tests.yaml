@@ -32,6 +32,36 @@ jobs:
           name: opentdf-client-lib
           path: ./lib/opentdf-client-*.tgz
 
+  cli:
+    needs:
+      - lib
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./cli
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './cli/package-lock.json'
+      - uses: actions/download-artifact@v4
+        with:
+          name: opentdf-client-lib
+          path: lib/
+      - run: npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-*.tgz
+      - run: npm test
+      - run: npm audit --omit dev --audit-level moderate
+      - run: npm run license-check
+      - run: npm run lint
+      - run: npm pack
+      - uses: actions/upload-artifact@v4
+        with:
+          name: opentdf-cli
+          path: ./cli/opentdf-cli-*.tgz
+
   web-app:
     needs:
       - lib
@@ -61,7 +91,8 @@ jobs:
 
   backend-roundtrip:
     needs:
-      - web-app
+      - cli
+      - lib
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -78,10 +109,14 @@ jobs:
         with:
           name: opentdf-client-lib
           path: lib/
+      - uses: actions/download-artifact@v4
+        with:
+          name: opentdf-cli
+          path: cli
       - name: Git clone backend
         run: |
           git clone https://github.com/opentdf/opentdf.git
-      - uses: yokawasa/action-setup-kube-tools@v0.9.2
+      - uses: yokawasa/action-setup-kube-tools@v0.11.1
         with:
           setup-tools: |
             kubectl
