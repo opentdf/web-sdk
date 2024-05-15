@@ -3,39 +3,8 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import {
-  AssignKeyAccessServerToAttributeRequest,
-  AssignKeyAccessServerToAttributeResponse,
-  AssignKeyAccessServerToValueRequest,
-  AssignKeyAccessServerToValueResponse,
-  CreateAttributeRequest,
-  CreateAttributeResponse,
-  CreateAttributeValueRequest,
-  CreateAttributeValueResponse,
-  DeactivateAttributeRequest,
-  DeactivateAttributeResponse,
-  DeactivateAttributeValueRequest,
-  DeactivateAttributeValueResponse,
-  GetAttributeRequest,
-  GetAttributeResponse,
-  GetAttributeValueRequest,
-  GetAttributeValueResponse,
-  GetAttributeValuesByFqnsRequest,
-  GetAttributeValuesByFqnsResponse,
-  ListAttributesRequest,
-  ListAttributesResponse,
-  ListAttributeValuesRequest,
-  ListAttributeValuesResponse,
-  RemoveKeyAccessServerFromAttributeRequest,
-  RemoveKeyAccessServerFromAttributeResponse,
-  RemoveKeyAccessServerFromValueRequest,
-  RemoveKeyAccessServerFromValueResponse,
-  UpdateAttributeRequest,
-  UpdateAttributeResponse,
-  UpdateAttributeValueRequest,
-  UpdateAttributeValueResponse,
-} from './attributes_pb.js';
-import { MethodKind } from '@bufbuild/protobuf';
+import { AssignKeyAccessServerToAttributeRequest, AssignKeyAccessServerToAttributeResponse, AssignKeyAccessServerToValueRequest, AssignKeyAccessServerToValueResponse, CreateAttributeRequest, CreateAttributeResponse, CreateAttributeValueRequest, CreateAttributeValueResponse, DeactivateAttributeRequest, DeactivateAttributeResponse, DeactivateAttributeValueRequest, DeactivateAttributeValueResponse, GetAttributeRequest, GetAttributeResponse, GetAttributeValueRequest, GetAttributeValueResponse, GetAttributeValuesByFqnsRequest, GetAttributeValuesByFqnsResponse, ListAttributesRequest, ListAttributesResponse, ListAttributeValuesRequest, ListAttributeValuesResponse, RemoveKeyAccessServerFromAttributeRequest, RemoveKeyAccessServerFromAttributeResponse, RemoveKeyAccessServerFromValueRequest, RemoveKeyAccessServerFromValueResponse, UpdateAttributeRequest, UpdateAttributeResponse, UpdateAttributeValueRequest, UpdateAttributeValueResponse } from "./attributes_pb.js";
+import { MethodKind } from "@bufbuild/protobuf";
 
 /**
  * /
@@ -45,7 +14,7 @@ import { MethodKind } from '@bufbuild/protobuf';
  * @generated from service policy.attributes.AttributesService
  */
 export const AttributesService = {
-  typeName: 'policy.attributes.AttributesService',
+  typeName: "policy.attributes.AttributesService",
   methods: {
     /**
      * --------------------------------------*
@@ -55,7 +24,7 @@ export const AttributesService = {
      * @generated from rpc policy.attributes.AttributesService.ListAttributes
      */
     listAttributes: {
-      name: 'ListAttributes',
+      name: "ListAttributes",
       I: ListAttributesRequest,
       O: ListAttributesResponse,
       kind: MethodKind.Unary,
@@ -64,7 +33,7 @@ export const AttributesService = {
      * @generated from rpc policy.attributes.AttributesService.ListAttributeValues
      */
     listAttributeValues: {
-      name: 'ListAttributeValues',
+      name: "ListAttributeValues",
       I: ListAttributeValuesRequest,
       O: ListAttributeValuesResponse,
       kind: MethodKind.Unary,
@@ -73,7 +42,7 @@ export const AttributesService = {
      * @generated from rpc policy.attributes.AttributesService.GetAttribute
      */
     getAttribute: {
-      name: 'GetAttribute',
+      name: "GetAttribute",
       I: GetAttributeRequest,
       O: GetAttributeResponse,
       kind: MethodKind.Unary,
@@ -82,7 +51,7 @@ export const AttributesService = {
      * @generated from rpc policy.attributes.AttributesService.GetAttributeValuesByFqns
      */
     getAttributeValuesByFqns: {
-      name: 'GetAttributeValuesByFqns',
+      name: "GetAttributeValuesByFqns",
       I: GetAttributeValuesByFqnsRequest,
       O: GetAttributeValuesByFqnsResponse,
       kind: MethodKind.Unary,
@@ -91,7 +60,7 @@ export const AttributesService = {
      * @generated from rpc policy.attributes.AttributesService.CreateAttribute
      */
     createAttribute: {
-      name: 'CreateAttribute',
+      name: "CreateAttribute",
       I: CreateAttributeRequest,
       O: CreateAttributeResponse,
       kind: MethodKind.Unary,
@@ -100,7 +69,7 @@ export const AttributesService = {
      * @generated from rpc policy.attributes.AttributesService.UpdateAttribute
      */
     updateAttribute: {
-      name: 'UpdateAttribute',
+      name: "UpdateAttribute",
       I: UpdateAttributeRequest,
       O: UpdateAttributeResponse,
       kind: MethodKind.Unary,
@@ -109,7 +78,7 @@ export const AttributesService = {
      * @generated from rpc policy.attributes.AttributesService.DeactivateAttribute
      */
     deactivateAttribute: {
-      name: 'DeactivateAttribute',
+      name: "DeactivateAttribute",
       I: DeactivateAttributeRequest,
       O: DeactivateAttributeResponse,
       kind: MethodKind.Unary,
@@ -122,7 +91,7 @@ export const AttributesService = {
      * @generated from rpc policy.attributes.AttributesService.GetAttributeValue
      */
     getAttributeValue: {
-      name: 'GetAttributeValue',
+      name: "GetAttributeValue",
       I: GetAttributeValueRequest,
       O: GetAttributeValueResponse,
       kind: MethodKind.Unary,
@@ -131,7 +100,7 @@ export const AttributesService = {
      * @generated from rpc policy.attributes.AttributesService.CreateAttributeValue
      */
     createAttributeValue: {
-      name: 'CreateAttributeValue',
+      name: "CreateAttributeValue",
       I: CreateAttributeValueRequest,
       O: CreateAttributeValueResponse,
       kind: MethodKind.Unary,
@@ -140,7 +109,7 @@ export const AttributesService = {
      * @generated from rpc policy.attributes.AttributesService.UpdateAttributeValue
      */
     updateAttributeValue: {
-      name: 'UpdateAttributeValue',
+      name: "UpdateAttributeValue",
       I: UpdateAttributeValueRequest,
       O: UpdateAttributeValueResponse,
       kind: MethodKind.Unary,
@@ -149,7 +118,7 @@ export const AttributesService = {
      * @generated from rpc policy.attributes.AttributesService.DeactivateAttributeValue
      */
     deactivateAttributeValue: {
-      name: 'DeactivateAttributeValue',
+      name: "DeactivateAttributeValue",
       I: DeactivateAttributeValueRequest,
       O: DeactivateAttributeValueResponse,
       kind: MethodKind.Unary,
@@ -162,7 +131,7 @@ export const AttributesService = {
      * @generated from rpc policy.attributes.AttributesService.AssignKeyAccessServerToAttribute
      */
     assignKeyAccessServerToAttribute: {
-      name: 'AssignKeyAccessServerToAttribute',
+      name: "AssignKeyAccessServerToAttribute",
       I: AssignKeyAccessServerToAttributeRequest,
       O: AssignKeyAccessServerToAttributeResponse,
       kind: MethodKind.Unary,
@@ -171,7 +140,7 @@ export const AttributesService = {
      * @generated from rpc policy.attributes.AttributesService.RemoveKeyAccessServerFromAttribute
      */
     removeKeyAccessServerFromAttribute: {
-      name: 'RemoveKeyAccessServerFromAttribute',
+      name: "RemoveKeyAccessServerFromAttribute",
       I: RemoveKeyAccessServerFromAttributeRequest,
       O: RemoveKeyAccessServerFromAttributeResponse,
       kind: MethodKind.Unary,
@@ -180,7 +149,7 @@ export const AttributesService = {
      * @generated from rpc policy.attributes.AttributesService.AssignKeyAccessServerToValue
      */
     assignKeyAccessServerToValue: {
-      name: 'AssignKeyAccessServerToValue',
+      name: "AssignKeyAccessServerToValue",
       I: AssignKeyAccessServerToValueRequest,
       O: AssignKeyAccessServerToValueResponse,
       kind: MethodKind.Unary,
@@ -189,10 +158,11 @@ export const AttributesService = {
      * @generated from rpc policy.attributes.AttributesService.RemoveKeyAccessServerFromValue
      */
     removeKeyAccessServerFromValue: {
-      name: 'RemoveKeyAccessServerFromValue',
+      name: "RemoveKeyAccessServerFromValue",
       I: RemoveKeyAccessServerFromValueRequest,
       O: RemoveKeyAccessServerFromValueResponse,
       kind: MethodKind.Unary,
     },
-  },
+  }
 } as const;
+

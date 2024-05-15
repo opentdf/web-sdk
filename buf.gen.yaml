@@ -4,6 +4,9 @@ plugins:
    - name: es
      opt: target=ts
      out: lib/src/platform
-   - name: connect-es # alternatively buf.build/grpc/web:v1.5.0
+   - name: connect-es
      out: lib/src/platform
      opt: target=ts
+   - plugin: buf.build/grpc/web
+     out: lib/src/platform
+     opt: import_style=typescript,mode=grpcwebtext

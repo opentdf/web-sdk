@@ -3,23 +3,24 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { ResolveEntitiesRequest, ResolveEntitiesResponse } from './entity_resolution_pb.js';
-import { MethodKind } from '@bufbuild/protobuf';
+import { ResolveEntitiesRequest, ResolveEntitiesResponse } from "./entity_resolution_pb.js";
+import { MethodKind } from "@bufbuild/protobuf";
 
 /**
  * @generated from service entityresolution.EntityResolutionService
  */
 export const EntityResolutionService = {
-  typeName: 'entityresolution.EntityResolutionService',
+  typeName: "entityresolution.EntityResolutionService",
   methods: {
     /**
      * @generated from rpc entityresolution.EntityResolutionService.ResolveEntities
      */
     resolveEntities: {
-      name: 'ResolveEntities',
+      name: "ResolveEntities",
       I: ResolveEntitiesRequest,
       O: ResolveEntitiesResponse,
       kind: MethodKind.Unary,
     },
-  },
+  }
 } as const;
+

@@ -3,25 +3,20 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import {
-  GetDecisionsRequest,
-  GetDecisionsResponse,
-  GetEntitlementsRequest,
-  GetEntitlementsResponse,
-} from './authorization_pb.js';
-import { MethodKind } from '@bufbuild/protobuf';
+import { GetDecisionsRequest, GetDecisionsResponse, GetEntitlementsRequest, GetEntitlementsResponse } from "./authorization_pb.js";
+import { MethodKind } from "@bufbuild/protobuf";
 
 /**
  * @generated from service authorization.AuthorizationService
  */
 export const AuthorizationService = {
-  typeName: 'authorization.AuthorizationService',
+  typeName: "authorization.AuthorizationService",
   methods: {
     /**
      * @generated from rpc authorization.AuthorizationService.GetDecisions
      */
     getDecisions: {
-      name: 'GetDecisions',
+      name: "GetDecisions",
       I: GetDecisionsRequest,
       O: GetDecisionsResponse,
       kind: MethodKind.Unary,
@@ -30,10 +25,11 @@ export const AuthorizationService = {
      * @generated from rpc authorization.AuthorizationService.GetEntitlements
      */
     getEntitlements: {
-      name: 'GetEntitlements',
+      name: "GetEntitlements",
       I: GetEntitlementsRequest,
       O: GetEntitlementsResponse,
       kind: MethodKind.Unary,
     },
-  },
+  }
 } as const;
+

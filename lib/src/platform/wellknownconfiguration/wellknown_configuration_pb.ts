@@ -3,15 +3,8 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import type {
-  BinaryReadOptions,
-  FieldList,
-  JsonReadOptions,
-  JsonValue,
-  PartialMessage,
-  PlainMessage,
-} from '@bufbuild/protobuf';
-import { Message, proto3, Struct } from '@bufbuild/protobuf';
+import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
+import { Message, proto3, Struct } from "@bufbuild/protobuf";
 
 /**
  * @generated from message wellknownconfiguration.WellKnownConfig
@@ -28,15 +21,9 @@ export class WellKnownConfig extends Message<WellKnownConfig> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'wellknownconfiguration.WellKnownConfig';
+  static readonly typeName = "wellknownconfiguration.WellKnownConfig";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    {
-      no: 1,
-      name: 'configuration',
-      kind: 'map',
-      K: 9 /* ScalarType.STRING */,
-      V: { kind: 'message', T: Struct },
-    },
+    { no: 1, name: "configuration", kind: "map", K: 9 /* ScalarType.STRING */, V: {kind: "message", T: Struct} },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): WellKnownConfig {
@@ -51,10 +38,7 @@ export class WellKnownConfig extends Message<WellKnownConfig> {
     return new WellKnownConfig().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: WellKnownConfig | PlainMessage<WellKnownConfig> | undefined,
-    b: WellKnownConfig | PlainMessage<WellKnownConfig> | undefined
-  ): boolean {
+  static equals(a: WellKnownConfig | PlainMessage<WellKnownConfig> | undefined, b: WellKnownConfig | PlainMessage<WellKnownConfig> | undefined): boolean {
     return proto3.util.equals(WellKnownConfig, a, b);
   }
 }
@@ -69,37 +53,23 @@ export class GetWellKnownConfigurationRequest extends Message<GetWellKnownConfig
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'wellknownconfiguration.GetWellKnownConfigurationRequest';
-  static readonly fields: FieldList = proto3.util.newFieldList(() => []);
+  static readonly typeName = "wellknownconfiguration.GetWellKnownConfigurationRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): GetWellKnownConfigurationRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetWellKnownConfigurationRequest {
     return new GetWellKnownConfigurationRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): GetWellKnownConfigurationRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetWellKnownConfigurationRequest {
     return new GetWellKnownConfigurationRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): GetWellKnownConfigurationRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetWellKnownConfigurationRequest {
     return new GetWellKnownConfigurationRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a:
-      | GetWellKnownConfigurationRequest
-      | PlainMessage<GetWellKnownConfigurationRequest>
-      | undefined,
-    b: GetWellKnownConfigurationRequest | PlainMessage<GetWellKnownConfigurationRequest> | undefined
-  ): boolean {
+  static equals(a: GetWellKnownConfigurationRequest | PlainMessage<GetWellKnownConfigurationRequest> | undefined, b: GetWellKnownConfigurationRequest | PlainMessage<GetWellKnownConfigurationRequest> | undefined): boolean {
     return proto3.util.equals(GetWellKnownConfigurationRequest, a, b);
   }
 }
@@ -119,42 +89,25 @@ export class GetWellKnownConfigurationResponse extends Message<GetWellKnownConfi
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'wellknownconfiguration.GetWellKnownConfigurationResponse';
+  static readonly typeName = "wellknownconfiguration.GetWellKnownConfigurationResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'configuration', kind: 'message', T: Struct },
+    { no: 1, name: "configuration", kind: "message", T: Struct },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): GetWellKnownConfigurationResponse {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetWellKnownConfigurationResponse {
     return new GetWellKnownConfigurationResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): GetWellKnownConfigurationResponse {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetWellKnownConfigurationResponse {
     return new GetWellKnownConfigurationResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): GetWellKnownConfigurationResponse {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetWellKnownConfigurationResponse {
     return new GetWellKnownConfigurationResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a:
-      | GetWellKnownConfigurationResponse
-      | PlainMessage<GetWellKnownConfigurationResponse>
-      | undefined,
-    b:
-      | GetWellKnownConfigurationResponse
-      | PlainMessage<GetWellKnownConfigurationResponse>
-      | undefined
-  ): boolean {
+  static equals(a: GetWellKnownConfigurationResponse | PlainMessage<GetWellKnownConfigurationResponse> | undefined, b: GetWellKnownConfigurationResponse | PlainMessage<GetWellKnownConfigurationResponse> | undefined): boolean {
     return proto3.util.equals(GetWellKnownConfigurationResponse, a, b);
   }
 }
+

@@ -3,23 +3,10 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import type {
-  BinaryReadOptions,
-  FieldList,
-  JsonReadOptions,
-  JsonValue,
-  PartialMessage,
-  PlainMessage,
-} from '@bufbuild/protobuf';
-import { Message, proto3 } from '@bufbuild/protobuf';
-import {
-  Action,
-  SubjectConditionSet,
-  SubjectMapping,
-  SubjectProperty,
-  SubjectSet,
-} from '../objects_pb.js';
-import { MetadataMutable, MetadataUpdateEnum } from '../../common/common_pb.js';
+import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
+import { Message, proto3 } from "@bufbuild/protobuf";
+import { Action, SubjectConditionSet, SubjectMapping, SubjectProperty, SubjectSet } from "../objects_pb.js";
+import { MetadataMutable, MetadataUpdateEnum } from "../../common/common_pb.js";
 
 /**
  * MatchSubjectMappingsRequest liberally returns a list of SubjectMappings based on the provided SubjectProperties. The SubjectMappings are returned
@@ -48,36 +35,24 @@ export class MatchSubjectMappingsRequest extends Message<MatchSubjectMappingsReq
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.subjectmapping.MatchSubjectMappingsRequest';
+  static readonly typeName = "policy.subjectmapping.MatchSubjectMappingsRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'subject_properties', kind: 'message', T: SubjectProperty, repeated: true },
+    { no: 1, name: "subject_properties", kind: "message", T: SubjectProperty, repeated: true },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): MatchSubjectMappingsRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): MatchSubjectMappingsRequest {
     return new MatchSubjectMappingsRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): MatchSubjectMappingsRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): MatchSubjectMappingsRequest {
     return new MatchSubjectMappingsRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): MatchSubjectMappingsRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): MatchSubjectMappingsRequest {
     return new MatchSubjectMappingsRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: MatchSubjectMappingsRequest | PlainMessage<MatchSubjectMappingsRequest> | undefined,
-    b: MatchSubjectMappingsRequest | PlainMessage<MatchSubjectMappingsRequest> | undefined
-  ): boolean {
+  static equals(a: MatchSubjectMappingsRequest | PlainMessage<MatchSubjectMappingsRequest> | undefined, b: MatchSubjectMappingsRequest | PlainMessage<MatchSubjectMappingsRequest> | undefined): boolean {
     return proto3.util.equals(MatchSubjectMappingsRequest, a, b);
   }
 }
@@ -97,36 +72,24 @@ export class MatchSubjectMappingsResponse extends Message<MatchSubjectMappingsRe
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.subjectmapping.MatchSubjectMappingsResponse';
+  static readonly typeName = "policy.subjectmapping.MatchSubjectMappingsResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'subject_mappings', kind: 'message', T: SubjectMapping, repeated: true },
+    { no: 1, name: "subject_mappings", kind: "message", T: SubjectMapping, repeated: true },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): MatchSubjectMappingsResponse {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): MatchSubjectMappingsResponse {
     return new MatchSubjectMappingsResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): MatchSubjectMappingsResponse {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): MatchSubjectMappingsResponse {
     return new MatchSubjectMappingsResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): MatchSubjectMappingsResponse {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): MatchSubjectMappingsResponse {
     return new MatchSubjectMappingsResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: MatchSubjectMappingsResponse | PlainMessage<MatchSubjectMappingsResponse> | undefined,
-    b: MatchSubjectMappingsResponse | PlainMessage<MatchSubjectMappingsResponse> | undefined
-  ): boolean {
+  static equals(a: MatchSubjectMappingsResponse | PlainMessage<MatchSubjectMappingsResponse> | undefined, b: MatchSubjectMappingsResponse | PlainMessage<MatchSubjectMappingsResponse> | undefined): boolean {
     return proto3.util.equals(MatchSubjectMappingsResponse, a, b);
   }
 }
@@ -138,7 +101,7 @@ export class GetSubjectMappingRequest extends Message<GetSubjectMappingRequest> 
   /**
    * @generated from field: string id = 1;
    */
-  id = '';
+  id = "";
 
   constructor(data?: PartialMessage<GetSubjectMappingRequest>) {
     super();
@@ -146,36 +109,24 @@ export class GetSubjectMappingRequest extends Message<GetSubjectMappingRequest> 
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.subjectmapping.GetSubjectMappingRequest';
+  static readonly typeName = "policy.subjectmapping.GetSubjectMappingRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): GetSubjectMappingRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetSubjectMappingRequest {
     return new GetSubjectMappingRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): GetSubjectMappingRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetSubjectMappingRequest {
     return new GetSubjectMappingRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): GetSubjectMappingRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetSubjectMappingRequest {
     return new GetSubjectMappingRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: GetSubjectMappingRequest | PlainMessage<GetSubjectMappingRequest> | undefined,
-    b: GetSubjectMappingRequest | PlainMessage<GetSubjectMappingRequest> | undefined
-  ): boolean {
+  static equals(a: GetSubjectMappingRequest | PlainMessage<GetSubjectMappingRequest> | undefined, b: GetSubjectMappingRequest | PlainMessage<GetSubjectMappingRequest> | undefined): boolean {
     return proto3.util.equals(GetSubjectMappingRequest, a, b);
   }
 }
@@ -195,36 +146,24 @@ export class GetSubjectMappingResponse extends Message<GetSubjectMappingResponse
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.subjectmapping.GetSubjectMappingResponse';
+  static readonly typeName = "policy.subjectmapping.GetSubjectMappingResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'subject_mapping', kind: 'message', T: SubjectMapping },
+    { no: 1, name: "subject_mapping", kind: "message", T: SubjectMapping },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): GetSubjectMappingResponse {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetSubjectMappingResponse {
     return new GetSubjectMappingResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): GetSubjectMappingResponse {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetSubjectMappingResponse {
     return new GetSubjectMappingResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): GetSubjectMappingResponse {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetSubjectMappingResponse {
     return new GetSubjectMappingResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: GetSubjectMappingResponse | PlainMessage<GetSubjectMappingResponse> | undefined,
-    b: GetSubjectMappingResponse | PlainMessage<GetSubjectMappingResponse> | undefined
-  ): boolean {
+  static equals(a: GetSubjectMappingResponse | PlainMessage<GetSubjectMappingResponse> | undefined, b: GetSubjectMappingResponse | PlainMessage<GetSubjectMappingResponse> | undefined): boolean {
     return proto3.util.equals(GetSubjectMappingResponse, a, b);
   }
 }
@@ -239,34 +178,23 @@ export class ListSubjectMappingsRequest extends Message<ListSubjectMappingsReque
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.subjectmapping.ListSubjectMappingsRequest';
-  static readonly fields: FieldList = proto3.util.newFieldList(() => []);
+  static readonly typeName = "policy.subjectmapping.ListSubjectMappingsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): ListSubjectMappingsRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListSubjectMappingsRequest {
     return new ListSubjectMappingsRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): ListSubjectMappingsRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListSubjectMappingsRequest {
     return new ListSubjectMappingsRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): ListSubjectMappingsRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListSubjectMappingsRequest {
     return new ListSubjectMappingsRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: ListSubjectMappingsRequest | PlainMessage<ListSubjectMappingsRequest> | undefined,
-    b: ListSubjectMappingsRequest | PlainMessage<ListSubjectMappingsRequest> | undefined
-  ): boolean {
+  static equals(a: ListSubjectMappingsRequest | PlainMessage<ListSubjectMappingsRequest> | undefined, b: ListSubjectMappingsRequest | PlainMessage<ListSubjectMappingsRequest> | undefined): boolean {
     return proto3.util.equals(ListSubjectMappingsRequest, a, b);
   }
 }
@@ -286,36 +214,24 @@ export class ListSubjectMappingsResponse extends Message<ListSubjectMappingsResp
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.subjectmapping.ListSubjectMappingsResponse';
+  static readonly typeName = "policy.subjectmapping.ListSubjectMappingsResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'subject_mappings', kind: 'message', T: SubjectMapping, repeated: true },
+    { no: 1, name: "subject_mappings", kind: "message", T: SubjectMapping, repeated: true },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): ListSubjectMappingsResponse {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListSubjectMappingsResponse {
     return new ListSubjectMappingsResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): ListSubjectMappingsResponse {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListSubjectMappingsResponse {
     return new ListSubjectMappingsResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): ListSubjectMappingsResponse {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListSubjectMappingsResponse {
     return new ListSubjectMappingsResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: ListSubjectMappingsResponse | PlainMessage<ListSubjectMappingsResponse> | undefined,
-    b: ListSubjectMappingsResponse | PlainMessage<ListSubjectMappingsResponse> | undefined
-  ): boolean {
+  static equals(a: ListSubjectMappingsResponse | PlainMessage<ListSubjectMappingsResponse> | undefined, b: ListSubjectMappingsResponse | PlainMessage<ListSubjectMappingsResponse> | undefined): boolean {
     return proto3.util.equals(ListSubjectMappingsResponse, a, b);
   }
 }
@@ -330,7 +246,7 @@ export class CreateSubjectMappingRequest extends Message<CreateSubjectMappingReq
    *
    * @generated from field: string attribute_value_id = 1;
    */
-  attributeValueId = '';
+  attributeValueId = "";
 
   /**
    * The actions permitted by subjects in this mapping
@@ -345,7 +261,7 @@ export class CreateSubjectMappingRequest extends Message<CreateSubjectMappingReq
    *
    * @generated from field: string existing_subject_condition_set_id = 3;
    */
-  existingSubjectConditionSetId = '';
+  existingSubjectConditionSetId = "";
 
   /**
    * Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)
@@ -367,45 +283,28 @@ export class CreateSubjectMappingRequest extends Message<CreateSubjectMappingReq
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.subjectmapping.CreateSubjectMappingRequest';
+  static readonly typeName = "policy.subjectmapping.CreateSubjectMappingRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'attribute_value_id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: 'actions', kind: 'message', T: Action, repeated: true },
-    {
-      no: 3,
-      name: 'existing_subject_condition_set_id',
-      kind: 'scalar',
-      T: 9 /* ScalarType.STRING */,
-    },
-    { no: 4, name: 'new_subject_condition_set', kind: 'message', T: SubjectConditionSetCreate },
-    { no: 100, name: 'metadata', kind: 'message', T: MetadataMutable },
+    { no: 1, name: "attribute_value_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "actions", kind: "message", T: Action, repeated: true },
+    { no: 3, name: "existing_subject_condition_set_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "new_subject_condition_set", kind: "message", T: SubjectConditionSetCreate },
+    { no: 100, name: "metadata", kind: "message", T: MetadataMutable },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): CreateSubjectMappingRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateSubjectMappingRequest {
     return new CreateSubjectMappingRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): CreateSubjectMappingRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CreateSubjectMappingRequest {
     return new CreateSubjectMappingRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): CreateSubjectMappingRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CreateSubjectMappingRequest {
     return new CreateSubjectMappingRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: CreateSubjectMappingRequest | PlainMessage<CreateSubjectMappingRequest> | undefined,
-    b: CreateSubjectMappingRequest | PlainMessage<CreateSubjectMappingRequest> | undefined
-  ): boolean {
+  static equals(a: CreateSubjectMappingRequest | PlainMessage<CreateSubjectMappingRequest> | undefined, b: CreateSubjectMappingRequest | PlainMessage<CreateSubjectMappingRequest> | undefined): boolean {
     return proto3.util.equals(CreateSubjectMappingRequest, a, b);
   }
 }
@@ -425,36 +324,24 @@ export class CreateSubjectMappingResponse extends Message<CreateSubjectMappingRe
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.subjectmapping.CreateSubjectMappingResponse';
+  static readonly typeName = "policy.subjectmapping.CreateSubjectMappingResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'subject_mapping', kind: 'message', T: SubjectMapping },
+    { no: 1, name: "subject_mapping", kind: "message", T: SubjectMapping },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): CreateSubjectMappingResponse {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateSubjectMappingResponse {
     return new CreateSubjectMappingResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): CreateSubjectMappingResponse {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CreateSubjectMappingResponse {
     return new CreateSubjectMappingResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): CreateSubjectMappingResponse {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CreateSubjectMappingResponse {
     return new CreateSubjectMappingResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: CreateSubjectMappingResponse | PlainMessage<CreateSubjectMappingResponse> | undefined,
-    b: CreateSubjectMappingResponse | PlainMessage<CreateSubjectMappingResponse> | undefined
-  ): boolean {
+  static equals(a: CreateSubjectMappingResponse | PlainMessage<CreateSubjectMappingResponse> | undefined, b: CreateSubjectMappingResponse | PlainMessage<CreateSubjectMappingResponse> | undefined): boolean {
     return proto3.util.equals(CreateSubjectMappingResponse, a, b);
   }
 }
@@ -468,7 +355,7 @@ export class UpdateSubjectMappingRequest extends Message<UpdateSubjectMappingReq
    *
    * @generated from field: string id = 1;
    */
-  id = '';
+  id = "";
 
   /**
    * Optional
@@ -476,7 +363,7 @@ export class UpdateSubjectMappingRequest extends Message<UpdateSubjectMappingReq
    *
    * @generated from field: string subject_condition_set_id = 2;
    */
-  subjectConditionSetId = '';
+  subjectConditionSetId = "";
 
   /**
    * Replaces entire list of actions permitted by subjects
@@ -503,45 +390,28 @@ export class UpdateSubjectMappingRequest extends Message<UpdateSubjectMappingReq
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.subjectmapping.UpdateSubjectMappingRequest';
+  static readonly typeName = "policy.subjectmapping.UpdateSubjectMappingRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: 'subject_condition_set_id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: 'actions', kind: 'message', T: Action, repeated: true },
-    { no: 100, name: 'metadata', kind: 'message', T: MetadataMutable },
-    {
-      no: 101,
-      name: 'metadata_update_behavior',
-      kind: 'enum',
-      T: proto3.getEnumType(MetadataUpdateEnum),
-    },
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "subject_condition_set_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "actions", kind: "message", T: Action, repeated: true },
+    { no: 100, name: "metadata", kind: "message", T: MetadataMutable },
+    { no: 101, name: "metadata_update_behavior", kind: "enum", T: proto3.getEnumType(MetadataUpdateEnum) },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): UpdateSubjectMappingRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateSubjectMappingRequest {
     return new UpdateSubjectMappingRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): UpdateSubjectMappingRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UpdateSubjectMappingRequest {
     return new UpdateSubjectMappingRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): UpdateSubjectMappingRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UpdateSubjectMappingRequest {
     return new UpdateSubjectMappingRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: UpdateSubjectMappingRequest | PlainMessage<UpdateSubjectMappingRequest> | undefined,
-    b: UpdateSubjectMappingRequest | PlainMessage<UpdateSubjectMappingRequest> | undefined
-  ): boolean {
+  static equals(a: UpdateSubjectMappingRequest | PlainMessage<UpdateSubjectMappingRequest> | undefined, b: UpdateSubjectMappingRequest | PlainMessage<UpdateSubjectMappingRequest> | undefined): boolean {
     return proto3.util.equals(UpdateSubjectMappingRequest, a, b);
   }
 }
@@ -563,36 +433,24 @@ export class UpdateSubjectMappingResponse extends Message<UpdateSubjectMappingRe
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.subjectmapping.UpdateSubjectMappingResponse';
+  static readonly typeName = "policy.subjectmapping.UpdateSubjectMappingResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'subject_mapping', kind: 'message', T: SubjectMapping },
+    { no: 1, name: "subject_mapping", kind: "message", T: SubjectMapping },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): UpdateSubjectMappingResponse {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateSubjectMappingResponse {
     return new UpdateSubjectMappingResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): UpdateSubjectMappingResponse {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UpdateSubjectMappingResponse {
     return new UpdateSubjectMappingResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): UpdateSubjectMappingResponse {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UpdateSubjectMappingResponse {
     return new UpdateSubjectMappingResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: UpdateSubjectMappingResponse | PlainMessage<UpdateSubjectMappingResponse> | undefined,
-    b: UpdateSubjectMappingResponse | PlainMessage<UpdateSubjectMappingResponse> | undefined
-  ): boolean {
+  static equals(a: UpdateSubjectMappingResponse | PlainMessage<UpdateSubjectMappingResponse> | undefined, b: UpdateSubjectMappingResponse | PlainMessage<UpdateSubjectMappingResponse> | undefined): boolean {
     return proto3.util.equals(UpdateSubjectMappingResponse, a, b);
   }
 }
@@ -604,7 +462,7 @@ export class DeleteSubjectMappingRequest extends Message<DeleteSubjectMappingReq
   /**
    * @generated from field: string id = 1;
    */
-  id = '';
+  id = "";
 
   constructor(data?: PartialMessage<DeleteSubjectMappingRequest>) {
     super();
@@ -612,36 +470,24 @@ export class DeleteSubjectMappingRequest extends Message<DeleteSubjectMappingReq
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.subjectmapping.DeleteSubjectMappingRequest';
+  static readonly typeName = "policy.subjectmapping.DeleteSubjectMappingRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): DeleteSubjectMappingRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeleteSubjectMappingRequest {
     return new DeleteSubjectMappingRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): DeleteSubjectMappingRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeleteSubjectMappingRequest {
     return new DeleteSubjectMappingRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): DeleteSubjectMappingRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeleteSubjectMappingRequest {
     return new DeleteSubjectMappingRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: DeleteSubjectMappingRequest | PlainMessage<DeleteSubjectMappingRequest> | undefined,
-    b: DeleteSubjectMappingRequest | PlainMessage<DeleteSubjectMappingRequest> | undefined
-  ): boolean {
+  static equals(a: DeleteSubjectMappingRequest | PlainMessage<DeleteSubjectMappingRequest> | undefined, b: DeleteSubjectMappingRequest | PlainMessage<DeleteSubjectMappingRequest> | undefined): boolean {
     return proto3.util.equals(DeleteSubjectMappingRequest, a, b);
   }
 }
@@ -663,36 +509,24 @@ export class DeleteSubjectMappingResponse extends Message<DeleteSubjectMappingRe
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.subjectmapping.DeleteSubjectMappingResponse';
+  static readonly typeName = "policy.subjectmapping.DeleteSubjectMappingResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'subject_mapping', kind: 'message', T: SubjectMapping },
+    { no: 1, name: "subject_mapping", kind: "message", T: SubjectMapping },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): DeleteSubjectMappingResponse {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeleteSubjectMappingResponse {
     return new DeleteSubjectMappingResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): DeleteSubjectMappingResponse {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeleteSubjectMappingResponse {
     return new DeleteSubjectMappingResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): DeleteSubjectMappingResponse {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeleteSubjectMappingResponse {
     return new DeleteSubjectMappingResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: DeleteSubjectMappingResponse | PlainMessage<DeleteSubjectMappingResponse> | undefined,
-    b: DeleteSubjectMappingResponse | PlainMessage<DeleteSubjectMappingResponse> | undefined
-  ): boolean {
+  static equals(a: DeleteSubjectMappingResponse | PlainMessage<DeleteSubjectMappingResponse> | undefined, b: DeleteSubjectMappingResponse | PlainMessage<DeleteSubjectMappingResponse> | undefined): boolean {
     return proto3.util.equals(DeleteSubjectMappingResponse, a, b);
   }
 }
@@ -704,7 +538,7 @@ export class GetSubjectConditionSetRequest extends Message<GetSubjectConditionSe
   /**
    * @generated from field: string id = 1;
    */
-  id = '';
+  id = "";
 
   constructor(data?: PartialMessage<GetSubjectConditionSetRequest>) {
     super();
@@ -712,36 +546,24 @@ export class GetSubjectConditionSetRequest extends Message<GetSubjectConditionSe
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.subjectmapping.GetSubjectConditionSetRequest';
+  static readonly typeName = "policy.subjectmapping.GetSubjectConditionSetRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): GetSubjectConditionSetRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetSubjectConditionSetRequest {
     return new GetSubjectConditionSetRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): GetSubjectConditionSetRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetSubjectConditionSetRequest {
     return new GetSubjectConditionSetRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): GetSubjectConditionSetRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetSubjectConditionSetRequest {
     return new GetSubjectConditionSetRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: GetSubjectConditionSetRequest | PlainMessage<GetSubjectConditionSetRequest> | undefined,
-    b: GetSubjectConditionSetRequest | PlainMessage<GetSubjectConditionSetRequest> | undefined
-  ): boolean {
+  static equals(a: GetSubjectConditionSetRequest | PlainMessage<GetSubjectConditionSetRequest> | undefined, b: GetSubjectConditionSetRequest | PlainMessage<GetSubjectConditionSetRequest> | undefined): boolean {
     return proto3.util.equals(GetSubjectConditionSetRequest, a, b);
   }
 }
@@ -768,43 +590,25 @@ export class GetSubjectConditionSetResponse extends Message<GetSubjectConditionS
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.subjectmapping.GetSubjectConditionSetResponse';
+  static readonly typeName = "policy.subjectmapping.GetSubjectConditionSetResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'subject_condition_set', kind: 'message', T: SubjectConditionSet },
-    {
-      no: 2,
-      name: 'associated_subject_mappings',
-      kind: 'message',
-      T: SubjectMapping,
-      repeated: true,
-    },
+    { no: 1, name: "subject_condition_set", kind: "message", T: SubjectConditionSet },
+    { no: 2, name: "associated_subject_mappings", kind: "message", T: SubjectMapping, repeated: true },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): GetSubjectConditionSetResponse {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetSubjectConditionSetResponse {
     return new GetSubjectConditionSetResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): GetSubjectConditionSetResponse {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetSubjectConditionSetResponse {
     return new GetSubjectConditionSetResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): GetSubjectConditionSetResponse {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetSubjectConditionSetResponse {
     return new GetSubjectConditionSetResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: GetSubjectConditionSetResponse | PlainMessage<GetSubjectConditionSetResponse> | undefined,
-    b: GetSubjectConditionSetResponse | PlainMessage<GetSubjectConditionSetResponse> | undefined
-  ): boolean {
+  static equals(a: GetSubjectConditionSetResponse | PlainMessage<GetSubjectConditionSetResponse> | undefined, b: GetSubjectConditionSetResponse | PlainMessage<GetSubjectConditionSetResponse> | undefined): boolean {
     return proto3.util.equals(GetSubjectConditionSetResponse, a, b);
   }
 }
@@ -819,34 +623,23 @@ export class ListSubjectConditionSetsRequest extends Message<ListSubjectConditio
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.subjectmapping.ListSubjectConditionSetsRequest';
-  static readonly fields: FieldList = proto3.util.newFieldList(() => []);
+  static readonly typeName = "policy.subjectmapping.ListSubjectConditionSetsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): ListSubjectConditionSetsRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListSubjectConditionSetsRequest {
     return new ListSubjectConditionSetsRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): ListSubjectConditionSetsRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListSubjectConditionSetsRequest {
     return new ListSubjectConditionSetsRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): ListSubjectConditionSetsRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListSubjectConditionSetsRequest {
     return new ListSubjectConditionSetsRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: ListSubjectConditionSetsRequest | PlainMessage<ListSubjectConditionSetsRequest> | undefined,
-    b: ListSubjectConditionSetsRequest | PlainMessage<ListSubjectConditionSetsRequest> | undefined
-  ): boolean {
+  static equals(a: ListSubjectConditionSetsRequest | PlainMessage<ListSubjectConditionSetsRequest> | undefined, b: ListSubjectConditionSetsRequest | PlainMessage<ListSubjectConditionSetsRequest> | undefined): boolean {
     return proto3.util.equals(ListSubjectConditionSetsRequest, a, b);
   }
 }
@@ -866,45 +659,24 @@ export class ListSubjectConditionSetsResponse extends Message<ListSubjectConditi
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.subjectmapping.ListSubjectConditionSetsResponse';
+  static readonly typeName = "policy.subjectmapping.ListSubjectConditionSetsResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    {
-      no: 1,
-      name: 'subject_condition_sets',
-      kind: 'message',
-      T: SubjectConditionSet,
-      repeated: true,
-    },
+    { no: 1, name: "subject_condition_sets", kind: "message", T: SubjectConditionSet, repeated: true },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): ListSubjectConditionSetsResponse {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListSubjectConditionSetsResponse {
     return new ListSubjectConditionSetsResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): ListSubjectConditionSetsResponse {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListSubjectConditionSetsResponse {
     return new ListSubjectConditionSetsResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): ListSubjectConditionSetsResponse {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListSubjectConditionSetsResponse {
     return new ListSubjectConditionSetsResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a:
-      | ListSubjectConditionSetsResponse
-      | PlainMessage<ListSubjectConditionSetsResponse>
-      | undefined,
-    b: ListSubjectConditionSetsResponse | PlainMessage<ListSubjectConditionSetsResponse> | undefined
-  ): boolean {
+  static equals(a: ListSubjectConditionSetsResponse | PlainMessage<ListSubjectConditionSetsResponse> | undefined, b: ListSubjectConditionSetsResponse | PlainMessage<ListSubjectConditionSetsResponse> | undefined): boolean {
     return proto3.util.equals(ListSubjectConditionSetsResponse, a, b);
   }
 }
@@ -934,37 +706,25 @@ export class SubjectConditionSetCreate extends Message<SubjectConditionSetCreate
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.subjectmapping.SubjectConditionSetCreate';
+  static readonly typeName = "policy.subjectmapping.SubjectConditionSetCreate";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'subject_sets', kind: 'message', T: SubjectSet, repeated: true },
-    { no: 100, name: 'metadata', kind: 'message', T: MetadataMutable },
+    { no: 1, name: "subject_sets", kind: "message", T: SubjectSet, repeated: true },
+    { no: 100, name: "metadata", kind: "message", T: MetadataMutable },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): SubjectConditionSetCreate {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SubjectConditionSetCreate {
     return new SubjectConditionSetCreate().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): SubjectConditionSetCreate {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SubjectConditionSetCreate {
     return new SubjectConditionSetCreate().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): SubjectConditionSetCreate {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SubjectConditionSetCreate {
     return new SubjectConditionSetCreate().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: SubjectConditionSetCreate | PlainMessage<SubjectConditionSetCreate> | undefined,
-    b: SubjectConditionSetCreate | PlainMessage<SubjectConditionSetCreate> | undefined
-  ): boolean {
+  static equals(a: SubjectConditionSetCreate | PlainMessage<SubjectConditionSetCreate> | undefined, b: SubjectConditionSetCreate | PlainMessage<SubjectConditionSetCreate> | undefined): boolean {
     return proto3.util.equals(SubjectConditionSetCreate, a, b);
   }
 }
@@ -984,39 +744,24 @@ export class CreateSubjectConditionSetRequest extends Message<CreateSubjectCondi
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.subjectmapping.CreateSubjectConditionSetRequest';
+  static readonly typeName = "policy.subjectmapping.CreateSubjectConditionSetRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'subject_condition_set', kind: 'message', T: SubjectConditionSetCreate },
+    { no: 1, name: "subject_condition_set", kind: "message", T: SubjectConditionSetCreate },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): CreateSubjectConditionSetRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateSubjectConditionSetRequest {
     return new CreateSubjectConditionSetRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): CreateSubjectConditionSetRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CreateSubjectConditionSetRequest {
     return new CreateSubjectConditionSetRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): CreateSubjectConditionSetRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CreateSubjectConditionSetRequest {
     return new CreateSubjectConditionSetRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a:
-      | CreateSubjectConditionSetRequest
-      | PlainMessage<CreateSubjectConditionSetRequest>
-      | undefined,
-    b: CreateSubjectConditionSetRequest | PlainMessage<CreateSubjectConditionSetRequest> | undefined
-  ): boolean {
+  static equals(a: CreateSubjectConditionSetRequest | PlainMessage<CreateSubjectConditionSetRequest> | undefined, b: CreateSubjectConditionSetRequest | PlainMessage<CreateSubjectConditionSetRequest> | undefined): boolean {
     return proto3.util.equals(CreateSubjectConditionSetRequest, a, b);
   }
 }
@@ -1036,42 +781,24 @@ export class CreateSubjectConditionSetResponse extends Message<CreateSubjectCond
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.subjectmapping.CreateSubjectConditionSetResponse';
+  static readonly typeName = "policy.subjectmapping.CreateSubjectConditionSetResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'subject_condition_set', kind: 'message', T: SubjectConditionSet },
+    { no: 1, name: "subject_condition_set", kind: "message", T: SubjectConditionSet },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): CreateSubjectConditionSetResponse {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateSubjectConditionSetResponse {
     return new CreateSubjectConditionSetResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): CreateSubjectConditionSetResponse {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CreateSubjectConditionSetResponse {
     return new CreateSubjectConditionSetResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): CreateSubjectConditionSetResponse {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CreateSubjectConditionSetResponse {
     return new CreateSubjectConditionSetResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a:
-      | CreateSubjectConditionSetResponse
-      | PlainMessage<CreateSubjectConditionSetResponse>
-      | undefined,
-    b:
-      | CreateSubjectConditionSetResponse
-      | PlainMessage<CreateSubjectConditionSetResponse>
-      | undefined
-  ): boolean {
+  static equals(a: CreateSubjectConditionSetResponse | PlainMessage<CreateSubjectConditionSetResponse> | undefined, b: CreateSubjectConditionSetResponse | PlainMessage<CreateSubjectConditionSetResponse> | undefined): boolean {
     return proto3.util.equals(CreateSubjectConditionSetResponse, a, b);
   }
 }
@@ -1085,7 +812,7 @@ export class UpdateSubjectConditionSetRequest extends Message<UpdateSubjectCondi
    *
    * @generated from field: string id = 1;
    */
-  id = '';
+  id = "";
 
   /**
    * Optional
@@ -1113,47 +840,27 @@ export class UpdateSubjectConditionSetRequest extends Message<UpdateSubjectCondi
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.subjectmapping.UpdateSubjectConditionSetRequest';
+  static readonly typeName = "policy.subjectmapping.UpdateSubjectConditionSetRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: 'subject_sets', kind: 'message', T: SubjectSet, repeated: true },
-    { no: 100, name: 'metadata', kind: 'message', T: MetadataMutable },
-    {
-      no: 101,
-      name: 'metadata_update_behavior',
-      kind: 'enum',
-      T: proto3.getEnumType(MetadataUpdateEnum),
-    },
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "subject_sets", kind: "message", T: SubjectSet, repeated: true },
+    { no: 100, name: "metadata", kind: "message", T: MetadataMutable },
+    { no: 101, name: "metadata_update_behavior", kind: "enum", T: proto3.getEnumType(MetadataUpdateEnum) },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): UpdateSubjectConditionSetRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateSubjectConditionSetRequest {
     return new UpdateSubjectConditionSetRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): UpdateSubjectConditionSetRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UpdateSubjectConditionSetRequest {
     return new UpdateSubjectConditionSetRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): UpdateSubjectConditionSetRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UpdateSubjectConditionSetRequest {
     return new UpdateSubjectConditionSetRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a:
-      | UpdateSubjectConditionSetRequest
-      | PlainMessage<UpdateSubjectConditionSetRequest>
-      | undefined,
-    b: UpdateSubjectConditionSetRequest | PlainMessage<UpdateSubjectConditionSetRequest> | undefined
-  ): boolean {
+  static equals(a: UpdateSubjectConditionSetRequest | PlainMessage<UpdateSubjectConditionSetRequest> | undefined, b: UpdateSubjectConditionSetRequest | PlainMessage<UpdateSubjectConditionSetRequest> | undefined): boolean {
     return proto3.util.equals(UpdateSubjectConditionSetRequest, a, b);
   }
 }
@@ -1175,42 +882,24 @@ export class UpdateSubjectConditionSetResponse extends Message<UpdateSubjectCond
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.subjectmapping.UpdateSubjectConditionSetResponse';
+  static readonly typeName = "policy.subjectmapping.UpdateSubjectConditionSetResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'subject_condition_set', kind: 'message', T: SubjectConditionSet },
+    { no: 1, name: "subject_condition_set", kind: "message", T: SubjectConditionSet },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): UpdateSubjectConditionSetResponse {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateSubjectConditionSetResponse {
     return new UpdateSubjectConditionSetResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): UpdateSubjectConditionSetResponse {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UpdateSubjectConditionSetResponse {
     return new UpdateSubjectConditionSetResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): UpdateSubjectConditionSetResponse {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UpdateSubjectConditionSetResponse {
     return new UpdateSubjectConditionSetResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a:
-      | UpdateSubjectConditionSetResponse
-      | PlainMessage<UpdateSubjectConditionSetResponse>
-      | undefined,
-    b:
-      | UpdateSubjectConditionSetResponse
-      | PlainMessage<UpdateSubjectConditionSetResponse>
-      | undefined
-  ): boolean {
+  static equals(a: UpdateSubjectConditionSetResponse | PlainMessage<UpdateSubjectConditionSetResponse> | undefined, b: UpdateSubjectConditionSetResponse | PlainMessage<UpdateSubjectConditionSetResponse> | undefined): boolean {
     return proto3.util.equals(UpdateSubjectConditionSetResponse, a, b);
   }
 }
@@ -1222,7 +911,7 @@ export class DeleteSubjectConditionSetRequest extends Message<DeleteSubjectCondi
   /**
    * @generated from field: string id = 1;
    */
-  id = '';
+  id = "";
 
   constructor(data?: PartialMessage<DeleteSubjectConditionSetRequest>) {
     super();
@@ -1230,39 +919,24 @@ export class DeleteSubjectConditionSetRequest extends Message<DeleteSubjectCondi
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.subjectmapping.DeleteSubjectConditionSetRequest';
+  static readonly typeName = "policy.subjectmapping.DeleteSubjectConditionSetRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): DeleteSubjectConditionSetRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeleteSubjectConditionSetRequest {
     return new DeleteSubjectConditionSetRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): DeleteSubjectConditionSetRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeleteSubjectConditionSetRequest {
     return new DeleteSubjectConditionSetRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): DeleteSubjectConditionSetRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeleteSubjectConditionSetRequest {
     return new DeleteSubjectConditionSetRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a:
-      | DeleteSubjectConditionSetRequest
-      | PlainMessage<DeleteSubjectConditionSetRequest>
-      | undefined,
-    b: DeleteSubjectConditionSetRequest | PlainMessage<DeleteSubjectConditionSetRequest> | undefined
-  ): boolean {
+  static equals(a: DeleteSubjectConditionSetRequest | PlainMessage<DeleteSubjectConditionSetRequest> | undefined, b: DeleteSubjectConditionSetRequest | PlainMessage<DeleteSubjectConditionSetRequest> | undefined): boolean {
     return proto3.util.equals(DeleteSubjectConditionSetRequest, a, b);
   }
 }
@@ -1284,42 +958,25 @@ export class DeleteSubjectConditionSetResponse extends Message<DeleteSubjectCond
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.subjectmapping.DeleteSubjectConditionSetResponse';
+  static readonly typeName = "policy.subjectmapping.DeleteSubjectConditionSetResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'subject_condition_set', kind: 'message', T: SubjectConditionSet },
+    { no: 1, name: "subject_condition_set", kind: "message", T: SubjectConditionSet },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): DeleteSubjectConditionSetResponse {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeleteSubjectConditionSetResponse {
     return new DeleteSubjectConditionSetResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): DeleteSubjectConditionSetResponse {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeleteSubjectConditionSetResponse {
     return new DeleteSubjectConditionSetResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): DeleteSubjectConditionSetResponse {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeleteSubjectConditionSetResponse {
     return new DeleteSubjectConditionSetResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a:
-      | DeleteSubjectConditionSetResponse
-      | PlainMessage<DeleteSubjectConditionSetResponse>
-      | undefined,
-    b:
-      | DeleteSubjectConditionSetResponse
-      | PlainMessage<DeleteSubjectConditionSetResponse>
-      | undefined
-  ): boolean {
+  static equals(a: DeleteSubjectConditionSetResponse | PlainMessage<DeleteSubjectConditionSetResponse> | undefined, b: DeleteSubjectConditionSetResponse | PlainMessage<DeleteSubjectConditionSetResponse> | undefined): boolean {
     return proto3.util.equals(DeleteSubjectConditionSetResponse, a, b);
   }
 }
+

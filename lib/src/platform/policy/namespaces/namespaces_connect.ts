@@ -3,31 +3,20 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import {
-  CreateNamespaceRequest,
-  CreateNamespaceResponse,
-  DeactivateNamespaceRequest,
-  DeactivateNamespaceResponse,
-  GetNamespaceRequest,
-  GetNamespaceResponse,
-  ListNamespacesRequest,
-  ListNamespacesResponse,
-  UpdateNamespaceRequest,
-  UpdateNamespaceResponse,
-} from './namespaces_pb.js';
-import { MethodKind } from '@bufbuild/protobuf';
+import { CreateNamespaceRequest, CreateNamespaceResponse, DeactivateNamespaceRequest, DeactivateNamespaceResponse, GetNamespaceRequest, GetNamespaceResponse, ListNamespacesRequest, ListNamespacesResponse, UpdateNamespaceRequest, UpdateNamespaceResponse } from "./namespaces_pb.js";
+import { MethodKind } from "@bufbuild/protobuf";
 
 /**
  * @generated from service policy.namespaces.NamespaceService
  */
 export const NamespaceService = {
-  typeName: 'policy.namespaces.NamespaceService',
+  typeName: "policy.namespaces.NamespaceService",
   methods: {
     /**
      * @generated from rpc policy.namespaces.NamespaceService.GetNamespace
      */
     getNamespace: {
-      name: 'GetNamespace',
+      name: "GetNamespace",
       I: GetNamespaceRequest,
       O: GetNamespaceResponse,
       kind: MethodKind.Unary,
@@ -36,7 +25,7 @@ export const NamespaceService = {
      * @generated from rpc policy.namespaces.NamespaceService.ListNamespaces
      */
     listNamespaces: {
-      name: 'ListNamespaces',
+      name: "ListNamespaces",
       I: ListNamespacesRequest,
       O: ListNamespacesResponse,
       kind: MethodKind.Unary,
@@ -45,7 +34,7 @@ export const NamespaceService = {
      * @generated from rpc policy.namespaces.NamespaceService.CreateNamespace
      */
     createNamespace: {
-      name: 'CreateNamespace',
+      name: "CreateNamespace",
       I: CreateNamespaceRequest,
       O: CreateNamespaceResponse,
       kind: MethodKind.Unary,
@@ -54,7 +43,7 @@ export const NamespaceService = {
      * @generated from rpc policy.namespaces.NamespaceService.UpdateNamespace
      */
     updateNamespace: {
-      name: 'UpdateNamespace',
+      name: "UpdateNamespace",
       I: UpdateNamespaceRequest,
       O: UpdateNamespaceResponse,
       kind: MethodKind.Unary,
@@ -63,10 +52,11 @@ export const NamespaceService = {
      * @generated from rpc policy.namespaces.NamespaceService.DeactivateNamespace
      */
     deactivateNamespace: {
-      name: 'DeactivateNamespace',
+      name: "DeactivateNamespace",
       I: DeactivateNamespaceRequest,
       O: DeactivateNamespaceResponse,
       kind: MethodKind.Unary,
     },
-  },
+  }
 } as const;
+

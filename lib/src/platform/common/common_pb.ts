@@ -3,15 +3,8 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import type {
-  BinaryReadOptions,
-  FieldList,
-  JsonReadOptions,
-  JsonValue,
-  PartialMessage,
-  PlainMessage,
-} from '@bufbuild/protobuf';
-import { Message, proto3, Timestamp } from '@bufbuild/protobuf';
+import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
+import { Message, proto3, Timestamp } from "@bufbuild/protobuf";
 
 /**
  * @generated from enum common.MetadataUpdateEnum
@@ -39,10 +32,10 @@ export enum MetadataUpdateEnum {
   REPLACE = 2,
 }
 // Retrieve enum metadata with: proto3.getEnumType(MetadataUpdateEnum)
-proto3.util.setEnumType(MetadataUpdateEnum, 'common.MetadataUpdateEnum', [
-  { no: 0, name: 'METADATA_UPDATE_ENUM_UNSPECIFIED' },
-  { no: 1, name: 'METADATA_UPDATE_ENUM_EXTEND' },
-  { no: 2, name: 'METADATA_UPDATE_ENUM_REPLACE' },
+proto3.util.setEnumType(MetadataUpdateEnum, "common.MetadataUpdateEnum", [
+  { no: 0, name: "METADATA_UPDATE_ENUM_UNSPECIFIED" },
+  { no: 1, name: "METADATA_UPDATE_ENUM_EXTEND" },
+  { no: 2, name: "METADATA_UPDATE_ENUM_REPLACE" },
 ]);
 
 /**
@@ -72,11 +65,11 @@ export enum ActiveStateEnum {
   ANY = 3,
 }
 // Retrieve enum metadata with: proto3.getEnumType(ActiveStateEnum)
-proto3.util.setEnumType(ActiveStateEnum, 'common.ActiveStateEnum', [
-  { no: 0, name: 'ACTIVE_STATE_ENUM_UNSPECIFIED' },
-  { no: 1, name: 'ACTIVE_STATE_ENUM_ACTIVE' },
-  { no: 2, name: 'ACTIVE_STATE_ENUM_INACTIVE' },
-  { no: 3, name: 'ACTIVE_STATE_ENUM_ANY' },
+proto3.util.setEnumType(ActiveStateEnum, "common.ActiveStateEnum", [
+  { no: 0, name: "ACTIVE_STATE_ENUM_UNSPECIFIED" },
+  { no: 1, name: "ACTIVE_STATE_ENUM_ACTIVE" },
+  { no: 2, name: "ACTIVE_STATE_ENUM_INACTIVE" },
+  { no: 3, name: "ACTIVE_STATE_ENUM_ANY" },
 ]);
 
 /**
@@ -112,17 +105,11 @@ export class Metadata extends Message<Metadata> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'common.Metadata';
+  static readonly typeName = "common.Metadata";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'created_at', kind: 'message', T: Timestamp },
-    { no: 2, name: 'updated_at', kind: 'message', T: Timestamp },
-    {
-      no: 3,
-      name: 'labels',
-      kind: 'map',
-      K: 9 /* ScalarType.STRING */,
-      V: { kind: 'scalar', T: 9 /* ScalarType.STRING */ },
-    },
+    { no: 1, name: "created_at", kind: "message", T: Timestamp },
+    { no: 2, name: "updated_at", kind: "message", T: Timestamp },
+    { no: 3, name: "labels", kind: "map", K: 9 /* ScalarType.STRING */, V: {kind: "scalar", T: 9 /* ScalarType.STRING */} },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Metadata {
@@ -137,10 +124,7 @@ export class Metadata extends Message<Metadata> {
     return new Metadata().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: Metadata | PlainMessage<Metadata> | undefined,
-    b: Metadata | PlainMessage<Metadata> | undefined
-  ): boolean {
+  static equals(a: Metadata | PlainMessage<Metadata> | undefined, b: Metadata | PlainMessage<Metadata> | undefined): boolean {
     return proto3.util.equals(Metadata, a, b);
   }
 }
@@ -162,15 +146,9 @@ export class MetadataMutable extends Message<MetadataMutable> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'common.MetadataMutable';
+  static readonly typeName = "common.MetadataMutable";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    {
-      no: 3,
-      name: 'labels',
-      kind: 'map',
-      K: 9 /* ScalarType.STRING */,
-      V: { kind: 'scalar', T: 9 /* ScalarType.STRING */ },
-    },
+    { no: 3, name: "labels", kind: "map", K: 9 /* ScalarType.STRING */, V: {kind: "scalar", T: 9 /* ScalarType.STRING */} },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): MetadataMutable {
@@ -185,10 +163,8 @@ export class MetadataMutable extends Message<MetadataMutable> {
     return new MetadataMutable().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: MetadataMutable | PlainMessage<MetadataMutable> | undefined,
-    b: MetadataMutable | PlainMessage<MetadataMutable> | undefined
-  ): boolean {
+  static equals(a: MetadataMutable | PlainMessage<MetadataMutable> | undefined, b: MetadataMutable | PlainMessage<MetadataMutable> | undefined): boolean {
     return proto3.util.equals(MetadataMutable, a, b);
   }
 }
+

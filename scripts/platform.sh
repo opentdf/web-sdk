@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -eu
+
 # Fetch latest platform code
 rm -rf platform
 git clone https://github.com/opentdf/platform.git

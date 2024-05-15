@@ -3,15 +3,8 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import type {
-  BinaryReadOptions,
-  FieldList,
-  JsonReadOptions,
-  JsonValue,
-  PartialMessage,
-  PlainMessage,
-} from '@bufbuild/protobuf';
-import { Message, proto3, Value } from '@bufbuild/protobuf';
+import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
+import { Message, proto3, Value } from "@bufbuild/protobuf";
 
 /**
  * Intentionally empty. May include features later.
@@ -25,8 +18,9 @@ export class InfoRequest extends Message<InfoRequest> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'kas.InfoRequest';
-  static readonly fields: FieldList = proto3.util.newFieldList(() => []);
+  static readonly typeName = "kas.InfoRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): InfoRequest {
     return new InfoRequest().fromBinary(bytes, options);
@@ -40,10 +34,7 @@ export class InfoRequest extends Message<InfoRequest> {
     return new InfoRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: InfoRequest | PlainMessage<InfoRequest> | undefined,
-    b: InfoRequest | PlainMessage<InfoRequest> | undefined
-  ): boolean {
+  static equals(a: InfoRequest | PlainMessage<InfoRequest> | undefined, b: InfoRequest | PlainMessage<InfoRequest> | undefined): boolean {
     return proto3.util.equals(InfoRequest, a, b);
   }
 }
@@ -57,7 +48,7 @@ export class InfoResponse extends Message<InfoResponse> {
   /**
    * @generated from field: string version = 1;
    */
-  version = '';
+  version = "";
 
   constructor(data?: PartialMessage<InfoResponse>) {
     super();
@@ -65,9 +56,9 @@ export class InfoResponse extends Message<InfoResponse> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'kas.InfoResponse';
+  static readonly typeName = "kas.InfoResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'version', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: "version", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): InfoResponse {
@@ -82,10 +73,7 @@ export class InfoResponse extends Message<InfoResponse> {
     return new InfoResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: InfoResponse | PlainMessage<InfoResponse> | undefined,
-    b: InfoResponse | PlainMessage<InfoResponse> | undefined
-  ): boolean {
+  static equals(a: InfoResponse | PlainMessage<InfoResponse> | undefined, b: InfoResponse | PlainMessage<InfoResponse> | undefined): boolean {
     return proto3.util.equals(InfoResponse, a, b);
   }
 }
@@ -97,7 +85,7 @@ export class LegacyPublicKeyRequest extends Message<LegacyPublicKeyRequest> {
   /**
    * @generated from field: string algorithm = 1;
    */
-  algorithm = '';
+  algorithm = "";
 
   constructor(data?: PartialMessage<LegacyPublicKeyRequest>) {
     super();
@@ -105,36 +93,24 @@ export class LegacyPublicKeyRequest extends Message<LegacyPublicKeyRequest> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'kas.LegacyPublicKeyRequest';
+  static readonly typeName = "kas.LegacyPublicKeyRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'algorithm', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: "algorithm", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): LegacyPublicKeyRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): LegacyPublicKeyRequest {
     return new LegacyPublicKeyRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): LegacyPublicKeyRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): LegacyPublicKeyRequest {
     return new LegacyPublicKeyRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): LegacyPublicKeyRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): LegacyPublicKeyRequest {
     return new LegacyPublicKeyRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: LegacyPublicKeyRequest | PlainMessage<LegacyPublicKeyRequest> | undefined,
-    b: LegacyPublicKeyRequest | PlainMessage<LegacyPublicKeyRequest> | undefined
-  ): boolean {
+  static equals(a: LegacyPublicKeyRequest | PlainMessage<LegacyPublicKeyRequest> | undefined, b: LegacyPublicKeyRequest | PlainMessage<LegacyPublicKeyRequest> | undefined): boolean {
     return proto3.util.equals(LegacyPublicKeyRequest, a, b);
   }
 }
@@ -146,17 +122,17 @@ export class PublicKeyRequest extends Message<PublicKeyRequest> {
   /**
    * @generated from field: string algorithm = 1;
    */
-  algorithm = '';
+  algorithm = "";
 
   /**
    * @generated from field: string fmt = 2;
    */
-  fmt = '';
+  fmt = "";
 
   /**
    * @generated from field: string v = 3;
    */
-  v = '';
+  v = "";
 
   constructor(data?: PartialMessage<PublicKeyRequest>) {
     super();
@@ -164,11 +140,11 @@ export class PublicKeyRequest extends Message<PublicKeyRequest> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'kas.PublicKeyRequest';
+  static readonly typeName = "kas.PublicKeyRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'algorithm', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: 'fmt', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: 'v', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: "algorithm", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "fmt", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "v", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PublicKeyRequest {
@@ -183,10 +159,7 @@ export class PublicKeyRequest extends Message<PublicKeyRequest> {
     return new PublicKeyRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: PublicKeyRequest | PlainMessage<PublicKeyRequest> | undefined,
-    b: PublicKeyRequest | PlainMessage<PublicKeyRequest> | undefined
-  ): boolean {
+  static equals(a: PublicKeyRequest | PlainMessage<PublicKeyRequest> | undefined, b: PublicKeyRequest | PlainMessage<PublicKeyRequest> | undefined): boolean {
     return proto3.util.equals(PublicKeyRequest, a, b);
   }
 }
@@ -198,7 +171,7 @@ export class PublicKeyResponse extends Message<PublicKeyResponse> {
   /**
    * @generated from field: string public_key = 1;
    */
-  publicKey = '';
+  publicKey = "";
 
   constructor(data?: PartialMessage<PublicKeyResponse>) {
     super();
@@ -206,9 +179,9 @@ export class PublicKeyResponse extends Message<PublicKeyResponse> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'kas.PublicKeyResponse';
+  static readonly typeName = "kas.PublicKeyResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'public_key', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: "public_key", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PublicKeyResponse {
@@ -223,10 +196,7 @@ export class PublicKeyResponse extends Message<PublicKeyResponse> {
     return new PublicKeyResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: PublicKeyResponse | PlainMessage<PublicKeyResponse> | undefined,
-    b: PublicKeyResponse | PlainMessage<PublicKeyResponse> | undefined
-  ): boolean {
+  static equals(a: PublicKeyResponse | PlainMessage<PublicKeyResponse> | undefined, b: PublicKeyResponse | PlainMessage<PublicKeyResponse> | undefined): boolean {
     return proto3.util.equals(PublicKeyResponse, a, b);
   }
 }
@@ -238,7 +208,7 @@ export class RewrapRequest extends Message<RewrapRequest> {
   /**
    * @generated from field: string signed_request_token = 1;
    */
-  signedRequestToken = '';
+  signedRequestToken = "";
 
   constructor(data?: PartialMessage<RewrapRequest>) {
     super();
@@ -246,9 +216,9 @@ export class RewrapRequest extends Message<RewrapRequest> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'kas.RewrapRequest';
+  static readonly typeName = "kas.RewrapRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'signed_request_token', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: "signed_request_token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RewrapRequest {
@@ -263,10 +233,7 @@ export class RewrapRequest extends Message<RewrapRequest> {
     return new RewrapRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: RewrapRequest | PlainMessage<RewrapRequest> | undefined,
-    b: RewrapRequest | PlainMessage<RewrapRequest> | undefined
-  ): boolean {
+  static equals(a: RewrapRequest | PlainMessage<RewrapRequest> | undefined, b: RewrapRequest | PlainMessage<RewrapRequest> | undefined): boolean {
     return proto3.util.equals(RewrapRequest, a, b);
   }
 }
@@ -288,12 +255,12 @@ export class RewrapResponse extends Message<RewrapResponse> {
   /**
    * @generated from field: string session_public_key = 3;
    */
-  sessionPublicKey = '';
+  sessionPublicKey = "";
 
   /**
    * @generated from field: string schema_version = 4;
    */
-  schemaVersion = '';
+  schemaVersion = "";
 
   constructor(data?: PartialMessage<RewrapResponse>) {
     super();
@@ -301,18 +268,12 @@ export class RewrapResponse extends Message<RewrapResponse> {
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'kas.RewrapResponse';
+  static readonly typeName = "kas.RewrapResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    {
-      no: 1,
-      name: 'metadata',
-      kind: 'map',
-      K: 9 /* ScalarType.STRING */,
-      V: { kind: 'message', T: Value },
-    },
-    { no: 2, name: 'entity_wrapped_key', kind: 'scalar', T: 12 /* ScalarType.BYTES */ },
-    { no: 3, name: 'session_public_key', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
-    { no: 4, name: 'schema_version', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: "metadata", kind: "map", K: 9 /* ScalarType.STRING */, V: {kind: "message", T: Value} },
+    { no: 2, name: "entity_wrapped_key", kind: "scalar", T: 12 /* ScalarType.BYTES */ },
+    { no: 3, name: "session_public_key", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "schema_version", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RewrapResponse {
@@ -327,10 +288,8 @@ export class RewrapResponse extends Message<RewrapResponse> {
     return new RewrapResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: RewrapResponse | PlainMessage<RewrapResponse> | undefined,
-    b: RewrapResponse | PlainMessage<RewrapResponse> | undefined
-  ): boolean {
+  static equals(a: RewrapResponse | PlainMessage<RewrapResponse> | undefined, b: RewrapResponse | PlainMessage<RewrapResponse> | undefined): boolean {
     return proto3.util.equals(RewrapResponse, a, b);
   }
 }
+

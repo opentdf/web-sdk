@@ -3,16 +3,8 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import {
-  InfoRequest,
-  InfoResponse,
-  LegacyPublicKeyRequest,
-  PublicKeyRequest,
-  PublicKeyResponse,
-  RewrapRequest,
-  RewrapResponse,
-} from './kas_pb.js';
-import { MethodKind, StringValue } from '@bufbuild/protobuf';
+import { InfoRequest, InfoResponse, LegacyPublicKeyRequest, PublicKeyRequest, PublicKeyResponse, RewrapRequest, RewrapResponse } from "./kas_pb.js";
+import { MethodKind, StringValue } from "@bufbuild/protobuf";
 
 /**
  * Get app info from the root path
@@ -20,7 +12,7 @@ import { MethodKind, StringValue } from '@bufbuild/protobuf';
  * @generated from service kas.AccessService
  */
 export const AccessService = {
-  typeName: 'kas.AccessService',
+  typeName: "kas.AccessService",
   methods: {
     /**
      * Get the current version of the service
@@ -28,7 +20,7 @@ export const AccessService = {
      * @generated from rpc kas.AccessService.Info
      */
     info: {
-      name: 'Info',
+      name: "Info",
       I: InfoRequest,
       O: InfoResponse,
       kind: MethodKind.Unary,
@@ -37,7 +29,7 @@ export const AccessService = {
      * @generated from rpc kas.AccessService.PublicKey
      */
     publicKey: {
-      name: 'PublicKey',
+      name: "PublicKey",
       I: PublicKeyRequest,
       O: PublicKeyResponse,
       kind: MethodKind.Unary,
@@ -48,7 +40,7 @@ export const AccessService = {
      * @generated from rpc kas.AccessService.LegacyPublicKey
      */
     legacyPublicKey: {
-      name: 'LegacyPublicKey',
+      name: "LegacyPublicKey",
       I: LegacyPublicKeyRequest,
       O: StringValue,
       kind: MethodKind.Unary,
@@ -57,10 +49,11 @@ export const AccessService = {
      * @generated from rpc kas.AccessService.Rewrap
      */
     rewrap: {
-      name: 'Rewrap',
+      name: "Rewrap",
       I: RewrapRequest,
       O: RewrapResponse,
       kind: MethodKind.Unary,
     },
-  },
+  }
 } as const;
+

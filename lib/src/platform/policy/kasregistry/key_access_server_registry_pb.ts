@@ -3,17 +3,10 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import type {
-  BinaryReadOptions,
-  FieldList,
-  JsonReadOptions,
-  JsonValue,
-  PartialMessage,
-  PlainMessage,
-} from '@bufbuild/protobuf';
-import { Message, proto3 } from '@bufbuild/protobuf';
-import { KeyAccessServer, PublicKey } from '../objects_pb.js';
-import { MetadataMutable, MetadataUpdateEnum } from '../../common/common_pb.js';
+import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
+import { Message, proto3 } from "@bufbuild/protobuf";
+import { KeyAccessServer, PublicKey } from "../objects_pb.js";
+import { MetadataMutable, MetadataUpdateEnum } from "../../common/common_pb.js";
 
 /**
  * @generated from message policy.kasregistry.GetKeyAccessServerRequest
@@ -22,7 +15,7 @@ export class GetKeyAccessServerRequest extends Message<GetKeyAccessServerRequest
   /**
    * @generated from field: string id = 1;
    */
-  id = '';
+  id = "";
 
   constructor(data?: PartialMessage<GetKeyAccessServerRequest>) {
     super();
@@ -30,36 +23,24 @@ export class GetKeyAccessServerRequest extends Message<GetKeyAccessServerRequest
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.kasregistry.GetKeyAccessServerRequest';
+  static readonly typeName = "policy.kasregistry.GetKeyAccessServerRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): GetKeyAccessServerRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetKeyAccessServerRequest {
     return new GetKeyAccessServerRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): GetKeyAccessServerRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetKeyAccessServerRequest {
     return new GetKeyAccessServerRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): GetKeyAccessServerRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetKeyAccessServerRequest {
     return new GetKeyAccessServerRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: GetKeyAccessServerRequest | PlainMessage<GetKeyAccessServerRequest> | undefined,
-    b: GetKeyAccessServerRequest | PlainMessage<GetKeyAccessServerRequest> | undefined
-  ): boolean {
+  static equals(a: GetKeyAccessServerRequest | PlainMessage<GetKeyAccessServerRequest> | undefined, b: GetKeyAccessServerRequest | PlainMessage<GetKeyAccessServerRequest> | undefined): boolean {
     return proto3.util.equals(GetKeyAccessServerRequest, a, b);
   }
 }
@@ -79,36 +60,24 @@ export class GetKeyAccessServerResponse extends Message<GetKeyAccessServerRespon
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.kasregistry.GetKeyAccessServerResponse';
+  static readonly typeName = "policy.kasregistry.GetKeyAccessServerResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'key_access_server', kind: 'message', T: KeyAccessServer },
+    { no: 1, name: "key_access_server", kind: "message", T: KeyAccessServer },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): GetKeyAccessServerResponse {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetKeyAccessServerResponse {
     return new GetKeyAccessServerResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): GetKeyAccessServerResponse {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetKeyAccessServerResponse {
     return new GetKeyAccessServerResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): GetKeyAccessServerResponse {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetKeyAccessServerResponse {
     return new GetKeyAccessServerResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: GetKeyAccessServerResponse | PlainMessage<GetKeyAccessServerResponse> | undefined,
-    b: GetKeyAccessServerResponse | PlainMessage<GetKeyAccessServerResponse> | undefined
-  ): boolean {
+  static equals(a: GetKeyAccessServerResponse | PlainMessage<GetKeyAccessServerResponse> | undefined, b: GetKeyAccessServerResponse | PlainMessage<GetKeyAccessServerResponse> | undefined): boolean {
     return proto3.util.equals(GetKeyAccessServerResponse, a, b);
   }
 }
@@ -123,34 +92,23 @@ export class ListKeyAccessServersRequest extends Message<ListKeyAccessServersReq
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.kasregistry.ListKeyAccessServersRequest';
-  static readonly fields: FieldList = proto3.util.newFieldList(() => []);
+  static readonly typeName = "policy.kasregistry.ListKeyAccessServersRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): ListKeyAccessServersRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListKeyAccessServersRequest {
     return new ListKeyAccessServersRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): ListKeyAccessServersRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListKeyAccessServersRequest {
     return new ListKeyAccessServersRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): ListKeyAccessServersRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListKeyAccessServersRequest {
     return new ListKeyAccessServersRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: ListKeyAccessServersRequest | PlainMessage<ListKeyAccessServersRequest> | undefined,
-    b: ListKeyAccessServersRequest | PlainMessage<ListKeyAccessServersRequest> | undefined
-  ): boolean {
+  static equals(a: ListKeyAccessServersRequest | PlainMessage<ListKeyAccessServersRequest> | undefined, b: ListKeyAccessServersRequest | PlainMessage<ListKeyAccessServersRequest> | undefined): boolean {
     return proto3.util.equals(ListKeyAccessServersRequest, a, b);
   }
 }
@@ -170,36 +128,24 @@ export class ListKeyAccessServersResponse extends Message<ListKeyAccessServersRe
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.kasregistry.ListKeyAccessServersResponse';
+  static readonly typeName = "policy.kasregistry.ListKeyAccessServersResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'key_access_servers', kind: 'message', T: KeyAccessServer, repeated: true },
+    { no: 1, name: "key_access_servers", kind: "message", T: KeyAccessServer, repeated: true },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): ListKeyAccessServersResponse {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListKeyAccessServersResponse {
     return new ListKeyAccessServersResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): ListKeyAccessServersResponse {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListKeyAccessServersResponse {
     return new ListKeyAccessServersResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): ListKeyAccessServersResponse {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListKeyAccessServersResponse {
     return new ListKeyAccessServersResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: ListKeyAccessServersResponse | PlainMessage<ListKeyAccessServersResponse> | undefined,
-    b: ListKeyAccessServersResponse | PlainMessage<ListKeyAccessServersResponse> | undefined
-  ): boolean {
+  static equals(a: ListKeyAccessServersResponse | PlainMessage<ListKeyAccessServersResponse> | undefined, b: ListKeyAccessServersResponse | PlainMessage<ListKeyAccessServersResponse> | undefined): boolean {
     return proto3.util.equals(ListKeyAccessServersResponse, a, b);
   }
 }
@@ -213,7 +159,7 @@ export class CreateKeyAccessServerRequest extends Message<CreateKeyAccessServerR
    *
    * @generated from field: string uri = 1;
    */
-  uri = '';
+  uri = "";
 
   /**
    * @generated from field: policy.PublicKey public_key = 2;
@@ -233,38 +179,26 @@ export class CreateKeyAccessServerRequest extends Message<CreateKeyAccessServerR
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.kasregistry.CreateKeyAccessServerRequest';
+  static readonly typeName = "policy.kasregistry.CreateKeyAccessServerRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'uri', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: 'public_key', kind: 'message', T: PublicKey },
-    { no: 100, name: 'metadata', kind: 'message', T: MetadataMutable },
+    { no: 1, name: "uri", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "public_key", kind: "message", T: PublicKey },
+    { no: 100, name: "metadata", kind: "message", T: MetadataMutable },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): CreateKeyAccessServerRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateKeyAccessServerRequest {
     return new CreateKeyAccessServerRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): CreateKeyAccessServerRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CreateKeyAccessServerRequest {
     return new CreateKeyAccessServerRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): CreateKeyAccessServerRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CreateKeyAccessServerRequest {
     return new CreateKeyAccessServerRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: CreateKeyAccessServerRequest | PlainMessage<CreateKeyAccessServerRequest> | undefined,
-    b: CreateKeyAccessServerRequest | PlainMessage<CreateKeyAccessServerRequest> | undefined
-  ): boolean {
+  static equals(a: CreateKeyAccessServerRequest | PlainMessage<CreateKeyAccessServerRequest> | undefined, b: CreateKeyAccessServerRequest | PlainMessage<CreateKeyAccessServerRequest> | undefined): boolean {
     return proto3.util.equals(CreateKeyAccessServerRequest, a, b);
   }
 }
@@ -284,36 +218,24 @@ export class CreateKeyAccessServerResponse extends Message<CreateKeyAccessServer
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.kasregistry.CreateKeyAccessServerResponse';
+  static readonly typeName = "policy.kasregistry.CreateKeyAccessServerResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'key_access_server', kind: 'message', T: KeyAccessServer },
+    { no: 1, name: "key_access_server", kind: "message", T: KeyAccessServer },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): CreateKeyAccessServerResponse {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateKeyAccessServerResponse {
     return new CreateKeyAccessServerResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): CreateKeyAccessServerResponse {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CreateKeyAccessServerResponse {
     return new CreateKeyAccessServerResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): CreateKeyAccessServerResponse {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CreateKeyAccessServerResponse {
     return new CreateKeyAccessServerResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: CreateKeyAccessServerResponse | PlainMessage<CreateKeyAccessServerResponse> | undefined,
-    b: CreateKeyAccessServerResponse | PlainMessage<CreateKeyAccessServerResponse> | undefined
-  ): boolean {
+  static equals(a: CreateKeyAccessServerResponse | PlainMessage<CreateKeyAccessServerResponse> | undefined, b: CreateKeyAccessServerResponse | PlainMessage<CreateKeyAccessServerResponse> | undefined): boolean {
     return proto3.util.equals(CreateKeyAccessServerResponse, a, b);
   }
 }
@@ -327,12 +249,12 @@ export class UpdateKeyAccessServerRequest extends Message<UpdateKeyAccessServerR
    *
    * @generated from field: string id = 1;
    */
-  id = '';
+  id = "";
 
   /**
    * @generated from field: string uri = 2;
    */
-  uri = '';
+  uri = "";
 
   /**
    * @generated from field: policy.PublicKey public_key = 3;
@@ -357,45 +279,28 @@ export class UpdateKeyAccessServerRequest extends Message<UpdateKeyAccessServerR
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.kasregistry.UpdateKeyAccessServerRequest';
+  static readonly typeName = "policy.kasregistry.UpdateKeyAccessServerRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: 'uri', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: 'public_key', kind: 'message', T: PublicKey },
-    { no: 100, name: 'metadata', kind: 'message', T: MetadataMutable },
-    {
-      no: 101,
-      name: 'metadata_update_behavior',
-      kind: 'enum',
-      T: proto3.getEnumType(MetadataUpdateEnum),
-    },
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "uri", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "public_key", kind: "message", T: PublicKey },
+    { no: 100, name: "metadata", kind: "message", T: MetadataMutable },
+    { no: 101, name: "metadata_update_behavior", kind: "enum", T: proto3.getEnumType(MetadataUpdateEnum) },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): UpdateKeyAccessServerRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateKeyAccessServerRequest {
     return new UpdateKeyAccessServerRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): UpdateKeyAccessServerRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UpdateKeyAccessServerRequest {
     return new UpdateKeyAccessServerRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): UpdateKeyAccessServerRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UpdateKeyAccessServerRequest {
     return new UpdateKeyAccessServerRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: UpdateKeyAccessServerRequest | PlainMessage<UpdateKeyAccessServerRequest> | undefined,
-    b: UpdateKeyAccessServerRequest | PlainMessage<UpdateKeyAccessServerRequest> | undefined
-  ): boolean {
+  static equals(a: UpdateKeyAccessServerRequest | PlainMessage<UpdateKeyAccessServerRequest> | undefined, b: UpdateKeyAccessServerRequest | PlainMessage<UpdateKeyAccessServerRequest> | undefined): boolean {
     return proto3.util.equals(UpdateKeyAccessServerRequest, a, b);
   }
 }
@@ -415,36 +320,24 @@ export class UpdateKeyAccessServerResponse extends Message<UpdateKeyAccessServer
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.kasregistry.UpdateKeyAccessServerResponse';
+  static readonly typeName = "policy.kasregistry.UpdateKeyAccessServerResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'key_access_server', kind: 'message', T: KeyAccessServer },
+    { no: 1, name: "key_access_server", kind: "message", T: KeyAccessServer },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): UpdateKeyAccessServerResponse {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateKeyAccessServerResponse {
     return new UpdateKeyAccessServerResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): UpdateKeyAccessServerResponse {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UpdateKeyAccessServerResponse {
     return new UpdateKeyAccessServerResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): UpdateKeyAccessServerResponse {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UpdateKeyAccessServerResponse {
     return new UpdateKeyAccessServerResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: UpdateKeyAccessServerResponse | PlainMessage<UpdateKeyAccessServerResponse> | undefined,
-    b: UpdateKeyAccessServerResponse | PlainMessage<UpdateKeyAccessServerResponse> | undefined
-  ): boolean {
+  static equals(a: UpdateKeyAccessServerResponse | PlainMessage<UpdateKeyAccessServerResponse> | undefined, b: UpdateKeyAccessServerResponse | PlainMessage<UpdateKeyAccessServerResponse> | undefined): boolean {
     return proto3.util.equals(UpdateKeyAccessServerResponse, a, b);
   }
 }
@@ -456,7 +349,7 @@ export class DeleteKeyAccessServerRequest extends Message<DeleteKeyAccessServerR
   /**
    * @generated from field: string id = 1;
    */
-  id = '';
+  id = "";
 
   constructor(data?: PartialMessage<DeleteKeyAccessServerRequest>) {
     super();
@@ -464,36 +357,24 @@ export class DeleteKeyAccessServerRequest extends Message<DeleteKeyAccessServerR
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.kasregistry.DeleteKeyAccessServerRequest';
+  static readonly typeName = "policy.kasregistry.DeleteKeyAccessServerRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): DeleteKeyAccessServerRequest {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeleteKeyAccessServerRequest {
     return new DeleteKeyAccessServerRequest().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): DeleteKeyAccessServerRequest {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeleteKeyAccessServerRequest {
     return new DeleteKeyAccessServerRequest().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): DeleteKeyAccessServerRequest {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeleteKeyAccessServerRequest {
     return new DeleteKeyAccessServerRequest().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: DeleteKeyAccessServerRequest | PlainMessage<DeleteKeyAccessServerRequest> | undefined,
-    b: DeleteKeyAccessServerRequest | PlainMessage<DeleteKeyAccessServerRequest> | undefined
-  ): boolean {
+  static equals(a: DeleteKeyAccessServerRequest | PlainMessage<DeleteKeyAccessServerRequest> | undefined, b: DeleteKeyAccessServerRequest | PlainMessage<DeleteKeyAccessServerRequest> | undefined): boolean {
     return proto3.util.equals(DeleteKeyAccessServerRequest, a, b);
   }
 }
@@ -513,36 +394,25 @@ export class DeleteKeyAccessServerResponse extends Message<DeleteKeyAccessServer
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = 'policy.kasregistry.DeleteKeyAccessServerResponse';
+  static readonly typeName = "policy.kasregistry.DeleteKeyAccessServerResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: 'key_access_server', kind: 'message', T: KeyAccessServer },
+    { no: 1, name: "key_access_server", kind: "message", T: KeyAccessServer },
   ]);
 
-  static fromBinary(
-    bytes: Uint8Array,
-    options?: Partial<BinaryReadOptions>
-  ): DeleteKeyAccessServerResponse {
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeleteKeyAccessServerResponse {
     return new DeleteKeyAccessServerResponse().fromBinary(bytes, options);
   }
 
-  static fromJson(
-    jsonValue: JsonValue,
-    options?: Partial<JsonReadOptions>
-  ): DeleteKeyAccessServerResponse {
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeleteKeyAccessServerResponse {
     return new DeleteKeyAccessServerResponse().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(
-    jsonString: string,
-    options?: Partial<JsonReadOptions>
-  ): DeleteKeyAccessServerResponse {
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeleteKeyAccessServerResponse {
     return new DeleteKeyAccessServerResponse().fromJsonString(jsonString, options);
   }
 
-  static equals(
-    a: DeleteKeyAccessServerResponse | PlainMessage<DeleteKeyAccessServerResponse> | undefined,
-    b: DeleteKeyAccessServerResponse | PlainMessage<DeleteKeyAccessServerResponse> | undefined
-  ): boolean {
+  static equals(a: DeleteKeyAccessServerResponse | PlainMessage<DeleteKeyAccessServerResponse> | undefined, b: DeleteKeyAccessServerResponse | PlainMessage<DeleteKeyAccessServerResponse> | undefined): boolean {
     return proto3.util.equals(DeleteKeyAccessServerResponse, a, b);
   }
 }
+
