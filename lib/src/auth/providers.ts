@@ -8,7 +8,7 @@ import { OIDCClientCredentialsProvider } from './oidc-clientcredentials-provider
 import { OIDCExternalJwtProvider } from './oidc-externaljwt-provider.js';
 import { type AuthProvider } from './auth.js';
 import { OIDCRefreshTokenProvider } from './oidc-refreshtoken-provider.js';
-import { isBrowser } from '../utils.js';
+import { isBrowser } from '../urltils.js';
 
 /**
  * Creates an OIDC Client Credentials Provider for non-browser contexts.

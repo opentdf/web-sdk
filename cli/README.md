@@ -13,19 +13,18 @@ For example, to use the quickstart test, we should do something like:
 ```sh
 echo hello-world >sample.txt
 bin/opentdf.mjs encrypt \
-  --kasEndpoint http://localhost:65432/api/kas \
-  --oidcEndpoint http://localhost:65432/auth/realms/tdf \
+  --kasEndpoint http://localhost:8080/kas \
+  --oidcEndpoint http://localhost:8888/auth/realms/opentdf \
   --auth tdf-client:123-456 \
-  --containerType tdf3 \
-  --output sample.tdf \
+  --containerType nano \
+  --output sample.ntdf \
   sample.txt
 bin/opentdf.mjs \
-  --kasEndpoint http://localhost:65432/api/kas \
-  --oidcEndpoint http://localhost:65432/auth/realms/tdf \
-  --auth tdf-client:123-456 \
-  --containerType tdf3 \
-  --userId alice@somewhere.there \
-  decrypt sample.tdf
+  --kasEndpoint http://localhost:8080 \
+  --oidcEndpoint http://localhost:8888/auth/realms/opentdf \
+  --containerType nano \
+  --auth opentdf:secret \
+  decrypt sample.ntdf
 ```
 
 This is a placeholder for working through build and CI issues.

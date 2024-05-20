@@ -113,7 +113,7 @@ function guessCurveName(hex: string): CurveName {
  * -- RSA-OAEP: { name: 'RSA-OAEP', hash: { name: 'SHA-512' }, usages: ['encrypt', 'wrapKey'], isExtractable: true }
  * -- RSA-PSS: { name: 'RSA-PSS', hash: { name: 'SHA-512' }, usages: ['verify'], isExtractable: true }
  */
-export default async function pemPublicToCrypto(
+export async function pemPublicToCrypto(
   pem: string,
   options: PemPublicToCryptoOptions = {
     isExtractable: true,
@@ -193,7 +193,7 @@ function toSubtleAlg(hex: string) {
   };
 }
 
-export async function extractPublicFromCertToCrypto(
+export async function pemCertToCrypto(
   pem: string,
   options: PemPublicToCryptoOptions = {
     isExtractable: true,

@@ -12,7 +12,8 @@ import getHkdfSalt from './helpers/getHkdfSalt.js';
 import DefaultParams from './models/DefaultParams.js';
 import { fetchWrappedKey } from '../kas.js';
 import { AuthProvider, isAuthProvider, reqSignature } from '../auth/providers.js';
-import { cryptoPublicToPem, safeUrlCheck, validateSecureUrl } from '../utils.js';
+import { cryptoPublicToPem } from '../pem.js';
+import { safeUrlCheck, validateSecureUrl } from '../urltils.js';
 
 const { KeyUsageType, AlgorithmName, NamedCurve } = cryptoEnums;
 
@@ -110,8 +111,8 @@ export default class Client {
     These variables are expected to be either assigned during initialization or within the methods.
     This is needed as the flow is very specific. Errors should be thrown if the necessary step is not completed.
   */
-  protected kasUrl: string;
-  protected kasPubKey: string;
+  kasUrl: string;
+  kasPubKey?: CryptoKey;
   readonly authProvider: AuthProvider;
   readonly dpopEnabled: boolean;
   dissems: string[] = [];
@@ -142,7 +143,6 @@ export default class Client {
       validateSecureUrl(kasUrl);
       this.kasUrl = kasUrl;
       this.allowedKases = [kasUrl];
-      this.kasPubKey = '';
       this.dpopEnabled = dpopEnabled;
 
       if (ephemeralKeyPair) {
@@ -159,7 +159,6 @@ export default class Client {
       validateSecureUrl(kasEndpoint);
       this.kasUrl = kasEndpoint;
       this.allowedKases = [kasEndpoint];
-      this.kasPubKey = '';
       this.dpopEnabled = !!dpopEnabled;
       if (dpopKeys) {
         this.requestSignerKeyPair = dpopKeys;
@@ -238,102 +237,86 @@ export default class Client {
       throw new Error('Signer key has not been set or generated');
     }
 
+    const requestBodyStr = JSON.stringify({
+      algorithm: DefaultParams.defaultECAlgorithm,
+      // nano keyAccess minimum, header is used for nano
+      keyAccess: {
+        type: Client.KEY_ACCESS_REMOTE,
+        url: '',
+        protocol: Client.KAS_PROTOCOL,
+        header: base64.encodeArrayBuffer(nanoTdfHeader),
+      },
+      clientPublicKey: await cryptoPublicToPem(ephemeralKeyPair.publicKey),
+    });
+
+    const jwtPayload = { requestBody: requestBodyStr };
+    const requestBody = {
+      signedRequestToken: await reqSignature(jwtPayload, requestSignerKeyPair.privateKey, {
+        alg: toJWSAlg(requestSignerKeyPair.publicKey),
+      }),
+    };
+
+    // Wrapped
+    const wrappedKey = await fetchWrappedKey(
+      kasRewrapUrl,
+      requestBody,
+      this.authProvider,
+      clientVersion
+    );
+
+    // Extract the iv and ciphertext
+    const entityWrappedKey = new Uint8Array(
+      base64.decodeArrayBuffer(wrappedKey.entityWrappedKey)
+    );
+    const ivLength =
+      clientVersion == Client.SDK_INITIAL_RELEASE
+        ? Client.INITIAL_RELEASE_IV_SIZE
+        : Client.IV_SIZE;
+    const iv = entityWrappedKey.subarray(0, ivLength);
+    const encryptedSharedKey = entityWrappedKey.subarray(ivLength);
+
+    let kasPublicKey;
     try {
-      const requestBodyStr = JSON.stringify({
-        algorithm: DefaultParams.defaultECAlgorithm,
-        // nano keyAccess minimum, header is used for nano
-        keyAccess: {
-          type: Client.KEY_ACCESS_REMOTE,
-          url: '',
-          protocol: Client.KAS_PROTOCOL,
-          header: base64.encodeArrayBuffer(nanoTdfHeader),
-        },
-        clientPublicKey: await cryptoPublicToPem(ephemeralKeyPair.publicKey),
-      });
-
-      const jwtPayload = { requestBody: requestBodyStr };
-      const requestBody = {
-        signedRequestToken: await reqSignature(jwtPayload, requestSignerKeyPair.privateKey, {
-          alg: toJWSAlg(requestSignerKeyPair.publicKey),
-        }),
-      };
-
-      // Wrapped
-      const wrappedKey = await fetchWrappedKey(
-        kasRewrapUrl,
-        requestBody,
-        this.authProvider,
-        clientVersion
+      // Get session public key as crypto key
+      kasPublicKey = await pemPublicToCrypto(wrappedKey.sessionPublicKey);
+    } catch (cause) {
+      throw new Error(
+        `PEM Public Key to crypto public key failed. Is PEM formatted correctly?\n Caused by: ${cause.message}`,
+        { cause }
       );
-
-      // Extract the iv and ciphertext
-      const entityWrappedKey = new Uint8Array(
-        base64.decodeArrayBuffer(wrappedKey.entityWrappedKey)
-      );
-      const ivLength =
-        clientVersion == Client.SDK_INITIAL_RELEASE
-          ? Client.INITIAL_RELEASE_IV_SIZE
-          : Client.IV_SIZE;
-      const iv = entityWrappedKey.subarray(0, ivLength);
-      const encryptedSharedKey = entityWrappedKey.subarray(ivLength);
-
-      let kasPublicKey;
-      try {
-        // Get session public key as crypto key
-        kasPublicKey = await pemPublicToCrypto(wrappedKey.sessionPublicKey);
-      } catch (cause) {
-        throw new Error(
-          `PEM Public Key to crypto public key failed. Is PEM formatted correctly?\n Caused by: ${cause.message}`,
-          { cause }
-        );
-      }
-
-      let hkdfSalt;
-      try {
-        // Get the hkdf salt params
-        hkdfSalt = await getHkdfSalt(magicNumberVersion);
-      } catch (e) {
-        throw new Error(`Salting hkdf failed\n Caused by: ${e.message}`);
-      }
-      const { privateKey } = await this.ephemeralKeyPair;
-
-      // Get the unwrapping key
-      const unwrappingKey = await keyAgreement(
-        // Ephemeral private key
-        privateKey,
-        kasPublicKey,
-        hkdfSalt
-      );
-
-      let decryptedKey;
-      try {
-        // Decrypt the wrapped key
-        decryptedKey = await decrypt(unwrappingKey, encryptedSharedKey, iv, authTagLength);
-      } catch (e) {
-        throw new Error(
-          `Unable to decrypt key. Are you using the right KAS? Is the salt correct?\n Caused by: ${e.message}`
-        );
-      }
-
-      // UnwrappedKey
-      let unwrappedKey;
-      try {
-        unwrappedKey = await importRawKey(
-          decryptedKey,
-          // Want to use the key to encrypt and decrypt. Signing key will be used later.
-          [KeyUsageType.Encrypt, KeyUsageType.Decrypt],
-          // @security This allows the key to be used in `exportKey` and `wrapKey`
-          // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/exportKey
-          // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/wrapKey
-          true
-        );
-      } catch (e) {
-        throw new Error(`Unable to import raw key.\n Caused by: ${e.message}`);
-      }
-
-      return unwrappedKey;
-    } catch (e) {
-      throw new Error(`Could not rewrap key with entity object.\n Caused by: ${e.message}`);
     }
+
+    let hkdfSalt;
+    try {
+      // Get the hkdf salt params
+      hkdfSalt = await getHkdfSalt(magicNumberVersion);
+    } catch (e) {
+      throw new Error(`Salting hkdf failed\n Caused by: ${e.message}`);
+    }
+    const { privateKey } = await this.ephemeralKeyPair;
+
+    // Get the unwrapping key
+    const unwrappingKey = await keyAgreement(
+      // Ephemeral private key
+      privateKey,
+      kasPublicKey,
+      hkdfSalt
+    );
+
+    console.error()
+
+    const decryptedKey = await decrypt(unwrappingKey, encryptedSharedKey, iv, authTagLength);
+
+    const unwrappedKey = await importRawKey(
+      decryptedKey,
+      // Want to use the key to encrypt and decrypt. Signing key will be used later.
+      [KeyUsageType.Encrypt, KeyUsageType.Decrypt],
+      // @security This allows the key to be used in `exportKey` and `wrapKey`
+      // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/exportKey
+      // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/wrapKey
+      true
+    );
+
+    return unwrappedKey;
   }
 }

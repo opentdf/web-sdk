@@ -3,7 +3,7 @@ import { unsigned } from './utils/buffer-crc32.js';
 import { exportSPKI, importX509 } from 'jose';
 import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
 import { EntityObject } from '../../src/tdf/EntityObject.js';
-import { validateSecureUrl } from '../../src/utils.js';
+import { validateSecureUrl } from '../../src/urltils.js';
 import { DecryptParams } from './client/builders.js';
 
 import {

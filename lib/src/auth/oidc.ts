@@ -2,8 +2,8 @@ import { default as dpopFn } from 'dpop';
 import { HttpRequest, withHeaders } from './auth.js';
 import { base64 } from '../encodings/index.js';
 import { IllegalArgumentError } from '../errors.js';
-import { cryptoPublicToPem, rstrip } from '../utils.js';
-
+import { cryptoPublicToPem } from '../pem.js';
+import { rstrip } from '../urltils.js';
 /**
  * Common fields used by all OIDC credentialing flows.
  */
