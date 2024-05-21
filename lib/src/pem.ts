@@ -31,5 +31,5 @@ export async function pemToCryptoPublicKey(pem: string): Promise<CryptoKey> {
   } else if (/-----BEGIN CERTIFICATE-----/.test(pem)) {
     return pemCertToCrypto(pem);
   }
-  throw new Error("unsupported pem type");
+  throw new Error('unsupported pem type');
 }

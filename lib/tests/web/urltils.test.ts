@@ -1,10 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import {
-  padSlashToUrl,
-  rstrip,
-  safeUrlCheck,
-  validateSecureUrl,
-} from '../../src/urltils.js';
+import { padSlashToUrl, rstrip, safeUrlCheck, validateSecureUrl } from '../../src/urltils.js';
 
 describe('rstrip', () => {
   describe('default', () => {

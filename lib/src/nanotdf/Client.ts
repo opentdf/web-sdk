@@ -265,13 +265,9 @@ export default class Client {
     );
 
     // Extract the iv and ciphertext
-    const entityWrappedKey = new Uint8Array(
-      base64.decodeArrayBuffer(wrappedKey.entityWrappedKey)
-    );
+    const entityWrappedKey = new Uint8Array(base64.decodeArrayBuffer(wrappedKey.entityWrappedKey));
     const ivLength =
-      clientVersion == Client.SDK_INITIAL_RELEASE
-        ? Client.INITIAL_RELEASE_IV_SIZE
-        : Client.IV_SIZE;
+      clientVersion == Client.SDK_INITIAL_RELEASE ? Client.INITIAL_RELEASE_IV_SIZE : Client.IV_SIZE;
     const iv = entityWrappedKey.subarray(0, ivLength);
     const encryptedSharedKey = entityWrappedKey.subarray(ivLength);
 
@@ -303,7 +299,7 @@ export default class Client {
       hkdfSalt
     );
 
-    console.error()
+    console.error();
 
     const decryptedKey = await decrypt(unwrappingKey, encryptedSharedKey, iv, authTagLength);
 

@@ -1,10 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import axios from 'axios';
 import sinon from 'sinon';
-import {
-  estimateSkew,
-  estimateSkewFromHeaders,
-} from '../../src/deskew.js';
+import { estimateSkew, estimateSkewFromHeaders } from '../../src/deskew.js';
 
 function mockApiResponse(date = '', status = 200) {
   return new globalThis.Response(`{}`, {
