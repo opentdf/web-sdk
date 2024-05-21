@@ -16,13 +16,13 @@ export default async function encrypt(
   key: CryptoKey,
   plaintext: Uint8Array,
   iv: Uint8Array,
-  tagLength?: number
+  tagLength: number = 128
 ): Promise<ArrayBuffer> {
   return crypto.subtle.encrypt(
     {
-      name: Ciphers.AesGcm,
+      name: 'AES-GCM',
       iv,
-      tagLength: tagLength || CipherTagLengths.AesGcm,
+      tagLength: tagLength,
     },
     key,
     plaintext

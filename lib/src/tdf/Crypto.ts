@@ -13,10 +13,6 @@ export enum NamedCurve {
   P512 = 'P-512',
 }
 
-export enum CipherType {
-  AesGcm = 'AES-GCM',
-}
-
 export enum HashType {
   Sha256 = 'SHA-256',
 }

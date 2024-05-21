@@ -14,14 +14,21 @@ import { ClientConfig } from './nanotdf/Client.js';
 import { pemToCryptoPublicKey } from './pem.js';
 
 async function fetchKasPubKey(kasUrl: string): Promise<CryptoKey> {
-  const kasPubKeyResponse = await fetch(`${kasUrl}/kas_public_key?algorithm=ec:secp256r1`);
+  const u = `${kasUrl}/kas_public_key?algorithm=ec:secp256r1`;
+  console.log(`Fetching [${u}]`)
+  try {
+  const kasPubKeyResponse = await fetch(u);
   if (!kasPubKeyResponse.ok) {
     throw new Error(
-      `Unable to validate KAS [${kasUrl}]. Received [${kasPubKeyResponse.status}:${kasPubKeyResponse.statusText}]`
+      `Unable to validate KAS [${kasUrl}]. Received [${kasPubKeyResponse.status}:${kasPubKeyResponse.statusText}] from [${u}]`
     );
   }
   const pem = await kasPubKeyResponse.json();
   return pemToCryptoPublicKey(pem);
+} catch (e) {
+  console.error(e);
+  throw e;
+}
 }
 
 /**
@@ -279,7 +286,6 @@ export class NanoTDFDatasetClient extends Client {
 
       // Encrypt the policy.
       const policyObjectAsStr = policy.toJSON();
-
       const ivVector = this.generateIV();
 
       // Generate a symmetric key.

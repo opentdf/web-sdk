@@ -57,7 +57,7 @@ export async function keyAgreement(
     hkdfHash: HashType.Sha256,
     hkdfInfo: new Uint8Array(),
     hkdfSalt: new Uint8Array(),
-    keyCipher: CipherType.AesGcm,
+    keyCipher: 'AES-GCM',
     keyLength: 256,
     keyUsages: [
       KeyUsageType.Encrypt,
@@ -88,7 +88,7 @@ export async function keyAgreement(
     hkdfHash = HashType.Sha256,
     hkdfInfo = new Uint8Array(),
     hkdfSalt = new Uint8Array(),
-    keyCipher = CipherType.AesGcm,
+    keyCipher = 'AES-GCM',
     keyLength = 256,
     isExtractable = true,
     keyUsages = [

@@ -13,8 +13,8 @@ import {
   encrypt as cryptoEncrypt,
   keyAgreement,
   digest,
-  exportCryptoKey,
 } from '../nanotdf-crypto/index.js';
+import { exportCryptoKey } from '../nanotdf-crypto/compressedKey.js';
 
 /**
  * Encrypt the plain data into nanotdf buffer
@@ -37,7 +37,7 @@ export default async function encrypt(
   if (!ephemeralKeyPair.privateKey) {
     throw new Error('incomplete ephemeral key');
   }
-  const symmetricKey = await keyAgreement(
+  const dek = await keyAgreement(
     ephemeralKeyPair.privateKey,
     kasPub,
     // Get the hkdf salt params
@@ -54,7 +54,7 @@ export default async function encrypt(
   const policyIV = new Uint8Array(iv.length).fill(0);
   const policyAsBuffer = new TextEncoder().encode(policy);
   const encryptedPolicy = await cryptoEncrypt(
-    symmetricKey,
+    dek,
     policyAsBuffer,
     policyIV,
     authTagLengthInBytes * 8
@@ -105,7 +105,7 @@ export default async function encrypt(
     DefaultParams.signatureCurveName,
     DefaultParams.symmetricCipher,
     embeddedPolicy,
-    new Uint8Array(pubKeyAsArrayBuffer)
+    pubKeyAsArrayBuffer
   );
 
   // Encrypt the payload
@@ -117,7 +117,7 @@ export default async function encrypt(
   }
 
   const encryptedPayload = await cryptoEncrypt(
-    symmetricKey,
+    dek,
     new Uint8Array(payloadAsBuffer),
     iv,
     authTagLengthInBytes * 8

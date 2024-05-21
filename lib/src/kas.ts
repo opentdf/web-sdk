@@ -22,6 +22,7 @@ export async function fetchWrappedKey(
   authProvider: AuthProvider,
   clientVersion: string
 ): Promise<RewrapResponse> {
+  console.log(`Fetching [${url}]`);
   const req = await authProvider.withCreds({
     url,
     method: 'POST',
@@ -31,6 +32,8 @@ export async function fetchWrappedKey(
     },
     body: JSON.stringify(requestBody),
   });
+  try {
+
   const response = await fetch(req.url, {
     method: req.method,
     mode: 'cors', // no-cors, *cors, same-origin
@@ -47,4 +50,8 @@ export async function fetchWrappedKey(
   }
 
   return response.json();
+} catch (e) {
+  console.error(JSON.stringify(e))
+  throw e
+}
 }

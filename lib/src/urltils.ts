@@ -22,7 +22,7 @@ export function validateSecureUrl(url: string): boolean {
     /^http:\/\/([a-zA-Z.-]*[.])?svc\.cluster\.local($|\/)/.test(url) ||
     /^http:\/\/([a-zA-Z.-]*[.])?internal(:[0-9]{1,5})?($|\/)/.test(url)
   ) {
-    console.info(`Internal URL detected: [${url}]`);
+    console.log(`Internal URL detected: [${url}]`);
   } else if (!httpsRegex.test(url)) {
     console.error(`Insecure KAS URL loaded. Are you running in a secure environment? [${url}]`);
     return false;

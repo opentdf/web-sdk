@@ -4,7 +4,6 @@ import {
   decrypt,
   enums as cryptoEnums,
   generateKeyPair,
-  importRawKey,
   keyAgreement,
   pemPublicToCrypto,
 } from '../nanotdf-crypto/index.js';
@@ -37,9 +36,10 @@ function toJWSAlg(c: CryptoKey): string {
           return 'RS256';
         case 3072:
           return 'RS384';
-        case 3072:
+        case 4096:
           return 'RS512';
       }
+      break;
     }
     case 'ECDSA':
     case 'ECDH': {
@@ -288,14 +288,16 @@ export default class Client {
 
     const decryptedKey = await decrypt(unwrappingKey, encryptedSharedKey, iv, authTagLength);
 
-    const unwrappedKey = await importRawKey(
+    const unwrappedKey = await crypto.subtle.importKey(
+      'raw',
       decryptedKey,
-      // Want to use the key to encrypt and decrypt. Signing key will be used later.
-      [KeyUsageType.Encrypt, KeyUsageType.Decrypt],
+      'AES-GCM',
       // @security This allows the key to be used in `exportKey` and `wrapKey`
       // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/exportKey
       // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/wrapKey
-      true
+      true,
+      // Want to use the key to encrypt and decrypt. Signing key will be used later.
+      ['encrypt', 'decrypt'],
     );
 
     return unwrappedKey;
