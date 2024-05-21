@@ -117,20 +117,22 @@ const kas: RequestListener = async (req, res) => {
         case 'ec:secp256r1': {
           console.log('[INFO] nano rewrap request body: ', rewrap);
           const { header } = Header.parse(new Uint8Array(base64.decodeArrayBuffer(rewrap?.keyAccess?.header || '')));
-          const nanoPublicKey = await pemPublicToCrypto(header.ephemeralPublicKey);
+          // const nanoPublicKey = await importRaw(header.ephemeralPublicKey);
           const clientPublicKey = await pemPublicToCrypto(rewrap.clientPublicKey);
-          const dek = await decryptWithPrivateKey(
-            Binary.fromArrayBuffer(base64.decodeArrayBuffer(rewrap.keyAccess.wrappedKey || '')),
-            Mocks.kasPrivateKey
-          );
-          const cek = await encryptWithPublicKey(dek, rewrap.clientPublicKey);
-          const reply = {
-            entityWrappedKey: base64.encodeArrayBuffer(cek.asArrayBuffer()),
-            metadata: { hello: 'world' },
-          };
-          res.writeHead(200);
-          res.end(JSON.stringify(reply));
-          return;
+          // const dek = await decryptWithPrivateKey(
+          //   Binary.fromArrayBuffer(base64.decodeArrayBuffer(rewrap.keyAccess.wrappedKey || '')),
+          //   Mocks.kasPrivateKey
+          // );
+          // const cek = await encryptWithPublicKey(dek, rewrap.clientPublicKey);
+          // const reply = {
+          //   entityWrappedKey: base64.encodeArrayBuffer(cek.asArrayBuffer()),
+          //   metadata: { hello: 'world' },
+          // };
+          // res.writeHead(200);
+          // res.end(JSON.stringify(reply));
+          console.log(`[DEBUG] invalid rewrap algorithm [${JSON.stringify(rewrap)}] for header [${JSON.stringify(header)}], cpk [${JSON.stringify(clientPublicKey)}]`);
+          res.writeHead(400);
+          res.end(`{"error": "Invalid algorithm [${rewrap?.algorithm}]"}`);
           return;
         }
         default:

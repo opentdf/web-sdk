@@ -80,7 +80,7 @@ async function processAuth({
     requestLog,
     updateClientPublicKey: async (signingKey: webcrypto.CryptoKeyPair) => {
       actual.updateClientPublicKey(signingKey);
-      log('DEBUG', `updateClientPublicKey: [${signingKey?.publicKey}]`);
+      log('DEBUG', `updateClientPublicKey: [${JSON.stringify(signingKey?.publicKey)}]`);
     },
     withCreds: async (httpReq: AuthProviders.HttpRequest) => {
       const credible = await actual.withCreds(httpReq);

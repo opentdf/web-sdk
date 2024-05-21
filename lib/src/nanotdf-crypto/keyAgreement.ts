@@ -27,7 +27,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-import { AlgorithmName, CipherType, HashType, KeyFormat, KeyType, KeyUsageType } from './enums.js';
+import { AlgorithmName, HashType, KeyFormat, KeyType, KeyUsageType } from './enums.js';
 
 const KEY_USAGE_DERIVE_KEY = 'deriveKey';
 

@@ -135,7 +135,7 @@ export class AccessToken {
     });
     if (!response.ok) {
       console.error(await response.text());
-      throw new Error(`${response.status} ${response.statusText}`);
+      throw new Error(`${url} => ${response.status} ${response.statusText}`);
     }
 
     return (await response.json()) as unknown;
@@ -190,7 +190,7 @@ export class AccessToken {
     const response = await this.doPost(url, body);
     if (!response.ok) {
       console.error(await response.text());
-      throw new Error(`${response.status} ${response.statusText}`);
+      throw new Error(`POST ${url} => ${response.status} ${response.statusText}`);
     }
     return response.json();
   }
