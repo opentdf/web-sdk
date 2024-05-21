@@ -199,7 +199,9 @@ function asPolicy(scope: Scope): Policy {
   return {
     uuid: policyId,
     body: {
-      dataAttributes: scope.attributes ?? [],
+      dataAttributes: (scope.attributes ?? []).map((attribute) =>
+        typeof attribute === 'string' ? { attribute } : attribute
+      ),
       dissem: scope.dissem ?? [],
     },
   };
@@ -346,38 +348,12 @@ export class Client {
    * @param [opts] Test only
    * @param [mimeType] mime type of source. defaults to `unknown`
    * @param [offline] Where to store the policy. Defaults to `false` - which results in `upsert` events to store/update a policy
-   * @param [output] output stream. Created and returned iff not passed in
    * @param [windowSize] - segment size in bytes. Defaults to a a million bytes.
    * @param [keyMiddleware] - function that handle keys
    * @param [streamMiddleware] - function that handle stream
    * @param [eo] - (deprecated) entity object
-   * @return a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} a new stream containing the TDF ciphertext, if output is not passed in as a paramter
+   * @return a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} a new stream containing the TDF ciphertext
    */
-  async encrypt({
-    scope,
-    source,
-    asHtml,
-    metadata,
-    mimeType,
-    offline,
-    windowSize,
-    eo,
-    keyMiddleware = defaultKeyMiddleware,
-    streamMiddleware = async (stream: DecoratedReadableStream) => stream,
-  }: Omit<EncryptParams, 'output'>): Promise<DecoratedReadableStream>;
-  async encrypt({
-    scope,
-    source,
-    asHtml,
-    metadata,
-    mimeType,
-    offline,
-    output,
-    windowSize,
-    eo,
-    keyMiddleware = defaultKeyMiddleware,
-    streamMiddleware = async (stream: DecoratedReadableStream) => stream,
-  }: EncryptParams & { output: NodeJS.WriteStream }): Promise<void>;
   async encrypt({
     scope = { attributes: [], dissem: [] },
     source,
@@ -385,12 +361,11 @@ export class Client {
     metadata,
     mimeType,
     offline = false,
-    output,
     windowSize = DEFAULT_SEGMENT_SIZE,
     eo,
     keyMiddleware = defaultKeyMiddleware,
     streamMiddleware = async (stream: DecoratedReadableStream) => stream,
-  }: EncryptParams): Promise<DecoratedReadableStream | void> {
+  }: EncryptParams): Promise<DecoratedReadableStream> {
     const dpopKeys = await this.dpopKeys;
     const kasPublicKey = await this.kasPublicKey;
     const policyObject = asPolicy(scope);
@@ -451,12 +426,6 @@ export class Client {
       throw new Error('Missing manifest in encrypt function');
     }
     const htmlBuf = wrapHtml(await stream.toBuffer(), stream.manifest, this.readerUrl ?? '');
-
-    if (output) {
-      output.push(htmlBuf);
-      output.push(null);
-      return;
-    }
 
     return new DecoratedReadableStream({
       pull(controller: ReadableStreamDefaultController) {

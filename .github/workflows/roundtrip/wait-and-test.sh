@@ -6,8 +6,22 @@ APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null && pwd)"
 ROOT_DIR="$(cd "${APP_DIR}/../../.." >/dev/null && pwd)"
 WEB_APP_DIR="$(cd "${ROOT_DIR}/web-app" >/dev/null && pwd)"
 
-app_version=$(cd "${ROOT_DIR}/lib" && node -p "require('./package.json').version")
-echo "[INFO] App version: ${app_version}"
+APP="${APP_DIR}/encrypt-decrypt.sh"
+
+_configure_app() {
+  app_version=$(cd "${ROOT_DIR}/lib" && node -p "require('./package.json').version")
+  echo "installing opentdf-cli-${app_version}.tgz into ${APP_DIR}"
+  cd "${APP_DIR}" || exit 1
+  npm uninstall @opentdf/cli
+  if ! npm ci; then
+    echo "[ERROR] Couldn't ci roundtrip command line app"
+    return 1
+  fi
+  if ! npm i "../../../cli/opentdf-cli-${app_version}.tgz"; then
+    return 1
+  fi
+  return 0
+}
 
 _wait-for() {
   echo "[INFO] In retry loop for quickstarted opentdf backend..."
@@ -70,6 +84,11 @@ _init_server() {
   done
 }
 
+if ! _configure_app; then
+  echo "[ERROR] Couldn't configure our library and app"
+  exit 2
+fi
+
 if ! _init_server; then
   echo "[ERROR] Couldn't run web app server"
   exit 2
@@ -77,6 +96,10 @@ fi
 
 if ! _wait-for; then
   exit 1
+fi
+
+if ! "${APP}"; then
+  return $?
 fi
 
 if ! cd "${WEB_APP_DIR}"; then

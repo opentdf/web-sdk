@@ -1,6 +1,6 @@
 
 version=2.0.0
-extras=remote-store web-app
+extras=cli remote-store web-app
 pkgs=lib $(extras)
 
 .PHONY: all audit license-check lint test ci i start format clean
@@ -23,6 +23,9 @@ i:
 
 all: ci lib/opentdf-client-$(version).tgz remote-store/opentdf-remote-store-$(version).tgz web-app/opentdf-web-app-$(version).tgz
 
+cli/opentdf-cli-$(version).tgz: lib/opentdf-client-$(version).tgz $(shell find cli -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
+	(cd cli && npm ci ../lib/opentdf-client-$(version).tgz && npm pack)
+
 remote-store/opentdf-remote-store-$(version).tgz: lib/opentdf-client-$(version).tgz $(shell find remote-store -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
 	(cd remote-store && npm ci ../lib/opentdf-client-$(version).tgz && npm pack)
 
@@ -37,9 +40,6 @@ dist: lib/opentdf-client-$(version).tgz
 
 audit:
 	for x in $(pkgs); do (cd $$x && npm audit --omit=dev) || exit 1; done
-
-audit-fix:
-	for x in $(pkgs); do (cd $$x && npm audit fix) || exit 1; done
 
 format license-check lint test: ci
 	for x in $(pkgs); do (cd $$x && npm run $@) || exit 1; done
