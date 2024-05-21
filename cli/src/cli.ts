@@ -48,19 +48,27 @@ async function processAuth({
   userId,
 }: AuthToProcess): Promise<LoggedAuthProvider> {
   log('DEBUG', 'Processing auth params');
+  const requestLog: AuthProviders.HttpRequest[] = [];
   if (auth) {
     log('DEBUG', 'Processing an auth string');
     const authParts = auth.split(':');
     if (authParts.length !== 2) {
-      throw new CLIError('CRITICAL', `Auth expects <clientId>:<clientSecret>, received ${auth}`);
+      throw new CLIError('CRITICAL', `Auth expects <clientId>:<clientSecret>, received [${auth}]`);
     }
 
     [clientId, clientSecret] = authParts;
   } else if (!clientId || !clientSecret) {
-    throw new CLIError(
-      'CRITICAL',
-      'Auth expects clientId and clientSecret, or combined auth param'
-    );
+    return {
+      requestLog,
+      updateClientPublicKey: async (signingKey: webcrypto.CryptoKeyPair) => {
+        log('DEBUG', `updateClientPublicKey: [${signingKey?.publicKey}]`);
+      },
+      withCreds: async (httpReq: AuthProviders.HttpRequest) => {
+        log('DEBUG', `HTTP Requesting: ${JSON.stringify(httpReq)}`);
+        requestLog.push(httpReq);
+        return httpReq;
+      },
+    };
   }
   const actual = await AuthProviders.clientSecretAuthProvider({
     clientId,
@@ -68,7 +76,6 @@ async function processAuth({
     exchange: 'client',
     clientSecret,
   });
-  const requestLog: AuthProviders.HttpRequest[] = [];
   return {
     requestLog,
     updateClientPublicKey: async (signingKey: webcrypto.CryptoKeyPair) => {

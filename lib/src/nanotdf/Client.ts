@@ -270,25 +270,8 @@ export default class Client {
       clientVersion == Client.SDK_INITIAL_RELEASE ? Client.INITIAL_RELEASE_IV_SIZE : Client.IV_SIZE;
     const iv = entityWrappedKey.subarray(0, ivLength);
     const encryptedSharedKey = entityWrappedKey.subarray(ivLength);
-
-    let kasPublicKey;
-    try {
-      // Get session public key as crypto key
-      kasPublicKey = await pemPublicToCrypto(wrappedKey.sessionPublicKey);
-    } catch (cause) {
-      throw new Error(
-        `PEM Public Key to crypto public key failed. Is PEM formatted correctly?\n Caused by: ${cause.message}`,
-        { cause }
-      );
-    }
-
-    let hkdfSalt;
-    try {
-      // Get the hkdf salt params
-      hkdfSalt = await getHkdfSalt(magicNumberVersion);
-    } catch (e) {
-      throw new Error(`Salting hkdf failed\n Caused by: ${e.message}`);
-    }
+    const kasPublicKey = await pemPublicToCrypto(wrappedKey.sessionPublicKey);
+    const hkdfSalt = await getHkdfSalt(magicNumberVersion);
     const { privateKey } = await this.ephemeralKeyPair;
 
     // Get the unwrapping key
@@ -299,7 +282,9 @@ export default class Client {
       hkdfSalt
     );
 
-    console.error();
+    // console.error("mine public", (await this.ephemeralKeyPair).publicKey);
+    // console.error("wrapping with (mine public) x yourPublic / salt", await cryptoPublicToPem((await this.ephemeralKeyPair).publicKey), await cryptoPublicToPem(kasPublicKey), hkdfSalt);
+    // console.error("derived aes key", unwrappingKey, await crypto.subtle.exportKey("jwk", unwrappingKey));
 
     const decryptedKey = await decrypt(unwrappingKey, encryptedSharedKey, iv, authTagLength);
 
