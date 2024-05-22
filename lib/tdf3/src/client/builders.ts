@@ -1,4 +1,4 @@
-import { AttributeValidator } from './validation.js';
+import { validateAttribute, validateAttributeObject } from './validation.js';
 import { AttributeObject, KeyInfo, Policy } from '../models/index.js';
 import { type Metadata } from '../tdf.js';
 import { Binary } from '../binary.js';
@@ -14,7 +14,7 @@ export type Scope = {
   dissem?: string[];
   policyId?: string;
   policyObject?: Policy;
-  attributes?: AttributeObject[];
+  attributes?: (string | AttributeObject)[];
 };
 
 export type EncryptKeyMiddleware = (...args: unknown[]) => Promise<{
@@ -29,7 +29,6 @@ export type EncryptStreamMiddleware = (
 export type EncryptParams = {
   source: ReadableStream<Uint8Array>;
   opts?: { keypair: PemKeyPair };
-  output?: NodeJS.WriteStream;
   scope?: Scope;
   metadata?: Metadata;
   keypair?: CryptoKeyPair;
@@ -181,7 +180,7 @@ class EncryptParamsBuilder {
   /**
    * @param attributes URIs of the form `<authority namespace>/attr/<name>/value/<value>`
    */
-  setAttributes(attributes?: AttributeObject[]) {
+  setAttributes(attributes?: (string | AttributeObject)[]) {
     if (!attributes) {
       if (this._params.scope) {
         delete this._params.scope.attributes;
@@ -191,7 +190,13 @@ class EncryptParamsBuilder {
       }
       return;
     }
-    AttributeValidator(attributes);
+    attributes.forEach((a) => {
+      if (typeof a === 'string') {
+        validateAttribute(a);
+      } else {
+        validateAttributeObject(a);
+      }
+    });
     if (this._params.scope) {
       this._params.scope.attributes = attributes;
     } else {

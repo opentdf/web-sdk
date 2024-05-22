@@ -1,0 +1,9 @@
+{
+    "name": "client-web-roundtrip",
+    "version": "0.0.1",
+    "description": "Simple example to encrypt and decrypt files with quickstart backend.",
+    "scripts": {},
+    "dependencies": {
+        "@opentdf/cli": "file:../../../cli/opentdf-cli-2.0.0.tgz"
+    }
+}

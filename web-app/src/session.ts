@@ -322,7 +322,7 @@ export class OidcClient implements AuthProvider {
       const algorithm = rsaPkcs1Sha256();
       const [publicKey, privateKey] = await Promise.all([
         crypto.subtle.importKey('spki', k[0], algorithm, true, ['verify']),
-        crypto.subtle.importKey('pkcs8', k[1], algorithm, false, ['sign']),
+        crypto.subtle.importKey('pkcs8', k[1], algorithm, true, ['sign']),
       ]);
       this.signingKey = { privateKey, publicKey };
     } else {

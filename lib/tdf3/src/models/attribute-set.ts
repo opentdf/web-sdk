@@ -1,41 +1,14 @@
-import Ajv, { JSONSchemaType } from 'ajv';
 import { decodeJwt } from 'jose';
 
 export type AttributeObject = {
   attribute: string;
-  kasUrl: string;
+  kasUrl?: string;
   kid?: string;
-  pubKey: string;
+  pubKey?: string;
   displayName?: string;
   isDefault?: boolean;
   jwt?: string;
 };
-
-const ATTRIBUTE_OBJECT_SCHEMA: JSONSchemaType<AttributeObject> = {
-  $id: '/AttributeObject',
-  type: 'object',
-  properties: {
-    attribute: { type: 'string' },
-    displayName: { type: 'string', nullable: true },
-    isDefault: { type: 'boolean', nullable: true },
-    pubKey: { type: 'string' },
-    kasUrl: { type: 'string' },
-    kid: { type: 'string', nullable: true },
-    jwt: { type: 'string', nullable: true },
-  },
-  required: ['attribute', 'pubKey', 'kasUrl'],
-  additionalProperties: false,
-};
-
-const validator = (() => {
-  try {
-    //@ts-expect-error: Ajv not a constructor
-    return new Ajv();
-  } catch (e) {
-    console.log(e);
-  }
-  return new Ajv.default();
-})();
 
 export class AttributeSet {
   attributes: AttributeObject[];
@@ -97,15 +70,6 @@ export class AttributeSet {
    * @return the attribute object if successful, or null
    */
   addAttribute(attrObj: AttributeObject): AttributeObject | null {
-    // Check shape of object.  Reject semi-silently if malformed.
-    const validate = validator.compile(ATTRIBUTE_OBJECT_SCHEMA);
-    const result = validate(attrObj);
-    if (!result) {
-      // TODO: Determine if an error should be thrown
-      // console.log("WARNING - AttributeSet.addAttribute: AttributeObject is malformed. AddAttribute failed:");
-      if (this.verbose) console.log(attrObj);
-      return null;
-    }
     // Check for duplicate entries to assure idempotency.
     if (this.has(attrObj.attribute)) {
       // This may be a common occurance, so only un-comment this log message

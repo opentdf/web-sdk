@@ -1,7 +1,9 @@
 name: Build, Test, and Deliver Client
 
 env:
-  do_sonarscan: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
+  do_sonarscan: >-
+    ${{ github.event_name == 'push' ||
+      github.event.pull_request.head.repo.full_name == github.repository }}
 
 on:
   pull_request:
@@ -10,7 +12,8 @@ on:
       - main
       - release/[0-9]+.[0-9]+.[0-9]+
   release:
-    types: [created]
+    types:
+      - created
 jobs:
   lib:
     runs-on: ubuntu-latest
@@ -19,29 +22,29 @@ jobs:
         working-directory: ./lib
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: ${{ !fromJSON(env.do_sonarscan) && 1 || 0 }}
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
           cache-dependency-path: './lib/package-lock.json'
       - run: npm ci
       - run: npm test
-      - uses: fingerprintjs/action-coverage-report-md@v1
+      - uses: fingerprintjs/action-coverage-report-md@v2
         id: coverage-md
         with:
           srcBasePath: './'
           textReportPath: './lib/coverage/coverage.txt'
-      - run: echo "${MARKDOWN_REPORT}" >> $GITHUB_STEP_SUMMARY
+      - run: echo "${MARKDOWN_REPORT}" >>$GITHUB_STEP_SUMMARY
         env:
           MARKDOWN_REPORT: '${{ steps.coverage-md.outputs.markdownReport }}'
       - run: npm audit --omit dev && npm audit --audit-level high
       - run: npm run license-check
       - run: npm run lint
       - run: npm pack
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: opentdf-client-lib
           path: ./lib/opentdf-client-*.tgz
@@ -61,13 +64,13 @@ jobs:
         working-directory: ./remote-store
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
           cache-dependency-path: './remote-store/package-lock.json'
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: opentdf-client-lib
           path: lib/
@@ -79,6 +82,41 @@ jobs:
       - run: npm run lint
       - run: npm pack
 
+  cli:
+    needs:
+      - lib
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./cli
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './cli/package-lock.json'
+      - uses: actions/download-artifact@v4
+        with:
+          name: opentdf-client-lib
+          path: lib/
+      - run: npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-*.tgz
+      - run: npm test
+      - run: npm audit --omit dev && npm audit --audit-level high
+      - run: npm run license-check
+      - run: npm run lint
+      - run: npm pack
+      - name: Setup BATS
+        uses: mig4/setup-bats@v1
+        with:
+          bats-version: 1.2.1
+      - run: bats bin/opentdf.bats
+      - uses: actions/upload-artifact@v4
+        with:
+          name: opentdf-cli
+          path: ./cli/opentdf-cli-*.tgz
+
   web-app:
     needs:
       - lib
@@ -88,13 +126,13 @@ jobs:
         working-directory: ./web-app
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
           cache-dependency-path: './web-app/package-lock.json'
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: opentdf-client-lib
           path: lib/
@@ -113,19 +151,18 @@ jobs:
         working-directory: .github/workflows
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v3
-      - uses: mig4/setup-bats@v1
-        with:
-          bats-version: 1.2.1
+      - uses: actions/checkout@v4
       - name: 🦇🦇🦇🦇🦇🦇
-        run: docker run --rm -v "$PWD:/mnt" --workdir "/mnt" bats/bats:1.5.0 *.bats
+        run: docker run --rm -v "$PWD:/mnt" --workdir "/mnt" bats/bats:1.11.0 *.bats
       - name: 🦪 ✔ 🧼🧼🧼
         run: >-
-          docker run --rm -v "$PWD:/mnt" --workdir "/mnt" "koalaman/shellcheck:v0.8.0"
+          docker run --rm -v "$PWD:/mnt" --workdir "/mnt" "koalaman/shellcheck:v0.10.0"
           --color=always *.sh
 
   backend-roundtrip:
     needs:
+      - cli
+      - lib
       - web-app
     runs-on: ubuntu-latest
     defaults:
@@ -133,16 +170,20 @@ jobs:
         working-directory: .github/workflows/roundtrip
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
           cache-dependency-path: './web-app/package-lock.json'
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: opentdf-client-lib
           path: lib/
+      - uses: actions/download-artifact@v4
+        with:
+          name: opentdf-cli
+          path: cli/
       - uses: yokawasa/action-setup-kube-tools@v0.11.1
         with:
           setup-tools: |
@@ -166,29 +207,70 @@ jobs:
           kubernetes-version: 1.30.0
       - name: Run tilt ci
         env:
-          TEST_SCRIPT: ./wait-and-test.sh
-          OPENTDF_INGRESS_HOST_PORT: "5432"
+          TEST_SCRIPT: ./wait-and-test.sh backend
+          OPENTDF_INGRESS_HOST_PORT: '5432'
           PLAYWRIGHT_TESTS_TO_RUN: roundtrip
         run: tilt ci
 
+  platform-roundtrip:
+    needs:
+      - cli
+      - lib
+      - web-app
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .github/workflows/roundtrip
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './web-app/package-lock.json'
+      - uses: actions/download-artifact@v4
+        with:
+          name: opentdf-client-lib
+          path: lib/
+      - uses: actions/download-artifact@v4
+        with:
+          name: opentdf-cli
+          path: cli/
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+        with:
+          go-version: '1.22'
+      - run: docker compose up -d --wait --wait-timeout 240
+      - env:
+          OPENTDF_SERVICES_AUTHORIZATION_URL: 'http://localhost:65432/'
+          PLAYWRIGHT_TESTS_TO_RUN: roundtrip
+        run: |-
+          ./wait-and-test.sh platform
+
   deliver-ghp:
-    needs: [lib, web-app, scripts, backend-roundtrip]
+    needs:
+      - lib
+      - cli
+      - web-app
+      - scripts
+      - backend-roundtrip
+      - platform-roundtrip
     runs-on: ubuntu-latest
     timeout-minutes: 5
     # To publish from a release or feature branch, remove the ref == condition below
     if: >-
-      (github.event_name == 'push' && github.ref == 'refs/heads/main')
-      || (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/'))
-      || (github.event_name == 'release' && startsWith(github.ref, 'refs/tags/'))
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')) ||
+      (github.event_name == 'release' && startsWith(github.ref, 'refs/tags/'))
     outputs:
       FULL_VERSION: ${{ steps.guess-build-metadata.outputs.FULL_VERSION }}
       DIST_TAG: ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
       TARGET_VERSION: ${{ steps.check-version.outputs.TARGET_VERSION }}
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '18.x'
+          node-version: '20'
           registry-url: https://npm.pkg.github.com
       - name: Check version number is same between tag, library, and/or release
         id: check-version
@@ -208,18 +290,21 @@ jobs:
       - run: make test
       - run: make doc
       - run: >-
-          echo "::notice file=lib/package.json::Will be published to [GitHub Packages](https://github.com/opentdf/client-web/pkgs/npm/client)as ${{ steps.guess-build-metadata.outputs.DIST_TAG }} with version=[${{ steps.guess-build-metadata.outputs.FULL_VERSION }}]"
+          echo "::notice file=lib/package.json::Will be published to
+          [GitHub Packages](https://github.com/opentdf/client-web/pkgs/npm/client)
+          as ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
+          with version=[${{ steps.guess-build-metadata.outputs.FULL_VERSION }}]"
       - run: >-
           .github/workflows/publish-to.sh
-          ${{ steps.guess-build-metadata.outputs.FULL_VERSION }}
-          ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
+            ${{ steps.guess-build-metadata.outputs.FULL_VERSION }}
+            ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: echo "- [Client Library](https://github.com/opentdf/client-web/pkgs/npm/client)">>$GITHUB_STEP_SUMMARY
+      - run: echo "- [Command Line Tool](https://github.com/opentdf/client-web/pkgs/npm/cli)">>$GITHUB_STEP_SUMMARY
       - name: trigger xtest
         run: >-
-          curl -XPOST
-          -u "virtru-cloudnative:${{secrets.PERSONAL_ACCESS_TOKEN}}"
+          curl -XPOST -u "virtru-cloudnative:${{secrets.PERSONAL_ACCESS_TOKEN}}"
           -H "Accept: application/vnd.github.everest-preview+json"
           -H "Content-Type: application/json"
           "https://api.github.com/repos/opentdf/backend/dispatches"
@@ -227,7 +312,7 @@ jobs:
         env:
           FULL_VERSION: ${{ steps.guess-build-metadata.outputs.FULL_VERSION }}
       - name: Publish documentation to gh-pages
-        uses: JamesIves/github-pages-deploy-action@v4.4.1
+        uses: JamesIves/github-pages-deploy-action@v4.6.0
         with:
           branch: gh-pages
           folder: lib/dist/docs
@@ -238,21 +323,26 @@ jobs:
     environment: npmjs
     needs: deliver-ghp
     if: >-
-      (github.event_name == 'push' && github.ref == 'refs/heads/main')
-      || (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/'))
-      || (github.event_name == 'release' && startsWith(github.ref, 'refs/tags/'))
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')) ||
+      (github.event_name == 'release' && startsWith(github.ref, 'refs/tags/'))
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '18.x'
+          node-version: '20'
           registry-url: 'https://registry.npmjs.org'
       - run: make all
       - run: >-
-          .github/workflows/publish-to.sh ${{ needs.deliver-ghp.outputs.FULL_VERSION }}
-          ${{ needs.deliver-ghp.outputs.DIST_TAG }}
+          .github/workflows/publish-to.sh ${{ needs.deliver-ghp.outputs.FULL_VERSION }} ${{
+          needs.deliver-ghp.outputs.DIST_TAG }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - run: echo "- [Client Library](https://www.npmjs.com/package/@opentdf/client/v/${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
-      - run: echo "- [Remote Store](https://www.npmjs.com/package/@opentdf/remote-store/v/${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
-      - run: echo "- [unpkg](https://unpkg.com/browse/@opentdf/client@${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
+      - run: >-
+          echo "- [Client Library](https://www.npmjs.com/package/@opentdf/client/v/${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
+      - run: >-
+          echo "- [Remote Store](https://www.npmjs.com/package/@opentdf/remote-store/v/${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
+      - run: >-
+          echo "- [Command Line Tool](https://www.npmjs.com/package/@opentdf/cli/v/${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
+      - run: >-
+          echo "- [unpkg](https://unpkg.com/browse/@opentdf/client@${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
