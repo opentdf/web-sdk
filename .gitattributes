@@ -1,0 +1,2 @@
+# collapses proto gencode in PR diffs by default
+lib/src/platform/** linguist-generated=true
