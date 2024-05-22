@@ -132,14 +132,24 @@ const kas: RequestListener = async (req, res) => {
           const kasPrivateKeyBytes = base64.decodeArrayBuffer(
             removePemFormatting(Mocks.kasECPrivateKey)
           );
-          const kasPrivateKey = await crypto.subtle.importKey('pkcs8', kasPrivateKeyBytes, {name: "ECDH", namedCurve: "P-256"}, false, ['deriveBits', 'deriveKey']);
+          const kasPrivateKey = await crypto.subtle.importKey(
+            'pkcs8',
+            kasPrivateKeyBytes,
+            { name: 'ECDH', namedCurve: 'P-256' },
+            false,
+            ['deriveBits', 'deriveKey']
+          );
           console.log('Imported kas private key!');
           const hkdfSalt = await getHkdfSalt(header.magicNumberVersion);
           const dek = await keyAgreement(kasPrivateKey, nanoPublicKey, hkdfSalt);
           const kek = await keyAgreement(kasPrivateKey, clientPublicKey, hkdfSalt);
           const dekBits = await crypto.subtle.exportKey('raw', dek);
           const iv = generateRandomNumber(12);
-          console.log(`agreeed! dek = [${new Uint8Array(dekBits)}], kek = [${new Uint8Array(await crypto.subtle.exportKey('raw', kek))}]`);
+          console.log(
+            `agreeed! dek = [${new Uint8Array(dekBits)}], kek = [${new Uint8Array(
+              await crypto.subtle.exportKey('raw', kek)
+            )}]`
+          );
           const cek = await crypto.subtle.encrypt(
             {
               name: 'AES-GCM',
@@ -160,7 +170,7 @@ const kas: RequestListener = async (req, res) => {
 
           const entityWrappedKey = new Uint8Array(iv.length + cekBytes.length);
           entityWrappedKey.set(iv);
-          entityWrappedKey.set(cekBytes, iv.length)
+          entityWrappedKey.set(cekBytes, iv.length);
           const reply = {
             entityWrappedKey: base64.encodeArrayBuffer(entityWrappedKey),
             sessionPublicKey: Mocks.kasECCert,

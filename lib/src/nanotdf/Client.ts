@@ -1,10 +1,6 @@
 import { type TypedArray } from '../tdf/index.js';
 import * as base64 from '../encodings/base64.js';
-import {
-  enums as cryptoEnums,
-  generateKeyPair,
-  keyAgreement,
-} from '../nanotdf-crypto/index.js';
+import { enums as cryptoEnums, generateKeyPair, keyAgreement } from '../nanotdf-crypto/index.js';
 import getHkdfSalt from './helpers/getHkdfSalt.js';
 import DefaultParams from './models/DefaultParams.js';
 import { fetchWrappedKey } from '../kas.js';
@@ -281,12 +277,16 @@ export default class Client {
       hkdfSalt
     );
 
-    console.log(`agreeed! kek = [${new Uint8Array(await crypto.subtle.exportKey('raw', unwrappingKey))}], iv = [${iv}], cek= [${encryptedSharedKey}]`);
+    console.log(
+      `agreeed! kek = [${new Uint8Array(
+        await crypto.subtle.exportKey('raw', unwrappingKey)
+      )}], iv = [${iv}], cek= [${encryptedSharedKey}]`
+    );
     // console.error("mine public", (await this.ephemeralKeyPair).publicKey);
     // console.error("wrapping with (mine public) x yourPublic / salt", await cryptoPublicToPem((await this.ephemeralKeyPair).publicKey), await cryptoPublicToPem(kasPublicKey), hkdfSalt);
     // console.error("derived aes key", unwrappingKey, await crypto.subtle.exportKey("jwk", unwrappingKey));
 
-    // NOTE Fixes order? 
+    // NOTE Fixes order?
     const decryptedKey = await crypto.subtle.decrypt(
       { name: 'AES-GCM', iv, tagLength: 128 },
       unwrappingKey,
