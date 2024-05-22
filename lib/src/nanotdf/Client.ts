@@ -304,7 +304,7 @@ export default class Client {
       console.log(
         `agreeed! kek = [${new Uint8Array(
           await crypto.subtle.exportKey('raw', unwrappingKey)
-        )}], iv = [${iv}], cek= [${encryptedSharedKey}]`
+        )}], iv = [${iv}], cek= [${encryptedSharedKey}], tagLength [${authTagLength}]`
       );
 
       let decryptedKey;
