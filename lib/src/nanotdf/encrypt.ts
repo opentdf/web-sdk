@@ -9,11 +9,7 @@ import { getBitLength as authTagLengthForCipher } from './models/Ciphers.js';
 import { lengthOfBinding } from './helpers/calculateByCipher.js';
 import { TypedArray } from '../tdf/index.js';
 
-import {
-  encrypt as cryptoEncrypt,
-  keyAgreement,
-  digest,
-} from '../nanotdf-crypto/index.js';
+import { encrypt as cryptoEncrypt, keyAgreement, digest } from '../nanotdf-crypto/index.js';
 import { exportCryptoKey } from '../keyport/x962.js';
 
 /**
@@ -43,6 +39,7 @@ export default async function encrypt(
     // Get the hkdf salt params
     await getHkdfSalt(DefaultParams.magicNumberVersion)
   );
+  console.log(`agreeed! dek = [${new Uint8Array(await crypto.subtle.exportKey('raw', dek))}]`);
 
   // Construct the kas locator
   const kasResourceLocator = ResourceLocator.parse(kasUrl);

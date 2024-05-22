@@ -1,7 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 
-import {pemPublicToCrypto} from '../../../src/keyport/raw.js';
-
+import { pemPublicToCrypto } from '../../../src/keyport/raw.js';
 
 const ecPublic = `‌-----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEgUcv//GdNu1VQmcVj/LQGI5y/Ymo

@@ -20,7 +20,8 @@ describe('Local roundtrip Tests', () => {
   it('roundtrip string', async () => {
     const client = new NanoTDFClient({ authProvider, kasEndpoint });
     const cipherText = await client.encrypt('hello world');
-    const actual = await client.decrypt(cipherText);
+    const client2 = new NanoTDFClient({ authProvider, kasEndpoint });
+    const actual = await client2.decrypt(cipherText);
     expect(new TextDecoder().decode(actual)).to.be.equal('hello world');
   });
 });

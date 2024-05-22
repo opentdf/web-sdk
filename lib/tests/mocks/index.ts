@@ -120,7 +120,6 @@ wVe4nK42SFZAIV9e6A+cgJXYX9OhRANCAATcxKDDwNy1YXcBV3cZCuw1EKf6Gp0e
 4UmHCa+2KQc7uk8C1KS8ZSIyvXI6xvjrtohHRDescslzBKodHbeCWzjC
 -----END PRIVATE KEY-----`;
 
-
 export default function getMocks() {
   return Object.create({
     // TODO: diff key then KAS

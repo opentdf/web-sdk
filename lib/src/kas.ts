@@ -33,25 +33,24 @@ export async function fetchWrappedKey(
     body: JSON.stringify(requestBody),
   });
   try {
+    const response = await fetch(req.url, {
+      method: req.method,
+      mode: 'cors', // no-cors, *cors, same-origin
+      cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+      credentials: 'same-origin', // include, *same-origin, omit
+      headers: req.headers,
+      redirect: 'follow', // manual, *follow, error
+      referrerPolicy: 'no-referrer', // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
+      body: req.body as BodyInit,
+    });
 
-  const response = await fetch(req.url, {
-    method: req.method,
-    mode: 'cors', // no-cors, *cors, same-origin
-    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-    credentials: 'same-origin', // include, *same-origin, omit
-    headers: req.headers,
-    redirect: 'follow', // manual, *follow, error
-    referrerPolicy: 'no-referrer', // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
-    body: req.body as BodyInit,
-  });
+    if (!response.ok) {
+      throw new Error(`${req.method} ${req.url} => ${response.status} ${response.statusText}`);
+    }
 
-  if (!response.ok) {
-    throw new Error(`${req.method} ${req.url} => ${response.status} ${response.statusText}`);
+    return response.json();
+  } catch (e) {
+    console.error(JSON.stringify(e));
+    throw e;
   }
-
-  return response.json();
-} catch (e) {
-  console.error(JSON.stringify(e))
-  throw e
-}
 }

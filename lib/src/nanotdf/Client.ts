@@ -1,7 +1,6 @@
 import { type TypedArray } from '../tdf/index.js';
 import * as base64 from '../encodings/base64.js';
 import {
-  decrypt,
   enums as cryptoEnums,
   generateKeyPair,
   keyAgreement,
@@ -10,9 +9,8 @@ import getHkdfSalt from './helpers/getHkdfSalt.js';
 import DefaultParams from './models/DefaultParams.js';
 import { fetchWrappedKey } from '../kas.js';
 import { AuthProvider, isAuthProvider, reqSignature } from '../auth/providers.js';
-import { cryptoPublicToPem } from '../keyport/pem.js';
+import { cryptoPublicToPem, pemToCryptoPublicKey } from '../keyport/pem.js';
 import { safeUrlCheck, validateSecureUrl } from '../urltils.js';
-import { pemPublicToCrypto } from '../keyport/raw.js';
 
 const { KeyUsageType, AlgorithmName, NamedCurve } = cryptoEnums;
 
@@ -270,7 +268,8 @@ export default class Client {
       clientVersion == Client.SDK_INITIAL_RELEASE ? Client.INITIAL_RELEASE_IV_SIZE : Client.IV_SIZE;
     const iv = entityWrappedKey.subarray(0, ivLength);
     const encryptedSharedKey = entityWrappedKey.subarray(ivLength);
-    const kasPublicKey = await pemPublicToCrypto(wrappedKey.sessionPublicKey);
+    // Let us import public key as a cert or public key
+    const kasPublicKey = await pemToCryptoPublicKey(wrappedKey.sessionPublicKey);
     const hkdfSalt = await getHkdfSalt(magicNumberVersion);
     const { privateKey } = await this.ephemeralKeyPair;
 
@@ -282,11 +281,17 @@ export default class Client {
       hkdfSalt
     );
 
+    console.log(`agreeed! kek = [${new Uint8Array(await crypto.subtle.exportKey('raw', unwrappingKey))}], iv = [${iv}], cek= [${encryptedSharedKey}]`);
     // console.error("mine public", (await this.ephemeralKeyPair).publicKey);
     // console.error("wrapping with (mine public) x yourPublic / salt", await cryptoPublicToPem((await this.ephemeralKeyPair).publicKey), await cryptoPublicToPem(kasPublicKey), hkdfSalt);
     // console.error("derived aes key", unwrappingKey, await crypto.subtle.exportKey("jwk", unwrappingKey));
 
-    const decryptedKey = await decrypt(unwrappingKey, encryptedSharedKey, iv, authTagLength);
+    // NOTE Fixes order? 
+    const decryptedKey = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv, tagLength: 128 },
+      unwrappingKey,
+      encryptedSharedKey
+    );
 
     const unwrappedKey = await crypto.subtle.importKey(
       'raw',
@@ -297,7 +302,7 @@ export default class Client {
       // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/wrapKey
       true,
       // Want to use the key to encrypt and decrypt. Signing key will be used later.
-      ['encrypt', 'decrypt'],
+      ['encrypt', 'decrypt']
     );
 
     return unwrappedKey;

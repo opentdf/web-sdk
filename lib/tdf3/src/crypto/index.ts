@@ -16,9 +16,7 @@ import {
 import { TdfDecryptError } from '../../../src/errors.js';
 import { formatAsPem, removePemFormatting } from './crypto-utils.js';
 import { encodeArrayBuffer as hexEncode } from '../../../src/encodings/hex.js';
-import {
-  decodeArrayBuffer as base64Decode,
-} from '../../../src/encodings/base64.js';
+import { decodeArrayBuffer as base64Decode } from '../../../src/encodings/base64.js';
 import { AlgorithmUrn } from '../ciphers/algorithms.js';
 
 // Used to pass into native crypto functions

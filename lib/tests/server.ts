@@ -52,7 +52,10 @@ function getBody(request: IncomingMessage): Promise<Uint8Array> {
 
 const kas: RequestListener = async (req, res) => {
   console.log('[INFO]: server request: ', req.method, req.url, req.headers);
-  res.setHeader('Access-Control-Allow-Headers', 'authorization, content-type, dpop, range, virtru-ntdf-version');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'authorization, content-type, dpop, range, virtru-ntdf-version'
+  );
   res.setHeader('Access-Control-Allow-Origin', '*');
   // GET should be allowed for everything except rewrap, POST only for rewrap but IDC
   res.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET, POST');
@@ -121,34 +124,22 @@ const kas: RequestListener = async (req, res) => {
         }
         case 'ec:secp256r1': {
           console.log('[INFO] nano rewrap request body: ', rewrap);
-          const { header } = Header.parse(new Uint8Array(base64.decodeArrayBuffer(rewrap?.keyAccess?.header || '')));
+          const { header } = Header.parse(
+            new Uint8Array(base64.decodeArrayBuffer(rewrap?.keyAccess?.header || ''))
+          );
           const nanoPublicKey = await importRawKey(header.ephemeralPublicKey);
           const clientPublicKey = await pemPublicToCrypto(rewrap.clientPublicKey);
-          const kasPrivateKeyBytes = base64.decodeArrayBuffer(removePemFormatting(Mocks.kasECPrivateKey))
-          const kasPrivateKey = await crypto.subtle.importKey(
-            'raw',
-            kasPrivateKeyBytes,
-            {
-              name: 'ECDSA',
-              namedCurve: 'P-256',
-            },
-            true,
-            []
+          const kasPrivateKeyBytes = base64.decodeArrayBuffer(
+            removePemFormatting(Mocks.kasECPrivateKey)
           );
-          console.log("Imported kas private key!");
+          const kasPrivateKey = await crypto.subtle.importKey('pkcs8', kasPrivateKeyBytes, {name: "ECDH", namedCurve: "P-256"}, false, ['deriveBits', 'deriveKey']);
+          console.log('Imported kas private key!');
           const hkdfSalt = await getHkdfSalt(header.magicNumberVersion);
-          const dek = await keyAgreement(
-            kasPrivateKey,
-            nanoPublicKey,
-            hkdfSalt
-          );
-          const kek = await keyAgreement(
-            kasPrivateKey,
-            clientPublicKey,
-            hkdfSalt
-          );
-          console.log("agreeed!");
+          const dek = await keyAgreement(kasPrivateKey, nanoPublicKey, hkdfSalt);
+          const kek = await keyAgreement(kasPrivateKey, clientPublicKey, hkdfSalt);
+          const dekBits = await crypto.subtle.exportKey('raw', dek);
           const iv = generateRandomNumber(12);
+          console.log(`agreeed! dek = [${new Uint8Array(dekBits)}], kek = [${new Uint8Array(await crypto.subtle.exportKey('raw', kek))}]`);
           const cek = await crypto.subtle.encrypt(
             {
               name: 'AES-GCM',
@@ -156,10 +147,22 @@ const kas: RequestListener = async (req, res) => {
               tagLength: 128,
             },
             kek,
-            await crypto.subtle.exportKey('raw', dek)
+            dekBits
           );
+          const cekBytes = new Uint8Array(cek);
+          // console.log(`responding! cek = [${cekBytes}], iv = [${iv}]`);
+          // const doublecheck = await crypto.subtle.decrypt(
+          //   { name: 'AES-GCM', iv, tagLength: 128 },
+          //   kek,
+          //   cek
+          // );
+          // console.log(`doublecheck success! dek = [${new Uint8Array(doublecheck)}]`);
+
+          const entityWrappedKey = new Uint8Array(iv.length + cekBytes.length);
+          entityWrappedKey.set(iv);
+          entityWrappedKey.set(cekBytes, iv.length)
           const reply = {
-            entityWrappedKey: base64.encodeArrayBuffer(cek),
+            entityWrappedKey: base64.encodeArrayBuffer(entityWrappedKey),
             sessionPublicKey: Mocks.kasECCert,
             metadata: { hello: 'people of earth' },
           };

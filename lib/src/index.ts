@@ -15,20 +15,20 @@ import { pemToCryptoPublicKey } from './keyport/pem.js';
 
 async function fetchKasPubKey(kasUrl: string): Promise<CryptoKey> {
   const u = `${kasUrl}/kas_public_key?algorithm=ec:secp256r1`;
-  console.log(`Fetching [${u}]`)
+  console.log(`Fetching [${u}]`);
   try {
-  const kasPubKeyResponse = await fetch(u);
-  if (!kasPubKeyResponse.ok) {
-    throw new Error(
-      `Unable to validate KAS [${kasUrl}]. Received [${kasPubKeyResponse.status}:${kasPubKeyResponse.statusText}] from [${u}]`
-    );
+    const kasPubKeyResponse = await fetch(u);
+    if (!kasPubKeyResponse.ok) {
+      throw new Error(
+        `Unable to validate KAS [${kasUrl}]. Received [${kasPubKeyResponse.status}:${kasPubKeyResponse.statusText}] from [${u}]`
+      );
+    }
+    const pem = await kasPubKeyResponse.json();
+    return pemToCryptoPublicKey(pem);
+  } catch (e) {
+    console.error(e);
+    throw e;
   }
-  const pem = await kasPubKeyResponse.json();
-  return pemToCryptoPublicKey(pem);
-} catch (e) {
-  console.error(e);
-  throw e;
-}
 }
 
 /**
