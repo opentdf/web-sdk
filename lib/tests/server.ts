@@ -4,10 +4,15 @@ import * as jose from 'jose';
 import { IncomingMessage, RequestListener, createServer } from 'node:http';
 
 import { base64 } from '../src/encodings/index.js';
-import { Binary } from '../tdf3/index.js';
-import { type KeyAccessObject } from '../tdf3/src/models/key-access.js';
 import { decryptWithPrivateKey, encryptWithPublicKey } from '../tdf3/src/crypto/index.js';
 import getMocks from './mocks/index.js';
+import { Header, getHkdfSalt } from '../src/nanotdf/index.js';
+import { keyAgreement } from '../src/nanotdf-crypto/keyAgreement.js';
+import generateRandomNumber from '../src/nanotdf-crypto/generateRandomNumber.js';
+import { pemPublicToCrypto } from '../src/nanotdf-crypto/pemPublicToCrypto.js';
+import { removePemFormatting } from '../tdf3/src/crypto/crypto-utils.js';
+import { Binary } from '../tdf3/index.js';
+import { type KeyAccessObject } from '../tdf3/src/models/key-access.js';
 
 const Mocks = getMocks();
 const kid = 'kid-a';
@@ -21,8 +26,10 @@ function range(start: number, end: number): Uint8Array {
 }
 
 type RewrapBody = {
-  algorithm: 'RS256';
-  keyAccess: KeyAccessObject;
+  algorithm: 'RS256' | 'ec:secp256r1';
+  keyAccess: KeyAccessObject & {
+    header?: string;
+  };
   policy: string;
   clientPublicKey: string;
 };
@@ -43,7 +50,10 @@ function getBody(request: IncomingMessage): Promise<Uint8Array> {
 
 const kas: RequestListener = async (req, res) => {
   console.log('[INFO]: server request: ', req.method, req.url, req.headers);
-  res.setHeader('Access-Control-Allow-Headers', 'authorization, content-type, dpop, range');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'authorization, content-type, dpop, range, virtru-ntdf-version'
+  );
   res.setHeader('Access-Control-Allow-Origin', '*');
   // GET should be allowed for everything except rewrap, POST only for rewrap but IDC
   res.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET, POST');
@@ -51,20 +61,24 @@ const kas: RequestListener = async (req, res) => {
     const url = new URL(req.url || '', `http://${req?.headers?.host}`);
     if (req.method === 'OPTIONS') {
       res.statusCode = 200;
+      console.log('[DEBUG] CORS response 200');
       res.end();
     } else if (url.pathname === '/kas_public_key') {
       if (req.method !== 'GET') {
+        console.log('[DEBUG] invalid method');
         res.statusCode = 405;
         res.end(`{"error": "Invalid method [${req.method}]"}`);
       }
       const algorithm = url.searchParams.get('algorithm') || 'rsa:2048';
       if (!['ec:secp256r1', 'rsa:2048'].includes(algorithm)) {
+        console.log(`[DEBUG] invalid algorithm [${algorithm}]`);
         res.writeHead(400);
         res.end(`{"error": "Invalid algorithm [${algorithm}]"}`);
         return;
       }
       const fmt = url.searchParams.get('fmt') || 'pkcs8';
       if (!['jwks', 'pkcs8'].includes(fmt)) {
+        console.log(`[DEBUG] invalid fmt [${fmt}]`);
         res.writeHead(400);
         res.end(`{"error": "Invalid fmt [${fmt}]"}`);
         return;
@@ -72,10 +86,11 @@ const kas: RequestListener = async (req, res) => {
       const v2 = '2' == url.searchParams.get('v');
       res.setHeader('Content-Type', 'application/json');
       res.statusCode = 200;
-      const publicKey = Mocks.kasPublicKey;
+      const publicKey = 'ec:secp256r1' == algorithm ? Mocks.kasECCert : Mocks.kasPublicKey;
       res.end(JSON.stringify(v2 ? { kid, publicKey } : publicKey));
     } else if (url.pathname === '/v2/rewrap') {
       if (req.method !== 'POST') {
+        console.error(`[ERROR] /v2/rewrap only accepts POST verbs, received [${req.method}]`);
         res.writeHead(405);
         res.end(`{"error": "Invalid method [${req.method}]"}`);
         return;
@@ -88,24 +103,98 @@ const kas: RequestListener = async (req, res) => {
       // NOTE: Real KAS will verify JWT here
       const { requestBody } = jose.decodeJwt(signedRequestToken);
       const rewrap = JSON.parse(requestBody as string) as RewrapBody;
-      if (rewrap?.algorithm !== 'RS256') {
-        res.writeHead(400);
-        res.end(`{"error": "Invalid algorithm [${rewrap?.algorithm}]"}`);
-        return;
+      switch (rewrap?.algorithm) {
+        case 'RS256': {
+          // Decrypt the wrapped key from TDF3
+          console.log('[INFO]: rewrap request body: ', rewrap);
+          const dek = await decryptWithPrivateKey(
+            Binary.fromArrayBuffer(base64.decodeArrayBuffer(rewrap.keyAccess.wrappedKey || '')),
+            Mocks.kasPrivateKey
+          );
+          const cek = await encryptWithPublicKey(dek, rewrap.clientPublicKey);
+          const reply = {
+            entityWrappedKey: base64.encodeArrayBuffer(cek.asArrayBuffer()),
+            metadata: { hello: 'world' },
+          };
+          res.writeHead(200);
+          res.end(JSON.stringify(reply));
+          return;
+        }
+        case 'ec:secp256r1': {
+          console.log('[INFO] nano rewrap request body: ', rewrap);
+          const { header } = Header.parse(
+            new Uint8Array(base64.decodeArrayBuffer(rewrap?.keyAccess?.header || ''))
+          );
+          // TODO convert header.ephemeralCurveName to namedCurve
+          const nanoPublicKey = await crypto.subtle.importKey(
+            'raw',
+            header.ephemeralPublicKey,
+            {
+              name: 'ECDH',
+              namedCurve: 'P-256',
+            },
+            true,
+            []
+          );
+
+          const clientPublicKey = await pemPublicToCrypto(rewrap.clientPublicKey);
+          const kasPrivateKeyBytes = base64.decodeArrayBuffer(
+            removePemFormatting(Mocks.kasECPrivateKey)
+          );
+          const kasPrivateKey = await crypto.subtle.importKey(
+            'pkcs8',
+            kasPrivateKeyBytes,
+            { name: 'ECDH', namedCurve: 'P-256' },
+            false,
+            ['deriveBits', 'deriveKey']
+          );
+          console.log('Imported kas private key!');
+          const hkdfSalt = await getHkdfSalt(header.magicNumberVersion);
+          const dek = await keyAgreement(kasPrivateKey, nanoPublicKey, hkdfSalt);
+          const kek = await keyAgreement(kasPrivateKey, clientPublicKey, hkdfSalt);
+          const dekBits = await crypto.subtle.exportKey('raw', dek);
+          console.log(
+            `agreeed! dek = [${new Uint8Array(dekBits)}], kek = [${new Uint8Array(
+              await crypto.subtle.exportKey('raw', kek)
+            )}]`
+          );
+          const iv = generateRandomNumber(12);
+          const cek = await crypto.subtle.encrypt(
+            {
+              name: 'AES-GCM',
+              iv,
+              tagLength: 128,
+            },
+            kek,
+            dekBits
+          );
+          const cekBytes = new Uint8Array(cek);
+          console.log(`responding! cek = [${cekBytes}], iv = [${iv}]`);
+          // const doublecheck = await crypto.subtle.decrypt(
+          //   { name: 'AES-GCM', iv, tagLength: 128 },
+          //   kek,
+          //   cek
+          // );
+          // console.log(`doublecheck success! dek = [${new Uint8Array(doublecheck)}]`);
+
+          const entityWrappedKey = new Uint8Array(iv.length + cekBytes.length);
+          entityWrappedKey.set(iv);
+          entityWrappedKey.set(cekBytes, iv.length);
+          const reply = {
+            entityWrappedKey: base64.encodeArrayBuffer(entityWrappedKey),
+            sessionPublicKey: Mocks.kasECCert,
+            metadata: { hello: 'people of earth' },
+          };
+          res.writeHead(200);
+          res.end(JSON.stringify(reply));
+          return;
+        }
+        default:
+          console.log(`[DEBUG] invalid rewrap algorithm [${JSON.stringify(rewrap)}]`);
+          res.writeHead(400);
+          res.end(`{"error": "Invalid algorithm [${rewrap?.algorithm}]"}`);
+          return;
       }
-      console.log('[INFO]: rewrap request body: ', rewrap);
-      const dek = await decryptWithPrivateKey(
-        Binary.fromArrayBuffer(base64.decodeArrayBuffer(rewrap.keyAccess.wrappedKey || '')),
-        Mocks.kasPrivateKey
-      );
-      const cek = await encryptWithPublicKey(dek, rewrap.clientPublicKey);
-      const reply = {
-        entityWrappedKey: base64.encodeArrayBuffer(cek.asArrayBuffer()),
-        metadata: { hello: 'world' },
-      };
-      res.writeHead(200);
-      res.end(JSON.stringify(reply));
-      return;
     } else if (url.pathname === '/file') {
       if (req.method !== 'GET') {
         res.writeHead(405);
@@ -154,6 +243,7 @@ const kas: RequestListener = async (req, res) => {
       res.statusCode = 200;
       res.end('Server stopped');
     } else {
+      console.log(`[DEBUG] invalid path [${url.pathname}]`);
       res.statusCode = 404;
       res.end('Not Found');
     }

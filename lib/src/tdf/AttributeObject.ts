@@ -1,3 +1,5 @@
+import { cryptoPublicToPem } from "../utils.js";
+
 export interface AttributeObject {
   readonly attribute: string;
   readonly isDefault?: boolean;
@@ -9,16 +11,16 @@ export interface AttributeObject {
   readonly schemaVersion?: string;
 }
 
-export function createAttribute(
+export async function createAttribute(
   attribute: string,
-  pubKey: string,
+  pubKey: CryptoKey,
   kasUrl: string
-): AttributeObject {
+): Promise<AttributeObject> {
   return {
     attribute: attribute,
     isDefault: false,
     displayName: '',
-    pubKey: pubKey,
+    pubKey: await cryptoPublicToPem(pubKey),
     kasUrl: kasUrl,
     schemaVersion: '1.1.0',
   };

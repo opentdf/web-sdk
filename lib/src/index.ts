@@ -8,18 +8,21 @@ import {
   getHkdfSalt,
   DefaultParams,
 } from './nanotdf/index.js';
-import { keyAgreement, extractPublicFromCertToCrypto } from './nanotdf-crypto/index.js';
+import { keyAgreement } from './nanotdf-crypto/index.js';
 import { TypedArray, createAttribute, Policy } from './tdf/index.js';
 import { ClientConfig } from './nanotdf/Client.js';
+import { pemToCryptoPublicKey } from './utils.js';
+export * from './utils.js';
 
-async function fetchKasPubKey(kasUrl: string): Promise<string> {
+async function fetchKasPubKey(kasUrl: string): Promise<CryptoKey> {
   const kasPubKeyResponse = await fetch(`${kasUrl}/kas_public_key?algorithm=ec:secp256r1`);
   if (!kasPubKeyResponse.ok) {
     throw new Error(
       `Unable to validate KAS [${kasUrl}]. Received [${kasPubKeyResponse.status}:${kasPubKeyResponse.statusText}]`
     );
   }
-  return kasPubKeyResponse.json();
+  const pem = await kasPubKeyResponse.json();
+  return pemToCryptoPublicKey(pem);
 }
 
 /**
@@ -72,7 +75,6 @@ export class NanoTDFClient extends Client {
       nanotdf.header.getKasRewrapUrl(),
       nanotdf.header.magicNumberVersion,
       version,
-      nanotdf.header.authTagLength
     );
 
     if (!ukey) {
@@ -102,7 +104,6 @@ export class NanoTDFClient extends Client {
       nanotdf.header.getKasRewrapUrl(),
       nanotdf.header.magicNumberVersion,
       legacyVersion,
-      nanotdf.header.authTagLength
     );
 
     if (!key) {
@@ -138,7 +139,7 @@ export class NanoTDFClient extends Client {
 
     // Add data attributes.
     for (const dataAttribute of this.dataAttributes) {
-      const attribute = createAttribute(dataAttribute, this.kasPubKey, this.kasUrl);
+      const attribute = await createAttribute(dataAttribute, this.kasPubKey, this.kasUrl);
       policy.addAttribute(attribute);
     }
 
@@ -265,7 +266,7 @@ export class NanoTDFDatasetClient extends Client {
 
       // Add data attributes.
       for (const dataAttribute of this.dataAttributes) {
-        const attribute = createAttribute(dataAttribute, this.kasPubKey, this.kasUrl);
+        const attribute = await createAttribute(dataAttribute, this.kasPubKey, this.kasUrl);
         policy.addAttribute(attribute);
       }
 
@@ -283,7 +284,7 @@ export class NanoTDFDatasetClient extends Client {
       // Generate a symmetric key.
       this.symmetricKey = await keyAgreement(
         ephemeralKeyPair.privateKey,
-        await extractPublicFromCertToCrypto(this.kasPubKey),
+        this.kasPubKey,
         await getHkdfSalt(DefaultParams.magicNumberVersion)
       );
 
@@ -368,7 +369,6 @@ export class NanoTDFDatasetClient extends Client {
       nanotdf.header.getKasRewrapUrl(),
       nanotdf.header.magicNumberVersion,
       version,
-      nanotdf.header.authTagLength
     );
     if (!ukey) {
       throw new Error('Key rewrap failure');

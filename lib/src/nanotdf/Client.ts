@@ -1,18 +1,16 @@
 import { type TypedArray } from '../tdf/index.js';
 import * as base64 from '../encodings/base64.js';
 import {
-  decrypt,
   enums as cryptoEnums,
   generateKeyPair,
   importRawKey,
   keyAgreement,
-  pemPublicToCrypto,
 } from '../nanotdf-crypto/index.js';
 import getHkdfSalt from './helpers/getHkdfSalt.js';
 import DefaultParams from './models/DefaultParams.js';
 import { fetchWrappedKey } from '../kas.js';
 import { AuthProvider, isAuthProvider, reqSignature } from '../auth/providers.js';
-import { cryptoPublicToPem, safeUrlCheck, validateSecureUrl } from '../utils.js';
+import { cryptoPublicToPem, pemToCryptoPublicKey, safeUrlCheck, validateSecureUrl } from '../utils.js';
 
 const { KeyUsageType, AlgorithmName, NamedCurve } = cryptoEnums;
 
@@ -111,7 +109,7 @@ export default class Client {
     This is needed as the flow is very specific. Errors should be thrown if the necessary step is not completed.
   */
   protected kasUrl: string;
-  protected kasPubKey: string;
+  kasPubKey?: CryptoKey;
   readonly authProvider: AuthProvider;
   readonly dpopEnabled: boolean;
   dissems: string[] = [];
@@ -142,7 +140,6 @@ export default class Client {
       validateSecureUrl(kasUrl);
       this.kasUrl = kasUrl;
       this.allowedKases = [kasUrl];
-      this.kasPubKey = '';
       this.dpopEnabled = dpopEnabled;
 
       if (ephemeralKeyPair) {
@@ -159,7 +156,6 @@ export default class Client {
       validateSecureUrl(kasEndpoint);
       this.kasUrl = kasEndpoint;
       this.allowedKases = [kasEndpoint];
-      this.kasPubKey = '';
       this.dpopEnabled = !!dpopEnabled;
       if (dpopKeys) {
         this.requestSignerKeyPair = dpopKeys;
@@ -213,14 +209,12 @@ export default class Client {
    * @param kasRewrapUrl key access server's rewrap endpoint
    * @param magicNumberVersion nanotdf container version
    * @param clientVersion version of the client, as SemVer
-   * @param authTagLength number of bytes to keep in the authTag
    */
   async rewrapKey(
     nanoTdfHeader: TypedArray | ArrayBuffer,
     kasRewrapUrl: string,
     magicNumberVersion: TypedArray | ArrayBuffer,
     clientVersion: string,
-    authTagLength: number
   ): Promise<CryptoKey> {
     safeUrlCheck(this.allowedKases, kasRewrapUrl);
 
@@ -279,8 +273,8 @@ export default class Client {
 
       let kasPublicKey;
       try {
-        // Get session public key as crypto key
-        kasPublicKey = await pemPublicToCrypto(wrappedKey.sessionPublicKey);
+        // Let us import public key as a cert or public key
+        kasPublicKey = await pemToCryptoPublicKey(wrappedKey.sessionPublicKey);
       } catch (cause) {
         throw new Error(
           `PEM Public Key to crypto public key failed. Is PEM formatted correctly?\n Caused by: ${cause.message}`,
@@ -305,35 +299,53 @@ export default class Client {
         hkdfSalt
       );
 
+      console.log(
+        `agreeed! kek = [${new Uint8Array(
+          await crypto.subtle.exportKey('raw', unwrappingKey)
+        )}], iv = [${iv}], cek= [${encryptedSharedKey}]`
+      );
+
       let decryptedKey;
       try {
         // Decrypt the wrapped key
-        decryptedKey = await decrypt(unwrappingKey, encryptedSharedKey, iv, authTagLength);
-      } catch (e) {
+        decryptedKey = await crypto.subtle.decrypt(
+          { name: 'AES-GCM', iv, tagLength: 128 },
+          unwrappingKey,
+          encryptedSharedKey
+        );
+      } catch (cause) {
+        console.error("decrypt", cause);
         throw new Error(
-          `Unable to decrypt key. Are you using the right KAS? Is the salt correct?\n Caused by: ${e.message}`
+          `Unable to decrypt key. Are you using the right KAS? Is the salt correct?`, { cause }
         );
       }
+      console.log(`dek = [${new Uint8Array(decryptedKey)}]`);
+
 
       // UnwrappedKey
       let unwrappedKey;
       try {
-        unwrappedKey = await importRawKey(
+        unwrappedKey = await crypto.subtle.importKey(
+          'raw',
           decryptedKey,
-          // Want to use the key to encrypt and decrypt. Signing key will be used later.
-          [KeyUsageType.Encrypt, KeyUsageType.Decrypt],
+          'AES-GCM',
           // @security This allows the key to be used in `exportKey` and `wrapKey`
           // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/exportKey
           // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/wrapKey
-          true
+          true,
+          // Want to use the key to encrypt and decrypt. Signing key will be used later.
+          ['encrypt', 'decrypt']
         );
-      } catch (e) {
-        throw new Error(`Unable to import raw key.\n Caused by: ${e.message}`);
+      } catch (cause) {
+        console.error("importRawKey", cause);
+        throw new Error('Unable to import raw key.', { cause });
       }
+      console.log(`unwrapped`);
 
       return unwrappedKey;
-    } catch (e) {
-      throw new Error(`Could not rewrap key with entity object.\n Caused by: ${e.message}`);
+    } catch (cause) {
+      console.error("rewrap", cause);
+      throw new Error('Could not rewrap key with entity object.', { cause });
     }
   }
 }

@@ -82,8 +82,6 @@ export interface Header {
   hasSignature: boolean;
   signatureCurveName: CurveName;
   symmetricCipher: CipherType;
-  // Auth tag length is not part of the spec, but is needed for decrypt
-  authTagLength: number;
 
   // Policy
   policy: RemotePolicy | EmbeddedPolicy;
