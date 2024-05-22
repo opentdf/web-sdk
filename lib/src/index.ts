@@ -11,7 +11,7 @@ import {
 import { keyAgreement } from './nanotdf-crypto/index.js';
 import { TypedArray, createAttribute, Policy } from './tdf/index.js';
 import { ClientConfig } from './nanotdf/Client.js';
-import { pemToCryptoPublicKey } from './pem.js';
+import { pemToCryptoPublicKey } from './keyport/pem.js';
 
 async function fetchKasPubKey(kasUrl: string): Promise<CryptoKey> {
   const u = `${kasUrl}/kas_public_key?algorithm=ec:secp256r1`;

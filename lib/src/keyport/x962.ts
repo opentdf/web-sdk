@@ -16,14 +16,15 @@ export async function exportCryptoKey(key: CryptoKey): Promise<Uint8Array> {
   return compressedPubKeyBuf;
 }
 
-// export async function importRawKey(c: ArrayBuffer): Promise<CryptoKey> {
-//   const keyBuffer = new Uint8Array(exportedKey);
-//   const len = keyBuffer.byteLength;
-//   const xPoint = keyBuffer.slice(0, (1 + len) >>> 1); // drop `y`
-//   xPoint[0] = 0x2 | (keyBuffer[len - 1] & 0x01); // encode sign of `y` in first bit
-
-//   // Copy to Arraybuffer
-//   const compressedPubKeyBuf = new ArrayBuffer(xPoint.byteLength);
-//   new Uint8Array(compressedPubKeyBuf).set(new Uint8Array(xPoint));
-//   return crypto.subtle.importKey('raw', keyData, );
-// }
+export async function importRawKey(c: ArrayBuffer): Promise<CryptoKey> {
+  return crypto.subtle.importKey(
+    'raw',
+    c,
+    {
+      name: 'ECDH',
+      namedCurve: 'P-256',
+    },
+    true,
+    []
+  );
+}

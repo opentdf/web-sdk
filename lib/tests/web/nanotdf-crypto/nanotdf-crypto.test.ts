@@ -1,6 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 
-import { decrypt, encrypt, pemCertToCrypto } from '../../../src/nanotdf-crypto/index.js';
+import { decrypt, encrypt } from '../../../src/nanotdf-crypto/index.js';
+import { pemCertToCrypto } from '../../../src/keyport/raw.js';
 
 /**
  * Alice will act as data creator

@@ -5,14 +5,14 @@ import {
   enums as cryptoEnums,
   generateKeyPair,
   keyAgreement,
-  pemPublicToCrypto,
 } from '../nanotdf-crypto/index.js';
 import getHkdfSalt from './helpers/getHkdfSalt.js';
 import DefaultParams from './models/DefaultParams.js';
 import { fetchWrappedKey } from '../kas.js';
 import { AuthProvider, isAuthProvider, reqSignature } from '../auth/providers.js';
-import { cryptoPublicToPem } from '../pem.js';
+import { cryptoPublicToPem } from '../keyport/pem.js';
 import { safeUrlCheck, validateSecureUrl } from '../urltils.js';
+import { pemPublicToCrypto } from '../keyport/raw.js';
 
 const { KeyUsageType, AlgorithmName, NamedCurve } = cryptoEnums;
 

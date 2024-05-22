@@ -31,7 +31,7 @@ import {
   withHeaders,
 } from '../../../src/auth/auth.js';
 import EAS from '../../../src/auth/Eas.js';
-import { cryptoPublicToPem } from '../../../src/pem.js';
+import { cryptoPublicToPem } from '../../../src/keyport/pem.js';
 import { validateSecureUrl } from '../../../src/urltils.js';
 
 import {

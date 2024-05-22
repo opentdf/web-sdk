@@ -14,7 +14,7 @@ import {
   keyAgreement,
   digest,
 } from '../nanotdf-crypto/index.js';
-import { exportCryptoKey } from '../nanotdf-crypto/compressedKey.js';
+import { exportCryptoKey } from '../keyport/x962.js';
 
 /**
  * Encrypt the plain data into nanotdf buffer

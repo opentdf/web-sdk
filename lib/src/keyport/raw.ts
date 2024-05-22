@@ -129,12 +129,14 @@ export async function pemPublicToCrypto(
   const keyUsages = guessKeyUsages(algorithmName, options.usages);
 
   if (algorithmName === ECDH || algorithmName === ECDSA) {
+    const namedCurve = guessCurveName(hex);
+    console.log(`Importing [${b64}], alg [${algorithmName}], crv [${namedCurve}] usages ${JSON.stringify(keyUsages)}`)
     return crypto.subtle.importKey(
       SPKI,
       arrayBuffer,
       {
         name: algorithmName,
-        namedCurve: guessCurveName(hex),
+        namedCurve,
       },
       options.isExtractable,
       keyUsages

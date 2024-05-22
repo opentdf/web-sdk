@@ -4,12 +4,17 @@ import * as jose from 'jose';
 import { IncomingMessage, RequestListener, createServer } from 'node:http';
 
 import { base64 } from '../src/encodings/index.js';
+import { importRawKey } from '../src/keyport/x962.js';
 import Header from '../src/nanotdf/models/Header.js';
-import { pemPublicToCrypto } from '../src/nanotdf-crypto/pemPublicToCrypto.js';
+import { pemPublicToCrypto } from '../src/keyport/raw.js';
 import { Binary } from '../tdf3/index.js';
+import { removePemFormatting } from '../tdf3/src/crypto/crypto-utils.js';
 import { type KeyAccessObject } from '../tdf3/src/models/key-access.js';
 import { decryptWithPrivateKey, encryptWithPublicKey } from '../tdf3/src/crypto/index.js';
 import getMocks from './mocks/index.js';
+import { getHkdfSalt } from '../src/nanotdf/index.js';
+import { keyAgreement } from '../src/nanotdf-crypto/keyAgreement.js';
+import generateRandomNumber from '../src/nanotdf-crypto/generateRandomNumber.js';
 
 const Mocks = getMocks();
 const kid = 'kid-a';
@@ -117,22 +122,49 @@ const kas: RequestListener = async (req, res) => {
         case 'ec:secp256r1': {
           console.log('[INFO] nano rewrap request body: ', rewrap);
           const { header } = Header.parse(new Uint8Array(base64.decodeArrayBuffer(rewrap?.keyAccess?.header || '')));
-          // const nanoPublicKey = await importRaw(header.ephemeralPublicKey);
+          const nanoPublicKey = await importRawKey(header.ephemeralPublicKey);
           const clientPublicKey = await pemPublicToCrypto(rewrap.clientPublicKey);
-          // const dek = await decryptWithPrivateKey(
-          //   Binary.fromArrayBuffer(base64.decodeArrayBuffer(rewrap.keyAccess.wrappedKey || '')),
-          //   Mocks.kasPrivateKey
-          // );
-          // const cek = await encryptWithPublicKey(dek, rewrap.clientPublicKey);
-          // const reply = {
-          //   entityWrappedKey: base64.encodeArrayBuffer(cek.asArrayBuffer()),
-          //   metadata: { hello: 'world' },
-          // };
-          // res.writeHead(200);
-          // res.end(JSON.stringify(reply));
-          console.log(`[DEBUG] invalid rewrap algorithm [${JSON.stringify(rewrap)}] for header [${JSON.stringify(header)}], cpk [${JSON.stringify(clientPublicKey)}]`);
-          res.writeHead(400);
-          res.end(`{"error": "Invalid algorithm [${rewrap?.algorithm}]"}`);
+          const kasPrivateKeyBytes = base64.decodeArrayBuffer(removePemFormatting(Mocks.kasECPrivateKey))
+          const kasPrivateKey = await crypto.subtle.importKey(
+            'raw',
+            kasPrivateKeyBytes,
+            {
+              name: 'ECDSA',
+              namedCurve: 'P-256',
+            },
+            true,
+            []
+          );
+          console.log("Imported kas private key!");
+          const hkdfSalt = await getHkdfSalt(header.magicNumberVersion);
+          const dek = await keyAgreement(
+            kasPrivateKey,
+            nanoPublicKey,
+            hkdfSalt
+          );
+          const kek = await keyAgreement(
+            kasPrivateKey,
+            clientPublicKey,
+            hkdfSalt
+          );
+          console.log("agreeed!");
+          const iv = generateRandomNumber(12);
+          const cek = await crypto.subtle.encrypt(
+            {
+              name: 'AES-GCM',
+              iv,
+              tagLength: 128,
+            },
+            kek,
+            await crypto.subtle.exportKey('raw', dek)
+          );
+          const reply = {
+            entityWrappedKey: base64.encodeArrayBuffer(cek),
+            sessionPublicKey: Mocks.kasECCert,
+            metadata: { hello: 'people of earth' },
+          };
+          res.writeHead(200);
+          res.end(JSON.stringify(reply));
           return;
         }
         default:

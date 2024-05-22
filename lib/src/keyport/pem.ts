@@ -1,5 +1,5 @@
-import { base64 } from './encodings/index.js';
-import { pemCertToCrypto, pemPublicToCrypto } from './nanotdf-crypto/pemPublicToCrypto.js';
+import { base64 } from '../encodings/index.js';
+import { pemCertToCrypto, pemPublicToCrypto } from './raw.js';
 
 export function addNewLines(str: string): string {
   if (!str) {

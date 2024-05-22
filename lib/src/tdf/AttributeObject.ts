@@ -1,4 +1,4 @@
-import { cryptoPublicToPem } from '../pem.js';
+import { cryptoPublicToPem } from '../keyport/pem.js';
 
 export interface AttributeObject {
   readonly attribute: string;

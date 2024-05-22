@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import { addNewLines } from '../../src/pem.js';
+import { addNewLines } from '../../../src/keyport/pem.js';
 
 describe('addNewLines', () => {
   it('undefined', () => {
