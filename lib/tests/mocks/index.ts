@@ -120,6 +120,32 @@ wVe4nK42SFZAIV9e6A+cgJXYX9OhRANCAATcxKDDwNy1YXcBV3cZCuw1EKf6Gp0e
 4UmHCa+2KQc7uk8C1KS8ZSIyvXI6xvjrtohHRDescslzBKodHbeCWzjC
 -----END PRIVATE KEY-----`;
 
+const entityECPublicKey = `-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg/2aDZn2NqUdPwZGR\
+D6YnmBySTcC1QSi9XNSK4MtT5zmhRANCAAR37xrx2fCXv0teqQfdRM6cfm0Da6Wf
+WbnkPacc6p5eITXg9D0fcCcRbf2AQi+KAsF5zttJ+NOdUgfGRGqmtKYT
+-----END PRIVATE KEY-----
+`;
+
+const entityECPrivateKey = `-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEd+8a8dnwl79LXqkH3UTOnH5tA2ul
+n1m55D2nHOqeXiE14PQ9H3AnEW39gEIvigLBec7bSfjTnVIHxkRqprSmEw==
+-----END PUBLIC KEY-----
+`;
+
+const extraECPublicKey = `-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEwajvY7i+B74K2vrVy4pbL7WOpBUn
+vWr6IH25k6fEfN/7Xvg6Mqn5D05jsjHNCnNpZva+iXvrKx99mJa3hw25UQ==
+-----END PUBLIC KEY-----
+`;
+
+const extraECPrivateKey = `-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgmiSE/NSqLnpjy1ZC
+CxQ5FqxlK+nz90AmKetf1GOUgMmhRANCAATBqO9juL4Hvgra+tXLilsvtY6kFSe9
+avogfbmTp8R83/te+DoyqfkPTmOyMc0Kc2lm9r6Je+srH32YlreHDblR
+-----END PRIVATE KEY-----
+`;
+
 export default function getMocks() {
   return Object.create({
     // TODO: diff key then KAS
@@ -205,6 +231,12 @@ tN5S0umLPkMUJ6zBIxh1RQK1ZYjfuKij+EEimbqtte9rYyQr3Q==
     entityPrivateKey,
     entityPublicKey,
 
+    entityECPrivateKey,
+    entityECPublicKey,
+
+    extraECPrivateKey,
+    extraECPublicKey,
+
     kasECCert,
     kasECPrivateKey,
 
@@ -212,6 +244,20 @@ tN5S0umLPkMUJ6zBIxh1RQK1ZYjfuKij+EEimbqtte9rYyQr3Q==
       return toCryptoKeyPair({
         privateKey: entityPrivateKey,
         publicKey: entityPublicKey,
+      });
+    },
+
+    async entityECKeyPair(): Promise<CryptoKeyPair> {
+      return toCryptoKeyPair({
+        privateKey: entityECPrivateKey,
+        publicKey: entityECPublicKey,
+      });
+    },
+
+    async extraECKeyPair(): Promise<CryptoKeyPair> {
+      return toCryptoKeyPair({
+        privateKey: extraECPrivateKey,
+        publicKey: extraECPublicKey,
       });
     },
 
