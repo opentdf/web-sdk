@@ -163,7 +163,7 @@ const kas: RequestListener = async (req, res) => {
             {
               name: 'AES-GCM',
               iv,
-              tagLength: 128,
+              tagLength: header.authTagLength,
             },
             kek,
             dekBits
