@@ -214,7 +214,7 @@ export default class Client {
     nanoTdfHeader: TypedArray | ArrayBuffer,
     kasRewrapUrl: string,
     magicNumberVersion: TypedArray | ArrayBuffer,
-    clientVersion: string,
+    clientVersion: string
   ): Promise<CryptoKey> {
     safeUrlCheck(this.allowedKases, kasRewrapUrl);
 
