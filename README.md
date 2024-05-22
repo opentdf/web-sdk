@@ -56,3 +56,54 @@ make test
 make start
 ```
 
+## Use the platform
+
+### Generate Typescript code from platform protobufs
+```
+scripts/platform.sh
+```
+This will clone the platform repo and generate Typescript code in `lib/src/platform`.
+
+### Import Typescript code
+
+```
+
+import { GetAttributeRequest } from './lib/src/platform/policy/attributes/attributes_pb';
+import { Attribute, AttributeRuleTypeEnum } from './lib/src/platform/policy/objects_pb';
+import {
+    createConnectTransport,
+} from '@connectrpc/connect-web'
+import {
+    createPromiseClient,
+} from '@connectrpc/connect'
+
+const attrData = {
+    name: "my-attr",
+    rule: AttributeRuleTypeEnum.ALL_OF,
+    namespace: {name: 'my-namespace'},
+    values: [{value: 'my-value'}],
+    active: true,
+    extraField: 'this will be ignored' // only proto defined fields and value types are respected
+}
+const attr = new Attribute(attrData);
+console.log(attr.toJson());
+
+// {
+//     namespace: { name: 'my-namespace' },
+//     name: 'my-attr',
+//     rule: 'ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF',
+//     values: [ { value: 'my-value' } ],
+//     active: true
+// }
+
+const req = new GetAttributeRequest({id: 'uuid-here'});
+const client = createPromiseClient(
+    AttributesService,
+    createConnectTransport({
+        baseUrl: 'localhost:8080',
+    })
+)
+```
+
+This is an example to instantiate an `Attribute` and create a `GetAttributeRequest`.
+
