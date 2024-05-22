@@ -14,10 +14,10 @@ function cfg(): TDFConfig {
   if (!VITE_TDF_CFG) {
     return {
       oidc: {
-        host: 'http://localhost:65432/auth/realms/tdf',
+        host: 'http://localhost:65432/auth/realms/opentdf',
         clientId: 'browsertest',
       },
-      kas: 'http://localhost:65432/api/kas',
+      kas: 'http://localhost:65432/kas',
       reader: 'https://secure.virtru.com/start?htmlProtocol=1',
     };
   }

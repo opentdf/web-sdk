@@ -109,5 +109,12 @@ dist
 
 # temporary folders
 **/temp/
+*.tmp
+
+# For integration testing
+/platform
+kc.zip
+keycloak-24.0.3
 /web-app/tests/smallfiles
 .DS_Store
+/*.pem
