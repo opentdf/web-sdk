@@ -209,12 +209,14 @@ export default class Client {
    * @param kasRewrapUrl key access server's rewrap endpoint
    * @param magicNumberVersion nanotdf container version
    * @param clientVersion version of the client, as SemVer
+   * @param authTagLength number of bytes to keep in the authTag
    */
   async rewrapKey(
     nanoTdfHeader: TypedArray | ArrayBuffer,
     kasRewrapUrl: string,
     magicNumberVersion: TypedArray | ArrayBuffer,
-    clientVersion: string
+    clientVersion: string,
+    authTagLength: number
   ): Promise<CryptoKey> {
     safeUrlCheck(this.allowedKases, kasRewrapUrl);
 
@@ -309,7 +311,7 @@ export default class Client {
       try {
         // Decrypt the wrapped key
         decryptedKey = await crypto.subtle.decrypt(
-          { name: 'AES-GCM', iv, tagLength: 128 },
+          { name: 'AES-GCM', iv, tagLength: authTagLength },
           unwrappingKey,
           encryptedSharedKey
         );
