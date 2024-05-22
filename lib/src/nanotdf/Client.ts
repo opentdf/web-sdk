@@ -1,15 +1,16 @@
 import { type TypedArray } from '../tdf/index.js';
 import * as base64 from '../encodings/base64.js';
-import {
-  enums as cryptoEnums,
-  generateKeyPair,
-  keyAgreement,
-} from '../nanotdf-crypto/index.js';
+import { enums as cryptoEnums, generateKeyPair, keyAgreement } from '../nanotdf-crypto/index.js';
 import getHkdfSalt from './helpers/getHkdfSalt.js';
 import DefaultParams from './models/DefaultParams.js';
 import { fetchWrappedKey } from '../kas.js';
 import { AuthProvider, isAuthProvider, reqSignature } from '../auth/providers.js';
-import { cryptoPublicToPem, pemToCryptoPublicKey, safeUrlCheck, validateSecureUrl } from '../utils.js';
+import {
+  cryptoPublicToPem,
+  pemToCryptoPublicKey,
+  safeUrlCheck,
+  validateSecureUrl,
+} from '../utils.js';
 
 const { KeyUsageType, AlgorithmName, NamedCurve } = cryptoEnums;
 
@@ -213,7 +214,7 @@ export default class Client {
     nanoTdfHeader: TypedArray | ArrayBuffer,
     kasRewrapUrl: string,
     magicNumberVersion: TypedArray | ArrayBuffer,
-    clientVersion: string,
+    clientVersion: string
   ): Promise<CryptoKey> {
     safeUrlCheck(this.allowedKases, kasRewrapUrl);
 
@@ -313,13 +314,13 @@ export default class Client {
           encryptedSharedKey
         );
       } catch (cause) {
-        console.error("decrypt", cause);
+        console.error('decrypt', cause);
         throw new Error(
-          `Unable to decrypt key. Are you using the right KAS? Is the salt correct?`, { cause }
+          `Unable to decrypt key. Are you using the right KAS? Is the salt correct?`,
+          { cause }
         );
       }
       console.log(`dek = [${new Uint8Array(decryptedKey)}]`);
-
 
       // UnwrappedKey
       let unwrappedKey;
@@ -336,14 +337,14 @@ export default class Client {
           ['encrypt', 'decrypt']
         );
       } catch (cause) {
-        console.error("importRawKey", cause);
+        console.error('importRawKey', cause);
         throw new Error('Unable to import raw key.', { cause });
       }
       console.log(`unwrapped`);
 
       return unwrappedKey;
     } catch (cause) {
-      console.error("rewrap", cause);
+      console.error('rewrap', cause);
       throw new Error('Could not rewrap key with entity object.', { cause });
     }
   }
