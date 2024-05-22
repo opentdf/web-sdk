@@ -52,9 +52,10 @@
     "license-check": "license-checker-rseidelsohn --production --onlyAllow 'Apache-2.0; BSD; CC-BY-4.0; ISC; MIT'",
     "lint": "eslint ./src/**/*.ts ./tdf3/**/*.ts ./tests/**/*.ts",
     "prepack": "npm run build",
-    "test": "npm run build && npm run test:mocha && npm run test:wtr && npm run test:browser && npm run coverage:merge",
-    "test:browser": "node dist/web/tests/server.js & trap \"node dist/web/tests/stopServer.js\" EXIT; npx webpack --config webpack.test.config.cjs && npx karma start karma.conf.cjs",
-    "test:mocha": "node dist/web/tests/server.js & trap \"node dist/web/tests/stopServer.js\" EXIT; c8 --exclude=\"dist/web/tests/\" --exclude=\"dist/web/tdf3/src/utils/aws-lib-storage/\"  --exclude=\"dist/web/tests/**/*\" --report-dir=./coverage/mocha mocha 'dist/web/tests/mocha/**/*.spec.js' --file dist/web/tests/mocha/setup.js && npx c8 report --reporter=json --report-dir=./coverage/mocha",
+    "test": "npm run build && npm run test:with-server",
+    "test:with-server": "node dist/web/tests/server.js & trap \"node dist/web/tests/stopServer.js\" EXIT; npm run test:mocha && npm run test:wtr && npm run test:browser && npm run coverage:merge",
+    "test:browser": "npx webpack --config webpack.test.config.cjs && npx karma start karma.conf.cjs",
+    "test:mocha": "c8 --exclude=\"dist/web/tests/\" --exclude=\"dist/web/tdf3/src/utils/aws-lib-storage/\"  --exclude=\"dist/web/tests/**/*\" --report-dir=./coverage/mocha mocha 'dist/web/tests/mocha/**/*.spec.js' --file dist/web/tests/mocha/setup.js && npx c8 report --reporter=json --report-dir=./coverage/mocha",
     "test:wtr": "web-test-runner",
     "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))"
   },
