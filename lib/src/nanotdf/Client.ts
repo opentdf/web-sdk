@@ -20,6 +20,7 @@ export interface ClientConfig {
   dpopKeys?: Promise<CryptoKeyPair>;
   ephemeralKeyPair?: Promise<CryptoKeyPair>;
   kasEndpoint: string;
+  kasAliases?: Record<string, string>;
 }
 
 function toJWSAlg(c: CryptoKey): string {
@@ -110,6 +111,7 @@ export default class Client {
   */
   protected kasUrl: string;
   kasPubKey?: CryptoKey;
+  kasAliases: Record<string, string>;
   readonly authProvider: AuthProvider;
   readonly dpopEnabled: boolean;
   dissems: string[] = [];
@@ -149,7 +151,7 @@ export default class Client {
       }
       this.iv = 1;
     } else {
-      const { authProvider, dpopEnabled, dpopKeys, ephemeralKeyPair, kasEndpoint } =
+      const { authProvider, dpopEnabled, dpopKeys, ephemeralKeyPair, kasEndpoint, kasAliases } =
         optsOrOldAuthProvider;
       this.authProvider = authProvider;
       // TODO Disallow http KAS. For now just log as error
@@ -162,6 +164,8 @@ export default class Client {
       } else {
         this.requestSignerKeyPair = generateSignerKeyPair();
       }
+
+      this.kasAliases = kasAliases || {};
 
       if (ephemeralKeyPair) {
         this.ephemeralKeyPair = ephemeralKeyPair;
