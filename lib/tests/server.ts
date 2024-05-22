@@ -169,7 +169,9 @@ const kas: RequestListener = async (req, res) => {
             dekBits
           );
           const cekBytes = new Uint8Array(cek);
-          console.log(`responding! cek = [${cekBytes}], iv = [${iv}], tagLength = [${header.authTagLength}]`);
+          console.log(
+            `responding! cek = [${cekBytes}], iv = [${iv}], tagLength = [${header.authTagLength}]`
+          );
           // const doublecheck = await crypto.subtle.decrypt(
           //   { name: 'AES-GCM', iv, tagLength: 128 },
           //   kek,
