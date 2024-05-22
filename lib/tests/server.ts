@@ -154,23 +154,23 @@ const kas: RequestListener = async (req, res) => {
           const kek = await keyAgreement(kasPrivateKey, clientPublicKey, hkdfSalt);
           const dekBits = await crypto.subtle.exportKey('raw', dek);
           console.log(
-            `agreeed! dek = [${new Uint8Array(dekBits)}], kek = [${new Uint8Array(
+            `agreeeed! dek = [${new Uint8Array(dekBits)}], kek = [${new Uint8Array(
               await crypto.subtle.exportKey('raw', kek)
-            )}]`
+            )}], byteLength = [${dekBits.byteLength}]`
           );
           const iv = generateRandomNumber(12);
           const cek = await crypto.subtle.encrypt(
             {
               name: 'AES-GCM',
               iv,
-              tagLength: header.authTagLength,
+              tagLength: 128,
             },
             kek,
             dekBits
           );
           const cekBytes = new Uint8Array(cek);
           console.log(
-            `responding! cek = [${cekBytes}], iv = [${iv}], tagLength = [${header.authTagLength}]`
+            `responding! cek = [${cekBytes}], iv = [${iv}], tagLength = [${128}]`
           );
           // const doublecheck = await crypto.subtle.decrypt(
           //   { name: 'AES-GCM', iv, tagLength: 128 },

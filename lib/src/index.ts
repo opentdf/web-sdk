@@ -74,8 +74,7 @@ export class NanoTDFClient extends Client {
       nanotdf.header.toBuffer(),
       nanotdf.header.getKasRewrapUrl(),
       nanotdf.header.magicNumberVersion,
-      version,
-      nanotdf.header.authTagLength
+      version
     );
 
     if (!ukey) {
@@ -104,8 +103,7 @@ export class NanoTDFClient extends Client {
       nanotdf.header.toBuffer(),
       nanotdf.header.getKasRewrapUrl(),
       nanotdf.header.magicNumberVersion,
-      legacyVersion,
-      nanotdf.header.authTagLength
+      legacyVersion
     );
 
     if (!key) {
@@ -370,8 +368,7 @@ export class NanoTDFDatasetClient extends Client {
       nanotdf.header.toBuffer(),
       nanotdf.header.getKasRewrapUrl(),
       nanotdf.header.magicNumberVersion,
-      version,
-      nanotdf.header.authTagLength
+      version
     );
     if (!ukey) {
       throw new Error('Key rewrap failure');

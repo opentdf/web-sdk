@@ -209,14 +209,12 @@ export default class Client {
    * @param kasRewrapUrl key access server's rewrap endpoint
    * @param magicNumberVersion nanotdf container version
    * @param clientVersion version of the client, as SemVer
-   * @param authTagLength number of bytes to keep in the authTag
    */
   async rewrapKey(
     nanoTdfHeader: TypedArray | ArrayBuffer,
     kasRewrapUrl: string,
     magicNumberVersion: TypedArray | ArrayBuffer,
     clientVersion: string,
-    authTagLength: number
   ): Promise<CryptoKey> {
     safeUrlCheck(this.allowedKases, kasRewrapUrl);
 
@@ -301,6 +299,7 @@ export default class Client {
         hkdfSalt
       );
 
+      const authTagLength = 8 * (encryptedSharedKey.byteLength - 32);
       console.log(
         `agreeed! kek = [${new Uint8Array(
           await crypto.subtle.exportKey('raw', unwrappingKey)
