@@ -16,10 +16,7 @@ import {
 import { TdfDecryptError } from '../../../src/errors.js';
 import { formatAsPem, removePemFormatting } from './crypto-utils.js';
 import { encodeArrayBuffer as hexEncode } from '../../../src/encodings/hex.js';
-import {
-  decodeArrayBuffer as base64Decode,
-  encodeArrayBuffer as base64Encode,
-} from '../../../src/encodings/base64.js';
+import { decodeArrayBuffer as base64Decode } from '../../../src/encodings/base64.js';
 import { AlgorithmUrn } from '../ciphers/algorithms.js';
 
 // Used to pass into native crypto functions
@@ -110,11 +107,9 @@ export async function cryptoToPemPair(keysMaybe: unknown): Promise<PemKeyPair> {
     crypto.subtle.exportKey('spki', keys.publicKey),
     crypto.subtle.exportKey('pkcs8', keys.privateKey),
   ]);
-  const publicBase64String = base64Encode(exPublic);
-  const privateBase64String = base64Encode(exPrivate);
   return {
-    publicKey: formatAsPem(publicBase64String, 'PUBLIC KEY'),
-    privateKey: formatAsPem(privateBase64String, 'PRIVATE KEY'),
+    publicKey: formatAsPem(exPublic, 'PUBLIC KEY'),
+    privateKey: formatAsPem(exPrivate, 'PRIVATE KEY'),
   };
 }
 

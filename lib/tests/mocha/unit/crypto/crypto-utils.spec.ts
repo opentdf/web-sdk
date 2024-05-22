@@ -35,11 +35,10 @@ describe('crypto-utils', () => {
   it('should format as pem', () => {
     const label = 'PUBLIC KEY';
     const data = 'hello world';
-    const buff = Buffer.from(data);
-    const base64str = buff.toString('base64');
+    const buff = new TextEncoder().encode(data);
 
     const result = `-----BEGIN PUBLIC KEY-----aGVsbG8gd29ybGQ=-----END PUBLIC KEY-----`;
 
-    expect(formatAsPem(base64str, label).trim().replace(/\n/g, '')).to.equal(result);
+    expect(formatAsPem(buff, label).trim().replace(/\n/g, '')).to.equal(result);
   });
 });

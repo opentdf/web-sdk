@@ -12,7 +12,6 @@ import { TypedArray } from '../tdf/index.js';
 import {
   encrypt as cryptoEncrypt,
   keyAgreement,
-  extractPublicFromCertToCrypto,
   digest,
   exportCryptoKey,
 } from '../nanotdf-crypto/index.js';
@@ -28,7 +27,7 @@ import {
  */
 export default async function encrypt(
   policy: string,
-  kasPubCrtAsPem: string,
+  kasPub: CryptoKey,
   kasUrl: string,
   ephemeralKeyPair: CryptoKeyPair,
   iv: Uint8Array,
@@ -40,8 +39,7 @@ export default async function encrypt(
   }
   const symmetricKey = await keyAgreement(
     ephemeralKeyPair.privateKey,
-    // Get session public key as crypto key
-    await extractPublicFromCertToCrypto(kasPubCrtAsPem),
+    kasPub,
     // Get the hkdf salt params
     await getHkdfSalt(DefaultParams.magicNumberVersion)
   );
