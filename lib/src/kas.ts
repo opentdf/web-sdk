@@ -43,7 +43,7 @@ export async function fetchWrappedKey(
   });
 
   if (!response.ok) {
-      throw new Error(`${req.method} ${req.url} => ${response.status} ${response.statusText}`);
+    throw new Error(`${req.method} ${req.url} => ${response.status} ${response.statusText}`);
   }
 
   return response.json();

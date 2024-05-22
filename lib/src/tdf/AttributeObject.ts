@@ -1,4 +1,4 @@
-import { cryptoPublicToPem } from "../utils.js";
+import { cryptoPublicToPem } from '../utils.js';
 
 export interface AttributeObject {
   readonly attribute: string;

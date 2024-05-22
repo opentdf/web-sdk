@@ -7,8 +7,5 @@ export { default as importRawKey } from './importRawKey.js';
 export { keyAgreement } from './keyAgreement.js';
 export { default as exportCryptoKey } from './exportCryptoKey.js';
 export { default as generateRandomNumber } from './generateRandomNumber.js';
-export {
-  pemPublicToCrypto,
-  pemCertToCrypto,
-} from './pemPublicToCrypto.js';
+export { pemPublicToCrypto, pemCertToCrypto } from './pemPublicToCrypto.js';
 export * as enums from './enums.js';
