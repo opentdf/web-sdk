@@ -1,6 +1,6 @@
 import { type TypedArray } from '../tdf/index.js';
 import * as base64 from '../encodings/base64.js';
-import { enums as cryptoEnums, generateKeyPair, keyAgreement } from '../nanotdf-crypto/index.js';
+import { generateKeyPair, keyAgreement } from '../nanotdf-crypto/index.js';
 import getHkdfSalt from './helpers/getHkdfSalt.js';
 import DefaultParams from './models/DefaultParams.js';
 import { fetchWrappedKey } from '../kas.js';
@@ -11,8 +11,7 @@ import {
   safeUrlCheck,
   validateSecureUrl,
 } from '../utils.js';
-
-const { KeyUsageType, AlgorithmName, NamedCurve } = cryptoEnums;
+import { generateSigningKeyPair } from '../../tdf3/src/crypto/index.js';
 
 export interface ClientConfig {
   authProvider: AuthProvider;
@@ -51,19 +50,6 @@ async function generateEphemeralKeyPair(): Promise<CryptoKeyPair> {
   const { publicKey, privateKey } = await generateKeyPair();
   if (!privateKey || !publicKey) {
     throw Error('Key pair generation failed');
-  }
-  return { publicKey, privateKey };
-}
-
-async function generateSignerKeyPair(): Promise<CryptoKeyPair> {
-  const { publicKey, privateKey } = await generateKeyPair({
-    type: AlgorithmName.ECDSA,
-    curve: NamedCurve.P256,
-    keyUsages: [KeyUsageType.Sign, KeyUsageType.Verify],
-    isExtractable: true,
-  });
-  if (!privateKey || !publicKey) {
-    throw Error('Signer key pair generation failed');
   }
   return { publicKey, privateKey };
 }
@@ -162,7 +148,7 @@ export default class Client {
       if (dpopKeys) {
         this.requestSignerKeyPair = dpopKeys;
       } else {
-        this.requestSignerKeyPair = generateSignerKeyPair();
+        this.requestSignerKeyPair = generateSigningKeyPair();
       }
 
       this.kasAliases = kasAliases || {};
