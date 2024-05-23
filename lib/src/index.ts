@@ -12,7 +12,6 @@ import { keyAgreement } from './nanotdf-crypto/index.js';
 import { TypedArray, createAttribute, Policy } from './tdf/index.js';
 import { ClientConfig } from './nanotdf/Client.js';
 import { pemToCryptoPublicKey } from './utils.js';
-export * from './utils.js';
 
 async function fetchKasPubKey(kasUrl: string): Promise<CryptoKey> {
   const kasPubKeyResponse = await fetch(`${kasUrl}/kas_public_key?algorithm=ec:secp256r1`);
@@ -69,13 +68,7 @@ export class NanoTDFClient extends Client {
 
     // TODO: The version number should be fetched from the API
     const version = '0.0.1';
-    let kasUrl = nanotdf.header.getKasRewrapUrl();
-    for (const [from, to] of Object.entries(this.kasAliases)) {
-      if (kasUrl.startsWith(from)) {
-        kasUrl = `${to}${kasUrl.substring(from.length)}`;
-        break;
-      }
-    }
+    const kasUrl = nanotdf.header.getKasRewrapUrl();
 
     // Rewrap key on every request
     const ukey = await this.rewrapKey(

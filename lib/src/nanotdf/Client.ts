@@ -11,7 +11,6 @@ import {
   safeUrlCheck,
   validateSecureUrl,
 } from '../utils.js';
-import { generateSigningKeyPair } from '../../tdf3/src/crypto/index.js';
 
 export interface ClientConfig {
   authProvider: AuthProvider;
@@ -19,7 +18,6 @@ export interface ClientConfig {
   dpopKeys?: Promise<CryptoKeyPair>;
   ephemeralKeyPair?: Promise<CryptoKeyPair>;
   kasEndpoint: string;
-  kasAliases?: Record<string, string>;
 }
 
 function toJWSAlg(c: CryptoKey): string {
@@ -54,6 +52,21 @@ async function generateEphemeralKeyPair(): Promise<CryptoKeyPair> {
   }
   return { publicKey, privateKey };
 }
+
+async function generateSignerKeyPair(): Promise<CryptoKeyPair> {
+  return crypto.subtle.generateKey(
+    {
+      name: 'RSASSA-PKCS1-v1_5',
+      hash: 'SHA-256',
+      modulusLength: 2048,
+      publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
+    },
+    true,
+    ['sign', 'verify']
+  );
+}
+
+
 
 /**
  * A Client encapsulates sessions interacting with TDF3 and nanoTDF backends, KAS and any
@@ -98,7 +111,6 @@ export default class Client {
   */
   protected kasUrl: string;
   kasPubKey?: CryptoKey;
-  kasAliases: Record<string, string>;
   readonly authProvider: AuthProvider;
   readonly dpopEnabled: boolean;
   dissems: string[] = [];
@@ -138,7 +150,7 @@ export default class Client {
       }
       this.iv = 1;
     } else {
-      const { authProvider, dpopEnabled, dpopKeys, ephemeralKeyPair, kasEndpoint, kasAliases } =
+      const { authProvider, dpopEnabled, dpopKeys, ephemeralKeyPair, kasEndpoint } =
         optsOrOldAuthProvider;
       this.authProvider = authProvider;
       // TODO Disallow http KAS. For now just log as error
@@ -149,10 +161,8 @@ export default class Client {
       if (dpopKeys) {
         this.requestSignerKeyPair = dpopKeys;
       } else {
-        this.requestSignerKeyPair = generateSigningKeyPair();
+        this.requestSignerKeyPair = generateSignerKeyPair();
       }
-
-      this.kasAliases = kasAliases || {};
 
       if (ephemeralKeyPair) {
         this.ephemeralKeyPair = ephemeralKeyPair;
