@@ -66,8 +66,6 @@ async function generateSignerKeyPair(): Promise<CryptoKeyPair> {
   );
 }
 
-
-
 /**
  * A Client encapsulates sessions interacting with TDF3 and nanoTDF backends, KAS and any
  * plugin-based sessions like identity and further attribute control. Most importantly, it is responsible
