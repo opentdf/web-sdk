@@ -247,7 +247,6 @@ jobs:
           for x in platform/{protocol/go,lib/{fixtures,ocrypto},sdk,service}; do go work use "$x"; done
       - run: docker compose up -d --wait --wait-timeout 240
       - env:
-          OPENTDF_SERVICES_AUTHORIZATION_URL: 'http://localhost:65432/'
           PLAYWRIGHT_TESTS_TO_RUN: roundtrip
         run: |-
           ./wait-and-test.sh platform
