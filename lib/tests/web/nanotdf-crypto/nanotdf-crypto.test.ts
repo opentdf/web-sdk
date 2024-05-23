@@ -1,7 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 
 import { decrypt, encrypt, pemCertToCrypto } from '../../../src/nanotdf-crypto/index.js';
-import getMocks from '../../mocks/index.js';
 
 /**
  * Alice will act as data creator
@@ -17,9 +16,23 @@ describe('NanoTDF Crypto', () => {
   let bobSecKey: CryptoKey;
 
   before(async () => {
-    const Mocks = getMocks();
-    aliceKeyPair = await Mocks.entityECKeyPair();
-    bobKeyPair = await Mocks.extraECKeyPair();
+    aliceKeyPair = await window.crypto.subtle.generateKey(
+      {
+        name: 'ECDH',
+        namedCurve: 'P-521',
+      },
+      false,
+      ['deriveKey']
+    );
+
+    bobKeyPair = await window.crypto.subtle.generateKey(
+      {
+        name: 'ECDH',
+        namedCurve: 'P-521',
+      },
+      false,
+      ['deriveKey']
+    );
 
     if (!aliceKeyPair.privateKey) {
       throw new Error('incomplete ephemeral key');

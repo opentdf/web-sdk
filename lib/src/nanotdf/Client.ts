@@ -34,9 +34,10 @@ function toJWSAlg(c: CryptoKey): string {
           return 'RS256';
         case 3072:
           return 'RS384';
-        case 3072:
+        case 4096:
           return 'RS512';
       }
+      break;
     }
     case 'ECDSA':
     case 'ECDH': {
