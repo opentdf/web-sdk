@@ -72,7 +72,7 @@ export class NanoTDFClient extends Client {
     let kasUrl = nanotdf.header.getKasRewrapUrl();
     for (const [from, to] of Object.entries(this.kasAliases)) {
       if (kasUrl.startsWith(from)) {
-        kasUrl = `${to}${kasUrl.substring(from.length)}`
+        kasUrl = `${to}${kasUrl.substring(from.length)}`;
         break;
       }
     }
