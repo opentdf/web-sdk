@@ -299,12 +299,6 @@ export default class Client {
       );
 
       const authTagLength = 8 * (encryptedSharedKey.byteLength - 32);
-      console.log(
-        `agreeed! kek = [${new Uint8Array(
-          await crypto.subtle.exportKey('raw', unwrappingKey)
-        )}], iv = [${iv}], cek= [${encryptedSharedKey}], tagLength [${authTagLength}]`
-      );
-
       let decryptedKey;
       try {
         // Decrypt the wrapped key
@@ -314,13 +308,11 @@ export default class Client {
           encryptedSharedKey
         );
       } catch (cause) {
-        console.error('decrypt', cause);
         throw new Error(
           `Unable to decrypt key. Are you using the right KAS? Is the salt correct?`,
           { cause }
         );
       }
-      console.log(`dek = [${new Uint8Array(decryptedKey)}]`);
 
       // UnwrappedKey
       let unwrappedKey;
@@ -337,14 +329,11 @@ export default class Client {
           ['encrypt', 'decrypt']
         );
       } catch (cause) {
-        console.error('importRawKey', cause);
         throw new Error('Unable to import raw key.', { cause });
       }
-      console.log(`unwrapped`);
 
       return unwrappedKey;
     } catch (cause) {
-      console.error('rewrap', cause);
       throw new Error('Could not rewrap key with entity object.', { cause });
     }
   }
