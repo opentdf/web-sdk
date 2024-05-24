@@ -301,8 +301,8 @@ jobs:
           with version=[${{ steps.guess-build-metadata.outputs.FULL_VERSION }}]"
       - run: >-
           .github/workflows/publish-to.sh
-            ${{ steps.guess-build-metadata.outputs.FULL_VERSION }}
-            ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
+          "${{ steps.guess-build-metadata.outputs.FULL_VERSION }}"
+          "${{ steps.guess-build-metadata.outputs.DIST_TAG }}"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: echo "- [Client Library](https://github.com/opentdf/client-web/pkgs/npm/client)">>$GITHUB_STEP_SUMMARY
@@ -339,8 +339,9 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       - run: make all
       - run: >-
-          .github/workflows/publish-to.sh ${{ needs.deliver-ghp.outputs.FULL_VERSION }} ${{
-          needs.deliver-ghp.outputs.DIST_TAG }}
+          .github/workflows/publish-to.sh
+          "${{ needs.deliver-ghp.outputs.FULL_VERSION }}"
+          "${{ needs.deliver-ghp.outputs.DIST_TAG }}"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: >-
