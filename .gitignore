@@ -113,6 +113,8 @@ dist
 
 # For integration testing
 /platform
+/go.work
+/go.work.sum
 kc.zip
 keycloak-24.0.3
 /web-app/tests/smallfiles

@@ -35,9 +35,10 @@ export const isValidAsymmetricKeySize = (size: number | undefined, minSize?: num
  * @param  label header and footer label that identifies key type
  * @return formatted output
  */
-export const formatAsPem = (base64KeyString: string, label: string): string => {
+export const formatAsPem = (bytes: ArrayBuffer, label: string): string => {
   let pemCert = `-----BEGIN ${label}-----\n`;
   let nextIndex = 0;
+  const base64KeyString = base64.encodeArrayBuffer(bytes);
   while (nextIndex < base64KeyString.length) {
     if (nextIndex + 64 <= base64KeyString.length) {
       pemCert += `${base64KeyString.substr(nextIndex, 64)}\n`;
@@ -122,13 +123,11 @@ export async function cryptoToPem(k: CryptoKey): Promise<string> {
   switch (k.type) {
     case 'private': {
       const exPrivate = await crypto.subtle.exportKey('pkcs8', k);
-      const privateBase64String = base64.encodeArrayBuffer(exPrivate);
-      return formatAsPem(privateBase64String, 'PRIVATE KEY');
+      return formatAsPem(exPrivate, 'PRIVATE KEY');
     }
     case 'public': {
       const exPublic = await crypto.subtle.exportKey('spki', k);
-      const publicBase64String = base64.encodeArrayBuffer(exPublic);
-      return formatAsPem(publicBase64String, 'PUBLIC KEY');
+      return formatAsPem(exPublic, 'PUBLIC KEY');
     }
     default:
       throw new IllegalArgumentError(`unsupported key type [${k.type}]`);

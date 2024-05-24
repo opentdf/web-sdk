@@ -24,7 +24,7 @@ test('login', async ({ page }) => {
 });
 
 const scenarios = {
-  // nano: { encryptSelector: '#nanoEncrypt', decryptSelector: '#nanoDecrypt' },
+  nano: { encryptSelector: '#nanoEncrypt', decryptSelector: '#nanoDecrypt' },
   tdf: { encryptSelector: '#zipEncrypt', decryptSelector: '#tdfDecrypt' },
   html: { encryptSelector: '#htmlEncrypt', decryptSelector: '#tdfDecrypt' },
 };
