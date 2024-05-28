@@ -14,6 +14,8 @@ jobs:
       - run: make format
       - name: ignore package-lock changes
         run: git restore "*/package-lock.json"
+      - name: ignore proto-generated file changes
+        run: git restore "lib/src/platform"
       - run: git diff
       - run: git diff-files --ignore-submodules
       - name: Check that files have been formatted before PR submission
