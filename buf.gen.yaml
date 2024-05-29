@@ -1,12 +1,13 @@
 # Learn more: https://docs.buf.build/configuration/v1/buf-gen-yaml
 version: v1
 plugins:
-   - name: es
-     opt: target=ts
-     out: lib/src/platform
-   - name: connect-es
-     out: lib/src/platform
-     opt: target=ts
-   - plugin: buf.build/grpc/web
-     out: lib/src/platform
-     opt: import_style=typescript,mode=grpcwebtext
+  - plugin: es
+    out: lib/src/platform
+    opt:
+      - target=js+dts
+      - import_extension=none
+  - plugin: connect-es
+    out: lib/src/platform
+    opt:
+      - target=js+dts
+      - import_extension=none
