@@ -1,10 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 
-import {
-  decrypt,
-  encrypt,
-  extractPublicFromCertToCrypto,
-} from '../../../src/nanotdf-crypto/index.js';
+import { decrypt, encrypt, pemCertToCrypto } from '../../../src/nanotdf-crypto/index.js';
 
 /**
  * Alice will act as data creator
@@ -108,7 +104,7 @@ MBMGByqGSM49AgEGCCqGSM49AwEHA0IABH2VM7Ws9SVr19rywr/o3fewDBj+170/
 zj0EAwIDSAAwRQIhAIFdrqhwvgL8ctPjUtmULXmg2ii0PFKg/Mox2GiCVXQdAiAW
 UDdeafEoprE+qc4paMmbWoEpRXLlo+3S7rnc5T12Kw==
 -----END CERTIFICATE-----`;
-    const key = await extractPublicFromCertToCrypto(pem);
+    const key = await pemCertToCrypto(pem);
     expect(key.algorithm).to.eql({ name: 'ECDH', namedCurve: 'P-256' });
     expect(key.extractable).to.be.true;
     expect(key.usages).to.be.empty;
@@ -126,7 +122,7 @@ UDdeafEoprE+qc4paMmbWoEpRXLlo+3S7rnc5T12Kw==
         1yyMTRe66MhEXID9+uVub7woMkNYd0LhSHwKSPMUUTkCIFQGsfm1ecXOpeGOufAh
         v+A1QWZMuTWqYt+uh/YSRNDn
         -----END CERTIFICATE-----`;
-    const key = await extractPublicFromCertToCrypto(pem);
+    const key = await pemCertToCrypto(pem);
     expect(key.algorithm).to.eql({ name: 'ECDH', namedCurve: 'P-256' });
     expect(key.extractable).to.be.true;
     expect(key.usages).to.be.empty;

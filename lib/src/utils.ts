@@ -1,6 +1,7 @@
 import { type AxiosResponseHeaders, type RawAxiosResponseHeaders } from 'axios';
 import { UnsafeUrlError } from './errors.js';
 import { base64 } from './encodings/index.js';
+import { pemCertToCrypto, pemPublicToCrypto } from './nanotdf-crypto/index.js';
 
 /**
  * Check to see if the given URL is 'secure'. This assumes:
@@ -135,4 +136,13 @@ export async function cryptoPublicToPem(publicKey: CryptoKey): Promise<string> {
   const b64 = base64.encodeArrayBuffer(exportedPublicKey);
   const pem = addNewLines(b64);
   return `-----BEGIN PUBLIC KEY-----\r\n${pem}-----END PUBLIC KEY-----`;
+}
+
+export async function pemToCryptoPublicKey(pem: string): Promise<CryptoKey> {
+  if (/-----BEGIN PUBLIC KEY-----/.test(pem)) {
+    return pemPublicToCrypto(pem);
+  } else if (/-----BEGIN CERTIFICATE-----/.test(pem)) {
+    return pemCertToCrypto(pem);
+  }
+  throw new Error('unsupported pem type');
 }

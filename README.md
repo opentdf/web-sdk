@@ -42,9 +42,8 @@ make dist
 Developing with this code requires a recent version of `npm` and `node`.
 
 - Install [nvm](https://github.com/nvm-sh/nvm#readme)
-
-    - see https://github.com/nvm-sh/nvm#installing-and-updating
-    - `nvm use` will install `npm` and `node`
+  - see https://github.com/nvm-sh/nvm#installing-and-updating
+  - `nvm use` will install `npm` and `node`
 
 [![Build](https://github.com/opentdf/client-web/actions/workflows/build.yaml/badge.svg)](https://github.com/opentdf/client-web/actions/workflows/build.yaml)
 
@@ -106,4 +105,3 @@ const client = createPromiseClient(
 ```
 
 This is an example to instantiate an `Attribute` and create a `GetAttributeRequest`.
-
