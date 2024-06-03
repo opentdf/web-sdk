@@ -12,6 +12,8 @@ export type CommonCredentials = {
   clientId: string;
   /** The endpoint of the OIDC IdP to authenticate against, ex. 'https://virtru.com/auth' */
   oidcOrigin: string;
+  /** Whether or not DPoP is enabled. */
+  dpopEnabled?: boolean;
 
   /** the client's public key, base64 encoded. Will be bound to the OIDC token. Deprecated. If not set in the constructor, */
   signingKey?: CryptoKeyPair;
@@ -127,7 +129,7 @@ export class AccessToken {
       ...this.extraHeaders,
       Authorization: `Bearer ${accessToken}`,
     } as Record<string, string>;
-    if (this.signingKey) {
+    if (this.config.dpopEnabled && this.signingKey) {
       headers.DPoP = await dpopFn(this.signingKey, url, 'POST');
     }
     const response = await (this.request || fetch)(url, {
@@ -146,12 +148,15 @@ export class AccessToken {
       'Content-Type': 'application/x-www-form-urlencoded',
       Accept: 'application/json',
     };
-    if (!this.signingKey) {
-      throw new IllegalArgumentError('No signature configured');
+    // add DPoP headers if configured
+    if (this.config.dpopEnabled) {
+      if (!this.signingKey) {
+        throw new IllegalArgumentError('No signature configured');
+      }
+      const clientPubKey = await cryptoPublicToPem(this.signingKey.publicKey);
+      headers['X-VirtruPubKey'] = base64.encode(clientPubKey);
+      headers.DPoP = await dpopFn(this.signingKey, url, 'POST');
     }
-    const clientPubKey = await cryptoPublicToPem(this.signingKey.publicKey);
-    headers['X-VirtruPubKey'] = base64.encode(clientPubKey);
-    headers.DPoP = await dpopFn(this.signingKey, url, 'POST');
     return (this.request || fetch)(url, {
       method: 'POST',
       headers,
@@ -278,7 +283,7 @@ export class AccessToken {
       );
     }
     const accessToken = (this.currentAccessToken ??= await this.get());
-    if (this.signingKey) {
+    if (this.config.dpopEnabled && this.signingKey) {
       const dpopToken = await dpopFn(
         this.signingKey,
         httpReq.url,
