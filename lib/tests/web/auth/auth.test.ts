@@ -95,6 +95,7 @@ describe('AccessToken', () => {
             clientId: 'myid',
             refreshToken: 'refresh',
             signingKey,
+            dpopEnabled: true,
           },
           mf
         );
@@ -111,6 +112,37 @@ describe('AccessToken', () => {
         });
         expect(mf.lastCall.lastArg.headers).to.have.property('X-VirtruPubKey');
         expect(mf.lastCall.lastArg.headers).to.have.property('DPoP');
+      });
+      it('passes client creds with refresh grant type to token endpoint and dPoP disabled', async () => {
+        const signingKey = await crypto.subtle.generateKey(algorithmSigner, true, [
+          'sign',
+          'verify',
+        ]);
+        const mf = mockFetch({ access_token: 'fdfsdffsdf' });
+        const accessToken = new AccessToken(
+          {
+            exchange: 'refresh',
+            oidcOrigin: 'https://auth.invalid/auth/realms/yeet/',
+            clientId: 'myid',
+            refreshToken: 'refresh',
+            signingKey,
+            dpopEnabled: false,
+          },
+          mf
+        );
+        const res = await accessToken.get();
+        expect(res).to.equal('fdfsdffsdf');
+        expect(mf.lastCall.firstArg).to.match(
+          /\/auth\/realms\/yeet\/protocol\/openid-connect\/token$/
+        );
+        const body = qsparse(mf.lastCall.lastArg.body);
+        expect(body).to.eql({
+          grant_type: 'refresh_token',
+          client_id: 'myid',
+          refresh_token: 'refresh',
+        });
+        expect(mf.lastCall.lastArg.headers).not.to.have.property('X-VirtruPubKey');
+        expect(mf.lastCall.lastArg.headers).not.to.have.property('DPoP');
       });
     });
     describe('using browser flow', () => {
