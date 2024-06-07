@@ -1,35 +1,48 @@
+# Web App Test Harness
+
 This folder container playwright, e2e tests for web-app,
 running against a local or remote backend in proxy mode.
 
+## Bring up the platform behind local (vite dev server) proxy
 
-## Bring up backend behind local (vite dev server) proxy
+Bring up test backend services (identity provider, database, etc.):
 
-To configure backend, you can either use the opentdf quickstart
-or the backend repository directly.
-
-### Quickstart
-
-First, connect to your cluster or spin up a local cluster (e.g. using kind or minikube).
-
-Next, check out the opentdf repository and start the quickstart.
-```
-git clone https://github.com/opentdf/opentdf.git
-cd opentdf/quickstart
-export OPENTDF_INGRESS_HOST_PORT=5432
-export OPENTDF_LOAD_FRONTEND=
-tilt up
+```sh
+cd .github/workflows/roundtrip/
+docker compose up -d
 ```
 
-Finally, bring up the web app:
+> You can leave off the `-d` to track the logs; 
+> if you do this, open a new terminal
+> and continue with the instructions below.
 
+Configure the identity provider with some test users.
+Please remain in the `roundtrip` test directory.
+
+```sh
+go run github.com/opentdf/platform/service@latest provision keycloak
+./config-demo-idp.sh
 ```
-cd web-app
-npm run dev
+
+If you haven't already done so, initialize your service keys.
+Be careful!
+If you lose these keys you will lose access to all TDFs encrypted with them.
+
+```sh
+./init-temp-keys.sh
+```
+
+Start the platform and its key access service:
+
+```sh
+go run github.com/opentdf/platform/service@latest start
 ```
 
 ## Run Tests
 
-```
+Once the platform is running, you may:
+
+```sh
 cd web-app/tests
 npm i
 npm test
@@ -37,7 +50,7 @@ npm test
 
 To enable the large file tests, set
 
-```
+```sh
 PLAYWRIGHT_TESTS_TO_RUN=huge roundtrip
 ```
 
@@ -46,7 +59,7 @@ PLAYWRIGHT_TESTS_TO_RUN=huge roundtrip
 
 To try encrypting some of your own files via HTTP:
 
-```
+```sh
 cd web-app/tests
 npm i
 ./run-server.js ~/Downloads
