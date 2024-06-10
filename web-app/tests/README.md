@@ -27,6 +27,8 @@ go run github.com/opentdf/platform/service@latest provision keycloak
 If you haven't already done so, initialize your service keys.
 Be careful!
 If you lose these keys you will lose access to all TDFs encrypted with them.
+These will be stored in place in the folder you create them,
+with names like `kas-[type].pem`.
 
 ```sh
 ./init-temp-keys.sh
