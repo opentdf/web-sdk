@@ -107,7 +107,7 @@ test('Remote Source Streaming', async ({ page }) => {
     }
     expect(download2.suggestedFilename()).toContain('.decrypted');
     const text = await readFile(plainTextPath, 'utf8');
-    expect(text).toContain('git clone https://github.com/opentdf/opentdf.git');
+    expect(text).toContain('try encrypting some of your own files');
   } finally {
     server.close();
   }
