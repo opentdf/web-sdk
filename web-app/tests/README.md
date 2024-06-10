@@ -1,6 +1,6 @@
 # Web App Test Harness
 
-This folder container playwright, e2e tests for web-app,
+This folder contains playwright, e2e tests for web-app,
 running against a local or remote backend in proxy mode.
 
 ## Bring up the platform behind local (vite dev server) proxy
@@ -53,7 +53,6 @@ To enable the large file tests, set
 ```sh
 PLAYWRIGHT_TESTS_TO_RUN=huge roundtrip
 ```
-
 
 ## Running with test server for local URL streaming tests
 

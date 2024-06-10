@@ -64,7 +64,7 @@ for (const [name, { encryptSelector, decryptSelector }] of Object.entries(scenar
     }
     const text = await readFile(plainTextPath, 'utf8');
     expect(text, `Looking for clone command in ${plainTextPath}`).toContain(
-      'git clone https://github.com/opentdf/opentdf.git'
+      'try encrypting some of your own files'
     );
   });
 }
