@@ -115,6 +115,8 @@ async function tdf3EncryptParamsFor(argv: Partial<mainArgs>): Promise<EncryptPar
   if (argv['users-with-access']?.length) {
     c.setUsersWithAccess(argv['users-with-access'].split(','));
   }
+  // use offline mode, we do not have upsert for v2
+  c.setOffline();
   // FIXME TODO must call file.close() after we are done
   const file = await open(argv.file as string);
   c.setStreamSource(file.readableWebStream());
