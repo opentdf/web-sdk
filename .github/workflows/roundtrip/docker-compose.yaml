@@ -1,14 +1,12 @@
 services:
   keycloak:
     # This is kc 24.0.1 with opentdf protocol mapper on board
-    image: quay.io/keycloak/keycloak:24.0
-    restart:
-      always
-      # To enable debugging, use this CMD and also set and expose the DEBUG_PORT
-    # command: ["--debug", "start-dev", "--log-level=DEBUG"]
-    command: ['start-dev']
+    image: cgr.dev/chainguard/keycloak@sha256:37895558d2e0e93ffff75da5900f9ae7e79ec6d1c390b18b2ecea6cee45ec26f
+    restart: always
+    command:
+    - "start-dev"
+    - "--verbose"
     environment:
-      # DEBUG_PORT: "*:30012"
       KC_DB_VENDOR: postgres
       KC_DB_URL_HOST: keycloakdb
       KC_DB_URL_PORT: 5432
@@ -31,27 +29,14 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: changeme
     ports:
       - '8888:8888'
-      # - "30012:30012"
     healthcheck:
-      test:
-        - CMD-SHELL
-        - >-
-          [ -f /tmp/HealthCheck.java ] 
-          || echo "public class HealthCheck {
-            public static void main(String[] args) throws java.lang.Throwable {
-              System.exit(
-                java.net.HttpURLConnection.HTTP_OK ==
-                  ((java.net.HttpURLConnection) new java.net.URL(args[0]).openConnection())
-                    .getResponseCode() ? 0 : 1);
-            }
-          }" >/tmp/HealthCheck.java
-          && java /tmp/HealthCheck.java http://localhost:8888/auth/health/live
+      test: ['CMD-SHELL', '[ -f /tmp/HealthCheck.java ] || echo "public class HealthCheck { public static void main(String[] args) throws java.lang.Throwable { System.exit(java.net.HttpURLConnection.HTTP_OK == ((java.net.HttpURLConnection)new java.net.URL(args[0]).openConnection()).getResponseCode() ? 0 : 1); } }" > /tmp/HealthCheck.java && java /tmp/HealthCheck.java http://localhost:8888/auth/health/live']
       interval: 5s
       timeout: 10s
       retries: 3
       start_period: 2m
   keycloakdb:
-    image: postgres
+    image: postgres:15-alpine
     restart: always
     user: postgres
     environment:
@@ -59,12 +44,12 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_DB: keycloak
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready']
+      test: ["CMD-SHELL", "pg_isready"]
       interval: 5s
       timeout: 5s
       retries: 10
   opentdfdb:
-    image: public.ecr.aws/docker/library/postgres:15-alpine
+    image: postgres:15-alpine
     restart: always
     user: postgres
     environment:
@@ -72,9 +57,9 @@ services:
       POSTGRES_PASSWORD: changeme
       POSTGRES_DB: opentdf
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready']
+      test: ["CMD-SHELL", "pg_isready"]
       interval: 5s
       timeout: 5s
       retries: 10
     ports:
-      - '5432:5432'
+      - "5432:5432"
