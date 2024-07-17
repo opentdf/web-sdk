@@ -41,6 +41,7 @@ import {
   TdfDecryptError,
   TdfError,
   TdfPayloadExtractionError,
+  UnsafeUrlError,
 } from '../../src/errors.js';
 import { htmlWrapperTemplate } from './templates/index.js';
 
@@ -824,7 +825,12 @@ async function unwrapKey({
   const rewrappedKeys = await Promise.all(
     keyAccess.map(async (keySplitInfo) => {
       if (!allowedKases.includes(keySplitInfo.url)) {
-        throw new KasUpsertError(`Unexpected KAS url: [${keySplitInfo.url}]`);
+        throw new UnsafeUrlError(
+          `cannot decrypt TDF: [${keySplitInfo.url}] not on allowlist ${JSON.stringify(
+            allowedKases
+          )}`,
+          keySplitInfo.url
+        );
       }
       const url = `${keySplitInfo.url}/${isAppIdProvider ? '' : 'v2/'}rewrap`;
 
