@@ -11,7 +11,10 @@
               "url": "http://127.0.0.1:4000",
               "protocol": "kas",
               "wrappedKey": "x8lk9Nxhx+zv+DVpCz89XLbMwbeeoNMhWIRO7CKdTNEWRWI9T+Ubkdvvi+SgrTJLQeEFBJspLQdombPI8Li1SVGD3pyfMNGXQ/FDoYIp2JHfyVKETfksU4q4gnNU3G63bTvCdQ41FeJJP26DIm63dKbF8BJQ/iSpXIPFalvMy/E9lR6kEv7ShKrwCKThFzynsg37ProbSmaYtTab+8J1/37oxm39PAUUfOOta9JA0mn8dz7f7a3nMVcXcyqrCTZSYbWKqhTowPeK2QiIfGJ1+K4F0V2UXMVuxIw6SEVbNL2hRkZ6+OSQd+kWMZTuneXtZeOHfBuOFRRzVzIEawagdA==",
-              "policyBinding": "fNPuURQu6ZpZk26TglgJxG1E7HiOynaFoyajj+8V1xg="
+              "policyBinding": {
+                "alg": "HS256",
+                "hash": "fNPuURQu6ZpZk26TglgJxG1E7HiOynaFoyajj+8V1xg="
+              }
             }
           ]
         ]
