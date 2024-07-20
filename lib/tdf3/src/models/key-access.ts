@@ -45,7 +45,7 @@ export class Wrapped {
       encryptedMetadata: base64.encode(encryptedMetadataStr),
       policyBinding: {
         alg: 'HS256',
-        hash: base64.encode(policyBinding)
+        hash: base64.encode(policyBinding),
       },
     };
     if (this.kid) {
@@ -96,7 +96,7 @@ export class Remote {
       encryptedMetadata: base64.encode(encryptedMetadataStr),
       policyBinding: {
         alg: 'HS256',
-        hash: base64.encode(policyBinding)
+        hash: base64.encode(policyBinding),
       },
     };
     if (this.kid) {
@@ -115,8 +115,8 @@ export type KeyAccessObject = {
   protocol: 'kas';
   wrappedKey?: string;
   policyBinding?: {
-    alg: string,
-    hash: string
+    alg: string;
+    hash: string;
   };
   encryptedMetadata?: string;
 };
