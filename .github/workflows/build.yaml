@@ -15,257 +15,256 @@ on:
     types:
       - created
 jobs:
-  # lib:
-  #   runs-on: ubuntu-latest
-  #   defaults:
-  #     run:
-  #       working-directory: ./lib
-  #   timeout-minutes: 5
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #       with:
-  #         fetch-depth: ${{ !fromJSON(env.do_sonarscan) && 1 || 0 }}
-  #     - uses: actions/setup-node@v4
-  #       with:
-  #         node-version: '20'
-  #         cache: 'npm'
-  #         cache-dependency-path: './lib/package-lock.json'
-  #     - run: npm ci
-  #     - run: npm test
-  #     - uses: fingerprintjs/action-coverage-report-md@v2
-  #       id: coverage-md
-  #       with:
-  #         srcBasePath: './'
-  #         textReportPath: './lib/coverage/coverage.txt'
-  #     - run: echo "${MARKDOWN_REPORT}" >>$GITHUB_STEP_SUMMARY
-  #       env:
-  #         MARKDOWN_REPORT: '${{ steps.coverage-md.outputs.markdownReport }}'
-  #     - run: npm audit --omit dev && npm audit --audit-level high --omit dev
-  #     - run: npm run license-check
-  #     - run: npm run lint
-  #     - run: npm pack
-  #     - uses: actions/upload-artifact@v4
-  #       with:
-  #         name: opentdf-client-lib
-  #         path: ./lib/opentdf-client-*.tgz
-  #     - name: SonarCloud Scan
-  #       if: fromJSON(env.do_sonarscan)
-  #       uses: SonarSource/sonarcloud-github-action@master
-  #       env:
-  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  lib:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./lib
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: ${{ !fromJSON(env.do_sonarscan) && 1 || 0 }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './lib/package-lock.json'
+      - run: npm ci
+      - run: npm test
+      - uses: fingerprintjs/action-coverage-report-md@v2
+        id: coverage-md
+        with:
+          srcBasePath: './'
+          textReportPath: './lib/coverage/coverage.txt'
+      - run: echo "${MARKDOWN_REPORT}" >>$GITHUB_STEP_SUMMARY
+        env:
+          MARKDOWN_REPORT: '${{ steps.coverage-md.outputs.markdownReport }}'
+      - run: npm audit --omit dev && npm audit --audit-level high --omit dev
+      - run: npm run license-check
+      - run: npm run lint
+      - run: npm pack
+      - uses: actions/upload-artifact@v4
+        with:
+          name: opentdf-client-lib
+          path: ./lib/opentdf-client-*.tgz
+      - name: SonarCloud Scan
+        if: fromJSON(env.do_sonarscan)
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-  # remote-store:
-  #   needs:
-  #     - lib
-  #   runs-on: ubuntu-latest
-  #   defaults:
-  #     run:
-  #       working-directory: ./remote-store
-  #   timeout-minutes: 5
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: actions/setup-node@v4
-  #       with:
-  #         node-version: '20'
-  #         cache: 'npm'
-  #         cache-dependency-path: './remote-store/package-lock.json'
-  #     - uses: actions/download-artifact@v4
-  #       with:
-  #         name: opentdf-client-lib
-  #         path: lib/
-  #     - run: npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-*.tgz
-  #     - run: npm install
-  #     - run: npm test
-  #     - run: npm audit
-  #     - run: npm run license-check
-  #     - run: npm run lint
-  #     - run: npm pack
+  remote-store:
+    needs:
+      - lib
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./remote-store
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './remote-store/package-lock.json'
+      - uses: actions/download-artifact@v4
+        with:
+          name: opentdf-client-lib
+          path: lib/
+      - run: npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-*.tgz
+      - run: npm install
+      - run: npm test
+      - run: npm audit
+      - run: npm run license-check
+      - run: npm run lint
+      - run: npm pack
 
-  # cli:
-  #   needs:
-  #     - lib
-  #   runs-on: ubuntu-latest
-  #   defaults:
-  #     run:
-  #       working-directory: ./cli
-  #   timeout-minutes: 5
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: actions/setup-node@v4
-  #       with:
-  #         node-version: '20'
-  #         cache: 'npm'
-  #         cache-dependency-path: './cli/package-lock.json'
-  #     - uses: actions/download-artifact@v4
-  #       with:
-  #         name: opentdf-client-lib
-  #         path: lib/
-  #     - run: npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-*.tgz
-  #     - run: npm test
-  #     - run: npm audit --omit dev && npm audit --audit-level high --omit dev
-  #     - run: npm run license-check
-  #     - run: npm run lint
-  #     - run: npm pack
-  #     - name: Setup BATS
-  #       uses: mig4/setup-bats@v1
-  #       with:
-  #         bats-version: 1.2.1
-  #     - run: bats bin/opentdf.bats
-  #     - uses: actions/upload-artifact@v4
-  #       with:
-  #         name: opentdf-cli
-  #         path: ./cli/opentdf-cli-*.tgz
+  cli:
+    needs:
+      - lib
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./cli
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './cli/package-lock.json'
+      - uses: actions/download-artifact@v4
+        with:
+          name: opentdf-client-lib
+          path: lib/
+      - run: npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-*.tgz
+      - run: npm test
+      - run: npm audit --omit dev && npm audit --audit-level high --omit dev
+      - run: npm run license-check
+      - run: npm run lint
+      - run: npm pack
+      - name: Setup BATS
+        uses: mig4/setup-bats@v1
+        with:
+          bats-version: 1.2.1
+      - run: bats bin/opentdf.bats
+      - uses: actions/upload-artifact@v4
+        with:
+          name: opentdf-cli
+          path: ./cli/opentdf-cli-*.tgz
 
-  # web-app:
-  #   needs:
-  #     - lib
-  #   runs-on: ubuntu-latest
-  #   defaults:
-  #     run:
-  #       working-directory: ./web-app
-  #   timeout-minutes: 5
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: actions/setup-node@v4
-  #       with:
-  #         node-version: '20'
-  #         cache: 'npm'
-  #         cache-dependency-path: './web-app/package-lock.json'
-  #     - uses: actions/download-artifact@v4
-  #       with:
-  #         name: opentdf-client-lib
-  #         path: lib/
-  #     - run: npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-*.tgz
-  #     - run: npm install
-  #     - run: npm test
-  #     - run: npm audit --omit dev && npm audit --audit-level high --omit dev
-  #     - run: npm run license-check
-  #     - run: npm run lint
-  #     - run: npm pack
+  web-app:
+    needs:
+      - lib
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./web-app
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './web-app/package-lock.json'
+      - uses: actions/download-artifact@v4
+        with:
+          name: opentdf-client-lib
+          path: lib/
+      - run: npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-*.tgz
+      - run: npm install
+      - run: npm test
+      - run: npm audit --omit dev && npm audit --audit-level high --omit dev
+      - run: npm run license-check
+      - run: npm run lint
+      - run: npm pack
 
-  # scripts:
-  #   runs-on: ubuntu-latest
-  #   defaults:
-  #     run:
-  #       working-directory: .github/workflows
-  #   timeout-minutes: 5
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: 🦇🦇🦇🦇🦇🦇
-  #       run: docker run --rm -v "$PWD:/mnt" --workdir "/mnt" bats/bats:1.11.0 *.bats
-  #     - name: 🦪 ✔ 🧼🧼🧼
-  #       run: >-
-  #         docker run --rm -v "$PWD:/mnt" --workdir "/mnt" "koalaman/shellcheck:v0.10.0"
-  #         --color=always *.sh
+  scripts:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .github/workflows
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: 🦇🦇🦇🦇🦇🦇
+        run: docker run --rm -v "$PWD:/mnt" --workdir "/mnt" bats/bats:1.11.0 *.bats
+      - name: 🦪 ✔ 🧼🧼🧼
+        run: >-
+          docker run --rm -v "$PWD:/mnt" --workdir "/mnt" "koalaman/shellcheck:v0.10.0"
+          --color=always *.sh
 
-  # backend-roundtrip:
-  #   needs:
-  #     - cli
-  #     - lib
-  #     - web-app
-  #   runs-on: ubuntu-latest
-  #   defaults:
-  #     run:
-  #       working-directory: .github/workflows/roundtrip
-  #   timeout-minutes: 45
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: actions/setup-node@v4
-  #       with:
-  #         node-version: '20'
-  #         cache: 'npm'
-  #         cache-dependency-path: './web-app/package-lock.json'
-  #     - uses: actions/download-artifact@v4
-  #       with:
-  #         name: opentdf-client-lib
-  #         path: lib/
-  #     - uses: actions/download-artifact@v4
-  #       with:
-  #         name: opentdf-cli
-  #         path: cli/
-  #     - uses: yokawasa/action-setup-kube-tools@v0.11.1
-  #       with:
-  #         setup-tools: |
-  #           kubectl
-  #           helm
-  #           tilt
-  #         # This should be in sync with the minikube-deployed kube version below
-  #         kubectl: '1.30.0'
-  #         helm: '3.14.4'
-  #         tilt: '0.33.13'
-  #     - run: |
-  #         kubectl version --client
-  #         kustomize version
-  #         tilt version
-  #     - name: start minikube
-  #       id: minikube
-  #       uses: medyagh/setup-minikube@master
-  #       with:
-  #         minikube-version: 1.33.0
-  #         # This should be in sync with the setup-tools version above
-  #         kubernetes-version: 1.30.0
-  #     - name: Run tilt ci
-  #       env:
-  #         TEST_SCRIPT: ./wait-and-test.sh backend
-  #         OPENTDF_INGRESS_HOST_PORT: '5432'
-  #         PLAYWRIGHT_TESTS_TO_RUN: roundtrip
-  #       run: tilt ci
+  backend-roundtrip:
+    needs:
+      - cli
+      - lib
+      - web-app
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .github/workflows/roundtrip
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './web-app/package-lock.json'
+      - uses: actions/download-artifact@v4
+        with:
+          name: opentdf-client-lib
+          path: lib/
+      - uses: actions/download-artifact@v4
+        with:
+          name: opentdf-cli
+          path: cli/
+      - uses: yokawasa/action-setup-kube-tools@v0.11.1
+        with:
+          setup-tools: |
+            kubectl
+            helm
+            tilt
+          # This should be in sync with the minikube-deployed kube version below
+          kubectl: '1.30.0'
+          helm: '3.14.4'
+          tilt: '0.33.13'
+      - run: |
+          kubectl version --client
+          kustomize version
+          tilt version
+      - name: start minikube
+        id: minikube
+        uses: medyagh/setup-minikube@master
+        with:
+          minikube-version: 1.33.0
+          # This should be in sync with the setup-tools version above
+          kubernetes-version: 1.30.0
+      - name: Run tilt ci
+        env:
+          TEST_SCRIPT: ./wait-and-test.sh backend
+          OPENTDF_INGRESS_HOST_PORT: '5432'
+          PLAYWRIGHT_TESTS_TO_RUN: roundtrip
+        run: tilt ci
 
-  # platform-roundtrip:
-  #   needs:
-  #     - cli
-  #     - lib
-  #     - web-app
-  #   runs-on: ubuntu-latest
-  #   defaults:
-  #     run:
-  #       working-directory: .github/workflows/roundtrip
-  #   timeout-minutes: 45
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: actions/setup-node@v4
-  #       with:
-  #         node-version: '20'
-  #         cache: 'npm'
-  #         cache-dependency-path: './web-app/package-lock.json'
-  #     - uses: actions/download-artifact@v4
-  #       with:
-  #         name: opentdf-client-lib
-  #         path: lib/
-  #     - uses: actions/download-artifact@v4
-  #       with:
-  #         name: opentdf-cli
-  #         path: cli/
-  #     - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
-  #       with:
-  #         go-version: '1.22'
-  #     - name: Git clone backend
-  #       run: |
-  #         git clone --depth 1 https://github.com/opentdf/platform.git
-  #         go work init
-  #         for x in platform/{protocol/go,lib/{fixtures,ocrypto},sdk,service}; do go work use "$x"; done
-  #     - run: docker compose up -d --wait --wait-timeout 240
-  #     - env:
-  #         PLAYWRIGHT_TESTS_TO_RUN: roundtrip
-  #       run: |-
-  #         ./wait-and-test.sh platform
+  platform-roundtrip:
+    needs:
+      - cli
+      - lib
+      - web-app
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .github/workflows/roundtrip
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './web-app/package-lock.json'
+      - uses: actions/download-artifact@v4
+        with:
+          name: opentdf-client-lib
+          path: lib/
+      - uses: actions/download-artifact@v4
+        with:
+          name: opentdf-cli
+          path: cli/
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+        with:
+          go-version: '1.22'
+      - name: Git clone backend
+        run: |
+          git clone --depth 1 https://github.com/opentdf/platform.git
+          go work init
+          for x in platform/{protocol/go,lib/{fixtures,ocrypto},sdk,service}; do go work use "$x"; done
+      - run: docker compose up -d --wait --wait-timeout 240
+      - env:
+          PLAYWRIGHT_TESTS_TO_RUN: roundtrip
+        run: |-
+          ./wait-and-test.sh platform
 
   platform-xtest:
-    # needs: platform-roundtrip
-    
-    uses: opentdf/tests/.github/workflows/xtest.yml@feat/go-js-cross-sdk-testing
+    needs: platform-roundtrip
+    uses: opentdf/tests/.github/workflows/xtest.yml@main
     with:
       js-ref: ${{ github.ref }}
     
   deliver-ghp:
     needs:
-      # - lib
-      # - cli
-      # - web-app
-      # - scripts
-      # - backend-roundtrip
-      # - platform-roundtrip
+      - lib
+      - cli
+      - web-app
+      - scripts
+      - backend-roundtrip
+      - platform-roundtrip
       - platform-xtest
     runs-on: ubuntu-latest
     timeout-minutes: 5
