@@ -159,59 +159,6 @@ jobs:
           docker run --rm -v "$PWD:/mnt" --workdir "/mnt" "koalaman/shellcheck:v0.10.0"
           --color=always *.sh
 
-  backend-roundtrip:
-    needs:
-      - cli
-      - lib
-      - web-app
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: .github/workflows/roundtrip
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: './web-app/package-lock.json'
-      - uses: actions/download-artifact@v4
-        with:
-          name: opentdf-client-lib
-          path: lib/
-      - uses: actions/download-artifact@v4
-        with:
-          name: opentdf-cli
-          path: cli/
-      - uses: yokawasa/action-setup-kube-tools@v0.11.1
-        with:
-          setup-tools: |
-            kubectl
-            helm
-            tilt
-          # This should be in sync with the minikube-deployed kube version below
-          kubectl: '1.30.0'
-          helm: '3.14.4'
-          tilt: '0.33.13'
-      - run: |
-          kubectl version --client
-          kustomize version
-          tilt version
-      - name: start minikube
-        id: minikube
-        uses: medyagh/setup-minikube@master
-        with:
-          minikube-version: 1.33.0
-          # This should be in sync with the setup-tools version above
-          kubernetes-version: 1.30.0
-      - name: Run tilt ci
-        env:
-          TEST_SCRIPT: ./wait-and-test.sh backend
-          OPENTDF_INGRESS_HOST_PORT: '5432'
-          PLAYWRIGHT_TESTS_TO_RUN: roundtrip
-        run: tilt ci
-
   platform-roundtrip:
     needs:
       - cli
@@ -265,7 +212,6 @@ jobs:
       - scripts
       - platform-roundtrip
       - platform-xtest
-      # - backend-roundtrip
     runs-on: ubuntu-latest
     timeout-minutes: 5
     # To publish from a release or feature branch, remove the ref == condition below
