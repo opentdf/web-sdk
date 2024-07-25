@@ -251,6 +251,12 @@ jobs:
         run: |-
           ./wait-and-test.sh platform
 
+  platform-xtest:
+    needs: platform-roundtrip
+    uses: opentdf/tests/.github/workflows/xtest.yml@main
+    with:
+      js-ref: ${{ github.ref }}
+    
   deliver-ghp:
     needs:
       - lib
@@ -259,6 +265,7 @@ jobs:
       - scripts
       - backend-roundtrip
       - platform-roundtrip
+      - platform-xtest
     runs-on: ubuntu-latest
     timeout-minutes: 5
     # To publish from a release or feature branch, remove the ref == condition below
