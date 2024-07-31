@@ -867,9 +867,9 @@ async function unwrapKey({
     Object.entries(splitPotentials).map(async ([splitId, potentials]) => {
       if (!potentials || !Object.keys(potentials).length) {
         throw new UnsafeUrlError(
-          `Unreconstructable key - no valid KAS found for split ${JSON.stringify(splitId)}`, 
-          ""
-          );
+          `Unreconstructable key - no valid KAS found for split ${JSON.stringify(splitId)}`,
+          ''
+        );
       }
       // TODO: If we have multiple ways of getting a value, try the 'best' way
       // or maybe retry across all potential ways
