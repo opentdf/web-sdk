@@ -1,5 +1,5 @@
 import { readFile } from '@web/test-runner-commands';
-import { expect } from '@esm-bundle/chai';
+import { expect } from 'chai';
 import { NanoTDF } from '../../../src/nanotdf/index.js';
 
 describe('NanoTDF work with various sizes', () => {

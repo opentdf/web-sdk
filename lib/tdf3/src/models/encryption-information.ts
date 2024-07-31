@@ -92,10 +92,10 @@ export class SplitKey {
         typeof metadata === 'object'
           ? JSON.stringify(metadata)
           : typeof metadata === 'string'
-          ? metadata
-          : () => {
-              throw new Error();
-            }
+            ? metadata
+            : () => {
+                throw new Error();
+              }
       ) as string;
 
       const metadataBinary = Binary.fromArrayBuffer(new TextEncoder().encode(metadataStr));

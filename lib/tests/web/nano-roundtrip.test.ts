@@ -1,4 +1,4 @@
-import { expect } from '@esm-bundle/chai';
+import { expect } from 'chai';
 import { type AuthProvider, HttpRequest, withHeaders } from '../../src/auth/auth.js';
 
 import { NanoTDFClient } from '../../src/index.js';

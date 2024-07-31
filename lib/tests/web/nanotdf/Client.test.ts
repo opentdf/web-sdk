@@ -1,4 +1,4 @@
-import { expect } from '@esm-bundle/chai';
+import { expect } from 'chai';
 import { clientAuthProvider } from '../../../src/auth/providers.js';
 import Client from '../../../src/nanotdf/Client.js';
 

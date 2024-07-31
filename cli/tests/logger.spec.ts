@@ -1,4 +1,4 @@
-import { expect } from '@esm-bundle/chai';
+import { expect } from 'chai';
 import { createSandbox, SinonStub as Stub } from 'sinon';
 import { log } from '../src/logger.js';
 

@@ -1,4 +1,4 @@
-import { assert, expect } from '@esm-bundle/chai';
+import { assert, expect } from 'chai';
 import { fake } from 'sinon';
 import { AccessToken, type AccessTokenResponse } from '../../../src/auth/oidc.js';
 
