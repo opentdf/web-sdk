@@ -1,4 +1,4 @@
-import { expect } from '@esm-bundle/chai';
+import { expect } from 'chai';
 import { NanoTDF } from '../../../src/nanotdf/index.js';
 import PolicyTypeEnum from '../../../src/nanotdf/enum/PolicyTypeEnum.js';
 import bufferToHex from './helpers/bufferToHex.js';

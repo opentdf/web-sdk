@@ -1,4 +1,4 @@
-import { expect } from '@esm-bundle/chai';
+import { expect } from 'chai';
 
 import { decrypt, encrypt, pemCertToCrypto } from '../../../src/nanotdf-crypto/index.js';
 

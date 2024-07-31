@@ -42,22 +42,21 @@
     "@aws-sdk/protocol-http": "^3.370.0",
     "@aws-sdk/smithy-client": "^3.370.0",
     "@opentdf/client": "file:../lib/opentdf-client-2.0.0.tgz",
-    "axios": "^1.6.1"
+    "axios": "^1.7.2"
   },
   "devDependencies": {
-    "@aws-sdk/types": "^3.370.0",
-    "@esm-bundle/chai": "4.3.4-fix.0",
-    "@types/chai": "^4.3.5",
-    "@types/mocha": "^10.0.1",
-    "@typescript-eslint/eslint-plugin": "^6.1.0",
-    "@typescript-eslint/parser": "^6.1.0",
-    "chai": "^4.3.7",
-    "eslint": "^8.45.0",
-    "eslint-config-prettier": "^8.8.0",
-    "license-checker-rseidelsohn": "^4.2.6",
-    "mocha": "^10.2.0",
-    "prettier": "^3.0.0",
-    "ts-node": "^10.9.1",
-    "typescript": "5.1.6"
+    "@aws-sdk/types": "^3.609.0",
+    "@types/chai": "^4.3.16",
+    "@types/mocha": "^10.0.7",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "chai": "^5.1.1",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "license-checker-rseidelsohn": "^4.3.0",
+    "mocha": "^10.7.0",
+    "prettier": "^3.3.3",
+    "ts-node": "^10.9.2",
+    "typescript": "5.5.4"
   }
 }
