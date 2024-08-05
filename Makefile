@@ -24,13 +24,13 @@ i:
 all: ci lib/opentdf-client-$(version).tgz remote-store/opentdf-remote-store-$(version).tgz web-app/opentdf-web-app-$(version).tgz
 
 cli/opentdf-cli-$(version).tgz: lib/opentdf-client-$(version).tgz $(shell find cli -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
-	(cd cli && npm ci ../lib/opentdf-client-$(version).tgz && npm pack)
+	(cd cli && npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-$(version).tgz && npm pack)
 
 remote-store/opentdf-remote-store-$(version).tgz: lib/opentdf-client-$(version).tgz $(shell find remote-store -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
-	(cd remote-store && npm ci ../lib/opentdf-client-$(version).tgz && npm pack)
+	(cd remote-store && npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-$(version).tgz && npm pack)
 
 web-app/opentdf-web-app-$(version).tgz: lib/opentdf-client-$(version).tgz $(shell find web-app -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
-	(cd web-app && npm ci ../lib/opentdf-client-$(version).tgz && npm pack && npm run build)
+	(cd web-app && npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-$(version).tgz && npm pack && npm run build)
 
 lib/opentdf-client-$(version).tgz: $(shell find lib -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
 	(cd lib && npm ci --including=dev && npm pack)
