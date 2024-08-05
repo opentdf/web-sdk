@@ -95,8 +95,8 @@ function addParams(client: AnyNanoClient, argv: Partial<mainArgs>) {
   if (argv.attributes?.length) {
     client.dataAttributes = argv.attributes.split(',');
   }
-  if (argv['users-with-access']?.length) {
-    client.dissems = argv['users-with-access'].split(',');
+  if (argv.usersWithAccess?.length) {
+    client.dissems = argv.usersWithAccess.split(',');
   }
   log('SILLY', `Built encrypt params dissems: ${client.dissems}, attrs: ${client.dataAttributes}`);
 }
@@ -112,8 +112,8 @@ async function tdf3EncryptParamsFor(argv: Partial<mainArgs>): Promise<EncryptPar
   if (argv.attributes?.length) {
     c.setAttributes(argv.attributes.split(','));
   }
-  if (argv['users-with-access']?.length) {
-    c.setUsersWithAccess(argv['users-with-access'].split(','));
+  if (argv.usersWithAccess?.length) {
+    c.setUsersWithAccess(argv.usersWithAccess.split(','));
   }
   // use offline mode, we do not have upsert for v2
   c.setOffline();
@@ -145,8 +145,8 @@ export const handleArgs = (args: string[]) => {
       .middleware((argv) => {
         if (argv.silent) {
           log.level = 'CRITICAL';
-        } else if (argv['log-level']) {
-          const ll = argv['log-level'] as string;
+        } else if (argv.logLevel) {
+          const ll = argv.logLevel as string;
           log.level = ll.toUpperCase() as Level;
         }
       })
@@ -230,7 +230,8 @@ export const handleArgs = (args: string[]) => {
 
       // POLICY
       .options({
-        'users-with-access': {
+        usersWithAccess: {
+          alias: 'users-with-access',
           group: 'Policy Options',
           desc: 'Add users to the policy',
           type: 'string',
@@ -248,7 +249,8 @@ export const handleArgs = (args: string[]) => {
 
       // COMMANDS
       .options({
-        'log-level': {
+        logLevel: {
+          alias: 'log-level',
           type: 'string',
           default: 'info',
           desc: 'Set logging level',
