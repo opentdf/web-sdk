@@ -11,7 +11,7 @@
     "inlineSourceMap": true,
     "isolatedModules": true,
     "lib": ["dom", "dom.iterable", "es2020", "ES2022.Error"],
-    "module": "Node16",
+    "module": "es2020",
     "moduleResolution": "node16",
     "noImplicitAny": true,
     "noImplicitOverride": true,
