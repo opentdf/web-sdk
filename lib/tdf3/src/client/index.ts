@@ -271,9 +271,10 @@ export class Client {
       this.kasEndpoint = clientConfig.keyRewrapEndpoint.replace(/\/rewrap$/, '');
     }
 
+    const kasOrigin = new URL(this.kasEndpoint).origin;
     if (clientConfig.allowedKases) {
-      this.allowedKases = [...clientConfig.allowedKases];
-      if (!validateSecureUrl(this.kasEndpoint) && !this.allowedKases.includes(this.kasEndpoint)) {
+      this.allowedKases = clientConfig.allowedKases.map((a) => new URL(a).origin);
+      if (!validateSecureUrl(this.kasEndpoint) && !this.allowedKases.includes(kasOrigin)) {
         throw new TdfError(`Invalid KAS endpoint [${this.kasEndpoint}]`);
       }
       this.allowedKases.forEach(validateSecureUrl);
@@ -283,7 +284,7 @@ export class Client {
           `Invalid KAS endpoint [${this.kasEndpoint}]; to force, please list it among allowedKases`
         );
       }
-      this.allowedKases = [this.kasEndpoint];
+      this.allowedKases = [kasOrigin];
     }
 
     this.authProvider = config.authProvider;
