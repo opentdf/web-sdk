@@ -106,13 +106,15 @@ export default class ResourceLocator {
    * Construct URL from ResourceLocator or throw error
    */
   getUrl(): string | never {
-    let protocol;
-    if (this.protocol === ProtocolEnum.Http) {
+    let protocol: string;
+    // protocolIndex get the first four bits
+    const protocolIndex: number = this.protocol & 0xf;
+    if (protocolIndex === ProtocolEnum.Http) {
       protocol = 'http';
-    } else if (this.protocol === ProtocolEnum.Https) {
+    } else if (protocolIndex === ProtocolEnum.Https) {
       protocol = 'https';
     } else {
-      throw new Error(`Cannot create URL from protocol, ${ProtocolEnum[this.protocol]}`);
+      throw new Error(`Cannot create URL from protocol, "${ProtocolEnum[this.protocol]}"`);
     }
 
     return `${protocol}://${this.body}`;
