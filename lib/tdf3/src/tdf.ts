@@ -145,6 +145,7 @@ export type EncryptConfiguration = {
 };
 
 export type DecryptConfiguration = {
+  // Normalized KAS origins to connect to
   allowedKases: string[];
   authProvider: AuthProvider | AppIdAuthProvider;
   cryptoService: CryptoService;
@@ -824,7 +825,8 @@ async function unwrapKey({
   // Get key access information to know the KAS URLS
   const rewrappedKeys = await Promise.all(
     keyAccess.map(async (keySplitInfo) => {
-      if (!allowedKases.includes(keySplitInfo.url)) {
+      const kaoOrigin = new URL(keySplitInfo.url).origin;
+      if (!allowedKases.includes(kaoOrigin)) {
         throw new UnsafeUrlError(
           `cannot decrypt TDF: [${keySplitInfo.url}] not on allowlist ${JSON.stringify(
             allowedKases
