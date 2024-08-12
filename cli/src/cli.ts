@@ -115,6 +115,9 @@ async function tdf3EncryptParamsFor(argv: Partial<mainArgs>): Promise<EncryptPar
   if (argv.usersWithAccess?.length) {
     c.setUsersWithAccess(argv.usersWithAccess.split(','));
   }
+  if (argv.mimeType?.length) {
+    c.setMimeType(argv.mimeType);
+  }
   // use offline mode, we do not have upsert for v2
   c.setOffline();
   // FIXME TODO must call file.close() after we are done
@@ -232,18 +235,24 @@ export const handleArgs = (args: string[]) => {
       .options({
         usersWithAccess: {
           alias: 'users-with-access',
-          group: 'Policy Options',
+          group: 'Encrypt Options',
           desc: 'Add users to the policy',
           type: 'string',
           default: '',
           validate: (users: string) => users.split(','),
         },
         attributes: {
-          group: 'Policy Options',
+          group: 'Encrypt Options',
           desc: 'Data attributes for the policy',
           type: 'string',
           default: '',
           validate: (attributes: string) => attributes.split(','),
+        },
+        mimeType: {
+          group: 'Encrypt Options',
+          desc: 'Mime type for the plain text file (only supported for ztdf)',
+          type: 'string',
+          default: '',
         },
       })
 
