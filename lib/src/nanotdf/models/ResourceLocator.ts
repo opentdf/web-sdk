@@ -38,25 +38,25 @@ export default class ResourceLocator {
     // protocol and identifier byte
     const protocolIdentifierByte = new Uint8Array(1);
     if (protocol.toLowerCase() == 'http') {
-      protocolIdentifierByte[0] = protocolIdentifierByte[0] & 0x0F;
+      protocolIdentifierByte[0] = protocolIdentifierByte[0] & 0x0f;
     } else if (protocol.toLowerCase() == 'https') {
-      protocolIdentifierByte[0] = (protocolIdentifierByte[0] & 0x0F) | 0b0010;
+      protocolIdentifierByte[0] = (protocolIdentifierByte[0] & 0x0f) | 0b0010;
     } else {
       throw new Error('Resource locator protocol is not supported.');
     }
     if (identifierLength === 0) {
-      protocolIdentifierByte[0] = (protocolIdentifierByte[0] & 0xF0) | 0b0000;
+      protocolIdentifierByte[0] = (protocolIdentifierByte[0] & 0xf0) | 0b0000;
     } else if (identifierLength <= 2) {
-      protocolIdentifierByte[0] = (protocolIdentifierByte[0] & 0xF0) | 0b0010;
+      protocolIdentifierByte[0] = (protocolIdentifierByte[0] & 0xf0) | 0b0010;
       identifierPaddedLength = ResourceLocatorIdentifierEnum.TwoBytes.valueOf();
     } else if (identifierLength <= 8) {
-      protocolIdentifierByte[0] = (protocolIdentifierByte[0] & 0xF0) | 0b0100;
+      protocolIdentifierByte[0] = (protocolIdentifierByte[0] & 0xf0) | 0b0100;
       identifierPaddedLength = ResourceLocatorIdentifierEnum.EightBytes.valueOf();
     } else if (identifierLength <= 32) {
-      protocolIdentifierByte[0] = (protocolIdentifierByte[0] & 0xF0) | 0b1000;
+      protocolIdentifierByte[0] = (protocolIdentifierByte[0] & 0xf0) | 0b1000;
       identifierPaddedLength = ResourceLocatorIdentifierEnum.ThirtyTwoBytes.valueOf();
     } else {
-      throw new Error("Unsupported identifier length: " + identifierLength);
+      throw new Error('Unsupported identifier length: ' + identifierLength);
     }
     // Buffer to hold the protocol, length of body, body, and identifierPadded
     const buffer = new Uint8Array(1 + 1 + bodyLength + identifierPaddedLength);
@@ -66,7 +66,9 @@ export default class ResourceLocator {
     // add padded identifier
     if (identifierPaddedLength > 0) {
       const identifierArray = new Uint8Array(identifierPaddedLength);
-      const encodedIdentifier = new TextEncoder().encode(identifier).subarray(0, identifierPaddedLength);
+      const encodedIdentifier = new TextEncoder()
+        .encode(identifier)
+        .subarray(0, identifierPaddedLength);
       identifierArray.set(encodedIdentifier);
       buffer.set(identifierArray, 2 + bodyLength);
     }
@@ -109,7 +111,10 @@ export default class ResourceLocator {
         break;
     }
     this.offset =
-      ResourceLocator.PROTOCOL_LENGTH + ResourceLocator.LENGTH_LENGTH + this.lengthOfBody + this.identifierType.valueOf();
+      ResourceLocator.PROTOCOL_LENGTH +
+      ResourceLocator.LENGTH_LENGTH +
+      this.lengthOfBody +
+      this.identifierType.valueOf();
   }
 
   /**
