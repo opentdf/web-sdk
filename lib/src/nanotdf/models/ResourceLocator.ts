@@ -87,7 +87,9 @@ export default class ResourceLocator {
     );
     // identifier
     const identifierTypeNibble = this.protocol & 0xf;
-    if ((identifierTypeNibble & 0b0010) !== 0) {
+    if ((identifierTypeNibble & 0b0000) !== 0) {
+      this.identifierType = ResourceLocatorIdentifierEnum.None;
+    } else if ((identifierTypeNibble & 0b0010) !== 0) {
       this.identifierType = ResourceLocatorIdentifierEnum.TwoBytes;
     } else if ((identifierTypeNibble & 0b0100) !== 0) {
       this.identifierType = ResourceLocatorIdentifierEnum.EightBytes;
@@ -102,7 +104,6 @@ export default class ResourceLocator {
       case ResourceLocatorIdentifierEnum.EightBytes:
       case ResourceLocatorIdentifierEnum.ThirtyTwoBytes:
         this.identifier = decoder.decode(
-          // TODO test padding
           buff.subarray(
             ResourceLocator.BODY_OFFSET + this.lengthOfBody,
             ResourceLocator.BODY_OFFSET + this.lengthOfBody + this.identifierType.valueOf()
