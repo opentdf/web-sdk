@@ -12,18 +12,18 @@ import ResourceLocatorIdentifierEnum from '../../../src/nanotdf/enum/ResourceLoc
 
 describe('NanoTDF', () => {
   it('should parse the ResourceLocator Identifier', () => {
-    let rl = ResourceLocator.parse("http://localhost:8080", "e0");
+    let rl = ResourceLocator.parse('http://localhost:8080', 'e0');
     assert.equal(rl.identifierType, ResourceLocatorIdentifierEnum.TwoBytes);
-    assert.equal(rl.getIdentifier(), "e0");
-    rl = ResourceLocator.parse("http://localhost:8080", "e0e0e0e0");
+    assert.equal(rl.getIdentifier(), 'e0');
+    rl = ResourceLocator.parse('http://localhost:8080', 'e0e0e0e0');
     assert.equal(rl.identifierType, ResourceLocatorIdentifierEnum.EightBytes);
-    assert.equal(rl.getIdentifier(), "e0e0e0e0");
-    rl = ResourceLocator.parse("http://localhost:8080", "e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0");
+    assert.equal(rl.getIdentifier(), 'e0e0e0e0');
+    rl = ResourceLocator.parse('http://localhost:8080', 'e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0');
     assert.equal(rl.identifierType, ResourceLocatorIdentifierEnum.ThirtyTwoBytes);
-    assert.equal(rl.getIdentifier(), "e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0");
-    rl = ResourceLocator.parse("http://localhost:8080", "e0e0e0e0e0e0e0e0");
+    assert.equal(rl.getIdentifier(), 'e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0');
+    rl = ResourceLocator.parse('http://localhost:8080', 'e0e0e0e0e0e0e0e0');
     assert.equal(rl.identifierType, ResourceLocatorIdentifierEnum.ThirtyTwoBytes);
-    assert.equal(rl.getIdentifier(), "e0e0e0e0e0e0e0e0");
+    assert.equal(rl.getIdentifier(), 'e0e0e0e0e0e0e0e0');
   });
   for (const { policyType, fixture } of [
     { policyType: PolicyTypeEnum.Remote, fixture: remoteFixture },
