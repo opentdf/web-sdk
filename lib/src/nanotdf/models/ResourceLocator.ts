@@ -101,12 +101,12 @@ export default class ResourceLocator {
       case ResourceLocatorIdentifierEnum.TwoBytes:
       case ResourceLocatorIdentifierEnum.EightBytes:
       case ResourceLocatorIdentifierEnum.ThirtyTwoBytes:
-        this.identifier = decoder.decode(
-          buff.subarray(
-            ResourceLocator.BODY_OFFSET + this.lengthOfBody,
-            ResourceLocator.BODY_OFFSET + this.lengthOfBody + this.identifierType.valueOf()
-          )
-        );
+        const start = ResourceLocator.BODY_OFFSET + this.lengthOfBody;
+        const end = start + this.identifierType.valueOf();
+        const subarray = buff.subarray(start, end);
+        // Remove padding (assuming the padding is null bytes, 0x00)
+        const trimmedSubarray = subarray.filter((byte) => byte !== 0x00);
+        this.identifier = decoder.decode(trimmedSubarray);
         break;
     }
     this.offset =
