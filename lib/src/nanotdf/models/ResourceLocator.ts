@@ -21,7 +21,7 @@ export default class ResourceLocator {
   readonly lengthOfBody: number;
   readonly body: string;
   readonly identifier: string;
-  readonly identifierType: ResourceLocatorIdentifierEnum;
+  readonly identifierType: ResourceLocatorIdentifierEnum = ResourceLocatorIdentifierEnum.None;
   readonly offset: number = 0;
 
   static readonly PROTOCOL_OFFSET = 0;
@@ -86,7 +86,6 @@ export default class ResourceLocator {
       buff.subarray(ResourceLocator.BODY_OFFSET, ResourceLocator.BODY_OFFSET + this.lengthOfBody)
     );
     // identifier
-    this.identifierType = ResourceLocatorIdentifierEnum.None;
     const identifierTypeNibble = this.protocol & 0xf;
     if ((identifierTypeNibble & 0b0010) !== 0) {
       this.identifierType = ResourceLocatorIdentifierEnum.TwoBytes;
@@ -131,7 +130,7 @@ export default class ResourceLocator {
       // Content length
       this.body.length +
       // Identifier length
-      this.identifier.length
+      this.identifierType.valueOf()
     );
   }
 
