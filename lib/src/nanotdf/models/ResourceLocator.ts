@@ -149,7 +149,7 @@ export default class ResourceLocator {
    * Return the contents of the Resource Locator in buffer
    */
   toBuffer(): Uint8Array {
-    const buffer = new Uint8Array(2 + this.body.length + this.identifier.length);
+    const buffer = new Uint8Array(2 + this.body.length + this.identifierType.valueOf());
     buffer.set([this.protocol], 0);
     buffer.set([this.lengthOfBody], 1);
     buffer.set(new TextEncoder().encode(this.body), 2);
