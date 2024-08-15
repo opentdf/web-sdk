@@ -86,7 +86,7 @@ export default class ResourceLocator {
       buff.subarray(ResourceLocator.BODY_OFFSET, ResourceLocator.BODY_OFFSET + this.lengthOfBody)
     );
     // identifier
-    this.identifierType = ResourceLocatorIdentifierEnum.None
+    this.identifierType = ResourceLocatorIdentifierEnum.None;
     const identifierTypeNibble = this.protocol & 0xf;
     if ((identifierTypeNibble & 0b0010) !== 0) {
       this.identifierType = ResourceLocatorIdentifierEnum.TwoBytes;
