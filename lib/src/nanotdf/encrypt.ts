@@ -20,15 +20,16 @@ import {
  * Encrypt the plain data into nanotdf buffer
  *
  * @param policy Policy that will added to the nanotdf
- * @param kasPubCrtAsPem KAS public crt in pem format
- * @param kasUrl KAS url as string
+ * @param kasPub
+ * @param kasUrl KAS url as string or ResourceLocator
  * @param ephemeralKeyPair SDK ephemeral key pair to generate symmetric key
+ * @param iv
  * @param data The data to be encrypted
  */
 export default async function encrypt(
   policy: string,
   kasPub: CryptoKey,
-  kasUrl: string,
+  kasUrl: string | ResourceLocator,
   ephemeralKeyPair: CryptoKeyPair,
   iv: Uint8Array,
   data: string | TypedArray | ArrayBuffer
@@ -45,7 +46,12 @@ export default async function encrypt(
   );
 
   // Construct the kas locator
-  const kasResourceLocator = ResourceLocator.parse(kasUrl);
+  let kasResourceLocator;
+  if (kasUrl instanceof ResourceLocator) {
+    kasResourceLocator = kasUrl;
+  } else {
+    kasResourceLocator = ResourceLocator.parse(kasUrl);
+  }
 
   // Auth tag length for policy and payload
   const authTagLengthInBytes = authTagLengthForCipher(DefaultParams.symmetricCipher) / 8;
