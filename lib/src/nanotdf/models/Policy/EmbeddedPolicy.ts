@@ -19,7 +19,7 @@ class EmbeddedPolicy extends AbstractPolicy implements EmbeddedPolicyInterface {
 
   static override parse(
     buff: Uint8Array,
-    bindingLength: number,
+    useEcdsaBinding: boolean,
     type: PolicyTypes
   ): { offset: number; policy: EmbeddedPolicy } {
     let offset = 0;
@@ -32,8 +32,8 @@ class EmbeddedPolicy extends AbstractPolicy implements EmbeddedPolicyInterface {
     const content = buff.subarray(offset, offset + length);
     offset += length;
 
-    const binding = buff.subarray(offset, offset + bindingLength);
-    offset += bindingLength;
+    const { binding, newOffset: bindingOffset } = this.parseBinding(buff, useEcdsaBinding, offset);
+    offset = bindingOffset;
 
     return {
       policy: new EmbeddedPolicy(type, binding, content),
