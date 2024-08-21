@@ -10,25 +10,18 @@ logger:
 #   password: changeme
 services:
   kas:
-    enabled: true
     keyring:
       - kid: e1
         alg: ec:secp256r1
+      - kid: e1
+        alg: ec:secp256r1
+        legacy: true
       - kid: r1
         alg: rsa:2048
       - kid: r1
         alg: rsa:2048
         legacy: true
-  policy:
-    enabled: true
-  authorization:
-    enabled: true
-    ersurl: http://localhost:65432/entityresolution/resolve
-    clientid: tdf-authorization-svc
-    clientsecret: secret
-    tokenendpoint: http://localhost:65432/auth/realms/opentdf/protocol/openid-connect/token
   entityresolution:
-    enabled: true
     url: http://localhost:65432/auth
     clientid: 'tdf-entity-resolution'
     clientsecret: 'secret'
@@ -41,6 +34,7 @@ services:
 server:
   auth:
     enabled: true
+    public_client_id: 'opentdf-public'
     audience: 'http://localhost:65432'
     issuer: http://localhost:65432/auth/realms/opentdf
     policy:

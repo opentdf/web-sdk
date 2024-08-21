@@ -24,8 +24,10 @@ export type Segment = {
   readonly encryptedSegmentSize?: number;
 };
 
+export type SplitType = 'split';
+
 export type EncryptionInformation = {
-  readonly type: string;
+  readonly type: SplitType;
   readonly keyAccess: KeyAccessObject[];
   readonly integrityInformation: {
     readonly rootSignature: {
@@ -75,19 +77,25 @@ export class SplitKey {
   }
 
   async getKeyAccessObjects(policy: Policy, keyInfo: KeyInfo): Promise<KeyAccessObject[]> {
+    const splitIds = [...new Set(this.keyAccess.map(({ sid }) => sid))].sort((a, b) =>
+      a.localeCompare(b)
+    );
     const unwrappedKeySplitBuffers = await keySplit(
       new Uint8Array(keyInfo.unwrappedKeyBinary.asByteArray()),
-      this.keyAccess.length,
+      splitIds.length,
       this.cryptoService
+    );
+    const splitsByName = Object.fromEntries(
+      splitIds.map((sid, index) => [sid, unwrappedKeySplitBuffers[index]])
     );
 
     const keyAccessObjects = [];
-    for (let i = 0; i < this.keyAccess.length; i++) {
+    for (const item of this.keyAccess) {
       // use the key split to encrypt metadata for each key access object
-      const unwrappedKeySplitBuffer = unwrappedKeySplitBuffers[i];
+      const unwrappedKeySplitBuffer = splitsByName[item.sid];
       const unwrappedKeySplitBinary = Binary.fromArrayBuffer(unwrappedKeySplitBuffer.buffer);
 
-      const metadata = this.keyAccess[i].metadata || '';
+      const metadata = item.metadata || '';
       const metadataStr = (
         typeof metadata === 'object'
           ? JSON.stringify(metadata)
@@ -112,7 +120,7 @@ export class SplitKey {
       };
 
       const encryptedMetadataStr = JSON.stringify(encryptedMetadataOb);
-      const keyAccessObject = await this.keyAccess[i].write(
+      const keyAccessObject = await item.write(
         policy,
         unwrappedKeySplitBuffer,
         encryptedMetadataStr

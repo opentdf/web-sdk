@@ -1,4 +1,5 @@
 import { type AuthProvider } from './auth/auth.js';
+import { pemToCryptoPublicKey } from './utils.js';
 
 export class RewrapRequest {
   signedRequestToken = '';
@@ -47,4 +48,15 @@ export async function fetchWrappedKey(
   }
 
   return response.json();
+}
+
+export async function fetchECKasPubKey(kasEndpoint: string): Promise<CryptoKey> {
+  const kasPubKeyResponse = await fetch(`${kasEndpoint}/kas_public_key?algorithm=ec:secp256r1`);
+  if (!kasPubKeyResponse.ok) {
+    throw new Error(
+      `Unable to validate KAS [${kasEndpoint}]. Received [${kasPubKeyResponse.status}:${kasPubKeyResponse.statusText}]`
+    );
+  }
+  const pem = await kasPubKeyResponse.json();
+  return pemToCryptoPublicKey(pem);
 }

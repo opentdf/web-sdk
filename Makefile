@@ -3,10 +3,12 @@ version=2.0.0
 extras=cli remote-store web-app
 pkgs=lib $(extras)
 
-.PHONY: all audit license-check lint test ci i start format clean
+.PHONY: all audit ci clean cli format i license-check lint start test
 
 start: all
 	(cd web-app && npm run dev)
+
+cli: cli/opentdf-cli-$(version).tgz
 
 clean:
 	rm -f *.tgz

@@ -17,7 +17,8 @@ export class Wrapped {
     public readonly url: string,
     public readonly kid: string | undefined,
     public readonly publicKey: string,
-    public readonly metadata: unknown
+    public readonly metadata: unknown,
+    public readonly sid: string
   ) {}
 
   async write(
@@ -51,6 +52,9 @@ export class Wrapped {
     if (this.kid) {
       this.keyAccessObject.kid = this.kid;
     }
+    if (this.sid?.length) {
+      this.keyAccessObject.sid = this.sid;
+    }
 
     return this.keyAccessObject;
   }
@@ -66,7 +70,8 @@ export class Remote {
     public readonly url: string,
     public readonly kid: string | undefined,
     public readonly publicKey: string,
-    public readonly metadata: unknown
+    public readonly metadata: unknown,
+    public readonly sid: string
   ) {}
 
   async write(
@@ -109,6 +114,7 @@ export class Remote {
 export type KeyAccess = Remote | Wrapped;
 
 export type KeyAccessObject = {
+  sid?: string;
   type: KeyAccessType;
   url: string;
   kid?: string;

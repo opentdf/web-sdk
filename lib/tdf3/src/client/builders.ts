@@ -26,6 +26,11 @@ export type EncryptStreamMiddleware = (
   stream: DecoratedReadableStream
 ) => Promise<DecoratedReadableStream>;
 
+export type SplitStep = {
+  kas: string;
+  sid?: string;
+};
+
 export type EncryptParams = {
   source: ReadableStream<Uint8Array>;
   opts?: { keypair: PemKeyPair };
@@ -40,6 +45,7 @@ export type EncryptParams = {
   eo?: EntityObject;
   payloadKey?: Binary;
   keyMiddleware?: EncryptKeyMiddleware;
+  splitPlan?: SplitStep[];
   streamMiddleware?: EncryptStreamMiddleware;
 };
 

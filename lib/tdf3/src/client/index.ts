@@ -40,6 +40,7 @@ import {
   DecryptStreamMiddleware,
   EncryptKeyMiddleware,
   EncryptStreamMiddleware,
+  SplitStep,
 } from './builders.js';
 import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 
@@ -221,7 +222,7 @@ export class Client {
    */
   readonly allowedKases: string[];
 
-  readonly kasPublicKey: Promise<KasPublicKeyInfo>;
+  readonly kasKeys: Record<string, Promise<KasPublicKeyInfo>> = {};
 
   readonly easEndpoint?: string;
 
@@ -329,13 +330,11 @@ export class Client {
       dpopKeys: clientConfig.dpopKeys,
     });
     if (clientConfig.kasPublicKey) {
-      this.kasPublicKey = Promise.resolve({
+      this.kasKeys[this.kasEndpoint] = Promise.resolve({
         url: this.kasEndpoint,
         algorithm: 'rsa:2048',
         publicKey: clientConfig.kasPublicKey,
       });
-    } else {
-      this.kasPublicKey = fetchKasPublicKey(this.kasEndpoint);
     }
   }
 
@@ -366,9 +365,10 @@ export class Client {
     eo,
     keyMiddleware = defaultKeyMiddleware,
     streamMiddleware = async (stream: DecoratedReadableStream) => stream,
+    splitPlan,
   }: EncryptParams): Promise<DecoratedReadableStream> {
     const dpopKeys = await this.dpopKeys;
-    const kasPublicKey = await this.kasPublicKey;
+
     const policyObject = asPolicy(scope);
     validatePolicyObject(policyObject);
 
@@ -384,14 +384,23 @@ export class Client {
       eo.attributes.forEach((attr) => s.addJwtAttribute(attr));
       attributeSet = s;
     }
-    encryptionInformation.keyAccess.push(
-      await buildKeyAccess({
-        attributeSet,
-        type: offline ? 'wrapped' : 'remote',
-        url: kasPublicKey.url,
-        kid: kasPublicKey.kid,
-        publicKey: kasPublicKey.publicKey,
-        metadata,
+
+    const splits: SplitStep[] = splitPlan || [{ kas: this.kasEndpoint }];
+    encryptionInformation.keyAccess = await Promise.all(
+      splits.map(async ({ kas, sid }) => {
+        if (!(kas in this.kasKeys)) {
+          this.kasKeys[kas] = fetchKasPublicKey(kas);
+        }
+        const kasPublicKey = await this.kasKeys[kas];
+        return buildKeyAccess({
+          attributeSet,
+          type: offline ? 'wrapped' : 'remote',
+          url: kasPublicKey.url,
+          kid: kasPublicKey.kid,
+          publicKey: kasPublicKey.publicKey,
+          metadata,
+          sid,
+        });
       })
     );
     const { keyForEncryption, keyForManifest } = await (keyMiddleware as EncryptKeyMiddleware)();
