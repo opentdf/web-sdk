@@ -148,6 +148,7 @@ export type EncryptConfiguration = {
 };
 
 export type DecryptConfiguration = {
+  // Normalized KAS origins to connect to
   allowedKases: string[];
   authProvider: AuthProvider | AppIdAuthProvider;
   cryptoService: CryptoService;
