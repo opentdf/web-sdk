@@ -819,9 +819,9 @@ export function splitLookupTableFactory(
       keyAccess.filter(({ url }) => !allowedKases.includes(url)).map(({ url }) => url)
     );
     throw new KasDecryptError(
-      `Unreconstructable key - disallowed KASes include: ${JSON.stringify(
-        [...disallowedKases]
-      )} from splitIds ${JSON.stringify([...splitIds])}`
+      `Unreconstructable key - disallowed KASes include: ${JSON.stringify([
+        ...disallowedKases,
+      ])} from splitIds ${JSON.stringify([...splitIds])}`
     );
   }
   const splitPotentials: Record<string, Record<string, KeyAccessObject>> = Object.fromEntries(

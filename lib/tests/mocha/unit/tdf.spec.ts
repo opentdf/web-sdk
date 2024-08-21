@@ -97,39 +97,43 @@ describe('fetchKasPublicKey', async () => {
 describe('splitLookupTableFactory', () => {
   it('should return a correct split table for valid input', () => {
     const keyAccess: KeyAccessObject[] = [
-      { sid: 'split1', type: 'remote', url: 'kas1', protocol: 'kas' },
-      { sid: 'split2', type: 'remote', url: 'kas2', protocol: 'kas' }
+      { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas' },
+      { sid: 'split2', type: 'remote', url: 'https://kas2', protocol: 'kas' },
     ];
-    const allowedKases = ['kas1', 'kas2'];
+    const allowedKases = ['https://kas1', 'https://kas2'];
 
     const result = TDF.splitLookupTableFactory(keyAccess, allowedKases);
 
     expect(result).to.deep.equal({
-      'split1': { 'kas1': keyAccess[0] },
-      'split2': { 'kas2': keyAccess[1] }
+      split1: { 'https://kas1': keyAccess[0] },
+      split2: { 'https://kas2': keyAccess[1] },
     });
   });
 
   it('should throw KasDecryptError for disallowed KASes', () => {
     const keyAccess: KeyAccessObject[] = [
-      { sid: 'split1', type: 'remote', url: 'kas1', protocol: 'kas' },
-      { sid: 'split2', type: 'remote', url: 'kas3', protocol: 'kas' } // kas3 is not allowed
+      { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas' },
+      { sid: 'split2', type: 'remote', url: 'https://kas3', protocol: 'kas' }, // kas3 is not allowed
     ];
-    const allowedKases = ['kas1'];
+    const allowedKases = ['https://kas1'];
 
-    expect(() => TDF.splitLookupTableFactory(keyAccess, allowedKases))
-      .to.throw(KasDecryptError, 'Unreconstructable key - disallowed KASes include: \["kas3"\] from splitIds \["split1","split2"\]');
+    expect(() => TDF.splitLookupTableFactory(keyAccess, allowedKases)).to.throw(
+      KasDecryptError,
+      'Unreconstructable key - disallowed KASes include: ["https://kas3"] from splitIds ["split1","split2"]'
+    );
   });
 
   it('should throw KasDecryptError for duplicate URLs in the same splitId', () => {
     const keyAccess: KeyAccessObject[] = [
-      { sid: 'split1', type: 'remote', url: 'kas1', protocol: 'kas' },
-      { sid: 'split1', type: 'remote', url: 'kas1', protocol: 'kas' } // duplicate URL in same splitId
+      { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas' },
+      { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas' }, // duplicate URL in same splitId
     ];
-    const allowedKases = ['kas1'];
+    const allowedKases = ['https://kas1'];
 
-    expect(() => TDF.splitLookupTableFactory(keyAccess, allowedKases))
-      .to.throw(KasDecryptError, 'TODO: Fallback to no split ids. Repetition found for \[kas1\] on split \[split1\]');
+    expect(() => TDF.splitLookupTableFactory(keyAccess, allowedKases)).to.throw(
+      KasDecryptError,
+      'TODO: Fallback to no split ids. Repetition found for [https://kas1] on split [split1]'
+    );
   });
 
   it('should handle empty keyAccess array', () => {
@@ -143,24 +147,26 @@ describe('splitLookupTableFactory', () => {
 
   it('should handle empty allowedKases array', () => {
     const keyAccess: KeyAccessObject[] = [
-      { sid: 'split1', type: 'remote', url: 'kas1', protocol: 'kas' }
+      { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas' },
     ];
     const allowedKases: string[] = [];
 
-    expect(() => TDF.splitLookupTableFactory(keyAccess, allowedKases))
-      .to.throw(KasDecryptError, 'Unreconstructable key - disallowed KASes include: \["kas1"\]');
+    expect(() => TDF.splitLookupTableFactory(keyAccess, allowedKases)).to.throw(
+      KasDecryptError,
+      'Unreconstructable key - disallowed KASes include: ["https://kas1"]'
+    );
   });
 
   it('should handle cases where sid is undefined', () => {
     const keyAccess: KeyAccessObject[] = [
-      { sid: undefined, type: 'remote', url: 'kas1', protocol: 'kas' }
+      { sid: undefined, type: 'remote', url: 'https://kas1', protocol: 'kas' },
     ];
-    const allowedKases = ['kas1'];
+    const allowedKases = ['https://kas1'];
 
     const result = TDF.splitLookupTableFactory(keyAccess, allowedKases);
 
     expect(result).to.deep.equal({
-      '': { 'kas1': keyAccess[0] }
+      '': { 'https://kas1': keyAccess[0] },
     });
   });
 });
