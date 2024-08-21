@@ -77,7 +77,7 @@ export class SplitKey {
   }
 
   async getKeyAccessObjects(policy: Policy, keyInfo: KeyInfo): Promise<KeyAccessObject[]> {
-    const splitIds = [...new Set(this.keyAccess.map(({ sid }) => sid))].sort();
+    const splitIds = [...new Set(this.keyAccess.map(({ sid }) => sid))].sort((a, b) => a.localeCompare(b));
     const unwrappedKeySplitBuffers = await keySplit(
       new Uint8Array(keyInfo.unwrappedKeyBinary.asByteArray()),
       splitIds.length,

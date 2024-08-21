@@ -811,7 +811,7 @@ export function splitLookupTableFactory(
 ): Record<string, Record<string, KeyAccessObject>> {
   const origin = (u: string): string => new URL(u).origin;
   const allowed = (k: KeyAccessObject) => allowedKases.includes(origin(k.url));
-  const splitIds = new Set(keyAccess.map(({ sid }) => sid || ''));
+  const splitIds = new Set(keyAccess.map(({ sid }) => sid ?? ''));
 
   const accessibleSplits = new Set(keyAccess.filter(allowed).map(({ sid }) => sid));
   if (splitIds.size > accessibleSplits.size) {
@@ -826,7 +826,7 @@ export function splitLookupTableFactory(
     [...splitIds].map((s) => [s, {}])
   );
   for (const kao of keyAccess) {
-    const disjunction = splitPotentials[kao.sid || ''];
+    const disjunction = splitPotentials[kao.sid ?? ''];
     if (kao.url in disjunction) {
       throw new KasDecryptError(
         `TODO: Fallback to no split ids. Repetition found for [${kao.url}] on split [${kao.sid}]`
@@ -871,8 +871,8 @@ async function unwrapKey({
           ''
         );
       }
-      // TODO: If we have multiple ways of getting a value, try the 'best' way
-      // or maybe retry across all potential ways
+      // If we have multiple ways of getting a value, try the 'best' way
+      // or maybe retry across all potential ways? Currently, just tries them all
       const [keySplitInfo] = Object.values(potentials);
       const url = `${keySplitInfo.url}/${isAppIdProvider ? '' : 'v2/'}rewrap`;
 
