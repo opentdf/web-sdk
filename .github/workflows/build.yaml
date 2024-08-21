@@ -253,7 +253,9 @@ jobs:
           ./wait-and-test.sh platform
 
   platform-xtest:
-    needs: platform-roundtrip
+    needs: 
+      - cli
+      - lib
     uses: opentdf/tests/.github/workflows/xtest.yml@main
     with:
       js-ref: ${{ github.ref }}
