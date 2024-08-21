@@ -106,7 +106,7 @@ _init_platform() {
   if [ -f go.work ]; then
     svc=github.com/opentdf/platform/service
   fi
-  if ! go run "${svc}" provision keycloak; then
+  if ! go run "${svc}" provision keycloak -f "${APP_DIR}/keycloak_data.yaml"; then
     echo "[ERROR] unable to provision keycloak"
     return 1
   fi
