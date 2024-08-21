@@ -336,12 +336,6 @@ export class Client {
         publicKey: clientConfig.kasPublicKey,
       });
     }
-    for (const kasEndpoint of this.allowedKases) {
-      if (kasEndpoint in this.kasKeys) {
-        continue;
-      }
-      this.kasKeys[kasEndpoint] = fetchKasPublicKey(this.kasEndpoint);
-    }
   }
 
   /**
@@ -394,6 +388,9 @@ export class Client {
     const splits: SplitStep[] = splitPlan || [{ kas: this.kasEndpoint }];
     encryptionInformation.keyAccess = await Promise.all(
       splits.map(async ({ kas, sid }) => {
+        if (!(kas in this.kasKeys)) {
+          this.kasKeys[kas] = fetchKasPublicKey(kas);
+        }
         const kasPublicKey = await this.kasKeys[kas];
         return buildKeyAccess({
           attributeSet,
