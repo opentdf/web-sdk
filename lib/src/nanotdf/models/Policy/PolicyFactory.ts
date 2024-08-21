@@ -18,7 +18,7 @@ function parse(
   if (type === PolicyTypeEnum.Remote) {
     ({ policy, offset } = RemotePolicy.parse(
       buff.subarray(AbstractPolicy.TYPE_BYTE_LEN),
-      useEcdsaBinding,
+      useEcdsaBinding
     ));
   } else if (
     [

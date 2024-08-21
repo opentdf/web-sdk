@@ -46,31 +46,36 @@ abstract class AbstractPolicy implements PolicyInterface {
     throw new Error('toBuffer() was not implemented');
   }
 
-/**
- * Parses an ECDSA binding from a given buffer.
- * 
- * @param {Uint8Array} buff - The buffer containing the ECDSA binding.
- * @returns {{ bindingLength: number; binding: Uint8Array }} - An object containing the binding length and the binding subarray.
- */
+  /**
+   * Parses an ECDSA binding from a given buffer.
+   *
+   * @param {Uint8Array} buff - The buffer containing the ECDSA binding.
+   * @returns {{ bindingLength: number; binding: Uint8Array }} - An object containing the binding length and the binding subarray.
+   */
   static parseECDSABinding(buff: Uint8Array): { bindingLength: number; binding: Uint8Array } {
     const lengthOfR = buff[0];
     const lengthOfS = buff[this.SIZE_OF_LENGTH_FIELD + lengthOfR];
 
-    const bindingLength = this.SIZE_OF_LENGTH_FIELD + lengthOfR + this.SIZE_OF_LENGTH_FIELD + lengthOfS;
+    const bindingLength =
+      this.SIZE_OF_LENGTH_FIELD + lengthOfR + this.SIZE_OF_LENGTH_FIELD + lengthOfS;
     const binding = buff.subarray(0, bindingLength);
 
     return { bindingLength, binding };
   }
 
-/**
- * Parses a binding from a given buffer based on the specified binding type.
- * 
- * @param {Uint8Array} buff - The buffer containing the binding.
- * @param {boolean} useEcdsaBinding - Flag indicating whether to use ECDSA binding.
- * @param {number} offset - The starting offset in the buffer.
- * @returns {{ binding: Uint8Array; newOffset: number }} - An object containing the binding and the new offset.
- */
-  static parseBinding(buff: Uint8Array, useEcdsaBinding: boolean, offset: number): { binding: Uint8Array; newOffset: number } {
+  /**
+   * Parses a binding from a given buffer based on the specified binding type.
+   *
+   * @param {Uint8Array} buff - The buffer containing the binding.
+   * @param {boolean} useEcdsaBinding - Flag indicating whether to use ECDSA binding.
+   * @param {number} offset - The starting offset in the buffer.
+   * @returns {{ binding: Uint8Array; newOffset: number }} - An object containing the binding and the new offset.
+   */
+  static parseBinding(
+    buff: Uint8Array,
+    useEcdsaBinding: boolean,
+    offset: number
+  ): { binding: Uint8Array; newOffset: number } {
     if (useEcdsaBinding) {
       const ecdsaBinding = this.parseECDSABinding(buff.subarray(offset));
       return { binding: ecdsaBinding.binding, newOffset: offset + ecdsaBinding.bindingLength };
