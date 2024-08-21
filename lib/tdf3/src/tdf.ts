@@ -810,8 +810,9 @@ export function splitLookupTableFactory(
   allowedKases: string[]
 ): Record<string, Record<string, KeyAccessObject>> {
   const splitIds = new Set(keyAccess.map(({ sid }) => sid || ''));
+
   const accessibleSplits = new Set(
-    keyAccess.filter(({ url }) => allowedKases.includes(url)).map(({ sid }) => sid)
+    keyAccess.filter(({ url }) => allowedKases.includes(new URL(url).origin)).map(({ sid }) => sid)
   );
   if (splitIds.size > accessibleSplits.size) {
     const disallowedKases = new Set(
