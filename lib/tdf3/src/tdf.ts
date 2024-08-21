@@ -809,15 +809,13 @@ export function splitLookupTableFactory(
   keyAccess: KeyAccessObject[],
   allowedKases: string[]
 ): Record<string, Record<string, KeyAccessObject>> {
+  const origin = (u: string): string => new URL(u).origin;
+  const allowed = (k: KeyAccessObject) => allowedKases.includes(origin(k.url));
   const splitIds = new Set(keyAccess.map(({ sid }) => sid || ''));
 
-  const accessibleSplits = new Set(
-    keyAccess.filter(({ url }) => allowedKases.includes(new URL(url).origin)).map(({ sid }) => sid)
-  );
+  const accessibleSplits = new Set(keyAccess.filter(allowed).map(({ sid }) => sid));
   if (splitIds.size > accessibleSplits.size) {
-    const disallowedKases = new Set(
-      keyAccess.filter(({ url }) => !allowedKases.includes(url)).map(({ url }) => url)
-    );
+    const disallowedKases = new Set(keyAccess.filter((k) => !allowed(k)).map(({ url }) => url));
     throw new KasDecryptError(
       `Unreconstructable key - disallowed KASes include: ${JSON.stringify([
         ...disallowedKases,
@@ -834,7 +832,7 @@ export function splitLookupTableFactory(
         `TODO: Fallback to no split ids. Repetition found for [${kao.url}] on split [${kao.sid}]`
       );
     }
-    if (allowedKases.includes(kao.url)) {
+    if (allowed(kao)) {
       disjunction[kao.url] = kao;
     }
   }
