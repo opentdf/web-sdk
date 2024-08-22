@@ -26,6 +26,6 @@ describe('NanoTDF work with various sizes', () => {
     }
 
     const ntdf = NanoTDF.from(bufferView, undefined, true);
-    expect(ntdf.payload.ciphertextWithAuthTag.byteLength).to.eql(65533);
+    expect(ntdf.payload.ciphertextWithAuthTag.byteLength).to.eql(65545);
   });
 });

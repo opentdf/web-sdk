@@ -15,14 +15,14 @@ class RemotePolicy extends AbstractPolicy implements RemotePolicyInterface {
 
   static override parse(
     buff: Uint8Array,
-    bindingLength: number
+    useEcdsaBinding: boolean
   ): { offset: number; policy: RemotePolicy } {
     let offset = 0;
     const resource = new ResourceLocator(buff);
     offset += resource.offset;
 
-    const binding = buff.subarray(offset, offset + bindingLength);
-    offset += bindingLength;
+    const { binding, newOffset: bindingOffset } = this.parseBinding(buff, useEcdsaBinding, offset);
+    offset = bindingOffset;
 
     return {
       policy: new RemotePolicy(PolicyTypeEnum.Remote, binding, resource),
