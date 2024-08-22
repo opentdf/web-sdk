@@ -33,6 +33,7 @@ import {
   concatUint8,
 } from './utils/index.js';
 import { Binary } from './binary.js';
+import { OriginAllowList } from '../../src/access.js';
 import {
   IllegalArgumentError,
   KasDecryptError,
@@ -120,15 +121,11 @@ type Chunk = {
   _reject?: (value: unknown) => void;
 };
 
-export type TDFConfiguration = {
-  allowedKases?: string[];
-  cryptoService: CryptoService;
-};
-
 export type IntegrityAlgorithm = 'GMAC' | 'HS256';
 
 export type EncryptConfiguration = {
   allowedKases?: string[];
+  allowList?: OriginAllowList;
   cryptoService: CryptoService;
   dpopKeys: CryptoKeyPair;
   encryptionInformation: SplitKey;
@@ -148,8 +145,8 @@ export type EncryptConfiguration = {
 };
 
 export type DecryptConfiguration = {
-  // Normalized KAS origins to connect to
-  allowedKases: string[];
+  allowedKases?: string[];
+  allowList?: OriginAllowList;
   authProvider: AuthProvider | AppIdAuthProvider;
   cryptoService: CryptoService;
   entity?: EntityObject;
@@ -163,7 +160,8 @@ export type DecryptConfiguration = {
 };
 
 export type UpsertConfiguration = {
-  allowedKases: string[];
+  allowedKases?: string[];
+  allowList?: OriginAllowList;
   authProvider: AuthProvider | AppIdAuthProvider;
   entity?: EntityObject;
 
@@ -467,12 +465,22 @@ function buildRequest(method: HttpMethod, url: string, body?: unknown): HttpRequ
 
 export async function upsert({
   allowedKases,
+  allowList,
   authProvider,
   entity,
   privateKey,
   unsavedManifest,
   ignoreType,
 }: UpsertConfiguration): Promise<UpsertResponse> {
+  const allowed = (() => {
+    if (allowList) {
+      return allowList;
+    }
+    if (!allowedKases) {
+      throw new Error('Upsert cannot be done without allowlist');
+    }
+    return new OriginAllowList(allowedKases);
+  })();
   const { keyAccess, policy } = unsavedManifest.encryptionInformation;
   const isAppIdProvider = authProvider && isAppIdProviderCheck(authProvider);
   if (authProvider === undefined) {
@@ -486,7 +494,7 @@ export async function upsert({
         return;
       }
 
-      if (!allowedKases.includes(keyAccessObject.url)) {
+      if (!allowed.allows(keyAccessObject.url)) {
         throw new KasUpsertError(`Unexpected KAS url: [${keyAccessObject.url}]`);
       }
 
@@ -590,7 +598,8 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
   const pkKeyLike = cfg.dpopKeys.privateKey;
 
   const upsertResponse = await upsert({
-    allowedKases: cfg.allowedKases || [],
+    allowedKases: cfg.allowList ? undefined : cfg.allowedKases,
+    allowList: cfg.allowList,
     authProvider: cfg.authProvider,
     entity: cfg.entity,
     privateKey: pkKeyLike,
@@ -807,10 +816,9 @@ async function loadTDFStream(
 
 export function splitLookupTableFactory(
   keyAccess: KeyAccessObject[],
-  allowedKases: string[]
+  allowedKases: OriginAllowList
 ): Record<string, Record<string, KeyAccessObject>> {
-  const origin = (u: string): string => new URL(u).origin;
-  const allowed = (k: KeyAccessObject) => allowedKases.includes(origin(k.url));
+  const allowed = (k: KeyAccessObject) => allowedKases.allows(k.url);
   const splitIds = new Set(keyAccess.map(({ sid }) => sid ?? ''));
 
   const accessibleSplits = new Set(keyAccess.filter(allowed).map(({ sid }) => sid));
@@ -848,7 +856,7 @@ async function unwrapKey({
   cryptoService,
 }: {
   manifest: Manifest;
-  allowedKases: string[];
+  allowedKases: OriginAllowList;
   authProvider: AuthProvider | AppIdAuthProvider;
   dpopKeys: CryptoKeyPair;
   entity: EntityObject | undefined;
@@ -1061,6 +1069,13 @@ export async function sliceAndDecrypt({
 }
 
 export async function readStream(cfg: DecryptConfiguration) {
+  let { allowList } = cfg;
+  if (!allowList) {
+    if (!cfg.allowedKases) {
+      throw new Error('Upsert cannot be done without allowlist');
+    }
+    allowList = new OriginAllowList(cfg.allowedKases);
+  }
   const { manifest, zipReader, centralDirectory } = await loadTDFStream(cfg.chunker);
   if (!manifest) {
     throw new Error('Missing manifest data');
@@ -1076,7 +1091,7 @@ export async function readStream(cfg: DecryptConfiguration) {
   const { metadata, reconstructedKeyBinary } = await unwrapKey({
     manifest,
     authProvider: cfg.authProvider,
-    allowedKases: cfg.allowedKases,
+    allowedKases: allowList,
     dpopKeys: cfg.dpopKeys,
     entity: cfg.entity,
     cryptoService: cfg.cryptoService,

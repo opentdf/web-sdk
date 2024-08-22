@@ -13,6 +13,7 @@ _nano_test() {
   echo "Hello World ${counter}" >"./${plain}"
   npx "$1" --log-level DEBUG \
     --kasEndpoint http://localhost:65432/api/kas \
+    --allowList http://localhost:65432 \
     --oidcEndpoint http://localhost:65432/auth/realms/tdf \
     --auth tdf-client:123-456 \
     --output sample.txt.ntdf \

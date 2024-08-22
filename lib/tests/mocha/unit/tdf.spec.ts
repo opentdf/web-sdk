@@ -1,8 +1,9 @@
 import { expect } from 'chai';
 
 import * as TDF from '../../../tdf3/src/tdf.js';
+import { KeyAccessObject } from '../../../tdf3/src/models/key-access.js';
+import { OriginAllowList } from '../../../src/access.js';
 import { KasDecryptError, TdfError } from '../../../src/errors.js';
-import { KeyAccessObject } from 'tdf3/src/models/key-access.js';
 
 const sampleCert = `
 -----BEGIN CERTIFICATE-----
@@ -100,7 +101,7 @@ describe('splitLookupTableFactory', () => {
       { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas' },
       { sid: 'split2', type: 'remote', url: 'https://kas2', protocol: 'kas' },
     ];
-    const allowedKases = ['https://kas1', 'https://kas2'];
+    const allowedKases = new OriginAllowList(['https://kas1', 'https://kas2']);
 
     const result = TDF.splitLookupTableFactory(keyAccess, allowedKases);
 
@@ -115,7 +116,7 @@ describe('splitLookupTableFactory', () => {
       { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas' },
       { sid: 'split2', type: 'remote', url: 'https://kas3', protocol: 'kas' }, // kas3 is not allowed
     ];
-    const allowedKases = ['https://kas1'];
+    const allowedKases = new OriginAllowList(['https://kas1']);
 
     expect(() => TDF.splitLookupTableFactory(keyAccess, allowedKases)).to.throw(
       KasDecryptError,
@@ -128,7 +129,7 @@ describe('splitLookupTableFactory', () => {
       { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas' },
       { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas' }, // duplicate URL in same splitId
     ];
-    const allowedKases = ['https://kas1'];
+    const allowedKases = new OriginAllowList(['https://kas1']);
 
     expect(() => TDF.splitLookupTableFactory(keyAccess, allowedKases)).to.throw(
       KasDecryptError,
@@ -138,7 +139,7 @@ describe('splitLookupTableFactory', () => {
 
   it('should handle empty keyAccess array', () => {
     const keyAccess: KeyAccessObject[] = [];
-    const allowedKases: string[] = [];
+    const allowedKases = new OriginAllowList([]);
 
     const result = TDF.splitLookupTableFactory(keyAccess, allowedKases);
 
@@ -149,7 +150,7 @@ describe('splitLookupTableFactory', () => {
     const keyAccess: KeyAccessObject[] = [
       { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas' },
     ];
-    const allowedKases: string[] = [];
+    const allowedKases = new OriginAllowList([]);
 
     expect(() => TDF.splitLookupTableFactory(keyAccess, allowedKases)).to.throw(
       KasDecryptError,
@@ -163,7 +164,7 @@ describe('splitLookupTableFactory', () => {
     ];
     const allowedKases = ['https://kas1'];
 
-    const result = TDF.splitLookupTableFactory(keyAccess, allowedKases);
+    const result = TDF.splitLookupTableFactory(keyAccess, new OriginAllowList(allowedKases));
 
     expect(result).to.deep.equal({
       '': { 'https://kas1': keyAccess[0] },
