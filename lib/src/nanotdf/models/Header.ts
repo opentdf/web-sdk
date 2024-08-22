@@ -11,6 +11,7 @@ import CurveNameEnum from '../enum/CurveNameEnum.js';
 import { lengthOfPublicKey } from '../helpers/calculateByCurve.js';
 import DefaultParams from './DefaultParams.js';
 import { InvalidEphemeralKeyError } from '../../errors.js';
+import { rstrip } from '../../utils.js';
 
 /**
  * NanoTDF Header
@@ -313,9 +314,9 @@ export default class Header {
    */
   getKasRewrapUrl(): string {
     try {
-      return `${this.kas.getUrl()}/v2/rewrap`;
+      return `${rstrip(this.kas.getUrl(), '/')}/v2/rewrap`;
     } catch (e) {
-      throw new Error(`Cannot construct KAS Rewrap URL: ${e.message}`);
+      throw new Error(`Cannot construct KAS Rewrap URL for [${this.kas.getUrl()}]: ${e.message}`);
     }
   }
 }

@@ -2,8 +2,9 @@ import { expect } from 'chai';
 
 import * as TDF from '../../../tdf3/src/tdf.js';
 import { KeyAccessObject } from '../../../tdf3/src/models/key-access.js';
-import { OriginAllowList } from '../../../src/access.js';
+import { fetchKasPublicKey, OriginAllowList } from '../../../src/access.js';
 import { KasDecryptError, TdfError } from '../../../src/errors.js';
+import { extractPemFromKeyString } from '../../../src/utils.js';
 
 const sampleCert = `
 -----BEGIN CERTIFICATE-----
@@ -64,7 +65,7 @@ describe('TDF', () => {
   });
 
   it('should return key', async () => {
-    const pem = await TDF.extractPemFromKeyString(sampleCert);
+    const pem = await extractPemFromKeyString(sampleCert);
     expect(pem).to.include('-----BEGIN PUBLIC KEY-----');
     expect(pem).to.include('-----END PUBLIC KEY-----');
   });
@@ -73,7 +74,7 @@ describe('TDF', () => {
     const sampleKey = sampleCert
       .replace('BEGIN CERTIFICATE', 'BEGIN PUBLIC KEY')
       .replace('END CERTIFICATE', 'END PUBLIC KEY');
-    const pem = await TDF.extractPemFromKeyString(sampleKey);
+    const pem = await extractPemFromKeyString(sampleKey);
     expect(pem).to.equal(sampleKey);
   });
 });
@@ -81,7 +82,7 @@ describe('TDF', () => {
 describe('fetchKasPublicKey', async () => {
   it('missing kas names throw', async () => {
     try {
-      await TDF.fetchKasPublicKey('');
+      await fetchKasPublicKey('');
       expect.fail('did not throw');
     } catch (e) {
       expect(e).to.be.an.instanceof(TdfError);
@@ -89,9 +90,9 @@ describe('fetchKasPublicKey', async () => {
   });
 
   it('localhost kas is valid', async () => {
-    const pk2 = await TDF.fetchKasPublicKey('http://localhost:3000');
+    const pk2 = await fetchKasPublicKey('http://localhost:3000');
     expect(pk2.publicKey).to.include('BEGIN CERTIFICATE');
-    expect(pk2.kid).to.equal('kid-a');
+    expect(pk2.kid).to.equal('r1');
   });
 });
 

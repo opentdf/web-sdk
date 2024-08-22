@@ -15,21 +15,20 @@ import {
   digest,
   exportCryptoKey,
 } from '../nanotdf-crypto/index.js';
+import { KasPublicKeyInfo } from 'src/access.js';
 
 /**
  * Encrypt the plain data into nanotdf buffer
  *
  * @param policy Policy that will added to the nanotdf
- * @param kasPub
- * @param kasUrl KAS url as string or ResourceLocator
+ * @param kasInfo KAS url and public key data
  * @param ephemeralKeyPair SDK ephemeral key pair to generate symmetric key
  * @param iv
  * @param data The data to be encrypted
  */
 export default async function encrypt(
   policy: string,
-  kasPub: CryptoKey,
-  kasUrl: string | ResourceLocator,
+  kasInfo: KasPublicKeyInfo,
   ephemeralKeyPair: CryptoKeyPair,
   iv: Uint8Array,
   data: string | TypedArray | ArrayBuffer
@@ -40,17 +39,17 @@ export default async function encrypt(
   }
   const symmetricKey = await keyAgreement(
     ephemeralKeyPair.privateKey,
-    kasPub,
+    kasInfo.key,
     // Get the hkdf salt params
     await getHkdfSalt(DefaultParams.magicNumberVersion)
   );
 
   // Construct the kas locator
   let kasResourceLocator;
-  if (kasUrl instanceof ResourceLocator) {
-    kasResourceLocator = kasUrl;
+  if (kasInfo.kid) {
+    kasResourceLocator = ResourceLocator.parse(kasInfo.url, kasInfo.kid);
   } else {
-    kasResourceLocator = ResourceLocator.parse(kasUrl);
+    kasResourceLocator = ResourceLocator.parse(kasInfo.url);
   }
 
   // Auth tag length for policy and payload

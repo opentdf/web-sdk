@@ -1,5 +1,8 @@
+import axios from 'axios';
+
+import { TdfError } from './errors.js';
 import { type AuthProvider } from './auth/auth.js';
-import { pemToCryptoPublicKey, validateSecureUrl } from './utils.js';
+import { extractPemFromKeyString, pemToCryptoPublicKey, validateSecureUrl } from './utils.js';
 
 export class RewrapRequest {
   signedRequestToken = '';
@@ -50,15 +53,91 @@ export async function fetchWrappedKey(
   return response.json();
 }
 
-export async function fetchECKasPubKey(kasEndpoint: string): Promise<CryptoKey> {
-  const kasPubKeyResponse = await fetch(`${kasEndpoint}/kas_public_key?algorithm=ec:secp256r1`);
-  if (!kasPubKeyResponse.ok) {
-    throw new Error(
-      `Unable to validate KAS [${kasEndpoint}]. Received [${kasPubKeyResponse.status}:${kasPubKeyResponse.statusText}]`
+export type KasPublicKeyInfo = {
+  url: string;
+  algorithm: KasPublicKeyAlgorithm;
+  kid?: string;
+  publicKey: string;
+  key: CryptoKey;
+};
+
+export type KasPublicKeyAlgorithm = 'ec:secp256r1' | 'rsa:2048';
+
+export type KasPublicKeyFormat = 'pkcs8' | 'jwks';
+
+type KasPublicKeyParams = {
+  algorithm?: KasPublicKeyAlgorithm;
+  fmt?: KasPublicKeyFormat;
+  v?: '1' | '2';
+};
+
+/**
+ * If we have KAS url but not public key we can fetch it from KAS, fetching
+ * the value from `${kas}/kas_public_key`.
+ */
+export async function fetchKasPublicKey(
+  kas: string,
+  algorithm?: KasPublicKeyAlgorithm
+): Promise<KasPublicKeyInfo> {
+  if (!kas) {
+    throw new TdfError('KAS definition not found');
+  }
+  // Logs insecure KAS. Secure is enforced in constructor
+  validateSecureUrl(kas);
+  const infoStatic = { url: kas, algorithm: algorithm || 'rsa:2048' };
+  const params: KasPublicKeyParams = {};
+  if (algorithm) {
+    params.algorithm = algorithm;
+  }
+  try {
+    const response: { data: string | KasPublicKeyInfo } = await axios.get(`${kas}/kas_public_key`, {
+      params: {
+        ...params,
+        v: '2',
+      },
+    });
+    const publicKey =
+      typeof response.data === 'string'
+        ? await extractPemFromKeyString(response.data)
+        : response.data.publicKey;
+    const key = await pemToCryptoPublicKey(publicKey);
+    return {
+      key,
+      publicKey,
+      ...infoStatic,
+      ...(typeof response.data !== 'string' && response.data.kid && { kid: response.data.kid }),
+    };
+  } catch (cause) {
+    if (cause?.response?.status != 400) {
+      throw new TdfError(
+        `Retrieving KAS public key [${kas}] failed [${cause.name}] [${cause.message}]`,
+        cause
+      );
+    }
+  }
+  // Retry with v1 params
+  try {
+    const response: { data: string | KasPublicKeyInfo } = await axios.get(`${kas}/kas_public_key`, {
+      params,
+    });
+    const publicKey =
+      typeof response.data === 'string'
+        ? await extractPemFromKeyString(response.data)
+        : response.data.publicKey;
+    // future proof: allow v2 response even if not specified.
+    const key = await pemToCryptoPublicKey(publicKey);
+    return {
+      key,
+      publicKey,
+      ...infoStatic,
+      ...(typeof response.data !== 'string' && response.data.kid && { kid: response.data.kid }),
+    };
+  } catch (cause) {
+    throw new TdfError(
+      `Retrieving KAS public key [${kas}] failed [${cause.name}] [${cause.message}]`,
+      cause
     );
   }
-  const pem = await kasPubKeyResponse.json();
-  return pemToCryptoPublicKey(pem);
 }
 
 const origin = (u: string): string => {

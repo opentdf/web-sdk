@@ -1,4 +1,4 @@
-import { cryptoPublicToPem } from '../utils.js';
+import { KasPublicKeyInfo } from 'src/access.js';
 
 export interface AttributeObject {
   readonly attribute: string;
@@ -13,14 +13,14 @@ export interface AttributeObject {
 
 export async function createAttribute(
   attribute: string,
-  pubKey: CryptoKey,
+  pubKey: KasPublicKeyInfo,
   kasUrl: string
 ): Promise<AttributeObject> {
   return {
     attribute,
     isDefault: false,
     displayName: '',
-    pubKey: await cryptoPublicToPem(pubKey),
+    pubKey: pubKey.publicKey,
     kasUrl,
     schemaVersion: '1.1.0',
   };

@@ -3,7 +3,7 @@ import * as base64 from '../encodings/base64.js';
 import { generateKeyPair, keyAgreement } from '../nanotdf-crypto/index.js';
 import getHkdfSalt from './helpers/getHkdfSalt.js';
 import DefaultParams from './models/DefaultParams.js';
-import { fetchWrappedKey, OriginAllowList } from '../access.js';
+import { fetchWrappedKey, KasPublicKeyInfo, OriginAllowList } from '../access.js';
 import { AuthProvider, isAuthProvider, reqSignature } from '../auth/providers.js';
 import { UnsafeUrlError } from '../errors.js';
 import { cryptoPublicToPem, pemToCryptoPublicKey, validateSecureUrl } from '../utils.js';
@@ -106,7 +106,7 @@ export default class Client {
     This is needed as the flow is very specific. Errors should be thrown if the necessary step is not completed.
   */
   protected kasUrl: string;
-  kasPubKey?: CryptoKey;
+  kasPubKey?: KasPublicKeyInfo;
   readonly authProvider: AuthProvider;
   readonly dpopEnabled: boolean;
   dissems: string[] = [];
@@ -341,6 +341,7 @@ export default class Client {
 
       return unwrappedKey;
     } catch (cause) {
+      console.error('rewrap fail', cause);
       throw new Error('Could not rewrap key with entity object.', { cause });
     }
   }

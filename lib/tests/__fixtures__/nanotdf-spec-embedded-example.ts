@@ -18,8 +18,8 @@
  */
 
 import PolicyTypeEnum from '../../src/nanotdf/enum/PolicyTypeEnum.js';
-import ProtocolEnum from '../../src/nanotdf/enum/ProtocolEnum.js';
-import hexArrayTag from '../web/nanotdf/helpers/hexArrayTag.js';
+import { ProtocolEnum } from '../../src/nanotdf/enum/ProtocolEnum.js';
+import { hexArrayTag } from '../web/hexarchy.js';
 import { EmbeddedHeader } from '../../src/types/index.js';
 
 // 6.1.5 nanotdf

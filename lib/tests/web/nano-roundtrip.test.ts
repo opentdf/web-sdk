@@ -2,6 +2,7 @@ import { expect } from '@esm-bundle/chai';
 import { type AuthProvider, HttpRequest, withHeaders } from '../../src/auth/auth.js';
 
 import { NanoTDFClient } from '../../src/index.js';
+import { base64 } from '../../src/encodings/index.js';
 
 const authProvider = <AuthProvider>{
   updateClientPublicKey: async () => {
@@ -21,6 +22,7 @@ describe('Local roundtrip Tests', () => {
     const client = new NanoTDFClient({ authProvider, kasEndpoint });
     const cipherText = await client.encrypt('hello world');
     const client2 = new NanoTDFClient({ authProvider, kasEndpoint });
+    console.log('ciphertext', base64.encodeArrayBuffer(cipherText));
     const actual = await client2.decrypt(cipherText);
     expect(new TextDecoder().decode(actual)).to.be.equal('hello world');
   });

@@ -1,9 +1,7 @@
 import axios from 'axios';
 import { unsigned } from './utils/buffer-crc32.js';
-import { exportSPKI, importX509 } from 'jose';
 import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
 import { EntityObject } from '../../src/tdf/EntityObject.js';
-import { validateSecureUrl } from '../../src/utils.js';
 import { DecryptParams } from './client/builders.js';
 
 import {
@@ -34,6 +32,7 @@ import {
 } from './utils/index.js';
 import { Binary } from './binary.js';
 import { OriginAllowList } from '../../src/access.js';
+import { extractPemFromKeyString } from '../../src/utils.js';
 import {
   IllegalArgumentError,
   KasDecryptError,
@@ -42,7 +41,6 @@ import {
   ManifestIntegrityError,
   PolicyIntegrityError,
   TdfDecryptError,
-  TdfError,
   TdfPayloadExtractionError,
   UnsafeUrlError,
 } from '../../src/errors.js';
@@ -176,92 +174,11 @@ export type RewrapRequest = {
   signedRequestToken: string;
 };
 
-export type KasPublicKeyInfo = {
-  url: string;
-  algorithm: KasPublicKeyAlgorithm;
-  kid?: string;
-  publicKey: string;
-};
-
-export type KasPublicKeyAlgorithm = 'ec:secp256r1' | 'rsa:2048';
-
-export type KasPublicKeyFormat = 'pkcs8' | 'jwks';
-
-type KasPublicKeyParams = {
-  algorithm?: KasPublicKeyAlgorithm;
-  fmt?: KasPublicKeyFormat;
-  v?: '1' | '2';
-};
-
 export type RewrapResponse = {
   entityWrappedKey: string;
   sessionPublicKey: string;
 };
 
-/**
- * If we have KAS url but not public key we can fetch it from KAS, fetching
- * the value from `${kas}/kas_public_key`.
- */
-export async function fetchKasPublicKey(
-  kas: string,
-  algorithm?: KasPublicKeyAlgorithm
-): Promise<KasPublicKeyInfo> {
-  if (!kas) {
-    throw new TdfError('KAS definition not found');
-  }
-  // Logs insecure KAS. Secure is enforced in constructor
-  validateSecureUrl(kas);
-  const infoStatic = { url: kas, algorithm: algorithm || 'rsa:2048' };
-  const params: KasPublicKeyParams = {};
-  if (algorithm) {
-    params.algorithm = algorithm;
-  }
-  try {
-    const response: { data: string | KasPublicKeyInfo } = await axios.get(`${kas}/kas_public_key`, {
-      params: {
-        ...params,
-        v: '2',
-      },
-    });
-    const publicKey =
-      typeof response.data === 'string'
-        ? await extractPemFromKeyString(response.data)
-        : response.data.publicKey;
-    return {
-      publicKey,
-      ...infoStatic,
-      ...(typeof response.data !== 'string' && response.data.kid && { kid: response.data.kid }),
-    };
-  } catch (cause) {
-    if (cause?.response?.status != 400) {
-      throw new TdfError(
-        `Retrieving KAS public key [${kas}] failed [${cause.name}] [${cause.message}]`,
-        cause
-      );
-    }
-  }
-  // Retry with v1 params
-  try {
-    const response: { data: string | KasPublicKeyInfo } = await axios.get(`${kas}/kas_public_key`, {
-      params,
-    });
-    const publicKey =
-      typeof response.data === 'string'
-        ? await extractPemFromKeyString(response.data)
-        : response.data.publicKey;
-    // future proof: allow v2 response even if not specified.
-    return {
-      publicKey,
-      ...infoStatic,
-      ...(typeof response.data !== 'string' && response.data.kid && { kid: response.data.kid }),
-    };
-  } catch (cause) {
-    throw new TdfError(
-      `Retrieving KAS public key [${kas}] failed [${cause.name}] [${cause.message}]`,
-      cause
-    );
-  }
-}
 /**
  *
  * @param payload The TDF content to encode in HTML
@@ -305,19 +222,6 @@ export function unwrapHtml(htmlPayload: ArrayBuffer | Uint8Array | Binary | stri
   } catch (e) {
     throw new TdfPayloadExtractionError('There was a problem extracting the TDF3 payload', e);
   }
-}
-
-export async function extractPemFromKeyString(keyString: string): Promise<string> {
-  let pem: string = keyString;
-
-  // Skip the public key extraction if we find that the KAS url provides a
-  // PEM-encoded key instead of certificate
-  if (keyString.includes('CERTIFICATE')) {
-    const cert = await importX509(keyString, 'RS256', { extractable: true });
-    pem = await exportSPKI(cert);
-  }
-
-  return pem;
 }
 
 /**

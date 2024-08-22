@@ -13,8 +13,6 @@ import { base64 } from '../../../src/encodings/index.js';
 import {
   buildKeyAccess,
   EncryptConfiguration,
-  fetchKasPublicKey,
-  KasPublicKeyInfo,
   unwrapHtml,
   validatePolicyObject,
   readStream,
@@ -31,7 +29,7 @@ import {
   withHeaders,
 } from '../../../src/auth/auth.js';
 import EAS from '../../../src/auth/Eas.js';
-import { cryptoPublicToPem, validateSecureUrl } from '../../../src/utils.js';
+import { cryptoPublicToPem, pemToCryptoPublicKey, validateSecureUrl } from '../../../src/utils.js';
 
 import {
   EncryptParams,
@@ -50,7 +48,7 @@ import {
   type DecryptSource,
   EncryptParamsBuilder,
 } from './builders.js';
-import { OriginAllowList } from '../../../src/access.js';
+import { fetchKasPublicKey, KasPublicKeyInfo, OriginAllowList } from '../../../src/access.js';
 import { TdfError } from '../../../src/errors.js';
 import { EntityObject } from '../../../src/tdf/EntityObject.js';
 import { Binary } from '../binary.js';
@@ -333,12 +331,14 @@ export class Client {
       cryptoService: this.cryptoService,
       dpopKeys: clientConfig.dpopKeys,
     });
-    if (clientConfig.kasPublicKey) {
-      this.kasKeys[this.kasEndpoint] = Promise.resolve({
+    const injectedKey = clientConfig.kasPublicKey;
+    if (injectedKey) {
+      this.kasKeys[this.kasEndpoint] = (async (): Promise<KasPublicKeyInfo> => ({
         url: this.kasEndpoint,
         algorithm: 'rsa:2048',
-        publicKey: clientConfig.kasPublicKey,
-      });
+        publicKey: injectedKey,
+        key: await pemToCryptoPublicKey(injectedKey),
+      }))();
     }
   }
 
