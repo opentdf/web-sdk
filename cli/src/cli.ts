@@ -183,7 +183,6 @@ export const handleArgs = (args: string[]) => {
         group: 'KAS Configuration',
         desc: 'allowed KAS origins, comma separated; defaults to [kasEndpoint]',
         type: 'string',
-        default: '',
         validate: (attributes: string) => attributes.split(','),
       })
       .option('auth', {
