@@ -61,7 +61,14 @@ export async function fetchECKasPubKey(kasEndpoint: string): Promise<CryptoKey> 
   return pemToCryptoPublicKey(pem);
 }
 
-const origin = (u: string): string => new URL(u).origin;
+const origin = (u: string): string => {
+  try {
+    return new URL(u).origin;
+  } catch (e) {
+    console.log(`invalid kas url: [${u}]`);
+    throw e;
+  }
+};
 
 export class OriginAllowList {
   origins: string[];
