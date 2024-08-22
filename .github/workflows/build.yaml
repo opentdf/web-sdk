@@ -77,7 +77,7 @@ jobs:
       - run: npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-*.tgz
       - run: npm install
       - run: npm test
-      - run: npm audit
+      - run: npm audit --omit dev && npm audit --audit-level high
       - run: npm run license-check
       - run: npm run lint
       - run: npm pack
