@@ -72,11 +72,16 @@ const origin = (u: string): string => {
 
 export class OriginAllowList {
   origins: string[];
-  constructor(urls: string[]) {
+  allowAll: boolean;
+  constructor(urls: string[], allowAll?: boolean) {
     this.origins = urls.map(origin);
     urls.forEach(validateSecureUrl);
+    this.allowAll = !!allowAll;
   }
   allows(url: string): boolean {
+    if (this.allowAll) {
+      return true;
+    }
     return this.origins.includes(origin(url));
   }
 }

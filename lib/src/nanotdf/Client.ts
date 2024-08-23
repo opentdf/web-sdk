@@ -10,6 +10,7 @@ import { cryptoPublicToPem, pemToCryptoPublicKey, validateSecureUrl } from '../u
 
 export interface ClientConfig {
   allowedKases?: string[];
+  ignoreAllowList?: boolean;
   authProvider: AuthProvider;
   dpopEnabled?: boolean;
   dpopKeys?: Promise<CryptoKeyPair>;
@@ -145,13 +146,20 @@ export default class Client {
       }
       this.iv = 1;
     } else {
-      const { allowedKases, authProvider, dpopEnabled, dpopKeys, ephemeralKeyPair, kasEndpoint } =
-        optsOrOldAuthProvider;
+      const {
+        allowedKases,
+        ignoreAllowList,
+        authProvider,
+        dpopEnabled,
+        dpopKeys,
+        ephemeralKeyPair,
+        kasEndpoint,
+      } = optsOrOldAuthProvider;
       this.authProvider = authProvider;
       // TODO Disallow http KAS. For now just log as error
       validateSecureUrl(kasEndpoint);
       this.kasUrl = kasEndpoint;
-      this.allowedKases = new OriginAllowList(allowedKases || [kasEndpoint]);
+      this.allowedKases = new OriginAllowList(allowedKases || [kasEndpoint], !!ignoreAllowList);
       this.dpopEnabled = !!dpopEnabled;
       if (dpopKeys) {
         this.requestSignerKeyPair = dpopKeys;

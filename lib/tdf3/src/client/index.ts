@@ -137,6 +137,7 @@ export interface ClientConfig {
    * Defaults to `[kasEndpoint]`.
    */
   allowedKases?: string[];
+  ignoreAllowList?: boolean;
   easEndpoint?: string;
   // DEPRECATED Ignored
   keyRewrapEndpoint?: string;
@@ -275,7 +276,10 @@ export class Client {
 
     const kasOrigin = new URL(this.kasEndpoint).origin;
     if (clientConfig.allowedKases) {
-      this.allowedKases = new OriginAllowList(clientConfig.allowedKases);
+      this.allowedKases = new OriginAllowList(
+        clientConfig.allowedKases,
+        !!clientConfig.ignoreAllowList
+      );
       if (!validateSecureUrl(this.kasEndpoint) && !this.allowedKases.allows(kasOrigin)) {
         throw new TdfError(`Invalid KAS endpoint [${this.kasEndpoint}]`);
       }
@@ -285,7 +289,7 @@ export class Client {
           `Invalid KAS endpoint [${this.kasEndpoint}]; to force, please list it among allowedKases`
         );
       }
-      this.allowedKases = new OriginAllowList([kasOrigin]);
+      this.allowedKases = new OriginAllowList([kasOrigin], !!clientConfig.ignoreAllowList);
     }
 
     this.authProvider = config.authProvider;

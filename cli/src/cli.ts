@@ -185,6 +185,7 @@ export const handleArgs = (args: string[]) => {
         type: 'string',
         validate: (attributes: string) => attributes.split(','),
       })
+      .boolean('ignoreAllowList')
       .option('auth', {
         group: 'Authentication:',
         type: 'string',
@@ -293,6 +294,7 @@ export const handleArgs = (args: string[]) => {
         async (argv) => {
           log('DEBUG', 'Running decrypt command');
           const allowedKases = argv.allowList?.split(',');
+          const ignoreAllowList = !!argv.ignoreAllowList;
           const authProvider = await processAuth(argv);
           log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
 
@@ -301,6 +303,7 @@ export const handleArgs = (args: string[]) => {
             log('DEBUG', `TDF3 Client`);
             const client = new TDF3Client({
               allowedKases,
+              ignoreAllowList,
               authProvider,
               kasEndpoint,
               dpopEnabled: argv.dpop,
@@ -318,9 +321,16 @@ export const handleArgs = (args: string[]) => {
             const dpopEnabled = !!argv.dpop;
             const client =
               argv.containerType === 'nano'
-                ? new NanoTDFClient({ allowedKases, authProvider, kasEndpoint, dpopEnabled })
+                ? new NanoTDFClient({
+                    allowedKases,
+                    ignoreAllowList,
+                    authProvider,
+                    kasEndpoint,
+                    dpopEnabled,
+                  })
                 : new NanoTDFDatasetClient({
                     allowedKases,
+                    ignoreAllowList,
                     authProvider,
                     kasEndpoint,
                     dpopEnabled,
@@ -376,12 +386,14 @@ export const handleArgs = (args: string[]) => {
           const authProvider = await processAuth(argv);
           log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
           const kasEndpoint = argv.kasEndpoint;
+          const ignoreAllowList = !!argv.ignoreAllowList;
           const allowedKases = argv.allowList?.split(',');
 
           if ('tdf3' === argv.containerType) {
             log('DEBUG', `TDF3 Client`);
             const client = new TDF3Client({
               allowedKases,
+              ignoreAllowList,
               authProvider,
               kasEndpoint,
               dpopEnabled: argv.dpop,

@@ -111,6 +111,21 @@ describe('splitLookupTableFactory', () => {
     });
   });
 
+  it('should return a correct split table for valid input with ignoreAllowList', () => {
+    const keyAccess: KeyAccessObject[] = [
+      { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas' },
+      { sid: 'split2', type: 'remote', url: 'https://kas2', protocol: 'kas' },
+    ];
+    const allowedKases = new OriginAllowList([], true);
+
+    const result = TDF.splitLookupTableFactory(keyAccess, allowedKases);
+
+    expect(result).to.deep.equal({
+      split1: { 'https://kas1': keyAccess[0] },
+      split2: { 'https://kas2': keyAccess[1] },
+    });
+  });
+
   it('should throw KasDecryptError for disallowed KASes', () => {
     const keyAccess: KeyAccessObject[] = [
       { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas' },
