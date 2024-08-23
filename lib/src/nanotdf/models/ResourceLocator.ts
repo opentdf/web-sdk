@@ -36,58 +36,58 @@ export default class ResourceLocator {
 
   static parse(url: string, identifier: string = ''): ResourceLocator {
     const [protocol, body] = url.split('://');
-    
+
     // Validate and set protocol identifier byte
     const protocolIdentifierByte = new Uint8Array(1);
     switch (protocol.toLowerCase()) {
-        case 'http':
-            protocolIdentifierByte[0] = 0x00;
-            break;
-        case 'https':
-            protocolIdentifierByte[0] = 0x01;
-            break;
-        default:
-            throw new Error('Resource locator protocol is not supported.');
+      case 'http':
+        protocolIdentifierByte[0] = 0x00;
+        break;
+      case 'https':
+        protocolIdentifierByte[0] = 0x01;
+        break;
+      default:
+        throw new Error('Resource locator protocol is not supported.');
     }
 
     // Set identifier padded length and protocol identifier byte
     const identifierPaddedLength = (() => {
-        switch (identifier.length) {
-            case 0:
-                protocolIdentifierByte[0] |= ResourceLocator.IDENTIFIER_0_BYTE;
-                return  ResourceLocatorIdentifierEnum.None.valueOf();
-            case 2:
-                protocolIdentifierByte[0] |= ResourceLocator.IDENTIFIER_2_BYTE;
-                return ResourceLocatorIdentifierEnum.TwoBytes.valueOf();
-            case 8:
-                protocolIdentifierByte[0] |= ResourceLocator.IDENTIFIER_8_BYTE;
-                return ResourceLocatorIdentifierEnum.EightBytes.valueOf();
-            case 32:
-                protocolIdentifierByte[0] |= ResourceLocator.IDENTIFIER_32_BYTE;
-                return ResourceLocatorIdentifierEnum.ThirtyTwoBytes.valueOf();
-            default:
-                throw new Error(`Unsupported identifier length: ${identifier.length}`);
-        }
+      switch (identifier.length) {
+        case 0:
+          protocolIdentifierByte[0] |= ResourceLocator.IDENTIFIER_0_BYTE;
+          return ResourceLocatorIdentifierEnum.None.valueOf();
+        case 2:
+          protocolIdentifierByte[0] |= ResourceLocator.IDENTIFIER_2_BYTE;
+          return ResourceLocatorIdentifierEnum.TwoBytes.valueOf();
+        case 8:
+          protocolIdentifierByte[0] |= ResourceLocator.IDENTIFIER_8_BYTE;
+          return ResourceLocatorIdentifierEnum.EightBytes.valueOf();
+        case 32:
+          protocolIdentifierByte[0] |= ResourceLocator.IDENTIFIER_32_BYTE;
+          return ResourceLocatorIdentifierEnum.ThirtyTwoBytes.valueOf();
+        default:
+          throw new Error(`Unsupported identifier length: ${identifier.length}`);
+      }
     })();
 
     // Create buffer to hold protocol, body length, body, and identifier
     const bodyBytes = new TextEncoder().encode(body);
     const buffer = new Uint8Array(1 + 1 + bodyBytes.length + identifierPaddedLength);
-    
+
     // Set the protocol, body length, body and identifier into buffer
     buffer.set(protocolIdentifierByte, 0);
     buffer.set([bodyBytes.length], 1);
     buffer.set(bodyBytes, 2);
 
     if (identifierPaddedLength > 0) {
-        const identifierBytes = new TextEncoder()
-            .encode(identifier)
-            .subarray(0, identifierPaddedLength);
-        buffer.set(identifierBytes, 2 + bodyBytes.length);
+      const identifierBytes = new TextEncoder()
+        .encode(identifier)
+        .subarray(0, identifierPaddedLength);
+      buffer.set(identifierBytes, 2 + bodyBytes.length);
     }
 
     return new ResourceLocator(buffer);
-}
+  }
 
   constructor(buff: Uint8Array) {
     // Protocol
