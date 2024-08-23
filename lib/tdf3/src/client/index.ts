@@ -289,7 +289,7 @@ export class Client {
           `Invalid KAS endpoint [${this.kasEndpoint}]; to force, please list it among allowedKases`
         );
       }
-      this.allowedKases = new OriginAllowList([kasOrigin]);
+      this.allowedKases = new OriginAllowList([kasOrigin], !!clientConfig.ignoreAllowList);
     }
 
     this.authProvider = config.authProvider;

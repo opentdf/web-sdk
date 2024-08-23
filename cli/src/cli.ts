@@ -294,7 +294,7 @@ export const handleArgs = (args: string[]) => {
         async (argv) => {
           log('DEBUG', 'Running decrypt command');
           const allowedKases = argv.allowList?.split(',');
-          const ignoreAllowList = !!argv.allowList;
+          const ignoreAllowList = !!argv.ignoreAllowList;
           const authProvider = await processAuth(argv);
           log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
 
@@ -386,12 +386,14 @@ export const handleArgs = (args: string[]) => {
           const authProvider = await processAuth(argv);
           log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
           const kasEndpoint = argv.kasEndpoint;
+          const ignoreAllowList = !!argv.ignoreAllowList;
           const allowedKases = argv.allowList?.split(',');
 
           if ('tdf3' === argv.containerType) {
             log('DEBUG', `TDF3 Client`);
             const client = new TDF3Client({
               allowedKases,
+              ignoreAllowList,
               authProvider,
               kasEndpoint,
               dpopEnabled: argv.dpop,
