@@ -29,6 +29,9 @@ export default class ResourceLocator {
   static readonly LENGTH_OFFSET = 1;
   static readonly LENGTH_LENGTH = 1;
   static readonly BODY_OFFSET = 2;
+  static readonly IDENTIFIER_2_BYTE: number = 1 << 4; // 16
+  static readonly IDENTIFIER_8_BYTE: number = 2 << 4; // 32
+  static readonly IDENTIFIER_32_BYTE: number = 3 << 4; // 48
 
   static parse(url: string, identifier: string = ''): ResourceLocator {
     const [protocol, body] = url.split('://');
@@ -86,12 +89,13 @@ export default class ResourceLocator {
       buff.subarray(ResourceLocator.BODY_OFFSET, ResourceLocator.BODY_OFFSET + this.lengthOfBody)
     );
     // identifier
-    const identifierTypeNibble = this.protocol & 0xf;
-    if ((identifierTypeNibble & 0b0010) !== 0) {
+    const identifierTypeNibble = this.protocol & 0xf0;
+    if (identifierTypeNibble === ResourceLocator.IDENTIFIER_2_BYTE) {
+      console.log('ResourceLocatorIdentifierEnum.TwoBytes');
       this.identifierType = ResourceLocatorIdentifierEnum.TwoBytes;
-    } else if ((identifierTypeNibble & 0b0100) !== 0) {
+    } else if (identifierTypeNibble === ResourceLocator.IDENTIFIER_8_BYTE) {
       this.identifierType = ResourceLocatorIdentifierEnum.EightBytes;
-    } else if ((identifierTypeNibble & 0b1000) !== 0) {
+    } else if (identifierTypeNibble === ResourceLocator.IDENTIFIER_32_BYTE) {
       this.identifierType = ResourceLocatorIdentifierEnum.ThirtyTwoBytes;
     }
     switch (this.identifierType) {
