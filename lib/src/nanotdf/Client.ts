@@ -146,8 +146,15 @@ export default class Client {
       }
       this.iv = 1;
     } else {
-      const { allowedKases, ignoreAllowList, authProvider, dpopEnabled, dpopKeys, ephemeralKeyPair, kasEndpoint } =
-        optsOrOldAuthProvider;
+      const {
+        allowedKases,
+        ignoreAllowList,
+        authProvider,
+        dpopEnabled,
+        dpopKeys,
+        ephemeralKeyPair,
+        kasEndpoint,
+      } = optsOrOldAuthProvider;
       this.authProvider = authProvider;
       // TODO Disallow http KAS. For now just log as error
       validateSecureUrl(kasEndpoint);

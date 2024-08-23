@@ -138,7 +138,6 @@ describe('splitLookupTableFactory', () => {
       'Unreconstructable key - disallowed KASes include: ["https://kas3"] from splitIds ["split1","split2"]'
     );
   });
-  
 
   it('should throw KasDecryptError for duplicate URLs in the same splitId', () => {
     const keyAccess: KeyAccessObject[] = [

@@ -321,7 +321,13 @@ export const handleArgs = (args: string[]) => {
             const dpopEnabled = !!argv.dpop;
             const client =
               argv.containerType === 'nano'
-                ? new NanoTDFClient({ allowedKases, ignoreAllowList, authProvider, kasEndpoint, dpopEnabled })
+                ? new NanoTDFClient({
+                    allowedKases,
+                    ignoreAllowList,
+                    authProvider,
+                    kasEndpoint,
+                    dpopEnabled,
+                  })
                 : new NanoTDFDatasetClient({
                     allowedKases,
                     ignoreAllowList,

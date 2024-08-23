@@ -79,7 +79,7 @@ export class OriginAllowList {
     this.allowAll = !!allowAll;
   }
   allows(url: string): boolean {
-    if (this.allowAll){
+    if (this.allowAll) {
       return true;
     }
     return this.origins.includes(origin(url));

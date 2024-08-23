@@ -276,7 +276,10 @@ export class Client {
 
     const kasOrigin = new URL(this.kasEndpoint).origin;
     if (clientConfig.allowedKases) {
-      this.allowedKases = new OriginAllowList(clientConfig.allowedKases, !!clientConfig.ignoreAllowList);
+      this.allowedKases = new OriginAllowList(
+        clientConfig.allowedKases,
+        !!clientConfig.ignoreAllowList
+      );
       if (!validateSecureUrl(this.kasEndpoint) && !this.allowedKases.allows(kasOrigin)) {
         throw new TdfError(`Invalid KAS endpoint [${this.kasEndpoint}]`);
       }
