@@ -169,7 +169,7 @@ export const handleArgs = (args: string[]) => {
       // AUTH OPTIONS
       .option('kasEndpoint', {
         demandOption: true,
-        group: 'KAS Endpoint:',
+        group: 'KAS Configuration',
         type: 'string',
         description: 'URL to non-default KAS instance (https://mykas.net)',
       })
@@ -178,6 +178,12 @@ export const handleArgs = (args: string[]) => {
         group: 'OIDC IdP Endpoint:',
         type: 'string',
         description: 'URL to non-default OIDC IdP (https://myidp.net)',
+      })
+      .option('allowList', {
+        group: 'KAS Configuration',
+        desc: 'allowed KAS origins, comma separated; defaults to [kasEndpoint]',
+        type: 'string',
+        validate: (attributes: string) => attributes.split(','),
       })
       .option('auth', {
         group: 'Authentication:',
@@ -286,13 +292,19 @@ export const handleArgs = (args: string[]) => {
         },
         async (argv) => {
           log('DEBUG', 'Running decrypt command');
+          const allowedKases = argv.allowList?.split(',');
           const authProvider = await processAuth(argv);
           log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
 
           const kasEndpoint = argv.kasEndpoint;
           if (argv.containerType === 'tdf3') {
             log('DEBUG', `TDF3 Client`);
-            const client = new TDF3Client({ authProvider, kasEndpoint, dpopEnabled: argv.dpop });
+            const client = new TDF3Client({
+              allowedKases,
+              authProvider,
+              kasEndpoint,
+              dpopEnabled: argv.dpop,
+            });
             log('SILLY', `Initialized client ${JSON.stringify(client)}`);
             log('DEBUG', `About to decrypt [${argv.file}]`);
             const ct = await client.decrypt(await tdf3DecryptParamsFor(argv));
@@ -306,8 +318,13 @@ export const handleArgs = (args: string[]) => {
             const dpopEnabled = !!argv.dpop;
             const client =
               argv.containerType === 'nano'
-                ? new NanoTDFClient({ authProvider, kasEndpoint, dpopEnabled })
-                : new NanoTDFDatasetClient({ authProvider, kasEndpoint, dpopEnabled });
+                ? new NanoTDFClient({ allowedKases, authProvider, kasEndpoint, dpopEnabled })
+                : new NanoTDFDatasetClient({
+                    allowedKases,
+                    authProvider,
+                    kasEndpoint,
+                    dpopEnabled,
+                  });
             const buffer = await processDataIn(argv.file as string);
 
             log('DEBUG', 'Decrypt data.');
@@ -359,10 +376,16 @@ export const handleArgs = (args: string[]) => {
           const authProvider = await processAuth(argv);
           log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
           const kasEndpoint = argv.kasEndpoint;
+          const allowedKases = argv.allowList?.split(',');
 
           if ('tdf3' === argv.containerType) {
             log('DEBUG', `TDF3 Client`);
-            const client = new TDF3Client({ authProvider, kasEndpoint, dpopEnabled: argv.dpop });
+            const client = new TDF3Client({
+              allowedKases,
+              authProvider,
+              kasEndpoint,
+              dpopEnabled: argv.dpop,
+            });
             log('SILLY', `Initialized client ${JSON.stringify(client)}`);
             const ct = await client.encrypt(await tdf3EncryptParamsFor(argv));
             if (!ct) {
@@ -378,8 +401,13 @@ export const handleArgs = (args: string[]) => {
             const dpopEnabled = !!argv.dpop;
             const client =
               argv.containerType === 'nano'
-                ? new NanoTDFClient({ authProvider, dpopEnabled, kasEndpoint })
-                : new NanoTDFDatasetClient({ authProvider, dpopEnabled, kasEndpoint });
+                ? new NanoTDFClient({ allowedKases, authProvider, dpopEnabled, kasEndpoint })
+                : new NanoTDFDatasetClient({
+                    allowedKases,
+                    authProvider,
+                    dpopEnabled,
+                    kasEndpoint,
+                  });
             log('SILLY', `Initialized client ${JSON.stringify(client)}`);
 
             addParams(client, argv);

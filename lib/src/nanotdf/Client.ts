@@ -3,16 +3,13 @@ import * as base64 from '../encodings/base64.js';
 import { generateKeyPair, keyAgreement } from '../nanotdf-crypto/index.js';
 import getHkdfSalt from './helpers/getHkdfSalt.js';
 import DefaultParams from './models/DefaultParams.js';
-import { fetchWrappedKey } from '../access.js';
+import { fetchWrappedKey, OriginAllowList } from '../access.js';
 import { AuthProvider, isAuthProvider, reqSignature } from '../auth/providers.js';
-import {
-  cryptoPublicToPem,
-  pemToCryptoPublicKey,
-  safeUrlCheck,
-  validateSecureUrl,
-} from '../utils.js';
+import { UnsafeUrlError } from '../errors.js';
+import { cryptoPublicToPem, pemToCryptoPublicKey, validateSecureUrl } from '../utils.js';
 
 export interface ClientConfig {
+  allowedKases?: string[];
   authProvider: AuthProvider;
   dpopEnabled?: boolean;
   dpopKeys?: Promise<CryptoKeyPair>;
@@ -102,7 +99,7 @@ export default class Client {
   static readonly INITIAL_RELEASE_IV_SIZE = 3;
   static readonly IV_SIZE = 12;
 
-  allowedKases: string[];
+  allowedKases: OriginAllowList;
   /*
     These variables are expected to be either assigned during initialization or within the methods.
     This is needed as the flow is very specific. Errors should be thrown if the necessary step is not completed.
@@ -138,7 +135,7 @@ export default class Client {
       // TODO Disallow http KAS. For now just log as error
       validateSecureUrl(kasUrl);
       this.kasUrl = kasUrl;
-      this.allowedKases = [kasUrl];
+      this.allowedKases = new OriginAllowList([kasUrl]);
       this.dpopEnabled = dpopEnabled;
 
       if (ephemeralKeyPair) {
@@ -148,13 +145,13 @@ export default class Client {
       }
       this.iv = 1;
     } else {
-      const { authProvider, dpopEnabled, dpopKeys, ephemeralKeyPair, kasEndpoint } =
+      const { allowedKases, authProvider, dpopEnabled, dpopKeys, ephemeralKeyPair, kasEndpoint } =
         optsOrOldAuthProvider;
       this.authProvider = authProvider;
       // TODO Disallow http KAS. For now just log as error
       validateSecureUrl(kasEndpoint);
       this.kasUrl = kasEndpoint;
-      this.allowedKases = [kasEndpoint];
+      this.allowedKases = new OriginAllowList(allowedKases || [kasEndpoint]);
       this.dpopEnabled = !!dpopEnabled;
       if (dpopKeys) {
         this.requestSignerKeyPair = dpopKeys;
@@ -215,7 +212,9 @@ export default class Client {
     magicNumberVersion: TypedArray | ArrayBuffer,
     clientVersion: string
   ): Promise<CryptoKey> {
-    safeUrlCheck(this.allowedKases, kasRewrapUrl);
+    if (!this.allowedKases.allows(kasRewrapUrl)) {
+      throw new UnsafeUrlError(`request URL ∉ ${this.allowedKases.origins};`, kasRewrapUrl);
+    }
 
     // Ensure the ephemeral key pair has been set or generated (see createOidcServiceProvider)
     await this.fetchOIDCToken();

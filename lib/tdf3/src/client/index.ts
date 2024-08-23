@@ -50,13 +50,14 @@ import {
   type DecryptSource,
   EncryptParamsBuilder,
 } from './builders.js';
-import * as defaultCryptoService from '../crypto/index.js';
-import { AttributeSet, Policy, SplitKey } from '../models/index.js';
+import { OriginAllowList } from '../../../src/access.js';
 import { TdfError } from '../../../src/errors.js';
+import { EntityObject } from '../../../src/tdf/EntityObject.js';
 import { Binary } from '../binary.js';
-import { EntityObject } from 'src/tdf/EntityObject.js';
 import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
 import { toCryptoKeyPair } from '../crypto/crypto-utils.js';
+import * as defaultCryptoService from '../crypto/index.js';
+import { AttributeSet, Policy, SplitKey } from '../models/index.js';
 
 const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
 const HTML_BYTE_LIMIT = 100 * 1000 * 1000; // 100 MB, see WS-9476.
@@ -220,7 +221,7 @@ export class Client {
    * List of allowed KASes to connect to for rewrap requests.
    * Defaults to `[this.kasEndpoint]`.
    */
-  readonly allowedKases: string[];
+  readonly allowedKases: OriginAllowList;
 
   readonly kasKeys: Record<string, Promise<KasPublicKeyInfo>> = {};
 
@@ -274,18 +275,17 @@ export class Client {
 
     const kasOrigin = new URL(this.kasEndpoint).origin;
     if (clientConfig.allowedKases) {
-      this.allowedKases = clientConfig.allowedKases.map((a) => new URL(a).origin);
-      if (!validateSecureUrl(this.kasEndpoint) && !this.allowedKases.includes(kasOrigin)) {
+      this.allowedKases = new OriginAllowList(clientConfig.allowedKases);
+      if (!validateSecureUrl(this.kasEndpoint) && !this.allowedKases.allows(kasOrigin)) {
         throw new TdfError(`Invalid KAS endpoint [${this.kasEndpoint}]`);
       }
-      this.allowedKases.forEach(validateSecureUrl);
     } else {
       if (!validateSecureUrl(this.kasEndpoint)) {
         throw new TdfError(
           `Invalid KAS endpoint [${this.kasEndpoint}]; to force, please list it among allowedKases`
         );
       }
-      this.allowedKases = [kasOrigin];
+      this.allowedKases = new OriginAllowList([kasOrigin]);
     }
 
     this.authProvider = config.authProvider;
@@ -405,7 +405,7 @@ export class Client {
     );
     const { keyForEncryption, keyForManifest } = await (keyMiddleware as EncryptKeyMiddleware)();
     const ecfg: EncryptConfiguration = {
-      allowedKases: this.allowedKases,
+      allowList: this.allowedKases,
       attributeSet,
       byteLimit,
       cryptoService: this.cryptoService,
@@ -482,7 +482,7 @@ export class Client {
     // TODO: Write error event to stream and don't await.
     return await (streamMiddleware as DecryptStreamMiddleware)(
       await readStream({
-        allowedKases: this.allowedKases,
+        allowList: this.allowedKases,
         authProvider: this.authProvider,
         chunker,
         cryptoService: this.cryptoService,

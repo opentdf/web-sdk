@@ -1,5 +1,5 @@
 import { type AuthProvider } from './auth/auth.js';
-import { pemToCryptoPublicKey } from './utils.js';
+import { pemToCryptoPublicKey, validateSecureUrl } from './utils.js';
 
 export class RewrapRequest {
   signedRequestToken = '';
@@ -59,4 +59,24 @@ export async function fetchECKasPubKey(kasEndpoint: string): Promise<CryptoKey> 
   }
   const pem = await kasPubKeyResponse.json();
   return pemToCryptoPublicKey(pem);
+}
+
+const origin = (u: string): string => {
+  try {
+    return new URL(u).origin;
+  } catch (e) {
+    console.log(`invalid kas url: [${u}]`);
+    throw e;
+  }
+};
+
+export class OriginAllowList {
+  origins: string[];
+  constructor(urls: string[]) {
+    this.origins = urls.map(origin);
+    urls.forEach(validateSecureUrl);
+  }
+  allows(url: string): boolean {
+    return this.origins.includes(origin(url));
+  }
 }

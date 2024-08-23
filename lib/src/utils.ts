@@ -1,5 +1,4 @@
 import { type AxiosResponseHeaders, type RawAxiosResponseHeaders } from 'axios';
-import { UnsafeUrlError } from './errors.js';
 import { base64 } from './encodings/index.js';
 import { pemCertToCrypto, pemPublicToCrypto } from './nanotdf-crypto/index.js';
 
@@ -39,23 +38,6 @@ export function padSlashToUrl(u: string): string {
   }
   return `${u}/`;
 }
-
-const someStartsWith = (prefixes: string[], requestUrl: string): boolean =>
-  prefixes.some((prixfixe) => requestUrl.startsWith(padSlashToUrl(prixfixe)));
-
-/**
- * Checks that `testUrl` is prefixed with one of the given origin + path fragment URIs in urlPrefixes.
- *
- * Note this doesn't do anything special to queries or fragments and will fail to work properly if those are present on the prefixes
- * @param urlPrefixes a list of origin parts of urls, possibly including some path fragment as well
- * @param testUrl a url to see if it is prefixed by one or more of the `urlPrefixes` values
- * @throws Error when testUrl is not present
- */
-export const safeUrlCheck = (urlPrefixes: string[], testUrl: string): void | never => {
-  if (!someStartsWith(urlPrefixes, testUrl)) {
-    throw new UnsafeUrlError(`Invalid request URL: [${testUrl}] ∉ [${urlPrefixes}];`, testUrl);
-  }
-};
 
 export function isBrowser() {
   return typeof window !== 'undefined'; // eslint-disable-line
