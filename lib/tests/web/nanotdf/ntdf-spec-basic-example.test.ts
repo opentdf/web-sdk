@@ -21,9 +21,7 @@ describe('NanoTDF', () => {
     rl = ResourceLocator.parse('http://localhost:8080', 'e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0');
     assert.equal(rl.identifierType, ResourceLocatorIdentifierEnum.ThirtyTwoBytes);
     assert.equal(rl.getIdentifier(), 'e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0');
-    rl = ResourceLocator.parse('http://localhost:8080', 'e0e0e0e0e0e0e0e0');
-    assert.equal(rl.identifierType, ResourceLocatorIdentifierEnum.ThirtyTwoBytes);
-    assert.equal(rl.getIdentifier(), 'e0e0e0e0e0e0e0e0');
+    expect(() => ResourceLocator.parse('http://localhost:8080', 'e0e0e0e0e0e0e0e0')).throw('Unsupported identifier length: 16');
   });
   for (const { policyType, fixture } of [
     { policyType: PolicyTypeEnum.Remote, fixture: remoteFixture },
