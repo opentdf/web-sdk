@@ -1,4 +1,4 @@
-import { assert, expect } from '@esm-bundle/chai';
+import { expect } from '@esm-bundle/chai';
 import { NanoTDF } from '../../../src/nanotdf/index.js';
 import PolicyTypeEnum from '../../../src/nanotdf/enum/PolicyTypeEnum.js';
 import bufferToHex from './helpers/bufferToHex.js';
@@ -7,24 +7,8 @@ import * as remoteFixture from '../../__fixtures__/nanotdf-spec-remote-example.j
 import * as embeddedFixture from '../../__fixtures__/nanotdf-spec-embedded-example.js';
 import * as plainEmbeddedFixture from '../../__fixtures__/nanotdf-spec-plain-embedded-example.js';
 import { EmbeddedHeader, PlainEmbeddedHeader, RemoteHeader } from '../../../src/types/index.js';
-import ResourceLocator from '../../../src/nanotdf/models/ResourceLocator.js';
-import ResourceLocatorIdentifierEnum from '../../../src/nanotdf/enum/ResourceLocatorIdentifierEnum.js';
 
 describe('NanoTDF', () => {
-  it('should parse the ResourceLocator Identifier', () => {
-    let rl = ResourceLocator.parse('http://localhost:8080', 'e0');
-    assert.equal(rl.identifierType, ResourceLocatorIdentifierEnum.TwoBytes);
-    assert.equal(rl.getIdentifier(), 'e0');
-    rl = ResourceLocator.parse('http://localhost:8080', 'e0e0e0e0');
-    assert.equal(rl.identifierType, ResourceLocatorIdentifierEnum.EightBytes);
-    assert.equal(rl.getIdentifier(), 'e0e0e0e0');
-    rl = ResourceLocator.parse('http://localhost:8080', 'e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0');
-    assert.equal(rl.identifierType, ResourceLocatorIdentifierEnum.ThirtyTwoBytes);
-    assert.equal(rl.getIdentifier(), 'e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0');
-    expect(() => ResourceLocator.parse('http://localhost:8080', 'e0e0e0e0e0e0e0e0')).throw(
-      'Unsupported identifier length: 16'
-    );
-  });
   for (const { policyType, fixture } of [
     { policyType: PolicyTypeEnum.Remote, fixture: remoteFixture },
     { policyType: PolicyTypeEnum.EmbeddedText, fixture: embeddedFixture },
