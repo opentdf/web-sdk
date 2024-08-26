@@ -67,7 +67,7 @@ export type KasPublicKeyInfo = {
 
 export async function fetchECKasPubKey(kasEndpoint: string): Promise<KasPublicKeyInfo> {
   validateSecureUrl(kasEndpoint);
-  const kasPubKeyResponse = await fetch(`${kasEndpoint}/kas_public_key?algorithm=ec:secp256r1&v=2`);
+  const kasPubKeyResponse = await fetch(`${kasEndpoint}/v2/kas_public_key?algorithm=ec:secp256r1&v=2`);
   if (!kasPubKeyResponse.ok) {
     throw new Error(
       `Unable to validate KAS [${kasEndpoint}]. Received [${kasPubKeyResponse.status}:${kasPubKeyResponse.statusText}]`
