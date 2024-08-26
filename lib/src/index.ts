@@ -155,14 +155,7 @@ export class NanoTDFClient extends Client {
     payloadIV[10] = lengthAsUint24[1];
     payloadIV[11] = lengthAsUint24[0];
 
-    return encrypt(
-      policyObjectAsStr,
-      this.kasPubKey,
-      this.kasUrl,
-      ephemeralKeyPair,
-      payloadIV,
-      data
-    );
+    return encrypt(policyObjectAsStr, this.kasPubKey, ephemeralKeyPair, payloadIV, data);
   }
 }
 
@@ -274,14 +267,13 @@ export class NanoTDFDatasetClient extends Client {
       // Generate a symmetric key.
       this.symmetricKey = await keyAgreement(
         ephemeralKeyPair.privateKey,
-        this.kasPubKey,
+        await this.kasPubKey.key,
         await getHkdfSalt(DefaultParams.magicNumberVersion)
       );
 
       const nanoTDFBuffer = await encrypt(
         policyObjectAsStr,
         this.kasPubKey,
-        this.kasUrl,
         ephemeralKeyPair,
         ivVector,
         data

@@ -50,15 +50,37 @@ export async function fetchWrappedKey(
   return response.json();
 }
 
-export async function fetchECKasPubKey(kasEndpoint: string): Promise<CryptoKey> {
-  const kasPubKeyResponse = await fetch(`${kasEndpoint}/kas_public_key?algorithm=ec:secp256r1`);
+export type KasPublicKeyAlgorithm = 'ec:secp256r1' | 'rsa:2048';
+
+export type KasPublicKeyInfo = {
+  url: string;
+  algorithm: KasPublicKeyAlgorithm;
+  kid?: string;
+  publicKey: string;
+  key: Promise<CryptoKey>;
+};
+
+/**
+ * If we have KAS url but not public key we can fetch it from KAS, fetching
+ * the value from `${kas}/kas_public_key`.
+ */
+
+export async function fetchECKasPubKey(kasEndpoint: string): Promise<KasPublicKeyInfo> {
+  validateSecureUrl(kasEndpoint);
+  const kasPubKeyResponse = await fetch(`${kasEndpoint}/kas_public_key?algorithm=ec:secp256r1&v=2`);
   if (!kasPubKeyResponse.ok) {
     throw new Error(
       `Unable to validate KAS [${kasEndpoint}]. Received [${kasPubKeyResponse.status}:${kasPubKeyResponse.statusText}]`
     );
   }
-  const pem = await kasPubKeyResponse.json();
-  return pemToCryptoPublicKey(pem);
+  const { publicKey, kid }: KasPublicKeyInfo = await kasPubKeyResponse.json();
+  return {
+    key: pemToCryptoPublicKey(publicKey),
+    publicKey,
+    url: kasEndpoint,
+    algorithm: 'ec:secp256r1',
+    ...(kid && { kid }),
+  };
 }
 
 const origin = (u: string): string => {

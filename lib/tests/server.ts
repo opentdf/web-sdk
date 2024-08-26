@@ -15,7 +15,6 @@ import { Binary } from '../tdf3/index.js';
 import { type KeyAccessObject } from '../tdf3/src/models/key-access.js';
 
 const Mocks = getMocks();
-const kid = 'kid-a';
 
 function range(start: number, end: number): Uint8Array {
   const result = [];
@@ -87,6 +86,7 @@ const kas: RequestListener = async (req, res) => {
       res.setHeader('Content-Type', 'application/json');
       res.statusCode = 200;
       const publicKey = 'ec:secp256r1' == algorithm ? Mocks.kasECCert : Mocks.kasPublicKey;
+      const kid = 'ec:secp256r1' == algorithm ? 'e1' : 'r1';
       res.end(JSON.stringify(v2 ? { kid, publicKey } : publicKey));
     } else if (url.pathname === '/v2/rewrap') {
       if (req.method !== 'POST') {
