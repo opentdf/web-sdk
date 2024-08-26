@@ -73,7 +73,11 @@ export async function fetchECKasPubKey(kasEndpoint: string): Promise<KasPublicKe
       `Unable to validate KAS [${kasEndpoint}]. Received [${kasPubKeyResponse.status}:${kasPubKeyResponse.statusText}]`
     );
   }
-  const { publicKey, kid }: KasPublicKeyInfo = await kasPubKeyResponse.json();
+  const jsonContent = await kasPubKeyResponse.json();
+  const { publicKey, kid }: KasPublicKeyInfo = jsonContent;
+  if (!publicKey) {
+    throw new Error(`Invalid response from public key endpoint [${JSON.stringify(jsonContent)}]`)
+  }
   return {
     key: pemToCryptoPublicKey(publicKey),
     publicKey,
