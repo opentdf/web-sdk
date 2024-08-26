@@ -208,12 +208,15 @@ export async function fetchKasPublicKey(
     params.algorithm = algorithm;
   }
   try {
-    const response: { data: string | KasPublicKeyInfo } = await axios.get(`${kas}/kas_public_key`, {
-      params: {
-        ...params,
-        v: '2',
-      },
-    });
+    const response: { data: string | KasPublicKeyInfo } = await axios.get(
+      `${kas}/v2/kas_public_key`,
+      {
+        params: {
+          ...params,
+          v: '2',
+        },
+      }
+    );
     const publicKey =
       typeof response.data === 'string'
         ? await extractPemFromKeyString(response.data)
@@ -225,7 +228,8 @@ export async function fetchKasPublicKey(
       ...(typeof response.data !== 'string' && response.data.kid && { kid: response.data.kid }),
     };
   } catch (cause) {
-    if (cause?.response?.status != 400) {
+    const status = cause?.response?.status;
+    if (status != 400 && status != 404) {
       throw new TdfError(
         `Retrieving KAS public key [${kas}] failed [${cause.name}] [${cause.message}]`,
         cause
