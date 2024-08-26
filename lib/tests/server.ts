@@ -63,7 +63,12 @@ const kas: RequestListener = async (req, res) => {
       console.log('[DEBUG] CORS response 200');
       res.end();
     } else if (url.pathname === '/kas_public_key' || url.pathname === '/v2/kas_public_key') {
-      const v = url.pathname === '/v2/kas_public_key' ? url.searchParams.get('v') ? url.searchParams.get('v') : '2' : '1';
+      const v =
+        url.pathname === '/v2/kas_public_key'
+          ? url.searchParams.get('v')
+            ? url.searchParams.get('v')
+            : '2'
+          : '1';
       if (req.method !== 'GET') {
         console.log('[DEBUG] invalid method');
         res.statusCode = 405;
