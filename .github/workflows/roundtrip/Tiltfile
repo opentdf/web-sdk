@@ -49,7 +49,7 @@ def ingress(external_port="65432"):
         "k8s-in/ingress-nginx",
         flags=[
             "--version",
-            "4.0.16",
+            "4.11.2",
         ]
         + dict_to_helm_set_list(
             {
