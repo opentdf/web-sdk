@@ -67,13 +67,31 @@ export type KasPublicKeyInfo = {
 
 export async function fetchECKasPubKey(kasEndpoint: string): Promise<KasPublicKeyInfo> {
   validateSecureUrl(kasEndpoint);
-  const kasPubKeyResponse = await fetch(
-    `${kasEndpoint}/v2/kas_public_key?algorithm=ec:secp256r1&v=2`
-  );
+  const pkUrlV2 = `${kasEndpoint}/v2/kas_public_key?algorithm=ec:secp256r1&v=2`;
+  const kasPubKeyResponse = await fetch(pkUrlV2);
   if (!kasPubKeyResponse.ok) {
-    throw new Error(
-      `Unable to validate KAS [${kasEndpoint}]. Received [${kasPubKeyResponse.status}:${kasPubKeyResponse.statusText}]`
-    );
+    if (kasPubKeyResponse.status != 404) {
+      throw new Error(
+        `unable to load KAS public key from [${pkUrlV2}]. Received [${kasPubKeyResponse.status}:${kasPubKeyResponse.statusText}]`
+      );
+    }
+    console.log('falling back to v1 key');
+    // most likely a server that does not implement v2 endpoint, so no key identifier
+    const pkUrlV1 = `${kasEndpoint}/kas_public_key?algorithm=ec:secp256r1`;
+    const r2 = await fetch(pkUrlV1);
+    if (!r2.ok) {
+      throw new Error(
+        `unable to load KAS public key from [${pkUrlV1}]. Received [${r2.status}:${r2.statusText}]`
+      );
+    }
+    const pem = await r2.json();
+    console.log('pem returned', pem);
+    return {
+      key: pemToCryptoPublicKey(pem),
+      publicKey: pem,
+      url: kasEndpoint,
+      algorithm: 'ec:secp256r1',
+    };
   }
   const jsonContent = await kasPubKeyResponse.json();
   const { publicKey, kid }: KasPublicKeyInfo = jsonContent;
