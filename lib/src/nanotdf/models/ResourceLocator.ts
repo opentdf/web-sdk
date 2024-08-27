@@ -47,7 +47,7 @@ export default class ResourceLocator {
         protocolIdentifierByte[0] = 0x01;
         break;
       default:
-        throw new Error('Resource locator protocol is not supported.');
+        throw new Error('resource locator protocol unsupported');
     }
 
     // Set identifier padded length and protocol identifier byte
@@ -149,7 +149,7 @@ export default class ResourceLocator {
   }
 
   get url(): string | never {
-    switch (this.protocol) {
+    switch (this.protocol & 0xf) {
       case ProtocolEnum.Http:
         return 'http://' + this.body;
       case ProtocolEnum.Https:

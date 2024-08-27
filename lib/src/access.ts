@@ -50,15 +50,61 @@ export async function fetchWrappedKey(
   return response.json();
 }
 
-export async function fetchECKasPubKey(kasEndpoint: string): Promise<CryptoKey> {
-  const kasPubKeyResponse = await fetch(`${kasEndpoint}/kas_public_key?algorithm=ec:secp256r1`);
+export type KasPublicKeyAlgorithm = 'ec:secp256r1' | 'rsa:2048';
+
+export type KasPublicKeyInfo = {
+  url: string;
+  algorithm: KasPublicKeyAlgorithm;
+  kid?: string;
+  publicKey: string;
+  key: Promise<CryptoKey>;
+};
+
+/**
+ * If we have KAS url but not public key we can fetch it from KAS, fetching
+ * the value from `${kas}/kas_public_key`.
+ */
+
+export async function fetchECKasPubKey(kasEndpoint: string): Promise<KasPublicKeyInfo> {
+  validateSecureUrl(kasEndpoint);
+  const pkUrlV2 = `${kasEndpoint}/v2/kas_public_key?algorithm=ec:secp256r1&v=2`;
+  const kasPubKeyResponse = await fetch(pkUrlV2);
   if (!kasPubKeyResponse.ok) {
-    throw new Error(
-      `Unable to validate KAS [${kasEndpoint}]. Received [${kasPubKeyResponse.status}:${kasPubKeyResponse.statusText}]`
-    );
+    if (kasPubKeyResponse.status != 404) {
+      throw new Error(
+        `unable to load KAS public key from [${pkUrlV2}]. Received [${kasPubKeyResponse.status}:${kasPubKeyResponse.statusText}]`
+      );
+    }
+    console.log('falling back to v1 key');
+    // most likely a server that does not implement v2 endpoint, so no key identifier
+    const pkUrlV1 = `${kasEndpoint}/kas_public_key?algorithm=ec:secp256r1`;
+    const r2 = await fetch(pkUrlV1);
+    if (!r2.ok) {
+      throw new Error(
+        `unable to load KAS public key from [${pkUrlV1}]. Received [${r2.status}:${r2.statusText}]`
+      );
+    }
+    const pem = await r2.json();
+    console.log('pem returned', pem);
+    return {
+      key: pemToCryptoPublicKey(pem),
+      publicKey: pem,
+      url: kasEndpoint,
+      algorithm: 'ec:secp256r1',
+    };
   }
-  const pem = await kasPubKeyResponse.json();
-  return pemToCryptoPublicKey(pem);
+  const jsonContent = await kasPubKeyResponse.json();
+  const { publicKey, kid }: KasPublicKeyInfo = jsonContent;
+  if (!publicKey) {
+    throw new Error(`Invalid response from public key endpoint [${JSON.stringify(jsonContent)}]`);
+  }
+  return {
+    key: pemToCryptoPublicKey(publicKey),
+    publicKey,
+    url: kasEndpoint,
+    algorithm: 'ec:secp256r1',
+    ...(kid && { kid }),
+  };
 }
 
 const origin = (u: string): string => {

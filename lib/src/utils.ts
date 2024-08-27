@@ -1,4 +1,6 @@
 import { type AxiosResponseHeaders, type RawAxiosResponseHeaders } from 'axios';
+import { exportSPKI, importX509 } from 'jose';
+
 import { base64 } from './encodings/index.js';
 import { pemCertToCrypto, pemPublicToCrypto } from './nanotdf-crypto/index.js';
 
@@ -126,5 +128,18 @@ export async function pemToCryptoPublicKey(pem: string): Promise<CryptoKey> {
   } else if (/-----BEGIN CERTIFICATE-----/.test(pem)) {
     return pemCertToCrypto(pem);
   }
-  throw new Error('unsupported pem type');
+  throw new Error(`unsupported pem type [${pem}]`);
+}
+
+export async function extractPemFromKeyString(keyString: string): Promise<string> {
+  let pem: string = keyString;
+
+  // Skip the public key extraction if we find that the KAS url provides a
+  // PEM-encoded key instead of certificate
+  if (keyString.includes('CERTIFICATE')) {
+    const cert = await importX509(keyString, 'RS256', { extractable: true });
+    pem = await exportSPKI(cert);
+  }
+
+  return pem;
 }

@@ -15,7 +15,6 @@ import { Binary } from '../tdf3/index.js';
 import { type KeyAccessObject } from '../tdf3/src/models/key-access.js';
 
 const Mocks = getMocks();
-const kid = 'kid-a';
 
 function range(start: number, end: number): Uint8Array {
   const result = [];
@@ -63,7 +62,13 @@ const kas: RequestListener = async (req, res) => {
       res.statusCode = 200;
       console.log('[DEBUG] CORS response 200');
       res.end();
-    } else if (url.pathname === '/kas_public_key') {
+    } else if (url.pathname === '/kas_public_key' || url.pathname === '/v2/kas_public_key') {
+      const v =
+        url.pathname === '/v2/kas_public_key'
+          ? url.searchParams.get('v')
+            ? url.searchParams.get('v')
+            : '2'
+          : '1';
       if (req.method !== 'GET') {
         console.log('[DEBUG] invalid method');
         res.statusCode = 405;
@@ -83,11 +88,11 @@ const kas: RequestListener = async (req, res) => {
         res.end(`{"error": "Invalid fmt [${fmt}]"}`);
         return;
       }
-      const v2 = '2' == url.searchParams.get('v');
       res.setHeader('Content-Type', 'application/json');
       res.statusCode = 200;
       const publicKey = 'ec:secp256r1' == algorithm ? Mocks.kasECCert : Mocks.kasPublicKey;
-      res.end(JSON.stringify(v2 ? { kid, publicKey } : publicKey));
+      const kid = 'ec:secp256r1' == algorithm ? 'e1' : 'r1';
+      res.end(JSON.stringify(v == '2' ? { kid, publicKey } : publicKey));
     } else if (url.pathname === '/v2/rewrap') {
       if (req.method !== 'POST') {
         console.error(`[ERROR] /v2/rewrap only accepts POST verbs, received [${req.method}]`);

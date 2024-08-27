@@ -3,7 +3,7 @@ import { unsigned } from './utils/buffer-crc32.js';
 import { exportSPKI, importX509 } from 'jose';
 import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
 import { EntityObject } from '../../src/tdf/EntityObject.js';
-import { validateSecureUrl } from '../../src/utils.js';
+import { pemToCryptoPublicKey, validateSecureUrl } from '../../src/utils.js';
 import { DecryptParams } from './client/builders.js';
 
 import {
@@ -33,7 +33,7 @@ import {
   concatUint8,
 } from './utils/index.js';
 import { Binary } from './binary.js';
-import { OriginAllowList } from '../../src/access.js';
+import { KasPublicKeyAlgorithm, KasPublicKeyInfo, OriginAllowList } from '../../src/access.js';
 import {
   IllegalArgumentError,
   KasDecryptError,
@@ -176,15 +176,6 @@ export type RewrapRequest = {
   signedRequestToken: string;
 };
 
-export type KasPublicKeyInfo = {
-  url: string;
-  algorithm: KasPublicKeyAlgorithm;
-  kid?: string;
-  publicKey: string;
-};
-
-export type KasPublicKeyAlgorithm = 'ec:secp256r1' | 'rsa:2048';
-
 export type KasPublicKeyFormat = 'pkcs8' | 'jwks';
 
 type KasPublicKeyParams = {
@@ -217,23 +208,28 @@ export async function fetchKasPublicKey(
     params.algorithm = algorithm;
   }
   try {
-    const response: { data: string | KasPublicKeyInfo } = await axios.get(`${kas}/kas_public_key`, {
-      params: {
-        ...params,
-        v: '2',
-      },
-    });
+    const response: { data: string | KasPublicKeyInfo } = await axios.get(
+      `${kas}/v2/kas_public_key`,
+      {
+        params: {
+          ...params,
+          v: '2',
+        },
+      }
+    );
     const publicKey =
       typeof response.data === 'string'
         ? await extractPemFromKeyString(response.data)
         : response.data.publicKey;
     return {
       publicKey,
+      key: pemToCryptoPublicKey(publicKey),
       ...infoStatic,
       ...(typeof response.data !== 'string' && response.data.kid && { kid: response.data.kid }),
     };
   } catch (cause) {
-    if (cause?.response?.status != 400) {
+    const status = cause?.response?.status;
+    if (status != 400 && status != 404) {
       throw new TdfError(
         `Retrieving KAS public key [${kas}] failed [${cause.name}] [${cause.message}]`,
         cause
@@ -252,6 +248,7 @@ export async function fetchKasPublicKey(
     // future proof: allow v2 response even if not specified.
     return {
       publicKey,
+      key: pemToCryptoPublicKey(publicKey),
       ...infoStatic,
       ...(typeof response.data !== 'string' && response.data.kid && { kid: response.data.kid }),
     };
