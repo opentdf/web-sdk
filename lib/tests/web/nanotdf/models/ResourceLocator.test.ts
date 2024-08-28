@@ -71,8 +71,12 @@ describe('NanoTDF.ResourceLocator', () => {
     });
   }
 
-  for (const { u, kid, msg } of [{ u: 'gopher://a', kid: 'r1', msg: 'unsupported' }]) {
-    it(`invalid resource locator`, () => {
+  for (const { u, kid, msg } of [
+    { u: 'gopher://a', kid: 'r1', msg: 'unsupported' },
+    { u: 'https://', kid: 'r1', msg: 'empty' },
+    { u: 'https://a', kid: '1234567890123456789012345678901234567890', msg: 'identifier length' },
+  ]) {
+    it(`invalid resource locator param throws ${msg}`, () => {
       expect(() => ResourceLocator.fromURL(u, kid)).throw(msg);
     });
   }

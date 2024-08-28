@@ -66,11 +66,14 @@ export default class ResourceLocator {
       } else if (identifierLength <= 32) {
         return ResourceLocatorIdentifierEnum.ThirtyTwoBytes;
       }
-      throw new Error(`Unsupported identifier length: ${identifier.length}`);
+      throw new Error(`unsupported identifier length: ${identifier.length}`);
     })();
 
     // Create buffer to hold protocol, body length, body, and identifier
     const lengthOfBody = new TextEncoder().encode(body).length;
+    if (lengthOfBody == 0) {
+      throw new Error('url body empty');
+    }
     const identifierLength = identifierType.valueOf();
     const offset = ResourceLocator.BODY_OFFSET + lengthOfBody + identifierLength;
     return new ResourceLocator(protocol, lengthOfBody, body, offset, identifier, identifierType);
