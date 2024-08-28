@@ -15,8 +15,8 @@ describe('NanoTDF.ResourceLocator', () => {
       idt: ResourceLocatorIdentifierEnum.ThirtyTwoBytes,
     },
   ]) {
-    it(`ResourceLocator.parse("${u}", "${kid}")`, () => {
-      const rl = new ResourceLocator(u, kid);
+    it(`ResourceLocator.fromURL("${u}", "${kid}")`, () => {
+      const rl = ResourceLocator.fromURL(u, kid);
       expect(rl).to.have.property('identifierType', idt);
       expect(rl).to.have.property('identifier', kid);
     });
@@ -35,7 +35,7 @@ describe('NanoTDF.ResourceLocator', () => {
     {
       u: 'http://a',
       kid: '1234567890123456',
-      v: '30 01 61 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 00 00 00 00 00 00 00 00 00 00 00 00 00',
+      v: '30 01 61 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00',
     },
     {
       u: 'http://a',
@@ -43,7 +43,7 @@ describe('NanoTDF.ResourceLocator', () => {
       v: '30 01 61 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36 37 38 39 30 31 32',
     },
   ]) {
-    it(`new ResourceLocator("${u}", "${kid}")`, () => {
+    it(`ResourceLocator.parse() => (${u}, "${kid}")`, () => {
       const hexValue = v.replace(/\s/g, '');
       const ab = hex.decodeArrayBuffer(hexValue);
       const rl = ResourceLocator.parse(new Uint8Array(ab));
@@ -52,9 +52,22 @@ describe('NanoTDF.ResourceLocator', () => {
     });
   }
 
+  for (const { v, msg } of [
+    { v: '03 01 61', msg: 'protocol' },
+    { v: 'a1 01 61', msg: 'identifier' },
+    { v: '00 00', msg: 'body' },
+    { v: '10 01 61 61 ', msg: 'bounds' },
+  ]) {
+    it(`ResourceLocator.parse() throws ${msg}`, () => {
+      const hexValue = v.replace(/\s/g, '');
+      const ab = hex.decodeArrayBuffer(hexValue);
+      expect(() => ResourceLocator.parse(new Uint8Array(ab))).to.throw(msg);
+    });
+  }
+
   for (const { u, kid, msg } of [{ u: 'gopher://a', kid: 'r1', msg: 'unsupported' }]) {
     it(`invalid resource locator`, () => {
-      expect(() => new ResourceLocator(u, kid)).throw(msg);
+      expect(() => ResourceLocator.fromURL(u, kid)).throw(msg);
     });
   }
 });

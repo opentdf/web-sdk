@@ -45,7 +45,7 @@ export default async function encrypt(
   );
 
   // Construct the kas locator
-  const kasResourceLocator = new ResourceLocator(kasInfo.url, kasInfo.kid);
+  const kasResourceLocator = ResourceLocator.fromURL(kasInfo.url, kasInfo.kid);
 
   // Auth tag length for policy and payload
   const authTagLengthInBytes = authTagLengthForCipher(DefaultParams.symmetricCipher) / 8;
