@@ -62,6 +62,7 @@ describe('NanoTDF.ResourceLocator', () => {
     { v: '03 01 61', msg: 'protocol' },
     { v: 'a1 01 61', msg: 'identifier' },
     { v: '00 00', msg: 'body' },
+    { v: '10 ff 61 61 ', msg: 'bounds' },
     { v: '10 01 61 61 ', msg: 'bounds' },
   ]) {
     it(`ResourceLocator.parse() throws ${msg}`, () => {
