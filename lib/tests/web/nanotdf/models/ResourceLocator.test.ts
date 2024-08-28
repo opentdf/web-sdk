@@ -52,9 +52,7 @@ describe('NanoTDF.ResourceLocator', () => {
     });
   }
 
-  for (const { u, kid, msg } of [
-    { u: 'gopher://a', kid: 'r1', msg: 'unsupported' },
-  ]) {
+  for (const { u, kid, msg } of [{ u: 'gopher://a', kid: 'r1', msg: 'unsupported' }]) {
     it(`invalid resource locator`, () => {
       expect(() => new ResourceLocator(u, kid)).throw(msg);
     });

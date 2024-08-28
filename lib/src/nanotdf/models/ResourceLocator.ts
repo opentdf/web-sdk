@@ -89,13 +89,13 @@ export default class ResourceLocator {
     let url = '';
     switch (protocol) {
       case ProtocolEnum.Http:
-        url = "http://" + body;
+        url = 'http://' + body;
         break;
       case ProtocolEnum.Https:
-        url = "https://" + body;
+        url = 'https://' + body;
         break;
       default:
-        throw new Error(`unsupported protocol type [${protocol}]`)
+        throw new Error(`unsupported protocol type [${protocol}]`);
     }
     // identifier
     const identifierTypeNibble = protocolAndIdentifierType & 0xf0;
@@ -157,7 +157,9 @@ export default class ResourceLocator {
    * Return the contents of the Resource Locator in buffer
    */
   toBuffer(): Uint8Array {
-    const buffer = new Uint8Array(ResourceLocator.BODY_OFFSET + this.body.length + this.identifierType);
+    const buffer = new Uint8Array(
+      ResourceLocator.BODY_OFFSET + this.body.length + this.identifierType
+    );
     let idTypeNibble = 0;
     switch (this.identifierType) {
       case ResourceLocatorIdentifierEnum.TwoBytes:
@@ -174,7 +176,10 @@ export default class ResourceLocator {
     buffer.set([this.lengthOfBody], ResourceLocator.LENGTH_OFFSET);
     buffer.set(new TextEncoder().encode(this.body), ResourceLocator.BODY_OFFSET);
     if (this.identifier) {
-      buffer.set(new TextEncoder().encode(this.identifier), ResourceLocator.BODY_OFFSET + this.body.length);
+      buffer.set(
+        new TextEncoder().encode(this.identifier),
+        ResourceLocator.BODY_OFFSET + this.body.length
+      );
     }
     return buffer;
   }
