@@ -120,7 +120,7 @@ export default class ResourceLocator {
         break;
       case ResourceLocatorIdentifierEnum.TwoBytes:
       case ResourceLocatorIdentifierEnum.EightBytes:
-      case ResourceLocatorIdentifierEnum.ThirtyTwoBytes:
+      case ResourceLocatorIdentifierEnum.ThirtyTwoBytes: {
         const kidStart = offset;
         offset = kidStart + identifierType.valueOf();
         if (offset > buff.length) {
@@ -136,6 +136,7 @@ export default class ResourceLocator {
           identifier = decoder.decode(kidSubarray);
         }
         break;
+      }
     }
     return new ResourceLocator(protocol, lengthOfBody, body, offset, identifier, identifierType);
   }
@@ -198,6 +199,6 @@ export default class ResourceLocator {
    * @returns { string } Identifier of the resource locator.
    */
   get kid(): string {
-    return this.identifier || '';
+    return this.identifier ?? '';
   }
 }
