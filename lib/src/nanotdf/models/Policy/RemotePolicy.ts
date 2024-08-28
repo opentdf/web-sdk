@@ -18,7 +18,7 @@ class RemotePolicy extends AbstractPolicy implements RemotePolicyInterface {
     useEcdsaBinding: boolean
   ): { offset: number; policy: RemotePolicy } {
     let offset = 0;
-    const resource = new ResourceLocator(buff);
+    const resource = ResourceLocator.parse(buff);
     offset += resource.offset;
 
     const { binding, newOffset: bindingOffset } = this.parseBinding(buff, useEcdsaBinding, offset);

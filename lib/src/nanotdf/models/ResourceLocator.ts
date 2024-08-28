@@ -34,100 +34,103 @@ export default class ResourceLocator {
   static readonly IDENTIFIER_8_BYTE: number = 2 << 4; // 32
   static readonly IDENTIFIER_32_BYTE: number = 3 << 4; // 48
 
-  static parse(url: string, identifier: string = ''): ResourceLocator {
+  constructor(url: string, identifier?: string) {
     const [protocol, body] = url.split('://');
 
     // Validate and set protocol identifier byte
-    const protocolIdentifierByte = new Uint8Array(1);
     switch (protocol.toLowerCase()) {
       case 'http':
-        protocolIdentifierByte[0] = 0x00;
+        this.protocol = ProtocolEnum.Http;
         break;
       case 'https':
-        protocolIdentifierByte[0] = 0x01;
+        this.protocol = ProtocolEnum.Https;
         break;
       default:
-        throw new Error('resource locator protocol unsupported');
+        throw new Error(`resource locator protocol [${protocol}] unsupported`);
     }
+    this.body = body;
 
     // Set identifier padded length and protocol identifier byte
-    const identifierPaddedLength = (() => {
-      switch (identifier.length) {
-        case 0:
-          protocolIdentifierByte[0] |= ResourceLocator.IDENTIFIER_0_BYTE;
-          return ResourceLocatorIdentifierEnum.None.valueOf();
-        case 2:
-          protocolIdentifierByte[0] |= ResourceLocator.IDENTIFIER_2_BYTE;
-          return ResourceLocatorIdentifierEnum.TwoBytes.valueOf();
-        case 8:
-          protocolIdentifierByte[0] |= ResourceLocator.IDENTIFIER_8_BYTE;
-          return ResourceLocatorIdentifierEnum.EightBytes.valueOf();
-        case 32:
-          protocolIdentifierByte[0] |= ResourceLocator.IDENTIFIER_32_BYTE;
-          return ResourceLocatorIdentifierEnum.ThirtyTwoBytes.valueOf();
-        default:
-          throw new Error(`Unsupported identifier length: ${identifier.length}`);
+    this.identifierType = (() => {
+      if (!identifier) {
+        return ResourceLocatorIdentifierEnum.None;
       }
+      const identifierLength = new TextEncoder().encode(identifier).length;
+      if (identifierLength <= 2) {
+        return ResourceLocatorIdentifierEnum.TwoBytes;
+      } else if (identifierLength <= 8) {
+        return ResourceLocatorIdentifierEnum.EightBytes;
+      } else if (identifierLength <= 32) {
+        return ResourceLocatorIdentifierEnum.ThirtyTwoBytes;
+      }
+      throw new Error(`Unsupported identifier length: ${identifier.length}`);
     })();
+    if (identifier) {
+      this.identifier = identifier;
+    }
 
     // Create buffer to hold protocol, body length, body, and identifier
-    const bodyBytes = new TextEncoder().encode(body);
-    const buffer = new Uint8Array(1 + 1 + bodyBytes.length + identifierPaddedLength);
-
-    // Set the protocol, body length, body and identifier into buffer
-    buffer.set(protocolIdentifierByte, 0);
-    buffer.set([bodyBytes.length], 1);
-    buffer.set(bodyBytes, 2);
-
-    if (identifierPaddedLength > 0) {
-      const identifierBytes = new TextEncoder()
-        .encode(identifier)
-        .subarray(0, identifierPaddedLength);
-      buffer.set(identifierBytes, 2 + bodyBytes.length);
-    }
-
-    return new ResourceLocator(buffer);
+    this.lengthOfBody = new TextEncoder().encode(body).length;
+    const identifierLength = this.identifierType.valueOf();
+    this.offset = ResourceLocator.BODY_OFFSET + this.lengthOfBody + identifierLength;
   }
 
-  constructor(buff: Uint8Array) {
+  static parse(buff: Uint8Array) {
     // Protocol
-    this.protocol = buff[ResourceLocator.PROTOCOL_OFFSET];
+    const protocolAndIdentifierType = buff[ResourceLocator.PROTOCOL_OFFSET];
     // Length of body
-    this.lengthOfBody = buff[ResourceLocator.LENGTH_OFFSET];
+    const lengthOfBody = buff[ResourceLocator.LENGTH_OFFSET];
     // Body as utf8 string
     const decoder = new TextDecoder();
-    this.body = decoder.decode(
-      buff.subarray(ResourceLocator.BODY_OFFSET, ResourceLocator.BODY_OFFSET + this.lengthOfBody)
+    const body = decoder.decode(
+      buff.subarray(ResourceLocator.BODY_OFFSET, ResourceLocator.BODY_OFFSET + lengthOfBody)
     );
-    // identifier
-    const identifierTypeNibble = this.protocol & 0xf0;
-    if (identifierTypeNibble === ResourceLocator.IDENTIFIER_2_BYTE) {
-      this.identifierType = ResourceLocatorIdentifierEnum.TwoBytes;
-    } else if (identifierTypeNibble === ResourceLocator.IDENTIFIER_8_BYTE) {
-      this.identifierType = ResourceLocatorIdentifierEnum.EightBytes;
-    } else if (identifierTypeNibble === ResourceLocator.IDENTIFIER_32_BYTE) {
-      this.identifierType = ResourceLocatorIdentifierEnum.ThirtyTwoBytes;
+    const protocol = protocolAndIdentifierType & 0xf;
+    let url = '';
+    switch (protocol) {
+      case ProtocolEnum.Http:
+        url = "http://" + body;
+        break;
+      case ProtocolEnum.Https:
+        url = "https://" + body;
+        break;
+      default:
+        throw new Error(`unsupported protocol type [${protocol}]`)
     }
-    switch (this.identifierType) {
+    // identifier
+    const identifierTypeNibble = protocolAndIdentifierType & 0xf0;
+    let identifierType = ResourceLocatorIdentifierEnum.None;
+    if (identifierTypeNibble === ResourceLocator.IDENTIFIER_2_BYTE) {
+      identifierType = ResourceLocatorIdentifierEnum.TwoBytes;
+    } else if (identifierTypeNibble === ResourceLocator.IDENTIFIER_8_BYTE) {
+      identifierType = ResourceLocatorIdentifierEnum.EightBytes;
+    } else if (identifierTypeNibble === ResourceLocator.IDENTIFIER_32_BYTE) {
+      identifierType = ResourceLocatorIdentifierEnum.ThirtyTwoBytes;
+    }
+
+    let identifier: string | undefined = undefined;
+
+    switch (identifierType) {
       case ResourceLocatorIdentifierEnum.None:
         // noop
         break;
       case ResourceLocatorIdentifierEnum.TwoBytes:
       case ResourceLocatorIdentifierEnum.EightBytes:
       case ResourceLocatorIdentifierEnum.ThirtyTwoBytes:
-        const start = ResourceLocator.BODY_OFFSET + this.lengthOfBody;
-        const end = start + this.identifierType.valueOf();
-        const subarray = buff.subarray(start, end);
+        const kidStart = ResourceLocator.BODY_OFFSET + lengthOfBody;
+        const kidEnd = kidStart + identifierType.valueOf();
+        const kidSubarray = buff.subarray(kidStart, kidEnd);
         // Remove padding (assuming the padding is null bytes, 0x00)
-        const trimmedSubarray = subarray.filter((byte) => byte !== 0x00);
-        this.identifier = decoder.decode(trimmedSubarray);
+        const zeroIndex = kidSubarray.indexOf(0);
+        if (zeroIndex >= 0) {
+          const trimmedSubarray = kidSubarray.subarray(0, zeroIndex);
+          identifier = decoder.decode(trimmedSubarray);
+        } else {
+          identifier = decoder.decode(kidSubarray);
+        }
         break;
     }
-    this.offset =
-      ResourceLocator.PROTOCOL_LENGTH +
-      ResourceLocator.LENGTH_LENGTH +
-      this.lengthOfBody +
-      this.identifierType.valueOf();
+    return new ResourceLocator(url, identifier);
   }
 
   /**
@@ -136,20 +139,11 @@ export default class ResourceLocator {
    * @returns { number } Length of resource locator
    */
   get length(): number {
-    return (
-      // Protocol
-      1 +
-      // Length of the body( 1 byte)
-      1 +
-      // Content length
-      this.body.length +
-      // Identifier length
-      this.identifierType.valueOf()
-    );
+    return this.offset;
   }
 
   get url(): string | never {
-    switch (this.protocol & 0xf) {
+    switch (this.protocol) {
       case ProtocolEnum.Http:
         return 'http://' + this.body;
       case ProtocolEnum.Https:
@@ -163,33 +157,26 @@ export default class ResourceLocator {
    * Return the contents of the Resource Locator in buffer
    */
   toBuffer(): Uint8Array {
-    const buffer = new Uint8Array(2 + this.body.length + this.identifierType.valueOf());
-    buffer.set([this.protocol], 0);
-    buffer.set([this.lengthOfBody], 1);
-    buffer.set(new TextEncoder().encode(this.body), 2);
+    const buffer = new Uint8Array(ResourceLocator.BODY_OFFSET + this.body.length + this.identifierType);
+    let idTypeNibble = 0;
+    switch (this.identifierType) {
+      case ResourceLocatorIdentifierEnum.TwoBytes:
+        idTypeNibble = ResourceLocator.IDENTIFIER_2_BYTE;
+        break;
+      case ResourceLocatorIdentifierEnum.EightBytes:
+        idTypeNibble = ResourceLocator.IDENTIFIER_8_BYTE;
+        break;
+      case ResourceLocatorIdentifierEnum.ThirtyTwoBytes:
+        idTypeNibble = ResourceLocator.IDENTIFIER_32_BYTE;
+        break;
+    }
+    buffer.set([this.protocol | idTypeNibble], ResourceLocator.PROTOCOL_OFFSET);
+    buffer.set([this.lengthOfBody], ResourceLocator.LENGTH_OFFSET);
+    buffer.set(new TextEncoder().encode(this.body), ResourceLocator.BODY_OFFSET);
     if (this.identifier) {
-      buffer.set(new TextEncoder().encode(this.identifier), 2 + this.body.length);
+      buffer.set(new TextEncoder().encode(this.identifier), ResourceLocator.BODY_OFFSET + this.body.length);
     }
     return buffer;
-  }
-
-  /**
-   * Get URL
-   *
-   * Construct URL from ResourceLocator or throw error
-   */
-  getUrl(): string | never {
-    let protocol: string;
-    // protocolIndex get the first four bits
-    const protocolIndex: number = this.protocol & 0xf;
-    if (protocolIndex === ProtocolEnum.Http) {
-      protocol = 'http';
-    } else if (protocolIndex === ProtocolEnum.Https) {
-      protocol = 'https';
-    } else {
-      throw new Error(`Cannot create URL from protocol, "${ProtocolEnum[this.protocol]}"`);
-    }
-    return `${protocol}://${this.body}`;
   }
 
   /**
@@ -198,7 +185,7 @@ export default class ResourceLocator {
    * Returns the identifier of the ResourceLocator or an empty string if no identifier is present.
    * @returns { string } Identifier of the resource locator.
    */
-  getIdentifier(): string {
+  get kid(): string {
     return this.identifier || '';
   }
 }
