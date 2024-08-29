@@ -868,7 +868,7 @@ async function unwrapKey({
   let responseMetadata;
   const isAppIdProvider = authProvider && isAppIdProviderCheck(authProvider);
   // Get key access information to know the KAS URLS
-  const rewrappedKeys = [];
+  const rewrappedKeys: Uint8Array[] = [];
 
   for (const [splitId, potentials] of Object.entries(splitPotentials)) {
     if (!potentials || !Object.keys(potentials).length) {
