@@ -877,30 +877,30 @@ async function unwrapKey({
         ''
       );
     }
-  
+
     // If we have multiple ways of getting a value, try the 'best' way
     // or maybe retry across all potential ways? Currently, just tries them all
     const [keySplitInfo] = Object.values(potentials);
     const url = `${keySplitInfo.url}/${isAppIdProvider ? '' : 'v2/'}rewrap`;
-  
+
     const ephemeralEncryptionKeys = await cryptoService.cryptoToPemPair(
       await cryptoService.generateKeyPair()
     );
     const clientPublicKey = ephemeralEncryptionKeys.publicKey;
-  
+
     const requestBodyStr = JSON.stringify({
       algorithm: 'RS256',
       keyAccess: keySplitInfo,
       policy: manifest.encryptionInformation.policy,
       clientPublicKey,
     });
-  
+
     const jwtPayload = { requestBody: requestBodyStr };
     const signedRequestToken = await reqSignature(
       isAppIdProvider ? {} : jwtPayload,
       dpopKeys.privateKey
     );
-  
+
     let requestBody;
     if (isAppIdProvider) {
       requestBody = {
@@ -917,11 +917,11 @@ async function unwrapKey({
         signedRequestToken,
       };
     }
-  
+
     // Create a PoP token by signing the body so KAS knows we actually have a private key
     // Expires in 60 seconds
     const httpReq = await authProvider.withCreds(buildRequest('POST', url, requestBody));
-  
+
     try {
       // The response from KAS on a rewrap
       const {
