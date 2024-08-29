@@ -868,79 +868,80 @@ async function unwrapKey({
   let responseMetadata;
   const isAppIdProvider = authProvider && isAppIdProviderCheck(authProvider);
   // Get key access information to know the KAS URLS
-  const rewrappedKeys = await Promise.all(
-    Object.entries(splitPotentials).map(async ([splitId, potentials]) => {
-      if (!potentials || !Object.keys(potentials).length) {
-        throw new UnsafeUrlError(
-          `Unreconstructable key - no valid KAS found for split ${JSON.stringify(splitId)}`,
-          ''
-        );
-      }
-      // If we have multiple ways of getting a value, try the 'best' way
-      // or maybe retry across all potential ways? Currently, just tries them all
-      const [keySplitInfo] = Object.values(potentials);
-      const url = `${keySplitInfo.url}/${isAppIdProvider ? '' : 'v2/'}rewrap`;
+  const rewrappedKeys: Uint8Array[] = [];
 
-      const ephemeralEncryptionKeys = await cryptoService.cryptoToPemPair(
-        await cryptoService.generateKeyPair()
+  for (const [splitId, potentials] of Object.entries(splitPotentials)) {
+    if (!potentials || !Object.keys(potentials).length) {
+      throw new UnsafeUrlError(
+        `Unreconstructable key - no valid KAS found for split ${JSON.stringify(splitId)}`,
+        ''
       );
-      const clientPublicKey = ephemeralEncryptionKeys.publicKey;
+    }
 
-      const requestBodyStr = JSON.stringify({
-        algorithm: 'RS256',
+    // If we have multiple ways of getting a value, try the 'best' way
+    // or maybe retry across all potential ways? Currently, just tries them all
+    const [keySplitInfo] = Object.values(potentials);
+    const url = `${keySplitInfo.url}/${isAppIdProvider ? '' : 'v2/'}rewrap`;
+
+    const ephemeralEncryptionKeys = await cryptoService.cryptoToPemPair(
+      await cryptoService.generateKeyPair()
+    );
+    const clientPublicKey = ephemeralEncryptionKeys.publicKey;
+
+    const requestBodyStr = JSON.stringify({
+      algorithm: 'RS256',
+      keyAccess: keySplitInfo,
+      policy: manifest.encryptionInformation.policy,
+      clientPublicKey,
+    });
+
+    const jwtPayload = { requestBody: requestBodyStr };
+    const signedRequestToken = await reqSignature(
+      isAppIdProvider ? {} : jwtPayload,
+      dpopKeys.privateKey
+    );
+
+    let requestBody;
+    if (isAppIdProvider) {
+      requestBody = {
         keyAccess: keySplitInfo,
         policy: manifest.encryptionInformation.policy,
-        clientPublicKey,
-      });
+        entity: {
+          ...entity,
+          publicKey: clientPublicKey,
+        },
+        authToken: signedRequestToken,
+      };
+    } else {
+      requestBody = {
+        signedRequestToken,
+      };
+    }
 
-      const jwtPayload = { requestBody: requestBodyStr };
-      const signedRequestToken = await reqSignature(
-        isAppIdProvider ? {} : jwtPayload,
-        dpopKeys.privateKey
+    // Create a PoP token by signing the body so KAS knows we actually have a private key
+    // Expires in 60 seconds
+    const httpReq = await authProvider.withCreds(buildRequest('POST', url, requestBody));
+
+    try {
+      // The response from KAS on a rewrap
+      const {
+        data: { entityWrappedKey, metadata },
+      } = await axios.post(httpReq.url, httpReq.body, { headers: httpReq.headers });
+      responseMetadata = metadata;
+      const key = Binary.fromString(base64.decode(entityWrappedKey));
+      const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(
+        key,
+        ephemeralEncryptionKeys.privateKey
       );
-
-      let requestBody;
-      if (isAppIdProvider) {
-        requestBody = {
-          keyAccess: keySplitInfo,
-          policy: manifest.encryptionInformation.policy,
-          entity: {
-            ...entity,
-            publicKey: clientPublicKey,
-          },
-          authToken: signedRequestToken,
-        };
-      } else {
-        requestBody = {
-          signedRequestToken,
-        };
-      }
-
-      // Create a PoP token by signing the body so KAS knows we actually have a private key
-      // Expires in 60 seconds
-      const httpReq = await authProvider.withCreds(buildRequest('POST', url, requestBody));
-
-      try {
-        // The response from KAS on a rewrap
-        const {
-          data: { entityWrappedKey, metadata },
-        } = await axios.post(httpReq.url, httpReq.body, { headers: httpReq.headers });
-        responseMetadata = metadata;
-        const key = Binary.fromString(base64.decode(entityWrappedKey));
-        const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(
-          key,
-          ephemeralEncryptionKeys.privateKey
-        );
-        return new Uint8Array(decryptedKeyBinary.asByteArray());
-      } catch (e) {
-        console.error(e);
-        throw new KasDecryptError(
-          `Unable to decrypt the response from KAS: [${e.name}: ${e.message}], response: [${e?.response?.body}]`,
-          e
-        );
-      }
-    })
-  );
+      rewrappedKeys.push(new Uint8Array(decryptedKeyBinary.asByteArray()));
+    } catch (e) {
+      console.error(e);
+      throw new KasDecryptError(
+        `Unable to decrypt the response from KAS: [${e.name}: ${e.message}], response: [${e?.response?.body}]`,
+        e
+      );
+    }
+  }
 
   // Merge the unwrapped keys from each KAS
   const reconstructedKey = keyMerge(rewrappedKeys);
