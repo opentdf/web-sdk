@@ -189,6 +189,7 @@ export class AccessToken {
           grant_type: 'refresh_token',
           refresh_token: cfg.refreshToken,
           client_id: cfg.clientId,
+          scope: 'openid profile email offline_access'
         };
         break;
     }
