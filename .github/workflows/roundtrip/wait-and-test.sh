@@ -17,7 +17,8 @@ _configure_app() {
     echo "[ERROR] Couldn't ci roundtrip command line app"
     return 1
   fi
-  if ! npm i "../../../cli/opentdf-ctl-${app_version}.tgz"; then
+  if ! npm i "${ROOT_DIR}/cli/opentdf-ctl-${app_version}.tgz"; then
+    echo "[ERROR] Couldn't install current command line app"
     return 1
   fi
   return 0

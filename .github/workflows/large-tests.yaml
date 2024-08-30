@@ -11,9 +11,6 @@ on:
 jobs:
   large-file-test:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: .github/workflows/roundtrip
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
@@ -26,7 +23,9 @@ jobs:
       - name: run platform
         uses: opentdf/platform/test/start-up-with-containers@main
       - run: docker compose up -d --wait --wait-timeout 240
+        working-directory: .github/workflows/roundtrip
       - env:
           PLAYWRIGHT_TESTS_TO_RUN: huge roundtrip
         run: |-
           ./wait-and-test.sh platform
+        working-directory: .github/workflows/roundtrip
