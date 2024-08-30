@@ -99,7 +99,7 @@ describe('AccessToken', () => {
           },
           mf
         );
-        const res = await accessToken.get();
+        const res = await accessToken.get(true);
         expect(res).to.equal('fdfsdffsdf');
         expect(mf.lastCall.firstArg).to.match(
           /\/auth\/realms\/yeet\/protocol\/openid-connect\/token$/
@@ -130,7 +130,7 @@ describe('AccessToken', () => {
           },
           mf
         );
-        const res = await accessToken.get();
+        const res = await accessToken.get(true);
         expect(res).to.equal('fdfsdffsdf');
         expect(mf.lastCall.firstArg).to.match(
           /\/auth\/realms\/yeet\/protocol\/openid-connect\/token$/
@@ -162,7 +162,7 @@ describe('AccessToken', () => {
           },
           mf
         );
-        const res = await accessToken.get();
+        const res = await accessToken.get(true);
         expect(res).to.eql('fake_token');
         expect(mf.lastCall.firstArg).to.match(/\/protocol\/openid-connect\/token$/);
         const body = qsparse(mf.lastCall.lastArg.body);
@@ -193,7 +193,7 @@ describe('AccessToken', () => {
           },
           mf
         );
-        const res = await accessToken.get();
+        const res = await accessToken.get(true);
         expect(res).to.eql('fake_token');
         expect(mf.lastCall.firstArg).to.match(/\/protocol\/openid-connect\/token$/);
         const body = qsparse(mf.lastCall.lastArg.body);
@@ -222,7 +222,7 @@ describe('AccessToken', () => {
           mf
         );
 
-        const res = await accessToken.get();
+        const res = await accessToken.get(true);
         expect(res).to.eql('fake_token');
         expect(mf.lastCall.firstArg).to.match(/\/protocol\/openid-connect\/token$/);
         const body = qsparse(mf.lastCall.lastArg.body);
@@ -253,7 +253,7 @@ describe('AccessToken', () => {
           mf
         );
         // Do a refresh to cache tokenset
-        const atr = await accessTokenClient.get();
+        const atr = await accessTokenClient.get(true);
         expect(atr).to.eql('notreal');
         expect(mf.lastCall.firstArg).to.eql('https://auth.invalid/protocol/openid-connect/token');
         const parseArgs = qsparse(mf.lastCall.lastArg.body);
@@ -275,7 +275,7 @@ describe('AccessToken', () => {
             mf
           );
 
-          await accessTokenClient.get();
+          await accessTokenClient.get(true);
         } catch (e) {
           expect(e.message).to.match(/client identifier/);
         }
@@ -302,7 +302,7 @@ describe('AccessToken', () => {
         access_token: 'a',
       };
       // Do a refresh to cache tokenset
-      const res = await accessTokenClient.get();
+      const res = await accessTokenClient.get(true);
       expect(res).to.eql('a');
       // TODO Why do we do an info call here?
       // expect(mf.callCount).to.eql(0);
@@ -334,7 +334,7 @@ describe('AccessToken', () => {
         access_token: 'a',
       };
       // Do a refresh to cache tokenset
-      const res = await accessTokenClient.get();
+      const res = await accessTokenClient.get(true);
       expect(res).to.eql('a');
       expect(mf.callCount).to.eql(2);
     });

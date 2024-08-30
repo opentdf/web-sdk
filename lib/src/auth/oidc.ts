@@ -14,6 +14,8 @@ export type CommonCredentials = {
   oidcOrigin: string;
   /** Whether or not DPoP is enabled. */
   dpopEnabled?: boolean;
+  /** If the access token should be validated with a check to the OpenID user info endpoint */
+  validate?: boolean;
 
   /** the client's public key, base64 encoded. Will be bound to the OIDC token. Deprecated. If not set in the constructor, */
   signingKey?: CryptoKeyPair;
@@ -164,7 +166,7 @@ export class AccessToken {
     });
   }
 
-  async accessTokenLookup(cfg: OIDCCredentials) {
+  async accessTokenLookup(cfg: OIDCCredentials): Promise<AccessTokenResponse> {
     const url = `${this.baseUrl}/protocol/openid-connect/token`;
     let body;
     switch (cfg.exchange) {
@@ -205,7 +207,7 @@ export class AccessToken {
    * @param validate if we should run a inline check against the OIDC 'userinfo' endpoint to make sure any cached access token is still valid
    * @returns
    */
-  async get(validate = true): Promise<string> {
+  async get(validate: boolean): Promise<string> {
     if (this.data?.access_token) {
       try {
         if (validate) {
@@ -214,7 +216,7 @@ export class AccessToken {
         return this.data.access_token;
       } catch (e) {
         console.log('access_token fails on user_info endpoint; attempting to renew', e);
-        if (this.data.refresh_token) {
+        if (this.data?.refresh_token) {
           // Prefer the latest refresh_token if present over creds passed in
           // to constructor
           this.config = {
@@ -257,7 +259,8 @@ export class AccessToken {
     if (cfg.exchange != 'external' && cfg.exchange != 'refresh') {
       throw new Error('No refresh token provided!');
     }
-    const tokenResponse = (this.data = await this.accessTokenLookup(this.config));
+    const tokenResponse = await this.accessTokenLookup(this.config);
+    this.data = tokenResponse;
     if (!tokenResponse.refresh_token) {
       console.log('No refresh_token returned');
       return (
@@ -282,7 +285,7 @@ export class AccessToken {
         'Client public key was not set via `updateClientPublicKey` or passed in via constructor, cannot fetch OIDC token with valid Virtru claims'
       );
     }
-    const accessToken = (this.currentAccessToken ??= await this.get());
+    const accessToken = (this.currentAccessToken ??= await this.get(!!this.config?.validate));
     if (this.config.dpopEnabled && this.signingKey) {
       const dpopToken = await dpopFn(
         this.signingKey,
