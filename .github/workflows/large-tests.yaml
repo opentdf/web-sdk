@@ -1,6 +1,11 @@
 name: Large file test
 
 on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - feature/large-okish
   schedule:
     - cron: '0 4 * * 2,4'
 jobs:
