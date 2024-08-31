@@ -16,7 +16,10 @@ import {
   exportCryptoKey,
 } from '../nanotdf-crypto/index.js';
 import { KasPublicKeyInfo } from '../access.js';
-import { computeECDSASig, extractRSValuesFromSignature } from 'src/nanotdf-crypto/ecdsaSignature.js';
+import {
+  computeECDSASig,
+  extractRSValuesFromSignature,
+} from 'src/nanotdf-crypto/ecdsaSignature.js';
 
 /**
  * Encrypt the plain data into nanotdf buffer
@@ -65,14 +68,17 @@ export default async function encrypt(
 
   // Calculate the policy binding.
   if (DefaultParams.ecdsaBinding) {
-    const ecdsaSignature = await computeECDSASig(ephemeralKeyPair.privateKey, new Uint8Array(encryptedPolicy));
+    const ecdsaSignature = await computeECDSASig(
+      ephemeralKeyPair.privateKey,
+      new Uint8Array(encryptedPolicy)
+    );
     const { r, s } = extractRSValuesFromSignature(new Uint8Array(ecdsaSignature));
-    
+
     const rLength = r.length;
     const sLength = s.length;
-    
+
     policyBinding = new Uint8Array(1 + rLength + 1 + sLength);
-  
+
     // Set the lengths and values of r and s in policyBinding
     policyBinding[0] = rLength;
     policyBinding.set(r, 1);
