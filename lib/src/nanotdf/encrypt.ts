@@ -6,8 +6,8 @@ import EmbeddedPolicy from './models/Policy/EmbeddedPolicy.js';
 import Payload from './models/Payload.js';
 import getHkdfSalt from './helpers/getHkdfSalt.js';
 import { getBitLength as authTagLengthForCipher } from './models/Ciphers.js';
-import { lengthOfBinding } from './helpers/calculateByCipher.js';
 import { TypedArray } from '../tdf/index.js';
+import { GMAC_BINDING_LEN } from './constants.js';
 
 import {
   encrypt as cryptoEncrypt,
@@ -16,6 +16,7 @@ import {
   exportCryptoKey,
 } from '../nanotdf-crypto/index.js';
 import { KasPublicKeyInfo } from '../access.js';
+import { computeECDSASig, extractRSValuesFromSignature } from 'src/nanotdf-crypto/ecdsaSignature.js';
 
 /**
  * Encrypt the plain data into nanotdf buffer
@@ -60,33 +61,32 @@ export default async function encrypt(
     authTagLengthInBytes * 8
   );
 
-  // Enable - once ecdsaBinding is true
-  // if (!DefaultParams.ecdsaBinding) {
-  //   throw new Error("ECDSA binding should enable by default.");
-  // }
-
-  // // Calculate the policy binding.
-  // const policyBinding = await calculateSignature(this.ephemeralKeyPair.privateKey, new Uint8Array(encryptedPolicy));
-  // console.log("Length of the policyBinding " + policyBinding.byteLength);
-
-  // // Create embedded policy
-  // const embeddedPolicy = new EmbeddedPolicy(DefaultParams.policyType,
-  //   new Uint8Array(policyBinding),
-  //   new Uint8Array(encryptedPolicy)
-  // );
+  let policyBinding: Uint8Array;
 
   // Calculate the policy binding.
-  const lengthOfPolicyBinding = lengthOfBinding(
-    DefaultParams.ecdsaBinding,
-    DefaultParams.ephemeralCurveName
-  );
-
-  const policyBinding = await digest('SHA-256', new Uint8Array(encryptedPolicy));
+  if (DefaultParams.ecdsaBinding) {
+    const ecdsaSignature = await computeECDSASig(ephemeralKeyPair.privateKey, new Uint8Array(encryptedPolicy));
+    const { r, s } = extractRSValuesFromSignature(new Uint8Array(ecdsaSignature));
+    
+    const rLength = r.length;
+    const sLength = s.length;
+    
+    policyBinding = new Uint8Array(1 + rLength + 1 + sLength);
+  
+    // Set the lengths and values of r and s in policyBinding
+    policyBinding[0] = rLength;
+    policyBinding.set(r, 1);
+    policyBinding[1 + rLength] = sLength;
+    policyBinding.set(s, 1 + rLength + 1);
+  } else {
+    const signature = await digest('SHA-256', new Uint8Array(encryptedPolicy));
+    policyBinding = new Uint8Array(signature.slice(-GMAC_BINDING_LEN));
+  }
 
   // Create embedded policy
   const embeddedPolicy = new EmbeddedPolicy(
     DefaultParams.policyType,
-    new Uint8Array(policyBinding.slice(-lengthOfPolicyBinding)),
+    policyBinding,
     new Uint8Array(encryptedPolicy)
   );
 
