@@ -16,10 +16,7 @@ import {
   exportCryptoKey,
 } from '../nanotdf-crypto/index.js';
 import { KasPublicKeyInfo } from '../access.js';
-import {
-  computeECDSASig,
-  extractRSValuesFromSignature,
-} from 'src/nanotdf-crypto/ecdsaSignature.js';
+import { computeECDSASig, extractRSValuesFromSignature } from '../nanotdf-crypto/ecdsaSignature.js';
 
 /**
  * Encrypt the plain data into nanotdf buffer
