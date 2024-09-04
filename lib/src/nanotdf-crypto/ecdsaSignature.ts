@@ -39,7 +39,7 @@ export async function verifyECDSASignature(
   signature: Uint8Array,
   data: Uint8Array
 ): Promise<boolean> {
-  const isValid = await window.crypto.subtle.verify(
+  const isValid = await crypto.subtle.verify(
     {
       name: 'ECDSA',
       hash: { name: 'SHA-256' },
