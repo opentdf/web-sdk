@@ -65,8 +65,12 @@ export default async function encrypt(
 
   // Calculate the policy binding.
   if (DefaultParams.ecdsaBinding) {
+    const ecdhKey = ephemeralKeyPair.privateKey;
+    const ecdhJWK = await crypto.subtle.exportKey("jwk", ecdhKey);
+    const ecdsaJWK = {...ecdhJWK, key_ops: ["sign"] };
+    const ecdsaKey = await crypto.subtle.importKey("jwk", ecdsaJWK, {name:"ECDSA", namedCurve:"P-256"}, true, ['sign']);
     const ecdsaSignature = await computeECDSASig(
-      ephemeralKeyPair.privateKey,
+      ecdsaKey,
       new Uint8Array(encryptedPolicy)
     );
     const { r, s } = extractRSValuesFromSignature(new Uint8Array(ecdsaSignature));
