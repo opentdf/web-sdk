@@ -67,9 +67,9 @@ export default async function encrypt(
   // Calculate the policy binding.
   if (DefaultParams.ecdsaBinding) {
     console.log('ephemeralKeyPair.privateKey', ephemeralKeyPair.privateKey);
-    
+
     const curveName = await getCurveNameFromPrivateKey(ephemeralKeyPair.privateKey);
-    
+
     console.log('curveName', curveName);
 
     // Export the ECDH private key
@@ -81,14 +81,14 @@ export default async function encrypt(
       ecdhPrivateKey,
       {
         name: 'ECDSA',
-        namedCurve: curveName
+        namedCurve: curveName,
       },
       true,
       ['sign']
     );
 
     console.log('ecdsaPrivateKey', ecdsaPrivateKey);
-    
+
     const ecdsaSignature = await computeECDSASig(ecdsaPrivateKey, new Uint8Array(encryptedPolicy));
     const { r, s } = extractRSValuesFromSignature(new Uint8Array(ecdsaSignature));
 
