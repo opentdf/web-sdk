@@ -32,8 +32,8 @@ export default class ResourceLocator {
     readonly lengthOfBody: number,
     readonly body: string,
     readonly offset: number,
-    readonly identifier?: string,
-    readonly identifierType: ResourceLocatorIdentifierEnum = ResourceLocatorIdentifierEnum.None
+    readonly id?: string,
+    readonly idType: ResourceLocatorIdentifierEnum = ResourceLocatorIdentifierEnum.None
   ) {}
 
   static fromURL(url: string, identifier?: string): ResourceLocator {
@@ -168,11 +168,9 @@ export default class ResourceLocator {
    * Return the contents of the Resource Locator in buffer
    */
   toBuffer(): Uint8Array {
-    const buffer = new Uint8Array(
-      ResourceLocator.BODY_OFFSET + this.body.length + this.identifierType
-    );
+    const buffer = new Uint8Array(ResourceLocator.BODY_OFFSET + this.body.length + this.idType);
     let idTypeNibble = 0;
-    switch (this.identifierType) {
+    switch (this.idType) {
       case ResourceLocatorIdentifierEnum.TwoBytes:
         idTypeNibble = ResourceLocator.IDENTIFIER_2_BYTE;
         break;
@@ -186,11 +184,8 @@ export default class ResourceLocator {
     buffer.set([this.protocol | idTypeNibble], ResourceLocator.PROTOCOL_OFFSET);
     buffer.set([this.lengthOfBody], ResourceLocator.LENGTH_OFFSET);
     buffer.set(new TextEncoder().encode(this.body), ResourceLocator.BODY_OFFSET);
-    if (this.identifier) {
-      buffer.set(
-        new TextEncoder().encode(this.identifier),
-        ResourceLocator.BODY_OFFSET + this.body.length
-      );
+    if (this.id) {
+      buffer.set(new TextEncoder().encode(this.id), ResourceLocator.BODY_OFFSET + this.body.length);
     }
     return buffer;
   }
@@ -201,7 +196,7 @@ export default class ResourceLocator {
    * Returns the identifier of the ResourceLocator or an empty string if no identifier is present.
    * @returns { string } Identifier of the resource locator.
    */
-  get kid(): string {
-    return this.identifier ?? '';
+  get identifier(): string {
+    return this.id ?? '';
   }
 }

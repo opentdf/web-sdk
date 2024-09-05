@@ -47,13 +47,15 @@ describe('NanoTDF.ResourceLocator', () => {
     const ab = hex.decodeArrayBuffer(hexValue);
     it(`ResourceLocator.parse() => (${u}, "${kid}")`, () => {
       const rl = ResourceLocator.parse(new Uint8Array(ab));
-      expect(rl).to.have.property('identifier', kid);
+      expect(rl).to.have.property('id', kid);
+      expect(rl).to.have.property('identifier', kid ?? '');
       expect(rl).to.have.property('url', u);
     });
     it(`ResourceLocator.fromURL("${u}", "${kid}")`, () => {
       const rl = ResourceLocator.fromURL(u, kid);
-      expect(rl).to.have.property('identifierType', idt);
-      expect(rl).to.have.property('identifier', kid);
+      expect(rl).to.have.property('idType', idt);
+      expect(rl).to.have.property('id', kid);
+      expect(rl).to.have.property('identifier', kid ?? '');
       expect(hex.encodeArrayBuffer(rl.toBuffer())).to.eql(hexValue);
     });
   }
