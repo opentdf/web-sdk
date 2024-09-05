@@ -8,6 +8,7 @@ import getHkdfSalt from './helpers/getHkdfSalt.js';
 import { getBitLength as authTagLengthForCipher } from './models/Ciphers.js';
 import { TypedArray } from '../tdf/index.js';
 import { GMAC_BINDING_LEN } from './constants.js';
+// import { AlgorithmName } from './../nanotdf-crypto/enums.js'
 
 import {
   encrypt as cryptoEncrypt,
@@ -65,9 +66,30 @@ export default async function encrypt(
 
   // Calculate the policy binding.
   if (DefaultParams.ecdsaBinding) {
+    console.log('ephemeralKeyPair.privateKey', ephemeralKeyPair.privateKey);
+    
     const curveName = await getCurveNameFromPrivateKey(ephemeralKeyPair.privateKey);
-    const ecdsaKey = await convertToECDSAKey(ephemeralKeyPair.privateKey, curveName);
-    const ecdsaSignature = await computeECDSASig(ecdsaKey, new Uint8Array(encryptedPolicy));
+    
+    console.log('curveName', curveName);
+
+    // Export the ECDH private key
+    const ecdhPrivateKey = await crypto.subtle.exportKey('pkcs8', ephemeralKeyPair.privateKey);
+
+    // Import the ECDH private key as an ECDSA private key
+    const ecdsaPrivateKey = await crypto.subtle.importKey(
+      'pkcs8',
+      ecdhPrivateKey,
+      {
+        name: 'ECDSA',
+        namedCurve: curveName
+      },
+      true,
+      ['sign']
+    );
+
+    console.log('ecdsaPrivateKey', ecdsaPrivateKey);
+    
+    const ecdsaSignature = await computeECDSASig(ecdsaPrivateKey, new Uint8Array(encryptedPolicy));
     const { r, s } = extractRSValuesFromSignature(new Uint8Array(ecdsaSignature));
 
     const rLength = r.length;
@@ -147,18 +169,4 @@ async function getCurveNameFromPrivateKey(privateKey: CryptoKey): Promise<string
   }
 
   return keyData.crv;
-}
-
-async function convertToECDSAKey(key: CryptoKey, namedCurve: string = 'P-256'): Promise<CryptoKey> {
-  const keyData = await crypto.subtle.exportKey('raw', key);
-  return crypto.subtle.importKey(
-    'raw',
-    keyData,
-    {
-      name: 'ECDSA',
-      namedCurve: namedCurve,
-    },
-    true,
-    ['sign', 'verify']
-  );
 }
