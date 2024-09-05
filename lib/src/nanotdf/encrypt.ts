@@ -141,12 +141,12 @@ async function getCurveNameFromPrivateKey(privateKey: CryptoKey): Promise<string
   // Export the private key
   const keyData = await crypto.subtle.exportKey('jwk', privateKey);
 
-    // The curve name is stored in the 'crv' property of the JWK
-    if (!keyData.crv) {
-      throw new Error('Curve name is undefined');
-    }
-  
-    return keyData.crv;
+  // The curve name is stored in the 'crv' property of the JWK
+  if (!keyData.crv) {
+    throw new Error('Curve name is undefined');
+  }
+
+  return keyData.crv;
 }
 
 async function convertToECDSAKey(key: CryptoKey, namedCurve: string = 'P-256'): Promise<CryptoKey> {
