@@ -8,7 +8,7 @@ import getHkdfSalt from './helpers/getHkdfSalt.js';
 import { getBitLength as authTagLengthForCipher } from './models/Ciphers.js';
 import { TypedArray } from '../tdf/index.js';
 import { GMAC_BINDING_LEN } from './constants.js';
-import { AlgorithmName, KeyFormat, KeyUsageType} from './../nanotdf-crypto/enums.js'
+import { AlgorithmName, KeyFormat, KeyUsageType } from './../nanotdf-crypto/enums.js';
 
 import {
   encrypt as cryptoEncrypt,
@@ -148,7 +148,7 @@ export default async function encrypt(
  * @returns {Promise<string>} - A promise that resolves to the curve name.
  *
  * @throws {Error} - Throws an error if the curve name is undefined.
- * 
+ *
  */
 async function getCurveNameFromPrivateKey(privateKey: CryptoKey): Promise<string> {
   // Export the private key
@@ -184,7 +184,7 @@ async function convertECDHToECDSA(key: CryptoKey, curveName: string): Promise<Cr
     ecdhPrivateKey,
     {
       name: AlgorithmName.ECDSA,
-      namedCurve: curveName
+      namedCurve: curveName,
     },
     true,
     [KeyUsageType.Sign]
