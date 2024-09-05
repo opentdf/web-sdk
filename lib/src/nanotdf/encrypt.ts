@@ -8,7 +8,7 @@ import getHkdfSalt from './helpers/getHkdfSalt.js';
 import { getBitLength as authTagLengthForCipher } from './models/Ciphers.js';
 import { TypedArray } from '../tdf/index.js';
 import { GMAC_BINDING_LEN } from './constants.js';
-// import { AlgorithmName } from './../nanotdf-crypto/enums.js'
+import { AlgorithmName, KeyFormat, KeyUsageType} from './../nanotdf-crypto/enums.js'
 
 import {
   encrypt as cryptoEncrypt,
@@ -66,29 +66,8 @@ export default async function encrypt(
 
   // Calculate the policy binding.
   if (DefaultParams.ecdsaBinding) {
-    console.log('ephemeralKeyPair.privateKey', ephemeralKeyPair.privateKey);
-
     const curveName = await getCurveNameFromPrivateKey(ephemeralKeyPair.privateKey);
-
-    console.log('curveName', curveName);
-
-    // Export the ECDH private key
-    const ecdhPrivateKey = await crypto.subtle.exportKey('pkcs8', ephemeralKeyPair.privateKey);
-
-    // Import the ECDH private key as an ECDSA private key
-    const ecdsaPrivateKey = await crypto.subtle.importKey(
-      'pkcs8',
-      ecdhPrivateKey,
-      {
-        name: 'ECDSA',
-        namedCurve: curveName,
-      },
-      true,
-      ['sign']
-    );
-
-    console.log('ecdsaPrivateKey', ecdsaPrivateKey);
-
+    const ecdsaPrivateKey = await convertECDHToECDSA(ephemeralKeyPair.privateKey, curveName);
     const ecdsaSignature = await computeECDSASig(ecdsaPrivateKey, new Uint8Array(encryptedPolicy));
     const { r, s } = extractRSValuesFromSignature(new Uint8Array(ecdsaSignature));
 
@@ -159,6 +138,18 @@ export default async function encrypt(
   return nanoTDF.toBuffer();
 }
 
+/**
+ * Retrieves the curve name from a given ECDH private key.
+ *
+ * This function exports the provided ECDH private key in JWK format and extracts
+ * the curve name from the 'crv' property of the JWK.
+ *
+ * @param {CryptoKey} privateKey - The ECDH private key from which to retrieve the curve name.
+ * @returns {Promise<string>} - A promise that resolves to the curve name.
+ *
+ * @throws {Error} - Throws an error if the curve name is undefined.
+ * 
+ */
 async function getCurveNameFromPrivateKey(privateKey: CryptoKey): Promise<string> {
   // Export the private key
   const keyData = await crypto.subtle.exportKey('jwk', privateKey);
@@ -169,4 +160,35 @@ async function getCurveNameFromPrivateKey(privateKey: CryptoKey): Promise<string
   }
 
   return keyData.crv;
+}
+
+/**
+ * Converts an ECDH private key to an ECDSA private key.
+ *
+ * This function exports the given ECDH private key in PKCS#8 format and then
+ * imports it as an ECDSA private key using the specified curve name.
+ *
+ * @param {CryptoKey} key - The ECDH private key to be converted.
+ * @param {string} curveName - The name of the elliptic curve to be used for the ECDSA key.
+ * @returns {Promise<CryptoKey>} - A promise that resolves to the converted ECDSA private key.
+ *
+ * @throws {Error} - Throws an error if the key export or import fails.
+ */
+async function convertECDHToECDSA(key: CryptoKey, curveName: string): Promise<CryptoKey> {
+  // Export the ECDH private key
+  const ecdhPrivateKey = await crypto.subtle.exportKey('pkcs8', key);
+
+  // Import the ECDH private key as an ECDSA private key
+  const ecdsaPrivateKey = await crypto.subtle.importKey(
+    KeyFormat.Pkcs8,
+    ecdhPrivateKey,
+    {
+      name: AlgorithmName.ECDSA,
+      namedCurve: curveName
+    },
+    true,
+    [KeyUsageType.Sign]
+  );
+
+  return ecdsaPrivateKey;
 }
