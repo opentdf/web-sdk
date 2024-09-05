@@ -65,16 +65,8 @@ export default async function encrypt(
 
   // Calculate the policy binding.
   if (DefaultParams.ecdsaBinding) {
-    const ecdhKey = ephemeralKeyPair.privateKey;
-    const ecdhJWK = await crypto.subtle.exportKey('jwk', ecdhKey);
-    const ecdsaJWK = { ...ecdhJWK, key_ops: ['sign'] };
-    const ecdsaKey = await crypto.subtle.importKey(
-      'jwk',
-      ecdsaJWK,
-      { name: 'ECDSA', namedCurve: 'P-256' },
-      true,
-      ['sign']
-    );
+    const curveName = await getCurveNameFromPrivateKey(ephemeralKeyPair.privateKey);
+    const ecdsaKey = await convertToECDSAKey(ephemeralKeyPair.privateKey, curveName);
     const ecdsaSignature = await computeECDSASig(ecdsaKey, new Uint8Array(encryptedPolicy));
     const { r, s } = extractRSValuesFromSignature(new Uint8Array(ecdsaSignature));
 
@@ -143,4 +135,30 @@ export default async function encrypt(
   // Create a nanotdf.
   const nanoTDF = new NanoTDF(header, payload);
   return nanoTDF.toBuffer();
+}
+
+async function getCurveNameFromPrivateKey(privateKey: CryptoKey): Promise<string> {
+  // Export the private key
+  const keyData = await crypto.subtle.exportKey('jwk', privateKey);
+
+    // The curve name is stored in the 'crv' property of the JWK
+    if (!keyData.crv) {
+      throw new Error('Curve name is undefined');
+    }
+  
+    return keyData.crv;
+}
+
+async function convertToECDSAKey(key: CryptoKey, namedCurve: string = 'P-256'): Promise<CryptoKey> {
+  const keyData = await crypto.subtle.exportKey('raw', key);
+  return crypto.subtle.importKey(
+    'raw',
+    keyData,
+    {
+      name: 'ECDSA',
+      namedCurve: namedCurve,
+    },
+    true,
+    ['sign', 'verify']
+  );
 }
