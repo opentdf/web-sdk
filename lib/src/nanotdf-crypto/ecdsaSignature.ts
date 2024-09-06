@@ -1,4 +1,4 @@
-import { AlgorithmName} from './../nanotdf-crypto/enums.js'
+import { AlgorithmName } from './../nanotdf-crypto/enums.js';
 
 /**
  * Computes an ECDSA signature for the given data using the provided private key.
@@ -60,43 +60,49 @@ export async function verifyECDSASignature(
  * @returns {{ r: Uint8Array; s: Uint8Array }} An object containing the r and s values as Uint8Arrays.
  * @throws {Error} If the validation of the signature fails.
  */
-export function extractRSValuesFromSignature(signatureBytes: Uint8Array): { r: Uint8Array; s: Uint8Array } {
-    // Split the raw signature into r and s values
-    const halfLength = Math.floor(signatureBytes.length / 2);
-    const rValue = signatureBytes.slice(0, halfLength);
-    const sValue = signatureBytes.slice(halfLength);
+export function extractRSValuesFromSignature(signatureBytes: Uint8Array): {
+  r: Uint8Array;
+  s: Uint8Array;
+} {
+  // Split the raw signature into r and s values
+  const halfLength = Math.floor(signatureBytes.length / 2);
+  const rValue = signatureBytes.slice(0, halfLength);
+  const sValue = signatureBytes.slice(halfLength);
 
-    // Correct validation
-    if (!concatAndCompareUint8Arrays(rValue, sValue, signatureBytes)) {
-        throw new Error('Invalid ECDSA signature');
-    }
+  // Correct validation
+  if (!concatAndCompareUint8Arrays(rValue, sValue, signatureBytes)) {
+    throw new Error('Invalid ECDSA signature');
+  }
 
-    return {
-        r: rValue,
-        s: sValue
-    };
+  return {
+    r: rValue,
+    s: sValue,
+  };
 }
 
+function concatAndCompareUint8Arrays(
+  arr1: Uint8Array,
+  arr2: Uint8Array,
+  arr3: Uint8Array
+): boolean {
+  // Create a new Uint8Array with the combined length of arr1 and arr2
+  const concatenated = new Uint8Array(arr1.length + arr2.length);
 
-function concatAndCompareUint8Arrays(arr1: Uint8Array, arr2: Uint8Array, arr3: Uint8Array): boolean {
-    // Create a new Uint8Array with the combined length of arr1 and arr2
-    const concatenated = new Uint8Array(arr1.length + arr2.length);
-    
-    // Copy arr1 and arr2 into the new array
-    concatenated.set(arr1, 0);
-    concatenated.set(arr2, arr1.length);
-    
-    // Check if the lengths are the same
-    if (concatenated.length !== arr3.length) {
-        return false;
+  // Copy arr1 and arr2 into the new array
+  concatenated.set(arr1, 0);
+  concatenated.set(arr2, arr1.length);
+
+  // Check if the lengths are the same
+  if (concatenated.length !== arr3.length) {
+    return false;
+  }
+
+  // Compare each element
+  for (let i = 0; i < concatenated.length; i++) {
+    if (concatenated[i] !== arr3[i]) {
+      return false;
     }
-    
-    // Compare each element
-    for (let i = 0; i < concatenated.length; i++) {
-        if (concatenated[i] !== arr3[i]) {
-            return false;
-        }
-    }
-    
-    return true;
+  }
+
+  return true;
 }
