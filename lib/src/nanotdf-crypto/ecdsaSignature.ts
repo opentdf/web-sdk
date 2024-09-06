@@ -1,3 +1,5 @@
+import { AlgorithmName} from './../nanotdf-crypto/enums.js'
+
 /**
  * Computes an ECDSA signature for the given data using the provided private key.
  *
@@ -14,7 +16,7 @@ export async function computeECDSASig(
 ): Promise<ArrayBuffer> {
   const signature = await crypto.subtle.sign(
     {
-      name: 'ECDSA',
+      name: AlgorithmName.ECDSA,
       hash: { name: 'SHA-256' },
     },
     privateKey,
@@ -41,7 +43,7 @@ export async function verifyECDSASignature(
 ): Promise<boolean> {
   const isValid = await crypto.subtle.verify(
     {
-      name: 'ECDSA',
+      name: AlgorithmName.ECDSA,
       hash: { name: 'SHA-256' },
     },
     publicKey,
@@ -52,51 +54,49 @@ export async function verifyECDSASignature(
 }
 
 /**
- * Extracts the R and S components from an ECDSA signature in ASN.1 DER format.
+ * Extracts the r and s values from a given ECDSA signature.
  *
- * The signature is expected to be in the following format:
- * 0x30 | totalLength | 0x02 | r's length | r | 0x02 | s's length | s
- *
- * This function parses the signature and extracts the R and S components.
- *
- * @param {Uint8Array} signatureArray - The ECDSA signature in ASN.1 DER format.
- * @returns {{ r: Uint8Array, s: Uint8Array }} - An object containing the R and S components.
+ * @param {Uint8Array} signatureBytes - The raw ECDSA signature bytes.
+ * @returns {{ r: Uint8Array; s: Uint8Array }} An object containing the r and s values as Uint8Arrays.
+ * @throws {Error} If the validation of the signature fails.
  */
-export function extractRSValuesFromSignature(signatureArray: Uint8Array) {
-  // The signature is in ASN.1 DER format
-  // It should look like: 0x30 | totalLength | 0x02 | r's length | r | 0x02 | s's length | s
+export function extractRSValuesFromSignature(signatureBytes: Uint8Array): { r: Uint8Array; s: Uint8Array } {
+    // Split the raw signature into r and s values
+    const halfLength = Math.floor(signatureBytes.length / 2);
+    const rValue = signatureBytes.slice(0, halfLength);
+    const sValue = signatureBytes.slice(halfLength);
 
-  // Skip the first byte (0x30)
-  let index = 1;
+    // Correct validation
+    if (!concatAndCompareUint8Arrays(rValue, sValue, signatureBytes)) {
+        throw new Error('Invalid ECDSA signature');
+    }
 
-  // Skip total length
-  // Check if the length is encoded in (short form)1 or (long form)2 bytes, and skip accordingly
-  // Short form: The most significant bit is always 0, if most significant bit of the
-  //  current byte is set. It is long form.
-  // Long form: The most significant bit is always 1, The rest of this byte (the lower 7 bits)
-  // tells us how many additional bytes are used to encode the length.
-  index += signatureArray[index] & 0x80 ? (signatureArray[index] & 0x7f) + 1 : 1;
+    return {
+        r: rValue,
+        s: sValue
+    };
+}
 
-  // Skip 0x02
-  index++;
 
-  // Get r's length
-  const rLength = signatureArray[index];
-  index++;
-
-  // Extract r
-  const r = signatureArray.slice(index, index + rLength);
-  index += rLength;
-
-  // Skip 0x02
-  index++;
-
-  // Get s's length
-  const sLength = signatureArray[index];
-  index++;
-
-  // Extract s
-  const s = signatureArray.slice(index, index + sLength);
-
-  return { r, s };
+function concatAndCompareUint8Arrays(arr1: Uint8Array, arr2: Uint8Array, arr3: Uint8Array): boolean {
+    // Create a new Uint8Array with the combined length of arr1 and arr2
+    const concatenated = new Uint8Array(arr1.length + arr2.length);
+    
+    // Copy arr1 and arr2 into the new array
+    concatenated.set(arr1, 0);
+    concatenated.set(arr2, arr1.length);
+    
+    // Check if the lengths are the same
+    if (concatenated.length !== arr3.length) {
+        return false;
+    }
+    
+    // Compare each element
+    for (let i = 0; i < concatenated.length; i++) {
+        if (concatenated[i] !== arr3[i]) {
+            return false;
+        }
+    }
+    
+    return true;
 }
