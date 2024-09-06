@@ -123,7 +123,7 @@ export class NanoTDFClient extends Client {
    */
   async encrypt(
     data: string | TypedArray | ArrayBuffer,
-    options: EncryptOptions = defaultOptions
+    options?: EncryptOptions
   ): Promise<ArrayBuffer> {
     // For encrypt always generate the client ephemeralKeyPair
     const ephemeralKeyPair = await this.ephemeralKeyPair;
