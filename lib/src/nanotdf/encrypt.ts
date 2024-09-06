@@ -27,13 +27,15 @@ import { computeECDSASig, extractRSValuesFromSignature } from '../nanotdf-crypto
  * @param ephemeralKeyPair SDK ephemeral key pair to generate symmetric key
  * @param iv
  * @param data The data to be encrypted
+ * @param ecdsaBinding Flag to enable ECDSA binding
  */
 export default async function encrypt(
   policy: string,
   kasInfo: KasPublicKeyInfo,
   ephemeralKeyPair: CryptoKeyPair,
   iv: Uint8Array,
-  data: string | TypedArray | ArrayBuffer
+  data: string | TypedArray | ArrayBuffer,
+  ecdsaBinding: boolean = DefaultParams.ecdsaBinding
 ): Promise<ArrayBuffer> {
   // Generate a symmetric key.
   if (!ephemeralKeyPair.privateKey) {
@@ -65,7 +67,7 @@ export default async function encrypt(
   let policyBinding: Uint8Array;
 
   // Calculate the policy binding.
-  if (DefaultParams.ecdsaBinding) {
+  if (ecdsaBinding) {
     const curveName = await getCurveNameFromPrivateKey(ephemeralKeyPair.privateKey);
     const ecdsaPrivateKey = await convertECDHToECDSA(ephemeralKeyPair.privateKey, curveName);
     const ecdsaSignature = await computeECDSASig(ecdsaPrivateKey, new Uint8Array(encryptedPolicy));

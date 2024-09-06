@@ -19,8 +19,8 @@ const kasEndpoint = 'http://localhost:3000';
 
 describe('Local roundtrip Tests', () => {
   it('roundtrip string', async () => {
-    const client = new NanoTDFClient({ authProvider, kasEndpoint });
-    const cipherText = await client.encrypt('hello world');
+    const client = new NanoTDFClient({ authProvider, kasEndpoint });    
+    const cipherText = await client.encrypt('hello world', { ecdsaBinding: true });
     const client2 = new NanoTDFClient({ authProvider, kasEndpoint });
     const nanotdfParsed = NanoTDF.from(cipherText);
 
