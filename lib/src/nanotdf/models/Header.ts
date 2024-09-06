@@ -11,6 +11,7 @@ import CurveNameEnum from '../enum/CurveNameEnum.js';
 import { lengthOfPublicKey } from '../helpers/calculateByCurve.js';
 import DefaultParams from './DefaultParams.js';
 import { InvalidEphemeralKeyError } from '../../errors.js';
+import { rstrip } from '../../utils.js';
 
 /**
  * NanoTDF Header
@@ -95,7 +96,7 @@ export default class Header {
      * @link https://github.com/virtru/nanotdf/blob/master/spec/index.md#3312-kas
      * @link https://github.com/virtru/nanotdf/blob/master/spec/index.md#341-resource-locator
      */
-    const kas = new ResourceLocator(buff.subarray(offset));
+    const kas = ResourceLocator.parse(buff.subarray(offset));
     offset += kas.length;
 
     /**
@@ -313,7 +314,7 @@ export default class Header {
    */
   getKasRewrapUrl(): string {
     try {
-      return `${this.kas.getUrl()}/v2/rewrap`;
+      return `${rstrip(this.kas.url, '/')}/v2/rewrap`;
     } catch (e) {
       throw new Error(`Cannot construct KAS Rewrap URL: ${e.message}`);
     }

@@ -75,7 +75,6 @@ export async function fetchECKasPubKey(kasEndpoint: string): Promise<KasPublicKe
         `unable to load KAS public key from [${pkUrlV2}]. Received [${kasPubKeyResponse.status}:${kasPubKeyResponse.statusText}]`
       );
     }
-    console.log('falling back to v1 key');
     // most likely a server that does not implement v2 endpoint, so no key identifier
     const pkUrlV1 = `${kasEndpoint}/kas_public_key?algorithm=ec:secp256r1`;
     const r2 = await fetch(pkUrlV1);
@@ -85,7 +84,6 @@ export async function fetchECKasPubKey(kasEndpoint: string): Promise<KasPublicKe
       );
     }
     const pem = await r2.json();
-    console.log('pem returned', pem);
     return {
       key: pemToCryptoPublicKey(pem),
       publicKey: pem,
