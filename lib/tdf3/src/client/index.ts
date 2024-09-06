@@ -56,7 +56,9 @@ import { Binary } from '../binary.js';
 import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
 import { toCryptoKeyPair } from '../crypto/crypto-utils.js';
 import * as defaultCryptoService from '../crypto/index.js';
-import { AttributeSet, Policy, SplitKey } from '../models/index.js';
+import { type AttributeObject, AttributeSet, type Policy, SplitKey } from '../models/index.js';
+import { plan } from '../../../src/policy/granter.js';
+import { type Value } from '../../../src/policy/attributes.js';
 
 const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
 const HTML_BYTE_LIMIT = 100 * 1000 * 1000; // 100 MB, see WS-9476.
@@ -198,12 +200,22 @@ function asPolicy(scope: Scope): Policy {
     return scope.policyObject;
   }
   const policyId = scope.policyId ?? v4();
+  let dataAttributes: AttributeObject[];
+  if (scope.attributeValues) {
+    dataAttributes = scope.attributeValues
+      .filter(({ fqn }) => !!fqn)
+      .map(({ fqn }): AttributeObject => {
+        return { attribute: fqn! };
+      });
+  } else {
+    dataAttributes = (scope.attributes ?? []).map((attribute) =>
+      typeof attribute === 'string' ? { attribute } : attribute
+    );
+  }
   return {
     uuid: policyId,
     body: {
-      dataAttributes: (scope.attributes ?? []).map((attribute) =>
-        typeof attribute === 'string' ? { attribute } : attribute
-      ),
+      dataAttributes,
       dissem: scope.dissem ?? [],
     },
   };
@@ -346,7 +358,7 @@ export class Client {
    * Encrypt plaintext into TDF ciphertext. One of the core operations of the Virtru SDK.
    *
    * @param scope dissem and attributes for constructing the policy
-   * @param source nodeJS source object of unencrypted data
+   * @param source source object of unencrypted data
    * @param [asHtml] If we should wrap the TDF data in a self-opening HTML wrapper. Defaults to false
    * @param [metadata] Additional non-secret data to store with the TDF
    * @param [opts] Test only
@@ -376,6 +388,49 @@ export class Client {
     const policyObject = asPolicy(scope);
     validatePolicyObject(policyObject);
 
+    if (!splitPlan && scope.attributeValues?.length) {
+      const avs: Value[] = scope.attributeValues;
+      const fqns: string[] = scope.attributes
+        ? scope.attributes.map((attribute) =>
+            typeof attribute === 'string' ? attribute : attribute.attribute
+          )
+        : [];
+
+      if (!scope.attributes?.length) {
+        scope.attributes = avs.map(({ fqn }) => fqn);
+      }
+      if (
+        avs.length != scope.attributes?.length ||
+        !avs.map(({ fqn }) => fqn).every((a) => fqns.indexOf(a) >= 0)
+      ) {
+        throw new Error(
+          `Attribute mismatch between [${fqns}] and explicit values ${JSON.stringify(
+            avs.map(({ fqn }) => fqn)
+          )}`
+        );
+      }
+      const detailedPlan = plan(avs);
+      splitPlan = detailedPlan.map((kat) => {
+        const { kas, sid } = kat;
+        if (kas?.publicKey?.cached?.keys && !(kas.uri in this.kasKeys)) {
+          const keys = kas.publicKey.cached.keys.filter(
+            ({ alg }) => alg == 'KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048'
+          );
+          if (keys?.length) {
+            const key = keys[0];
+            this.kasKeys[kas.uri] = Promise.resolve({
+              key: pemToCryptoPublicKey(key.pem),
+              publicKey: key.pem,
+              url: kas.uri,
+              algorithm: 'rsa:2048',
+              kid: key.kid,
+            });
+          }
+        }
+        return { kas: kas.uri, sid };
+      });
+    }
+
     // TODO: Refactor underlying builder to remove some of this unnecessary config.
 
     const byteLimit = asHtml ? HTML_BYTE_LIMIT : GLOBAL_BYTE_LIMIT;
@@ -389,7 +444,7 @@ export class Client {
       attributeSet = s;
     }
 
-    const splits: SplitStep[] = splitPlan || [{ kas: this.kasEndpoint }];
+    const splits: SplitStep[] = splitPlan?.length ? splitPlan : [{ kas: this.kasEndpoint }];
     encryptionInformation.keyAccess = await Promise.all(
       splits.map(async ({ kas, sid }) => {
         if (!(kas in this.kasKeys)) {
