@@ -20,7 +20,7 @@ export type EncryptOptions = {
 
 // Define default options
 const defaultOptions: EncryptOptions = {
-  ecdsaBinding: false
+  ecdsaBinding: false,
 };
 
 /**
@@ -114,14 +114,17 @@ export class NanoTDFClient extends Client {
   }
 
   /**
-  * Encrypts the given data using the NanoTDF encryption scheme.
-  *
-  * @param {string | TypedArray | ArrayBuffer} data - The data to be encrypted.
-  * @param {EncryptOptions} [options=defaultOptions] - The encryption options (currently unused).
-  * @returns {Promise<ArrayBuffer>} A promise that resolves to the encrypted data as an ArrayBuffer.
-  * @throws {Error} If the initialization vector is not a number.
-  */
-  async encrypt(data: string | TypedArray | ArrayBuffer, options: EncryptOptions = defaultOptions): Promise<ArrayBuffer> {
+   * Encrypts the given data using the NanoTDF encryption scheme.
+   *
+   * @param {string | TypedArray | ArrayBuffer} data - The data to be encrypted.
+   * @param {EncryptOptions} [options=defaultOptions] - The encryption options (currently unused).
+   * @returns {Promise<ArrayBuffer>} A promise that resolves to the encrypted data as an ArrayBuffer.
+   * @throws {Error} If the initialization vector is not a number.
+   */
+  async encrypt(
+    data: string | TypedArray | ArrayBuffer,
+    options: EncryptOptions = defaultOptions
+  ): Promise<ArrayBuffer> {
     // For encrypt always generate the client ephemeralKeyPair
     const ephemeralKeyPair = await this.ephemeralKeyPair;
     const initializationVector = this.iv;
@@ -167,8 +170,14 @@ export class NanoTDFClient extends Client {
     payloadIV[11] = lengthAsUint24[0];
 
     const mergedOptions: EncryptOptions = { ...defaultOptions, ...options };
-    return encrypt(policyObjectAsStr, this.kasPubKey, ephemeralKeyPair,
-       payloadIV, data, mergedOptions.ecdsaBinding);
+    return encrypt(
+      policyObjectAsStr,
+      this.kasPubKey,
+      ephemeralKeyPair,
+      payloadIV,
+      data,
+      mergedOptions.ecdsaBinding
+    );
   }
 }
 
