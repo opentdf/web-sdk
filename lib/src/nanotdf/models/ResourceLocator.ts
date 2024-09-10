@@ -36,6 +36,15 @@ export default class ResourceLocator {
     readonly idType: ResourceLocatorIdentifierEnum = ResourceLocatorIdentifierEnum.None
   ) {}
 
+  /**
+   * Construct a new URL or URL + identifier pair, for use with NanoTDF envelopes.
+   * @param url The URL to encrypt; `http` and `https` schemes are supported
+   * @param identifier An optional identifier.
+   *    For KAS URLs, this is usually a public key identifier (kid). Limit 32 characters
+   * @returns a value representing the URL and identifier, if present.
+   *    This method throws an Error if the URL is invalid or of the wrong wrong schema,
+   *    or if the identifier is an unsupported value.
+   */
   static fromURL(url: string, identifier?: string): ResourceLocator {
     const [protocolStr, body] = url.split('://');
 
