@@ -8,6 +8,7 @@ import { PemKeyPair } from '../crypto/declarations.js';
 import { EntityObject } from '../../../src/tdf/EntityObject.js';
 import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 import { type Chunker } from '../utils/chunkers.js';
+import { AssertionConfig } from './AssertionConfig.js';
 
 export const DEFAULT_SEGMENT_SIZE: number = 1024 * 1024;
 export type Scope = {
@@ -47,6 +48,7 @@ export type EncryptParams = {
   keyMiddleware?: EncryptKeyMiddleware;
   splitPlan?: SplitStep[];
   streamMiddleware?: EncryptStreamMiddleware;
+  assertionConifgs?: AssertionConfig[];
 };
 
 // 'Readonly<EncryptParams>': scope, metadata, offline, windowSize, asHtml
@@ -74,6 +76,7 @@ class EncryptParamsBuilder {
       offline: false,
       windowSize: DEFAULT_SEGMENT_SIZE,
       asHtml: false,
+      assertionConifgs: [],
     }
   ) {
     this._params = { ...params };
@@ -471,6 +474,17 @@ class EncryptParamsBuilder {
    */
   build(): Readonly<EncryptParams> {
     return this._deepCopy(this._params as EncryptParams);
+  }
+
+  /**
+  * Sets the assertion configurations for the encryption parameters.
+  *
+  * @param {AssertionConfig[]} assertionConfigs - An array of assertion configurations to be set.
+  * @returns {EncryptParamsBuilder} The current instance of the EncryptParamsBuilder for method chaining.
+  */
+  withAssertions(assertionConfigs: AssertionConfig[]): EncryptParamsBuilder {
+    this._params.assertionConifgs = assertionConfigs;
+    return this;
   }
 }
 

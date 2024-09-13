@@ -5,6 +5,8 @@ import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
 import { EntityObject } from '../../src/tdf/EntityObject.js';
 import { pemToCryptoPublicKey, validateSecureUrl } from '../../src/utils.js';
 import { DecryptParams } from './client/builders.js';
+import { AssertionConfig, AssertionKey } from './client/AssertionConfig.js';
+import { Assertion, CreateAssertion } from './models/assertion.js';
 
 import {
   AttributeSet,
@@ -62,6 +64,8 @@ import PolicyObject from '../../src/tdf/PolicyObject.js';
 import { type CryptoService, type DecryptResult } from './crypto/declarations.js';
 import { CentralDirectory } from './utils/zip-reader.js';
 import { SymmetricCipher } from './ciphers/symmetric-cipher-base.js';
+
+
 
 // TODO: input validation on manifest JSON
 const DEFAULT_SEGMENT_SIZE = 1024 * 1024;
@@ -142,6 +146,7 @@ export type EncryptConfiguration = {
   progressHandler?: (bytesProcessed: number) => void;
   keyForEncryption: KeyInfo;
   keyForManifest: KeyInfo;
+  assertions?: AssertionConfig[];
 };
 
 export type DecryptConfiguration = {
@@ -423,10 +428,13 @@ async function _generateManifest(
     throw new Error('Missing encryption information');
   }
 
+  const assertions: Assertion[] = [];
+
   return {
     payload,
     // generate the manifest first, then insert integrity information into it
     encryptionInformation: encryptionInformationStr,
+    assertions: assertions,
   };
 }
 
@@ -544,6 +552,7 @@ export async function upsert({
 }
 
 export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedReadableStream> {
+  console.log('***KSR*** writeStream called with config:', cfg);
   if (!cfg.authProvider) {
     throw new IllegalArgumentError('No authorization middleware defined');
   }
@@ -665,6 +674,9 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
       }
 
       if (isDone && currentBuffer.length === 0) {
+
+        console.log('***KSR*** Finished writing payload, now writing manifest...');
+
         entryInfos[0].crcCounter = crcCounter;
         entryInfos[0].fileByteCount = fileByteCount;
         const payloadDataDescriptor = zipWriter.writeDataDescriptor(crcCounter, fileByteCount);
@@ -701,6 +713,45 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
 
         manifest.encryptionInformation.method.isStreamable = true;
 
+        const signedAssertions: Assertion[] = [];
+        
+        console.log('***KSR*** Assertions:', cfg.assertions);
+        if (cfg.assertions && cfg.assertions.length > 0) {
+          await Promise.all(cfg.assertions.map(async (assertionConfig) => {
+            
+            // Create assertion using the assertionConfig values
+            const assertion = CreateAssertion(
+              assertionConfig.id,
+              assertionConfig.type,
+              assertionConfig.scope,
+              assertionConfig.statement,
+              assertionConfig.appliesToState
+            );
+
+            const assertionHash = await assertion.hash();
+            const combinedHash = aggregateHash + assertionHash;
+            const encodedHash = base64.encode(combinedHash);
+
+            // log assertionHash and encodedHash for debugging
+            console.log('Assertion Hash:', assertionHash);
+            console.log('Encoded Hash:', encodedHash);
+
+            // Create assertion key using the signingKey from the config, or a default key
+            const assertionKey: AssertionKey = assertionConfig.signingKey ?? {
+              alg: 'HS256',
+              key: cfg.keyForEncryption.unwrappedKeyBinary
+            };
+
+            // Sign the assertion
+            await assertion.sign(assertionHash, encodedHash, assertionKey);
+
+            // Add signed assertion to the signedAssertions array
+            signedAssertions.push(assertion);
+          }));
+        }
+
+        manifest.assertions = signedAssertions;
+    
         // write the manifest
         const manifestBuffer = new TextEncoder().encode(JSON.stringify(manifest));
         controller.enqueue(manifestBuffer);

@@ -7,6 +7,7 @@ import { WebCryptoService } from '../../tdf3/index.js';
 import { Client } from '../../tdf3/src/index.js';
 import { SplitKey } from '../../tdf3/src/models/encryption-information.js';
 import { AesGcmCipher } from '../../tdf3/src/ciphers/aes-gcm-cipher.js';
+import { AssertionConfig } from '../../tdf3/src/client/AssertionConfig.js';
 const Mocks = getMocks();
 
 const authProvider = {
@@ -56,7 +57,27 @@ describe('encrypt decrypt test', async function () {
           controller.close();
         },
       }),
+      assertionConifgs: [
+        {
+          id: 'assertion1',
+          type: 'handling',
+          scope: 'tdo',
+          statement: {
+            format: 'json',
+            schema: 'https://example.com/schema',
+            value: '{"example": "value"}',
+          },
+          appliesToState: 'encrypted',
+          signingKey: {
+            alg: 'HS256',
+            key: 'your-signing-key-here',
+          },
+        },
+        // Add more assertion configs as needed
+      ] as AssertionConfig[],
     });
+
+    console.log('encryptedStream', encryptedStream);
 
     const decryptStream = await client.decrypt({
       eo,
@@ -66,8 +87,12 @@ describe('encrypt decrypt test', async function () {
       },
     });
 
+    console.log('***KSR*** manifest', decryptStream.manifest);
+
     const { value: decryptedText } = await decryptStream.stream.getReader().read();
 
+    console.log('***KSR*** manifest', decryptStream.manifest);
+    
     assert.equal(new TextDecoder().decode(decryptedText), expectedVal);
   });
 });
