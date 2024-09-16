@@ -1,9 +1,9 @@
 
-import { AssertionType, Scope, AppliesToState, Statement } from '../models/assertion.js';
+import { AssertionKeyAlg, AssertionType, Scope, AppliesToState, Statement } from '../models/assertion.js';
 
 export type AssertionKey = {
-  alg: string;
-  key: any; // CryptoKey
+  alg: AssertionKeyAlg;
+  key: any; // Replace AnyKey with the actual type of your key
 };
 
 // AssertionConfig is a shadow of Assertion with the addition of the signing key.
@@ -17,3 +17,8 @@ export type AssertionConfig = {
   signingKey?: AssertionKey;
 };
 
+// AssertionVerificationKeys represents the verification keys for assertions.
+export type AssertionVerificationKeys = {
+  DefaultKey?: AssertionKey;
+  Keys: Record<string, AssertionKey>;
+};

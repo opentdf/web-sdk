@@ -8,7 +8,7 @@ import { PemKeyPair } from '../crypto/declarations.js';
 import { EntityObject } from '../../../src/tdf/EntityObject.js';
 import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 import { type Chunker } from '../utils/chunkers.js';
-import { AssertionConfig } from './AssertionConfig.js';
+import { AssertionConfig, AssertionVerificationKeys } from './AssertionConfig.js';
 
 export const DEFAULT_SEGMENT_SIZE: number = 1024 * 1024;
 export type Scope = {
@@ -506,6 +506,7 @@ export type DecryptParams = {
   source: DecryptSource;
   keyMiddleware?: DecryptKeyMiddleware;
   streamMiddleware?: DecryptStreamMiddleware;
+  assertionVerificationKeys?: AssertionVerificationKeys;
 };
 
 /**

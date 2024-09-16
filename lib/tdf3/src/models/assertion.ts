@@ -2,6 +2,7 @@ import { canonicalizeEx } from 'json-canonicalize';
 import { SignJWT, jwtVerify } from 'jose';
 import { AssertionKey } from './../client/AssertionConfig.js';
 
+export type AssertionKeyAlg = 'RS256' | 'HS256';
 export type AssertionType = 'handling' | 'other';
 export type Scope = 'tdo' | 'payload';
 export type AppliesToState = 'encrypted' | 'unencrypted';
@@ -42,7 +43,8 @@ export type Assertion = {
  * @returns {Promise<string>} A promise that resolves to the hexadecimal string representation of the hash.
  */
 export async function hash(this: Assertion): Promise<string> {
-  const result = canonicalizeEx(this, { exclude: ['binding', 'hash'] });
+  const result = canonicalizeEx(this, { exclude: ['binding', 'hash', 'sign', 'verify'] });
+
   const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(result));
   return Buffer.from(hash).toString('hex');
 }
@@ -57,7 +59,7 @@ export async function hash(this: Assertion): Promise<string> {
  */
 export async function sign(this: Assertion, assertionHash: string, sig: string, key: AssertionKey): Promise<void> {
   const payload: any = {};
-  payload[kAssertionHash] = hash;
+  payload[kAssertionHash] = assertionHash;
   payload[kAssertionSignature] = sig;
 
   try {
@@ -107,7 +109,8 @@ export function CreateAssertion(
   type: AssertionType,
   scope: Scope,
   statement: Statement,
-  appliesToState?: AppliesToState
+  appliesToState?: AppliesToState,
+  binding?: Binding
 ): Assertion {
   return {
     id,
@@ -115,7 +118,7 @@ export function CreateAssertion(
     scope,
     appliesToState,
     statement,
-    binding: { method: '', signature: '' },
+    binding: { method: binding?.method ?? '', signature: binding?.signature ?? '' },
     hash,
     sign,
     verify

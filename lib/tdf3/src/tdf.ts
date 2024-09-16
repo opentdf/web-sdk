@@ -5,7 +5,7 @@ import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
 import { EntityObject } from '../../src/tdf/EntityObject.js';
 import { pemToCryptoPublicKey, validateSecureUrl } from '../../src/utils.js';
 import { DecryptParams } from './client/builders.js';
-import { AssertionConfig, AssertionKey } from './client/AssertionConfig.js';
+import { AssertionConfig, AssertionKey, AssertionVerificationKeys } from './client/AssertionConfig.js';
 import { Assertion, CreateAssertion } from './models/assertion.js';
 
 import {
@@ -162,6 +162,7 @@ export type DecryptConfiguration = {
   keyMiddleware: KeyMiddleware;
   progressHandler?: (bytesProcessed: number) => void;
   fileStreamServiceWorker?: string;
+  assertionVerificationKeys?: AssertionVerificationKeys;
 };
 
 export type UpsertConfiguration = {
@@ -552,7 +553,6 @@ export async function upsert({
 }
 
 export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedReadableStream> {
-  console.log('***KSR*** writeStream called with config:', cfg);
   if (!cfg.authProvider) {
     throw new IllegalArgumentError('No authorization middleware defined');
   }
@@ -675,8 +675,6 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
 
       if (isDone && currentBuffer.length === 0) {
 
-        console.log('***KSR*** Finished writing payload, now writing manifest...');
-
         entryInfos[0].crcCounter = crcCounter;
         entryInfos[0].fileByteCount = fileByteCount;
         const payloadDataDescriptor = zipWriter.writeDataDescriptor(crcCounter, fileByteCount);
@@ -714,8 +712,6 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
         manifest.encryptionInformation.method.isStreamable = true;
 
         const signedAssertions: Assertion[] = [];
-        
-        console.log('***KSR*** Assertions:', cfg.assertions);
         if (cfg.assertions && cfg.assertions.length > 0) {
           await Promise.all(cfg.assertions.map(async (assertionConfig) => {
             
@@ -732,14 +728,10 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
             const combinedHash = aggregateHash + assertionHash;
             const encodedHash = base64.encode(combinedHash);
 
-            // log assertionHash and encodedHash for debugging
-            console.log('Assertion Hash:', assertionHash);
-            console.log('Encoded Hash:', encodedHash);
-
             // Create assertion key using the signingKey from the config, or a default key
             const assertionKey: AssertionKey = assertionConfig.signingKey ?? {
               alg: 'HS256',
-              key: cfg.keyForEncryption.unwrappedKeyBinary
+              key: new Uint8Array(cfg.keyForEncryption.unwrappedKeyBinary.asArrayBuffer())
             };
 
             // Sign the assertion
@@ -1150,10 +1142,11 @@ export async function readStream(cfg: DecryptConfiguration) {
   const encryptedSegmentSizeDefault = defaultSegmentSize || DEFAULT_SEGMENT_SIZE;
 
   // check the combined string of hashes
+  const aggregateHash = segments.map(({ hash }) => base64.decode(hash)).join('');
   const integrityAlgorithm = rootSignature.alg;
   const payloadSigStr = await getSignature(
     keyForDecryption,
-    Binary.fromString(segments.map((segment) => base64.decode(segment.hash)).join('')),
+    Binary.fromString(aggregateHash),
     integrityAlgorithm,
     cfg.cryptoService
   );
@@ -1163,6 +1156,49 @@ export async function readStream(cfg: DecryptConfiguration) {
     base64.encode(payloadSigStr)
   ) {
     throw new ManifestIntegrityError('Failed integrity check on root signature');
+  }
+
+  // // Validate assertions
+  const assertions = manifest.assertions || [];
+  for (const assertion of assertions) {
+    // Create a default assertion key
+    let assertionKey: AssertionKey = {
+      alg: 'HS256',
+      key: new Uint8Array(reconstructedKeyBinary.asArrayBuffer())
+    };
+
+    if (cfg.assertionVerificationKeys) {
+      const foundKey = cfg.assertionVerificationKeys.Keys[assertion.id];
+      if (foundKey) {
+        assertionKey = foundKey
+      }
+    }
+
+    // create assertion object from the assertion
+    const assertionObj = CreateAssertion(
+      assertion.id,
+      assertion.type,
+      assertion.scope,
+      assertion.statement,
+      assertion.appliesToState,
+      assertion.binding);
+
+    const [assertionHash, assertionSig] = await assertionObj.verify(assertionKey);
+
+    // Get the hash of the assertion
+    const hashOfAssertion = await assertionObj.hash();
+    const combinedHash = aggregateHash + hashOfAssertion;
+    const encodedHash = base64.encode(combinedHash);
+
+    // check if assertionHash is same as hashOfAssertion
+    if (hashOfAssertion !== assertionHash) {
+      throw new ManifestIntegrityError('Assertion hash mismatch');
+    }
+
+    // check if assertionSig is same as encodedHash
+    if (assertionSig !== encodedHash) {
+      throw new ManifestIntegrityError('Failed integrity check on assertion signature');
+    }
   }
 
   let mapOfRequestsOffset = 0;
