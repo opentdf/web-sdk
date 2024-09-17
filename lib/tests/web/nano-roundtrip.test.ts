@@ -18,16 +18,19 @@ const authProvider = <AuthProvider>{
 const kasEndpoint = 'http://localhost:3000';
 
 describe('Local roundtrip Tests', () => {
-  it('roundtrip string', async () => {
-    const client = new NanoTDFClient({ authProvider, kasEndpoint });
-    const cipherText = await client.encrypt('hello world');
-    const client2 = new NanoTDFClient({ authProvider, kasEndpoint });
-    const nanotdfParsed = NanoTDF.from(cipherText);
+  for (const ecdsaBinding of [false, true]) {
+    const bindingName = ecdsaBinding ? 'ecdsa' : 'gmac';
+    it(`roundtrip string (${bindingName} policy binding)`, async () => {
+      const client = new NanoTDFClient({ authProvider, kasEndpoint });
+      const cipherText = await client.encrypt('hello world', { ecdsaBinding });
+      const client2 = new NanoTDFClient({ authProvider, kasEndpoint });
+      const nanotdfParsed = NanoTDF.from(cipherText);
 
-    expect(nanotdfParsed.header.kas.url).to.equal(kasEndpoint);
-    expect(nanotdfParsed.header.kas.identifier).to.equal('e1');
+      expect(nanotdfParsed.header.kas.url).to.equal(kasEndpoint);
+      expect(nanotdfParsed.header.kas.identifier).to.equal('e1');
 
-    const actual = await client2.decrypt(cipherText);
-    expect(new TextDecoder().decode(actual)).to.be.equal('hello world');
-  });
+      const actual = await client2.decrypt(cipherText);
+      expect(new TextDecoder().decode(actual)).to.be.equal('hello world');
+    });
+  }
 });
