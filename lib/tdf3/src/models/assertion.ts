@@ -57,15 +57,18 @@ export async function hash(this: Assertion): Promise<string> {
  * @param {AssertionKey} key - The key used for signing.
  * @returns {Promise<void>} A promise that resolves when the signing is complete.
  */
-export async function sign(this: Assertion, assertionHash: string, sig: string, key: AssertionKey): Promise<void> {
+export async function sign(
+  this: Assertion,
+  assertionHash: string,
+  sig: string,
+  key: AssertionKey
+): Promise<void> {
   const payload: any = {};
   payload[kAssertionHash] = assertionHash;
   payload[kAssertionSignature] = sig;
 
   try {
-    const token = await new SignJWT(payload)
-      .setProtectedHeader({ alg: key.alg })
-      .sign(key.key);
+    const token = await new SignJWT(payload).setProtectedHeader({ alg: key.alg }).sign(key.key);
 
     this.binding.method = 'jws';
     this.binding.signature = token;
@@ -121,6 +124,6 @@ export function CreateAssertion(
     binding: { method: binding?.method ?? '', signature: binding?.signature ?? '' },
     hash,
     sign,
-    verify
+    verify,
   };
 }

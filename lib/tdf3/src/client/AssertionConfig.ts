@@ -1,5 +1,10 @@
-
-import { AssertionKeyAlg, AssertionType, Scope, AppliesToState, Statement } from '../models/assertion.js';
+import {
+  AssertionKeyAlg,
+  AssertionType,
+  Scope,
+  AppliesToState,
+  Statement,
+} from '../models/assertion.js';
 
 export type AssertionKey = {
   alg: AssertionKeyAlg;

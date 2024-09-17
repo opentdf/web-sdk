@@ -477,11 +477,11 @@ class EncryptParamsBuilder {
   }
 
   /**
-  * Sets the assertion configurations for the encryption parameters.
-  *
-  * @param {AssertionConfig[]} assertionConfigs - An array of assertion configurations to be set.
-  * @returns {EncryptParamsBuilder} The current instance of the EncryptParamsBuilder for method chaining.
-  */
+   * Sets the assertion configurations for the encryption parameters.
+   *
+   * @param {AssertionConfig[]} assertionConfigs - An array of assertion configurations to be set.
+   * @returns {EncryptParamsBuilder} The current instance of the EncryptParamsBuilder for method chaining.
+   */
   withAssertions(assertionConfigs: AssertionConfig[]): EncryptParamsBuilder {
     this._params.assertionConifgs = assertionConfigs;
     return this;

@@ -7,7 +7,10 @@ import { WebCryptoService } from '../../tdf3/index.js';
 import { Client } from '../../tdf3/src/index.js';
 import { SplitKey } from '../../tdf3/src/models/encryption-information.js';
 import { AesGcmCipher } from '../../tdf3/src/ciphers/aes-gcm-cipher.js';
-import { AssertionConfig, AssertionVerificationKeys } from '../../tdf3/src/client/AssertionConfig.js';
+import {
+  AssertionConfig,
+  AssertionVerificationKeys,
+} from '../../tdf3/src/client/AssertionConfig.js';
 const Mocks = getMocks();
 
 const authProvider = {
@@ -43,13 +46,13 @@ describe('encrypt decrypt test', async function () {
     });
     const keyPair = await crypto.subtle.generateKey(
       {
-        name: "RSASSA-PKCS1-v1_5",
+        name: 'RSASSA-PKCS1-v1_5',
         modulusLength: 2048,
         publicExponent: new Uint8Array([1, 0, 1]),
-        hash: { name: "SHA-256" },
+        hash: { name: 'SHA-256' },
       },
       true,
-      ["sign", "verify"]
+      ['sign', 'verify']
     );
     const publicKey = keyPair.publicKey;
     console.log('publicKey', publicKey);
@@ -57,8 +60,8 @@ describe('encrypt decrypt test', async function () {
     const scope = Mocks.getScope();
 
     // Generate a random HS256 key
-    const hs256Key = new Uint8Array(32); 
-    crypto.getRandomValues(hs256Key); 
+    const hs256Key = new Uint8Array(32);
+    crypto.getRandomValues(hs256Key);
 
     const encryptedStream = await client.encrypt({
       eo,
@@ -120,18 +123,17 @@ describe('encrypt decrypt test', async function () {
 
     console.log('encryptedStream', encryptedStream);
 
-
     // Create AssertionVerificationKeys for verification
     const assertionVerificationKeys: AssertionVerificationKeys = {
       Keys: {
-        'assertion1': {
-            alg: 'HS256',
-            key: hs256Key,
-          },
-        'assertion2': {
-            alg: 'RS256',
-            key: publicKey,
-          },
+        assertion1: {
+          alg: 'HS256',
+          key: hs256Key,
+        },
+        assertion2: {
+          alg: 'RS256',
+          key: publicKey,
+        },
       },
     };
 
