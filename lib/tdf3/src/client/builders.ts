@@ -48,7 +48,7 @@ export type EncryptParams = {
   keyMiddleware?: EncryptKeyMiddleware;
   splitPlan?: SplitStep[];
   streamMiddleware?: EncryptStreamMiddleware;
-  assertionConifgs?: AssertionConfig[];
+  assertionConfigs?: AssertionConfig[];
 };
 
 // 'Readonly<EncryptParams>': scope, metadata, offline, windowSize, asHtml
@@ -76,7 +76,7 @@ class EncryptParamsBuilder {
       offline: false,
       windowSize: DEFAULT_SEGMENT_SIZE,
       asHtml: false,
-      assertionConifgs: [],
+      assertionConfigs: [],
     }
   ) {
     this._params = { ...params };
@@ -483,7 +483,7 @@ class EncryptParamsBuilder {
    * @returns {EncryptParamsBuilder} The current instance of the EncryptParamsBuilder for method chaining.
    */
   withAssertions(assertionConfigs: AssertionConfig[]): EncryptParamsBuilder {
-    this._params.assertionConifgs = assertionConfigs;
+    this._params.assertionConfigs = assertionConfigs;
     return this;
   }
 }

@@ -148,7 +148,7 @@ export type EncryptConfiguration = {
   progressHandler?: (bytesProcessed: number) => void;
   keyForEncryption: KeyInfo;
   keyForManifest: KeyInfo;
-  assertions?: AssertionConfig[];
+  assertionConfigs?: AssertionConfig[];
 };
 
 export type DecryptConfiguration = {
@@ -713,9 +713,9 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
         manifest.encryptionInformation.method.isStreamable = true;
 
         const signedAssertions: Assertion[] = [];
-        if (cfg.assertions && cfg.assertions.length > 0) {
+        if (cfg.assertionConfigs && cfg.assertionConfigs.length > 0) {
           await Promise.all(
-            cfg.assertions.map(async (assertionConfig) => {
+            cfg.assertionConfigs.map(async (assertionConfig) => {
               // Create assertion using the assertionConfig values
               const assertion = CreateAssertion(
                 assertionConfig.id,

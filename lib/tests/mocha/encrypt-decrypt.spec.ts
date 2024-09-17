@@ -75,7 +75,7 @@ describe('encrypt decrypt test', async function () {
           controller.close();
         },
       }),
-      assertionConifgs: [
+      assertionConfigs: [
         {
           id: 'assertion1',
           type: 'handling',

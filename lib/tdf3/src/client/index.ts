@@ -57,7 +57,6 @@ import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
 import { toCryptoKeyPair } from '../crypto/crypto-utils.js';
 import * as defaultCryptoService from '../crypto/index.js';
 import { AttributeSet, Policy, SplitKey } from '../models/index.js';
-import { AssertionConfig } from './AssertionConfig.js';
 
 const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
 const HTML_BYTE_LIMIT = 100 * 1000 * 1000; // 100 MB, see WS-9476.
@@ -371,7 +370,7 @@ export class Client {
     keyMiddleware = defaultKeyMiddleware,
     streamMiddleware = async (stream: DecoratedReadableStream) => stream,
     splitPlan,
-    assertionConifgs = [] as AssertionConfig[],
+    assertionConfigs = [],
   }: EncryptParams): Promise<DecoratedReadableStream> {
     const dpopKeys = await this.dpopKeys;
 
@@ -428,7 +427,7 @@ export class Client {
       progressHandler: this.clientConfig.progressHandler,
       keyForEncryption,
       keyForManifest,
-      assertions: assertionConifgs,
+      assertionConfigs,
     };
 
     const stream = await (streamMiddleware as EncryptStreamMiddleware)(await writeStream(ecfg));
