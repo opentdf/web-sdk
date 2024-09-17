@@ -104,7 +104,7 @@ export default async function encrypt(
   const header = new Header(
     DefaultParams.magicNumberVersion,
     kasResourceLocator,
-    DefaultParams.ecdsaBinding,
+    ecdsaBinding,
     DefaultParams.signatureCurveName,
     DefaultParams.signature,
     DefaultParams.signatureCurveName,
