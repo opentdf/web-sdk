@@ -31,7 +31,9 @@ type LoggedAuthProvider = AuthProvider & {
   requestLog: HttpRequest[];
 };
 
-const containerTypes = ['tdf3', 'nano', 'dataset'] as const;
+const bindingTypes = ['ecdsa', 'gmac'];
+
+const containerTypes = ['tdf3', 'nano', 'dataset', 'ztdf'];
 
 const parseJwt = (jwt: string, field = 1) => {
   return JSON.parse(Buffer.from(jwt.split('.')[field], 'base64').toString());
@@ -219,35 +221,13 @@ export const handleArgs = (args: string[]) => {
       })
       .implies('exchangeToken', 'clientId')
 
-      .option('containerType', {
-        group: 'TDF Settings',
-        alias: 't',
-        choices: containerTypes,
-        description: 'Container format',
-        default: 'nano',
-      })
-
-      .option('userId', {
-        group: 'TDF Settings',
-        type: 'string',
-        description: 'Owner email address',
-      })
-
       // Examples
       .example('$0 --auth ClientID123:Cli3nt$ecret', '# OIDC client credentials')
 
       .example('$0 --clientId ClientID123 --clientSecret Cli3nt$ecret', '# OIDC client credentials')
 
-      // POLICY
+      // Policy, encryption, and container options
       .options({
-        usersWithAccess: {
-          alias: 'users-with-access',
-          group: 'Encrypt Options',
-          desc: 'Add users to the policy',
-          type: 'string',
-          default: '',
-          validate: (users: string) => users.split(','),
-        },
         attributes: {
           group: 'Encrypt Options',
           desc: 'Data attributes for the policy',
@@ -255,11 +235,37 @@ export const handleArgs = (args: string[]) => {
           default: '',
           validate: (attributes: string) => attributes.split(','),
         },
+        containerType: {
+          group: 'Encrypt Options',
+          alias: 't',
+          choices: containerTypes,
+          description: 'Container format',
+          default: 'nano',
+        },
+        policyBinding: {
+          group: 'Encrypt Options',
+          choices: bindingTypes,
+          description: 'Policy Binding Type (nano only)',
+          default: 'gmac',
+        },
         mimeType: {
           group: 'Encrypt Options',
           desc: 'Mime type for the plain text file (only supported for ztdf)',
           type: 'string',
           default: '',
+        },
+        userId: {
+          group: 'Encrypt Options',
+          type: 'string',
+          description: 'Owner email address',
+        },
+        usersWithAccess: {
+          alias: 'users-with-access',
+          group: 'Encrypt Options',
+          desc: 'Add users to the policy',
+          type: 'string',
+          default: '',
+          validate: (users: string) => users.split(','),
         },
       })
 
@@ -299,7 +305,7 @@ export const handleArgs = (args: string[]) => {
           log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
 
           const kasEndpoint = argv.kasEndpoint;
-          if (argv.containerType === 'tdf3') {
+          if (argv.containerType === 'tdf3' || argv.containerType == 'ztdf') {
             log('DEBUG', `TDF3 Client`);
             const client = new TDF3Client({
               allowedKases,
@@ -389,7 +395,7 @@ export const handleArgs = (args: string[]) => {
           const ignoreAllowList = !!argv.ignoreAllowList;
           const allowedKases = argv.allowList?.split(',');
 
-          if ('tdf3' === argv.containerType) {
+          if ('tdf3' === argv.containerType || 'ztdf' === argv.containerType) {
             log('DEBUG', `TDF3 Client`);
             const client = new TDF3Client({
               allowedKases,
@@ -411,6 +417,7 @@ export const handleArgs = (args: string[]) => {
             }
           } else {
             const dpopEnabled = !!argv.dpop;
+            const ecdsaBinding = argv.policyBinding.toLowerCase() == 'ecdsa';
             const client =
               argv.containerType === 'nano'
                 ? new NanoTDFClient({ allowedKases, authProvider, dpopEnabled, kasEndpoint })
@@ -425,7 +432,7 @@ export const handleArgs = (args: string[]) => {
             addParams(client, argv);
 
             const buffer = await processDataIn(argv.file as string);
-            const cyphertext = await client.encrypt(buffer);
+            const cyphertext = await client.encrypt(buffer, { ecdsaBinding });
 
             log('DEBUG', `Handle cyphertext output ${JSON.stringify(cyphertext)}`);
             if (argv.output) {
