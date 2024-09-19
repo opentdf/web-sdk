@@ -8,6 +8,7 @@ import { PemKeyPair } from '../crypto/declarations.js';
 import { EntityObject } from '../../../src/tdf/EntityObject.js';
 import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 import { type Chunker } from '../utils/chunkers.js';
+import { Value } from '../../../src/policy/attributes.js';
 
 export const DEFAULT_SEGMENT_SIZE: number = 1024 * 1024;
 export type Scope = {
@@ -15,6 +16,7 @@ export type Scope = {
   policyId?: string;
   policyObject?: Policy;
   attributes?: (string | AttributeObject)[];
+  attributeValues?: Value[];
 };
 
 export type EncryptKeyMiddleware = (...args: unknown[]) => Promise<{

@@ -5,7 +5,7 @@ import { IncomingMessage, RequestListener, createServer } from 'node:http';
 
 import { base64 } from '../src/encodings/index.js';
 import { decryptWithPrivateKey, encryptWithPublicKey } from '../tdf3/src/crypto/index.js';
-import getMocks from './mocks/index.js';
+import { getMocks } from './mocks/index.js';
 import { Header, getHkdfSalt } from '../src/nanotdf/index.js';
 import { keyAgreement } from '../src/nanotdf-crypto/keyAgreement.js';
 import generateRandomNumber from '../src/nanotdf-crypto/generateRandomNumber.js';
