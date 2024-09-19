@@ -30,7 +30,12 @@ import {
   withHeaders,
 } from '../../../src/auth/auth.js';
 import EAS from '../../../src/auth/Eas.js';
-import { cryptoPublicToPem, pemToCryptoPublicKey, validateSecureUrl } from '../../../src/utils.js';
+import {
+  cryptoPublicToPem,
+  pemToCryptoPublicKey,
+  rstrip,
+  validateSecureUrl,
+} from '../../../src/utils.js';
 
 import {
   EncryptParams,
@@ -58,6 +63,7 @@ import { toCryptoKeyPair } from '../crypto/crypto-utils.js';
 import * as defaultCryptoService from '../crypto/index.js';
 import { type AttributeObject, AttributeSet, type Policy, SplitKey } from '../models/index.js';
 import { plan } from '../../../src/policy/granter.js';
+import { attributeFQNsAsValues } from '../../../src/policy/api.js';
 import { type Value } from '../../../src/policy/attributes.js';
 
 const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
@@ -133,6 +139,11 @@ export interface ClientConfig {
   dpopEnabled?: boolean;
   dpopKeys?: Promise<CryptoKeyPair>;
   kasEndpoint?: string;
+  /**
+   * Service to use to look up ABAC. Used during autoconfigure. Defaults to
+   * kasEndpoint without the trailing `/kas` path segment, if present.
+   */
+  policyEndpoint?: string;
   /**
    * List of allowed KASes to connect to for rewrap requests.
    * Defaults to `[kasEndpoint]`.
@@ -230,6 +241,12 @@ export class Client {
   readonly kasEndpoint: string;
 
   /**
+   * Policy service endpoint, if present.
+   * Required for autoconfiguration with ABAC.
+   */
+  readonly policyEndpoint: string;
+
+  /**
    * List of allowed KASes to connect to for rewrap requests.
    * Defaults to `[this.kasEndpoint]`.
    */
@@ -283,6 +300,12 @@ export class Client {
         throw new Error('KAS definition not found');
       }
       this.kasEndpoint = clientConfig.keyRewrapEndpoint.replace(/\/rewrap$/, '');
+    }
+    this.kasEndpoint = rstrip(this.kasEndpoint, '/');
+    if (clientConfig.policyEndpoint) {
+      this.policyEndpoint = rstrip(clientConfig.policyEndpoint, '/');
+    } else if (this.kasEndpoint.endsWith('/kas')) {
+      this.policyEndpoint = this.kasEndpoint.slice(0, -4);
     }
 
     const kasOrigin = new URL(this.kasEndpoint).origin;
@@ -360,6 +383,7 @@ export class Client {
    * @param scope dissem and attributes for constructing the policy
    * @param source source object of unencrypted data
    * @param [asHtml] If we should wrap the TDF data in a self-opening HTML wrapper. Defaults to false
+   * @param [autoconfigure] If we should use scope.attributes to configure KAOs
    * @param [metadata] Additional non-secret data to store with the TDF
    * @param [opts] Test only
    * @param [mimeType] mime type of source. defaults to `unknown`
@@ -372,6 +396,7 @@ export class Client {
    */
   async encrypt({
     scope = { attributes: [], dissem: [] },
+    autoconfigure,
     source,
     asHtml = false,
     metadata,
@@ -388,16 +413,29 @@ export class Client {
     const policyObject = asPolicy(scope);
     validatePolicyObject(policyObject);
 
-    if (!splitPlan && scope.attributeValues?.length) {
-      const avs: Value[] = scope.attributeValues;
+    if (!splitPlan && autoconfigure) {
+      let avs: Value[] = scope.attributeValues ?? [];
       const fqns: string[] = scope.attributes
         ? scope.attributes.map((attribute) =>
             typeof attribute === 'string' ? attribute : attribute.attribute
           )
         : [];
 
-      if (!scope.attributes?.length) {
-        scope.attributes = avs.map(({ fqn }) => fqn);
+      if (!avs.length && fqns.length) {
+        // Hydrate avs from policy endpoint givnen the fqns
+        if (!this.policyEndpoint) {
+          throw new Error('policyEndpoint not set in TDF3 Client constructor');
+        }
+        avs = await attributeFQNsAsValues(
+          this.policyEndpoint,
+          this.authProvider as AuthProvider,
+          ...fqns
+        );
+      } else if (scope.attributeValues) {
+        avs = scope.attributeValues;
+        if (!scope.attributes) {
+          scope.attributes = avs.map(({ fqn }) => fqn);
+        }
       }
       if (
         avs.length != scope.attributes?.length ||

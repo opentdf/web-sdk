@@ -36,6 +36,7 @@ export type SplitStep = {
 export type EncryptParams = {
   source: ReadableStream<Uint8Array>;
   opts?: { keypair: PemKeyPair };
+  autoconfigure?: boolean;
   scope?: Scope;
   metadata?: Metadata;
   keypair?: CryptoKeyPair;
@@ -130,6 +131,16 @@ class EncryptParamsBuilder {
    */
   withStringSource(string: string): EncryptParamsBuilder {
     this.setStringSource(string);
+    return this;
+  }
+
+  /**
+   * If set, the encrypt method will use the KAS Grants from the
+   * policy service to configure the Key Access Object array, instead
+   * of the client object's default `kasEndpoint`.
+   */
+  withAutoconfigure(enabled: boolean = true) {
+    this._params.autoconfigure = enabled;
     return this;
   }
 

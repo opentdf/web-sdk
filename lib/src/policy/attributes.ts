@@ -89,6 +89,10 @@ export type Attribute = {
   metadata?: Metadata;
 };
 
+// This is not currently needed by the client, but may be returned.
+// Setting it to unknown to allow it to be ignored for now.
+export type SubjectMapping = unknown;
+
 export type Value = {
   id?: string;
   attribute?: Attribute;
@@ -98,6 +102,16 @@ export type Value = {
   fqn: string;
   /** active by default until explicitly deactivated */
   active?: boolean;
+  subjectMappings?: SubjectMapping[];
   /** Common metadata */
   metadata?: Metadata;
+};
+
+export type AttributeAndValue = {
+  attribute: Attribute;
+  value: Value;
+};
+
+export type GetAttributeValuesByFqnsResponse = {
+  fqnAttributeValues: Record<string, AttributeAndValue>;
 };
