@@ -182,58 +182,66 @@ export const handleArgs = (args: string[]) => {
       // AUTH OPTIONS
       .option('kasEndpoint', {
         demandOption: true,
-        group: 'KAS Configuration',
+        group: 'Server Endpoints:',
         type: 'string',
         description: 'URL to non-default KAS instance (https://mykas.net)',
       })
       .option('oidcEndpoint', {
         demandOption: true,
-        group: 'OIDC IdP Endpoint:',
+        group: 'Server Endpoints:',
         type: 'string',
         description: 'URL to non-default OIDC IdP (https://myidp.net)',
       })
       .option('policyEndpoint', {
-        group: 'Attribute and key grant service endpoint',
+        group: 'Server Endpoints:',
         type: 'string',
-        description: 'URL to allow encrypt configuration by attribute',
+        description: 'Attribute and key grant service endpoint',
       })
       .option('allowList', {
-        group: 'KAS Configuration',
+        group: 'Security:',
         desc: 'allowed KAS origins, comma separated; defaults to [kasEndpoint]',
         type: 'string',
         validate: (attributes: string) => attributes.split(','),
       })
-      .boolean('ignoreAllowList')
-      .option('auth', {
-        group: 'Authentication:',
-        type: 'string',
-        description: 'Authentication string (<clientId>:<clientSecret>)',
+      .option('ignoreAllowList', {
+        group: 'Security:',
+        desc: 'disable KAS allowlist feature for decrypt',
+        type: 'boolean',
       })
-      .boolean('dpop')
+      .option('auth', {
+        group: 'OAuth and OIDC:',
+        type: 'string',
+        description: 'Combined OAuth Client Credentials (<clientId>:<clientSecret>)',
+      })
+      .option('dpop', {
+        group: 'Security:',
+        desc: 'Use DPoP for token binding',
+        type: 'boolean',
+      })
       .implies('auth', '--no-clientId')
       .implies('auth', '--no-clientSecret')
 
       .option('clientId', {
-        group: 'OIDC client credentials',
+        group: 'OAuth and OIDC:',
         alias: 'cid',
         type: 'string',
-        description: 'IdP-issued Client ID',
+        description: 'OAuth Client Credentials: IdP-issued Client ID',
       })
       .implies('clientId', 'clientSecret')
 
       .option('clientSecret', {
-        group: 'OIDC client credentials',
+        group: 'OAuth and OIDC:',
         alias: 'cs',
         type: 'string',
-        description: 'IdP-issued Client Secret',
+        description: 'OAuth Client Credentials: IdP-issued Client Secret',
       })
       .implies('clientSecret', 'clientId')
 
       .option('exchangeToken', {
-        group: 'Token from trusted external IdP to exchange for Virtru auth',
+        group: 'OAuth and OIDC:',
         alias: 'et',
         type: 'string',
-        description: 'Token issued by trusted external IdP',
+        description: 'OAuth Token Exchange: Token issued by trusted external IdP',
       })
       .implies('exchangeToken', 'clientId')
 
@@ -245,45 +253,45 @@ export const handleArgs = (args: string[]) => {
       // Policy, encryption, and container options
       .options({
         attributes: {
-          group: 'Encrypt Options',
+          group: 'Encrypt Options:',
           desc: 'Data attributes for the policy',
           type: 'string',
           default: '',
           validate: (attributes: string) => attributes.split(','),
         },
         autoconfigure: {
-          group: 'Encrypt Options',
+          group: 'Encrypt Options:',
           desc: 'Enable automatic configuration from attributes using policy service',
           type: 'boolean',
           default: false,
         },
         containerType: {
-          group: 'Encrypt Options',
+          group: 'Encrypt Options:',
           alias: 't',
           choices: containerTypes,
           description: 'Container format',
           default: 'nano',
         },
         policyBinding: {
-          group: 'Encrypt Options',
+          group: 'Encrypt Options:',
           choices: bindingTypes,
           description: 'Policy Binding Type (nano only)',
           default: 'gmac',
         },
         mimeType: {
-          group: 'Encrypt Options',
+          group: 'Encrypt Options:',
           desc: 'Mime type for the plain text file (only supported for ztdf)',
           type: 'string',
           default: '',
         },
         userId: {
-          group: 'Encrypt Options',
+          group: 'Encrypt Options:',
           type: 'string',
           description: 'Owner email address',
         },
         usersWithAccess: {
           alias: 'users-with-access',
-          group: 'Encrypt Options',
+          group: 'Encrypt Options:',
           desc: 'Add users to the policy',
           type: 'string',
           default: '',
@@ -294,12 +302,14 @@ export const handleArgs = (args: string[]) => {
       // COMMANDS
       .options({
         logLevel: {
+          group: 'Verbosity:',
           alias: 'log-level',
           type: 'string',
           default: 'info',
           desc: 'Set logging level',
         },
         silent: {
+          group: 'Verbosity:',
           type: 'boolean',
           default: false,
           desc: 'Disable logging',
