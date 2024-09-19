@@ -52,11 +52,26 @@ export async function fetchWrappedKey(
 
 export type KasPublicKeyAlgorithm = 'ec:secp256r1' | 'rsa:2048';
 
+/**
+ * Information about one of a KAS's published public keys.
+ * A KAS may publish multiple keys with a given algorithm type.
+ */
 export type KasPublicKeyInfo = {
+  /** The locator to the given KAS associated with this key */
   url: string;
+
+  /** The encryption algorithm the key is to be used with. */
   algorithm: KasPublicKeyAlgorithm;
+
+  /** If present, an identifier which is tied to this specific key. */
   kid?: string;
+
+  /** The key value, encoded within a PEM envelope */
   publicKey: string;
+
+  /** A subtle crypto version of the key.
+   * This can be used for wrapping key data for key access objects (with RSA)
+   * or to derive key data (with EC keys). */
   key: Promise<CryptoKey>;
 };
 
@@ -64,7 +79,6 @@ export type KasPublicKeyInfo = {
  * If we have KAS url but not public key we can fetch it from KAS, fetching
  * the value from `${kas}/kas_public_key`.
  */
-
 export async function fetchECKasPubKey(kasEndpoint: string): Promise<KasPublicKeyInfo> {
   validateSecureUrl(kasEndpoint);
   const pkUrlV2 = `${kasEndpoint}/v2/kas_public_key?algorithm=ec:secp256r1&v=2`;
