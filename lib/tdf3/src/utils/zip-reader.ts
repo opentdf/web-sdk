@@ -8,6 +8,8 @@ const CD_SIGNATURE = 0x02014b50;
 const CENTRAL_DIRECTORY_RECORD_FIXED_SIZE = 46;
 const LOCAL_FILE_HEADER_FIXED_SIZE = 30;
 const VERSION_NEEDED_TO_EXTRACT_ZIP64 = 45;
+const manifestMaxSize = 1024 * 1024 * 10; // 10 MB
+
 const cp437 =
   '\u0000☺☻♥♦♣♠•◘○◙♂♀♪♫☼►◄↕‼¶§▬↨↑↓→←∟↔▲▼ !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~⌂ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■ ';
 
@@ -92,6 +94,11 @@ export class ZipReader {
       throw new Error('Unable to retrieve CD manifest');
     }
     const byteStart = cdObj.relativeOffsetOfLocalHeader + cdObj.headerLength;
+    if (cdObj.uncompressedSize > manifestMaxSize) {
+      throw new Error(
+        `manifest file too large: ${(cdObj.uncompressedSize >> 10).toLocaleString()} KiB`
+      );
+    }
     const byteEnd = byteStart + cdObj.uncompressedSize;
     const manifest = await this.getChunk(byteStart, byteEnd);
 

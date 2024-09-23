@@ -1,7 +1,12 @@
 import { expect } from 'chai';
 
 import { encodeArrayBuffer } from '../../../src/encodings/base64.js';
-import { parseCDBuffer, readUInt64LE } from '../../../tdf3/src/utils/zip-reader.js';
+import {
+  CentralDirectory,
+  parseCDBuffer,
+  readUInt64LE,
+  ZipReader,
+} from '../../../tdf3/src/utils/zip-reader.js';
 import { ZipWriter, dateToDosDateTime, writeUInt64LE } from '../../../tdf3/src/utils/zip-writer.js';
 
 describe('zip utilities', () => {
@@ -168,5 +173,29 @@ describe('zip utilities', () => {
         'UEsGBiwAAAAAAAAAPwMtAAAAAAAAAAAAAgAAAAAAAAACAAAAAAAAAMgAAAAAAAAA0AcAAAAAAABQSwYHAAAAAJgIAAAAAAAAAQAAAFBLBQYAAAAA////////////////AAA='
       );
     });
+  });
+});
+
+describe('reader', () => {
+  it('fails on bad manifest size', async () => {
+    const reader = new ZipReader(async () => new Uint8Array([]));
+    const fileName = '0.manifest.json';
+    try {
+      expect(
+        await reader.getManifest(
+          [
+            {
+              fileName,
+              relativeOffsetOfLocalHeader: 0,
+              headerLength: 1024,
+              uncompressedSize: 1024 * 1024 * 128,
+            } as CentralDirectory,
+          ],
+          fileName
+        )
+      ).to.be.undefined;
+    } catch (e) {
+      expect(e.message).to.contain('too large');
+    }
   });
 });
