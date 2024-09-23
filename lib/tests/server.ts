@@ -13,6 +13,8 @@ import { pemPublicToCrypto } from '../src/nanotdf-crypto/pemPublicToCrypto.js';
 import { removePemFormatting } from '../tdf3/src/crypto/crypto-utils.js';
 import { Binary } from '../tdf3/index.js';
 import { type KeyAccessObject } from '../tdf3/src/models/key-access.js';
+import { valueFor } from './web/policy/mock-attrs.js';
+import { AttributeAndValue } from '../src/policy/attributes.js';
 
 const Mocks = getMocks();
 
@@ -241,6 +243,34 @@ const kas: RequestListener = async (req, res) => {
         res.setHeader('Content-Type', 'application/octet-stream');
         res.end(Buffer.from(fullRange.buffer));
       }
+    } else if (url.pathname === '/attributes/*/fqn') {
+      const fqnAttributeValues: Record<string, AttributeAndValue> = {};
+      let skipped = 0;
+      for (const [k, v] of url.searchParams.entries()) {
+        if (k !== 'fqns') {
+          continue;
+        }
+        const value = valueFor(v);
+        if (!value) {
+          console.error(`unable to find definition for value [${v}]`);
+          skipped++;
+          continue;
+        }
+        const attribute = value.attribute;
+        if (!attribute) {
+          console.error(`unable to find definition for attribute [${v}]`);
+          skipped++;
+          continue;
+        }
+        fqnAttributeValues[v] = { attribute, value };
+      }
+      if (skipped) {
+        res.statusCode = 404;
+        res.end('Not Found');
+        return;
+      }
+      res.writeHead(200);
+      res.end(JSON.stringify({ fqnAttributeValues }));
     } else if (url.pathname === '/stop' && req.method === 'GET') {
       server.close(() => {
         console.log('Server gracefully terminated.');
