@@ -5,6 +5,12 @@ import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
 import { EntityObject } from '../../src/tdf/EntityObject.js';
 import { pemToCryptoPublicKey, validateSecureUrl } from '../../src/utils.js';
 import { DecryptParams } from './client/builders.js';
+import {
+  AssertionConfig,
+  AssertionKey,
+  AssertionVerificationKeys,
+} from './client/AssertionConfig.js';
+import { Assertion, CreateAssertion } from './models/assertion.js';
 
 import {
   AttributeSet,
@@ -142,6 +148,7 @@ export type EncryptConfiguration = {
   progressHandler?: (bytesProcessed: number) => void;
   keyForEncryption: KeyInfo;
   keyForManifest: KeyInfo;
+  assertionConfigs?: AssertionConfig[];
 };
 
 export type DecryptConfiguration = {
@@ -157,6 +164,7 @@ export type DecryptConfiguration = {
   keyMiddleware: KeyMiddleware;
   progressHandler?: (bytesProcessed: number) => void;
   fileStreamServiceWorker?: string;
+  assertionVerificationKeys?: AssertionVerificationKeys;
 };
 
 export type UpsertConfiguration = {
@@ -423,10 +431,13 @@ async function _generateManifest(
     throw new Error('Missing encryption information');
   }
 
+  const assertions: Assertion[] = [];
+
   return {
     payload,
     // generate the manifest first, then insert integrity information into it
     encryptionInformation: encryptionInformationStr,
+    assertions: assertions,
   };
 }
 
@@ -700,6 +711,40 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
         manifest.encryptionInformation.integrityInformation.segments = segmentInfos;
 
         manifest.encryptionInformation.method.isStreamable = true;
+
+        const signedAssertions: Assertion[] = [];
+        if (cfg.assertionConfigs && cfg.assertionConfigs.length > 0) {
+          await Promise.all(
+            cfg.assertionConfigs.map(async (assertionConfig) => {
+              // Create assertion using the assertionConfig values
+              const assertion = CreateAssertion(
+                assertionConfig.id,
+                assertionConfig.type,
+                assertionConfig.scope,
+                assertionConfig.statement,
+                assertionConfig.appliesToState
+              );
+
+              const assertionHash = await assertion.hash();
+              const combinedHash = aggregateHash + assertionHash;
+              const encodedHash = base64.encode(combinedHash);
+
+              // Create assertion key using the signingKey from the config, or a default key
+              const assertionKey: AssertionKey = assertionConfig.signingKey ?? {
+                alg: 'HS256',
+                key: new Uint8Array(cfg.keyForEncryption.unwrappedKeyBinary.asArrayBuffer()),
+              };
+
+              // Sign the assertion
+              await assertion.sign(assertionHash, encodedHash, assertionKey);
+
+              // Add signed assertion to the signedAssertions array
+              signedAssertions.push(assertion);
+            })
+          );
+        }
+
+        manifest.assertions = signedAssertions;
 
         // write the manifest
         const manifestBuffer = new TextEncoder().encode(JSON.stringify(manifest));
@@ -1099,10 +1144,11 @@ export async function readStream(cfg: DecryptConfiguration) {
   const encryptedSegmentSizeDefault = defaultSegmentSize || DEFAULT_SEGMENT_SIZE;
 
   // check the combined string of hashes
+  const aggregateHash = segments.map(({ hash }) => base64.decode(hash)).join('');
   const integrityAlgorithm = rootSignature.alg;
   const payloadSigStr = await getSignature(
     keyForDecryption,
-    Binary.fromString(segments.map((segment) => base64.decode(segment.hash)).join('')),
+    Binary.fromString(aggregateHash),
     integrityAlgorithm,
     cfg.cryptoService
   );
@@ -1112,6 +1158,50 @@ export async function readStream(cfg: DecryptConfiguration) {
     base64.encode(payloadSigStr)
   ) {
     throw new ManifestIntegrityError('Failed integrity check on root signature');
+  }
+
+  // // Validate assertions
+  const assertions = manifest.assertions || [];
+  for (const assertion of assertions) {
+    // Create a default assertion key
+    let assertionKey: AssertionKey = {
+      alg: 'HS256',
+      key: new Uint8Array(reconstructedKeyBinary.asArrayBuffer()),
+    };
+
+    if (cfg.assertionVerificationKeys) {
+      const foundKey = cfg.assertionVerificationKeys.Keys[assertion.id];
+      if (foundKey) {
+        assertionKey = foundKey;
+      }
+    }
+
+    // create assertion object from the assertion
+    const assertionObj = CreateAssertion(
+      assertion.id,
+      assertion.type,
+      assertion.scope,
+      assertion.statement,
+      assertion.appliesToState,
+      assertion.binding
+    );
+
+    const [assertionHash, assertionSig] = await assertionObj.verify(assertionKey);
+
+    // Get the hash of the assertion
+    const hashOfAssertion = await assertionObj.hash();
+    const combinedHash = aggregateHash + hashOfAssertion;
+    const encodedHash = base64.encode(combinedHash);
+
+    // check if assertionHash is same as hashOfAssertion
+    if (hashOfAssertion !== assertionHash) {
+      throw new ManifestIntegrityError('Assertion hash mismatch');
+    }
+
+    // check if assertionSig is same as encodedHash
+    if (assertionSig !== encodedHash) {
+      throw new ManifestIntegrityError('Failed integrity check on assertion signature');
+    }
   }
 
   let mapOfRequestsOffset = 0;

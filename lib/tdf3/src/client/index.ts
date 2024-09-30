@@ -407,6 +407,7 @@ export class Client {
     keyMiddleware = defaultKeyMiddleware,
     streamMiddleware = async (stream: DecoratedReadableStream) => stream,
     splitPlan,
+    assertionConfigs = [],
   }: EncryptParams): Promise<DecoratedReadableStream> {
     const dpopKeys = await this.dpopKeys;
 
@@ -519,6 +520,7 @@ export class Client {
       progressHandler: this.clientConfig.progressHandler,
       keyForEncryption,
       keyForManifest,
+      assertionConfigs,
     };
 
     const stream = await (streamMiddleware as EncryptStreamMiddleware)(await writeStream(ecfg));
@@ -549,6 +551,7 @@ export class Client {
    * @param params streamMiddleware fucntion to process streamMiddleware
    * @param params.source A data stream object, one of remote, stream, buffer, etc. types.
    * @param params.eo Optional entity object (legacy AuthZ)
+   * @param params.assertionVerificationKeys Optional verification keys for assertions.
    * @return a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} stream containing the decrypted plaintext.
    * @see DecryptParamsBuilder
    */
@@ -557,6 +560,7 @@ export class Client {
     source,
     keyMiddleware = async (key: Binary) => key,
     streamMiddleware = async (stream: DecoratedReadableStream) => stream,
+    assertionVerificationKeys,
   }: DecryptParams): Promise<DecoratedReadableStream> {
     const dpopKeys = await this.dpopKeys;
     let entityObject;
@@ -588,6 +592,7 @@ export class Client {
         fileStreamServiceWorker: this.clientConfig.fileStreamServiceWorker,
         keyMiddleware,
         progressHandler: this.clientConfig.progressHandler,
+        assertionVerificationKeys,
       })
     );
   }

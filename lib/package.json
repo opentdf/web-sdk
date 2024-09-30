@@ -69,6 +69,7 @@
     "dpop": "^1.2.0",
     "eventemitter3": "^5.0.1",
     "jose": "^4.14.4",
+    "json-canonicalize": "^1.0.6",
     "streamsaver": "^2.0.6",
     "uuid": "~9.0.0"
   },
