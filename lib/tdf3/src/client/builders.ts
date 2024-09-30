@@ -9,6 +9,7 @@ import { EntityObject } from '../../../src/tdf/EntityObject.js';
 import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 import { type Chunker } from '../utils/chunkers.js';
 import { AssertionConfig, AssertionVerificationKeys } from './AssertionConfig.js';
+import { Value } from '../../../src/policy/attributes.js';
 
 export const DEFAULT_SEGMENT_SIZE: number = 1024 * 1024;
 export type Scope = {
@@ -16,6 +17,7 @@ export type Scope = {
   policyId?: string;
   policyObject?: Policy;
   attributes?: (string | AttributeObject)[];
+  attributeValues?: Value[];
 };
 
 export type EncryptKeyMiddleware = (...args: unknown[]) => Promise<{
@@ -35,6 +37,7 @@ export type SplitStep = {
 export type EncryptParams = {
   source: ReadableStream<Uint8Array>;
   opts?: { keypair: PemKeyPair };
+  autoconfigure?: boolean;
   scope?: Scope;
   metadata?: Metadata;
   keypair?: CryptoKeyPair;
@@ -131,6 +134,16 @@ class EncryptParamsBuilder {
    */
   withStringSource(string: string): EncryptParamsBuilder {
     this.setStringSource(string);
+    return this;
+  }
+
+  /**
+   * If set, the encrypt method will use the KAS Grants from the
+   * policy service to configure the Key Access Object array, instead
+   * of the client object's default `kasEndpoint`.
+   */
+  withAutoconfigure(enabled: boolean = true) {
+    this._params.autoconfigure = enabled;
     return this;
   }
 

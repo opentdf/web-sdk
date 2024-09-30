@@ -12,6 +12,7 @@ import { keyAgreement } from './nanotdf-crypto/index.js';
 import { TypedArray, createAttribute, Policy } from './tdf/index.js';
 import { fetchECKasPubKey } from './access.js';
 import { ClientConfig } from './nanotdf/Client.js';
+export { attributeFQNsAsValues } from './policy/api.js';
 
 // Define the EncryptOptions type
 export type EncryptOptions = {
@@ -221,6 +222,7 @@ export class NanoTDFDatasetClient extends Client {
   private unwrappedKey?: CryptoKey;
   private symmetricKey?: CryptoKey;
   private cachedHeader?: Header;
+  private ecdsaBinding: boolean;
 
   /**
    * Create new NanoTDF Dataset Client
@@ -256,9 +258,14 @@ export class NanoTDFDatasetClient extends Client {
    *
    * @param data to decrypt
    */
-  async encrypt(data: string | TypedArray | ArrayBuffer): Promise<ArrayBuffer> {
+  async encrypt(
+    data: string | TypedArray | ArrayBuffer,
+    options?: EncryptOptions
+  ): Promise<ArrayBuffer> {
     // Intial encrypt
     if (this.keyIterationCount == 0) {
+      const mergedOptions: EncryptOptions = { ...defaultOptions, ...options };
+      this.ecdsaBinding = mergedOptions.ecdsaBinding;
       // For encrypt always generate the client ephemeralKeyPair
       const ephemeralKeyPair = await this.ephemeralKeyPair;
 
@@ -298,7 +305,8 @@ export class NanoTDFDatasetClient extends Client {
         this.kasPubKey,
         ephemeralKeyPair,
         ivVector,
-        data
+        data,
+        this.ecdsaBinding
       );
 
       // Cache the header and increment the key iteration

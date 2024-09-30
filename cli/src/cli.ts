@@ -18,6 +18,7 @@ import {
 } from '@opentdf/client';
 import { CLIError, Level, log } from './logger.js';
 import { webcrypto } from 'crypto';
+import { attributeFQNsAsValues } from '@opentdf/client/nano';
 
 type AuthToProcess = {
   auth?: string;
@@ -31,7 +32,9 @@ type LoggedAuthProvider = AuthProvider & {
   requestLog: HttpRequest[];
 };
 
-const containerTypes = ['tdf3', 'nano', 'dataset'] as const;
+const bindingTypes = ['ecdsa', 'gmac'];
+
+const containerTypes = ['tdf3', 'nano', 'dataset', 'ztdf'];
 
 const parseJwt = (jwt: string, field = 1) => {
   return JSON.parse(Buffer.from(jwt.split('.')[field], 'base64').toString());
@@ -89,6 +92,13 @@ async function processAuth({
   };
 }
 
+const rstrip = (str: string, suffix = ' '): string => {
+  while (str && suffix && str.endsWith(suffix)) {
+    str = str.slice(0, -suffix.length);
+  }
+  return str;
+};
+
 type AnyNanoClient = NanoTDFClient | NanoTDFDatasetClient;
 
 function addParams(client: AnyNanoClient, argv: Partial<mainArgs>) {
@@ -117,6 +127,9 @@ async function tdf3EncryptParamsFor(argv: Partial<mainArgs>): Promise<EncryptPar
   }
   if (argv.mimeType?.length) {
     c.setMimeType(argv.mimeType);
+  }
+  if (argv.autoconfigure) {
+    c.withAutoconfigure();
   }
   // use offline mode, we do not have upsert for v2
   c.setOffline();
@@ -169,109 +182,134 @@ export const handleArgs = (args: string[]) => {
       // AUTH OPTIONS
       .option('kasEndpoint', {
         demandOption: true,
-        group: 'KAS Configuration',
+        group: 'Server Endpoints:',
         type: 'string',
         description: 'URL to non-default KAS instance (https://mykas.net)',
       })
       .option('oidcEndpoint', {
         demandOption: true,
-        group: 'OIDC IdP Endpoint:',
+        group: 'Server Endpoints:',
         type: 'string',
         description: 'URL to non-default OIDC IdP (https://myidp.net)',
       })
+      .option('policyEndpoint', {
+        group: 'Server Endpoints:',
+        type: 'string',
+        description: 'Attribute and key grant service endpoint',
+      })
       .option('allowList', {
-        group: 'KAS Configuration',
+        group: 'Security:',
         desc: 'allowed KAS origins, comma separated; defaults to [kasEndpoint]',
         type: 'string',
         validate: (attributes: string) => attributes.split(','),
       })
-      .boolean('ignoreAllowList')
-      .option('auth', {
-        group: 'Authentication:',
-        type: 'string',
-        description: 'Authentication string (<clientId>:<clientSecret>)',
+      .option('ignoreAllowList', {
+        group: 'Security:',
+        desc: 'disable KAS allowlist feature for decrypt',
+        type: 'boolean',
       })
-      .boolean('dpop')
+      .option('auth', {
+        group: 'OAuth and OIDC:',
+        type: 'string',
+        description: 'Combined OAuth Client Credentials (<clientId>:<clientSecret>)',
+      })
+      .option('dpop', {
+        group: 'Security:',
+        desc: 'Use DPoP for token binding',
+        type: 'boolean',
+      })
       .implies('auth', '--no-clientId')
       .implies('auth', '--no-clientSecret')
 
       .option('clientId', {
-        group: 'OIDC client credentials',
+        group: 'OAuth and OIDC:',
         alias: 'cid',
         type: 'string',
-        description: 'IdP-issued Client ID',
+        description: 'OAuth Client Credentials: IdP-issued Client ID',
       })
       .implies('clientId', 'clientSecret')
 
       .option('clientSecret', {
-        group: 'OIDC client credentials',
+        group: 'OAuth and OIDC:',
         alias: 'cs',
         type: 'string',
-        description: 'IdP-issued Client Secret',
+        description: 'OAuth Client Credentials: IdP-issued Client Secret',
       })
       .implies('clientSecret', 'clientId')
 
       .option('exchangeToken', {
-        group: 'Token from trusted external IdP to exchange for Virtru auth',
+        group: 'OAuth and OIDC:',
         alias: 'et',
         type: 'string',
-        description: 'Token issued by trusted external IdP',
+        description: 'OAuth Token Exchange: Token issued by trusted external IdP',
       })
       .implies('exchangeToken', 'clientId')
-
-      .option('containerType', {
-        group: 'TDF Settings',
-        alias: 't',
-        choices: containerTypes,
-        description: 'Container format',
-        default: 'nano',
-      })
-
-      .option('userId', {
-        group: 'TDF Settings',
-        type: 'string',
-        description: 'Owner email address',
-      })
 
       // Examples
       .example('$0 --auth ClientID123:Cli3nt$ecret', '# OIDC client credentials')
 
       .example('$0 --clientId ClientID123 --clientSecret Cli3nt$ecret', '# OIDC client credentials')
 
-      // POLICY
+      // Policy, encryption, and container options
       .options({
-        usersWithAccess: {
-          alias: 'users-with-access',
-          group: 'Encrypt Options',
-          desc: 'Add users to the policy',
-          type: 'string',
-          default: '',
-          validate: (users: string) => users.split(','),
-        },
         attributes: {
-          group: 'Encrypt Options',
+          group: 'Encrypt Options:',
           desc: 'Data attributes for the policy',
           type: 'string',
           default: '',
           validate: (attributes: string) => attributes.split(','),
         },
+        autoconfigure: {
+          group: 'Encrypt Options:',
+          desc: 'Enable automatic configuration from attributes using policy service',
+          type: 'boolean',
+          default: false,
+        },
+        containerType: {
+          group: 'Encrypt Options:',
+          alias: 't',
+          choices: containerTypes,
+          description: 'Container format',
+          default: 'nano',
+        },
+        policyBinding: {
+          group: 'Encrypt Options:',
+          choices: bindingTypes,
+          description: 'Policy Binding Type (nano only)',
+          default: 'gmac',
+        },
         mimeType: {
-          group: 'Encrypt Options',
+          group: 'Encrypt Options:',
           desc: 'Mime type for the plain text file (only supported for ztdf)',
           type: 'string',
           default: '',
+        },
+        userId: {
+          group: 'Encrypt Options:',
+          type: 'string',
+          description: 'Owner email address',
+        },
+        usersWithAccess: {
+          alias: 'users-with-access',
+          group: 'Encrypt Options:',
+          desc: 'Add users to the policy',
+          type: 'string',
+          default: '',
+          validate: (users: string) => users.split(','),
         },
       })
 
       // COMMANDS
       .options({
         logLevel: {
+          group: 'Verbosity:',
           alias: 'log-level',
           type: 'string',
           default: 'info',
           desc: 'Set logging level',
         },
         silent: {
+          group: 'Verbosity:',
           type: 'boolean',
           default: false,
           desc: 'Disable logging',
@@ -281,6 +319,39 @@ export const handleArgs = (args: string[]) => {
         type: 'string',
         description: 'output file',
       })
+
+      .command(
+        'attrs',
+        'Look up defintions of attributes',
+        (yargs) => {
+          yargs.strict();
+        },
+        async (argv) => {
+          log('DEBUG', 'attribute value lookup');
+          const authProvider = await processAuth(argv);
+          const signingKey = await crypto.subtle.generateKey(
+            {
+              name: 'RSASSA-PKCS1-v1_5',
+              hash: 'SHA-256',
+              modulusLength: 2048,
+              publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
+            },
+            true,
+            ['sign', 'verify']
+          );
+          authProvider.updateClientPublicKey(signingKey);
+          log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
+
+          const policyUrl: string = guessPolicyUrl(argv);
+          const defs = await attributeFQNsAsValues(
+            policyUrl,
+            authProvider,
+            ...(argv.attributes as string).split(',')
+          );
+          console.log(JSON.stringify(defs, null, 2));
+        }
+      )
+
       .command(
         'decrypt [file]',
         'Decrypt TDF to string',
@@ -299,7 +370,7 @@ export const handleArgs = (args: string[]) => {
           log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
 
           const kasEndpoint = argv.kasEndpoint;
-          if (argv.containerType === 'tdf3') {
+          if (argv.containerType === 'tdf3' || argv.containerType == 'ztdf') {
             log('DEBUG', `TDF3 Client`);
             const client = new TDF3Client({
               allowedKases,
@@ -389,13 +460,15 @@ export const handleArgs = (args: string[]) => {
           const ignoreAllowList = !!argv.ignoreAllowList;
           const allowedKases = argv.allowList?.split(',');
 
-          if ('tdf3' === argv.containerType) {
+          if ('tdf3' === argv.containerType || 'ztdf' === argv.containerType) {
             log('DEBUG', `TDF3 Client`);
+            const policyEndpoint: string = guessPolicyUrl(argv);
             const client = new TDF3Client({
               allowedKases,
               ignoreAllowList,
               authProvider,
               kasEndpoint,
+              policyEndpoint,
               dpopEnabled: argv.dpop,
             });
             log('SILLY', `Initialized client ${JSON.stringify(client)}`);
@@ -411,6 +484,7 @@ export const handleArgs = (args: string[]) => {
             }
           } else {
             const dpopEnabled = !!argv.dpop;
+            const ecdsaBinding = argv.policyBinding.toLowerCase() == 'ecdsa';
             const client =
               argv.containerType === 'nano'
                 ? new NanoTDFClient({ allowedKases, authProvider, dpopEnabled, kasEndpoint })
@@ -425,7 +499,7 @@ export const handleArgs = (args: string[]) => {
             addParams(client, argv);
 
             const buffer = await processDataIn(argv.file as string);
-            const cyphertext = await client.encrypt(buffer);
+            const cyphertext = await client.encrypt(buffer, { ecdsaBinding });
 
             log('DEBUG', `Handle cyphertext output ${JSON.stringify(cyphertext)}`);
             if (argv.output) {
@@ -473,3 +547,20 @@ handleArgs(hideBin(process.argv))
   .catch((err) => {
     console.error(err);
   });
+
+function guessPolicyUrl({
+  kasEndpoint,
+  policyEndpoint,
+}: {
+  kasEndpoint: string;
+  policyEndpoint?: string;
+}) {
+  let policyUrl: string;
+  if (policyEndpoint) {
+    policyUrl = rstrip(policyEndpoint, '/');
+  } else {
+    const uNoSlash = rstrip(kasEndpoint, '/');
+    policyUrl = uNoSlash.endsWith('/kas') ? uNoSlash.slice(0, -4) : uNoSlash;
+  }
+  return policyUrl;
+}
