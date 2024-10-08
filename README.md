@@ -4,23 +4,80 @@ This project is focused on providing web client support for the OpenTDF platform
 This includes encrypting and decrypting TDF content,
 and some management tasks for ABAC.
 
-## Usage
+## Usage (NanoTDF)
 
 ```typescript
-  // currently we support only ESM import
-  import { AuthProviders, NanoTDFClient } from '@opentdf/client';
+import { AuthProviders, NanoTDFClient } from '@opentdf/client';
 
-  const oidcCredentials: RefreshTokenCredentials = {
-    clientId: keycloakClientId,
-    exchange: 'refresh',
-    refreshToken: refreshToken,
-    oidcOrigin: keycloakUrlWithRealm,
-  }
-  const authProvider = await AuthProviders.refreshAuthProvider(oidcCredentials);
-  const client = new NanoTDFClient(authProvider, access);
-  const cipherText = await client.encrypt(plainText);
-  const clearText = await client.decrypt(cipherText);
+// Configuration Options
+const kasEndpoint = "http://localhost:65432/kas";
+
+// Authentication options (vary by middleware)
+const oidcOrigin = "http://localhost:65432/auth/realms/tdf";
+const clientId = "applicationNameFromIdP";
+const refreshToken = "refreshTokenValueFromIdP";
+
+// AuthProviders are middlewares that add `Authorization` or other bearer tokens to requests.
+// These include The `refresh` provider can be handed a refresh and optional access token. 
+const authProvider = await AuthProviders.refreshAuthProvider({
+  clientId,
+  exchange: 'refresh',
+  refreshToken,
+  oidcOrigin,
+});
+
+const client = new NanoTDFClient({
+  authProvider,
+  kasEndpoint,
+});
+client.dataAttributes = ["http://opentdf.io/attr/class/value/secret"]
+const cipherText = await client.encrypt(plainText);
+const clearText = await client.decrypt(cipherText);
 ```
+
+### Authorization Middleware Options
+
+#### Client Credentials
+
+For long running server-side apps, a client id + secret is allowed with OAuth2.
+This should not be used in a browser, but within a Deno or Node process.
+
+```typescript
+import { AuthProviders } from '@opentdf/client';
+
+// Authentication options (vary by middleware)
+const oidcOrigin = "http://localhost:65432/auth/realms/tdf";
+const clientId = "username";
+const clientSecret = "IdP_GENERATED_SECRET";
+
+const authProvider = await AuthProviders.clientSecretAuthProvider({
+  clientId,
+  clientSecret,
+  oidcOrigin,
+  exchange: 'client',
+});
+```
+
+#### Given Credentials
+
+The `refreshAuthProvider` and `externalAuthProvder` allow the application developer to use existing tokens.
+
+```typescript
+import { AuthProviders, NanoTDFClient } from '@opentdf/client';
+
+const oidcCredentials: RefreshTokenCredentials = {
+  clientId: keycloakClientId,
+  exchange: 'refresh',
+  refreshToken: refreshToken,
+  oidcOrigin: keycloakUrlWithRealm,
+}
+```
+
+#### Building your own provider
+
+A more complete example of using an OIDC compatible provider
+with support for authorization code flow with PKCE and DPoP
+is available in the [sample `web-app` folder](./web-app/src/session.ts)
 
 ## Build and Test
 
@@ -37,7 +94,7 @@ We develop using [nvm](https://github.com/nvm-sh/nvm#readme),
 which allows us to pin to the same version of `npm` easily.
 
 - Install [nvm](https://github.com/nvm-sh/nvm#readme)
-  - see https://github.com/nvm-sh/nvm#installing-and-updating
+  - see <https://github.com/nvm-sh/nvm#installing-and-updating>
   - `nvm use` will install `npm` and `node`
 
 [![Build](https://github.com/opentdf/client-web/actions/workflows/build.yaml/badge.svg)](https://github.com/opentdf/client-web/actions/workflows/build.yaml)
