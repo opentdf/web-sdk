@@ -31,7 +31,6 @@ export class TdfError extends Error {
   }
 }
 
-
 /**
  * Errors that indicate the client or method does not have valid options.
  */

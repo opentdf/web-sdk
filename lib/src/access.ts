@@ -1,5 +1,12 @@
 import { type AuthProvider } from './auth/auth.js';
-import { NetworkError, PermissionDeniedError, ServiceError, TdfError, UnauthenticatedError } from './errors.js';
+import {
+  InvalidFileError,
+  NetworkError,
+  PermissionDeniedError,
+  ServiceError,
+  TdfError,
+  UnauthenticatedError,
+} from './errors.js';
 import { pemToCryptoPublicKey, validateSecureUrl } from './utils.js';
 
 export class RewrapRequest {
@@ -48,6 +55,10 @@ export async function fetchWrappedKey(
 
     if (!response.ok) {
       switch (response.status) {
+        case 400:
+          throw new InvalidFileError(
+            `400 for [${req.url}]: rewrap failure [${await response.text()}]`
+          );
         case 401:
           throw new UnauthenticatedError(`401 for [${req.url}]`);
         case 403:
