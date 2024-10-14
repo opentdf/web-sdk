@@ -9,6 +9,7 @@ import { OIDCExternalJwtProvider } from './oidc-externaljwt-provider.js';
 import { type AuthProvider } from './auth.js';
 import { OIDCRefreshTokenProvider } from './oidc-refreshtoken-provider.js';
 import { isBrowser } from '../utils.js';
+import { ConfigurationError } from '../errors.js';
 
 /**
  * Creates an OIDC Client Credentials Provider for non-browser contexts.
@@ -95,13 +96,13 @@ export const refreshAuthProvider = async (
  */
 export const clientAuthProvider = async (clientConfig: OIDCCredentials): Promise<AuthProvider> => {
   if (!clientConfig.clientId) {
-    throw new Error('Client ID must be provided to constructor');
+    throw new ConfigurationError('Client ID must be provided to constructor');
   }
 
   if (isBrowser()) {
     //If you're in a browser and passing client secrets, you're Doing It Wrong.
     // if (clientConfig.clientSecret) {
-    //   throw new Error('Client credentials not supported in a browser context');
+    //   throw new ConfigurationError('Client credentials not supported in a browser context');
     // }
     //Are we exchanging a refreshToken for a bearer token (normal AuthCode browser auth flow)?
     //If this is a browser context, we expect the caller to handle the initial
@@ -118,15 +119,15 @@ export const clientAuthProvider = async (clientConfig: OIDCCredentials): Promise
         return clientSecretAuthProvider(clientConfig);
       }
       default:
-        throw new Error(`Unsupported client type`);
+        throw new ConfigurationError(`Unsupported client type`);
     }
   }
   //If you're NOT in a browser and are NOT passing client secrets, you're Doing It Wrong.
   //If this is not a browser context, we expect the caller to supply their client ID and client secret, so that
   // we can authenticate them directly with the OIDC endpoint.
   if (clientConfig.exchange !== 'client') {
-    throw new Error(
-      'If using client credentials, must supply both client ID and client secret to constructor'
+    throw new ConfigurationError(
+      'When using client credentials, must supply both client ID and client secret to constructor'
     );
   }
   return clientSecretAuthProvider(clientConfig);

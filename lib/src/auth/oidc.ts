@@ -1,7 +1,7 @@
 import { default as dpopFn } from 'dpop';
 import { HttpRequest, withHeaders } from './auth.js';
 import { base64 } from '../encodings/index.js';
-import { IllegalArgumentError } from '../errors.js';
+import { ConfigurationError, TdfError } from '../errors.js';
 import { cryptoPublicToPem, rstrip } from '../utils.js';
 
 /**
@@ -98,19 +98,23 @@ export class AccessToken {
 
   constructor(cfg: OIDCCredentials, request?: typeof fetch) {
     if (!cfg.clientId) {
-      throw new Error('A Keycloak client identifier is currently required for all auth mechanisms');
+      throw new ConfigurationError(
+        'A Keycloak client identifier is currently required for all auth mechanisms'
+      );
     }
     if (cfg.exchange === 'client' && !cfg.clientSecret) {
-      throw new Error('When using client credentials, both clientId and clientSecret are required');
+      throw new ConfigurationError(
+        'When using client credentials, both clientId and clientSecret are required'
+      );
     }
     if (cfg.exchange === 'refresh' && !cfg.refreshToken) {
-      throw new Error('When using refresh token, a refresh token must be provided');
+      throw new ConfigurationError('When using refresh token, a refresh token must be provided');
     }
     if (cfg.exchange === 'external' && !cfg.externalJwt) {
-      throw new Error('When using external JWT, the jwt must be provided');
+      throw new ConfigurationError('When using external JWT, the jwt must be provided');
     }
     if (!cfg.exchange) {
-      throw new Error('Invalid oidc configuration');
+      throw new ConfigurationError('Invalid oidc configuration');
     }
     this.config = cfg;
     this.request = request;
@@ -137,7 +141,9 @@ export class AccessToken {
     });
     if (!response.ok) {
       console.error(await response.text());
-      throw new Error(`${response.status} ${response.statusText}`);
+      throw new TdfError(
+        `auth info fail: GET [${url}] => ${response.status} ${response.statusText}`
+      );
     }
 
     return (await response.json()) as unknown;
@@ -151,7 +157,7 @@ export class AccessToken {
     // add DPoP headers if configured
     if (this.config.dpopEnabled) {
       if (!this.signingKey) {
-        throw new IllegalArgumentError('No signature configured');
+        throw new ConfigurationError('No signature configured');
       }
       const clientPubKey = await cryptoPublicToPem(this.signingKey.publicKey);
       headers['X-VirtruPubKey'] = base64.encode(clientPubKey);
@@ -195,7 +201,9 @@ export class AccessToken {
     const response = await this.doPost(url, body);
     if (!response.ok) {
       console.error(await response.text());
-      throw new Error(`${response.status} ${response.statusText}`);
+      throw new TdfError(
+        `token/code exchange fail: POST [${url}] => ${response.status} ${response.statusText}`
+      );
     }
     return response.json();
   }
@@ -255,7 +263,7 @@ export class AccessToken {
   async exchangeForRefreshToken(): Promise<string> {
     const cfg = this.config;
     if (cfg.exchange != 'external' && cfg.exchange != 'refresh') {
-      throw new Error('No refresh token provided!');
+      throw new ConfigurationError('no refresh token provided!');
     }
     const tokenResponse = (this.data = await this.accessTokenLookup(this.config));
     if (!tokenResponse.refresh_token) {
@@ -278,7 +286,7 @@ export class AccessToken {
 
   async withCreds(httpReq: HttpRequest): Promise<HttpRequest> {
     if (!this.signingKey) {
-      throw new Error(
+      throw new ConfigurationError(
         'Client public key was not set via `updateClientPublicKey` or passed in via constructor, cannot fetch OIDC token with valid Virtru claims'
       );
     }

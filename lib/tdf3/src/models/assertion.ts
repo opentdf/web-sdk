@@ -1,6 +1,7 @@
 import { canonicalizeEx } from 'json-canonicalize';
 import { SignJWT, jwtVerify } from 'jose';
 import { AssertionKey } from './../client/AssertionConfig.js';
+import { ConfigurationError, InvalidFileError } from '../../../src/errors.js';
 
 export type AssertionKeyAlg = 'RS256' | 'HS256';
 export type AssertionType = 'handling' | 'other';
@@ -63,18 +64,18 @@ export async function sign(
   sig: string,
   key: AssertionKey
 ): Promise<void> {
-  const payload: any = {};
+  const payload: Record<string, unknown> = {};
   payload[kAssertionHash] = assertionHash;
   payload[kAssertionSignature] = sig;
 
+  let token: string;
   try {
-    const token = await new SignJWT(payload).setProtectedHeader({ alg: key.alg }).sign(key.key);
-
-    this.binding.method = 'jws';
-    this.binding.signature = token;
+    token = await new SignJWT(payload).setProtectedHeader({ alg: key.alg }).sign(key.key);
   } catch (error) {
-    throw new Error(`Signing assertion failed: ${error.message}`);
+    throw new ConfigurationError(`Signing assertion failed: ${error.message}`, error);
   }
+  this.binding.method = 'jws';
+  this.binding.signature = token;
 }
 
 /**
@@ -92,7 +93,7 @@ export async function verify(this: Assertion, key: AssertionKey): Promise<[strin
 
     return [payload[kAssertionHash] as string, payload[kAssertionSignature] as string];
   } catch (error) {
-    throw new Error(`Verifying assertion failed: ${error.message}`);
+    throw new InvalidFileError(`Verifying assertion failed: ${error.message}`, error);
   }
 }
 

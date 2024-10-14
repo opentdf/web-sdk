@@ -1,3 +1,4 @@
+import { ConfigurationError } from '../errors.js';
 import { AuthProvider, type HttpRequest } from './auth.js';
 import { AccessToken, type ClientSecretCredentials } from './oidc.js';
 
@@ -10,9 +11,7 @@ export class OIDCClientCredentialsProvider implements AuthProvider {
     oidcOrigin,
   }: Partial<ClientSecretCredentials> & Omit<ClientSecretCredentials, 'exchange'>) {
     if (!clientId || !clientSecret) {
-      throw new Error(
-        'To use this nonbrowser-only provider you must supply clientId & clientSecret'
-      );
+      throw new ConfigurationError('clientId & clientSecret required for client credentials flow');
     }
 
     this.oidcAuth = new AccessToken({

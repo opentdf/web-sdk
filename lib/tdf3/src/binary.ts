@@ -1,3 +1,4 @@
+import { ConfigurationError } from '../../src/errors.js';
 import { buffToString, SupportedEncoding, base64ToBytes } from './utils/index.js';
 
 /**
@@ -172,7 +173,7 @@ class StringBinary extends Binary {
 
   asString(encoding?: SupportedEncoding): string {
     if (encoding) {
-      throw new Error(
+      throw new ConfigurationError(
         'Method doesnt accept encoding param, it returns binary string in original format'
       );
     }

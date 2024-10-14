@@ -1,5 +1,4 @@
 import { base64 } from '../../../src/encodings/index.js';
-import { IllegalArgumentError } from '../../../src/errors.js';
 import { type AnyKeyPair, type PemKeyPair } from './declarations.js';
 import { rsaPkcs1Sha256 } from './index.js';
 
@@ -106,7 +105,7 @@ export const toCryptoKeyPair = async (input: AnyKeyPair): Promise<CryptoKeyPair>
     return input;
   }
   if (!isPemKeyPair(input)) {
-    throw new Error('invalid keypair');
+    throw new Error('internal: generated invalid keypair');
   }
   const k = [input.publicKey, input.privateKey]
     .map(removePemFormatting)
@@ -118,18 +117,3 @@ export const toCryptoKeyPair = async (input: AnyKeyPair): Promise<CryptoKeyPair>
   ]);
   return { privateKey, publicKey };
 };
-
-export async function cryptoToPem(k: CryptoKey): Promise<string> {
-  switch (k.type) {
-    case 'private': {
-      const exPrivate = await crypto.subtle.exportKey('pkcs8', k);
-      return formatAsPem(exPrivate, 'PRIVATE KEY');
-    }
-    case 'public': {
-      const exPublic = await crypto.subtle.exportKey('spki', k);
-      return formatAsPem(exPublic, 'PUBLIC KEY');
-    }
-    default:
-      throw new IllegalArgumentError(`unsupported key type [${k.type}]`);
-  }
-}

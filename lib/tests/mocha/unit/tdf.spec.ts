@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import * as TDF from '../../../tdf3/src/tdf.js';
 import { KeyAccessObject } from '../../../tdf3/src/models/key-access.js';
 import { OriginAllowList } from '../../../src/access.js';
-import { KasDecryptError, TdfError } from '../../../src/errors.js';
+import { InvalidFileError, TdfError, UnsafeUrlError } from '../../../src/errors.js';
 
 const sampleCert = `
 -----BEGIN CERTIFICATE-----
@@ -126,7 +126,7 @@ describe('splitLookupTableFactory', () => {
     });
   });
 
-  it('should throw KasDecryptError for disallowed KASes', () => {
+  it('should throw UnsafeUrlError for disallowed KASes', () => {
     const keyAccess: KeyAccessObject[] = [
       { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas' },
       { sid: 'split2', type: 'remote', url: 'https://kas3', protocol: 'kas' }, // kas3 is not allowed
@@ -134,12 +134,12 @@ describe('splitLookupTableFactory', () => {
     const allowedKases = new OriginAllowList(['https://kas1']);
 
     expect(() => TDF.splitLookupTableFactory(keyAccess, allowedKases)).to.throw(
-      KasDecryptError,
+      UnsafeUrlError,
       'Unreconstructable key - disallowed KASes include: ["https://kas3"] from splitIds ["split1","split2"]'
     );
   });
 
-  it('should throw KasDecryptError for duplicate URLs in the same splitId', () => {
+  it('should throw for duplicate URLs in the same splitId', () => {
     const keyAccess: KeyAccessObject[] = [
       { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas' },
       { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas' }, // duplicate URL in same splitId
@@ -147,7 +147,7 @@ describe('splitLookupTableFactory', () => {
     const allowedKases = new OriginAllowList(['https://kas1']);
 
     expect(() => TDF.splitLookupTableFactory(keyAccess, allowedKases)).to.throw(
-      KasDecryptError,
+      InvalidFileError,
       'TODO: Fallback to no split ids. Repetition found for [https://kas1] on split [split1]'
     );
   });
@@ -168,7 +168,7 @@ describe('splitLookupTableFactory', () => {
     const allowedKases = new OriginAllowList([]);
 
     expect(() => TDF.splitLookupTableFactory(keyAccess, allowedKases)).to.throw(
-      KasDecryptError,
+      InvalidFileError,
       'Unreconstructable key - disallowed KASes include: ["https://kas1"]'
     );
   });

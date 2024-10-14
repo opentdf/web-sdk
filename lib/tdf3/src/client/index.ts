@@ -55,7 +55,7 @@ import {
   EncryptParamsBuilder,
 } from './builders.js';
 import { KasPublicKeyInfo, OriginAllowList } from '../../../src/access.js';
-import { TdfError } from '../../../src/errors.js';
+import { ConfigurationError } from '../../../src/errors.js';
 import { EntityObject } from '../../../src/tdf/EntityObject.js';
 import { Binary } from '../binary.js';
 import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
@@ -98,7 +98,7 @@ const getFirstTwoBytes = async (chunker: Chunker) => new TextDecoder().decode(aw
 
 const makeChunkable = async (source: DecryptSource) => {
   if (!source) {
-    throw new Error('Invalid source');
+    throw new ConfigurationError('invalid source');
   }
   // dump stream to buffer
   // we don't support streams anyways (see zipreader.js)
@@ -297,7 +297,7 @@ export class Client {
     } else {
       // handle Deprecated `kasRewrapEndpoint` parameter
       if (!clientConfig.keyRewrapEndpoint) {
-        throw new Error('KAS definition not found');
+        throw new ConfigurationError('KAS definition not found');
       }
       this.kasEndpoint = clientConfig.keyRewrapEndpoint.replace(/\/rewrap$/, '');
     }
@@ -315,11 +315,11 @@ export class Client {
         !!clientConfig.ignoreAllowList
       );
       if (!validateSecureUrl(this.kasEndpoint) && !this.allowedKases.allows(kasOrigin)) {
-        throw new TdfError(`Invalid KAS endpoint [${this.kasEndpoint}]`);
+        throw new ConfigurationError(`Invalid KAS endpoint [${this.kasEndpoint}]`);
       }
     } else {
       if (!validateSecureUrl(this.kasEndpoint)) {
-        throw new TdfError(
+        throw new ConfigurationError(
           `Invalid KAS endpoint [${this.kasEndpoint}]; to force, please list it among allowedKases`
         );
       }
@@ -340,7 +340,7 @@ export class Client {
     this.clientId = clientConfig.clientId;
     if (!this.authProvider) {
       if (!clientConfig.clientId) {
-        throw new Error('Client ID or custom AuthProvider must be defined');
+        throw new ConfigurationError('Client ID or custom AuthProvider must be defined');
       }
 
       //Are we exchanging a refreshToken for a bearer token (normal AuthCode browser auth flow)?
@@ -425,7 +425,7 @@ export class Client {
       if (!avs.length && fqns.length) {
         // Hydrate avs from policy endpoint givnen the fqns
         if (!this.policyEndpoint) {
-          throw new Error('policyEndpoint not set in TDF3 Client constructor');
+          throw new ConfigurationError('policyEndpoint not set in TDF3 Client constructor');
         }
         avs = await attributeFQNsAsValues(
           this.policyEndpoint,
@@ -442,7 +442,7 @@ export class Client {
         avs.length != scope.attributes?.length ||
         !avs.map(({ fqn }) => fqn).every((a) => fqns.indexOf(a) >= 0)
       ) {
-        throw new Error(
+        throw new ConfigurationError(
           `Attribute mismatch between [${fqns}] and explicit values ${JSON.stringify(
             avs.map(({ fqn }) => fqn)
           )}`
@@ -530,9 +530,8 @@ export class Client {
     }
 
     // Wrap if it's html.
-    // FIXME: Support streaming for html format.
     if (!stream.manifest) {
-      throw new Error('Missing manifest in encrypt function');
+      throw new Error('internal: missing manifest in encrypt function');
     }
     const htmlBuf = wrapHtml(await stream.toBuffer(), stream.manifest, this.readerUrl ?? '');
 
@@ -575,7 +574,7 @@ export class Client {
       }
     }
     if (!this.authProvider) {
-      throw new Error('AuthProvider missing');
+      throw new ConfigurationError('AuthProvider missing');
     }
     const chunker = await makeChunkable(source);
 

@@ -12,6 +12,7 @@ import { keyAgreement } from './nanotdf-crypto/index.js';
 import { TypedArray, createAttribute, Policy } from './tdf/index.js';
 import { fetchECKasPubKey } from './access.js';
 import { ClientConfig } from './nanotdf/Client.js';
+import { ConfigurationError } from './errors.js';
 export { attributeFQNsAsValues } from './policy/api.js';
 
 // Define the EncryptOptions type
@@ -79,7 +80,7 @@ export class NanoTDFClient extends Client {
     );
 
     if (!ukey) {
-      throw new Error('Key rewrap failure');
+      throw new Error('internal: key rewrap failure');
     }
     // Return decrypt promise
     return decrypt(ukey, nanotdf);
@@ -108,7 +109,7 @@ export class NanoTDFClient extends Client {
     );
 
     if (!key) {
-      throw new Error('Failed unwrap');
+      throw new Error('internal: failed unwrap');
     }
     // Return decrypt promise
     return decrypt(key, nanotdf);
@@ -131,7 +132,9 @@ export class NanoTDFClient extends Client {
     const initializationVector = this.iv;
 
     if (typeof initializationVector !== 'number') {
-      throw new Error('NanoTDF clients are single use. Please generate a new client and keypair.');
+      throw new ConfigurationError(
+        'NanoTDF clients are single use. Please generate a new client and keypair.'
+      );
     }
     delete this.iv;
 
@@ -241,8 +244,8 @@ export class NanoTDFDatasetClient extends Client {
       opts.maxKeyIterations &&
       opts.maxKeyIterations > NanoTDFDatasetClient.NTDF_MAX_KEY_ITERATIONS
     ) {
-      throw new Error(
-        `Key iteration exceeds max iterations(${NanoTDFDatasetClient.NTDF_MAX_KEY_ITERATIONS})`
+      throw new ConfigurationError(
+        `key iteration exceeds max iterations(${NanoTDFDatasetClient.NTDF_MAX_KEY_ITERATIONS})`
       );
     }
     super(opts);
@@ -323,11 +326,10 @@ export class NanoTDFDatasetClient extends Client {
     this.keyIterationCount += 1;
 
     if (!this.cachedHeader) {
-      throw new Error('NanoTDF dataset header should have been assgined');
+      throw new ConfigurationError('invalid dataset client: empty nanoTDF header');
     }
-
     if (!this.symmetricKey) {
-      throw new Error('NanoTDF dataset payload key is not set');
+      throw new ConfigurationError('invalid dataset client: empty dek');
     }
 
     this.keyIterationCount += 1;
@@ -361,7 +363,8 @@ export class NanoTDFDatasetClient extends Client {
     if (this.cachedEphemeralKey.toString() == nanotdf.header.ephemeralPublicKey.toString()) {
       const ukey = this.unwrappedKey;
       if (!ukey) {
-        throw new Error('Key rewrap failure');
+        // These should have thrown already.
+        throw new Error('internal: key rewrap failure');
       }
       // Return decrypt promise
       return decrypt(ukey, nanotdf);
@@ -383,7 +386,8 @@ export class NanoTDFDatasetClient extends Client {
       version
     );
     if (!ukey) {
-      throw new Error('Key rewrap failure');
+      // These should have thrown already.
+      throw new Error('internal: key rewrap failure');
     }
 
     this.cachedEphemeralKey = nanotdf.header.ephemeralPublicKey;
@@ -396,11 +400,15 @@ export class NanoTDFDatasetClient extends Client {
   generateIV(): Uint8Array {
     const iv = this.iv;
     if (iv === undefined) {
-      throw new Error('Dataset full');
+      // iv has passed the maximum iteration count for this dek
+      throw new ConfigurationError('dataset full');
     }
     // assert iv ∈ ℤ ∩ (0, 2^24)
     if (!Number.isInteger(iv) || iv <= 0 || 0xff_ffff < iv) {
-      throw new Error('Invalid state');
+      // Something has fiddled with the iv outside of the expected behavior
+      // could indicate a race condition, e.g. if two workers or handlers are
+      // processing the file at once, for example.
+      throw new Error('internal: invalid state');
     }
 
     const lengthAsUint32 = new Uint32Array(1);

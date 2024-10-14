@@ -1,3 +1,4 @@
+import { ConfigurationError, InvalidFileError } from '../../errors.js';
 import ProtocolEnum from '../enum/ProtocolEnum.js';
 import ResourceLocatorIdentifierEnum from '../enum/ResourceLocatorIdentifierEnum.js';
 
@@ -59,7 +60,7 @@ export default class ResourceLocator {
         protocol = ProtocolEnum.Https;
         break;
       default:
-        throw new Error(`resource locator protocol [${protocolStr}] unsupported`);
+        throw new ConfigurationError(`resource locator protocol [${protocolStr}] unsupported`);
     }
 
     // Set identifier padded length and protocol identifier byte
@@ -75,13 +76,13 @@ export default class ResourceLocator {
       } else if (identifierLength <= 32) {
         return ResourceLocatorIdentifierEnum.ThirtyTwoBytes;
       }
-      throw new Error(`unsupported identifier length: ${identifier.length}`);
+      throw new ConfigurationError(`unsupported identifier length: ${identifier.length}`);
     })();
 
     // Create buffer to hold protocol, body length, body, and identifier
     const lengthOfBody = new TextEncoder().encode(body).length;
     if (lengthOfBody == 0) {
-      throw new Error('url body empty');
+      throw new ConfigurationError('url body empty');
     }
     const identifierLength = identifierType.valueOf();
     const offset = ResourceLocator.BODY_OFFSET + lengthOfBody + identifierLength;
@@ -94,13 +95,13 @@ export default class ResourceLocator {
     // Length of body
     const lengthOfBody = buff[ResourceLocator.LENGTH_OFFSET];
     if (lengthOfBody == 0) {
-      throw new Error('url body empty');
+      throw new InvalidFileError('url body empty');
     }
     // Body as utf8 string
     const decoder = new TextDecoder();
     let offset = ResourceLocator.BODY_OFFSET + lengthOfBody;
     if (offset > buff.length) {
-      throw new Error('parse out of bounds error');
+      throw new InvalidFileError('url parser: out of bounds error');
     }
     const body = decoder.decode(buff.subarray(ResourceLocator.BODY_OFFSET, offset));
     const protocol = protocolAndIdentifierType & 0xf;
@@ -109,7 +110,7 @@ export default class ResourceLocator {
       case ProtocolEnum.Https:
         break;
       default:
-        throw new Error(`unsupported protocol type [${protocol}]`);
+        throw new InvalidFileError(`url parser: unsupported protocol type [${protocol}]`);
     }
     // identifier
     const identifierTypeNibble = protocolAndIdentifierType & 0xf0;
@@ -121,7 +122,7 @@ export default class ResourceLocator {
     } else if (identifierTypeNibble === ResourceLocator.IDENTIFIER_32_BYTE) {
       identifierType = ResourceLocatorIdentifierEnum.ThirtyTwoBytes;
     } else if (identifierTypeNibble !== ResourceLocator.IDENTIFIER_0_BYTE) {
-      throw new Error(`unsupported key identifier type [${identifierTypeNibble}]`);
+      throw new InvalidFileError(`url parser: unsupported fragment type [${identifierTypeNibble}]`);
     }
 
     let identifier: string | undefined = undefined;
@@ -136,7 +137,7 @@ export default class ResourceLocator {
         const kidStart = offset;
         offset = kidStart + identifierType.valueOf();
         if (offset > buff.length) {
-          throw new Error('parse out of bounds error');
+          throw new InvalidFileError('url parser: out of bounds error');
         }
         const kidSubarray = buff.subarray(kidStart, offset);
         // Remove padding (assuming the padding is null bytes, 0x00)
@@ -169,7 +170,7 @@ export default class ResourceLocator {
       case ProtocolEnum.Https:
         return 'https://' + this.body;
       default:
-        throw new Error('Resource locator protocol is not supported.');
+        throw new ConfigurationError(`resource locator protocol unsupported [${this.protocol}]`);
     }
   }
 

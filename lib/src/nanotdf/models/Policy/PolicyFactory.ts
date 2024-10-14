@@ -2,7 +2,7 @@ import AbstractPolicy from './AbstractPolicy.js';
 import EmbeddedPolicy from './EmbeddedPolicy.js';
 import RemotePolicy from './RemotePolicy.js';
 import PolicyTypeEnum from '../../enum/PolicyTypeEnum.js';
-import { InvalidPolicyTypeError } from '../../../errors.js';
+import { UnsupportedFeatureError } from '../../../errors.js';
 import CurveNameEnum from '../../enum/CurveNameEnum.js';
 
 function parse(
@@ -34,7 +34,7 @@ function parse(
       type
     ));
   } else {
-    throw new InvalidPolicyTypeError();
+    throw new UnsupportedFeatureError(`unsupported policy type: ${type}`);
   }
 
   return {

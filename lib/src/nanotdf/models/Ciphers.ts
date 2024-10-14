@@ -1,5 +1,5 @@
 import CipherEnum from '../enum/CipherEnum.js';
-import { InvalidCipherError } from '../../errors.js';
+import { UnsupportedFeatureError } from '../../errors.js';
 
 interface CipherInterface {
   name: CipherEnum;
@@ -51,7 +51,7 @@ export function getBitLength(cipher: CipherEnum): number {
     case CipherEnum.AES_256_GCM_128:
       return Aes256Gcm128.length;
     default:
-      throw new InvalidCipherError();
+      throw new UnsupportedFeatureError(`unsupported cipher enum value: [${cipher}]`);
   }
 }
 

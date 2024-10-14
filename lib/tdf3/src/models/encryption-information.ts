@@ -102,7 +102,9 @@ export class SplitKey {
           : typeof metadata === 'string'
           ? metadata
           : () => {
-              throw new Error();
+              throw new Error(
+                "internal: KAO generation failure: metadata isn't a string or object"
+              );
             }
       ) as string;
 
@@ -137,9 +139,10 @@ export class SplitKey {
   }
 
   async write(policy: Policy, keyInfo: KeyInfo): Promise<EncryptionInformation> {
-    const algorithm = this.cipher.name;
+    const algorithm = this.cipher?.name;
     if (!algorithm) {
-      throw new Error('Uninitialized cipher type');
+      // Hard coded as part of the cipher object. This should not be reachable.
+      throw new Error('internal: uninitialized cipher type');
     }
     const keyAccessObjects = await this.getKeyAccessObjects(policy, keyInfo);
 

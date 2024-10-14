@@ -4,7 +4,7 @@ import Header from './models/Header.js';
 import Payload from './models/Payload.js';
 import Signature from './models/Signature.js';
 import EncodingEnum from './enum/EncodingEnum.js';
-import { InvalidDataTypeError, SignatureError } from '../errors.js';
+import { ConfigurationError, InvalidFileError } from '../errors.js';
 
 // Defaults when none set during encryption
 
@@ -32,14 +32,14 @@ export default class NanoTDF {
       if (!encoding || encoding === EncodingEnum.Base64) {
         buffer = base64.decodeArrayBuffer(content);
       } else {
-        throw new InvalidDataTypeError();
+        throw new ConfigurationError(`Unsupported encoding: ${encoding}`);
       }
     }
     // Handle Uint8Array types
     else if (ArrayBuffer.isView(content) || content instanceof ArrayBuffer) {
       buffer = content;
     } else {
-      throw new InvalidDataTypeError();
+      throw new ConfigurationError(`unsupported content type`);
     }
 
     const dataView = new Uint8Array(buffer);
@@ -66,10 +66,10 @@ export default class NanoTDF {
 
     // Singature checking
     if (!header.hasSignature && signature.length > 0) {
-      throw new SignatureError("Found signature when there shouldn't be one");
+      throw new InvalidFileError("Found signature when there shouldn't be one");
     }
     if (header.hasSignature && signature.length === 0) {
-      throw new SignatureError('Could not find signature');
+      throw new InvalidFileError('Could not find signature');
     }
 
     return new NanoTDF(header, payload, signature);

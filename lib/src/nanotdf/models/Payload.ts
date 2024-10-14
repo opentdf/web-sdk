@@ -1,6 +1,6 @@
 import Header from './Header.js';
 import { getBitLength } from './Ciphers.js';
-import { InvalidPayloadError } from '../../errors.js';
+import { ConfigurationError, InvalidFileError, TdfError } from '../../errors.js';
 
 /**
  * Payload
@@ -57,7 +57,7 @@ export default class Payload {
     const inRange = length >= this.MIN_LENGTH && length <= this.MAX_NANO_TDF_ENCRYPT_PAYLOAD_SIZE;
 
     if (!inRange) {
-      throw new InvalidPayloadError('Payload Length Out Of Range');
+      throw new InvalidFileError('nanotdf parse failure: Payload Length Out Of Range');
     }
 
     /**
@@ -71,7 +71,7 @@ export default class Payload {
     offset += Payload.IV_LEN;
 
     if (iv.byteLength != 3) {
-      throw new InvalidPayloadError('Invalid Payload Length');
+      throw new InvalidFileError('nanotdf parse failure: Invalid Payload Length');
     }
 
     if (!legacyTDF) {
@@ -93,7 +93,7 @@ export default class Payload {
     );
 
     if (ciphertextWithAuthTag.byteLength + Payload.LENGTH_LEN !== length) {
-      throw new InvalidPayloadError('Invalid Payload Length');
+      throw new InvalidFileError('nanotdf parse failure: Invalid Payload Length');
     }
 
     /**
@@ -169,12 +169,12 @@ export default class Payload {
    */
   copyToBuffer(buffer: Uint8Array): void {
     if (this.length > buffer.length) {
-      throw new Error('Invalid buffer size to copy payload');
+      throw new Error('internal: invalid buffer size to copy payload');
     }
 
     const lengthOfEncryptedPayload = this.iv.length + this.ciphertext.length + this.authTag.length;
     if (lengthOfEncryptedPayload > Payload.MAX_NANO_TDF_ENCRYPT_PAYLOAD_SIZE) {
-      throw new Error("TDF encrypted payload can't be more that 2^24");
+      throw new ConfigurationError("TDF encrypted payload can't be more that 2^24");
     }
 
     const lengthAsUint32 = new Uint32Array(1);

@@ -1,5 +1,6 @@
 import Header from './Header.js';
 import { lengthOfPublicKey, lengthOfSignature } from '../helpers/calculateByCurve.js';
+import { ConfigurationError } from '../../errors.js';
 
 /**
  * NanoTDF Signature
@@ -75,7 +76,7 @@ export default class Signature {
    */
   copyToBuffer(buffer: Uint8Array): void {
     if (this.length > buffer.length) {
-      throw new Error('Invalid buffer size to copy signature');
+      throw new ConfigurationError('Invalid buffer size to copy signature');
     }
 
     buffer.set(this.publicKey, 0);
