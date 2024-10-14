@@ -4,7 +4,6 @@ import {
   NetworkError,
   PermissionDeniedError,
   ServiceError,
-  TdfError,
   UnauthenticatedError,
 } from './errors.js';
 import { pemToCryptoPublicKey, validateSecureUrl } from './utils.js';

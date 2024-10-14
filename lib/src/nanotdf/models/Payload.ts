@@ -1,6 +1,6 @@
 import Header from './Header.js';
 import { getBitLength } from './Ciphers.js';
-import { ConfigurationError, InvalidFileError, TdfError } from '../../errors.js';
+import { ConfigurationError, InvalidFileError } from '../../errors.js';
 
 /**
  * Payload
