@@ -1020,7 +1020,10 @@ async function unwrapKey({
         } else if (e.response.status === 401) {
           throw new UnauthenticatedError('rewrap auth failure', e);
         } else if (e.response.status === 400) {
-          throw new ConfigurationError('rewrap bad request; likely a configuration error', e);
+          throw new InvalidFileError(
+            'rewrap bad request; could indicate an invalid policy binding or a configuration error',
+            e
+          );
         } else {
           throw new NetworkError('rewrap server error', e);
         }
