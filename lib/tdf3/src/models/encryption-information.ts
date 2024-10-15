@@ -10,6 +10,7 @@ import {
   type EncryptResult,
 } from '../crypto/declarations.js';
 import { IntegrityAlgorithm } from '../tdf.js';
+import { ConfigurationError } from '../../../src/errors.js';
 
 export type KeyInfo = {
   readonly unwrappedKeyBinary: Binary;
@@ -102,7 +103,9 @@ export class SplitKey {
           : typeof metadata === 'string'
           ? metadata
           : () => {
-              throw new Error();
+              throw new ConfigurationError(
+                "KAO generation failure: metadata isn't a string or object"
+              );
             }
       ) as string;
 
@@ -137,9 +140,10 @@ export class SplitKey {
   }
 
   async write(policy: Policy, keyInfo: KeyInfo): Promise<EncryptionInformation> {
-    const algorithm = this.cipher.name;
+    const algorithm = this.cipher?.name;
     if (!algorithm) {
-      throw new Error('Uninitialized cipher type');
+      // Hard coded as part of the cipher object. This should not be reachable.
+      throw new ConfigurationError('uninitialized cipher type');
     }
     const keyAccessObjects = await this.getKeyAccessObjects(policy, keyInfo);
 

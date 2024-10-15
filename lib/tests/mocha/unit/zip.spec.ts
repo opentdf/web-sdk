@@ -39,7 +39,7 @@ describe('zip utilities', () => {
       expect(b1).to.eql(b0);
     });
     it('unsafe ints throw', () => {
-      expect(() => writeUInt64LE(Buffer.alloc(0), 2 ** 54, 0)).to.throw(/Unsafe number/);
+      expect(() => writeUInt64LE(Buffer.alloc(0), 2 ** 54, 0)).to.throw(/unsafe number/);
     });
   });
   describe('readUInt64LE', () => {

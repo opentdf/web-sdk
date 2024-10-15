@@ -1,3 +1,4 @@
+import { ConfigurationError } from '../errors.js';
 import { AlgorithmName } from './../nanotdf-crypto/enums.js';
 
 /**
@@ -71,7 +72,7 @@ export function extractRSValuesFromSignature(signatureBytes: Uint8Array): {
 
   // Correct validation
   if (!concatAndCompareUint8Arrays(rValue, sValue, signatureBytes)) {
-    throw new Error('Invalid ECDSA signature');
+    throw new ConfigurationError('invalid ECDSA signature');
   }
 
   return {

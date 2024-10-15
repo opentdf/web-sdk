@@ -1,3 +1,4 @@
+import { ConfigurationError } from '../errors.js';
 import { type AuthProvider, type HttpRequest } from './auth.js';
 import { AccessToken, type RefreshTokenCredentials } from './oidc.js';
 
@@ -11,9 +12,7 @@ export class OIDCRefreshTokenProvider implements AuthProvider {
     oidcOrigin,
   }: Partial<RefreshTokenCredentials> & Omit<RefreshTokenCredentials, 'exchange'>) {
     if (!clientId || !refreshToken) {
-      throw new Error(
-        'To use this browser-only provider you must supply clientId/valid OIDC refresh token'
-      );
+      throw new ConfigurationError('refresh token or client id missing');
     }
 
     this.oidcAuth = new AccessToken({

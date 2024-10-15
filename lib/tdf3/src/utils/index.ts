@@ -4,6 +4,7 @@ import * as WebCryptoService from '../crypto/index.js';
 import { KeyInfo, SplitKey } from '../models/index.js';
 
 import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
+import { ConfigurationError } from '../../../src/errors.js';
 
 export { ZipReader, readUInt64LE } from './zip-reader.js';
 export { ZipWriter } from './zip-writer.js';
@@ -301,7 +302,7 @@ export async function keyMiddleware(): Promise<{
   const cipher = new AesGcmCipher(WebCryptoService);
   const encryptionInformation = new SplitKey(cipher);
   if (!encryptionInformation?.generateKey) {
-    throw new Error('Crypto service not initialised');
+    throw new ConfigurationError('Crypto service not initialised');
   }
   const key = await encryptionInformation.generateKey();
   return { keyForEncryption: key, keyForManifest: key };

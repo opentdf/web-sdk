@@ -1,3 +1,4 @@
+import { ConfigurationError } from '../errors.js';
 import { type AuthProvider, type HttpRequest } from './auth.js';
 import { AccessToken, type ExternalJwtCredentials } from './oidc.js';
 
@@ -11,9 +12,7 @@ export class OIDCExternalJwtProvider implements AuthProvider {
     oidcOrigin,
   }: Partial<ExternalJwtCredentials> & Omit<ExternalJwtCredentials, 'exchange'>) {
     if (!clientId || !externalJwt) {
-      throw new Error(
-        'To use this browser-only provider you must supply clientId/JWT from trusted external IdP'
-      );
+      throw new ConfigurationError('external JWT exchange reequires client id and jwt');
     }
 
     this.oidcAuth = new AccessToken({

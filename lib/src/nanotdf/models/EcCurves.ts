@@ -1,7 +1,7 @@
 import CurveNameEnum from '../enum/CurveNameEnum.js';
-import { InvalidCurveNameError } from '../../errors.js';
+import { UnsupportedFeatureError } from '../../errors.js';
 
-interface CurveInterface {
+export interface CurveInterface {
   name: CurveNameEnum;
   length: number;
 }
@@ -26,7 +26,7 @@ export const Secp521R1: CurveInterface = {
  *
  * @param curveName CurveNameEnum name of the curve
  */
-function getCurveLength(curveName: CurveNameEnum): number {
+export function getCurveLength(curveName: CurveNameEnum): number {
   switch (curveName) {
     case Secp256R1.name:
       return Secp256R1.length;
@@ -35,14 +35,6 @@ function getCurveLength(curveName: CurveNameEnum): number {
     case Secp521R1.name:
       return Secp521R1.length;
     default:
-      throw new InvalidCurveNameError();
+      throw new UnsupportedFeatureError(`unsupported curve name: ${curveName}`);
   }
 }
-
-export default {
-  Secp256R1,
-  Secp384R1,
-  Secp521R1,
-
-  getCurveLength,
-};

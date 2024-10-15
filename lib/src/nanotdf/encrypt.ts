@@ -18,6 +18,7 @@ import {
 } from '../nanotdf-crypto/index.js';
 import { KasPublicKeyInfo } from '../access.js';
 import { computeECDSASig, extractRSValuesFromSignature } from '../nanotdf-crypto/ecdsaSignature.js';
+import { ConfigurationError } from '../errors.js';
 
 /**
  * Encrypt the plain data into nanotdf buffer
@@ -39,7 +40,7 @@ export default async function encrypt(
 ): Promise<ArrayBuffer> {
   // Generate a symmetric key.
   if (!ephemeralKeyPair.privateKey) {
-    throw new Error('incomplete ephemeral key');
+    throw new ConfigurationError('incomplete ephemeral key');
   }
   const symmetricKey = await keyAgreement(
     ephemeralKeyPair.privateKey,
@@ -96,7 +97,7 @@ export default async function encrypt(
   );
 
   if (!ephemeralKeyPair.publicKey) {
-    throw new Error('incomplete ephemeral key');
+    throw new ConfigurationError('incomplete ephemeral key');
   }
   // Create a header
   const pubKeyAsArrayBuffer = await exportCryptoKey(ephemeralKeyPair.publicKey);
@@ -158,7 +159,7 @@ async function getCurveNameFromPrivateKey(privateKey: CryptoKey): Promise<string
 
   // The curve name is stored in the 'crv' property of the JWK
   if (!keyData.crv) {
-    throw new Error('Curve name is undefined');
+    throw new ConfigurationError('curve name is undefined (bad private key)');
   }
 
   return keyData.crv;

@@ -10,7 +10,7 @@ import CurveNameEnum from '../enum/CurveNameEnum.js';
 // Helpers
 import { lengthOfPublicKey } from '../helpers/calculateByCurve.js';
 import DefaultParams from './DefaultParams.js';
-import { InvalidEphemeralKeyError } from '../../errors.js';
+import { ConfigurationError, InvalidFileError } from '../../errors.js';
 import { rstrip } from '../../utils.js';
 
 /**
@@ -180,7 +180,7 @@ export default class Header {
 
     // Check if the ephemeral public key length is not the same length
     if (ephemeralPublicKey.byteLength !== ephemeralPublicKeyLength) {
-      throw new InvalidEphemeralKeyError();
+      throw new InvalidFileError('nanotdf parse failure: public key read failure');
     }
 
     const header = new Header(
@@ -234,7 +234,7 @@ export default class Header {
    */
   copyToBuffer(buffer: Uint8Array): void {
     if (this.length > buffer.length) {
-      throw new Error('Invalid buffer size to copy tdf header');
+      throw new InvalidFileError('invalid buffer size to copy tdf header');
     }
 
     let offset = 0;
@@ -316,7 +316,7 @@ export default class Header {
     try {
       return `${rstrip(this.kas.url, '/')}/v2/rewrap`;
     } catch (e) {
-      throw new Error(`Cannot construct KAS Rewrap URL: ${e.message}`);
+      throw new ConfigurationError(`cannot construct KAS Rewrap URL: ${e.message}`);
     }
   }
 }

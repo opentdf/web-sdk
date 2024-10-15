@@ -13,7 +13,7 @@ import {
   MIN_ASYMMETRIC_KEY_SIZE_BITS,
   PemKeyPair,
 } from './declarations.js';
-import { TdfDecryptError } from '../../../src/errors.js';
+import { ConfigurationError, DecryptError } from '../../../src/errors.js';
 import { formatAsPem, removePemFormatting } from './crypto-utils.js';
 import { encodeArrayBuffer as hexEncode } from '../../../src/encodings/hex.js';
 import { decodeArrayBuffer as base64Decode } from '../../../src/encodings/base64.js';
@@ -34,7 +34,7 @@ export function rsaOaepSha1(
   modulusLength: number = MIN_ASYMMETRIC_KEY_SIZE_BITS
 ): RsaHashedKeyGenParams {
   if (!modulusLength || modulusLength < MIN_ASYMMETRIC_KEY_SIZE_BITS) {
-    throw new Error('Invalid key size requested');
+    throw new ConfigurationError('Invalid key size requested');
   }
   return {
     name: 'RSA-OAEP',
@@ -50,7 +50,7 @@ export function rsaPkcs1Sha256(
   modulusLength: number = MIN_ASYMMETRIC_KEY_SIZE_BITS
 ): RsaHashedKeyGenParams {
   if (!modulusLength || modulusLength < MIN_ASYMMETRIC_KEY_SIZE_BITS) {
-    throw new Error('Invalid key size requested');
+    throw new ConfigurationError('Invalid key size requested');
   }
   return {
     name: 'RSASSA-PKCS1-v1_5',
@@ -100,7 +100,8 @@ export async function generateSigningKeyPair(): Promise<CryptoKeyPair> {
 export async function cryptoToPemPair(keysMaybe: unknown): Promise<PemKeyPair> {
   const keys = keysMaybe as CryptoKeyPair;
   if (!keys.privateKey || !keys.publicKey) {
-    throw new Error('invalid');
+    // These are only ever generated here, so this should not happen
+    throw new Error('internal: invalid keys');
   }
 
   const [exPublic, exPrivate] = await Promise.all([
@@ -291,7 +292,7 @@ async function _doDecrypt(
     // Catching this error so we can specifically check for OperationError
     .catch((err) => {
       if (err.name === 'OperationError') {
-        throw new TdfDecryptError(err);
+        throw new DecryptError(err);
       }
 
       throw err;

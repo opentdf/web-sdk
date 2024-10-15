@@ -1,3 +1,4 @@
+import { ConfigurationError } from '../errors.js';
 import { Attribute, AttributeRuleType, KeyAccessServer, Value } from './attributes.js';
 
 export type KeySplitStep = {
@@ -82,7 +83,7 @@ export function plan(dataAttrs: Value[]): KeySplitStep[] {
   for (const v of dataAttrs) {
     const { attribute, fqn } = v;
     if (!attribute) {
-      throw new Error(`attribute not defined for [${fqn}]`);
+      throw new ConfigurationError(`attribute not defined for [${fqn}]`);
     }
     const valFqn = fqn.toLowerCase();
     const attrFqn = attribute.fqn.toLowerCase();
@@ -139,7 +140,7 @@ function simplify(
       const anyKids = [];
       for (const bc of children) {
         if (bc.op != 'anyOf') {
-          throw new Error('inversion');
+          throw new Error('internal: autoconfigure inversion in disjunction');
         }
         if (!bc.kases?.length) {
           continue;
@@ -154,7 +155,7 @@ function simplify(
     } else {
       for (const bc of children) {
         if (bc.op != 'anyOf') {
-          throw new Error('inversion');
+          throw new Error('insternal: autoconfigure inversion in conjunction');
         }
         if (!bc.kases?.length) {
           continue;

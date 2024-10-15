@@ -1,6 +1,7 @@
 import AbstractPolicy from './AbstractPolicy.js';
 import { EmbeddedPolicyInterface } from '../../interfaces/PolicyInterface.js';
 import PolicyTypes from '../../enum/PolicyTypeEnum.js';
+import { ConfigurationError } from '../../../errors.js';
 
 /**
  * Embedded Policy
@@ -71,7 +72,7 @@ class EmbeddedPolicy extends AbstractPolicy implements EmbeddedPolicyInterface {
     const buffer = new Uint8Array(this.getLength());
 
     if (this.content.length > EmbeddedPolicy.MAX_POLICY_SIZE) {
-      throw new Error("TDF Policy can't be more that 2^16");
+      throw new ConfigurationError("TDF Policy can't be more that 2^16");
     }
 
     buffer.set([this.type], 0);

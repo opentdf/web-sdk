@@ -4,6 +4,7 @@ import {
   isDecoratedReadableStream,
 } from '../client/DecoratedReadableStream.js';
 import axiosRetry from 'axios-retry';
+import { ConfigurationError, NetworkError } from '../../../src/errors.js';
 
 let axiosRemoteChunk: AxiosInstance | null = null;
 
@@ -48,7 +49,7 @@ async function getRemoteChunk(url: string, range?: string): Promise<Uint8Array> 
       responseType: 'arraybuffer',
     });
     if (!res.data) {
-      throw new Error(
+      throw new NetworkError(
         'Unexpected response type: Server should have responded with an ArrayBuffer.'
       );
     }
@@ -88,30 +89,30 @@ export const fromDataSource = async ({ type, location }: DataSource) => {
   switch (type) {
     case 'buffer':
       if (!(location instanceof Uint8Array)) {
-        throw new Error('Invalid data source; must be uint8 array');
+        throw new ConfigurationError('Invalid data source; must be uint8 array');
       }
       return fromBuffer(location);
     case 'chunker':
       if (!(location instanceof Function)) {
-        throw new Error('Invalid data source; must be uint8 array');
+        throw new ConfigurationError('Invalid data source; must be uint8 array');
       }
       return location;
     case 'file-browser':
       if (!(location instanceof Blob)) {
-        throw new Error('Invalid data source; must be at least a Blob');
+        throw new ConfigurationError('Invalid data source; must be at least a Blob');
       }
       return fromBrowserFile(location);
     case 'remote':
       if (typeof location !== 'string') {
-        throw new Error('Invalid data source; url not provided');
+        throw new ConfigurationError('Invalid data source; url not provided');
       }
       return fromUrl(location);
     case 'stream':
       if (!isDecoratedReadableStream(location)) {
-        throw new Error('Invalid data source; must be DecoratedTdfStream');
+        throw new ConfigurationError('Invalid data source; must be DecoratedTdfStream');
       }
       return fromBuffer(await location.toBuffer());
     default:
-      throw new Error(`Data source type not defined, or not supported: ${type}}`);
+      throw new ConfigurationError(`Data source type not defined, or not supported: ${type}}`);
   }
 };

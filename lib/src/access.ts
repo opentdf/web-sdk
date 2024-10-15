@@ -1,4 +1,11 @@
 import { type AuthProvider } from './auth/auth.js';
+import {
+  InvalidFileError,
+  NetworkError,
+  PermissionDeniedError,
+  ServiceError,
+  UnauthenticatedError,
+} from './errors.js';
 import { pemToCryptoPublicKey, validateSecureUrl } from './utils.js';
 
 export class RewrapRequest {
@@ -32,22 +39,40 @@ export async function fetchWrappedKey(
     },
     body: JSON.stringify(requestBody),
   });
-  const response = await fetch(req.url, {
-    method: req.method,
-    mode: 'cors', // no-cors, *cors, same-origin
-    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-    credentials: 'same-origin', // include, *same-origin, omit
-    headers: req.headers,
-    redirect: 'follow', // manual, *follow, error
-    referrerPolicy: 'no-referrer', // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
-    body: req.body as BodyInit,
-  });
 
-  if (!response.ok) {
-    throw new Error(`${req.method} ${req.url} => ${response.status} ${response.statusText}`);
+  try {
+    const response = await fetch(req.url, {
+      method: req.method,
+      mode: 'cors', // no-cors, *cors, same-origin
+      cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+      credentials: 'same-origin', // include, *same-origin, omit
+      headers: req.headers,
+      redirect: 'follow', // manual, *follow, error
+      referrerPolicy: 'no-referrer', // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
+      body: req.body as BodyInit,
+    });
+
+    if (!response.ok) {
+      switch (response.status) {
+        case 400:
+          throw new InvalidFileError(
+            `400 for [${req.url}]: rewrap failure [${await response.text()}]`
+          );
+        case 401:
+          throw new UnauthenticatedError(`401 for [${req.url}]`);
+        case 403:
+          throw new PermissionDeniedError(`403 for [${req.url}]`);
+        default:
+          throw new NetworkError(
+            `${req.method} ${req.url} => ${response.status} ${response.statusText}`
+          );
+      }
+    }
+
+    return response.json();
+  } catch (e) {
+    throw new NetworkError(`unable to fetch wrapped key from [${url}]: ${e}`);
   }
-
-  return response.json();
 }
 
 export type KasPublicKeyAlgorithm = 'ec:secp256r1' | 'rsa:2048';
@@ -75,6 +100,17 @@ export type KasPublicKeyInfo = {
   key: Promise<CryptoKey>;
 };
 
+async function noteInvalidPublicKey(url: string, r: Promise<CryptoKey>): Promise<CryptoKey> {
+  try {
+    return await r;
+  } catch (e) {
+    if (e instanceof TypeError) {
+      throw new ServiceError(`invalid public key from [${url}]`, e);
+    }
+    throw e;
+  }
+}
+
 /**
  * If we have KAS url but not public key we can fetch it from KAS, fetching
  * the value from `${kas}/kas_public_key`.
@@ -82,36 +118,53 @@ export type KasPublicKeyInfo = {
 export async function fetchECKasPubKey(kasEndpoint: string): Promise<KasPublicKeyInfo> {
   validateSecureUrl(kasEndpoint);
   const pkUrlV2 = `${kasEndpoint}/v2/kas_public_key?algorithm=ec:secp256r1&v=2`;
-  const kasPubKeyResponse = await fetch(pkUrlV2);
-  if (!kasPubKeyResponse.ok) {
-    if (kasPubKeyResponse.status != 404) {
-      throw new Error(
-        `unable to load KAS public key from [${pkUrlV2}]. Received [${kasPubKeyResponse.status}:${kasPubKeyResponse.statusText}]`
-      );
+  const kasPubKeyResponseV2 = await fetch(pkUrlV2);
+  if (!kasPubKeyResponseV2.ok) {
+    switch (kasPubKeyResponseV2.status) {
+      case 404:
+        // v2 not implemented, perhaps a legacy server
+        break;
+      case 401:
+        throw new UnauthenticatedError(`401 for [${pkUrlV2}]`);
+      case 403:
+        throw new PermissionDeniedError(`403 for [${pkUrlV2}]`);
+      default:
+        throw new NetworkError(
+          `${pkUrlV2} => ${kasPubKeyResponseV2.status} ${kasPubKeyResponseV2.statusText}`
+        );
     }
     // most likely a server that does not implement v2 endpoint, so no key identifier
     const pkUrlV1 = `${kasEndpoint}/kas_public_key?algorithm=ec:secp256r1`;
     const r2 = await fetch(pkUrlV1);
     if (!r2.ok) {
-      throw new Error(
-        `unable to load KAS public key from [${pkUrlV1}]. Received [${r2.status}:${r2.statusText}]`
-      );
+      switch (r2.status) {
+        case 401:
+          throw new UnauthenticatedError(`401 for [${pkUrlV2}]`);
+        case 403:
+          throw new PermissionDeniedError(`403 for [${pkUrlV2}]`);
+        default:
+          throw new NetworkError(
+            `unable to load KAS public key from [${pkUrlV1}]. Received [${r2.status}:${r2.statusText}]`
+          );
+      }
     }
     const pem = await r2.json();
     return {
-      key: pemToCryptoPublicKey(pem),
+      key: noteInvalidPublicKey(pkUrlV1, pemToCryptoPublicKey(pem)),
       publicKey: pem,
       url: kasEndpoint,
       algorithm: 'ec:secp256r1',
     };
   }
-  const jsonContent = await kasPubKeyResponse.json();
+  const jsonContent = await kasPubKeyResponseV2.json();
   const { publicKey, kid }: KasPublicKeyInfo = jsonContent;
   if (!publicKey) {
-    throw new Error(`Invalid response from public key endpoint [${JSON.stringify(jsonContent)}]`);
+    throw new NetworkError(
+      `invalid response from public key endpoint [${JSON.stringify(jsonContent)}]`
+    );
   }
   return {
-    key: pemToCryptoPublicKey(publicKey),
+    key: noteInvalidPublicKey(pkUrlV2, pemToCryptoPublicKey(publicKey)),
     publicKey,
     url: kasEndpoint,
     algorithm: 'ec:secp256r1',

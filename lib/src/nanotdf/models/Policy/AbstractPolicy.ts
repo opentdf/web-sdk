@@ -1,5 +1,6 @@
 import PolicyInterface from '../../interfaces/PolicyInterface.js';
 import PolicyType from '../../enum/PolicyTypeEnum.js';
+import { ConfigurationError } from '../../../errors.js';
 
 abstract class AbstractPolicy implements PolicyInterface {
   static readonly TYPE_BYTE_OFF = 0;
@@ -24,7 +25,7 @@ abstract class AbstractPolicy implements PolicyInterface {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     type?: PolicyType
   ): { policy: PolicyInterface; offset: number } {
-    throw new Error('parsePolicy was not implemented');
+    throw new ConfigurationError('parsePolicy was not implemented');
   }
 
   constructor(type: PolicyType, binding: Uint8Array) {
@@ -36,14 +37,14 @@ abstract class AbstractPolicy implements PolicyInterface {
    * Length of policy
    */
   getLength(): number | never {
-    throw new Error('length was not implemented');
+    throw new ConfigurationError('length was not implemented');
   }
 
   /**
    * Return the content of the policy
    */
   toBuffer(): Uint8Array | never {
-    throw new Error('toBuffer() was not implemented');
+    throw new ConfigurationError('toBuffer() was not implemented');
   }
 
   /**

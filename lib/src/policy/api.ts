@@ -1,3 +1,4 @@
+import { NetworkError, ServiceError } from '../errors.js';
 import { AuthProvider } from '../auth/auth.js';
 import { rstrip } from '../utils.js';
 import { GetAttributeValuesByFqnsResponse, Value } from './attributes.js';
@@ -30,21 +31,19 @@ export async function attributeFQNsAsValues(
       redirect: 'follow',
       referrerPolicy: 'no-referrer',
     });
-
-    if (!response.ok) {
-      throw new Error(`${req.method} ${req.url} => ${response.status} ${response.statusText}`);
-    }
   } catch (e) {
-    console.error(`network error [${req.method} ${req.url}]`, e);
-    throw e;
+    throw new NetworkError(`network error [${req.method} ${req.url}]`, e);
+  }
+
+  if (!response.ok) {
+    throw new ServiceError(`${req.method} ${req.url} => ${response.status} ${response.statusText}`);
   }
 
   let resp: GetAttributeValuesByFqnsResponse;
   try {
     resp = (await response.json()) as GetAttributeValuesByFqnsResponse;
   } catch (e) {
-    console.error(`response parse error [${req.method} ${req.url}]`, e);
-    throw e;
+    throw new ServiceError(`response parse error [${req.method} ${req.url}]`, e);
   }
 
   const values: Value[] = [];

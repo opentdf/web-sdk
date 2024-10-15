@@ -62,7 +62,7 @@ describe('NanoTDF.ResourceLocator', () => {
 
   for (const { v, msg } of [
     { v: '03 01 61', msg: 'protocol' },
-    { v: 'a1 01 61', msg: 'identifier' },
+    { v: 'a1 01 61', msg: 'url parser: unsupported' },
     { v: '00 00', msg: 'body' },
     { v: '10 ff 61 61 ', msg: 'bounds' },
     { v: '10 01 61 61 ', msg: 'bounds' },

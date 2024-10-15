@@ -3,6 +3,7 @@ import { exportSPKI, importX509 } from 'jose';
 
 import { base64 } from './encodings/index.js';
 import { pemCertToCrypto, pemPublicToCrypto } from './nanotdf-crypto/index.js';
+import { ConfigurationError } from './errors.js';
 
 /**
  * Check to see if the given URL is 'secure'. This assumes:
@@ -113,7 +114,7 @@ export function addNewLines(str: string): string {
 
 export async function cryptoPublicToPem(publicKey: CryptoKey): Promise<string> {
   if (publicKey.type !== 'public') {
-    throw new TypeError('Incorrect key type');
+    throw new ConfigurationError('incorrect key type');
   }
 
   const exportedPublicKey = await crypto.subtle.exportKey('spki', publicKey);
@@ -128,7 +129,10 @@ export async function pemToCryptoPublicKey(pem: string): Promise<CryptoKey> {
   } else if (/-----BEGIN CERTIFICATE-----/.test(pem)) {
     return pemCertToCrypto(pem);
   }
-  throw new Error(`unsupported pem type [${pem}]`);
+  // This can happen in several circumstances:
+  // - When parsing a PEM key from a KAS server
+  // - When converting between PEM and CryptoKey formats for user provided session keys (e.g. for DPoP)
+  throw new TypeError(`unsupported pem type [${pem}]`);
 }
 
 export async function extractPemFromKeyString(keyString: string): Promise<string> {

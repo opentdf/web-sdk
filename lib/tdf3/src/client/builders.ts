@@ -3,7 +3,7 @@ import { AttributeObject, KeyInfo, Policy } from '../models/index.js';
 import { type Metadata } from '../tdf.js';
 import { Binary } from '../binary.js';
 
-import { IllegalArgumentError } from '../../../src/errors.js';
+import { ConfigurationError } from '../../../src/errors.js';
 import { PemKeyPair } from '../crypto/declarations.js';
 import { EntityObject } from '../../../src/tdf/EntityObject.js';
 import { DecoratedReadableStream } from './DecoratedReadableStream.js';
@@ -104,7 +104,7 @@ class EncryptParamsBuilder {
    */
   withStreamSource(readStream: ReadableStream<Uint8Array>): EncryptParamsBuilder {
     if (!readStream?.getReader) {
-      throw new Error(
+      throw new ConfigurationError(
         `Source must be a WebReadableStream. Run node streams through stream.Readable.toWeb()`
       );
     }
@@ -363,7 +363,7 @@ class EncryptParamsBuilder {
    */
   setStreamWindowSize(numBytes: number) {
     if (numBytes <= 0) {
-      throw new Error('Stream window size must be positive');
+      throw new ConfigurationError('Stream window size must be positive');
     }
     this._params.windowSize = numBytes;
   }
@@ -577,7 +577,7 @@ class DecryptParamsBuilder {
    */
   setUrlSource(url: string) {
     if (!/^https?/.exec(url)) {
-      throw new IllegalArgumentError(`stream source must be a web url, not [${url}]`);
+      throw new ConfigurationError(`stream source must be a web url, not [${url}]`);
     }
     this._params.source = { type: 'remote', location: url };
   }
@@ -607,7 +607,7 @@ class DecryptParamsBuilder {
    */
   withStreamSource(stream: ReadableStream<Uint8Array>) {
     if (!stream?.getReader) {
-      throw new Error(
+      throw new ConfigurationError(
         `Source must be a WebReadableStream. Run node streams through stream.Readable.toWeb()`
       );
     }
@@ -688,7 +688,7 @@ class DecryptParamsBuilder {
    */
   build(): Readonly<DecryptParams> {
     if (!this._params.source) {
-      throw new IllegalArgumentError('No source specified');
+      throw new ConfigurationError('No source specified');
     }
     return this._deepCopy(this._params as DecryptParams);
   }

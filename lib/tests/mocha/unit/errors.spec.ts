@@ -1,27 +1,11 @@
 import { assert } from 'chai';
-import {
-  KasDecryptError,
-  KasUpsertError,
-  KeyAccessError,
-  KeySyncError,
-  ManifestIntegrityError,
-  PolicyIntegrityError,
-  TdfDecryptError,
-  TdfError,
-  TdfPayloadExtractionError,
-} from '../../../src/errors.js';
+import { DecryptError, IntegrityError, TdfError } from '../../../src/errors.js';
 
 describe('Errors', () => {
   const errorClasses: Record<string, typeof TdfError> = {
-    KasDecryptError,
-    KasUpsertError,
-    KeyAccessError,
-    KeySyncError,
-    ManifestIntegrityError,
-    PolicyIntegrityError,
-    TdfDecryptError,
+    DecryptError,
+    IntegrityError,
     TdfError,
-    TdfPayloadExtractionError,
   };
 
   Object.keys(errorClasses).forEach((errorName) => {
@@ -39,6 +23,10 @@ describe('Errors', () => {
 
       it('should be instanceof Error', () => {
         assert.instanceOf(err, Error);
+      });
+
+      it('should be instanceof TdfError', () => {
+        assert.instanceOf(err, TdfError);
       });
 
       it('should throw correctly', () => {
