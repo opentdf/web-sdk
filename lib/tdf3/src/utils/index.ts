@@ -130,39 +130,39 @@ function base64Slice(buf: Uint8Array, start: number, end: number): string {
 
 // https://github.com/feross/buffer/blob/master/index.js#L483
 export function buffToString(
-  buffer: Uint8Array,
+  source: Uint8Array,
   encoding: SupportedEncoding = 'utf8',
   start = 0,
-  end = buffer.length
+  end = source.length
 ) {
   if (start < 0) {
     start = 0;
   }
 
-  if (end > buffer.length) {
-    end = buffer.length;
+  if (end > source.length) {
+    end = source.length;
   }
 
   // Return early if start > buffer.length. Done here to prevent potential uint32
   // coercion fail below.
-  if (start > buffer.length || end <= 0 || end <= start) {
+  if (start > source.length || end <= 0 || end <= start) {
     return '';
   }
 
   switch (encoding) {
     case 'hex':
-      return hexSlice(buffer, start, end);
+      return hexSlice(source, start, end);
 
     case 'utf8':
     case 'utf-8':
-      return utf8Slice(buffer, start, end);
+      return utf8Slice(source, start, end);
 
     case 'latin1':
     case 'binary':
-      return latin1Slice(buffer, start, end);
+      return latin1Slice(source, start, end);
 
     case 'base64':
-      return base64Slice(buffer, start, end);
+      return base64Slice(source, start, end);
   }
 }
 

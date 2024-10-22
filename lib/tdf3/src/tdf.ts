@@ -838,7 +838,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
       throw new ConfigurationError(`Safe byte limit (${cfg.byteLimit}) exceeded`);
     }
     //new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength);
-    crcCounter = unsigned(chunk as Uint8Array, crcCounter);
+    crcCounter = unsigned(chunk, crcCounter);
     fileByteCount += chunk.length;
   }
 

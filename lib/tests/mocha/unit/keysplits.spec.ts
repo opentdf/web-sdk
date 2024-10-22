@@ -8,8 +8,8 @@ import * as defaultCryptoService from '../../../tdf3/src/crypto/index.js';
 
 describe('keysplits', () => {
   it('binary xor', () => {
-    expect(bxor(Buffer.from([0x0f]), Buffer.from([0xf0]))).to.eql(Buffer.from([0xff]));
-    expect(bxor(Buffer.from([0x0f]), Buffer.from([0x0f]))).to.eql(Buffer.from([0x00]));
+    expect(bxor(new Uint8Array([0x0f]), new Uint8Array([0xf0]))).to.eql(new Uint8Array([0xff]));
+    expect(bxor(new Uint8Array([0x0f]), new Uint8Array([0x0f]))).to.eql(new Uint8Array([0x00]));
   });
 
   it('should return the original byte array with split set to one part', async () => {

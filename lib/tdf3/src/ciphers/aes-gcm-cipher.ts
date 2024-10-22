@@ -18,15 +18,15 @@ type ProcessGcmPayload = {
   payloadAuthTag: Binary;
 };
 // Should this be a Binary, Buffer, or... both?
-function processGcmPayload(buffer: ArrayBuffer): ProcessGcmPayload {
+function processGcmPayload(source: ArrayBuffer): ProcessGcmPayload {
   // Read the 12 byte IV from the beginning of the stream
-  const payloadIv = Binary.fromArrayBuffer(buffer.slice(0, 12));
+  const payloadIv = Binary.fromArrayBuffer(source.slice(0, 12));
 
   // Slice the final 16 bytes of the buffer for the authentication tag
-  const payloadAuthTag = Binary.fromArrayBuffer(buffer.slice(-16));
+  const payloadAuthTag = Binary.fromArrayBuffer(source.slice(-16));
 
   return {
-    payload: Binary.fromArrayBuffer(buffer.slice(12, -16)),
+    payload: Binary.fromArrayBuffer(source.slice(12, -16)),
     payloadIv,
     payloadAuthTag,
   };
