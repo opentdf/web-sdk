@@ -2,6 +2,7 @@ import { canonicalizeEx } from 'json-canonicalize';
 import { SignJWT, jwtVerify } from 'jose';
 import { AssertionKey } from './../client/AssertionConfig.js';
 import { ConfigurationError, InvalidFileError } from '../../../src/errors.js';
+import { hex } from 'src/encodings/index.js';
 
 export type AssertionKeyAlg = 'RS256' | 'HS256';
 export type AssertionType = 'handling' | 'other';
@@ -47,7 +48,7 @@ export async function hash(this: Assertion): Promise<string> {
   const result = canonicalizeEx(this, { exclude: ['binding', 'hash', 'sign', 'verify'] });
 
   const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(result));
-  return Buffer.from(hash).toString('hex');
+  return hex.encodeArrayBuffer(hash);
 }
 
 /**
