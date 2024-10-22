@@ -14,6 +14,7 @@ import {
   buildKeyAccess,
   EncryptConfiguration,
   fetchKasPublicKey,
+  loadTDFStream,
   unwrapHtml,
   validatePolicyObject,
   readStream,
@@ -613,6 +614,11 @@ export class Client {
     const manifest = await zipHelper.getManifest(centralDirectory, '0.manifest.json');
     const policyJson = base64.decode(manifest.encryptionInformation.policy);
     return JSON.parse(policyJson).uuid;
+  }
+
+  async loadTDFStream({ source }: { source: DecryptSource }) {
+    const chunker = await makeChunkable(source);
+    return loadTDFStream(chunker);
   }
 }
 

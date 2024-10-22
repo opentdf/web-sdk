@@ -876,7 +876,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
 }
 
 // load the TDF as a stream in memory, for further use in reading and key syncing
-async function loadTDFStream(
+export async function loadTDFStream(
   chunker: Chunker
 ): Promise<{ manifest: Manifest; zipReader: ZipReader; centralDirectory: CentralDirectory[] }> {
   const zipReader = new ZipReader(chunker);
