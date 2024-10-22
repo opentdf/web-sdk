@@ -1,8 +1,8 @@
 import { canonicalizeEx } from 'json-canonicalize';
 import { SignJWT, jwtVerify } from 'jose';
 import { AssertionKey } from './../client/AssertionConfig.js';
+import { hex } from '../../../src/encodings/index.js';
 import { ConfigurationError, InvalidFileError } from '../../../src/errors.js';
-import { hex } from 'src/encodings/index.js';
 
 export type AssertionKeyAlg = 'RS256' | 'HS256';
 export type AssertionType = 'handling' | 'other';
