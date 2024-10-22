@@ -232,20 +232,20 @@ export default class Header {
   /**
    * Copy the contents of the header to buffer
    */
-  copyToBuffer(buffer: Uint8Array): void {
-    if (this.length > buffer.length) {
+  copyToBuffer(target: Uint8Array): void {
+    if (this.length > target.length) {
       throw new InvalidFileError('invalid buffer size to copy tdf header');
     }
 
     let offset = 0;
 
     // Write Magic number and version
-    buffer.set(this.magicNumberVersion, 0);
+    target.set(this.magicNumberVersion, 0);
     offset += this.magicNumberVersion.length;
 
     // Write kas resource locator
     const kasResourceLocatorBuf = this.kas.toBuffer();
-    buffer.set(kasResourceLocatorBuf, offset);
+    target.set(kasResourceLocatorBuf, offset);
     offset += kasResourceLocatorBuf.length;
 
     // Write ECC & Binding Mode
@@ -253,7 +253,7 @@ export default class Header {
     const eccBingingMode = (ecdsaBinding << 7) | this.ephemeralCurveName;
     const eccBingingModeAsByte = new Uint8Array(1);
     eccBingingModeAsByte[0] = eccBingingMode;
-    buffer.set(eccBingingModeAsByte, offset);
+    target.set(eccBingingModeAsByte, offset);
     offset += eccBingingModeAsByte.length;
 
     // Write symmetric & payload config
@@ -262,16 +262,16 @@ export default class Header {
       (isSignatureEnable << 7) | this.signatureCurveName | this.symmetricCipher;
     const symmetricPayloadConfigAsByte = new Uint8Array(1);
     symmetricPayloadConfigAsByte[0] = symmetricPayloadConfig;
-    buffer.set(symmetricPayloadConfigAsByte, offset);
+    target.set(symmetricPayloadConfigAsByte, offset);
     offset += symmetricPayloadConfigAsByte.length;
 
     // Write the policy
     const policyBuffer = this.policy.toBuffer();
-    buffer.set(policyBuffer, offset);
+    target.set(policyBuffer, offset);
     offset += policyBuffer.length;
 
     // Write the ephemeral public key
-    buffer.set(this.ephemeralPublicKey, offset);
+    target.set(this.ephemeralPublicKey, offset);
   }
 
   /**
@@ -304,8 +304,8 @@ export default class Header {
    */
   toBuffer(): ArrayBuffer {
     const arrayBuffer = new ArrayBuffer(this.length);
-    const buffer = new Uint8Array(arrayBuffer);
-    this.copyToBuffer(buffer);
+    const target = new Uint8Array(arrayBuffer);
+    this.copyToBuffer(target);
     return arrayBuffer;
   }
 

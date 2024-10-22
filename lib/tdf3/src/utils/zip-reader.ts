@@ -69,8 +69,8 @@ export class ZipReader {
 
   /**
    * Utility function to get the centralDirectory for the zip file.
-   * @param  {Buffer} chunkBuffer Takes a buffer of a portion of the file
-   * @return {Object}             The central directory represented as an object
+   * It reads the end of the file to find it.
+   * @return The central directory represented as an object
    */
   async getCentralDirectory(): Promise<CentralDirectory[]> {
     const chunk = await this.getChunk(-1000);
@@ -138,10 +138,9 @@ export class ZipReader {
   }
 
   /**
-   * Takes a portion of a ZIP (must be the last portion of a ZIP to work) and returns an array of Buffers
-   * that correspond to each central directory.
-   * @param  {Buffer} chunkBuffer The last portion of a zip file
-   * @returns {Array}             An array of buffers
+   * extracts the CD buffer entries from the end of a zip file.
+   * @param  chunkBuffer The last portion of a zip file
+   * @returns an array of typed arrays, each element corresponding to a central directory record
    */
   getCDBuffers(chunkBuffer: Uint8Array): Uint8Array[] {
     const cdBuffers = [];

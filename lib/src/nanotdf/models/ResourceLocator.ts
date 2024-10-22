@@ -178,7 +178,7 @@ export default class ResourceLocator {
    * Return the contents of the Resource Locator in buffer
    */
   toBuffer(): Uint8Array {
-    const buffer = new Uint8Array(ResourceLocator.BODY_OFFSET + this.body.length + this.idType);
+    const target = new Uint8Array(ResourceLocator.BODY_OFFSET + this.body.length + this.idType);
     let idTypeNibble = 0;
     switch (this.idType) {
       case ResourceLocatorIdentifierEnum.TwoBytes:
@@ -191,13 +191,13 @@ export default class ResourceLocator {
         idTypeNibble = ResourceLocator.IDENTIFIER_32_BYTE;
         break;
     }
-    buffer.set([this.protocol | idTypeNibble], ResourceLocator.PROTOCOL_OFFSET);
-    buffer.set([this.lengthOfBody], ResourceLocator.LENGTH_OFFSET);
-    buffer.set(new TextEncoder().encode(this.body), ResourceLocator.BODY_OFFSET);
+    target.set([this.protocol | idTypeNibble], ResourceLocator.PROTOCOL_OFFSET);
+    target.set([this.lengthOfBody], ResourceLocator.LENGTH_OFFSET);
+    target.set(new TextEncoder().encode(this.body), ResourceLocator.BODY_OFFSET);
     if (this.id) {
-      buffer.set(new TextEncoder().encode(this.id), ResourceLocator.BODY_OFFSET + this.body.length);
+      target.set(new TextEncoder().encode(this.id), ResourceLocator.BODY_OFFSET + this.body.length);
     }
-    return buffer;
+    return target;
   }
 
   /**

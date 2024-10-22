@@ -56,18 +56,18 @@ class RemotePolicy extends AbstractPolicy implements RemotePolicyInterface {
    * Return the content of the policy
    */
   override toBuffer(): Uint8Array {
-    const buffer = new Uint8Array(this.getLength());
+    const target = new Uint8Array(this.getLength());
 
-    buffer.set([PolicyTypeEnum.Remote], 0);
+    target.set([PolicyTypeEnum.Remote], 0);
 
     // Write the remote policy location
     const resourceLocatorAsBuf = this.remotePolicy.toBuffer();
-    buffer.set(resourceLocatorAsBuf, 1);
+    target.set(resourceLocatorAsBuf, 1);
 
     // Write the binding.
-    buffer.set(this.binding, resourceLocatorAsBuf.length + 1);
+    target.set(this.binding, resourceLocatorAsBuf.length + 1);
 
-    return buffer;
+    return target;
   }
 }
 

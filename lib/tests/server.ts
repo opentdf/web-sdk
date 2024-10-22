@@ -35,6 +35,18 @@ type RewrapBody = {
   clientPublicKey: string;
 };
 
+function concat(b: ArrayBufferView[]) {
+  const length = b.reduce((lk, ak) => lk + ak.byteLength, 0);
+  const buf = new Uint8Array(length);
+  let offset = 0;
+  for (const v of b) {
+    const uint8view = new Uint8Array(v.buffer, v.byteOffset, v.byteLength);
+    buf.set(uint8view, offset);
+    offset += uint8view.byteLength;
+  }
+  return buf;
+}
+
 function getBody(request: IncomingMessage): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
     const bodyParts: Uint8Array[] = [];
@@ -43,7 +55,7 @@ function getBody(request: IncomingMessage): Promise<Uint8Array> {
         bodyParts.push(chunk);
       })
       .on('end', () => {
-        resolve(Buffer.concat(bodyParts));
+        resolve(concat(bodyParts));
       })
       .on('error', reject);
   });
@@ -237,11 +249,11 @@ const kas: RequestListener = async (req, res) => {
         res.statusCode = 206; // Partial Content
         res.setHeader('Content-Type', 'application/octet-stream');
         res.setHeader('Content-Length', rangeData.length);
-        res.end(Buffer.from(rangeData.buffer));
+        res.end(rangeData);
       } else {
         res.statusCode = 200; // OK
         res.setHeader('Content-Type', 'application/octet-stream');
-        res.end(Buffer.from(fullRange.buffer));
+        res.end(fullRange);
       }
     } else if (url.pathname === '/attributes/*/fqn') {
       const fqnAttributeValues: Record<string, AttributeAndValue> = {};

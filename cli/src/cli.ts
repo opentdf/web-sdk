@@ -19,6 +19,7 @@ import {
 import { CLIError, Level, log } from './logger.js';
 import { webcrypto } from 'crypto';
 import { attributeFQNsAsValues } from '@opentdf/client/nano';
+import { base64 } from '@opentdf/client/encodings';
 
 type AuthToProcess = {
   auth?: string;
@@ -37,8 +38,9 @@ const bindingTypes = ['ecdsa', 'gmac'];
 const containerTypes = ['tdf3', 'nano', 'dataset', 'ztdf'];
 
 const parseJwt = (jwt: string, field = 1) => {
-  return JSON.parse(Buffer.from(jwt.split('.')[field], 'base64').toString());
+  return JSON.parse(base64.decode(jwt.split('.')[field]));
 };
+
 const parseJwtComplete = (jwt: string) => {
   return { header: parseJwt(jwt, 0), payload: parseJwt(jwt) };
 };
@@ -413,9 +415,9 @@ export const handleArgs = (args: string[]) => {
 
             log('DEBUG', 'Handle output.');
             if (argv.output) {
-              await writeFile(argv.output, Buffer.from(plaintext));
+              await writeFile(argv.output, new Uint8Array(plaintext));
             } else {
-              console.log(Buffer.from(plaintext).toString('utf8'));
+              console.log(new TextDecoder().decode(plaintext));
             }
           }
           const lastRequest = authProvider.requestLog[authProvider.requestLog.length - 1];
@@ -503,9 +505,9 @@ export const handleArgs = (args: string[]) => {
 
             log('DEBUG', `Handle cyphertext output ${JSON.stringify(cyphertext)}`);
             if (argv.output) {
-              await writeFile(argv.output, Buffer.from(cyphertext));
+              await writeFile(argv.output, new Uint8Array(cyphertext));
             } else {
-              console.log(Buffer.from(cyphertext).toString('base64'));
+              console.log(base64.encodeArrayBuffer(cyphertext));
             }
           }
         }
