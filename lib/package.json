@@ -29,6 +29,13 @@
       "require": "./dist/cjs/tdf3/index.js",
       "import": "./dist/web/tdf3/index.js"
     },
+    "./assertions": {
+      "default": {
+        "types": "./dist/types/tdf3/src/assertions.d.ts",
+        "require": "./dist/cjs/tdf3/src/assertions.js",
+        "import": "./dist/web/tdf3/src/assertions.js"
+      }
+    },
     "./encodings": {
       "default": {
         "types": "./dist/types/src/encodings/index.d.ts",

@@ -41,6 +41,7 @@
     "@aws-sdk/middleware-endpoint": "^3.370.0",
     "@aws-sdk/protocol-http": "^3.370.0",
     "@aws-sdk/smithy-client": "^3.370.0",
+    "@opentdf/client": "file:../lib/opentdf-client-2.1.0.tgz",
     "axios": "^1.6.1"
   },
   "devDependencies": {
