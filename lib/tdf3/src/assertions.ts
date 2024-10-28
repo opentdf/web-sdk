@@ -1,5 +1,5 @@
 import { canonicalizeEx } from 'json-canonicalize';
-import { SignJWT, jwtVerify } from 'jose';
+import { type KeyLike, SignJWT, jwtVerify } from 'jose';
 import { base64, hex } from '../../src/encodings/index.js';
 import { ConfigurationError, IntegrityError, InvalidFileError } from '../../src/errors.js';
 
@@ -70,7 +70,7 @@ async function sign(
 
   let token: string;
   try {
-    token = await new SignJWT(payload).setProtectedHeader({ alg: key.alg }).sign(key.key as any);
+    token = await new SignJWT(payload).setProtectedHeader({ alg: key.alg }).sign(key.key);
   } catch (error) {
     throw new ConfigurationError(`Signing assertion failed: ${error.message}`, error);
   }
@@ -115,7 +115,7 @@ export async function verify(
 ): Promise<void> {
   let payload: AssertionPayload;
   try {
-    const uj = await jwtVerify(thiz.binding.signature, key.key as any, {
+    const uj = await jwtVerify(thiz.binding.signature, key.key, {
       algorithms: [key.alg],
     });
     payload = uj.payload as AssertionPayload;
@@ -170,7 +170,7 @@ export async function CreateAssertion(
 
 export type AssertionKey = {
   alg: AssertionKeyAlg;
-  key: unknown; // Replace AnyKey with the actual type of your key
+  key: KeyLike | Uint8Array;
 };
 
 // AssertionConfig is a shadow of Assertion with the addition of the signing key.
