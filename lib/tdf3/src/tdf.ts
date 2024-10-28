@@ -5,12 +5,7 @@ import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
 import { EntityObject } from '../../src/tdf/EntityObject.js';
 import { pemToCryptoPublicKey, validateSecureUrl } from '../../src/utils.js';
 import { DecryptParams } from './client/builders.js';
-import {
-  AssertionConfig,
-  AssertionKey,
-  AssertionVerificationKeys,
-} from './client/AssertionConfig.js';
-import { Assertion, CreateAssertion } from './models/assertion.js';
+import * as assertions from './assertions.js';
 
 import {
   AttributeSet,
@@ -149,7 +144,7 @@ export type EncryptConfiguration = {
   progressHandler?: (bytesProcessed: number) => void;
   keyForEncryption: KeyInfo;
   keyForManifest: KeyInfo;
-  assertionConfigs?: AssertionConfig[];
+  assertionConfigs?: assertions.AssertionConfig[];
 };
 
 export type DecryptConfiguration = {
@@ -165,7 +160,7 @@ export type DecryptConfiguration = {
   keyMiddleware: KeyMiddleware;
   progressHandler?: (bytesProcessed: number) => void;
   fileStreamServiceWorker?: string;
-  assertionVerificationKeys?: AssertionVerificationKeys;
+  assertionVerificationKeys?: assertions.AssertionVerificationKeys;
 };
 
 export type UpsertConfiguration = {
@@ -452,12 +447,11 @@ async function _generateManifest(
   };
 
   const encryptionInformationStr = await encryptionInformation.write(policy, keyInfo);
-  const assertions: Assertion[] = [];
   return {
     payload,
     // generate the manifest first, then insert integrity information into it
     encryptionInformation: encryptionInformationStr,
-    assertions: assertions,
+    assertions: [],
   };
 }
 
@@ -741,12 +735,12 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
 
         manifest.encryptionInformation.method.isStreamable = true;
 
-        const signedAssertions: Assertion[] = [];
+        const signedAssertions: assertions.Assertion[] = [];
         if (cfg.assertionConfigs && cfg.assertionConfigs.length > 0) {
           await Promise.all(
             cfg.assertionConfigs.map(async (assertionConfig) => {
               // Create assertion using the assertionConfig values
-              const assertion = CreateAssertion(
+              const assertion = assertions.CreateAssertion(
                 assertionConfig.id,
                 assertionConfig.type,
                 assertionConfig.scope,
@@ -759,7 +753,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
               const encodedHash = base64.encode(combinedHash);
 
               // Create assertion key using the signingKey from the config, or a default key
-              const assertionKey: AssertionKey = assertionConfig.signingKey ?? {
+              const assertionKey: assertions.AssertionKey = assertionConfig.signingKey ?? {
                 alg: 'HS256',
                 key: new Uint8Array(cfg.keyForEncryption.unwrappedKeyBinary.asArrayBuffer()),
               };
@@ -1226,10 +1220,9 @@ export async function readStream(cfg: DecryptConfiguration) {
   }
 
   // // Validate assertions
-  const assertions = manifest.assertions || [];
-  for (const assertion of assertions) {
+  for (const assertion of (manifest.assertions || [])) {
     // Create a default assertion key
-    let assertionKey: AssertionKey = {
+    let assertionKey: assertions.AssertionKey = {
       alg: 'HS256',
       key: new Uint8Array(reconstructedKeyBinary.asArrayBuffer()),
     };
@@ -1242,7 +1235,7 @@ export async function readStream(cfg: DecryptConfiguration) {
     }
 
     // create assertion object from the assertion
-    const assertionObj = CreateAssertion(
+    const assertionObj = assertions.CreateAssertion(
       assertion.id,
       assertion.type,
       assertion.scope,

@@ -18,6 +18,7 @@ import {
 } from '@opentdf/client';
 import { CLIError, Level, log } from './logger.js';
 import { webcrypto } from 'crypto';
+import * as assertions from '@opentdf/client/assertions';
 import { attributeFQNsAsValues } from '@opentdf/client/nano';
 import { base64 } from '@opentdf/client/encodings';
 
@@ -119,8 +120,26 @@ async function tdf3DecryptParamsFor(argv: Partial<mainArgs>): Promise<DecryptPar
   return c.build();
 }
 
+function parseAssertionConfig(s: string): assertions.AssertionConfig[] {
+  const u = JSON.parse(s);
+  // if u is null or empty, return an empty array
+  if (!u) {
+    return [];
+  }
+  const a = Array.isArray(u) ? u : [u];
+  for (const assertion of a) {
+    if (!assertions.isAssertionConfig(assertion)) {
+      throw new CLIError('CRITICAL', `invalid assertion config ${JSON.stringify(assertion)}`);
+    }
+  }
+  return a;
+}
+
 async function tdf3EncryptParamsFor(argv: Partial<mainArgs>): Promise<EncryptParams> {
   const c = new EncryptParamsBuilder();
+  if (argv.assertions?.length) {
+    c.withAssertions(parseAssertionConfig(argv.assertions));
+  }
   if (argv.attributes?.length) {
     c.setAttributes(argv.attributes.split(','));
   }
@@ -254,6 +273,13 @@ export const handleArgs = (args: string[]) => {
 
       // Policy, encryption, and container options
       .options({
+        assertions: {
+          group: 'Encrypt Options:',
+          desc: 'ZTDF assertion config objects',
+          type: 'string',
+          default: '',
+          validate: parseAssertionConfig,
+        },
         attributes: {
           group: 'Encrypt Options:',
           desc: 'Data attributes for the policy',
