@@ -519,6 +519,7 @@ export type DecryptParams = {
   keyMiddleware?: DecryptKeyMiddleware;
   streamMiddleware?: DecryptStreamMiddleware;
   assertionVerificationKeys?: AssertionVerificationKeys;
+  noVerifyAssertions?: boolean;
 };
 
 /**
@@ -671,6 +672,12 @@ class DecryptParamsBuilder {
    */
   withArrayBufferSource(arraybuffer: ArrayBuffer): this {
     this.setArrayBufferSource(arraybuffer);
+    return this;
+  }
+
+  /** Skip assertion verification */
+  withNoVerifyAssertions(v: boolean): DecryptParamsBuilder {
+    this._params.noVerifyAssertions = v;
     return this;
   }
 

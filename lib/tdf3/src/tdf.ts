@@ -162,6 +162,7 @@ export type DecryptConfiguration = {
   progressHandler?: (bytesProcessed: number) => void;
   fileStreamServiceWorker?: string;
   assertionVerificationKeys?: AssertionVerificationKeys;
+  noVerifyAssertions?: boolean;
 };
 
 export type UpsertConfiguration = {
@@ -1209,21 +1210,22 @@ export async function readStream(cfg: DecryptConfiguration) {
     throw new IntegrityError('Failed integrity check on root signature');
   }
 
-  // // Validate assertions
-  for (const assertion of manifest.assertions || []) {
-    // Create a default assertion key
-    let assertionKey: AssertionKey = {
-      alg: 'HS256',
-      key: new Uint8Array(reconstructedKeyBinary.asArrayBuffer()),
-    };
+  if (!cfg.noVerifyAssertions) {
+    for (const assertion of manifest.assertions || []) {
+      // Create a default assertion key
+      let assertionKey: AssertionKey = {
+        alg: 'HS256',
+        key: new Uint8Array(reconstructedKeyBinary.asArrayBuffer()),
+      };
 
-    if (cfg.assertionVerificationKeys) {
-      const foundKey = cfg.assertionVerificationKeys.Keys[assertion.id];
-      if (foundKey) {
-        assertionKey = foundKey;
+      if (cfg.assertionVerificationKeys) {
+        const foundKey = cfg.assertionVerificationKeys.Keys[assertion.id];
+        if (foundKey) {
+          assertionKey = foundKey;
+        }
       }
+      await assertions.verify(assertion, aggregateHash, assertionKey);
     }
-    await assertions.verify(assertion, aggregateHash, assertionKey);
   }
 
   let mapOfRequestsOffset = 0;

@@ -116,6 +116,9 @@ function addParams(client: AnyNanoClient, argv: Partial<mainArgs>) {
 
 async function tdf3DecryptParamsFor(argv: Partial<mainArgs>): Promise<DecryptParams> {
   const c = new DecryptParamsBuilder();
+  if (argv.noVerifyAssertions) {
+    c.withNoVerifyAssertions(true);
+  }
   c.setFileSource(await openAsBlob(argv.file as string));
   return c.build();
 }
@@ -227,6 +230,12 @@ export const handleArgs = (args: string[]) => {
       .option('ignoreAllowList', {
         group: 'Security:',
         desc: 'disable KAS allowlist feature for decrypt',
+        type: 'boolean',
+      })
+      .option('noVerifyAssertions', {
+        alias: 'no-verify-assertions',
+        group: 'Security',
+        desc: 'Do not verify assertions',
         type: 'boolean',
       })
       .option('auth', {
