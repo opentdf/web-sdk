@@ -7,10 +7,7 @@ import { WebCryptoService } from '../../tdf3/index.js';
 import { Client } from '../../tdf3/src/index.js';
 import { SplitKey } from '../../tdf3/src/models/encryption-information.js';
 import { AesGcmCipher } from '../../tdf3/src/ciphers/aes-gcm-cipher.js';
-import {
-  AssertionConfig,
-  AssertionVerificationKeys,
-} from '../../tdf3/src/client/AssertionConfig.js';
+import { AssertionConfig, AssertionVerificationKeys } from '../../tdf3/src/assertions.js';
 import { Scope } from '../../tdf3/src/client/builders.js';
 const Mocks = getMocks();
 

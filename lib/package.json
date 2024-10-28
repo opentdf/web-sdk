@@ -29,6 +29,13 @@
       "require": "./dist/cjs/tdf3/index.js",
       "import": "./dist/web/tdf3/index.js"
     },
+    "./assertions": {
+      "default": {
+        "types": "./dist/types/tdf3/src/assertions.d.ts",
+        "require": "./dist/cjs/tdf3/src/assertions.js",
+        "import": "./dist/web/tdf3/src/assertions.js"
+      }
+    },
     "./encodings": {
       "default": {
         "types": "./dist/types/src/encodings/index.d.ts",
@@ -64,7 +71,6 @@
     "axios-retry": "^3.9.0",
     "base64-js": "^1.5.1",
     "browser-fs-access": "^0.34.1",
-    "buffer": "^6.0.3",
     "buffer-crc32": "^0.2.13",
     "dpop": "^1.2.0",
     "eventemitter3": "^5.0.1",
