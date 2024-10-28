@@ -167,8 +167,8 @@ export default class Payload {
   /**
    * Copy the contents of the signature to buffer
    */
-  copyToBuffer(buffer: Uint8Array): void {
-    if (this.length > buffer.length) {
+  copyToBuffer(target: Uint8Array): void {
+    if (this.length > target.length) {
       throw new Error('internal: invalid buffer size to copy payload');
     }
 
@@ -188,9 +188,9 @@ export default class Payload {
     payloadSizeAsBg[1] = lengthAsUint24[1];
     payloadSizeAsBg[2] = lengthAsUint24[0];
 
-    buffer.set(payloadSizeAsBg, 0);
-    buffer.set(this.iv, payloadSizeAsBg.length);
-    buffer.set(this.ciphertext, payloadSizeAsBg.length + this.iv.length);
-    buffer.set(this.authTag, payloadSizeAsBg.length + this.iv.length + this.ciphertext.length);
+    target.set(payloadSizeAsBg, 0);
+    target.set(this.iv, payloadSizeAsBg.length);
+    target.set(this.ciphertext, payloadSizeAsBg.length + this.iv.length);
+    target.set(this.authTag, payloadSizeAsBg.length + this.iv.length + this.ciphertext.length);
   }
 }

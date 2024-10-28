@@ -561,6 +561,7 @@ export class Client {
     keyMiddleware = async (key: Binary) => key,
     streamMiddleware = async (stream: DecoratedReadableStream) => stream,
     assertionVerificationKeys,
+    noVerifyAssertions,
   }: DecryptParams): Promise<DecoratedReadableStream> {
     const dpopKeys = await this.dpopKeys;
     let entityObject;
@@ -593,6 +594,7 @@ export class Client {
         keyMiddleware,
         progressHandler: this.clientConfig.progressHandler,
         assertionVerificationKeys,
+        noVerifyAssertions,
       })
     );
   }
