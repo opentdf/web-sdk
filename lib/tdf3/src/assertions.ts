@@ -1,4 +1,4 @@
-import {type AssertionConfig} from './client/AssertionConfig.js';
+import { type AssertionConfig } from './client/AssertionConfig.js';
 
 export {
   type AssertionConfig,
@@ -6,11 +6,7 @@ export {
   type AssertionVerificationKeys,
 } from './client/AssertionConfig.js';
 
-export {
-  type Assertion,
-  CreateAssertion,
-} from './models/assertion.js';
-
+export { type Assertion, CreateAssertion } from './models/assertion.js';
 
 // a function that takes an unknown or any object and asserts that it is or is not an AssertionConfig object
 export function isAssertionConfig(obj: unknown): obj is AssertionConfig {
@@ -33,4 +29,3 @@ export function isAssertionConfig(obj: unknown): obj is AssertionConfig {
     'value' in obj.statement
   );
 }
-

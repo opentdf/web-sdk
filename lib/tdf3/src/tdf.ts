@@ -1220,7 +1220,7 @@ export async function readStream(cfg: DecryptConfiguration) {
   }
 
   // // Validate assertions
-  for (const assertion of (manifest.assertions || [])) {
+  for (const assertion of manifest.assertions || []) {
     // Create a default assertion key
     let assertionKey: assertions.AssertionKey = {
       alg: 'HS256',
