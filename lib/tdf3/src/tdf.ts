@@ -563,7 +563,7 @@ export async function upsert({
         return response.data;
       } catch (e) {
         if (e.response) {
-          if (e.reponse.status >= 500) {
+          if (e.response.status >= 500) {
             throw new ServiceError('upsert failure', e);
           } else if (e.response.status === 403) {
             throw new PermissionDeniedError('upsert failure', e);
@@ -998,7 +998,7 @@ async function unwrapKey({
       rewrappedKeys.push(new Uint8Array(decryptedKeyBinary.asByteArray()));
     } catch (e) {
       if (e.response) {
-        if (e.reponse.status >= 500) {
+        if (e.response.status >= 500) {
           throw new ServiceError('rewrap failure', e);
         } else if (e.response.status === 403) {
           throw new PermissionDeniedError('rewrap failure', e);
