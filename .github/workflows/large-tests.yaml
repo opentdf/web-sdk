@@ -29,8 +29,8 @@ jobs:
       - run: npm pack
       - uses: actions/upload-artifact@v4
         with:
-          name: opentdf-client-lib
-          path: ./lib/opentdf-client-*.tgz
+          name: opentdf-sdk-lib
+          path: ./lib/opentdf-sdk-*.tgz
 
   cli:
     needs:
@@ -49,9 +49,9 @@ jobs:
           cache-dependency-path: './cli/package-lock.json'
       - uses: actions/download-artifact@v4
         with:
-          name: opentdf-client-lib
+          name: opentdf-sdk-lib
           path: lib/
-      - run: npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-*.tgz
+      - run: npm uninstall @opentdf/sdk && npm ci && npm i ../lib/opentdf-sdk-*.tgz
       - run: npm test
       - run: npm audit --omit dev --audit-level moderate
       - run: npm run license-check
@@ -59,8 +59,8 @@ jobs:
       - run: npm pack
       - uses: actions/upload-artifact@v4
         with:
-          name: opentdf-cli
-          path: ./cli/opentdf-cli-*.tgz
+          name: opentdf-ctl
+          path: ./cli/opentdf-ctl-*.tgz
 
   web-app:
     needs:
@@ -79,9 +79,9 @@ jobs:
           cache-dependency-path: './web-app/package-lock.json'
       - uses: actions/download-artifact@v4
         with:
-          name: opentdf-client-lib
+          name: opentdf-sdk-lib
           path: lib/
-      - run: npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-*.tgz
+      - run: npm uninstall @opentdf/sdk && npm ci && npm i ../lib/opentdf-sdk-*.tgz
       - run: npm install
       - run: npm test
       - run: npm audit --omit dev --audit-level moderate
@@ -107,11 +107,11 @@ jobs:
           cache-dependency-path: './web-app/package-lock.json'
       - uses: actions/download-artifact@v4
         with:
-          name: opentdf-client-lib
+          name: opentdf-sdk-lib
           path: lib/
       - uses: actions/download-artifact@v4
         with:
-          name: opentdf-cli
+          name: opentdf-ctl
           path: cli
       - name: Git clone backend
         run: |

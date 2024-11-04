@@ -46,41 +46,14 @@ jobs:
       - run: npm pack
       - uses: actions/upload-artifact@v4
         with:
-          name: opentdf-client-lib
-          path: ./lib/opentdf-client-*.tgz
+          name: opentdf-sdk-lib
+          path: ./lib/opentdf-sdk-*.tgz
       - name: SonarCloud Scan
         if: fromJSON(env.do_sonarscan)
         uses: SonarSource/sonarcloud-github-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
-  remote-store:
-    needs:
-      - lib
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./remote-store
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: './remote-store/package-lock.json'
-      - uses: actions/download-artifact@v4
-        with:
-          name: opentdf-client-lib
-          path: lib/
-      - run: npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-*.tgz
-      - run: npm install
-      - run: npm test
-      - run: npm audit --omit dev && npm audit --audit-level high
-      - run: npm run license-check
-      - run: npm run lint
-      - run: npm pack
 
   cli:
     needs:
@@ -99,9 +72,9 @@ jobs:
           cache-dependency-path: './cli/package-lock.json'
       - uses: actions/download-artifact@v4
         with:
-          name: opentdf-client-lib
+          name: opentdf-sdk-lib
           path: lib/
-      - run: npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-*.tgz
+      - run: npm uninstall @opentdf/sdk && npm ci && npm i ../lib/opentdf-sdk-*.tgz
       - run: npm test
       - run: npm audit --omit dev && npm audit --audit-level high --omit dev
       - run: npm run license-check
@@ -112,8 +85,8 @@ jobs:
       - run: bats bin/opentdf.bats
       - uses: actions/upload-artifact@v4
         with:
-          name: opentdf-cli
-          path: ./cli/opentdf-cli-*.tgz
+          name: opentdf-ctl
+          path: ./cli/opentdf-ctl-*.tgz
 
   web-app:
     needs:
@@ -132,9 +105,9 @@ jobs:
           cache-dependency-path: './web-app/package-lock.json'
       - uses: actions/download-artifact@v4
         with:
-          name: opentdf-client-lib
+          name: opentdf-sdk-lib
           path: lib/
-      - run: npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-*.tgz
+      - run: npm uninstall @opentdf/sdk && npm ci && npm i ../lib/opentdf-sdk-*.tgz
       - run: npm install
       - run: npm audit --omit dev && npm audit --audit-level high --omit dev
       - run: npm run license-check
@@ -177,11 +150,11 @@ jobs:
           cache-dependency-path: './web-app/package-lock.json'
       - uses: actions/download-artifact@v4
         with:
-          name: opentdf-client-lib
+          name: opentdf-sdk-lib
           path: lib/
       - uses: actions/download-artifact@v4
         with:
-          name: opentdf-cli
+          name: opentdf-ctl
           path: cli/
       - uses: yokawasa/action-setup-kube-tools@v0.11.1
         with:
@@ -230,11 +203,11 @@ jobs:
           cache-dependency-path: './web-app/package-lock.json'
       - uses: actions/download-artifact@v4
         with:
-          name: opentdf-client-lib
+          name: opentdf-sdk-lib
           path: lib/
       - uses: actions/download-artifact@v4
         with:
-          name: opentdf-cli
+          name: opentdf-ctl
           path: cli/
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
@@ -251,13 +224,13 @@ jobs:
           ./wait-and-test.sh platform
 
   platform-xtest:
-    needs: 
+    needs:
       - cli
       - lib
     uses: opentdf/tests/.github/workflows/xtest.yml@main
     with:
       js-ref: ${{ github.ref }}
-    
+
   deliver-ghp:
     needs:
       - lib
@@ -289,7 +262,7 @@ jobs:
         run: |-
           if [[ ${{ github.ref }} = refs/heads/release/* ]]; then
             scripts/check-version-is.sh "${GITHUB_REF##*release/}"
-          elif [[ ${{ github.ref }} = refs/tags/v* ]]; then
+          elif [[ ${{ github.ref }} = refs/tags/sdk/v* ]]; then
             scripts/check-version-is.sh "${GITHUB_REF_NAME#v}"
           else
             scripts/check-version-is.sh
@@ -303,7 +276,7 @@ jobs:
       - run: make doc
       - run: >-
           echo "::notice file=lib/package.json::Will be published to
-          [GitHub Packages](https://github.com/opentdf/client-web/pkgs/npm/client)
+          [GitHub Packages](https://github.com/opentdf/web-sdk/pkgs/npm/client)
           as ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
           with version=[${{ steps.guess-build-metadata.outputs.FULL_VERSION }}]"
       - run: >-
@@ -312,8 +285,8 @@ jobs:
           "${{ steps.guess-build-metadata.outputs.DIST_TAG }}"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: echo "- [Client Library](https://github.com/opentdf/client-web/pkgs/npm/client)">>$GITHUB_STEP_SUMMARY
-      - run: echo "- [Command Line Tool](https://github.com/opentdf/client-web/pkgs/npm/cli)">>$GITHUB_STEP_SUMMARY
+      - run: echo "- [Client Library](https://github.com/opentdf/web-sdk/pkgs/npm/client)">>$GITHUB_STEP_SUMMARY
+      - run: echo "- [Command Line Tool](https://github.com/opentdf/web-sdk/pkgs/npm/cli)">>$GITHUB_STEP_SUMMARY
       - name: trigger xtest
         run: >-
           curl -XPOST -u "virtru-cloudnative:${{secrets.PERSONAL_ACCESS_TOKEN}}"
@@ -337,7 +310,7 @@ jobs:
     if: >-
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
       (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')) ||
-      (github.event_name == 'release' && startsWith(github.ref, 'refs/tags/'))
+      (github.event_name == 'release' && startsWith(github.ref, 'refs/tags/sdk/v'))
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -352,10 +325,8 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: >-
-          echo "- [Client Library](https://www.npmjs.com/package/@opentdf/client/v/${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
+          echo "- [Client Library](https://www.npmjs.com/package/@opentdf/sdk/v/${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
       - run: >-
-          echo "- [Remote Store](https://www.npmjs.com/package/@opentdf/remote-store/v/${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
+          echo "- [Command Line Tool](https://www.npmjs.com/package/@opentdf/ctl/v/${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
       - run: >-
-          echo "- [Command Line Tool](https://www.npmjs.com/package/@opentdf/cli/v/${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
-      - run: >-
-          echo "- [unpkg](https://unpkg.com/browse/@opentdf/client@${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
+          echo "- [unpkg](https://unpkg.com/browse/@opentdf/sdk@${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY

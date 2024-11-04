@@ -1,10 +1,10 @@
 {
-  "name": "@opentdf/cli",
-  "version": "2.1.0",
+  "name": "@opentdf/ctl",
+  "version": "0.1.0",
   "description": "Node based CLI for opentdf",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/opentdf/client-web.git",
+    "url": "git+https://github.com/opentdf/web-sdk.git",
     "directory": "cli"
   },
   "license": "BSD-3-Clause-Clear",
@@ -48,7 +48,7 @@
     "typescript": "^5.1.6"
   },
   "dependencies": {
-    "@opentdf/client": "file:../lib/opentdf-client-2.1.0.tgz",
+    "@opentdf/sdk": "file:../lib/opentdf-sdk-0.1.0.tgz",
     "yargs": "^17.7.2"
   }
 }

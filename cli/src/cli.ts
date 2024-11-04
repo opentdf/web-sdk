@@ -15,12 +15,12 @@ import {
   EncryptParamsBuilder,
   DecryptParams,
   DecryptParamsBuilder,
-} from '@opentdf/client';
+} from '@opentdf/sdk';
 import { CLIError, Level, log } from './logger.js';
 import { webcrypto } from 'crypto';
-import * as assertions from '@opentdf/client/assertions';
-import { attributeFQNsAsValues } from '@opentdf/client/nano';
-import { base64 } from '@opentdf/client/encodings';
+import * as assertions from '@opentdf/sdk/assertions';
+import { attributeFQNsAsValues } from '@opentdf/sdk/nano';
+import { base64 } from '@opentdf/sdk/encodings';
 
 type AuthToProcess = {
   auth?: string;
@@ -561,8 +561,8 @@ export const handleArgs = (args: string[]) => {
       .version(
         'version',
         JSON.stringify({
-          '@opentdf/cli': process.env.npm_package_version || 'UNRELEASED',
-          '@opentdf/client': version,
+          '@opentdf/ctl': process.env.npm_package_version || 'UNRELEASED',
+          '@opentdf/sdk': version,
         })
       )
       .alias('version', 'V')

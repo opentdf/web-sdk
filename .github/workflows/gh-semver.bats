@@ -20,8 +20,8 @@
 }
 
 
-@test "all tags go to release" {
-  export GITHUB_REF=refs/tags/v12
+@test "sdk/v prefixed tags go to release" {
+  export GITHUB_REF=refs/tags/sdk/v12
   export MMP_VER=0.0.1
   export GITHUB_RUN_NUMBER=1234
   run $BATS_TEST_DIRNAME/gh-semver.sh
