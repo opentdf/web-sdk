@@ -1,4 +1,4 @@
-import { type Assertion } from './assertion.js';
+import { type Assertion } from '../assertions.js';
 import { type Payload } from './payload.js';
 import { type EncryptionInformation } from './encryption-information.js';
 

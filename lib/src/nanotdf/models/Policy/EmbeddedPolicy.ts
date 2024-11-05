@@ -69,13 +69,13 @@ class EmbeddedPolicy extends AbstractPolicy implements EmbeddedPolicyInterface {
    * Return the content of the policy
    */
   override toBuffer(): Uint8Array {
-    const buffer = new Uint8Array(this.getLength());
+    const target = new Uint8Array(this.getLength());
 
     if (this.content.length > EmbeddedPolicy.MAX_POLICY_SIZE) {
       throw new ConfigurationError("TDF Policy can't be more that 2^16");
     }
 
-    buffer.set([this.type], 0);
+    target.set([this.type], 0);
 
     // Write the policy length, assuming the host system is little endian
     // TODO: There should be better way to convert to big endian
@@ -86,15 +86,15 @@ class EmbeddedPolicy extends AbstractPolicy implements EmbeddedPolicyInterface {
     const policyContentSizeAsBg = new Uint8Array(2);
     policyContentSizeAsBg[0] = temp[1];
     policyContentSizeAsBg[1] = temp[0];
-    buffer.set(policyContentSizeAsBg, 1);
+    target.set(policyContentSizeAsBg, 1);
 
     // Write the policy content
-    buffer.set(this.content, policyContentSizeAsBg.length + 1);
+    target.set(this.content, policyContentSizeAsBg.length + 1);
 
     // Write the binding.
-    buffer.set(this.binding, this.content.length + policyContentSizeAsBg.length + 1);
+    target.set(this.binding, this.content.length + policyContentSizeAsBg.length + 1);
 
-    return buffer;
+    return target;
   }
 }
 

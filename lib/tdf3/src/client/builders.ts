@@ -8,7 +8,7 @@ import { PemKeyPair } from '../crypto/declarations.js';
 import { EntityObject } from '../../../src/tdf/EntityObject.js';
 import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 import { type Chunker } from '../utils/chunkers.js';
-import { AssertionConfig, AssertionVerificationKeys } from './AssertionConfig.js';
+import { AssertionConfig, AssertionVerificationKeys } from '../assertions.js';
 import { Value } from '../../../src/policy/attributes.js';
 
 export const DEFAULT_SEGMENT_SIZE: number = 1024 * 1024;
@@ -149,7 +149,7 @@ class EncryptParamsBuilder {
 
   /**
    * Specify the content to encrypt, in buffer form.
-   * @param {Buffer} buf - a buffer to encrypt.
+   * @param buf to encrypt.
    */
   setBufferSource(buf: ArrayBuffer) {
     const stream = new ReadableStream({
@@ -163,10 +163,9 @@ class EncryptParamsBuilder {
 
   /**
    * Specify the content to encrypt, in buffer form. Returns this object for method chaining.
-   * @param {Buffer} buf - a buffer to encrypt
-   * @return {EncryptParamsBuilder} - this object.
+   * @param buf - a buffer to encrypt
    */
-  withBufferSource(buf: ArrayBuffer) {
+  withBufferSource(buf: ArrayBuffer): this {
     this.setBufferSource(buf);
     return this;
   }
@@ -520,6 +519,7 @@ export type DecryptParams = {
   keyMiddleware?: DecryptKeyMiddleware;
   streamMiddleware?: DecryptStreamMiddleware;
   assertionVerificationKeys?: AssertionVerificationKeys;
+  noVerifyAssertions?: boolean;
 };
 
 /**
@@ -554,7 +554,7 @@ class DecryptParamsBuilder {
 
   /**
    * Set the TDF ciphertext to decrypt, in buffer form.
-   * @param {Buffer} buffer - a buffer to decrypt.
+   * @param buffer to decrypt.
    */
   setBufferSource(buffer: Uint8Array) {
     this._params.source = { type: 'buffer', location: buffer };
@@ -562,10 +562,9 @@ class DecryptParamsBuilder {
 
   /**
    * Set the TDF ciphertext to decrypt, in buffer form. Returns this object for method chaining.
-   * @param {Buffer} buffer - a buffer to decrypt.
-   * @return {DecryptParamsBuilder} - this object.
+   * @param buffer to decrypt.
    */
-  withBufferSource(buffer: Uint8Array): DecryptParamsBuilder {
+  withBufferSource(buffer: Uint8Array): this {
     this.setBufferSource(buffer);
     return this;
   }
@@ -587,7 +586,7 @@ class DecryptParamsBuilder {
    * @param {string} url - a tdf3 remote URL.
    * @return {DecryptParamsBuilder} - this object.
    */
-  withUrlSource(url: string): DecryptParamsBuilder {
+  withUrlSource(url: string): this {
     this.setUrlSource(url);
     return this;
   }
@@ -602,10 +601,9 @@ class DecryptParamsBuilder {
 
   /**
    * Specify the TDF ciphertext to decrypt, in stream form. Returns this object for method chaining.
-   * @param {Readable} stream - a Readable stream to decrypt.
-   * @return {DecryptParamsBuilder} - this object.
+   * @param stream to decrypt.
    */
-  withStreamSource(stream: ReadableStream<Uint8Array>) {
+  withStreamSource(stream: ReadableStream<Uint8Array>): this {
     if (!stream?.getReader) {
       throw new ConfigurationError(
         `Source must be a WebReadableStream. Run node streams through stream.Readable.toWeb()`
@@ -621,7 +619,7 @@ class DecryptParamsBuilder {
    * @param {string} string - a string to decrypt.
    */
   setStringSource(string: string) {
-    this.setBufferSource(Buffer.from(string, 'binary'));
+    this.setBufferSource(new TextEncoder().encode(string));
   }
 
   /**
@@ -629,7 +627,7 @@ class DecryptParamsBuilder {
    * @param {string} string - a string to decrypt.
    * @return {DecryptParamsBuilder} - this object.
    */
-  withStringSource(string: string): DecryptParamsBuilder {
+  withStringSource(string: string): this {
     this.setStringSource(string);
     return this;
   }
@@ -648,7 +646,7 @@ class DecryptParamsBuilder {
    * Returns this object for method chaining.
    * @param source (node) the path of the local file to decrypt, or the Blob (browser/node)
    */
-  withFileSource(source: Blob): DecryptParamsBuilder {
+  withFileSource(source: Blob): this {
     this.setFileSource(source);
     return this;
   }
@@ -672,8 +670,14 @@ class DecryptParamsBuilder {
    * @param  {ArrayBuffer} arraybuffer - the ArrayBuffer used to load file content from a browser
    * @return {DecryptParamsBuilder} - this object.
    */
-  withArrayBufferSource(arraybuffer: ArrayBuffer): DecryptParamsBuilder {
+  withArrayBufferSource(arraybuffer: ArrayBuffer): this {
     this.setArrayBufferSource(arraybuffer);
+    return this;
+  }
+
+  /** Skip assertion verification */
+  withNoVerifyAssertions(v: boolean): DecryptParamsBuilder {
+    this._params.noVerifyAssertions = v;
     return this;
   }
 

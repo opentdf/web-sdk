@@ -14,6 +14,7 @@ import {
   buildKeyAccess,
   EncryptConfiguration,
   fetchKasPublicKey,
+  loadTDFStream,
   unwrapHtml,
   validatePolicyObject,
   readStream,
@@ -560,6 +561,7 @@ export class Client {
     keyMiddleware = async (key: Binary) => key,
     streamMiddleware = async (stream: DecoratedReadableStream) => stream,
     assertionVerificationKeys,
+    noVerifyAssertions,
   }: DecryptParams): Promise<DecoratedReadableStream> {
     const dpopKeys = await this.dpopKeys;
     let entityObject;
@@ -592,6 +594,7 @@ export class Client {
         keyMiddleware,
         progressHandler: this.clientConfig.progressHandler,
         assertionVerificationKeys,
+        noVerifyAssertions,
       })
     );
   }
@@ -613,6 +616,11 @@ export class Client {
     const manifest = await zipHelper.getManifest(centralDirectory, '0.manifest.json');
     const policyJson = base64.decode(manifest.encryptionInformation.policy);
     return JSON.parse(policyJson).uuid;
+  }
+
+  async loadTDFStream({ source }: { source: DecryptSource }) {
+    const chunker = await makeChunkable(source);
+    return loadTDFStream(chunker);
   }
 }
 

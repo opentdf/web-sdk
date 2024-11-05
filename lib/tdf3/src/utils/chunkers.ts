@@ -23,9 +23,9 @@ export const fromBrowserFile = (fileRef: Blob): Chunker => {
   };
 };
 
-export const fromBuffer = (buffer: Uint8Array | Buffer): Chunker => {
+export const fromBuffer = (source: Uint8Array | Buffer): Chunker => {
   return (byteStart?: number, byteEnd?: number) => {
-    return Promise.resolve(buffer.slice(byteStart, byteEnd));
+    return Promise.resolve(source.slice(byteStart, byteEnd));
   };
 };
 

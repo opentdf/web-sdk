@@ -32,24 +32,25 @@ describe('zip utilities', () => {
 
   describe('writeUInt64LE', () => {
     it('not too different', () => {
-      const b0 = Buffer.alloc(8);
+      // allocate a new uint8array with 8 bytes
+      const b0 = new Uint8Array(8);
       new DataView(b0.buffer).setBigUint64(0, BigInt(1), true);
-      const b1 = Buffer.alloc(8);
+      const b1 = new Uint8Array(8);
       writeUInt64LE(b1, 1, 0);
       expect(b1).to.eql(b0);
     });
     it('unsafe ints throw', () => {
-      expect(() => writeUInt64LE(Buffer.alloc(0), 2 ** 54, 0)).to.throw(/unsafe number/);
+      expect(() => writeUInt64LE(new Uint8Array(0), 2 ** 54, 0)).to.throw(/unsafe number/);
     });
   });
   describe('readUInt64LE', () => {
     it('one', () => {
-      const b0 = Buffer.alloc(8);
+      const b0 = new Uint8Array(8);
       new DataView(b0.buffer).setBigUint64(0, 1n, true);
       expect(readUInt64LE(b0, 0)).to.equal(1);
     });
     it('unsafe ints throw', () => {
-      const b0 = Buffer.alloc(8);
+      const b0 = new Uint8Array(8);
       new DataView(b0.buffer).setBigUint64(0, 9007199254740992n, true);
       expect(() => readUInt64LE(b0, 0)).to.throw(/exceeds/);
     });

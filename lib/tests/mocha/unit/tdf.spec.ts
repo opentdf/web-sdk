@@ -43,13 +43,9 @@ HJg=
 
 describe('TDF', () => {
   it('Encodes the postMessage origin properly in wrapHtml', () => {
-    const cipherText = 'abcezas123';
+    const cipherText = new TextEncoder().encode('abcezas123');
     const transferUrl = 'https://local.virtru.com/start?htmlProtocol=1';
-    const wrapped = TDF.wrapHtml(
-      Buffer.from(cipherText),
-      JSON.stringify({ thisIs: 'metadata' }),
-      transferUrl
-    );
+    const wrapped = TDF.wrapHtml(cipherText, JSON.stringify({ thisIs: 'metadata' }), transferUrl);
     const rawHtml = new TextDecoder().decode(wrapped);
     expect(rawHtml).to.include("'https://local.virtru.com', [channel.port2]);");
   });
