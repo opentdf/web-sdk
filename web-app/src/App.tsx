@@ -2,7 +2,7 @@ import { clsx } from 'clsx';
 import { useState, useEffect, type ChangeEvent } from 'react';
 import { showSaveFilePicker } from 'native-file-system-adapter';
 import './App.css';
-import { type Chunker, type DecryptSource, NanoTDFClient, TDF3Client } from '@opentdf/client';
+import { type Chunker, type DecryptSource, NanoTDFClient, TDF3Client } from '@opentdf/sdk';
 import { type SessionInformation, OidcClient } from './session.js';
 import { c } from './config.js';
 

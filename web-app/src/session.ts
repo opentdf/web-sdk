@@ -1,7 +1,7 @@
 import { decodeJwt } from 'jose';
 import { default as dpopFn } from 'dpop';
-import { base64 } from '@opentdf/client/encodings';
-import { AuthProvider, HttpRequest, withHeaders } from '@opentdf/client';
+import { base64 } from '@opentdf/sdk/encodings';
+import { AuthProvider, HttpRequest, withHeaders } from '@opentdf/sdk';
 
 export type OpenidConfiguration = {
   issuer: string;

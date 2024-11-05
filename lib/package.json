@@ -1,10 +1,10 @@
 {
-  "name": "@opentdf/client",
-  "version": "2.1.0",
-  "description": "Access and generate tdf protected content",
-  "homepage": "https://github.com/opentdf/client-web",
+  "name": "@opentdf/sdk",
+  "version": "0.1.0",
+  "description": "OpenTDF for the Web",
+  "homepage": "https://github.com/opentdf/web-sdk",
   "bugs": {
-    "url": "https://github.com/opentdf/client-web/issues"
+    "url": "https://github.com/opentdf/web-sdk/issues"
   },
   "files": [
     "dist/*/src/**",
@@ -16,7 +16,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/opentdf/client-web.git",
+    "url": "git+https://github.com/opentdf/web-sdk.git",
     "directory": "lib"
   },
   "license": "BSD-3-Clause-Clear",

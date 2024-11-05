@@ -73,7 +73,7 @@ async function generateSignerKeyPair(): Promise<CryptoKeyPair> {
  * @link https://developer.mozilla.org/en-US/docs/Web/API/CryptoKeyPair
  *
  * @example
- * import { Client, clientAuthProvider, decrypt, encrypt } from '@opentdf/client/nanotdf`
+ * import { Client, clientAuthProvider, decrypt, encrypt } from '@opentdf/sdk/nanotdf`
  *
  * const OIDC_ENDPOINT = 'http://localhost:65432/auth/';
  * const KAS_URL = 'http://localhost:65432/kas';

@@ -7,7 +7,7 @@ and some management tasks for ABAC.
 ## Usage (NanoTDF)
 
 ```typescript
-import { AuthProviders, NanoTDFClient } from '@opentdf/client';
+import { AuthProviders, NanoTDFClient } from '@opentdf/sdk';
 
 // Configuration Options
 const kasEndpoint = "http://localhost:65432/kas";
@@ -43,7 +43,7 @@ For long running server-side apps, a client id + secret is allowed with OAuth2.
 This should not be used in a browser, but within a Deno or Node process.
 
 ```typescript
-import { AuthProviders } from '@opentdf/client';
+import { AuthProviders } from '@opentdf/sdk';
 
 // Authentication options (vary by middleware)
 const oidcOrigin = "http://localhost:65432/auth/realms/tdf";
@@ -63,7 +63,7 @@ const authProvider = await AuthProviders.clientSecretAuthProvider({
 The `refreshAuthProvider` and `externalAuthProvder` allow the application developer to use existing tokens.
 
 ```typescript
-import { AuthProviders, NanoTDFClient } from '@opentdf/client';
+import { AuthProviders, NanoTDFClient } from '@opentdf/sdk';
 
 const oidcCredentials: RefreshTokenCredentials = {
   clientId: keycloakClientId,
@@ -97,7 +97,7 @@ which allows us to pin to the same version of `npm` easily.
   - see <https://github.com/nvm-sh/nvm#installing-and-updating>
   - `nvm use` will install `npm` and `node`
 
-[![Build](https://github.com/opentdf/client-web/actions/workflows/build.yaml/badge.svg)](https://github.com/opentdf/client-web/actions/workflows/build.yaml)
+[![Build](https://github.com/opentdf/web-sdk/actions/workflows/build.yaml/badge.svg)](https://github.com/opentdf/web-sdk/actions/workflows/build.yaml)
 
 To check out, build, and validate your installation, and test the sample web application, you may:
 

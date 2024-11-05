@@ -30,7 +30,7 @@ const defaultOptions: EncryptOptions = {
  *
  * @example
  * ```
- * import { clientSecretAuthProvider, NanoTDFClient } from '@opentdf/client';
+ * import { clientSecretAuthProvider, NanoTDFClient } from '@opentdf/sdk';
  *
  * const OIDC_ENDPOINT = 'http://localhost:65432/auth/realms/opentdf-demo';
  * const KAS_URL = 'http://localhost:65432/api/kas/';
@@ -195,7 +195,7 @@ export type DatasetConfig = ClientConfig & {
  *
  * @example
  * ```
- * import { clientSecretAuthProvider, NanoTDFDatasetClient } from '@opentdf/client';
+ * import { clientSecretAuthProvider, NanoTDFDatasetClient } from '@opentdf/sdk';
  *
  * const OIDC_ENDPOINT = 'http://localhost:65432/auth/realms/tdf';
  * const KAS_URL = 'http://localhost:65432/api/kas/';
