@@ -325,7 +325,7 @@ export function unwrapHtml(htmlPayload: ArrayBuffer | Uint8Array | Binary | stri
   } else {
     html = htmlPayload.toString();
   }
-  const payloadRe = /<input id=['"]?data-input['"]?[^>]*value=['"]?([a-zA-Z0-9+/=]+)['"]?/;
+  const payloadRe = /<input id=['"]?data-input['"]?[^>]*?value=['"]?([a-zA-Z0-9+/=]+)['"]?/;
   const reResult = payloadRe.exec(html);
   if (reResult === null) {
     throw new InvalidFileError('Payload is missing');
