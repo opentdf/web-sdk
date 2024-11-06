@@ -284,6 +284,13 @@ export class OidcClient implements AuthProvider {
     if (response._ === 'FAIL') {
       throw new Error(`OIDC auth ${response.error || 'error'}: [${response.error_description}]`);
     }
+    if (
+      response.state === '__proto__' ||
+      response.state === 'constructor' ||
+      response.state === 'prototype'
+    ) {
+      throw new Error('Invalid state value');
+    }
     const currentSession = sessions.requests[response.state];
     if (!currentSession) {
       throw new Error(`OIDC auth error: session storage missing state for ${response}`);
