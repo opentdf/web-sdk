@@ -12,10 +12,10 @@ const SCHEME = '(https?://)';
 const HOST_PORT = '([a-z0-9][a-z0-9]{1,}:[0-9]{1,4})';
 
 // validate url host be like `www.example.com`
-const WWW_HOST = '((?:www.|(?!www))([a-z0-9][a-z0-9-]*[a-z0-9].)+[^s]{2,})';
+const WWW_HOST = '((?:www\\.|(?!www\\.))([a-z0-9][a-z0-9-]*[a-z0-9]\\.)+[a-z]{2,})';
 
 // validate url host be like `127.0.0.1:4000`
-const IP_HOST_PORT = '([0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}:[0-9]{1,4})';
+const IP_HOST_PORT = '([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}:[0-9]{1,4})';
 
 // validate host is one of those above
 const HOST = `(${HOST_PORT}|${WWW_HOST}|${IP_HOST_PORT})`;
