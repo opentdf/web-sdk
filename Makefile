@@ -23,7 +23,7 @@ i:
 	(cd lib && npm i && npm pack)
 	for x in $(extras); do (cd $$x && npm uninstall @opentdf/sdk && npm i && npm i ../lib/opentdf-sdk-$(version).tgz) || exit 1; done
 
-all: ci lib/opentdf-sdk-$(version).tgz web-app/opentdf-web-app-$(version).tgz
+all: ci lib/opentdf-sdk-$(version).tgz cli/opentdf-ctl-$(version).tgz web-app/opentdf-web-app-$(version).tgz
 
 cli/opentdf-ctl-$(version).tgz: lib/opentdf-sdk-$(version).tgz $(shell find cli -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
 	(cd cli && npm uninstall @opentdf/sdk && npm ci && npm i ../lib/opentdf-sdk-$(version).tgz && npm pack)
