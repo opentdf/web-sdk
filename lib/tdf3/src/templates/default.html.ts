@@ -12,15 +12,16 @@ export default ({
 }) => `<html>
 <head>
     <meta charset="UTF-8">
+    <title>OpenTDF | HTML TDF</title>
   </head>
   <body style="font-family: Arial; color: #2D323B; overflow: hidden; margin: 0; height: 100%; background-color: white;">
     <input id="data-input" type="hidden" value="${escHtml(payload)}">
     <input id="data-manifest" type="hidden" value="${escHtml(manifest)}">
     <iframe style="width:0;height:0;border:0; border:none;" src="${escHtml(transferUrl)}"></iframe>
     <div role="banner" style="background-color: #092356; color: white; height: 55px;">
-      <img src="https://cdn.virtru.com/assets/virtru-logo-white-rgb.png"
+      <img src="https://opentdf.io/wp-content/uploads/2022/08/opentdf-logo2-smaller.png"
            style="display: inline-block; padding: 18px 0 0 24px;"
-           width="62px" height="19px" alt="Virtru logo" title="Virtru"/>
+           width="62px" height="19px" alt="OpenTDF logo" title="OpenTDF"/>
     </div>
    <div role="main" class="wrapper" style="padding-top: 107px; display: flex; flex-direction: row; max-width: 1200px;
           min-width: 800px; margin: 0 auto; min-height: calc(100vh - 230px); border-bottom: 1px solid #F3F5F7;">
@@ -29,7 +30,7 @@ export default ({
              width="387px" height="310px" alt="Request access image" title="Request access"/>
       </div>
       <div role="complementary" style="word-break: break-all; padding-right: 12px;">
-        <h1 style="font-size: 1.5em;">Virtru Secure File</h1>
+        <h1 style="font-size: 1.5em;">OpenTDF | HTML TDF</h1>
         <noscript style="font-weight: 100;">
           <span>
             To view this file, download and access it from your computer:
@@ -47,7 +48,7 @@ export default ({
           </div>
         </noscript>
         <div id="js-enabled-message" style="display: none;">
-          <span>We are trying to send you to Secure Reader. If this does not work, please click the button below</span>
+          <span>We are trying to send you to a TDF reader so you can securely view this file. If this does not work, please click the button below</span>
           <br />
           <button
             id="viewbutton"
@@ -56,14 +57,13 @@ export default ({
             class="viewbutton"
             type="button"
           >
-            View File in Secure Reader
+            View File securely in a TDF reader
           </button>
         </div>
       </div>
     </div>
     <div role="contentinfo" style="color: grey; text-align: center; padding-top: 25px; font-family: Arial;">
-        <span style="padding: 25px; font-size: 13px;">© Copyright 2019 Virtru Corporation</span>
-        <span style="padding: 25px; font-size: 13px;">Learn more at www.virtru.com</span>
+        <span style="padding: 25px; font-size: 13px;">Learn more at https://opentdf.io</span>
     </div>
     <script type="text/javascript">
       var transferComplete = false;
