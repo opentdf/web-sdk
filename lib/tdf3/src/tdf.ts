@@ -2,7 +2,7 @@ import axios from 'axios';
 import { unsigned } from './utils/buffer-crc32.js';
 import { exportSPKI, importX509 } from 'jose';
 import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
-import { EntityObject } from '../../src/tdf/EntityObject.js';
+import { EntityObject } from '../../src/tdf/index.js';
 import { pemToCryptoPublicKey, validateSecureUrl } from '../../src/utils.js';
 import { DecryptParams } from './client/builders.js';
 import { AssertionConfig, AssertionKey, AssertionVerificationKeys } from './assertions.js';
