@@ -22,8 +22,6 @@ jobs:
       - run: make all && make test
       - name: run platform
         uses: opentdf/platform/test/start-up-with-containers@main
-      - run: docker compose up -d --wait --wait-timeout 240
-        working-directory: .github/workflows/roundtrip
       - env:
           PLAYWRIGHT_TESTS_TO_RUN: huge roundtrip
         run: |-
