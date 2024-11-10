@@ -68,6 +68,7 @@ import { SymmetricCipher } from './ciphers/symmetric-cipher-base.js';
 
 // TODO: input validation on manifest JSON
 const DEFAULT_SEGMENT_SIZE = 1024 * 1024;
+const DEFAULT_MIME_TYPE = 'application/octet-stream';
 
 /**
  * Configuration for TDF3
@@ -445,7 +446,7 @@ async function _generateManifest(
     protocol: 'zip',
     isEncrypted: true,
     schemaVersion: '3.0.0',
-    ...(mimeType && { mimeType }),
+    mimeType: mimeType || DEFAULT_MIME_TYPE,
   };
 
   const encryptionInformationStr = await encryptionInformation.write(policy, keyInfo);
