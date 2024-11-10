@@ -437,7 +437,7 @@ async function _generateManifest(
   keyInfo: KeyInfo,
   encryptionInformation: SplitKey,
   policy: Policy,
-  mimeType: string | undefined
+  mimeType: string = DEFAULT_MIME_TYPE
 ): Promise<Manifest> {
   // (maybe) Fields are quoted to avoid renaming
   const payload = {
@@ -446,7 +446,7 @@ async function _generateManifest(
     protocol: 'zip',
     isEncrypted: true,
     schemaVersion: '3.0.0',
-    mimeType: mimeType || DEFAULT_MIME_TYPE,
+    mimeType: mimeType,
   };
 
   const encryptionInformationStr = await encryptionInformation.write(policy, keyInfo);
