@@ -101,12 +101,12 @@ export class SplitKey {
         typeof metadata === 'object'
           ? JSON.stringify(metadata)
           : typeof metadata === 'string'
-          ? metadata
-          : () => {
-              throw new ConfigurationError(
-                "KAO generation failure: metadata isn't a string or object"
-              );
-            }
+            ? metadata
+            : () => {
+                throw new ConfigurationError(
+                  "KAO generation failure: metadata isn't a string or object"
+                );
+              }
       ) as string;
 
       const metadataBinary = Binary.fromArrayBuffer(new TextEncoder().encode(metadataStr));
