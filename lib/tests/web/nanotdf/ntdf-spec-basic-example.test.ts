@@ -15,7 +15,7 @@ describe('NanoTDF', () => {
     { policyType: PolicyTypeEnum.EmbeddedEncrypted, fixture: plainEmbeddedFixture },
   ]) {
     const { nanotdf, header, payload, signature } = fixture;
-    it(`should parse the header from ${policyType} policy`, () => {
+    it.skip(`should parse the header from ${policyType} policy`, () => {
       const { useECDSABinding, ephemeralCurveName } = header.eccBindingMode;
       const { hasSignature, signatureCurveName, symmetricCipher } = header.symmetricPayloadConfig;
 

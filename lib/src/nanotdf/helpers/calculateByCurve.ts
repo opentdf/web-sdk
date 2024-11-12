@@ -1,5 +1,5 @@
 import CurveNameEnum from '../enum/CurveNameEnum.js';
-import EcCurves from '../models/EcCurves.js';
+import { getCurveLength } from '../models/EcCurves.js';
 
 /**
  * Length of public key
@@ -8,7 +8,7 @@ import EcCurves from '../models/EcCurves.js';
  * @returns number length of the public key
  */
 export function lengthOfPublicKey(curveName: CurveNameEnum): number | never {
-  return Math.ceil(EcCurves.getCurveLength(curveName) / 8);
+  return Math.ceil(getCurveLength(curveName) / 8);
 }
 
 /**
@@ -22,5 +22,5 @@ export function lengthOfPublicKey(curveName: CurveNameEnum): number | never {
  * @returns number length of the signature
  */
 export function lengthOfSignature(curveName: CurveNameEnum): number | never {
-  return Math.ceil((EcCurves.getCurveLength(curveName) * 2) / 8);
+  return Math.ceil((getCurveLength(curveName) * 2) / 8);
 }

@@ -3,11 +3,13 @@ import { AttributeObject, KeyInfo, Policy } from '../models/index.js';
 import { type Metadata } from '../tdf.js';
 import { Binary } from '../binary.js';
 
-import { IllegalArgumentError } from '../../../src/errors.js';
+import { ConfigurationError } from '../../../src/errors.js';
 import { PemKeyPair } from '../crypto/declarations.js';
 import { EntityObject } from '../../../src/tdf/EntityObject.js';
 import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 import { type Chunker } from '../utils/chunkers.js';
+import { AssertionConfig, AssertionVerificationKeys } from '../assertions.js';
+import { Value } from '../../../src/policy/attributes.js';
 
 export const DEFAULT_SEGMENT_SIZE: number = 1024 * 1024;
 export type Scope = {
@@ -15,6 +17,7 @@ export type Scope = {
   policyId?: string;
   policyObject?: Policy;
   attributes?: (string | AttributeObject)[];
+  attributeValues?: Value[];
 };
 
 export type EncryptKeyMiddleware = (...args: unknown[]) => Promise<{
@@ -26,9 +29,15 @@ export type EncryptStreamMiddleware = (
   stream: DecoratedReadableStream
 ) => Promise<DecoratedReadableStream>;
 
+export type SplitStep = {
+  kas: string;
+  sid?: string;
+};
+
 export type EncryptParams = {
   source: ReadableStream<Uint8Array>;
   opts?: { keypair: PemKeyPair };
+  autoconfigure?: boolean;
   scope?: Scope;
   metadata?: Metadata;
   keypair?: CryptoKeyPair;
@@ -40,7 +49,9 @@ export type EncryptParams = {
   eo?: EntityObject;
   payloadKey?: Binary;
   keyMiddleware?: EncryptKeyMiddleware;
+  splitPlan?: SplitStep[];
   streamMiddleware?: EncryptStreamMiddleware;
+  assertionConfigs?: AssertionConfig[];
 };
 
 // 'Readonly<EncryptParams>': scope, metadata, offline, windowSize, asHtml
@@ -68,6 +79,7 @@ class EncryptParamsBuilder {
       offline: false,
       windowSize: DEFAULT_SEGMENT_SIZE,
       asHtml: false,
+      assertionConfigs: [],
     }
   ) {
     this._params = { ...params };
@@ -92,7 +104,7 @@ class EncryptParamsBuilder {
    */
   withStreamSource(readStream: ReadableStream<Uint8Array>): EncryptParamsBuilder {
     if (!readStream?.getReader) {
-      throw new Error(
+      throw new ConfigurationError(
         `Source must be a WebReadableStream. Run node streams through stream.Readable.toWeb()`
       );
     }
@@ -126,8 +138,18 @@ class EncryptParamsBuilder {
   }
 
   /**
+   * If set, the encrypt method will use the KAS Grants from the
+   * policy service to configure the Key Access Object array, instead
+   * of the client object's default `kasEndpoint`.
+   */
+  withAutoconfigure(enabled: boolean = true) {
+    this._params.autoconfigure = enabled;
+    return this;
+  }
+
+  /**
    * Specify the content to encrypt, in buffer form.
-   * @param {Buffer} buf - a buffer to encrypt.
+   * @param buf to encrypt.
    */
   setBufferSource(buf: ArrayBuffer) {
     const stream = new ReadableStream({
@@ -141,10 +163,9 @@ class EncryptParamsBuilder {
 
   /**
    * Specify the content to encrypt, in buffer form. Returns this object for method chaining.
-   * @param {Buffer} buf - a buffer to encrypt
-   * @return {EncryptParamsBuilder} - this object.
+   * @param buf - a buffer to encrypt
    */
-  withBufferSource(buf: ArrayBuffer) {
+  withBufferSource(buf: ArrayBuffer): this {
     this.setBufferSource(buf);
     return this;
   }
@@ -341,7 +362,7 @@ class EncryptParamsBuilder {
    */
   setStreamWindowSize(numBytes: number) {
     if (numBytes <= 0) {
-      throw new Error('Stream window size must be positive');
+      throw new ConfigurationError('Stream window size must be positive');
     }
     this._params.windowSize = numBytes;
   }
@@ -466,6 +487,17 @@ class EncryptParamsBuilder {
   build(): Readonly<EncryptParams> {
     return this._deepCopy(this._params as EncryptParams);
   }
+
+  /**
+   * Sets the assertion configurations for the encryption parameters.
+   *
+   * @param {AssertionConfig[]} assertionConfigs - An array of assertion configurations to be set.
+   * @returns {EncryptParamsBuilder} The current instance of the EncryptParamsBuilder for method chaining.
+   */
+  withAssertions(assertionConfigs: AssertionConfig[]): EncryptParamsBuilder {
+    this._params.assertionConfigs = assertionConfigs;
+    return this;
+  }
 }
 
 export type DecryptKeyMiddleware = (key: Binary) => Promise<Binary>;
@@ -486,6 +518,8 @@ export type DecryptParams = {
   source: DecryptSource;
   keyMiddleware?: DecryptKeyMiddleware;
   streamMiddleware?: DecryptStreamMiddleware;
+  assertionVerificationKeys?: AssertionVerificationKeys;
+  noVerifyAssertions?: boolean;
 };
 
 /**
@@ -520,7 +554,7 @@ class DecryptParamsBuilder {
 
   /**
    * Set the TDF ciphertext to decrypt, in buffer form.
-   * @param {Buffer} buffer - a buffer to decrypt.
+   * @param buffer to decrypt.
    */
   setBufferSource(buffer: Uint8Array) {
     this._params.source = { type: 'buffer', location: buffer };
@@ -528,10 +562,9 @@ class DecryptParamsBuilder {
 
   /**
    * Set the TDF ciphertext to decrypt, in buffer form. Returns this object for method chaining.
-   * @param {Buffer} buffer - a buffer to decrypt.
-   * @return {DecryptParamsBuilder} - this object.
+   * @param buffer to decrypt.
    */
-  withBufferSource(buffer: Uint8Array): DecryptParamsBuilder {
+  withBufferSource(buffer: Uint8Array): this {
     this.setBufferSource(buffer);
     return this;
   }
@@ -543,7 +576,7 @@ class DecryptParamsBuilder {
    */
   setUrlSource(url: string) {
     if (!/^https?/.exec(url)) {
-      throw new IllegalArgumentError(`stream source must be a web url, not [${url}]`);
+      throw new ConfigurationError(`stream source must be a web url, not [${url}]`);
     }
     this._params.source = { type: 'remote', location: url };
   }
@@ -553,7 +586,7 @@ class DecryptParamsBuilder {
    * @param {string} url - a tdf3 remote URL.
    * @return {DecryptParamsBuilder} - this object.
    */
-  withUrlSource(url: string): DecryptParamsBuilder {
+  withUrlSource(url: string): this {
     this.setUrlSource(url);
     return this;
   }
@@ -568,12 +601,11 @@ class DecryptParamsBuilder {
 
   /**
    * Specify the TDF ciphertext to decrypt, in stream form. Returns this object for method chaining.
-   * @param {Readable} stream - a Readable stream to decrypt.
-   * @return {DecryptParamsBuilder} - this object.
+   * @param stream to decrypt.
    */
-  withStreamSource(stream: ReadableStream<Uint8Array>) {
+  withStreamSource(stream: ReadableStream<Uint8Array>): this {
     if (!stream?.getReader) {
-      throw new Error(
+      throw new ConfigurationError(
         `Source must be a WebReadableStream. Run node streams through stream.Readable.toWeb()`
       );
     }
@@ -587,7 +619,7 @@ class DecryptParamsBuilder {
    * @param {string} string - a string to decrypt.
    */
   setStringSource(string: string) {
-    this.setBufferSource(Buffer.from(string, 'binary'));
+    this.setBufferSource(new TextEncoder().encode(string));
   }
 
   /**
@@ -595,7 +627,7 @@ class DecryptParamsBuilder {
    * @param {string} string - a string to decrypt.
    * @return {DecryptParamsBuilder} - this object.
    */
-  withStringSource(string: string): DecryptParamsBuilder {
+  withStringSource(string: string): this {
     this.setStringSource(string);
     return this;
   }
@@ -614,7 +646,7 @@ class DecryptParamsBuilder {
    * Returns this object for method chaining.
    * @param source (node) the path of the local file to decrypt, or the Blob (browser/node)
    */
-  withFileSource(source: Blob): DecryptParamsBuilder {
+  withFileSource(source: Blob): this {
     this.setFileSource(source);
     return this;
   }
@@ -638,8 +670,14 @@ class DecryptParamsBuilder {
    * @param  {ArrayBuffer} arraybuffer - the ArrayBuffer used to load file content from a browser
    * @return {DecryptParamsBuilder} - this object.
    */
-  withArrayBufferSource(arraybuffer: ArrayBuffer): DecryptParamsBuilder {
+  withArrayBufferSource(arraybuffer: ArrayBuffer): this {
     this.setArrayBufferSource(arraybuffer);
+    return this;
+  }
+
+  /** Skip assertion verification */
+  withNoVerifyAssertions(v: boolean): DecryptParamsBuilder {
+    this._params.noVerifyAssertions = v;
     return this;
   }
 
@@ -654,7 +692,7 @@ class DecryptParamsBuilder {
    */
   build(): Readonly<DecryptParams> {
     if (!this._params.source) {
-      throw new IllegalArgumentError('No source specified');
+      throw new ConfigurationError('No source specified');
     }
     return this._deepCopy(this._params as DecryptParams);
   }

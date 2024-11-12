@@ -1,4 +1,4 @@
-import { PolicyIntegrityError } from '../../../src/errors.js';
+import { ConfigurationError } from '../../../src/errors.js';
 import { AttributeObject } from './attribute-set.js';
 
 export const CURRENT_VERSION = '1.1.0';
@@ -16,7 +16,7 @@ export type Policy = {
 
 export function validatePolicyObject(policyMaybe: unknown): policyMaybe is Policy {
   if (typeof policyMaybe !== 'object') {
-    throw new PolicyIntegrityError(
+    throw new ConfigurationError(
       `The given policy reference must be an object, not: ${policyMaybe}`
     );
   }
@@ -27,7 +27,7 @@ export function validatePolicyObject(policyMaybe: unknown): policyMaybe is Polic
   if (policy.body && !policy.body.dissem) missingFields.push('body.dissem');
 
   if (missingFields.length) {
-    throw new PolicyIntegrityError(
+    throw new ConfigurationError(
       `The given policy object requires the following properties: ${missingFields}`
     );
   }

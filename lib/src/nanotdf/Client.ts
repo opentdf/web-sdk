@@ -3,16 +3,14 @@ import * as base64 from '../encodings/base64.js';
 import { generateKeyPair, keyAgreement } from '../nanotdf-crypto/index.js';
 import getHkdfSalt from './helpers/getHkdfSalt.js';
 import DefaultParams from './models/DefaultParams.js';
-import { fetchWrappedKey } from '../kas.js';
+import { fetchWrappedKey, KasPublicKeyInfo, OriginAllowList } from '../access.js';
 import { AuthProvider, isAuthProvider, reqSignature } from '../auth/providers.js';
-import {
-  cryptoPublicToPem,
-  pemToCryptoPublicKey,
-  safeUrlCheck,
-  validateSecureUrl,
-} from '../utils.js';
+import { ConfigurationError, DecryptError, TdfError, UnsafeUrlError } from '../errors.js';
+import { cryptoPublicToPem, pemToCryptoPublicKey, validateSecureUrl } from '../utils.js';
 
 export interface ClientConfig {
+  allowedKases?: string[];
+  ignoreAllowList?: boolean;
   authProvider: AuthProvider;
   dpopEnabled?: boolean;
   dpopKeys?: Promise<CryptoKeyPair>;
@@ -42,7 +40,7 @@ function toJWSAlg(c: CryptoKey): string {
       return 'ES256';
     }
   }
-  throw new Error(`Unsupported key algorithm ${JSON.stringify(algorithm)}`);
+  throw new ConfigurationError(`unsupported key algorithm ${JSON.stringify(algorithm)}`);
 }
 
 async function generateEphemeralKeyPair(): Promise<CryptoKeyPair> {
@@ -75,7 +73,7 @@ async function generateSignerKeyPair(): Promise<CryptoKeyPair> {
  * @link https://developer.mozilla.org/en-US/docs/Web/API/CryptoKeyPair
  *
  * @example
- * import { Client, clientAuthProvider, decrypt, encrypt } from '@opentdf/client/nanotdf`
+ * import { Client, clientAuthProvider, decrypt, encrypt } from '@opentdf/sdk/nanotdf`
  *
  * const OIDC_ENDPOINT = 'http://localhost:65432/auth/';
  * const KAS_URL = 'http://localhost:65432/kas';
@@ -102,13 +100,13 @@ export default class Client {
   static readonly INITIAL_RELEASE_IV_SIZE = 3;
   static readonly IV_SIZE = 12;
 
-  allowedKases: string[];
+  allowedKases: OriginAllowList;
   /*
     These variables are expected to be either assigned during initialization or within the methods.
     This is needed as the flow is very specific. Errors should be thrown if the necessary step is not completed.
   */
   protected kasUrl: string;
-  kasPubKey?: CryptoKey;
+  kasPubKey?: KasPublicKeyInfo;
   readonly authProvider: AuthProvider;
   readonly dpopEnabled: boolean;
   dissems: string[] = [];
@@ -133,12 +131,12 @@ export default class Client {
     if (isAuthProvider(optsOrOldAuthProvider)) {
       this.authProvider = optsOrOldAuthProvider;
       if (!kasUrl) {
-        throw new Error('please specify kasEndpoint');
+        throw new ConfigurationError('please specify kasEndpoint');
       }
       // TODO Disallow http KAS. For now just log as error
       validateSecureUrl(kasUrl);
       this.kasUrl = kasUrl;
-      this.allowedKases = [kasUrl];
+      this.allowedKases = new OriginAllowList([kasUrl]);
       this.dpopEnabled = dpopEnabled;
 
       if (ephemeralKeyPair) {
@@ -148,13 +146,20 @@ export default class Client {
       }
       this.iv = 1;
     } else {
-      const { authProvider, dpopEnabled, dpopKeys, ephemeralKeyPair, kasEndpoint } =
-        optsOrOldAuthProvider;
+      const {
+        allowedKases,
+        ignoreAllowList,
+        authProvider,
+        dpopEnabled,
+        dpopKeys,
+        ephemeralKeyPair,
+        kasEndpoint,
+      } = optsOrOldAuthProvider;
       this.authProvider = authProvider;
       // TODO Disallow http KAS. For now just log as error
       validateSecureUrl(kasEndpoint);
       this.kasUrl = kasEndpoint;
-      this.allowedKases = [kasEndpoint];
+      this.allowedKases = new OriginAllowList(allowedKases || [kasEndpoint], !!ignoreAllowList);
       this.dpopEnabled = !!dpopEnabled;
       if (dpopKeys) {
         this.requestSignerKeyPair = dpopKeys;
@@ -194,7 +199,7 @@ export default class Client {
   async fetchOIDCToken(): Promise<void> {
     const signer = await this.requestSignerKeyPair;
     if (!signer) {
-      throw new Error('Unexpected state');
+      throw new ConfigurationError('failed to find or generate signer session key');
     }
 
     await this.authProvider.updateClientPublicKey(signer);
@@ -215,7 +220,9 @@ export default class Client {
     magicNumberVersion: TypedArray | ArrayBuffer,
     clientVersion: string
   ): Promise<CryptoKey> {
-    safeUrlCheck(this.allowedKases, kasRewrapUrl);
+    if (!this.allowedKases.allows(kasRewrapUrl)) {
+      throw new UnsafeUrlError(`request URL ∉ ${this.allowedKases.origins};`, kasRewrapUrl);
+    }
 
     // Ensure the ephemeral key pair has been set or generated (see createOidcServiceProvider)
     await this.fetchOIDCToken();
@@ -224,117 +231,119 @@ export default class Client {
 
     // Ensure the ephemeral key pair has been set or generated (see fetchEntityObject)
     if (!ephemeralKeyPair?.privateKey) {
-      throw new Error('Ephemeral key has not been set or generated');
+      throw new ConfigurationError('Ephemeral key has not been set or generated');
     }
 
     if (!requestSignerKeyPair?.privateKey) {
-      throw new Error('Signer key has not been set or generated');
+      throw new ConfigurationError('Signer key has not been set or generated');
     }
 
+    const requestBodyStr = JSON.stringify({
+      algorithm: DefaultParams.defaultECAlgorithm,
+      // nano keyAccess minimum, header is used for nano
+      keyAccess: {
+        type: Client.KEY_ACCESS_REMOTE,
+        url: '',
+        protocol: Client.KAS_PROTOCOL,
+        header: base64.encodeArrayBuffer(nanoTdfHeader),
+      },
+      clientPublicKey: await cryptoPublicToPem(ephemeralKeyPair.publicKey),
+    });
+
+    const jwtPayload = { requestBody: requestBodyStr };
+    const requestBody = {
+      signedRequestToken: await reqSignature(jwtPayload, requestSignerKeyPair.privateKey, {
+        alg: toJWSAlg(requestSignerKeyPair.publicKey),
+      }),
+    };
+
+    // Wrapped
+    const wrappedKey = await fetchWrappedKey(
+      kasRewrapUrl,
+      requestBody,
+      this.authProvider,
+      clientVersion
+    );
+
+    // Extract the iv and ciphertext
+    const entityWrappedKey = new Uint8Array(base64.decodeArrayBuffer(wrappedKey.entityWrappedKey));
+    const ivLength =
+      clientVersion == Client.SDK_INITIAL_RELEASE ? Client.INITIAL_RELEASE_IV_SIZE : Client.IV_SIZE;
+    const iv = entityWrappedKey.subarray(0, ivLength);
+    const encryptedSharedKey = entityWrappedKey.subarray(ivLength);
+
+    let kasPublicKey;
     try {
-      const requestBodyStr = JSON.stringify({
-        algorithm: DefaultParams.defaultECAlgorithm,
-        // nano keyAccess minimum, header is used for nano
-        keyAccess: {
-          type: Client.KEY_ACCESS_REMOTE,
-          url: '',
-          protocol: Client.KAS_PROTOCOL,
-          header: base64.encodeArrayBuffer(nanoTdfHeader),
-        },
-        clientPublicKey: await cryptoPublicToPem(ephemeralKeyPair.publicKey),
-      });
-
-      const jwtPayload = { requestBody: requestBodyStr };
-      const requestBody = {
-        signedRequestToken: await reqSignature(jwtPayload, requestSignerKeyPair.privateKey, {
-          alg: toJWSAlg(requestSignerKeyPair.publicKey),
-        }),
-      };
-
-      // Wrapped
-      const wrappedKey = await fetchWrappedKey(
-        kasRewrapUrl,
-        requestBody,
-        this.authProvider,
-        clientVersion
+      // Let us import public key as a cert or public key
+      kasPublicKey = await pemToCryptoPublicKey(wrappedKey.sessionPublicKey);
+    } catch (cause) {
+      throw new ConfigurationError(
+        `internal: [${kasRewrapUrl}] PEM Public Key to crypto public key failed. Is PEM formatted correctly?`,
+        cause
       );
+    }
 
-      // Extract the iv and ciphertext
-      const entityWrappedKey = new Uint8Array(
-        base64.decodeArrayBuffer(wrappedKey.entityWrappedKey)
-      );
-      const ivLength =
-        clientVersion == Client.SDK_INITIAL_RELEASE
-          ? Client.INITIAL_RELEASE_IV_SIZE
-          : Client.IV_SIZE;
-      const iv = entityWrappedKey.subarray(0, ivLength);
-      const encryptedSharedKey = entityWrappedKey.subarray(ivLength);
+    let hkdfSalt;
+    try {
+      // Get the hkdf salt params
+      hkdfSalt = await getHkdfSalt(magicNumberVersion);
+    } catch (e) {
+      throw new TdfError('salting hkdf failed', e);
+    }
+    const { privateKey } = await this.ephemeralKeyPair;
 
-      let kasPublicKey;
-      try {
-        // Let us import public key as a cert or public key
-        kasPublicKey = await pemToCryptoPublicKey(wrappedKey.sessionPublicKey);
-      } catch (cause) {
-        throw new Error(
-          `PEM Public Key to crypto public key failed. Is PEM formatted correctly?\n Caused by: ${cause.message}`,
-          { cause }
-        );
-      }
-
-      let hkdfSalt;
-      try {
-        // Get the hkdf salt params
-        hkdfSalt = await getHkdfSalt(magicNumberVersion);
-      } catch (e) {
-        throw new Error(`Salting hkdf failed\n Caused by: ${e.message}`);
-      }
-      const { privateKey } = await this.ephemeralKeyPair;
-
-      // Get the unwrapping key
-      const unwrappingKey = await keyAgreement(
+    // Get the unwrapping key
+    let unwrappingKey;
+    try {
+      unwrappingKey = await keyAgreement(
         // Ephemeral private key
         privateKey,
         kasPublicKey,
         hkdfSalt
       );
-
-      const authTagLength = 8 * (encryptedSharedKey.byteLength - 32);
-      let decryptedKey;
-      try {
-        // Decrypt the wrapped key
-        decryptedKey = await crypto.subtle.decrypt(
-          { name: 'AES-GCM', iv, tagLength: authTagLength },
-          unwrappingKey,
-          encryptedSharedKey
-        );
-      } catch (cause) {
-        throw new Error(
-          `Unable to decrypt key. Are you using the right KAS? Is the salt correct?`,
-          { cause }
-        );
+    } catch (e) {
+      if (e.name == 'InvalidAccessError' || e.name == 'OperationError') {
+        throw new DecryptError('unable to solve key agreement', e);
+      } else if (e.name == 'NotSupported') {
+        throw new ConfigurationError('unable to unwrap key from kas', e);
       }
-
-      // UnwrappedKey
-      let unwrappedKey;
-      try {
-        unwrappedKey = await crypto.subtle.importKey(
-          'raw',
-          decryptedKey,
-          'AES-GCM',
-          // @security This allows the key to be used in `exportKey` and `wrapKey`
-          // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/exportKey
-          // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/wrapKey
-          true,
-          // Want to use the key to encrypt and decrypt. Signing key will be used later.
-          ['encrypt', 'decrypt']
-        );
-      } catch (cause) {
-        throw new Error('Unable to import raw key.', { cause });
-      }
-
-      return unwrappedKey;
-    } catch (cause) {
-      throw new Error('Could not rewrap key with entity object.', { cause });
+      throw new TdfError('unable to reach agreement', e);
     }
+
+    const authTagLength = 8 * (encryptedSharedKey.byteLength - 32);
+    let decryptedKey;
+    try {
+      // Decrypt the wrapped key
+      decryptedKey = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv, tagLength: authTagLength },
+        unwrappingKey,
+        encryptedSharedKey
+      );
+    } catch (cause) {
+      throw new DecryptError(
+        `unable to decrypt key. Are you using the right KAS? Is the salt correct?`,
+        cause
+      );
+    }
+
+    // UnwrappedKey
+    let unwrappedKey;
+    try {
+      unwrappedKey = await crypto.subtle.importKey(
+        'raw',
+        decryptedKey,
+        'AES-GCM',
+        // @security This allows the key to be used in `exportKey` and `wrapKey`
+        // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/exportKey
+        // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/wrapKey
+        true,
+        // Want to use the key to encrypt and decrypt. Signing key will be used later.
+        ['encrypt', 'decrypt']
+      );
+    } catch (cause) {
+      throw new DecryptError('Unable to import raw key.', cause);
+    }
+
+    return unwrappedKey;
   }
 }

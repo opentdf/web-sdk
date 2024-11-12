@@ -48,7 +48,7 @@ const ZIP64_END_OF_CENTRAL_DIRECTORY_LOCATOR_SIZE = 20;
 // write a 64bit integer by writing 2 32bit integers
 export function writeUInt64LE(buffer: Uint8Array, n: number, offset: number): void {
   if (!Number.isSafeInteger(n)) {
-    throw new Error(`Unsafe number [${n}]`);
+    throw new Error(`internal: unsafe number [${n}]`);
   }
   const high = Math.floor(n / 0x100000000);
   const low = n % 0x100000000;

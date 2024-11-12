@@ -15,6 +15,10 @@ function scrubCause(error?: Error, d?: number): { cause?: Error } {
   return { cause };
 }
 
+/**
+ * Root class for all errors thrown by this library.
+ * This should not be thrown directly, but rather one of its subclasses.
+ */
 export class TdfError extends Error {
   override name = 'TdfError';
 
@@ -27,91 +31,83 @@ export class TdfError extends Error {
   }
 }
 
-export class UnsafeUrlError extends Error {
-  override name = 'UnsafeUrlError';
-  readonly url: string;
+/**
+ * Errors that indicate the client or method does not have valid options.
+ */
+export class ConfigurationError extends TdfError {
+  override name = 'ConfigurationError';
+}
 
-  constructor(message: string, url: string) {
+/**
+ * The assigned data attribute is not in the correct form.
+ */
+export class AttributeValidationError extends ConfigurationError {
+  override name = 'AttributeValidationError';
+  attribute: unknown;
+  constructor(message: string, attribute: unknown, cause?: Error) {
+    super(message, cause);
+    this.attribute = attribute;
+  }
+}
+
+/**
+ * Errors that indicate the TDF object is corrupt, invalid, or fails validation or decrypt.
+ */
+export class InvalidFileError extends TdfError {}
+
+/**
+ * Indicates a decrypt failure, either due to an incorrect key, corrupt ciphertext, or inappropriate key parameters.
+ */
+export class DecryptError extends InvalidFileError {
+  override name = 'DecryptError';
+}
+
+export class IntegrityError extends InvalidFileError {
+  override name = 'IntegrityError';
+}
+
+/**
+ * Thrown when a KAS URL found in one or more required key access objects are not in the list of known and allowed KASes in the client.
+ * This may indicate a malicious file - e.g. an attempt to DDoS a server by listing it as the KAS for many files, or to siphon credentials using a lookalike URL.
+ */
+export class UnsafeUrlError extends InvalidFileError {
+  override name = 'UnsafeUrlError';
+  readonly url: string[];
+
+  constructor(message: string, ...url: string[]) {
     super(message);
     Object.setPrototypeOf(this, new.target.prototype);
     this.url = url;
   }
 }
 
-export class AttributeValidationError extends TdfError {
-  override name = 'AttributeValidationError';
+/**
+ * A network error (no response) from rewrap or other endpoint, Possibly fixed by retrying or adjusting your network settings; could indicate network failure.
+ */
+export class NetworkError extends TdfError {
+  override name = 'NetworkError';
 }
 
-export class KasDecryptError extends TdfError {
-  override name = 'KasDecryptError';
+/**
+ * The service reports an unexpected error on its behalf, or a subcomponent (5xx).
+ */
+export class ServiceError extends TdfError {
+  override name = 'ServiceError';
 }
 
-export class KasUpsertError extends TdfError {
-  override name = 'KasUpsertError';
+/** Authentication failure (401) */
+export class UnauthenticatedError extends TdfError {
+  override name = 'UnauthenticatedError';
 }
 
-export class KeyAccessError extends TdfError {
-  override name = 'KeyAccessError';
+/** Authorization failure (403) */
+export class PermissionDeniedError extends TdfError {
+  override name = 'PermissionDeniedError';
 }
 
-export class KeySyncError extends TdfError {
-  override name = 'KeySyncError';
-}
-
-export class IllegalArgumentError extends Error {}
-
-export class IllegalEnvError extends Error {}
-
-export class InvalidCipherError extends TdfError {
-  override name = 'InvalidCipherError';
-}
-
-export class InvalidCurveNameError extends TdfError {
-  override name = 'InvalidCurveNameError';
-}
-
-export class InvalidDataTypeError extends TdfError {
-  override name = 'InvalidDataTypeError';
-}
-
-export class InvalidEphemeralKeyError extends TdfError {
-  override name = 'InvalidEphemeralKeyError';
-}
-
-export class InvalidPayloadError extends TdfError {
-  override name = 'InvalidPayloadError';
-}
-
-export class InvalidPolicyTypeError extends TdfError {
-  override name = 'InvalidPolicyTypeError';
-}
-
-export class ManifestIntegrityError extends TdfError {
-  override name = 'ManifestIntegrityError';
-}
-
-export class PolicyIntegrityError extends TdfError {
-  override name = 'PolicyIntegrityError';
-}
-
-export class SignatureError extends TdfError {
-  override name = 'SignatureError';
-}
-
-export class TdfCorruptError extends TdfError {
-  reason: string;
-
-  override name = 'TdfCorruptError';
-
-  constructor(message: string, err: Error, reason: string) {
-    super(message, err);
-    this.reason = reason;
-  }
-}
-export class TdfDecryptError extends TdfError {
-  override name = 'TdfDecryptError';
-}
-
-export class TdfPayloadExtractionError extends TdfError {
-  override name = 'TdfPayloadExtractionError';
+/**
+ * Version of file is unsupported, or file uses a feature that is not supported by this version of the library.
+ */
+export class UnsupportedFeatureError extends TdfError {
+  override name = 'UnsupportedFeatureError';
 }

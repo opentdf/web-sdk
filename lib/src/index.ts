@@ -10,26 +10,27 @@ import {
 } from './nanotdf/index.js';
 import { keyAgreement } from './nanotdf-crypto/index.js';
 import { TypedArray, createAttribute, Policy } from './tdf/index.js';
+import { fetchECKasPubKey } from './access.js';
 import { ClientConfig } from './nanotdf/Client.js';
-import { pemToCryptoPublicKey } from './utils.js';
+import { ConfigurationError } from './errors.js';
+export { attributeFQNsAsValues } from './policy/api.js';
 
-async function fetchKasPubKey(kasUrl: string): Promise<CryptoKey> {
-  const kasPubKeyResponse = await fetch(`${kasUrl}/kas_public_key?algorithm=ec:secp256r1`);
-  if (!kasPubKeyResponse.ok) {
-    throw new Error(
-      `Unable to validate KAS [${kasUrl}]. Received [${kasPubKeyResponse.status}:${kasPubKeyResponse.statusText}]`
-    );
-  }
-  const pem = await kasPubKeyResponse.json();
-  return pemToCryptoPublicKey(pem);
-}
+// Define the EncryptOptions type
+export type EncryptOptions = {
+  ecdsaBinding: boolean;
+};
+
+// Define default options
+const defaultOptions: EncryptOptions = {
+  ecdsaBinding: false,
+};
 
 /**
  * NanoTDF SDK Client
  *
  * @example
  * ```
- * import { clientSecretAuthProvider, NanoTDFClient } from '@opentdf/client';
+ * import { clientSecretAuthProvider, NanoTDFClient } from '@opentdf/sdk';
  *
  * const OIDC_ENDPOINT = 'http://localhost:65432/auth/realms/opentdf-demo';
  * const KAS_URL = 'http://localhost:65432/api/kas/';
@@ -79,7 +80,7 @@ export class NanoTDFClient extends Client {
     );
 
     if (!ukey) {
-      throw new Error('Key rewrap failure');
+      throw new Error('internal: key rewrap failure');
     }
     // Return decrypt promise
     return decrypt(ukey, nanotdf);
@@ -108,31 +109,37 @@ export class NanoTDFClient extends Client {
     );
 
     if (!key) {
-      throw new Error('Failed unwrap');
+      throw new Error('internal: failed unwrap');
     }
     // Return decrypt promise
     return decrypt(key, nanotdf);
   }
 
   /**
-   * Encrypt data
+   * Encrypts the given data using the NanoTDF encryption scheme.
    *
-   * Pass a string, TypedArray, or ArrayBuffer data and get a promise which resolves ciphertext
-   *
-   * @param data to decrypt
+   * @param {string | TypedArray | ArrayBuffer} data - The data to be encrypted.
+   * @param {EncryptOptions} [options=defaultOptions] - The encryption options (currently unused).
+   * @returns {Promise<ArrayBuffer>} A promise that resolves to the encrypted data as an ArrayBuffer.
+   * @throws {Error} If the initialization vector is not a number.
    */
-  async encrypt(data: string | TypedArray | ArrayBuffer): Promise<ArrayBuffer> {
+  async encrypt(
+    data: string | TypedArray | ArrayBuffer,
+    options?: EncryptOptions
+  ): Promise<ArrayBuffer> {
     // For encrypt always generate the client ephemeralKeyPair
     const ephemeralKeyPair = await this.ephemeralKeyPair;
     const initializationVector = this.iv;
 
     if (typeof initializationVector !== 'number') {
-      throw new Error('NanoTDF clients are single use. Please generate a new client and keypair.');
+      throw new ConfigurationError(
+        'NanoTDF clients are single use. Please generate a new client and keypair.'
+      );
     }
     delete this.iv;
 
     if (!this.kasPubKey) {
-      this.kasPubKey = await fetchKasPubKey(this.kasUrl);
+      this.kasPubKey = await fetchECKasPubKey(this.kasUrl);
     }
 
     // Create a policy for the tdf
@@ -166,13 +173,14 @@ export class NanoTDFClient extends Client {
     payloadIV[10] = lengthAsUint24[1];
     payloadIV[11] = lengthAsUint24[0];
 
+    const mergedOptions: EncryptOptions = { ...defaultOptions, ...options };
     return encrypt(
       policyObjectAsStr,
       this.kasPubKey,
-      this.kasUrl,
       ephemeralKeyPair,
       payloadIV,
-      data
+      data,
+      mergedOptions.ecdsaBinding
     );
   }
 }
@@ -187,7 +195,7 @@ export type DatasetConfig = ClientConfig & {
  *
  * @example
  * ```
- * import { clientSecretAuthProvider, NanoTDFDatasetClient } from '@opentdf/client';
+ * import { clientSecretAuthProvider, NanoTDFDatasetClient } from '@opentdf/sdk';
  *
  * const OIDC_ENDPOINT = 'http://localhost:65432/auth/realms/tdf';
  * const KAS_URL = 'http://localhost:65432/api/kas/';
@@ -217,6 +225,7 @@ export class NanoTDFDatasetClient extends Client {
   private unwrappedKey?: CryptoKey;
   private symmetricKey?: CryptoKey;
   private cachedHeader?: Header;
+  private ecdsaBinding: boolean;
 
   /**
    * Create new NanoTDF Dataset Client
@@ -235,8 +244,8 @@ export class NanoTDFDatasetClient extends Client {
       opts.maxKeyIterations &&
       opts.maxKeyIterations > NanoTDFDatasetClient.NTDF_MAX_KEY_ITERATIONS
     ) {
-      throw new Error(
-        `Key iteration exceeds max iterations(${NanoTDFDatasetClient.NTDF_MAX_KEY_ITERATIONS})`
+      throw new ConfigurationError(
+        `key iteration exceeds max iterations(${NanoTDFDatasetClient.NTDF_MAX_KEY_ITERATIONS})`
       );
     }
     super(opts);
@@ -252,14 +261,19 @@ export class NanoTDFDatasetClient extends Client {
    *
    * @param data to decrypt
    */
-  async encrypt(data: string | TypedArray | ArrayBuffer): Promise<ArrayBuffer> {
+  async encrypt(
+    data: string | TypedArray | ArrayBuffer,
+    options?: EncryptOptions
+  ): Promise<ArrayBuffer> {
     // Intial encrypt
     if (this.keyIterationCount == 0) {
+      const mergedOptions: EncryptOptions = { ...defaultOptions, ...options };
+      this.ecdsaBinding = mergedOptions.ecdsaBinding;
       // For encrypt always generate the client ephemeralKeyPair
       const ephemeralKeyPair = await this.ephemeralKeyPair;
 
       if (!this.kasPubKey) {
-        this.kasPubKey = await fetchKasPubKey(this.kasUrl);
+        this.kasPubKey = await fetchECKasPubKey(this.kasUrl);
       }
 
       // Create a policy for the tdf
@@ -285,17 +299,17 @@ export class NanoTDFDatasetClient extends Client {
       // Generate a symmetric key.
       this.symmetricKey = await keyAgreement(
         ephemeralKeyPair.privateKey,
-        this.kasPubKey,
+        await this.kasPubKey.key,
         await getHkdfSalt(DefaultParams.magicNumberVersion)
       );
 
       const nanoTDFBuffer = await encrypt(
         policyObjectAsStr,
         this.kasPubKey,
-        this.kasUrl,
         ephemeralKeyPair,
         ivVector,
-        data
+        data,
+        this.ecdsaBinding
       );
 
       // Cache the header and increment the key iteration
@@ -312,11 +326,10 @@ export class NanoTDFDatasetClient extends Client {
     this.keyIterationCount += 1;
 
     if (!this.cachedHeader) {
-      throw new Error('NanoTDF dataset header should have been assgined');
+      throw new ConfigurationError('invalid dataset client: empty nanoTDF header');
     }
-
     if (!this.symmetricKey) {
-      throw new Error('NanoTDF dataset payload key is not set');
+      throw new ConfigurationError('invalid dataset client: empty dek');
     }
 
     this.keyIterationCount += 1;
@@ -350,7 +363,8 @@ export class NanoTDFDatasetClient extends Client {
     if (this.cachedEphemeralKey.toString() == nanotdf.header.ephemeralPublicKey.toString()) {
       const ukey = this.unwrappedKey;
       if (!ukey) {
-        throw new Error('Key rewrap failure');
+        // These should have thrown already.
+        throw new Error('internal: key rewrap failure');
       }
       // Return decrypt promise
       return decrypt(ukey, nanotdf);
@@ -372,7 +386,8 @@ export class NanoTDFDatasetClient extends Client {
       version
     );
     if (!ukey) {
-      throw new Error('Key rewrap failure');
+      // These should have thrown already.
+      throw new Error('internal: key rewrap failure');
     }
 
     this.cachedEphemeralKey = nanotdf.header.ephemeralPublicKey;
@@ -385,11 +400,15 @@ export class NanoTDFDatasetClient extends Client {
   generateIV(): Uint8Array {
     const iv = this.iv;
     if (iv === undefined) {
-      throw new Error('Dataset full');
+      // iv has passed the maximum iteration count for this dek
+      throw new ConfigurationError('dataset full');
     }
     // assert iv ∈ ℤ ∩ (0, 2^24)
     if (!Number.isInteger(iv) || iv <= 0 || 0xff_ffff < iv) {
-      throw new Error('Invalid state');
+      // Something has fiddled with the iv outside of the expected behavior
+      // could indicate a race condition, e.g. if two workers or handlers are
+      // processing the file at once, for example.
+      throw new Error('internal: invalid state');
     }
 
     const lengthAsUint32 = new Uint32Array(1);

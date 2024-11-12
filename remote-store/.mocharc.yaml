@@ -1,5 +1,0 @@
-extension: .ts
-require: ts-node/register
-spec: tests/**/*.test.ts
-node-option:
-  - loader=ts-node/esm

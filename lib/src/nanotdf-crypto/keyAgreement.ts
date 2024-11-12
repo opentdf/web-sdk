@@ -27,6 +27,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+import { ConfigurationError } from '../errors.js';
 import { AlgorithmName, CipherType, HashType, KeyFormat, KeyType, KeyUsageType } from './enums.js';
 
 const KEY_USAGE_DERIVE_KEY = 'deriveKey';
@@ -72,15 +73,15 @@ export async function keyAgreement(
     publicKey?.algorithm?.name !== AlgorithmName.ECDSA &&
     publicKey?.algorithm?.name !== AlgorithmName.ECDH
   ) {
-    throw new Error('CryptoKey is expected to be of type ECDSA or ECDH');
+    throw new ConfigurationError('CryptoKey is expected to be of type ECDSA or ECDH');
   }
 
   if (privateKey.type !== KeyType.Private) {
-    throw new TypeError('Expected input of privateKey to be a CryptoKey of type private');
+    throw new ConfigurationError('Expected input of privateKey to be a CryptoKey of type private');
   }
 
   if (publicKey.type !== KeyType.Public) {
-    throw new TypeError('Expected input of publicKey to be a CryptoKey of type public');
+    throw new ConfigurationError('Expected input of publicKey to be a CryptoKey of type public');
   }
 
   const {

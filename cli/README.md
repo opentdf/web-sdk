@@ -8,7 +8,7 @@ A sample application using node & ESM to import and test a project
 opentdf.mjs <auth options> <policy options> [encrypt|decrypt] [input file]
 ```
 
-For example, to use the quickstart test, we should do something like:
+Sample round trip execution:
 
 ```sh
 echo hello-world >sample.txt
@@ -27,8 +27,6 @@ bin/opentdf.mjs \
   --userId alice@somewhere.there \
   decrypt sample.tdf
 ```
-
-This is a placeholder for working through build and CI issues.
 
 ### References
 

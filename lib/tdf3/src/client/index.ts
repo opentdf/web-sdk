@@ -14,7 +14,7 @@ import {
   buildKeyAccess,
   EncryptConfiguration,
   fetchKasPublicKey,
-  KasPublicKeyInfo,
+  loadTDFStream,
   unwrapHtml,
   validatePolicyObject,
   readStream,
@@ -31,7 +31,12 @@ import {
   withHeaders,
 } from '../../../src/auth/auth.js';
 import EAS from '../../../src/auth/Eas.js';
-import { cryptoPublicToPem, validateSecureUrl } from '../../../src/utils.js';
+import {
+  cryptoPublicToPem,
+  pemToCryptoPublicKey,
+  rstrip,
+  validateSecureUrl,
+} from '../../../src/utils.js';
 
 import {
   EncryptParams,
@@ -40,6 +45,7 @@ import {
   DecryptStreamMiddleware,
   EncryptKeyMiddleware,
   EncryptStreamMiddleware,
+  SplitStep,
 } from './builders.js';
 import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 
@@ -49,13 +55,17 @@ import {
   type DecryptSource,
   EncryptParamsBuilder,
 } from './builders.js';
-import * as defaultCryptoService from '../crypto/index.js';
-import { AttributeSet, Policy, SplitKey } from '../models/index.js';
-import { TdfError } from '../../../src/errors.js';
+import { KasPublicKeyInfo, OriginAllowList } from '../../../src/access.js';
+import { ConfigurationError } from '../../../src/errors.js';
+import { EntityObject } from '../../../src/tdf/EntityObject.js';
 import { Binary } from '../binary.js';
-import { EntityObject } from 'src/tdf/EntityObject.js';
 import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
 import { toCryptoKeyPair } from '../crypto/crypto-utils.js';
+import * as defaultCryptoService from '../crypto/index.js';
+import { type AttributeObject, AttributeSet, type Policy, SplitKey } from '../models/index.js';
+import { plan } from '../../../src/policy/granter.js';
+import { attributeFQNsAsValues } from '../../../src/policy/api.js';
+import { type Value } from '../../../src/policy/attributes.js';
 
 const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
 const HTML_BYTE_LIMIT = 100 * 1000 * 1000; // 100 MB, see WS-9476.
@@ -89,7 +99,7 @@ const getFirstTwoBytes = async (chunker: Chunker) => new TextDecoder().decode(aw
 
 const makeChunkable = async (source: DecryptSource) => {
   if (!source) {
-    throw new Error('Invalid source');
+    throw new ConfigurationError('invalid source');
   }
   // dump stream to buffer
   // we don't support streams anyways (see zipreader.js)
@@ -131,10 +141,16 @@ export interface ClientConfig {
   dpopKeys?: Promise<CryptoKeyPair>;
   kasEndpoint?: string;
   /**
+   * Service to use to look up ABAC. Used during autoconfigure. Defaults to
+   * kasEndpoint without the trailing `/kas` path segment, if present.
+   */
+  policyEndpoint?: string;
+  /**
    * List of allowed KASes to connect to for rewrap requests.
    * Defaults to `[kasEndpoint]`.
    */
   allowedKases?: string[];
+  ignoreAllowList?: boolean;
   easEndpoint?: string;
   // DEPRECATED Ignored
   keyRewrapEndpoint?: string;
@@ -196,12 +212,22 @@ function asPolicy(scope: Scope): Policy {
     return scope.policyObject;
   }
   const policyId = scope.policyId ?? v4();
+  let dataAttributes: AttributeObject[];
+  if (scope.attributeValues) {
+    dataAttributes = scope.attributeValues
+      .filter(({ fqn }) => !!fqn)
+      .map(({ fqn }): AttributeObject => {
+        return { attribute: fqn! };
+      });
+  } else {
+    dataAttributes = (scope.attributes ?? []).map((attribute) =>
+      typeof attribute === 'string' ? { attribute } : attribute
+    );
+  }
   return {
     uuid: policyId,
     body: {
-      dataAttributes: (scope.attributes ?? []).map((attribute) =>
-        typeof attribute === 'string' ? { attribute } : attribute
-      ),
+      dataAttributes,
       dissem: scope.dissem ?? [],
     },
   };
@@ -216,12 +242,18 @@ export class Client {
   readonly kasEndpoint: string;
 
   /**
+   * Policy service endpoint, if present.
+   * Required for autoconfiguration with ABAC.
+   */
+  readonly policyEndpoint: string;
+
+  /**
    * List of allowed KASes to connect to for rewrap requests.
    * Defaults to `[this.kasEndpoint]`.
    */
-  readonly allowedKases: string[];
+  readonly allowedKases: OriginAllowList;
 
-  readonly kasPublicKey: Promise<KasPublicKeyInfo>;
+  readonly kasKeys: Record<string, Promise<KasPublicKeyInfo>> = {};
 
   readonly easEndpoint?: string;
 
@@ -266,24 +298,33 @@ export class Client {
     } else {
       // handle Deprecated `kasRewrapEndpoint` parameter
       if (!clientConfig.keyRewrapEndpoint) {
-        throw new Error('KAS definition not found');
+        throw new ConfigurationError('KAS definition not found');
       }
       this.kasEndpoint = clientConfig.keyRewrapEndpoint.replace(/\/rewrap$/, '');
     }
+    this.kasEndpoint = rstrip(this.kasEndpoint, '/');
+    if (clientConfig.policyEndpoint) {
+      this.policyEndpoint = rstrip(clientConfig.policyEndpoint, '/');
+    } else if (this.kasEndpoint.endsWith('/kas')) {
+      this.policyEndpoint = this.kasEndpoint.slice(0, -4);
+    }
 
+    const kasOrigin = new URL(this.kasEndpoint).origin;
     if (clientConfig.allowedKases) {
-      this.allowedKases = [...clientConfig.allowedKases];
-      if (!validateSecureUrl(this.kasEndpoint) && !this.allowedKases.includes(this.kasEndpoint)) {
-        throw new TdfError(`Invalid KAS endpoint [${this.kasEndpoint}]`);
+      this.allowedKases = new OriginAllowList(
+        clientConfig.allowedKases,
+        !!clientConfig.ignoreAllowList
+      );
+      if (!validateSecureUrl(this.kasEndpoint) && !this.allowedKases.allows(kasOrigin)) {
+        throw new ConfigurationError(`Invalid KAS endpoint [${this.kasEndpoint}]`);
       }
-      this.allowedKases.forEach(validateSecureUrl);
     } else {
       if (!validateSecureUrl(this.kasEndpoint)) {
-        throw new TdfError(
+        throw new ConfigurationError(
           `Invalid KAS endpoint [${this.kasEndpoint}]; to force, please list it among allowedKases`
         );
       }
-      this.allowedKases = [this.kasEndpoint];
+      this.allowedKases = new OriginAllowList([kasOrigin], !!clientConfig.ignoreAllowList);
     }
 
     this.authProvider = config.authProvider;
@@ -300,7 +341,7 @@ export class Client {
     this.clientId = clientConfig.clientId;
     if (!this.authProvider) {
       if (!clientConfig.clientId) {
-        throw new Error('Client ID or custom AuthProvider must be defined');
+        throw new ConfigurationError('Client ID or custom AuthProvider must be defined');
       }
 
       //Are we exchanging a refreshToken for a bearer token (normal AuthCode browser auth flow)?
@@ -328,13 +369,12 @@ export class Client {
       dpopKeys: clientConfig.dpopKeys,
     });
     if (clientConfig.kasPublicKey) {
-      this.kasPublicKey = Promise.resolve({
+      this.kasKeys[this.kasEndpoint] = Promise.resolve({
         url: this.kasEndpoint,
         algorithm: 'rsa:2048',
+        key: pemToCryptoPublicKey(clientConfig.kasPublicKey),
         publicKey: clientConfig.kasPublicKey,
       });
-    } else {
-      this.kasPublicKey = fetchKasPublicKey(this.kasEndpoint);
     }
   }
 
@@ -342,8 +382,9 @@ export class Client {
    * Encrypt plaintext into TDF ciphertext. One of the core operations of the Virtru SDK.
    *
    * @param scope dissem and attributes for constructing the policy
-   * @param source nodeJS source object of unencrypted data
+   * @param source source object of unencrypted data
    * @param [asHtml] If we should wrap the TDF data in a self-opening HTML wrapper. Defaults to false
+   * @param [autoconfigure] If we should use scope.attributes to configure KAOs
    * @param [metadata] Additional non-secret data to store with the TDF
    * @param [opts] Test only
    * @param [mimeType] mime type of source. defaults to `unknown`
@@ -356,6 +397,7 @@ export class Client {
    */
   async encrypt({
     scope = { attributes: [], dissem: [] },
+    autoconfigure,
     source,
     asHtml = false,
     metadata,
@@ -365,11 +407,69 @@ export class Client {
     eo,
     keyMiddleware = defaultKeyMiddleware,
     streamMiddleware = async (stream: DecoratedReadableStream) => stream,
+    splitPlan,
+    assertionConfigs = [],
   }: EncryptParams): Promise<DecoratedReadableStream> {
     const dpopKeys = await this.dpopKeys;
-    const kasPublicKey = await this.kasPublicKey;
+
     const policyObject = asPolicy(scope);
     validatePolicyObject(policyObject);
+
+    if (!splitPlan && autoconfigure) {
+      let avs: Value[] = scope.attributeValues ?? [];
+      const fqns: string[] = scope.attributes
+        ? scope.attributes.map((attribute) =>
+            typeof attribute === 'string' ? attribute : attribute.attribute
+          )
+        : [];
+
+      if (!avs.length && fqns.length) {
+        // Hydrate avs from policy endpoint givnen the fqns
+        if (!this.policyEndpoint) {
+          throw new ConfigurationError('policyEndpoint not set in TDF3 Client constructor');
+        }
+        avs = await attributeFQNsAsValues(
+          this.policyEndpoint,
+          this.authProvider as AuthProvider,
+          ...fqns
+        );
+      } else if (scope.attributeValues) {
+        avs = scope.attributeValues;
+        if (!scope.attributes) {
+          scope.attributes = avs.map(({ fqn }) => fqn);
+        }
+      }
+      if (
+        avs.length != scope.attributes?.length ||
+        !avs.map(({ fqn }) => fqn).every((a) => fqns.indexOf(a) >= 0)
+      ) {
+        throw new ConfigurationError(
+          `Attribute mismatch between [${fqns}] and explicit values ${JSON.stringify(
+            avs.map(({ fqn }) => fqn)
+          )}`
+        );
+      }
+      const detailedPlan = plan(avs);
+      splitPlan = detailedPlan.map((kat) => {
+        const { kas, sid } = kat;
+        if (kas?.publicKey?.cached?.keys && !(kas.uri in this.kasKeys)) {
+          const keys = kas.publicKey.cached.keys.filter(
+            ({ alg }) => alg == 'KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048'
+          );
+          if (keys?.length) {
+            const key = keys[0];
+            this.kasKeys[kas.uri] = Promise.resolve({
+              key: pemToCryptoPublicKey(key.pem),
+              publicKey: key.pem,
+              url: kas.uri,
+              algorithm: 'rsa:2048',
+              kid: key.kid,
+            });
+          }
+        }
+        return { kas: kas.uri, sid };
+      });
+    }
 
     // TODO: Refactor underlying builder to remove some of this unnecessary config.
 
@@ -383,19 +483,28 @@ export class Client {
       eo.attributes.forEach((attr) => s.addJwtAttribute(attr));
       attributeSet = s;
     }
-    encryptionInformation.keyAccess.push(
-      await buildKeyAccess({
-        attributeSet,
-        type: offline ? 'wrapped' : 'remote',
-        url: kasPublicKey.url,
-        kid: kasPublicKey.kid,
-        publicKey: kasPublicKey.publicKey,
-        metadata,
+
+    const splits: SplitStep[] = splitPlan?.length ? splitPlan : [{ kas: this.kasEndpoint }];
+    encryptionInformation.keyAccess = await Promise.all(
+      splits.map(async ({ kas, sid }) => {
+        if (!(kas in this.kasKeys)) {
+          this.kasKeys[kas] = fetchKasPublicKey(kas);
+        }
+        const kasPublicKey = await this.kasKeys[kas];
+        return buildKeyAccess({
+          attributeSet,
+          type: offline ? 'wrapped' : 'remote',
+          url: kasPublicKey.url,
+          kid: kasPublicKey.kid,
+          publicKey: kasPublicKey.publicKey,
+          metadata,
+          sid,
+        });
       })
     );
     const { keyForEncryption, keyForManifest } = await (keyMiddleware as EncryptKeyMiddleware)();
     const ecfg: EncryptConfiguration = {
-      allowedKases: this.allowedKases,
+      allowList: this.allowedKases,
       attributeSet,
       byteLimit,
       cryptoService: this.cryptoService,
@@ -412,6 +521,7 @@ export class Client {
       progressHandler: this.clientConfig.progressHandler,
       keyForEncryption,
       keyForManifest,
+      assertionConfigs,
     };
 
     const stream = await (streamMiddleware as EncryptStreamMiddleware)(await writeStream(ecfg));
@@ -421,9 +531,8 @@ export class Client {
     }
 
     // Wrap if it's html.
-    // FIXME: Support streaming for html format.
     if (!stream.manifest) {
-      throw new Error('Missing manifest in encrypt function');
+      throw new Error('internal: missing manifest in encrypt function');
     }
     const htmlBuf = wrapHtml(await stream.toBuffer(), stream.manifest, this.readerUrl ?? '');
 
@@ -442,6 +551,7 @@ export class Client {
    * @param params streamMiddleware fucntion to process streamMiddleware
    * @param params.source A data stream object, one of remote, stream, buffer, etc. types.
    * @param params.eo Optional entity object (legacy AuthZ)
+   * @param params.assertionVerificationKeys Optional verification keys for assertions.
    * @return a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} stream containing the decrypted plaintext.
    * @see DecryptParamsBuilder
    */
@@ -450,6 +560,8 @@ export class Client {
     source,
     keyMiddleware = async (key: Binary) => key,
     streamMiddleware = async (stream: DecoratedReadableStream) => stream,
+    assertionVerificationKeys,
+    noVerifyAssertions,
   }: DecryptParams): Promise<DecoratedReadableStream> {
     const dpopKeys = await this.dpopKeys;
     let entityObject;
@@ -464,7 +576,7 @@ export class Client {
       }
     }
     if (!this.authProvider) {
-      throw new Error('AuthProvider missing');
+      throw new ConfigurationError('AuthProvider missing');
     }
     const chunker = await makeChunkable(source);
 
@@ -472,7 +584,7 @@ export class Client {
     // TODO: Write error event to stream and don't await.
     return await (streamMiddleware as DecryptStreamMiddleware)(
       await readStream({
-        allowedKases: this.allowedKases,
+        allowList: this.allowedKases,
         authProvider: this.authProvider,
         chunker,
         cryptoService: this.cryptoService,
@@ -481,6 +593,8 @@ export class Client {
         fileStreamServiceWorker: this.clientConfig.fileStreamServiceWorker,
         keyMiddleware,
         progressHandler: this.clientConfig.progressHandler,
+        assertionVerificationKeys,
+        noVerifyAssertions,
       })
     );
   }
@@ -502,6 +616,11 @@ export class Client {
     const manifest = await zipHelper.getManifest(centralDirectory, '0.manifest.json');
     const policyJson = base64.decode(manifest.encryptionInformation.policy);
     return JSON.parse(policyJson).uuid;
+  }
+
+  async loadTDFStream({ source }: { source: DecryptSource }) {
+    const chunker = await makeChunkable(source);
+    return loadTDFStream(chunker);
   }
 }
 

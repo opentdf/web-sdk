@@ -5,7 +5,6 @@ import react from '@vitejs/plugin-react';
 const require = createRequire(import.meta.url)
 
 function proxy(): Record<string, string> {
-  console.log(process.env);
   const { VITE_PROXY } = process.env;
   if (VITE_PROXY) {
     console.log(`using VITE_PROXY [${VITE_PROXY}]`);

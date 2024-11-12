@@ -2,8 +2,7 @@ import AbstractPolicy from './AbstractPolicy.js';
 import EmbeddedPolicy from './EmbeddedPolicy.js';
 import RemotePolicy from './RemotePolicy.js';
 import PolicyTypeEnum from '../../enum/PolicyTypeEnum.js';
-import { lengthOfBinding } from '../../helpers/calculateByCipher.js';
-import { InvalidPolicyTypeError } from '../../../errors.js';
+import { UnsupportedFeatureError } from '../../../errors.js';
 import CurveNameEnum from '../../enum/CurveNameEnum.js';
 
 function parse(
@@ -12,7 +11,6 @@ function parse(
   curve: CurveNameEnum
 ): { policy: AbstractPolicy; offset: number } | never {
   const type = buff[AbstractPolicy.TYPE_BYTE_OFF];
-  const bindingLength = lengthOfBinding(useEcdsaBinding, curve);
   let policy: AbstractPolicy;
   let offset: number;
 
@@ -20,7 +18,7 @@ function parse(
   if (type === PolicyTypeEnum.Remote) {
     ({ policy, offset } = RemotePolicy.parse(
       buff.subarray(AbstractPolicy.TYPE_BYTE_LEN),
-      bindingLength
+      useEcdsaBinding
     ));
   } else if (
     [
@@ -32,11 +30,11 @@ function parse(
   ) {
     ({ policy, offset } = EmbeddedPolicy.parse(
       buff.subarray(AbstractPolicy.TYPE_BYTE_LEN),
-      bindingLength,
+      useEcdsaBinding,
       type
     ));
   } else {
-    throw new InvalidPolicyTypeError();
+    throw new UnsupportedFeatureError(`unsupported policy type: ${type}`);
   }
 
   return {

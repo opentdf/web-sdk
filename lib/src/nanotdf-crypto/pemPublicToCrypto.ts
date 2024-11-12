@@ -31,6 +31,7 @@ import * as base64 from '../encodings/base64.js';
 import { importX509 } from 'jose';
 import { type KeyObject } from 'crypto';
 import { encodeArrayBuffer as hexEncodeArrayBuffer } from '../encodings/hex.js';
+import { ConfigurationError, TdfError } from '../errors.js';
 
 const RSA_OID = '06092a864886f70d010101';
 const EC_OID = '06072a8648ce3d0201';
@@ -100,7 +101,7 @@ function guessCurveName(hex: string): CurveName {
   } else if (hex.includes(P521_OID)) {
     return P_512;
   }
-  throw new Error('Unsupported curve name or invalid key');
+  throw new TdfError('Unsupported curve name or invalid key');
 }
 
 /**
@@ -209,7 +210,7 @@ export async function pemCertToCrypto(
   const keylike = await importX509(pem, jwsAlg, { extractable: options.isExtractable });
   const { type } = keylike;
   if (type !== 'public') {
-    throw new Error('Unpublic');
+    throw new ConfigurationError('unpublic');
   }
   // FIXME Jose workaround for node clients.
   // jose returns a crypto key on node, but we expect a subtle-crypto key

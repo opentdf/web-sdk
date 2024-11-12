@@ -15,14 +15,14 @@ class RemotePolicy extends AbstractPolicy implements RemotePolicyInterface {
 
   static override parse(
     buff: Uint8Array,
-    bindingLength: number
+    useEcdsaBinding: boolean
   ): { offset: number; policy: RemotePolicy } {
     let offset = 0;
-    const resource = new ResourceLocator(buff);
+    const resource = ResourceLocator.parse(buff);
     offset += resource.offset;
 
-    const binding = buff.subarray(offset, offset + bindingLength);
-    offset += bindingLength;
+    const { binding, newOffset: bindingOffset } = this.parseBinding(buff, useEcdsaBinding, offset);
+    offset = bindingOffset;
 
     return {
       policy: new RemotePolicy(PolicyTypeEnum.Remote, binding, resource),
@@ -56,18 +56,18 @@ class RemotePolicy extends AbstractPolicy implements RemotePolicyInterface {
    * Return the content of the policy
    */
   override toBuffer(): Uint8Array {
-    const buffer = new Uint8Array(this.getLength());
+    const target = new Uint8Array(this.getLength());
 
-    buffer.set([PolicyTypeEnum.Remote], 0);
+    target.set([PolicyTypeEnum.Remote], 0);
 
     // Write the remote policy location
     const resourceLocatorAsBuf = this.remotePolicy.toBuffer();
-    buffer.set(resourceLocatorAsBuf, 1);
+    target.set(resourceLocatorAsBuf, 1);
 
     // Write the binding.
-    buffer.set(this.binding, resourceLocatorAsBuf.length + 1);
+    target.set(this.binding, resourceLocatorAsBuf.length + 1);
 
-    return buffer;
+    return target;
   }
 }
 

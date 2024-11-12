@@ -1,6 +1,7 @@
 import AbstractPolicy from './AbstractPolicy.js';
 import { EmbeddedPolicyInterface } from '../../interfaces/PolicyInterface.js';
 import PolicyTypes from '../../enum/PolicyTypeEnum.js';
+import { ConfigurationError } from '../../../errors.js';
 
 /**
  * Embedded Policy
@@ -19,7 +20,7 @@ class EmbeddedPolicy extends AbstractPolicy implements EmbeddedPolicyInterface {
 
   static override parse(
     buff: Uint8Array,
-    bindingLength: number,
+    useEcdsaBinding: boolean,
     type: PolicyTypes
   ): { offset: number; policy: EmbeddedPolicy } {
     let offset = 0;
@@ -32,8 +33,8 @@ class EmbeddedPolicy extends AbstractPolicy implements EmbeddedPolicyInterface {
     const content = buff.subarray(offset, offset + length);
     offset += length;
 
-    const binding = buff.subarray(offset, offset + bindingLength);
-    offset += bindingLength;
+    const { binding, newOffset: bindingOffset } = this.parseBinding(buff, useEcdsaBinding, offset);
+    offset = bindingOffset;
 
     return {
       policy: new EmbeddedPolicy(type, binding, content),
@@ -68,13 +69,13 @@ class EmbeddedPolicy extends AbstractPolicy implements EmbeddedPolicyInterface {
    * Return the content of the policy
    */
   override toBuffer(): Uint8Array {
-    const buffer = new Uint8Array(this.getLength());
+    const target = new Uint8Array(this.getLength());
 
     if (this.content.length > EmbeddedPolicy.MAX_POLICY_SIZE) {
-      throw new Error("TDF Policy can't be more that 2^16");
+      throw new ConfigurationError("TDF Policy can't be more that 2^16");
     }
 
-    buffer.set([this.type], 0);
+    target.set([this.type], 0);
 
     // Write the policy length, assuming the host system is little endian
     // TODO: There should be better way to convert to big endian
@@ -85,15 +86,15 @@ class EmbeddedPolicy extends AbstractPolicy implements EmbeddedPolicyInterface {
     const policyContentSizeAsBg = new Uint8Array(2);
     policyContentSizeAsBg[0] = temp[1];
     policyContentSizeAsBg[1] = temp[0];
-    buffer.set(policyContentSizeAsBg, 1);
+    target.set(policyContentSizeAsBg, 1);
 
     // Write the policy content
-    buffer.set(this.content, policyContentSizeAsBg.length + 1);
+    target.set(this.content, policyContentSizeAsBg.length + 1);
 
     // Write the binding.
-    buffer.set(this.binding, this.content.length + policyContentSizeAsBg.length + 1);
+    target.set(this.binding, this.content.length + policyContentSizeAsBg.length + 1);
 
-    return buffer;
+    return target;
   }
 }
 

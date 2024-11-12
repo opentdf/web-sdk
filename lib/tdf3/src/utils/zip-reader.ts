@@ -1,3 +1,4 @@
+import { InvalidFileError } from '../../../src/errors.js';
 import { Manifest } from '../models/index.js';
 import { Chunker } from './chunkers.js';
 import { readUInt32LE, readUInt16LE, copyUint8Arr, buffToString } from './index.js';
@@ -8,6 +9,8 @@ const CD_SIGNATURE = 0x02014b50;
 const CENTRAL_DIRECTORY_RECORD_FIXED_SIZE = 46;
 const LOCAL_FILE_HEADER_FIXED_SIZE = 30;
 const VERSION_NEEDED_TO_EXTRACT_ZIP64 = 45;
+const manifestMaxSize = 1024 * 1024 * 10; // 10 MB
+
 const cp437 =
   '\u0000☺☻♥♦♣♠•◘○◙♂♀♪♫☼►◄↕‼¶§▬↨↑↓→←∟↔▲▼ !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~⌂ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■ ';
 
@@ -66,8 +69,8 @@ export class ZipReader {
 
   /**
    * Utility function to get the centralDirectory for the zip file.
-   * @param  {Buffer} chunkBuffer Takes a buffer of a portion of the file
-   * @return {Object}             The central directory represented as an object
+   * It reads the end of the file to find it.
+   * @return The central directory represented as an object
    */
   async getCentralDirectory(): Promise<CentralDirectory[]> {
     const chunk = await this.getChunk(-1000);
@@ -89,9 +92,14 @@ export class ZipReader {
   async getManifest(cdBuffers: CentralDirectory[], manifestFileName: string): Promise<Manifest> {
     const cdObj = cdBuffers.find(({ fileName }) => fileName === manifestFileName);
     if (!cdObj) {
-      throw new Error('Unable to retrieve CD manifest');
+      throw new InvalidFileError('Unable to retrieve CD manifest');
     }
     const byteStart = cdObj.relativeOffsetOfLocalHeader + cdObj.headerLength;
+    if (cdObj.uncompressedSize > manifestMaxSize) {
+      throw new InvalidFileError(
+        `manifest file too large: ${(cdObj.uncompressedSize >> 10).toLocaleString()} KiB`
+      );
+    }
     const byteEnd = byteStart + cdObj.uncompressedSize;
     const manifest = await this.getChunk(byteStart, byteEnd);
 
@@ -100,7 +108,7 @@ export class ZipReader {
 
   async adjustHeaders(cdObj: CentralDirectory): Promise<void> {
     if (!cdObj) {
-      throw new Error('Unable to retrieve CD adjust');
+      throw new InvalidFileError('Unable to retrieve CD adjust');
     }
     // Calculate header length -- tdf3-js writes 0 in all the header fields
     // and does not include extra field for zip64
@@ -119,7 +127,7 @@ export class ZipReader {
   ): Promise<Uint8Array> {
     const cdObj = cdBuffers.find(({ fileName }) => payloadName === fileName);
     if (!cdObj) {
-      throw new Error('Unable to retrieve CD');
+      throw new InvalidFileError('Unable to retrieve CD');
     }
     const byteStart =
       cdObj.relativeOffsetOfLocalHeader + cdObj.headerLength + encrpytedSegmentOffset;
@@ -130,10 +138,9 @@ export class ZipReader {
   }
 
   /**
-   * Takes a portion of a ZIP (must be the last portion of a ZIP to work) and returns an array of Buffers
-   * that correspond to each central directory.
-   * @param  {Buffer} chunkBuffer The last portion of a zip file
-   * @returns {Array}             An array of buffers
+   * extracts the CD buffer entries from the end of a zip file.
+   * @param  chunkBuffer The last portion of a zip file
+   * @returns an array of typed arrays, each element corresponding to a central directory record
    */
   getCDBuffers(chunkBuffer: Uint8Array): Uint8Array[] {
     const cdBuffers = [];
@@ -210,7 +217,7 @@ function parseCentralDirectoryWithNoExtras(cdBuffer: Uint8Array): CentralDirecto
  */
 export function parseCDBuffer(cdBuffer: Uint8Array): CentralDirectory {
   if (readUInt32LE(cdBuffer, 0) !== CD_SIGNATURE) {
-    throw new Error('Invalid central directory file header signature');
+    throw new InvalidFileError('Invalid central directory file header signature');
   }
 
   const cd = parseCentralDirectoryWithNoExtras(cdBuffer);
@@ -233,7 +240,7 @@ export function parseCDBuffer(cdBuffer: Uint8Array): CentralDirectory {
     // 0 - Original Size          8 bytes
     if (cd.uncompressedSize === 0xffffffff) {
       if (index + 8 > zip64EiefBuffer.length) {
-        throw new Error(
+        throw new InvalidFileError(
           'zip64 extended information extra field does not include uncompressed size'
         );
       }
@@ -243,7 +250,9 @@ export function parseCDBuffer(cdBuffer: Uint8Array): CentralDirectory {
     // 8 - Compressed Size        8 bytes
     if (cd.compressedSize === 0xffffffff) {
       if (index + 8 > zip64EiefBuffer.length) {
-        throw new Error('zip64 extended information extra field does not include compressed size');
+        throw new InvalidFileError(
+          'zip64 extended information extra field does not include compressed size'
+        );
       }
       cd.compressedSize = readUInt64LE(zip64EiefBuffer, index);
       index += 8;
@@ -251,7 +260,7 @@ export function parseCDBuffer(cdBuffer: Uint8Array): CentralDirectory {
     // 16 - Relative Header Offset 8 bytes
     if (cd.relativeOffsetOfLocalHeader === 0xffffffff) {
       if (index + 8 > zip64EiefBuffer.length) {
-        throw new Error(
+        throw new InvalidFileError(
           'zip64 extended information extra field does not include relative header offset'
         );
       }
@@ -318,12 +327,12 @@ function sliceExtraFields(
     const dataStart = i + 4;
     const dataEnd = dataStart + dataSize;
     if (dataEnd > extraFieldBuffer.length) {
-      throw new Error('extra field length exceeds extra field buffer size');
+      throw new InvalidFileError('extra field length exceeds extra field buffer size');
     }
     const dataBuffer = new Uint8Array(dataSize);
     copyUint8Arr(extraFieldBuffer, dataBuffer, 0, dataStart, dataEnd);
     if (extraFields[headerId]) {
-      throw new Error(`Conflicting extra field #${headerId} for entry [${cd.fileName}]`);
+      throw new InvalidFileError(`Conflicting extra field #${headerId} for entry [${cd.fileName}]`);
     }
     extraFields[headerId] = dataBuffer;
     i = dataEnd;

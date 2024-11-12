@@ -1,7 +1,9 @@
 import { expect } from 'chai';
 
 import * as TDF from '../../../tdf3/src/tdf.js';
-import { TdfError } from '../../../src/errors.js';
+import { KeyAccessObject } from '../../../tdf3/src/models/key-access.js';
+import { OriginAllowList } from '../../../src/access.js';
+import { InvalidFileError, TdfError, UnsafeUrlError } from '../../../src/errors.js';
 
 const sampleCert = `
 -----BEGIN CERTIFICATE-----
@@ -41,13 +43,9 @@ HJg=
 
 describe('TDF', () => {
   it('Encodes the postMessage origin properly in wrapHtml', () => {
-    const cipherText = 'abcezas123';
+    const cipherText = new TextEncoder().encode('abcezas123');
     const transferUrl = 'https://local.virtru.com/start?htmlProtocol=1';
-    const wrapped = TDF.wrapHtml(
-      Buffer.from(cipherText),
-      JSON.stringify({ thisIs: 'metadata' }),
-      transferUrl
-    );
+    const wrapped = TDF.wrapHtml(cipherText, JSON.stringify({ thisIs: 'metadata' }), transferUrl);
     const rawHtml = new TextDecoder().decode(wrapped);
     expect(rawHtml).to.include("'https://local.virtru.com', [channel.port2]);");
   });
@@ -89,6 +87,98 @@ describe('fetchKasPublicKey', async () => {
   it('localhost kas is valid', async () => {
     const pk2 = await TDF.fetchKasPublicKey('http://localhost:3000');
     expect(pk2.publicKey).to.include('BEGIN CERTIFICATE');
-    expect(pk2.kid).to.equal('kid-a');
+    expect(pk2.kid).to.equal('r1');
+  });
+});
+
+describe('splitLookupTableFactory', () => {
+  it('should return a correct split table for valid input', () => {
+    const keyAccess: KeyAccessObject[] = [
+      { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas' },
+      { sid: 'split2', type: 'remote', url: 'https://kas2', protocol: 'kas' },
+    ];
+    const allowedKases = new OriginAllowList(['https://kas1', 'https://kas2']);
+
+    const result = TDF.splitLookupTableFactory(keyAccess, allowedKases);
+
+    expect(result).to.deep.equal({
+      split1: { 'https://kas1': keyAccess[0] },
+      split2: { 'https://kas2': keyAccess[1] },
+    });
+  });
+
+  it('should return a correct split table for valid input with ignoreAllowList', () => {
+    const keyAccess: KeyAccessObject[] = [
+      { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas' },
+      { sid: 'split2', type: 'remote', url: 'https://kas2', protocol: 'kas' },
+    ];
+    const allowedKases = new OriginAllowList([], true);
+
+    const result = TDF.splitLookupTableFactory(keyAccess, allowedKases);
+
+    expect(result).to.deep.equal({
+      split1: { 'https://kas1': keyAccess[0] },
+      split2: { 'https://kas2': keyAccess[1] },
+    });
+  });
+
+  it('should throw UnsafeUrlError for disallowed KASes', () => {
+    const keyAccess: KeyAccessObject[] = [
+      { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas' },
+      { sid: 'split2', type: 'remote', url: 'https://kas3', protocol: 'kas' }, // kas3 is not allowed
+    ];
+    const allowedKases = new OriginAllowList(['https://kas1']);
+
+    expect(() => TDF.splitLookupTableFactory(keyAccess, allowedKases)).to.throw(
+      UnsafeUrlError,
+      'Unreconstructable key - disallowed KASes include: ["https://kas3"] from splitIds ["split1","split2"]'
+    );
+  });
+
+  it('should throw for duplicate URLs in the same splitId', () => {
+    const keyAccess: KeyAccessObject[] = [
+      { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas' },
+      { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas' }, // duplicate URL in same splitId
+    ];
+    const allowedKases = new OriginAllowList(['https://kas1']);
+
+    expect(() => TDF.splitLookupTableFactory(keyAccess, allowedKases)).to.throw(
+      InvalidFileError,
+      'TODO: Fallback to no split ids. Repetition found for [https://kas1] on split [split1]'
+    );
+  });
+
+  it('should handle empty keyAccess array', () => {
+    const keyAccess: KeyAccessObject[] = [];
+    const allowedKases = new OriginAllowList([]);
+
+    const result = TDF.splitLookupTableFactory(keyAccess, allowedKases);
+
+    expect(result).to.deep.equal({});
+  });
+
+  it('should handle empty allowedKases array', () => {
+    const keyAccess: KeyAccessObject[] = [
+      { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas' },
+    ];
+    const allowedKases = new OriginAllowList([]);
+
+    expect(() => TDF.splitLookupTableFactory(keyAccess, allowedKases)).to.throw(
+      InvalidFileError,
+      'Unreconstructable key - disallowed KASes include: ["https://kas1"]'
+    );
+  });
+
+  it('should handle cases where sid is undefined', () => {
+    const keyAccess: KeyAccessObject[] = [
+      { sid: undefined, type: 'remote', url: 'https://kas1', protocol: 'kas' },
+    ];
+    const allowedKases = ['https://kas1'];
+
+    const result = TDF.splitLookupTableFactory(keyAccess, new OriginAllowList(allowedKases));
+
+    expect(result).to.deep.equal({
+      '': { 'https://kas1': keyAccess[0] },
+    });
   });
 });

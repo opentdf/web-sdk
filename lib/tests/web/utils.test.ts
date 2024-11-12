@@ -7,7 +7,6 @@ import {
   estimateSkewFromHeaders,
   padSlashToUrl,
   rstrip,
-  safeUrlCheck,
   validateSecureUrl,
 } from '../../src/utils.js';
 
@@ -92,48 +91,6 @@ describe('padSlashToUrl', () => {
     expect(padSlashToUrl('https://my.xyz/')).to.equal('https://my.xyz/');
     expect(padSlashToUrl('https://my.xyz/somewhere')).to.equal('https://my.xyz/somewhere/');
     expect(padSlashToUrl('https://my.xyz/somewhere/')).to.equal('https://my.xyz/somewhere/');
-  });
-});
-
-describe('safeUrlCheck', () => {
-  it('some checks', () => {
-    expect(() => safeUrlCheck([], 'https://my.xyz/somewhere/else')).to.throw('Invalid request URL');
-    expect(() => safeUrlCheck([''], 'https://my.xyz/somewhere/else')).to.throw(
-      'Invalid request URL'
-    );
-    expect(() => safeUrlCheck(['https://my.xyz'], 'https://my.xyz/somewhere')).to.not.throw(
-      'Invalid request URL'
-    );
-    expect(() => safeUrlCheck(['https://my.xyz'], 'https://my.xyz.com/somewhere/else')).to.throw(
-      'Invalid request URL'
-    );
-    expect(() => safeUrlCheck(['https://my.xyz'], 'http://my.xyz/somewhere/else')).to.throw(
-      'Invalid request URL'
-    );
-    expect(() =>
-      safeUrlCheck(['https://my.xyz/somewhere'], 'https://my.xyz/somewhere/else')
-    ).to.not.throw('Invalid request URL');
-    expect(() =>
-      safeUrlCheck(
-        ['https://your.place', 'https://my.xyz/somewhere'],
-        'https://my.xyz/somewhere/else'
-      )
-    ).to.not.throw('Invalid request URL');
-    expect(() =>
-      safeUrlCheck(['https://my.xyz/somewhere'], 'https://my.xyz/somewhereelse/')
-    ).to.throw('Invalid request URL');
-    expect(() => safeUrlCheck(['https://my.xyz/somewhere'], 'https://my.xyz/elsewhere/')).to.throw(
-      'Invalid request URL'
-    );
-  });
-
-  it('returns invalid url', () => {
-    try {
-      safeUrlCheck([], 'https://my.xyz/somewhere/else');
-      expect.fail();
-    } catch (e) {
-      expect(e).to.have.property('url', 'https://my.xyz/somewhere/else');
-    }
   });
 });
 

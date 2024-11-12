@@ -5,6 +5,7 @@ import { isFirefox } from '../../../src/utils.js';
 
 import { type Metadata } from '../tdf.js';
 import { type Manifest, type UpsertResponse } from '../models/index.js';
+import { ConfigurationError } from '../../../src/errors.js';
 
 export async function streamToBuffer(stream: ReadableStream<Uint8Array>): Promise<Uint8Array> {
   const accumulator = await new Response(stream).arrayBuffer();
@@ -94,7 +95,7 @@ export class DecoratedReadableStream {
     options?: BufferEncoding | DecoratedReadableStreamSinkOptions
   ): Promise<void> {
     if (options && typeof options === 'string') {
-      throw new Error('Unsupported Operation: Cannot set encoding in browser');
+      throw new ConfigurationError('unsupported operation: Cannot set encoding in browser');
     }
     if (isFirefox()) {
       await fileSave(new Response(this.stream), {

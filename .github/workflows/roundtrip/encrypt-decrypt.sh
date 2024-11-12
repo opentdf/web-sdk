@@ -13,6 +13,7 @@ _nano_test() {
   echo "Hello World ${counter}" >"./${plain}"
   npx "$1" --log-level DEBUG \
     --kasEndpoint http://localhost:65432/api/kas \
+    --allowList http://localhost:65432 \
     --oidcEndpoint http://localhost:65432/auth/realms/tdf \
     --auth tdf-client:123-456 \
     --output sample.txt.ntdf \
@@ -34,7 +35,7 @@ _nano_test() {
   rm -f "${plain}" sample.txt.ntdf sample_out.txt
 }
 
-_nano_test @opentdf/cli @opentdf/cli
+_nano_test @opentdf/ctl @opentdf/ctl
 
 _tdf3_test() {
   counter=$((counter + 1))
@@ -65,4 +66,4 @@ _tdf3_test() {
   rm -f "${plain}" sample.txt.tdf sample_out.txt
 }
 
-_tdf3_test @opentdf/cli @opentdf/cli
+_tdf3_test @opentdf/ctl @opentdf/ctl

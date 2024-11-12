@@ -4,6 +4,7 @@ import * as WebCryptoService from '../crypto/index.js';
 import { KeyInfo, SplitKey } from '../models/index.js';
 
 import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
+import { ConfigurationError } from '../../../src/errors.js';
 
 export { ZipReader, readUInt64LE } from './zip-reader.js';
 export { ZipWriter } from './zip-writer.js';
@@ -129,39 +130,39 @@ function base64Slice(buf: Uint8Array, start: number, end: number): string {
 
 // https://github.com/feross/buffer/blob/master/index.js#L483
 export function buffToString(
-  buffer: Uint8Array,
+  source: Uint8Array,
   encoding: SupportedEncoding = 'utf8',
   start = 0,
-  end = buffer.length
+  end = source.length
 ) {
   if (start < 0) {
     start = 0;
   }
 
-  if (end > buffer.length) {
-    end = buffer.length;
+  if (end > source.length) {
+    end = source.length;
   }
 
   // Return early if start > buffer.length. Done here to prevent potential uint32
   // coercion fail below.
-  if (start > buffer.length || end <= 0 || end <= start) {
+  if (start > source.length || end <= 0 || end <= start) {
     return '';
   }
 
   switch (encoding) {
     case 'hex':
-      return hexSlice(buffer, start, end);
+      return hexSlice(source, start, end);
 
     case 'utf8':
     case 'utf-8':
-      return utf8Slice(buffer, start, end);
+      return utf8Slice(source, start, end);
 
     case 'latin1':
     case 'binary':
-      return latin1Slice(buffer, start, end);
+      return latin1Slice(source, start, end);
 
     case 'base64':
-      return base64Slice(buffer, start, end);
+      return base64Slice(source, start, end);
   }
 }
 
@@ -301,7 +302,7 @@ export async function keyMiddleware(): Promise<{
   const cipher = new AesGcmCipher(WebCryptoService);
   const encryptionInformation = new SplitKey(cipher);
   if (!encryptionInformation?.generateKey) {
-    throw new Error('Crypto service not initialised');
+    throw new ConfigurationError('Crypto service not initialised');
   }
   const key = await encryptionInformation.generateKey();
   return { keyForEncryption: key, keyForManifest: key };

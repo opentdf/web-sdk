@@ -3,8 +3,10 @@ import { unsigned } from './utils/buffer-crc32.js';
 import { exportSPKI, importX509 } from 'jose';
 import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
 import { EntityObject } from '../../src/tdf/EntityObject.js';
-import { validateSecureUrl } from '../../src/utils.js';
+import { pemToCryptoPublicKey, validateSecureUrl } from '../../src/utils.js';
 import { DecryptParams } from './client/builders.js';
+import { AssertionConfig, AssertionKey, AssertionVerificationKeys } from './assertions.js';
+import * as assertions from './assertions.js';
 
 import {
   AttributeSet,
@@ -18,6 +20,8 @@ import {
   UpsertResponse,
   Wrapped as KeyAccessWrapped,
   KeyAccess,
+  KeyAccessObject,
+  SplitType,
 } from './models/index.js';
 import { base64 } from '../../src/encodings/index.js';
 import {
@@ -31,16 +35,19 @@ import {
   concatUint8,
 } from './utils/index.js';
 import { Binary } from './binary.js';
+import { KasPublicKeyAlgorithm, KasPublicKeyInfo, OriginAllowList } from '../../src/access.js';
 import {
-  IllegalArgumentError,
-  KasDecryptError,
-  KasUpsertError,
-  KeyAccessError,
-  ManifestIntegrityError,
-  PolicyIntegrityError,
-  TdfDecryptError,
+  ConfigurationError,
+  DecryptError,
+  InvalidFileError,
+  IntegrityError,
+  NetworkError,
+  PermissionDeniedError,
+  ServiceError,
   TdfError,
-  TdfPayloadExtractionError,
+  UnauthenticatedError,
+  UnsafeUrlError,
+  UnsupportedFeatureError as UnsupportedError,
 } from '../../src/errors.js';
 import { htmlWrapperTemplate } from './templates/index.js';
 
@@ -69,7 +76,7 @@ export type EncryptionOptions = {
   /**
    * Defaults to `split`, the currently only implmented key wrap algorithm.
    */
-  type?: string;
+  type?: SplitType;
   // Defaults to AES-256-GCM for the encryption.
   cipher?: string;
 };
@@ -91,6 +98,7 @@ export type BuildKeyAccess = {
   publicKey: string;
   attributeUrl?: string;
   metadata?: Metadata;
+  sid?: string;
 };
 
 type Segment = {
@@ -116,15 +124,11 @@ type Chunk = {
   _reject?: (value: unknown) => void;
 };
 
-export type TDFConfiguration = {
-  allowedKases?: string[];
-  cryptoService: CryptoService;
-};
-
 export type IntegrityAlgorithm = 'GMAC' | 'HS256';
 
 export type EncryptConfiguration = {
   allowedKases?: string[];
+  allowList?: OriginAllowList;
   cryptoService: CryptoService;
   dpopKeys: CryptoKeyPair;
   encryptionInformation: SplitKey;
@@ -141,10 +145,12 @@ export type EncryptConfiguration = {
   progressHandler?: (bytesProcessed: number) => void;
   keyForEncryption: KeyInfo;
   keyForManifest: KeyInfo;
+  assertionConfigs?: AssertionConfig[];
 };
 
 export type DecryptConfiguration = {
-  allowedKases: string[];
+  allowedKases?: string[];
+  allowList?: OriginAllowList;
   authProvider: AuthProvider | AppIdAuthProvider;
   cryptoService: CryptoService;
   entity?: EntityObject;
@@ -155,10 +161,13 @@ export type DecryptConfiguration = {
   keyMiddleware: KeyMiddleware;
   progressHandler?: (bytesProcessed: number) => void;
   fileStreamServiceWorker?: string;
+  assertionVerificationKeys?: AssertionVerificationKeys;
+  noVerifyAssertions?: boolean;
 };
 
 export type UpsertConfiguration = {
-  allowedKases: string[];
+  allowedKases?: string[];
+  allowList?: OriginAllowList;
   authProvider: AuthProvider | AppIdAuthProvider;
   entity?: EntityObject;
 
@@ -172,15 +181,6 @@ export type UpsertConfiguration = {
 export type RewrapRequest = {
   signedRequestToken: string;
 };
-
-export type KasPublicKeyInfo = {
-  url: string;
-  algorithm: KasPublicKeyAlgorithm;
-  kid?: string;
-  publicKey: string;
-};
-
-export type KasPublicKeyAlgorithm = 'ec:secp256r1' | 'rsa:2048';
 
 export type KasPublicKeyFormat = 'pkcs8' | 'jwks';
 
@@ -204,7 +204,7 @@ export async function fetchKasPublicKey(
   algorithm?: KasPublicKeyAlgorithm
 ): Promise<KasPublicKeyInfo> {
   if (!kas) {
-    throw new TdfError('KAS definition not found');
+    throw new ConfigurationError('KAS definition not found');
   }
   // Logs insecure KAS. Secure is enforced in constructor
   validateSecureUrl(kas);
@@ -213,8 +213,9 @@ export async function fetchKasPublicKey(
   if (algorithm) {
     params.algorithm = algorithm;
   }
+  const v2Url = `${kas}/v2/kas_public_key`;
   try {
-    const response: { data: string | KasPublicKeyInfo } = await axios.get(`${kas}/kas_public_key`, {
+    const response: { data: string | KasPublicKeyInfo } = await axios.get(v2Url, {
       params: {
         ...params,
         v: '2',
@@ -226,20 +227,38 @@ export async function fetchKasPublicKey(
         : response.data.publicKey;
     return {
       publicKey,
+      key: pemToCryptoPublicKey(publicKey),
       ...infoStatic,
       ...(typeof response.data !== 'string' && response.data.kid && { kid: response.data.kid }),
     };
   } catch (cause) {
-    if (cause?.response?.status != 400) {
-      throw new TdfError(
-        `Retrieving KAS public key [${kas}] failed [${cause.name}] [${cause.message}]`,
-        cause
-      );
+    const status = cause?.response?.status;
+    switch (status) {
+      case 400:
+      case 404:
+        // KAS does not yet implement v2, maybe
+        break;
+      case 401:
+        throw new UnauthenticatedError(`[${v2Url}] requires auth`, cause);
+      case 403:
+        throw new PermissionDeniedError(`[${v2Url}] permission denied`, cause);
+      default:
+        if (status && status >= 400 && status < 500) {
+          throw new ConfigurationError(
+            `[${v2Url}] request error [${status}] [${cause.name}] [${cause.message}]`,
+            cause
+          );
+        }
+        throw new NetworkError(
+          `[${v2Url}] error [${status}] [${cause.name}] [${cause.message}]`,
+          cause
+        );
     }
   }
   // Retry with v1 params
+  const v1Url = `${kas}/kas_public_key`;
   try {
-    const response: { data: string | KasPublicKeyInfo } = await axios.get(`${kas}/kas_public_key`, {
+    const response: { data: string | KasPublicKeyInfo } = await axios.get(v1Url, {
       params,
     });
     const publicKey =
@@ -249,14 +268,29 @@ export async function fetchKasPublicKey(
     // future proof: allow v2 response even if not specified.
     return {
       publicKey,
+      key: pemToCryptoPublicKey(publicKey),
       ...infoStatic,
       ...(typeof response.data !== 'string' && response.data.kid && { kid: response.data.kid }),
     };
   } catch (cause) {
-    throw new TdfError(
-      `Retrieving KAS public key [${kas}] failed [${cause.name}] [${cause.message}]`,
-      cause
-    );
+    const status = cause?.response?.status;
+    switch (status) {
+      case 401:
+        throw new UnauthenticatedError(`[${v1Url}] requires auth`, cause);
+      case 403:
+        throw new PermissionDeniedError(`[${v1Url}] permission denied`, cause);
+      default:
+        if (status && status >= 400 && status < 500) {
+          throw new ConfigurationError(
+            `[${v2Url}] request error [${status}] [${cause.name}] [${cause.message}]`,
+            cause
+          );
+        }
+        throw new NetworkError(
+          `[${v1Url}] error [${status}] [${cause.name}] [${cause.message}]`,
+          cause
+        );
+    }
   }
 }
 /**
@@ -291,16 +325,16 @@ export function unwrapHtml(htmlPayload: ArrayBuffer | Uint8Array | Binary | stri
   } else {
     html = htmlPayload.toString();
   }
-  const payloadRe = /<input id=['"]?data-input['"]?[^>]*value=['"]?([a-zA-Z0-9+/=]+)['"]?/;
+  const payloadRe = /<input id=['"]?data-input['"]?[^>]*?value=['"]?([a-zA-Z0-9+/=]+)['"]?/;
   const reResult = payloadRe.exec(html);
   if (reResult === null) {
-    throw new TdfPayloadExtractionError('Payload is missing');
+    throw new InvalidFileError('Payload is missing');
   }
   const base64Payload = reResult[1];
   try {
     return base64ToBuffer(base64Payload);
   } catch (e) {
-    throw new TdfPayloadExtractionError('There was a problem extracting the TDF3 payload', e);
+    throw new InvalidFileError('There was a problem extracting the TDF3 payload', e);
   }
 }
 
@@ -339,6 +373,7 @@ export async function buildKeyAccess({
   kid,
   attributeUrl,
   metadata,
+  sid = '',
 }: BuildKeyAccess): Promise<KeyAccess> {
   /** Internal function to keep it DRY */
   function createKeyAccess(
@@ -350,11 +385,11 @@ export async function buildKeyAccess({
   ) {
     switch (type) {
       case 'wrapped':
-        return new KeyAccessWrapped(kasUrl, kasKeyIdentifier, pubKey, metadata);
+        return new KeyAccessWrapped(kasUrl, kasKeyIdentifier, pubKey, metadata, sid);
       case 'remote':
-        return new KeyAccessRemote(kasUrl, kasKeyIdentifier, pubKey, metadata);
+        return new KeyAccessRemote(kasUrl, kasKeyIdentifier, pubKey, metadata, sid);
       default:
-        throw new KeyAccessError(`buildKeyAccess: Key access type ${type} is unknown`);
+        throw new ConfigurationError(`buildKeyAccess: Key access type ${type} is unknown`);
     }
   }
 
@@ -380,7 +415,7 @@ export async function buildKeyAccess({
     }
   }
   // All failed. Raise an error.
-  throw new KeyAccessError('TDF.buildKeyAccess: No source for kasUrl or pubKey');
+  throw new ConfigurationError('TDF.buildKeyAccess: No source for kasUrl or pubKey');
 }
 
 export function validatePolicyObject(policy: Policy): void {
@@ -391,7 +426,7 @@ export function validatePolicyObject(policy: Policy): void {
   if (policy.body && !policy.body.dissem) missingFields.push('body.dissem');
 
   if (missingFields.length) {
-    throw new PolicyIntegrityError(
+    throw new ConfigurationError(
       `The given policy object requires the following properties: ${missingFields}`
     );
   }
@@ -413,19 +448,13 @@ async function _generateManifest(
     ...(mimeType && { mimeType }),
   };
 
-  if (!policy) {
-    throw new Error(`No policy provided`);
-  }
   const encryptionInformationStr = await encryptionInformation.write(policy, keyInfo);
-
-  if (!encryptionInformationStr) {
-    throw new Error('Missing encryption information');
-  }
-
+  const assertions: assertions.Assertion[] = [];
   return {
     payload,
     // generate the manifest first, then insert integrity information into it
     encryptionInformation: encryptionInformationStr,
+    assertions: assertions,
   };
 }
 
@@ -446,7 +475,7 @@ async function getSignature(
         buffToString(new Uint8Array(payloadBinary.asArrayBuffer()), 'utf-8')
       );
     default:
-      throw new IllegalArgumentError(`Unsupported signature alg [${algorithmType}]`);
+      throw new ConfigurationError(`Unsupported signature alg [${algorithmType}]`);
   }
 }
 
@@ -461,16 +490,26 @@ function buildRequest(method: HttpMethod, url: string, body?: unknown): HttpRequ
 
 export async function upsert({
   allowedKases,
+  allowList,
   authProvider,
   entity,
   privateKey,
   unsavedManifest,
   ignoreType,
 }: UpsertConfiguration): Promise<UpsertResponse> {
+  const allowed = (() => {
+    if (allowList) {
+      return allowList;
+    }
+    if (!allowedKases) {
+      throw new ConfigurationError('Upsert cannot be done without allowlist');
+    }
+    return new OriginAllowList(allowedKases);
+  })();
   const { keyAccess, policy } = unsavedManifest.encryptionInformation;
   const isAppIdProvider = authProvider && isAppIdProviderCheck(authProvider);
   if (authProvider === undefined) {
-    throw new Error('Upsert cannot be done without auth provider');
+    throw new ConfigurationError('Upsert cannot be done without auth provider');
   }
   return Promise.all(
     keyAccess.map(async (keyAccessObject) => {
@@ -480,8 +519,8 @@ export async function upsert({
         return;
       }
 
-      if (!allowedKases.includes(keyAccessObject.url)) {
-        throw new KasUpsertError(`Unexpected KAS url: [${keyAccessObject.url}]`);
+      if (!allowed.allows(keyAccessObject.url)) {
+        throw new UnsafeUrlError(`Unexpected KAS url: [${keyAccessObject.url}]`);
       }
 
       const url = `${keyAccessObject.url}/${isAppIdProvider ? '' : 'v2/'}upsert`;
@@ -523,7 +562,22 @@ export async function upsert({
         }
         return response.data;
       } catch (e) {
-        throw new KasUpsertError(
+        if (e.response) {
+          if (e.response.status >= 500) {
+            throw new ServiceError('upsert failure', e);
+          } else if (e.response.status === 403) {
+            throw new PermissionDeniedError('upsert failure', e);
+          } else if (e.response.status === 401) {
+            throw new UnauthenticatedError('upsert auth failure', e);
+          } else if (e.response.status === 400) {
+            throw new ConfigurationError('upsert bad request; likely a configuration error', e);
+          } else {
+            throw new NetworkError('upsert server error', e);
+          }
+        } else if (e.request) {
+          throw new NetworkError('upsert request failure', e);
+        }
+        throw new TdfError(
           `Unable to perform upsert operation on the KAS: [${e.name}: ${e.message}], response: [${e?.response?.body}]`,
           e
         );
@@ -534,14 +588,12 @@ export async function upsert({
 
 export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedReadableStream> {
   if (!cfg.authProvider) {
-    throw new IllegalArgumentError('No authorization middleware defined');
+    throw new ConfigurationError('No authorization middleware defined');
   }
   if (!cfg.contentStream) {
-    throw new IllegalArgumentError('No input stream defined');
+    throw new ConfigurationError('No input stream defined');
   }
-  if (!cfg.encryptionInformation) {
-    throw new IllegalArgumentError('No encryption type specified');
-  }
+
   // eslint-disable-next-line @typescript-eslint/no-this-alias
   const segmentInfos: Segment[] = [];
 
@@ -565,11 +617,6 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
   let aggregateHash = '';
 
   const zipWriter = new ZipWriter();
-
-  if (!cfg.encryptionInformation) {
-    throw new Error('Missing encryptionInformation');
-  }
-
   const manifest = await _generateManifest(
     cfg.keyForManifest,
     cfg.encryptionInformation,
@@ -577,14 +624,16 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
     cfg.mimeType
   );
 
-  // For all remote key access objects, sync its policy
   if (!manifest) {
-    throw new Error('Please use "loadTDFStream" first to load a manifest.');
+    // Set in encrypt; should never be reached.
+    throw new ConfigurationError('internal: please use "loadTDFStream" first to load a manifest.');
   }
   const pkKeyLike = cfg.dpopKeys.privateKey;
 
+  // For all remote key access objects, sync its policy
   const upsertResponse = await upsert({
-    allowedKases: cfg.allowedKases || [],
+    allowedKases: cfg.allowList ? undefined : cfg.allowedKases,
+    allowList: cfg.allowList,
     authProvider: cfg.authProvider,
     entity: cfg.entity,
     privateKey: pkKeyLike,
@@ -689,6 +738,28 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
 
         manifest.encryptionInformation.method.isStreamable = true;
 
+        const signedAssertions: assertions.Assertion[] = [];
+        if (cfg.assertionConfigs && cfg.assertionConfigs.length > 0) {
+          await Promise.all(
+            cfg.assertionConfigs.map(async (assertionConfig) => {
+              // Create assertion using the assertionConfig values
+              const signingKey: AssertionKey = assertionConfig.signingKey ?? {
+                alg: 'HS256',
+                key: new Uint8Array(cfg.keyForEncryption.unwrappedKeyBinary.asArrayBuffer()),
+              };
+              const assertion = await assertions.CreateAssertion(aggregateHash, {
+                ...assertionConfig,
+                signingKey,
+              });
+
+              // Add signed assertion to the signedAssertions array
+              signedAssertions.push(assertion);
+            })
+          );
+        }
+
+        manifest.assertions = signedAssertions;
+
         // write the manifest
         const manifestBuffer = new TextEncoder().encode(JSON.stringify(manifest));
         controller.enqueue(manifestBuffer);
@@ -749,10 +820,10 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
     }
     totalByteCount += chunk.length;
     if (totalByteCount > cfg.byteLimit) {
-      throw new Error(`Safe byte limit (${cfg.byteLimit}) exceeded`);
+      throw new ConfigurationError(`Safe byte limit (${cfg.byteLimit}) exceeded`);
     }
     //new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength);
-    crcCounter = unsigned(chunk as Uint8Array, crcCounter);
+    crcCounter = unsigned(chunk, crcCounter);
     fileByteCount += chunk.length;
   }
 
@@ -790,13 +861,47 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
 }
 
 // load the TDF as a stream in memory, for further use in reading and key syncing
-async function loadTDFStream(
+export async function loadTDFStream(
   chunker: Chunker
 ): Promise<{ manifest: Manifest; zipReader: ZipReader; centralDirectory: CentralDirectory[] }> {
   const zipReader = new ZipReader(chunker);
   const centralDirectory = await zipReader.getCentralDirectory();
   const manifest = await zipReader.getManifest(centralDirectory, '0.manifest.json');
   return { manifest, zipReader, centralDirectory };
+}
+
+export function splitLookupTableFactory(
+  keyAccess: KeyAccessObject[],
+  allowedKases: OriginAllowList
+): Record<string, Record<string, KeyAccessObject>> {
+  const allowed = (k: KeyAccessObject) => allowedKases.allows(k.url);
+  const splitIds = new Set(keyAccess.map(({ sid }) => sid ?? ''));
+
+  const accessibleSplits = new Set(keyAccess.filter(allowed).map(({ sid }) => sid));
+  if (splitIds.size > accessibleSplits.size) {
+    const disallowedKases = new Set(keyAccess.filter((k) => !allowed(k)).map(({ url }) => url));
+    throw new UnsafeUrlError(
+      `Unreconstructable key - disallowed KASes include: ${JSON.stringify([
+        ...disallowedKases,
+      ])} from splitIds ${JSON.stringify([...splitIds])}`,
+      ...disallowedKases
+    );
+  }
+  const splitPotentials: Record<string, Record<string, KeyAccessObject>> = Object.fromEntries(
+    [...splitIds].map((s) => [s, {}])
+  );
+  for (const kao of keyAccess) {
+    const disjunction = splitPotentials[kao.sid ?? ''];
+    if (kao.url in disjunction) {
+      throw new InvalidFileError(
+        `TODO: Fallback to no split ids. Repetition found for [${kao.url}] on split [${kao.sid}]`
+      );
+    }
+    if (allowed(kao)) {
+      disjunction[kao.url] = kao;
+    }
+  }
+  return splitPotentials;
 }
 
 async function unwrapKey({
@@ -808,86 +913,116 @@ async function unwrapKey({
   cryptoService,
 }: {
   manifest: Manifest;
-  allowedKases: string[];
+  allowedKases: OriginAllowList;
   authProvider: AuthProvider | AppIdAuthProvider;
   dpopKeys: CryptoKeyPair;
   entity: EntityObject | undefined;
   cryptoService: CryptoService;
 }) {
   if (authProvider === undefined) {
-    throw new Error('Upsert can be done without auth provider');
+    throw new ConfigurationError(
+      'upsert requires auth provider; must be configured in client constructor'
+    );
   }
   const { keyAccess } = manifest.encryptionInformation;
+  const splitPotentials = splitLookupTableFactory(keyAccess, allowedKases);
+
   let responseMetadata;
   const isAppIdProvider = authProvider && isAppIdProviderCheck(authProvider);
   // Get key access information to know the KAS URLS
-  const rewrappedKeys = await Promise.all(
-    keyAccess.map(async (keySplitInfo) => {
-      if (!allowedKases.includes(keySplitInfo.url)) {
-        throw new KasUpsertError(`Unexpected KAS url: [${keySplitInfo.url}]`);
-      }
-      const url = `${keySplitInfo.url}/${isAppIdProvider ? '' : 'v2/'}rewrap`;
+  const rewrappedKeys: Uint8Array[] = [];
 
-      const ephemeralEncryptionKeys = await cryptoService.cryptoToPemPair(
-        await cryptoService.generateKeyPair()
+  for (const [splitId, potentials] of Object.entries(splitPotentials)) {
+    if (!potentials || !Object.keys(potentials).length) {
+      throw new UnsafeUrlError(
+        `Unreconstructable key - no valid KAS found for split ${JSON.stringify(splitId)}`,
+        ''
       );
-      const clientPublicKey = ephemeralEncryptionKeys.publicKey;
+    }
 
-      const requestBodyStr = JSON.stringify({
-        algorithm: 'RS256',
+    // If we have multiple ways of getting a value, try the 'best' way
+    // or maybe retry across all potential ways? Currently, just tries them all
+    const [keySplitInfo] = Object.values(potentials);
+    const url = `${keySplitInfo.url}/${isAppIdProvider ? '' : 'v2/'}rewrap`;
+
+    const ephemeralEncryptionKeys = await cryptoService.cryptoToPemPair(
+      await cryptoService.generateKeyPair()
+    );
+    const clientPublicKey = ephemeralEncryptionKeys.publicKey;
+
+    const requestBodyStr = JSON.stringify({
+      algorithm: 'RS256',
+      keyAccess: keySplitInfo,
+      policy: manifest.encryptionInformation.policy,
+      clientPublicKey,
+    });
+
+    const jwtPayload = { requestBody: requestBodyStr };
+    const signedRequestToken = await reqSignature(
+      isAppIdProvider ? {} : jwtPayload,
+      dpopKeys.privateKey
+    );
+
+    let requestBody;
+    if (isAppIdProvider) {
+      requestBody = {
         keyAccess: keySplitInfo,
         policy: manifest.encryptionInformation.policy,
-        clientPublicKey,
-      });
+        entity: {
+          ...entity,
+          publicKey: clientPublicKey,
+        },
+        authToken: signedRequestToken,
+      };
+    } else {
+      requestBody = {
+        signedRequestToken,
+      };
+    }
 
-      const jwtPayload = { requestBody: requestBodyStr };
-      const signedRequestToken = await reqSignature(
-        isAppIdProvider ? {} : jwtPayload,
-        dpopKeys.privateKey
+    // Create a PoP token by signing the body so KAS knows we actually have a private key
+    // Expires in 60 seconds
+    const httpReq = await authProvider.withCreds(buildRequest('POST', url, requestBody));
+
+    try {
+      // The response from KAS on a rewrap
+      const {
+        data: { entityWrappedKey, metadata },
+      } = await axios.post(httpReq.url, httpReq.body, { headers: httpReq.headers });
+      responseMetadata = metadata;
+      const key = Binary.fromString(base64.decode(entityWrappedKey));
+      const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(
+        key,
+        ephemeralEncryptionKeys.privateKey
       );
-
-      let requestBody;
-      if (isAppIdProvider) {
-        requestBody = {
-          keyAccess: keySplitInfo,
-          policy: manifest.encryptionInformation.policy,
-          entity: {
-            ...entity,
-            publicKey: clientPublicKey,
-          },
-          authToken: signedRequestToken,
-        };
-      } else {
-        requestBody = {
-          signedRequestToken,
-        };
+      rewrappedKeys.push(new Uint8Array(decryptedKeyBinary.asByteArray()));
+    } catch (e) {
+      if (e.response) {
+        if (e.response.status >= 500) {
+          throw new ServiceError('rewrap failure', e);
+        } else if (e.response.status === 403) {
+          throw new PermissionDeniedError('rewrap failure', e);
+        } else if (e.response.status === 401) {
+          throw new UnauthenticatedError('rewrap auth failure', e);
+        } else if (e.response.status === 400) {
+          throw new InvalidFileError(
+            'rewrap bad request; could indicate an invalid policy binding or a configuration error',
+            e
+          );
+        } else {
+          throw new NetworkError('rewrap server error', e);
+        }
+      } else if (e.request) {
+        throw new NetworkError('rewrap request failure', e);
+      } else if (e.name == 'InvalidAccessError' || e.name == 'OperationError') {
+        throw new DecryptError('unable to unwrap key from kas', e);
       }
-
-      // Create a PoP token by signing the body so KAS knows we actually have a private key
-      // Expires in 60 seconds
-      const httpReq = await authProvider.withCreds(buildRequest('POST', url, requestBody));
-
-      try {
-        // The response from KAS on a rewrap
-        const {
-          data: { entityWrappedKey, metadata },
-        } = await axios.post(httpReq.url, httpReq.body, { headers: httpReq.headers });
-        responseMetadata = metadata;
-        const key = Binary.fromString(base64.decode(entityWrappedKey));
-        const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(
-          key,
-          ephemeralEncryptionKeys.privateKey
-        );
-        return new Uint8Array(decryptedKeyBinary.asByteArray());
-      } catch (e) {
-        console.error(e);
-        throw new KasDecryptError(
-          `Unable to decrypt the response from KAS: [${e.name}: ${e.message}], response: [${e?.response?.body}]`,
-          e
-        );
-      }
-    })
-  );
+      throw new InvalidFileError(
+        `Unable to decrypt the response from KAS: [${e.name}: ${e.message}], response: [${e?.response?.body}]`,
+        e
+      );
+    }
+  }
 
   // Merge the unwrapped keys from each KAS
   const reconstructedKey = keyMerge(rewrappedKeys);
@@ -907,6 +1042,8 @@ async function decryptChunk(
   segmentIntegrityAlgorithm: IntegrityAlgorithm,
   cryptoService: CryptoService
 ): Promise<DecryptResult> {
+  if (segmentIntegrityAlgorithm !== 'GMAC' && segmentIntegrityAlgorithm !== 'HS256') {
+  }
   const segmentHashStr = await getSignature(
     reconstructedKeyBinary,
     Binary.fromArrayBuffer(encryptedChunk.buffer),
@@ -914,7 +1051,7 @@ async function decryptChunk(
     cryptoService
   );
   if (hash !== btoa(segmentHashStr)) {
-    throw new ManifestIntegrityError('Failed integrity check on segment hash');
+    throw new IntegrityError('Failed integrity check on segment hash');
   }
   return await cipher.decrypt(encryptedChunk, reconstructedKeyBinary);
 }
@@ -939,33 +1076,35 @@ async function updateChunkQueue(
     }
     requests.push(
       (async () => {
+        let buffer: Uint8Array | null;
+
+        const slice = chunkMap.slice(i, i + chunksInOneDownload);
         try {
-          const slice = chunkMap.slice(i, i + chunksInOneDownload);
           const bufferSize = slice.reduce(
             (currentVal, { encryptedSegmentSize }) => currentVal + (encryptedSegmentSize as number),
             0
           );
-          const buffer: Uint8Array | null = await zipReader.getPayloadSegment(
+          buffer = await zipReader.getPayloadSegment(
             centralDirectory,
             '0.payload',
             slice[0].encryptedOffset,
             bufferSize
           );
-          if (buffer) {
-            sliceAndDecrypt({
-              buffer,
-              cryptoService,
-              reconstructedKeyBinary,
-              slice,
-              cipher,
-              segmentIntegrityAlgorithm,
-            });
-          }
         } catch (e) {
-          throw new TdfDecryptError(
-            'Error decrypting payload. This suggests the key used to decrypt the payload is not correct.',
-            e
-          );
+          if (e instanceof InvalidFileError) {
+            throw e;
+          }
+          throw new NetworkError('unable to fetch payload segment', e);
+        }
+        if (buffer) {
+          sliceAndDecrypt({
+            buffer,
+            cryptoService,
+            reconstructedKeyBinary,
+            slice,
+            cipher,
+            segmentIntegrityAlgorithm,
+          });
         }
       })()
     );
@@ -996,26 +1135,40 @@ export async function sliceAndDecrypt({
       buffer.slice(offset, offset + (encryptedSegmentSize as number))
     );
 
-    await decryptChunk(
-      encryptedChunk,
-      reconstructedKeyBinary,
-      slice[index]['hash'],
-      cipher,
-      segmentIntegrityAlgorithm,
-      cryptoService
-    )
-      .then((result) => {
-        slice[index].decryptedChunk = result;
-        return null;
-      })
-      .then(_resolve, _reject);
+    try {
+      const result = await decryptChunk(
+        encryptedChunk,
+        reconstructedKeyBinary,
+        slice[index]['hash'],
+        cipher,
+        segmentIntegrityAlgorithm,
+        cryptoService
+      );
+      slice[index].decryptedChunk = result;
+      if (_resolve) {
+        _resolve(null);
+      }
+    } catch (e) {
+      if (_reject) {
+        _reject(e);
+      } else {
+        throw e;
+      }
+    }
   }
 }
 
 export async function readStream(cfg: DecryptConfiguration) {
+  let { allowList } = cfg;
+  if (!allowList) {
+    if (!cfg.allowedKases) {
+      throw new ConfigurationError('Upsert cannot be done without allowlist');
+    }
+    allowList = new OriginAllowList(cfg.allowedKases);
+  }
   const { manifest, zipReader, centralDirectory } = await loadTDFStream(cfg.chunker);
   if (!manifest) {
-    throw new Error('Missing manifest data');
+    throw new InvalidFileError('Missing manifest data');
   }
   cfg.keyMiddleware ??= async (key) => key;
 
@@ -1028,7 +1181,7 @@ export async function readStream(cfg: DecryptConfiguration) {
   const { metadata, reconstructedKeyBinary } = await unwrapKey({
     manifest,
     authProvider: cfg.authProvider,
-    allowedKases: cfg.allowedKases,
+    allowedKases: allowList,
     dpopKeys: cfg.dpopKeys,
     entity: cfg.entity,
     cryptoService: cfg.cryptoService,
@@ -1038,10 +1191,14 @@ export async function readStream(cfg: DecryptConfiguration) {
   const encryptedSegmentSizeDefault = defaultSegmentSize || DEFAULT_SEGMENT_SIZE;
 
   // check the combined string of hashes
+  const aggregateHash = segments.map(({ hash }) => base64.decode(hash)).join('');
   const integrityAlgorithm = rootSignature.alg;
+  if (integrityAlgorithm !== 'GMAC' && integrityAlgorithm !== 'HS256') {
+    throw new UnsupportedError(`Unsupported integrity alg [${integrityAlgorithm}]`);
+  }
   const payloadSigStr = await getSignature(
     keyForDecryption,
-    Binary.fromString(segments.map((segment) => base64.decode(segment.hash)).join('')),
+    Binary.fromString(aggregateHash),
     integrityAlgorithm,
     cfg.cryptoService
   );
@@ -1050,7 +1207,25 @@ export async function readStream(cfg: DecryptConfiguration) {
     manifest.encryptionInformation.integrityInformation.rootSignature.sig !==
     base64.encode(payloadSigStr)
   ) {
-    throw new ManifestIntegrityError('Failed integrity check on root signature');
+    throw new IntegrityError('Failed integrity check on root signature');
+  }
+
+  if (!cfg.noVerifyAssertions) {
+    for (const assertion of manifest.assertions || []) {
+      // Create a default assertion key
+      let assertionKey: AssertionKey = {
+        alg: 'HS256',
+        key: new Uint8Array(reconstructedKeyBinary.asArrayBuffer()),
+      };
+
+      if (cfg.assertionVerificationKeys) {
+        const foundKey = cfg.assertionVerificationKeys.Keys[assertion.id];
+        if (foundKey) {
+          assertionKey = foundKey;
+        }
+      }
+      await assertions.verify(assertion, aggregateHash, assertionKey);
+    }
   }
 
   let mapOfRequestsOffset = 0;
@@ -1077,6 +1252,10 @@ export async function readStream(cfg: DecryptConfiguration) {
   );
 
   const cipher = new AesGcmCipher(cfg.cryptoService);
+  const segmentIntegrityAlg = segmentHashAlg || integrityAlgorithm;
+  if (segmentIntegrityAlg !== 'GMAC' && segmentIntegrityAlg !== 'HS256') {
+    throw new UnsupportedError(`Unsupported segment hash alg [${segmentIntegrityAlg}]`);
+  }
 
   // Not waiting for Promise to resolve
   updateChunkQueue(
@@ -1085,7 +1264,7 @@ export async function readStream(cfg: DecryptConfiguration) {
     zipReader,
     keyForDecryption,
     cipher,
-    segmentHashAlg || integrityAlgorithm,
+    segmentIntegrityAlg,
     cfg.cryptoService
   );
 

@@ -5,7 +5,7 @@ import { IncomingMessage, RequestListener, createServer } from 'node:http';
 
 import { base64 } from '../src/encodings/index.js';
 import { decryptWithPrivateKey, encryptWithPublicKey } from '../tdf3/src/crypto/index.js';
-import getMocks from './mocks/index.js';
+import { getMocks } from './mocks/index.js';
 import { Header, getHkdfSalt } from '../src/nanotdf/index.js';
 import { keyAgreement } from '../src/nanotdf-crypto/keyAgreement.js';
 import generateRandomNumber from '../src/nanotdf-crypto/generateRandomNumber.js';
@@ -13,9 +13,10 @@ import { pemPublicToCrypto } from '../src/nanotdf-crypto/pemPublicToCrypto.js';
 import { removePemFormatting } from '../tdf3/src/crypto/crypto-utils.js';
 import { Binary } from '../tdf3/index.js';
 import { type KeyAccessObject } from '../tdf3/src/models/key-access.js';
+import { valueFor } from './web/policy/mock-attrs.js';
+import { AttributeAndValue } from '../src/policy/attributes.js';
 
 const Mocks = getMocks();
-const kid = 'kid-a';
 
 function range(start: number, end: number): Uint8Array {
   const result = [];
@@ -34,6 +35,18 @@ type RewrapBody = {
   clientPublicKey: string;
 };
 
+function concat(b: ArrayBufferView[]) {
+  const length = b.reduce((lk, ak) => lk + ak.byteLength, 0);
+  const buf = new Uint8Array(length);
+  let offset = 0;
+  for (const v of b) {
+    const uint8view = new Uint8Array(v.buffer, v.byteOffset, v.byteLength);
+    buf.set(uint8view, offset);
+    offset += uint8view.byteLength;
+  }
+  return buf;
+}
+
 function getBody(request: IncomingMessage): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
     const bodyParts: Uint8Array[] = [];
@@ -42,7 +55,7 @@ function getBody(request: IncomingMessage): Promise<Uint8Array> {
         bodyParts.push(chunk);
       })
       .on('end', () => {
-        resolve(Buffer.concat(bodyParts));
+        resolve(concat(bodyParts));
       })
       .on('error', reject);
   });
@@ -63,7 +76,13 @@ const kas: RequestListener = async (req, res) => {
       res.statusCode = 200;
       console.log('[DEBUG] CORS response 200');
       res.end();
-    } else if (url.pathname === '/kas_public_key') {
+    } else if (url.pathname === '/kas_public_key' || url.pathname === '/v2/kas_public_key') {
+      const v =
+        url.pathname === '/v2/kas_public_key'
+          ? url.searchParams.get('v')
+            ? url.searchParams.get('v')
+            : '2'
+          : '1';
       if (req.method !== 'GET') {
         console.log('[DEBUG] invalid method');
         res.statusCode = 405;
@@ -83,11 +102,11 @@ const kas: RequestListener = async (req, res) => {
         res.end(`{"error": "Invalid fmt [${fmt}]"}`);
         return;
       }
-      const v2 = '2' == url.searchParams.get('v');
       res.setHeader('Content-Type', 'application/json');
       res.statusCode = 200;
       const publicKey = 'ec:secp256r1' == algorithm ? Mocks.kasECCert : Mocks.kasPublicKey;
-      res.end(JSON.stringify(v2 ? { kid, publicKey } : publicKey));
+      const kid = 'ec:secp256r1' == algorithm ? 'e1' : 'r1';
+      res.end(JSON.stringify(v == '2' ? { kid, publicKey } : publicKey));
     } else if (url.pathname === '/v2/rewrap') {
       if (req.method !== 'POST') {
         console.error(`[ERROR] /v2/rewrap only accepts POST verbs, received [${req.method}]`);
@@ -230,12 +249,40 @@ const kas: RequestListener = async (req, res) => {
         res.statusCode = 206; // Partial Content
         res.setHeader('Content-Type', 'application/octet-stream');
         res.setHeader('Content-Length', rangeData.length);
-        res.end(Buffer.from(rangeData.buffer));
+        res.end(rangeData);
       } else {
         res.statusCode = 200; // OK
         res.setHeader('Content-Type', 'application/octet-stream');
-        res.end(Buffer.from(fullRange.buffer));
+        res.end(fullRange);
       }
+    } else if (url.pathname === '/attributes/*/fqn') {
+      const fqnAttributeValues: Record<string, AttributeAndValue> = {};
+      let skipped = 0;
+      for (const [k, v] of url.searchParams.entries()) {
+        if (k !== 'fqns') {
+          continue;
+        }
+        const value = valueFor(v);
+        if (!value) {
+          console.error(`unable to find definition for value [${v}]`);
+          skipped++;
+          continue;
+        }
+        const attribute = value.attribute;
+        if (!attribute) {
+          console.error(`unable to find definition for attribute [${v}]`);
+          skipped++;
+          continue;
+        }
+        fqnAttributeValues[v] = { attribute, value };
+      }
+      if (skipped) {
+        res.statusCode = 404;
+        res.end('Not Found');
+        return;
+      }
+      res.writeHead(200);
+      res.end(JSON.stringify({ fqnAttributeValues }));
     } else if (url.pathname === '/stop' && req.method === 'GET') {
       server.close(() => {
         console.log('Server gracefully terminated.');

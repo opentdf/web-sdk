@@ -10,7 +10,8 @@ import CurveNameEnum from '../enum/CurveNameEnum.js';
 // Helpers
 import { lengthOfPublicKey } from '../helpers/calculateByCurve.js';
 import DefaultParams from './DefaultParams.js';
-import { InvalidEphemeralKeyError } from '../../errors.js';
+import { ConfigurationError, InvalidFileError } from '../../errors.js';
+import { rstrip } from '../../utils.js';
 
 /**
  * NanoTDF Header
@@ -95,7 +96,7 @@ export default class Header {
      * @link https://github.com/virtru/nanotdf/blob/master/spec/index.md#3312-kas
      * @link https://github.com/virtru/nanotdf/blob/master/spec/index.md#341-resource-locator
      */
-    const kas = new ResourceLocator(buff.subarray(offset));
+    const kas = ResourceLocator.parse(buff.subarray(offset));
     offset += kas.length;
 
     /**
@@ -179,7 +180,7 @@ export default class Header {
 
     // Check if the ephemeral public key length is not the same length
     if (ephemeralPublicKey.byteLength !== ephemeralPublicKeyLength) {
-      throw new InvalidEphemeralKeyError();
+      throw new InvalidFileError('nanotdf parse failure: public key read failure');
     }
 
     const header = new Header(
@@ -231,20 +232,20 @@ export default class Header {
   /**
    * Copy the contents of the header to buffer
    */
-  copyToBuffer(buffer: Uint8Array): void {
-    if (this.length > buffer.length) {
-      throw new Error('Invalid buffer size to copy tdf header');
+  copyToBuffer(target: Uint8Array): void {
+    if (this.length > target.length) {
+      throw new InvalidFileError('invalid buffer size to copy tdf header');
     }
 
     let offset = 0;
 
     // Write Magic number and version
-    buffer.set(this.magicNumberVersion, 0);
+    target.set(this.magicNumberVersion, 0);
     offset += this.magicNumberVersion.length;
 
     // Write kas resource locator
     const kasResourceLocatorBuf = this.kas.toBuffer();
-    buffer.set(kasResourceLocatorBuf, offset);
+    target.set(kasResourceLocatorBuf, offset);
     offset += kasResourceLocatorBuf.length;
 
     // Write ECC & Binding Mode
@@ -252,7 +253,7 @@ export default class Header {
     const eccBingingMode = (ecdsaBinding << 7) | this.ephemeralCurveName;
     const eccBingingModeAsByte = new Uint8Array(1);
     eccBingingModeAsByte[0] = eccBingingMode;
-    buffer.set(eccBingingModeAsByte, offset);
+    target.set(eccBingingModeAsByte, offset);
     offset += eccBingingModeAsByte.length;
 
     // Write symmetric & payload config
@@ -261,16 +262,16 @@ export default class Header {
       (isSignatureEnable << 7) | this.signatureCurveName | this.symmetricCipher;
     const symmetricPayloadConfigAsByte = new Uint8Array(1);
     symmetricPayloadConfigAsByte[0] = symmetricPayloadConfig;
-    buffer.set(symmetricPayloadConfigAsByte, offset);
+    target.set(symmetricPayloadConfigAsByte, offset);
     offset += symmetricPayloadConfigAsByte.length;
 
     // Write the policy
     const policyBuffer = this.policy.toBuffer();
-    buffer.set(policyBuffer, offset);
+    target.set(policyBuffer, offset);
     offset += policyBuffer.length;
 
     // Write the ephemeral public key
-    buffer.set(this.ephemeralPublicKey, offset);
+    target.set(this.ephemeralPublicKey, offset);
   }
 
   /**
@@ -303,8 +304,8 @@ export default class Header {
    */
   toBuffer(): ArrayBuffer {
     const arrayBuffer = new ArrayBuffer(this.length);
-    const buffer = new Uint8Array(arrayBuffer);
-    this.copyToBuffer(buffer);
+    const target = new Uint8Array(arrayBuffer);
+    this.copyToBuffer(target);
     return arrayBuffer;
   }
 
@@ -313,9 +314,9 @@ export default class Header {
    */
   getKasRewrapUrl(): string {
     try {
-      return `${this.kas.getUrl()}/v2/rewrap`;
+      return `${rstrip(this.kas.url, '/')}/v2/rewrap`;
     } catch (e) {
-      throw new Error(`Cannot construct KAS Rewrap URL: ${e.message}`);
+      throw new ConfigurationError(`cannot construct KAS Rewrap URL: ${e.message}`);
     }
   }
 }

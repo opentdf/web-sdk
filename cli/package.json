@@ -1,10 +1,10 @@
 {
-  "name": "@opentdf/cli",
-  "version": "2.0.0",
+  "name": "@opentdf/ctl",
+  "version": "0.1.0",
   "description": "Node based CLI for opentdf",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/opentdf/client-web.git",
+    "url": "git+https://github.com/opentdf/web-sdk.git",
     "directory": "cli"
   },
   "license": "BSD-3-Clause-Clear",
@@ -30,25 +30,25 @@
   },
   "devDependencies": {
     "@esm-bundle/chai": "4.3.4-fix.0",
-    "@types/mocha": "10.0.1",
-    "@types/node": "^20.4.5",
-    "@types/readable-stream": "^2.3.15",
-    "@types/sinon": "^10.0.15",
-    "@types/yargs": "^17.0.24",
+    "@types/mocha": "10.0.9",
+    "@types/node": "^22.9.0",
+    "@types/readable-stream": "^4.0.18",
+    "@types/sinon": "^17.0.3",
+    "@types/yargs": "^17.0.33",
     "@typescript-eslint/eslint-plugin": "^6.2.1",
     "@typescript-eslint/parser": "^6.2.1",
-    "chai": "^4.3.7",
-    "eslint": "^8.46.0",
+    "chai": "^5.1.2",
+    "eslint": "^8.9.0",
     "eslint-config-prettier": "^8.9.0",
-    "license-checker-rseidelsohn": "^4.2.6",
-    "mocha": "^10.2.0",
-    "prettier": "^3.0.0",
-    "sinon": "^15.2.0",
+    "license-checker-rseidelsohn": "^4.4.2",
+    "mocha": "^10.8.2",
+    "prettier": "^3.3.3",
+    "sinon": "^19.0.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.1.6"
   },
   "dependencies": {
-    "@opentdf/client": "file:../lib/opentdf-client-2.0.0.tgz",
+    "@opentdf/sdk": "file:../lib/opentdf-sdk-0.1.0.tgz",
     "yargs": "^17.7.2"
   }
 }

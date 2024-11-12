@@ -1,12 +1,14 @@
 
-version=2.0.0
-extras=cli remote-store web-app
+version=0.1.0
+extras=cli web-app
 pkgs=lib $(extras)
 
-.PHONY: all audit license-check lint test ci i start format clean
+.PHONY: all audit ci clean cli format i license-check lint start test
 
 start: all
 	(cd web-app && npm run dev)
+
+cli: cli/opentdf-ctl-$(version).tgz
 
 clean:
 	rm -f *.tgz
@@ -14,29 +16,26 @@ clean:
 	rm -rf */dist
 	rm -rf */node_modules
 
-ci: lib/opentdf-client-$(version).tgz
-	for x in $(extras); do (cd $$x && npm uninstall @opentdf/client && npm ci && npm i ../lib/opentdf-client-$(version).tgz) || exit 1; done
+ci: lib/opentdf-sdk-$(version).tgz
+	for x in $(extras); do (cd $$x && npm uninstall @opentdf/sdk && npm ci && npm i ../lib/opentdf-sdk-$(version).tgz) || exit 1; done
 
 i:
 	(cd lib && npm i && npm pack)
-	for x in $(extras); do (cd $$x && npm uninstall @opentdf/client && npm i && npm i ../lib/opentdf-client-$(version).tgz) || exit 1; done
+	for x in $(extras); do (cd $$x && npm uninstall @opentdf/sdk && npm i && npm i ../lib/opentdf-sdk-$(version).tgz) || exit 1; done
 
-all: ci lib/opentdf-client-$(version).tgz remote-store/opentdf-remote-store-$(version).tgz web-app/opentdf-web-app-$(version).tgz
+all: ci lib/opentdf-sdk-$(version).tgz web-app/opentdf-web-app-$(version).tgz
 
-cli/opentdf-cli-$(version).tgz: lib/opentdf-client-$(version).tgz $(shell find cli -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
-	(cd cli && npm ci ../lib/opentdf-client-$(version).tgz && npm pack)
+cli/opentdf-ctl-$(version).tgz: lib/opentdf-sdk-$(version).tgz $(shell find cli -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
+	(cd cli && npm uninstall @opentdf/sdk && npm ci && npm i ../lib/opentdf-sdk-$(version).tgz && npm pack)
 
-remote-store/opentdf-remote-store-$(version).tgz: lib/opentdf-client-$(version).tgz $(shell find remote-store -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
-	(cd remote-store && npm ci ../lib/opentdf-client-$(version).tgz && npm pack)
+web-app/opentdf-web-app-$(version).tgz: lib/opentdf-sdk-$(version).tgz $(shell find web-app -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
+	(cd web-app && npm uninstall @opentdf/sdk && npm ci && npm i ../lib/opentdf-sdk-$(version).tgz && npm pack && npm run build)
 
-web-app/opentdf-web-app-$(version).tgz: lib/opentdf-client-$(version).tgz $(shell find web-app -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
-	(cd web-app && npm ci ../lib/opentdf-client-$(version).tgz && npm pack && npm run build)
-
-lib/opentdf-client-$(version).tgz: $(shell find lib -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
+lib/opentdf-sdk-$(version).tgz: $(shell find lib -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
 	(cd lib && npm ci --including=dev && npm pack)
 
-dist: lib/opentdf-client-$(version).tgz
-	(cp lib/opentdf-client-$(version).tgz ./)
+dist: lib/opentdf-sdk-$(version).tgz
+	(cp lib/opentdf-sdk-$(version).tgz ./)
 
 audit:
 	for x in $(pkgs); do (cd $$x && npm audit --omit dev) || exit 1; done

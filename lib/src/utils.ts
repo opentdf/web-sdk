@@ -1,7 +1,9 @@
 import { type AxiosResponseHeaders, type RawAxiosResponseHeaders } from 'axios';
-import { UnsafeUrlError } from './errors.js';
+import { exportSPKI, importX509 } from 'jose';
+
 import { base64 } from './encodings/index.js';
 import { pemCertToCrypto, pemPublicToCrypto } from './nanotdf-crypto/index.js';
+import { ConfigurationError } from './errors.js';
 
 /**
  * Check to see if the given URL is 'secure'. This assumes:
@@ -39,23 +41,6 @@ export function padSlashToUrl(u: string): string {
   }
   return `${u}/`;
 }
-
-const someStartsWith = (prefixes: string[], requestUrl: string): boolean =>
-  prefixes.some((prixfixe) => requestUrl.startsWith(padSlashToUrl(prixfixe)));
-
-/**
- * Checks that `testUrl` is prefixed with one of the given origin + path fragment URIs in urlPrefixes.
- *
- * Note this doesn't do anything special to queries or fragments and will fail to work properly if those are present on the prefixes
- * @param urlPrefixes a list of origin parts of urls, possibly including some path fragment as well
- * @param testUrl a url to see if it is prefixed by one or more of the `urlPrefixes` values
- * @throws Error when testUrl is not present
- */
-export const safeUrlCheck = (urlPrefixes: string[], testUrl: string): void | never => {
-  if (!someStartsWith(urlPrefixes, testUrl)) {
-    throw new UnsafeUrlError(`Invalid request URL: [${testUrl}] ∉ [${urlPrefixes}];`, testUrl);
-  }
-};
 
 export function isBrowser() {
   return typeof window !== 'undefined'; // eslint-disable-line
@@ -129,7 +114,7 @@ export function addNewLines(str: string): string {
 
 export async function cryptoPublicToPem(publicKey: CryptoKey): Promise<string> {
   if (publicKey.type !== 'public') {
-    throw new TypeError('Incorrect key type');
+    throw new ConfigurationError('incorrect key type');
   }
 
   const exportedPublicKey = await crypto.subtle.exportKey('spki', publicKey);
@@ -144,5 +129,21 @@ export async function pemToCryptoPublicKey(pem: string): Promise<CryptoKey> {
   } else if (/-----BEGIN CERTIFICATE-----/.test(pem)) {
     return pemCertToCrypto(pem);
   }
-  throw new Error('unsupported pem type');
+  // This can happen in several circumstances:
+  // - When parsing a PEM key from a KAS server
+  // - When converting between PEM and CryptoKey formats for user provided session keys (e.g. for DPoP)
+  throw new TypeError(`unsupported pem type [${pem}]`);
+}
+
+export async function extractPemFromKeyString(keyString: string): Promise<string> {
+  let pem: string = keyString;
+
+  // Skip the public key extraction if we find that the KAS url provides a
+  // PEM-encoded key instead of certificate
+  if (keyString.includes('CERTIFICATE')) {
+    const cert = await importX509(keyString, 'RS256', { extractable: true });
+    pem = await exportSPKI(cert);
+  }
+
+  return pem;
 }

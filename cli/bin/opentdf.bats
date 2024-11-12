@@ -2,22 +2,26 @@
 
 @test "requires some arguments" {
   run $BATS_TEST_DIRNAME/opentdf.mjs
+  echo "$output"
   [[ $output == *"Not enough"* ]]
 }
 
 @test "requires optional arguments" {
   run $BATS_TEST_DIRNAME/opentdf.mjs encrypt noone
+  echo "$output"
   [[ $output == *"Missing required"* ]]
 }
 
 @test "fails with missing file arguments" {
-  run $BATS_TEST_DIRNAME/opentdf.mjs --kasEndpoint https://invalid --oidcEndpoint http://invalid --auth b:c encrypt notafile
+  run $BATS_TEST_DIRNAME/opentdf.mjs --kasEndpoint "https://example.com" --oidcEndpoint "http://invalid" --auth "b:c" encrypt
   [ "$status" -eq 1 ]
-  [[ $output == *"File is not accessable"* ]]
+  echo "$output"
+  [[ $output == *"Must specify file or pipe"* ]]
 }
 
 @test "version command" {
   run $BATS_TEST_DIRNAME/opentdf.mjs --version
-  [[ $output == *"@opentdf/client\":\""* ]]
-  [[ $output == *"@opentdf/cli\":\""* ]]
+  echo "$output"
+  [[ $output == *"@opentdf/sdk\":\""* ]]
+  [[ $output == *"@opentdf/ctl\":\""* ]]
 }

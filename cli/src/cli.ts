@@ -1,6 +1,7 @@
 import './polyfills.js';
-import { openAsBlob } from 'node:fs';
-import { open, readFile, stat, writeFile } from 'node:fs/promises';
+import { createWriteStream, openAsBlob } from 'node:fs';
+import { readFile, stat, writeFile } from 'node:fs/promises';
+import { Writable } from 'node:stream';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import {
@@ -15,9 +16,12 @@ import {
   EncryptParamsBuilder,
   DecryptParams,
   DecryptParamsBuilder,
-} from '@opentdf/client';
+} from '@opentdf/sdk';
 import { CLIError, Level, log } from './logger.js';
 import { webcrypto } from 'crypto';
+import * as assertions from '@opentdf/sdk/assertions';
+import { attributeFQNsAsValues } from '@opentdf/sdk/nano';
+import { base64 } from '@opentdf/sdk/encodings';
 
 type AuthToProcess = {
   auth?: string;
@@ -31,11 +35,14 @@ type LoggedAuthProvider = AuthProvider & {
   requestLog: HttpRequest[];
 };
 
-const containerTypes = ['tdf3', 'nano', 'dataset'] as const;
+const bindingTypes = ['ecdsa', 'gmac'];
+
+const containerTypes = ['tdf3', 'nano', 'dataset', 'ztdf'];
 
 const parseJwt = (jwt: string, field = 1) => {
-  return JSON.parse(Buffer.from(jwt.split('.')[field], 'base64').toString());
+  return JSON.parse(base64.decode(jwt.split('.')[field]));
 };
+
 const parseJwtComplete = (jwt: string) => {
   return { header: parseJwt(jwt, 0), payload: parseJwt(jwt) };
 };
@@ -89,35 +96,71 @@ async function processAuth({
   };
 }
 
+const rstrip = (str: string, suffix = ' '): string => {
+  while (str && suffix && str.endsWith(suffix)) {
+    str = str.slice(0, -suffix.length);
+  }
+  return str;
+};
+
 type AnyNanoClient = NanoTDFClient | NanoTDFDatasetClient;
 
 function addParams(client: AnyNanoClient, argv: Partial<mainArgs>) {
   if (argv.attributes?.length) {
     client.dataAttributes = argv.attributes.split(',');
   }
-  if (argv['users-with-access']?.length) {
-    client.dissems = argv['users-with-access'].split(',');
+  if (argv.usersWithAccess?.length) {
+    client.dissems = argv.usersWithAccess.split(',');
   }
   log('SILLY', `Built encrypt params dissems: ${client.dissems}, attrs: ${client.dataAttributes}`);
 }
 
 async function tdf3DecryptParamsFor(argv: Partial<mainArgs>): Promise<DecryptParams> {
   const c = new DecryptParamsBuilder();
+  if (argv.noVerifyAssertions) {
+    c.withNoVerifyAssertions(true);
+  }
   c.setFileSource(await openAsBlob(argv.file as string));
   return c.build();
 }
 
+function parseAssertionConfig(s: string): assertions.AssertionConfig[] {
+  const u = JSON.parse(s);
+  // if u is null or empty, return an empty array
+  if (!u) {
+    return [];
+  }
+  const a = Array.isArray(u) ? u : [u];
+  for (const assertion of a) {
+    if (!assertions.isAssertionConfig(assertion)) {
+      throw new CLIError('CRITICAL', `invalid assertion config ${JSON.stringify(assertion)}`);
+    }
+  }
+  return a;
+}
+
 async function tdf3EncryptParamsFor(argv: Partial<mainArgs>): Promise<EncryptParams> {
   const c = new EncryptParamsBuilder();
+  if (argv.assertions?.length) {
+    c.withAssertions(parseAssertionConfig(argv.assertions));
+  }
   if (argv.attributes?.length) {
     c.setAttributes(argv.attributes.split(','));
   }
-  if (argv['users-with-access']?.length) {
-    c.setUsersWithAccess(argv['users-with-access'].split(','));
+  if (argv.usersWithAccess?.length) {
+    c.setUsersWithAccess(argv.usersWithAccess.split(','));
   }
+  if (argv.mimeType?.length) {
+    c.setMimeType(argv.mimeType);
+  }
+  if (argv.autoconfigure) {
+    c.withAutoconfigure();
+  }
+  // use offline mode, we do not have upsert for v2
+  c.setOffline();
   // FIXME TODO must call file.close() after we are done
-  const file = await open(argv.file as string);
-  c.setStreamSource(file.readableWebStream());
+  const buffer = await processDataIn(argv.file as string);
+  c.setBufferSource(buffer);
   return c.build();
 }
 
@@ -143,8 +186,8 @@ export const handleArgs = (args: string[]) => {
       .middleware((argv) => {
         if (argv.silent) {
           log.level = 'CRITICAL';
-        } else if (argv['log-level']) {
-          const ll = argv['log-level'] as string;
+        } else if (argv.logLevel) {
+          const ll = argv.logLevel as string;
           log.level = ll.toUpperCase() as Level;
         }
       })
@@ -164,94 +207,147 @@ export const handleArgs = (args: string[]) => {
       // AUTH OPTIONS
       .option('kasEndpoint', {
         demandOption: true,
-        group: 'KAS Endpoint:',
+        group: 'Server Endpoints:',
         type: 'string',
         description: 'URL to non-default KAS instance (https://mykas.net)',
       })
       .option('oidcEndpoint', {
         demandOption: true,
-        group: 'OIDC IdP Endpoint:',
+        group: 'Server Endpoints:',
         type: 'string',
         description: 'URL to non-default OIDC IdP (https://myidp.net)',
       })
-      .option('auth', {
-        group: 'Authentication:',
+      .option('policyEndpoint', {
+        group: 'Server Endpoints:',
         type: 'string',
-        description: 'Authentication string (<clientId>:<clientSecret>)',
+        description: 'Attribute and key grant service endpoint',
       })
-      .boolean('dpop')
+      .option('allowList', {
+        group: 'Security:',
+        desc: 'allowed KAS origins, comma separated; defaults to [kasEndpoint]',
+        type: 'string',
+        validate: (uris: string) => uris.split(','),
+      })
+      .option('ignoreAllowList', {
+        group: 'Security:',
+        desc: 'disable KAS allowlist feature for decrypt',
+        type: 'boolean',
+      })
+      .option('noVerifyAssertions', {
+        alias: 'no-verify-assertions',
+        group: 'Security',
+        desc: 'Do not verify assertions',
+        type: 'boolean',
+      })
+      .option('auth', {
+        group: 'OAuth and OIDC:',
+        type: 'string',
+        description: 'Combined OAuth Client Credentials (<clientId>:<clientSecret>)',
+      })
+      .option('dpop', {
+        group: 'Security:',
+        desc: 'Use DPoP for token binding',
+        type: 'boolean',
+      })
       .implies('auth', '--no-clientId')
       .implies('auth', '--no-clientSecret')
 
       .option('clientId', {
-        group: 'OIDC client credentials',
+        group: 'OAuth and OIDC:',
         alias: 'cid',
         type: 'string',
-        description: 'IdP-issued Client ID',
+        description: 'OAuth Client Credentials: IdP-issued Client ID',
       })
       .implies('clientId', 'clientSecret')
 
       .option('clientSecret', {
-        group: 'OIDC client credentials',
+        group: 'OAuth and OIDC:',
         alias: 'cs',
         type: 'string',
-        description: 'IdP-issued Client Secret',
+        description: 'OAuth Client Credentials: IdP-issued Client Secret',
       })
       .implies('clientSecret', 'clientId')
 
       .option('exchangeToken', {
-        group: 'Token from trusted external IdP to exchange for Virtru auth',
+        group: 'OAuth and OIDC:',
         alias: 'et',
         type: 'string',
-        description: 'Token issued by trusted external IdP',
+        description: 'OAuth Token Exchange: Token issued by trusted external IdP',
       })
       .implies('exchangeToken', 'clientId')
-
-      .option('containerType', {
-        group: 'TDF Settings',
-        alias: 't',
-        choices: containerTypes,
-        description: 'Container format',
-        default: 'nano',
-      })
-
-      .option('userId', {
-        group: 'TDF Settings',
-        type: 'string',
-        description: 'Owner email address',
-      })
 
       // Examples
       .example('$0 --auth ClientID123:Cli3nt$ecret', '# OIDC client credentials')
 
       .example('$0 --clientId ClientID123 --clientSecret Cli3nt$ecret', '# OIDC client credentials')
 
-      // POLICY
+      // Policy, encryption, and container options
       .options({
-        'users-with-access': {
-          group: 'Policy Options',
-          desc: 'Add users to the policy',
+        assertions: {
+          group: 'Encrypt Options:',
+          desc: 'ZTDF assertion config objects',
           type: 'string',
           default: '',
-          validate: (users: string) => users.split(','),
+          validate: parseAssertionConfig,
         },
         attributes: {
-          group: 'Policy Options',
+          group: 'Encrypt Options:',
           desc: 'Data attributes for the policy',
           type: 'string',
           default: '',
           validate: (attributes: string) => attributes.split(','),
         },
+        autoconfigure: {
+          group: 'Encrypt Options:',
+          desc: 'Enable automatic configuration from attributes using policy service',
+          type: 'boolean',
+          default: false,
+        },
+        containerType: {
+          group: 'Encrypt Options:',
+          alias: 't',
+          choices: containerTypes,
+          description: 'Container format',
+          default: 'nano',
+        },
+        policyBinding: {
+          group: 'Encrypt Options:',
+          choices: bindingTypes,
+          description: 'Policy Binding Type (nano only)',
+          default: 'gmac',
+        },
+        mimeType: {
+          group: 'Encrypt Options:',
+          desc: 'Mime type for the plain text file (only supported for ztdf)',
+          type: 'string',
+          default: '',
+        },
+        userId: {
+          group: 'Encrypt Options:',
+          type: 'string',
+          description: 'Owner email address',
+        },
+        usersWithAccess: {
+          alias: 'users-with-access',
+          group: 'Encrypt Options:',
+          desc: 'Add users to the policy',
+          type: 'string',
+          default: '',
+          validate: (users: string) => users.split(','),
+        },
       })
 
       // COMMANDS
       .options({
-        'log-level': {
+        logLevel: {
+          group: 'Verbosity:',
+          alias: 'log-level',
           type: 'string',
           default: 'info',
           desc: 'Set logging level',
         },
         silent: {
+          group: 'Verbosity:',
           type: 'boolean',
           default: false,
           desc: 'Disable logging',
@@ -261,6 +357,39 @@ export const handleArgs = (args: string[]) => {
         type: 'string',
         description: 'output file',
       })
+
+      .command(
+        'attrs',
+        'Look up defintions of attributes',
+        (yargs) => {
+          yargs.strict();
+        },
+        async (argv) => {
+          log('DEBUG', 'attribute value lookup');
+          const authProvider = await processAuth(argv);
+          const signingKey = await crypto.subtle.generateKey(
+            {
+              name: 'RSASSA-PKCS1-v1_5',
+              hash: 'SHA-256',
+              modulusLength: 2048,
+              publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
+            },
+            true,
+            ['sign', 'verify']
+          );
+          authProvider.updateClientPublicKey(signingKey);
+          log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
+
+          const policyUrl: string = guessPolicyUrl(argv);
+          const defs = await attributeFQNsAsValues(
+            policyUrl,
+            authProvider,
+            ...(argv.attributes as string).split(',')
+          );
+          console.log(JSON.stringify(defs, null, 2));
+        }
+      )
+
       .command(
         'decrypt [file]',
         'Decrypt TDF to string',
@@ -273,19 +402,27 @@ export const handleArgs = (args: string[]) => {
         },
         async (argv) => {
           log('DEBUG', 'Running decrypt command');
+          const allowedKases = argv.allowList?.split(',');
+          const ignoreAllowList = !!argv.ignoreAllowList;
           const authProvider = await processAuth(argv);
           log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
 
           const kasEndpoint = argv.kasEndpoint;
-          if (argv.containerType === 'tdf3') {
+          if (argv.containerType === 'tdf3' || argv.containerType == 'ztdf') {
             log('DEBUG', `TDF3 Client`);
-            const client = new TDF3Client({ authProvider, kasEndpoint, dpopEnabled: argv.dpop });
+            const client = new TDF3Client({
+              allowedKases,
+              ignoreAllowList,
+              authProvider,
+              kasEndpoint,
+              dpopEnabled: argv.dpop,
+            });
             log('SILLY', `Initialized client ${JSON.stringify(client)}`);
             log('DEBUG', `About to decrypt [${argv.file}]`);
             const ct = await client.decrypt(await tdf3DecryptParamsFor(argv));
             if (argv.output) {
-              const filehandle = await open(argv.output, 'w');
-              await filehandle.writeFile(ct.stream);
+              const destination = createWriteStream(argv.output);
+              await ct.stream.pipeTo(Writable.toWeb(destination));
             } else {
               console.log(await ct.toString());
             }
@@ -293,8 +430,20 @@ export const handleArgs = (args: string[]) => {
             const dpopEnabled = !!argv.dpop;
             const client =
               argv.containerType === 'nano'
-                ? new NanoTDFClient({ authProvider, kasEndpoint, dpopEnabled })
-                : new NanoTDFDatasetClient({ authProvider, kasEndpoint, dpopEnabled });
+                ? new NanoTDFClient({
+                    allowedKases,
+                    ignoreAllowList,
+                    authProvider,
+                    kasEndpoint,
+                    dpopEnabled,
+                  })
+                : new NanoTDFDatasetClient({
+                    allowedKases,
+                    ignoreAllowList,
+                    authProvider,
+                    kasEndpoint,
+                    dpopEnabled,
+                  });
             const buffer = await processDataIn(argv.file as string);
 
             log('DEBUG', 'Decrypt data.');
@@ -302,9 +451,9 @@ export const handleArgs = (args: string[]) => {
 
             log('DEBUG', 'Handle output.');
             if (argv.output) {
-              await writeFile(argv.output, Buffer.from(plaintext));
+              await writeFile(argv.output, new Uint8Array(plaintext));
             } else {
-              console.log(Buffer.from(plaintext).toString('utf8'));
+              console.log(new TextDecoder().decode(plaintext));
             }
           }
           const lastRequest = authProvider.requestLog[authProvider.requestLog.length - 1];
@@ -346,39 +495,55 @@ export const handleArgs = (args: string[]) => {
           const authProvider = await processAuth(argv);
           log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
           const kasEndpoint = argv.kasEndpoint;
+          const ignoreAllowList = !!argv.ignoreAllowList;
+          const allowedKases = argv.allowList?.split(',');
 
-          if ('tdf3' === argv.containerType) {
+          if ('tdf3' === argv.containerType || 'ztdf' === argv.containerType) {
             log('DEBUG', `TDF3 Client`);
-            const client = new TDF3Client({ authProvider, kasEndpoint, dpopEnabled: argv.dpop });
+            const policyEndpoint: string = guessPolicyUrl(argv);
+            const client = new TDF3Client({
+              allowedKases,
+              ignoreAllowList,
+              authProvider,
+              kasEndpoint,
+              policyEndpoint,
+              dpopEnabled: argv.dpop,
+            });
             log('SILLY', `Initialized client ${JSON.stringify(client)}`);
             const ct = await client.encrypt(await tdf3EncryptParamsFor(argv));
             if (!ct) {
               throw new CLIError('CRITICAL', 'Encrypt configuration error: No output?');
             }
             if (argv.output) {
-              const filehandle = await open(argv.output, 'w');
-              await filehandle.writeFile(ct.stream);
+              const destination = createWriteStream(argv.output);
+              await ct.stream.pipeTo(Writable.toWeb(destination));
             } else {
               console.log(await ct.toString());
             }
           } else {
             const dpopEnabled = !!argv.dpop;
+            const ecdsaBinding = argv.policyBinding.toLowerCase() == 'ecdsa';
             const client =
               argv.containerType === 'nano'
-                ? new NanoTDFClient({ authProvider, dpopEnabled, kasEndpoint })
-                : new NanoTDFDatasetClient({ authProvider, dpopEnabled, kasEndpoint });
+                ? new NanoTDFClient({ allowedKases, authProvider, dpopEnabled, kasEndpoint })
+                : new NanoTDFDatasetClient({
+                    allowedKases,
+                    authProvider,
+                    dpopEnabled,
+                    kasEndpoint,
+                  });
             log('SILLY', `Initialized client ${JSON.stringify(client)}`);
 
             addParams(client, argv);
 
             const buffer = await processDataIn(argv.file as string);
-            const cyphertext = await client.encrypt(buffer);
+            const cyphertext = await client.encrypt(buffer, { ecdsaBinding });
 
             log('DEBUG', `Handle cyphertext output ${JSON.stringify(cyphertext)}`);
             if (argv.output) {
-              await writeFile(argv.output, Buffer.from(cyphertext));
+              await writeFile(argv.output, new Uint8Array(cyphertext));
             } else {
-              console.log(Buffer.from(cyphertext).toString('base64'));
+              console.log(base64.encodeArrayBuffer(cyphertext));
             }
           }
         }
@@ -397,8 +562,8 @@ export const handleArgs = (args: string[]) => {
       .version(
         'version',
         JSON.stringify({
-          '@opentdf/cli': process.env.npm_package_version || 'UNRELEASED',
-          '@opentdf/client': version,
+          '@opentdf/ctl': process.env.npm_package_version || 'UNRELEASED',
+          '@opentdf/sdk': version,
         })
       )
       .alias('version', 'V')
@@ -420,3 +585,20 @@ handleArgs(hideBin(process.argv))
   .catch((err) => {
     console.error(err);
   });
+
+function guessPolicyUrl({
+  kasEndpoint,
+  policyEndpoint,
+}: {
+  kasEndpoint: string;
+  policyEndpoint?: string;
+}) {
+  let policyUrl: string;
+  if (policyEndpoint) {
+    policyUrl = rstrip(policyEndpoint, '/');
+  } else {
+    const uNoSlash = rstrip(kasEndpoint, '/');
+    policyUrl = uNoSlash.endsWith('/kas') ? uNoSlash.slice(0, -4) : uNoSlash;
+  }
+  return policyUrl;
+}

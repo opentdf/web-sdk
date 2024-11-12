@@ -1,12 +1,12 @@
-# An OpenTDF Library for Browsers and NodeJS Clients
+# An OpenTDF Library for Browser Applications
 
-This project packages a set of javascript modules that can write and read
-a variety of OpenTDF data formats, including NanoTDF, Dataset TDF, and the
-TDF3 with JSON envelopes.
+This project presents client code to write and read a OpenTDF data formats.
+This included NanoTDF, Dataset TDF, and ZTDF.
 
 ## Usage
 
 ### NanoTDF
+
 ```typescript
   const oidcCredentials: RefreshTokenCredentials = {
     clientId: keycloakClientId,
@@ -20,7 +20,7 @@ TDF3 with JSON envelopes.
   const clearText = await client.decrypt(cipherText);
 ```
 
-### TDF3
+### ZTDF
 
 ```typescript
   const client = new TDF3Client({
@@ -45,13 +45,8 @@ TDF3 with JSON envelopes.
   console.log(`deciphered text :${plaintext}`);
 ```
 
-## Examples
-
-Review examples to see how to integrate. See [Examples](https://github.com/opentdf/opentdf/tree/main/examples)
-
 ## Upgrading from 1.x
 
-- The 'RemoteStorage' features have been moved into a separate library, @opentdf/remote-storage. 
-  For an example refactor, see https://github.com/opentdf/opentdf/pull/256
+- The 'RemoteStorage' features have been moved into a separate library, @opentdf/remote-storage.
 - We have replaced all usages of node's `Buffer` with the web-friendlier `UInt8Array`.
   You will most likely see this in the return types of some functions.

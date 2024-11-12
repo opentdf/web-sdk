@@ -10,14 +10,14 @@ APP="${APP_DIR}/encrypt-decrypt.sh"
 
 _configure_app() {
   app_version=$(cd "${ROOT_DIR}/lib" && node -p "require('./package.json').version")
-  echo "installing opentdf-cli-${app_version}.tgz into ${APP_DIR}"
+  echo "installing opentdf-ctl-${app_version}.tgz into ${APP_DIR}"
   cd "${APP_DIR}" || exit 1
-  npm uninstall @opentdf/cli
+  npm uninstall @opentdf/ctl
   if ! npm ci; then
     echo "[ERROR] Couldn't ci roundtrip command line app"
     return 1
   fi
-  if ! npm i "../../../cli/opentdf-cli-${app_version}.tgz"; then
+  if ! npm i "../../../cli/opentdf-ctl-${app_version}.tgz"; then
     return 1
   fi
   return 0
@@ -60,14 +60,14 @@ _init_webapp() {
     echo "[ERROR] unable to cd ${WEB_APP_DIR}"
     exit 2
   fi
-  npm uninstall @opentdf/client
+  npm uninstall @opentdf/sdk
   if ! npm ci; then
     echo "[ERROR] Couldn't ci web-app"
     exit 2
   fi
-  if ! npm i "../lib/opentdf-client-${app_version}.tgz"; then
+  if ! npm i "../lib/opentdf-sdk-${app_version}.tgz"; then
     ls -ls ../lib/
-    echo "[ERROR] Couldn't install @opentdf/client tarball"
+    echo "[ERROR] Couldn't install @opentdf/sdk tarball"
     return 1
   fi
   npm run dev &>"$output" &
@@ -106,7 +106,7 @@ _init_platform() {
   if [ -f go.work ]; then
     svc=github.com/opentdf/platform/service
   fi
-  if ! go run "${svc}" provision keycloak; then
+  if ! go run "${svc}" provision keycloak -f "${APP_DIR}/keycloak_data.yaml"; then
     echo "[ERROR] unable to provision keycloak"
     return 1
   fi
