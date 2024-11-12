@@ -33,8 +33,8 @@ type RewrapBody = {
   policy: string;
   clientPublicKey: string;
   // testing only
-  invalidKey: string
-  invalidField: string
+  invalidKey: string;
+  invalidField: string;
 };
 
 function concat(b: ArrayBufferView[]) {
@@ -138,7 +138,7 @@ const kas: RequestListener = async (req, res) => {
       }
       console.log('[INFO]: rewrap request meta: ', req.method, req.url, req.headers);
       // NOTE: Real KAS will validate authorization and dpop here. simple Invalid check
-      if (req.headers['authorization'] == "Invalid") {
+      if (req.headers['authorization'] == 'Invalid') {
         res.writeHead(401);
         res.end(JSON.stringify({ error: 'Unauthorized' }));
         return;
