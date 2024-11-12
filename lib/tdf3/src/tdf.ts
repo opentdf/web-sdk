@@ -937,11 +937,10 @@ async function unwrapKey({
         ''
       );
     }
-
-    // Try all potential KAS sources for this split
-    const errors: Array<Error | AxiosError> = [];
-    const kasPromises = Object.values(potentials).map(async (keySplitInfo) => {
-      try {
+    try {
+      // Try all potential KAS sources for this split, use first success
+      return await Promise.any(
+        Object.values(potentials).map(async (keySplitInfo) => {
         const url = `${keySplitInfo.url}/${isAppIdProvider ? '' : 'v2/'}rewrap`;
         const ephemeralEncryptionKeys = await cryptoService.cryptoToPemPair(
           await cryptoService.generateKeyPair()
@@ -990,52 +989,43 @@ async function unwrapKey({
         );
 
         return {
-          success: true,
+          success: true as const,
           key: new Uint8Array(decryptedKeyBinary.asByteArray()),
           metadata,
         };
-      } catch (e) {
-        // Store the error but don't throw yet - we might have other valid sources
-        errors.push(e);
-        return { success: false, error: e };
-      }
-    });
-
-    // Wait for all KAS attempts for this split to complete
-    const results = await Promise.all(kasPromises);
-    const successfulResult = results.find((r) => r.success);
-
-    if (successfulResult) {
-      return successfulResult;
-    }
-
-    // If we get here, all attempts failed for this split
-    // Throw the most relevant error
-    const lastError = errors[errors.length - 1] as import('axios').AxiosError;
-    if (axios.isAxiosError(lastError)) {
-      if (lastError.response?.status && lastError.response?.status >= 500) {
-        throw new ServiceError('rewrap failure', lastError);
-      } else if (lastError.response?.status === 403) {
-        throw new PermissionDeniedError('rewrap failure', lastError);
-      } else if (lastError.response?.status === 401) {
-        throw new UnauthenticatedError('rewrap auth failure', lastError);
-      } else if (lastError.response?.status === 400) {
-        throw new InvalidFileError(
-          'rewrap bad request; could indicate an invalid policy binding or a configuration error',
-          lastError
-        );
-      } else {
-        throw new NetworkError('rewrap server error', lastError);
-      }
-    } else {
-      const error = lastError as Error;
-      if (error.name === 'InvalidAccessError' || error.name === 'OperationError') {
-        throw new DecryptError('unable to unwrap key from kas', lastError);
-      }
-      throw new InvalidFileError(
-        `Unable to decrypt the response from KAS: [${error.name}: ${error.message}]`,
-        lastError
+      }),
       );
+    } catch (error) {
+      if (error instanceof AggregateError) {
+        // All promises were rejected
+        const lastError = error.errors[error.errors.length - 1] as Error | AxiosError;
+        if (axios.isAxiosError(lastError)) {
+          if (lastError.response?.status && lastError.response?.status >= 500) {
+            throw new ServiceError('rewrap failure', lastError);
+          } else if (lastError.response?.status === 403) {
+            throw new PermissionDeniedError('rewrap failure', lastError);
+          } else if (lastError.response?.status === 401) {
+            throw new UnauthenticatedError('rewrap auth failure', lastError);
+          } else if (lastError.response?.status === 400) {
+            throw new InvalidFileError(
+              'rewrap bad request; could indicate an invalid policy binding or a configuration error',
+              lastError
+            );
+          } else {
+            throw new NetworkError('rewrap server error', lastError);
+          }
+        } else {
+          const error = lastError as Error;
+          if (error.name === 'InvalidAccessError' || error.name === 'OperationError') {
+            throw new DecryptError('unable to unwrap key from kas', error);
+          }
+          throw new InvalidFileError(
+            `Unable to decrypt the response from KAS: [${error.name}: ${error.message}]`,
+            error
+          );
+        }
+      }
+      throw error;
     }
   });
 
