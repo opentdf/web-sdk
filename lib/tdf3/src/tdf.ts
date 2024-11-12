@@ -941,59 +941,59 @@ async function unwrapKey({
       // Try all potential KAS sources for this split, use first success
       return await Promise.any(
         Object.values(potentials).map(async (keySplitInfo) => {
-        const url = `${keySplitInfo.url}/${isAppIdProvider ? '' : 'v2/'}rewrap`;
-        const ephemeralEncryptionKeys = await cryptoService.cryptoToPemPair(
-          await cryptoService.generateKeyPair()
-        );
-        const clientPublicKey = ephemeralEncryptionKeys.publicKey;
+          const url = `${keySplitInfo.url}/${isAppIdProvider ? '' : 'v2/'}rewrap`;
+          const ephemeralEncryptionKeys = await cryptoService.cryptoToPemPair(
+            await cryptoService.generateKeyPair()
+          );
+          const clientPublicKey = ephemeralEncryptionKeys.publicKey;
 
-        const requestBodyStr = JSON.stringify({
-          algorithm: 'RS256',
-          keyAccess: keySplitInfo,
-          policy: manifest.encryptionInformation.policy,
-          clientPublicKey,
-        });
-
-        const jwtPayload = { requestBody: requestBodyStr };
-        const signedRequestToken = await reqSignature(
-          isAppIdProvider ? {} : jwtPayload,
-          dpopKeys.privateKey
-        );
-
-        let requestBody;
-        if (isAppIdProvider) {
-          requestBody = {
+          const requestBodyStr = JSON.stringify({
+            algorithm: 'RS256',
             keyAccess: keySplitInfo,
             policy: manifest.encryptionInformation.policy,
-            entity: {
-              ...entity,
-              publicKey: clientPublicKey,
-            },
-            authToken: signedRequestToken,
+            clientPublicKey,
+          });
+
+          const jwtPayload = { requestBody: requestBodyStr };
+          const signedRequestToken = await reqSignature(
+            isAppIdProvider ? {} : jwtPayload,
+            dpopKeys.privateKey
+          );
+
+          let requestBody;
+          if (isAppIdProvider) {
+            requestBody = {
+              keyAccess: keySplitInfo,
+              policy: manifest.encryptionInformation.policy,
+              entity: {
+                ...entity,
+                publicKey: clientPublicKey,
+              },
+              authToken: signedRequestToken,
+            };
+          } else {
+            requestBody = {
+              signedRequestToken,
+            };
+          }
+
+          const httpReq = await authProvider.withCreds(buildRequest('POST', url, requestBody));
+          const {
+            data: { entityWrappedKey, metadata },
+          } = await axios.post(httpReq.url, httpReq.body, { headers: httpReq.headers });
+
+          const key = Binary.fromString(base64.decode(entityWrappedKey));
+          const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(
+            key,
+            ephemeralEncryptionKeys.privateKey
+          );
+
+          return {
+            success: true as const,
+            key: new Uint8Array(decryptedKeyBinary.asByteArray()),
+            metadata,
           };
-        } else {
-          requestBody = {
-            signedRequestToken,
-          };
-        }
-
-        const httpReq = await authProvider.withCreds(buildRequest('POST', url, requestBody));
-        const {
-          data: { entityWrappedKey, metadata },
-        } = await axios.post(httpReq.url, httpReq.body, { headers: httpReq.headers });
-
-        const key = Binary.fromString(base64.decode(entityWrappedKey));
-        const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(
-          key,
-          ephemeralEncryptionKeys.privateKey
-        );
-
-        return {
-          success: true as const,
-          key: new Uint8Array(decryptedKeyBinary.asByteArray()),
-          metadata,
-        };
-      }),
+        })
       );
     } catch (error) {
       if (error instanceof AggregateError) {
