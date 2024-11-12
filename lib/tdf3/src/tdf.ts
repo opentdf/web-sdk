@@ -1015,7 +1015,7 @@ async function unwrapKey({
             throw new NetworkError('rewrap server error', lastError);
           }
         } else {
-          const error = lastError as Error;
+          const error = lastError;
           if (error.name === 'InvalidAccessError' || error.name === 'OperationError') {
             throw new DecryptError('unable to unwrap key from kas', error);
           }
