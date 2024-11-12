@@ -293,6 +293,7 @@ export async function fetchKasPublicKey(
     }
   }
 }
+
 /**
  *
  * @param payload The TDF content to encode in HTML
@@ -905,13 +906,13 @@ export function splitLookupTableFactory(
 }
 
 async function unwrapKey({
-                           manifest,
-                           allowedKases,
-                           authProvider,
-                           dpopKeys,
-                           entity,
-                           cryptoService,
-                         }: {
+  manifest,
+  allowedKases,
+  authProvider,
+  dpopKeys,
+  entity,
+  cryptoService,
+}: {
   manifest: Manifest;
   allowedKases: OriginAllowList;
   authProvider: AuthProvider | AppIdAuthProvider;
