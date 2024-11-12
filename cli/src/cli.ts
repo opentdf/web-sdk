@@ -1,6 +1,7 @@
 import './polyfills.js';
 import { createWriteStream, openAsBlob } from 'node:fs';
 import { readFile, stat, writeFile } from 'node:fs/promises';
+import { Writable } from 'node:stream';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import {
@@ -21,7 +22,6 @@ import { webcrypto } from 'crypto';
 import * as assertions from '@opentdf/sdk/assertions';
 import { attributeFQNsAsValues } from '@opentdf/sdk/nano';
 import { base64 } from '@opentdf/sdk/encodings';
-import { Writable } from 'node:stream';
 
 type AuthToProcess = {
   auth?: string;
