@@ -1,6 +1,7 @@
 import './polyfills.js';
-import { openAsBlob } from 'node:fs';
-import { open, readFile, stat, writeFile } from 'node:fs/promises';
+import { createWriteStream, openAsBlob } from 'node:fs';
+import { readFile, stat, writeFile } from 'node:fs/promises';
+import { Writable } from 'node:stream';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import {
@@ -420,8 +421,8 @@ export const handleArgs = (args: string[]) => {
             log('DEBUG', `About to decrypt [${argv.file}]`);
             const ct = await client.decrypt(await tdf3DecryptParamsFor(argv));
             if (argv.output) {
-              const filehandle = await open(argv.output, 'w');
-              await filehandle.writeFile(ct.stream);
+              const destination = createWriteStream(argv.output);
+              await ct.stream.pipeTo(Writable.toWeb(destination));
             } else {
               console.log(await ct.toString());
             }
@@ -514,8 +515,8 @@ export const handleArgs = (args: string[]) => {
               throw new CLIError('CRITICAL', 'Encrypt configuration error: No output?');
             }
             if (argv.output) {
-              const filehandle = await open(argv.output, 'w');
-              await filehandle.writeFile(ct.stream);
+              const destination = createWriteStream(argv.output);
+              await ct.stream.pipeTo(Writable.toWeb(destination));
             } else {
               console.log(await ct.toString());
             }
