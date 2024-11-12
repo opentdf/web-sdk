@@ -293,7 +293,6 @@ export async function fetchKasPublicKey(
     }
   }
 }
-
 /**
  *
  * @param payload The TDF content to encode in HTML
