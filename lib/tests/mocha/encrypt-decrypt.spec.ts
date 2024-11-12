@@ -19,12 +19,11 @@ const Mocks = getMocks();
 
 const authProvider = {
   // eslint-disable-next-line @typescript-eslint/no-empty-function
-  updateClientPublicKey: async () => {
-  },
+  updateClientPublicKey: async () => {},
   withCreds: async (httpReq: HttpRequest) => httpReq,
 };
 
-describe('rewrap error cases', function() {
+describe('rewrap error cases', function () {
   const kasUrl = 'http://localhost:3000';
   const expectedVal = 'test data';
   let client: Client.Client;
@@ -32,11 +31,10 @@ describe('rewrap error cases', function() {
   let encryptionInformation: SplitKey;
   let key1: KeyInfo;
 
-  beforeEach(async function() {
+  beforeEach(async function () {
     // Setup base auth provider that will be modified per test
     const baseAuthProvider = {
-      updateClientPublicKey: async () => {
-      },
+      updateClientPublicKey: async () => {},
       withCreds: async (httpReq: HttpRequest) => httpReq,
     };
 
@@ -52,35 +50,43 @@ describe('rewrap error cases', function() {
     key1 = await encryptionInformation.generateKey();
   });
 
-  async function encryptTestData({ customAuthProvider }: {
-    customAuthProvider?: {
-      updateClientPublicKey: () => Promise<void>;
-      withCreds: ((httpReq: HttpRequest) => Promise<{
-        headers: { authorization: string };
-        method: HttpMethod;
-        params?: object | undefined;
-        url: string;
-        body?: unknown
-      }>) | ((httpReq: HttpRequest) => Promise<{
-        headers: { 'x-test-response': string };
-        method: HttpMethod;
-        params?: object | undefined;
-        url: string;
-        body?: unknown
-      }>) | ((httpReq: HttpRequest) => Promise<{
-        body: { invalidField: string };
-        headers: Record<string, string>;
-        method: HttpMethod;
-        params?: object | undefined;
-        url: string
-      }>) | ((httpReq: HttpRequest) => Promise<{
-        body: { invalidKey: boolean };
-        headers: Record<string, string>;
-        method: HttpMethod;
-        params?: object | undefined;
-        url: string
-      }>)
-    } | undefined
+  async function encryptTestData({
+    customAuthProvider,
+  }: {
+    customAuthProvider?:
+      | {
+          updateClientPublicKey: () => Promise<void>;
+          withCreds:
+            | ((httpReq: HttpRequest) => Promise<{
+                headers: { authorization: string };
+                method: HttpMethod;
+                params?: object | undefined;
+                url: string;
+                body?: unknown;
+              }>)
+            | ((httpReq: HttpRequest) => Promise<{
+                headers: { 'x-test-response': string };
+                method: HttpMethod;
+                params?: object | undefined;
+                url: string;
+                body?: unknown;
+              }>)
+            | ((httpReq: HttpRequest) => Promise<{
+                body: { invalidField: string };
+                headers: Record<string, string>;
+                method: HttpMethod;
+                params?: object | undefined;
+                url: string;
+              }>)
+            | ((httpReq: HttpRequest) => Promise<{
+                body: { invalidKey: boolean };
+                headers: Record<string, string>;
+                method: HttpMethod;
+                params?: object | undefined;
+                url: string;
+              }>);
+        }
+      | undefined;
   }) {
     const keyMiddleware = async () => ({ keyForEncryption: key1, keyForManifest: key1 });
 
@@ -112,7 +118,7 @@ describe('rewrap error cases', function() {
     });
   }
 
-  it('should handle 401 Unauthorized error', async function() {
+  it('should handle 401 Unauthorized error', async function () {
     const authProvider = {
       updateClientPublicKey: async () => {},
       withCreds: async (httpReq: HttpRequest) => ({
@@ -139,7 +145,7 @@ describe('rewrap error cases', function() {
     }
   });
 
-  it('should handle 403 Forbidden error', async function() {
+  it('should handle 403 Forbidden error', async function () {
     const authProvider = {
       updateClientPublicKey: async () => {},
       withCreds: async (httpReq: HttpRequest) => ({
@@ -166,13 +172,17 @@ describe('rewrap error cases', function() {
     }
   });
 
-  it('should handle 400 Bad Request error', async function() {
+  it('should handle 400 Bad Request error', async function () {
     // Modify the mock server to return 400 for invalid body
     const authProvider = {
       updateClientPublicKey: async () => {},
       withCreds: async (httpReq: HttpRequest) => ({
         ...httpReq,
-        headers: { ...httpReq.headers, 'x-test-response': '400', 'x-test-response-message': 'IntegrityError' },
+        headers: {
+          ...httpReq.headers,
+          'x-test-response': '400',
+          'x-test-response-message': 'IntegrityError',
+        },
       }),
     };
 
@@ -194,7 +204,7 @@ describe('rewrap error cases', function() {
     }
   });
 
-  it('should handle 500 Server error', async function() {
+  it('should handle 500 Server error', async function () {
     const authProvider = {
       updateClientPublicKey: async () => {},
       withCreds: async (httpReq: HttpRequest) => ({
@@ -221,7 +231,7 @@ describe('rewrap error cases', function() {
     }
   });
 
-  it('should handle network failures', async function() {
+  it('should handle network failures', async function () {
     try {
       // Point to a non-existent server
       client = new Client.Client({
@@ -251,13 +261,17 @@ describe('rewrap error cases', function() {
     }
   });
 
-  it('should handle decrypt errors with invalid keys', async function() {
+  it('should handle decrypt errors with invalid keys', async function () {
     const authProvider = {
       updateClientPublicKey: async () => {},
       withCreds: async (httpReq: HttpRequest) => ({
         ...httpReq,
         body: { invalidKey: true },
-        headers: { ...httpReq.headers, 'x-test-response': '400', 'x-test-response-message': 'DecryptError' },
+        headers: {
+          ...httpReq.headers,
+          'x-test-response': '400',
+          'x-test-response-message': 'DecryptError',
+        },
       }),
     };
 
