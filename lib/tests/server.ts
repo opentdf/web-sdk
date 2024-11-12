@@ -1,18 +1,17 @@
 import './mocha/setup.js';
 
 import * as jose from 'jose';
-import { IncomingMessage, RequestListener, createServer } from 'node:http';
+import { createServer, IncomingMessage, RequestListener } from 'node:http';
 
 import { base64 } from '../src/encodings/index.js';
 import { decryptWithPrivateKey, encryptWithPublicKey } from '../tdf3/src/crypto/index.js';
 import { getMocks } from './mocks/index.js';
-import { Header, getHkdfSalt } from '../src/nanotdf/index.js';
-import { keyAgreement } from '../src/nanotdf-crypto/keyAgreement.js';
+import { getHkdfSalt, Header } from '../src/nanotdf/index.js';
+import { keyAgreement, pemPublicToCrypto } from '../src/nanotdf-crypto/index.js';
 import generateRandomNumber from '../src/nanotdf-crypto/generateRandomNumber.js';
-import { pemPublicToCrypto } from '../src/nanotdf-crypto/pemPublicToCrypto.js';
 import { removePemFormatting } from '../tdf3/src/crypto/crypto-utils.js';
 import { Binary } from '../tdf3/index.js';
-import { type KeyAccessObject } from '../tdf3/src/models/key-access.js';
+import { type KeyAccessObject } from '../tdf3/src/models/index.js';
 import { valueFor } from './web/policy/mock-attrs.js';
 import { AttributeAndValue } from '../src/policy/attributes.js';
 
@@ -33,6 +32,9 @@ type RewrapBody = {
   };
   policy: string;
   clientPublicKey: string;
+  // testing only
+  invalidKey: string
+  invalidField: string
 };
 
 function concat(b: ArrayBufferView[]) {
@@ -65,7 +67,7 @@ const kas: RequestListener = async (req, res) => {
   console.log('[INFO]: server request: ', req.method, req.url, req.headers);
   res.setHeader(
     'Access-Control-Allow-Headers',
-    'authorization, content-type, dpop, range, virtru-ntdf-version'
+    'authorization, content-type, dpop, range, virtru-ntdf-version, x-test-response'
   );
   res.setHeader('Access-Control-Allow-Origin', '*');
   // GET should be allowed for everything except rewrap, POST only for rewrap but IDC
@@ -108,6 +110,26 @@ const kas: RequestListener = async (req, res) => {
       const kid = 'ec:secp256r1' == algorithm ? 'e1' : 'r1';
       res.end(JSON.stringify(v == '2' ? { kid, publicKey } : publicKey));
     } else if (url.pathname === '/v2/rewrap') {
+      // For testing error conditions x-test-response, immediate error returns, control by individual test
+      if (req.headers['x-test-response']) {
+        const statusCode = parseInt(req.headers['x-test-response'] as string);
+        res.writeHead(statusCode);
+        switch (statusCode) {
+          case 400:
+            const statusMessage = parseInt(req.headers['x-test-response-message'] as string);
+            res.end(JSON.stringify({ error: statusMessage }));
+            return;
+          case 401:
+            res.end(JSON.stringify({ error: 'Unauthorized' }));
+            return;
+          case 403:
+            res.end(JSON.stringify({ error: 'Forbidden' }));
+            return;
+          case 500:
+            res.end(JSON.stringify({ error: 'Internal server error' }));
+            return;
+        }
+      }
       if (req.method !== 'POST') {
         console.error(`[ERROR] /v2/rewrap only accepts POST verbs, received [${req.method}]`);
         res.writeHead(405);
@@ -115,7 +137,12 @@ const kas: RequestListener = async (req, res) => {
         return;
       }
       console.log('[INFO]: rewrap request meta: ', req.method, req.url, req.headers);
-      // NOTE: Real KAS will validate authorization and dpop here.
+      // NOTE: Real KAS will validate authorization and dpop here. simple Invalid check
+      if (req.headers['authorization'] == "Invalid") {
+        res.writeHead(401);
+        res.end(JSON.stringify({ error: 'Unauthorized' }));
+        return;
+      }
       const body = await getBody(req);
       const bodyText = new TextDecoder().decode(body);
       const { signedRequestToken } = JSON.parse(bodyText);
