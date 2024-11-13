@@ -928,126 +928,159 @@ async function unwrapKey({
   const splitPotentials = splitLookupTableFactory(keyAccess, allowedKases);
   const isAppIdProvider = authProvider && isAppIdProviderCheck(authProvider);
 
-  // Process all splits in parallel and take the first successful one
-  const splitPromises = Object.entries(splitPotentials).map(async ([splitId, potentials]) => {
-    if (!potentials || !Object.keys(potentials).length) {
-      throw new UnsafeUrlError(
-        `Unreconstructable key - no valid KAS found for split ${JSON.stringify(splitId)}`,
-        ''
-      );
+  async function tryKasRewrap(keySplitInfo: KeyAccessObject) {
+    const url = `${keySplitInfo.url}/${isAppIdProvider ? '' : 'v2/'}rewrap`;
+    const ephemeralEncryptionKeys = await cryptoService.cryptoToPemPair(
+      await cryptoService.generateKeyPair()
+    );
+    const clientPublicKey = ephemeralEncryptionKeys.publicKey;
+
+    const requestBodyStr = JSON.stringify({
+      algorithm: 'RS256',
+      keyAccess: keySplitInfo,
+      policy: manifest.encryptionInformation.policy,
+      clientPublicKey,
+    });
+
+    const jwtPayload = { requestBody: requestBodyStr };
+    const signedRequestToken = await reqSignature(
+      isAppIdProvider ? {} : jwtPayload,
+      dpopKeys.privateKey
+    );
+
+    let requestBody;
+    if (isAppIdProvider) {
+      requestBody = {
+        keyAccess: keySplitInfo,
+        policy: manifest.encryptionInformation.policy,
+        entity: {
+          ...entity,
+          publicKey: clientPublicKey,
+        },
+        authToken: signedRequestToken,
+      };
+    } else {
+      requestBody = {
+        signedRequestToken,
+      };
     }
+
+    const httpReq = await authProvider.withCreds(buildRequest('POST', url, requestBody));
+    const {
+      data: { entityWrappedKey, metadata },
+    } = await axios.post(httpReq.url, httpReq.body, { headers: httpReq.headers });
+
+    const key = Binary.fromString(base64.decode(entityWrappedKey));
+    const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(
+      key,
+      ephemeralEncryptionKeys.privateKey
+    );
+
+    return {
+      key: new Uint8Array(decryptedKeyBinary.asByteArray()),
+      metadata,
+    };
+  }
+
+  // Get unique split IDs to determine if we have an OR or AND condition
+  const splitIds = new Set(Object.keys(splitPotentials));
+
+  // If we have only one split ID, it's an OR condition
+  if (splitIds.size === 1) {
+    const [splitId] = splitIds;
+    const potentials = splitPotentials[splitId];
+
     try {
-      // Try all potential KAS sources for this split, use first success
-      return await Promise.any(
+      // OR condition: Try all KAS servers for this split, take first success
+      const result = await Promise.any(
         Object.values(potentials).map(async (keySplitInfo) => {
-          const url = `${keySplitInfo.url}/${isAppIdProvider ? '' : 'v2/'}rewrap`;
-          const ephemeralEncryptionKeys = await cryptoService.cryptoToPemPair(
-            await cryptoService.generateKeyPair()
-          );
-          const clientPublicKey = ephemeralEncryptionKeys.publicKey;
-
-          const requestBodyStr = JSON.stringify({
-            algorithm: 'RS256',
-            keyAccess: keySplitInfo,
-            policy: manifest.encryptionInformation.policy,
-            clientPublicKey,
-          });
-
-          const jwtPayload = { requestBody: requestBodyStr };
-          const signedRequestToken = await reqSignature(
-            isAppIdProvider ? {} : jwtPayload,
-            dpopKeys.privateKey
-          );
-
-          let requestBody;
-          if (isAppIdProvider) {
-            requestBody = {
-              keyAccess: keySplitInfo,
-              policy: manifest.encryptionInformation.policy,
-              entity: {
-                ...entity,
-                publicKey: clientPublicKey,
-              },
-              authToken: signedRequestToken,
-            };
-          } else {
-            requestBody = {
-              signedRequestToken,
-            };
+          try {
+            return await tryKasRewrap(keySplitInfo);
+          } catch (e) {
+            // Rethrow with more context
+            throw handleRewrapError(e as Error | AxiosError);
           }
-
-          const httpReq = await authProvider.withCreds(buildRequest('POST', url, requestBody));
-          const {
-            data: { entityWrappedKey, metadata },
-          } = await axios.post(httpReq.url, httpReq.body, { headers: httpReq.headers });
-
-          const key = Binary.fromString(base64.decode(entityWrappedKey));
-          const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(
-            key,
-            ephemeralEncryptionKeys.privateKey
-          );
-
-          return {
-            success: true as const,
-            key: new Uint8Array(decryptedKeyBinary.asByteArray()),
-            metadata,
-          };
         })
       );
+
+      const reconstructedKey = keyMerge([result.key]);
+      return {
+        reconstructedKeyBinary: Binary.fromArrayBuffer(reconstructedKey),
+        metadata: result.metadata,
+      };
     } catch (error) {
       if (error instanceof AggregateError) {
-        // All promises were rejected
-        const lastError = error.errors[error.errors.length - 1] as Error | AxiosError;
-        if (axios.isAxiosError(lastError)) {
-          if (lastError.response?.status && lastError.response?.status >= 500) {
-            throw new ServiceError('rewrap failure', lastError);
-          } else if (lastError.response?.status === 403) {
-            throw new PermissionDeniedError('rewrap failure', lastError);
-          } else if (lastError.response?.status === 401) {
-            throw new UnauthenticatedError('rewrap auth failure', lastError);
-          } else if (lastError.response?.status === 400) {
-            throw new InvalidFileError(
-              'rewrap bad request; could indicate an invalid policy binding or a configuration error',
-              lastError
-            );
-          } else {
-            throw new NetworkError('rewrap server error', lastError);
-          }
-        } else {
-          const error = lastError;
-          if (error.name === 'InvalidAccessError' || error.name === 'OperationError') {
-            throw new DecryptError('unable to unwrap key from kas', error);
-          }
-          throw new InvalidFileError(
-            `Unable to decrypt the response from KAS: [${error.name}: ${error.message}]`,
-            error
-          );
-        }
+        // All KAS servers failed
+        throw error.errors[0]; // Throw the first error since we've already wrapped them
       }
       throw error;
     }
-  });
+  } else {
+    // AND condition: We need successful results from all different splits
+    const splitResults = await Promise.all(
+      Object.entries(splitPotentials).map(async ([splitId, potentials]) => {
+        if (!potentials || !Object.keys(potentials).length) {
+          throw new UnsafeUrlError(
+            `Unreconstructable key - no valid KAS found for split ${JSON.stringify(splitId)}`,
+            ''
+          );
+        }
 
-  // Race to get the first successful split result
-  const results = await Promise.allSettled(splitPromises);
-  const successfulResult = results.find(
-    (r): r is PromiseFulfilledResult<{ success: true; key: Uint8Array; metadata: never }> =>
-      r.status === 'fulfilled' && r.value.success
-  );
+        try {
+          // For each split, try all potential KAS servers until one succeeds
+          return await Promise.any(
+            Object.values(potentials).map(async (keySplitInfo) => {
+              try {
+                return await tryKasRewrap(keySplitInfo);
+              } catch (e) {
+                throw handleRewrapError(e as Error | AxiosError);
+              }
+            })
+          );
+        } catch (error) {
+          if (error instanceof AggregateError) {
+            // All KAS servers for this split failed
+            throw error.errors[0]; // Throw the first error since we've already wrapped them
+          }
+          throw error;
+        }
+      })
+    );
 
-  if (!successfulResult) {
-    // If all splits failed, throw the last error
-    const lastRejection = results[results.length - 1] as PromiseRejectedResult;
-    throw lastRejection.reason;
+    // Merge all the split keys
+    const reconstructedKey = keyMerge(splitResults.map((r) => r.key));
+    return {
+      reconstructedKeyBinary: Binary.fromArrayBuffer(reconstructedKey),
+      metadata: splitResults[0].metadata, // Use metadata from first split
+    };
   }
+}
 
-  const reconstructedKey = keyMerge([successfulResult.value.key]);
-  const reconstructedKeyBinary = Binary.fromArrayBuffer(reconstructedKey);
-
-  return {
-    reconstructedKeyBinary,
-    metadata: successfulResult.value.metadata,
-  };
+function handleRewrapError(error: Error | AxiosError) {
+  if (axios.isAxiosError(error)) {
+    if (error.response?.status && error.response?.status >= 500) {
+      return new ServiceError('rewrap failure', error);
+    } else if (error.response?.status === 403) {
+      return new PermissionDeniedError('rewrap failure', error);
+    } else if (error.response?.status === 401) {
+      return new UnauthenticatedError('rewrap auth failure', error);
+    } else if (error.response?.status === 400) {
+      return new InvalidFileError(
+        'rewrap bad request; could indicate an invalid policy binding or a configuration error',
+        error
+      );
+    } else {
+      return new NetworkError('rewrap server error', error);
+    }
+  } else {
+    if (error.name === 'InvalidAccessError' || error.name === 'OperationError') {
+      return new DecryptError('unable to unwrap key from kas', error);
+    }
+    return new InvalidFileError(
+      `Unable to decrypt the response from KAS: [${error.name}: ${error.message}]`,
+      error
+    );
+  }
 }
 
 async function decryptChunk(
