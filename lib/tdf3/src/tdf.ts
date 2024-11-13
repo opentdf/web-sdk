@@ -1,8 +1,8 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { unsigned } from './utils/buffer-crc32.js';
 import { exportSPKI, importX509 } from 'jose';
 import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
-import { EntityObject } from '../../src/tdf/EntityObject.js';
+import { EntityObject } from '../../src/tdf/index.js';
 import { pemToCryptoPublicKey, validateSecureUrl } from '../../src/utils.js';
 import { DecryptParams } from './client/builders.js';
 import { AssertionConfig, AssertionKey, AssertionVerificationKeys } from './assertions.js';
@@ -926,25 +926,10 @@ async function unwrapKey({
   }
   const { keyAccess } = manifest.encryptionInformation;
   const splitPotentials = splitLookupTableFactory(keyAccess, allowedKases);
-
-  let responseMetadata;
   const isAppIdProvider = authProvider && isAppIdProviderCheck(authProvider);
-  // Get key access information to know the KAS URLS
-  const rewrappedKeys: Uint8Array[] = [];
 
-  for (const [splitId, potentials] of Object.entries(splitPotentials)) {
-    if (!potentials || !Object.keys(potentials).length) {
-      throw new UnsafeUrlError(
-        `Unreconstructable key - no valid KAS found for split ${JSON.stringify(splitId)}`,
-        ''
-      );
-    }
-
-    // If we have multiple ways of getting a value, try the 'best' way
-    // or maybe retry across all potential ways? Currently, just tries them all
-    const [keySplitInfo] = Object.values(potentials);
+  async function tryKasRewrap(keySplitInfo: KeyAccessObject) {
     const url = `${keySplitInfo.url}/${isAppIdProvider ? '' : 'v2/'}rewrap`;
-
     const ephemeralEncryptionKeys = await cryptoService.cryptoToPemPair(
       await cryptoService.generateKeyPair()
     );
@@ -980,58 +965,122 @@ async function unwrapKey({
       };
     }
 
-    // Create a PoP token by signing the body so KAS knows we actually have a private key
-    // Expires in 60 seconds
     const httpReq = await authProvider.withCreds(buildRequest('POST', url, requestBody));
+    const {
+      data: { entityWrappedKey, metadata },
+    } = await axios.post(httpReq.url, httpReq.body, { headers: httpReq.headers });
 
-    try {
-      // The response from KAS on a rewrap
-      const {
-        data: { entityWrappedKey, metadata },
-      } = await axios.post(httpReq.url, httpReq.body, { headers: httpReq.headers });
-      responseMetadata = metadata;
-      const key = Binary.fromString(base64.decode(entityWrappedKey));
-      const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(
-        key,
-        ephemeralEncryptionKeys.privateKey
-      );
-      rewrappedKeys.push(new Uint8Array(decryptedKeyBinary.asByteArray()));
-    } catch (e) {
-      if (e.response) {
-        if (e.response.status >= 500) {
-          throw new ServiceError('rewrap failure', e);
-        } else if (e.response.status === 403) {
-          throw new PermissionDeniedError('rewrap failure', e);
-        } else if (e.response.status === 401) {
-          throw new UnauthenticatedError('rewrap auth failure', e);
-        } else if (e.response.status === 400) {
-          throw new InvalidFileError(
-            'rewrap bad request; could indicate an invalid policy binding or a configuration error',
-            e
-          );
-        } else {
-          throw new NetworkError('rewrap server error', e);
-        }
-      } else if (e.request) {
-        throw new NetworkError('rewrap request failure', e);
-      } else if (e.name == 'InvalidAccessError' || e.name == 'OperationError') {
-        throw new DecryptError('unable to unwrap key from kas', e);
-      }
-      throw new InvalidFileError(
-        `Unable to decrypt the response from KAS: [${e.name}: ${e.message}], response: [${e?.response?.body}]`,
-        e
-      );
-    }
+    const key = Binary.fromString(base64.decode(entityWrappedKey));
+    const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(
+      key,
+      ephemeralEncryptionKeys.privateKey
+    );
+
+    return {
+      key: new Uint8Array(decryptedKeyBinary.asByteArray()),
+      metadata,
+    };
   }
 
-  // Merge the unwrapped keys from each KAS
-  const reconstructedKey = keyMerge(rewrappedKeys);
-  const reconstructedKeyBinary = Binary.fromArrayBuffer(reconstructedKey);
+  // Get unique split IDs to determine if we have an OR or AND condition
+  const splitIds = new Set(Object.keys(splitPotentials));
 
-  return {
-    reconstructedKeyBinary,
-    metadata: responseMetadata,
-  };
+  // If we have only one split ID, it's an OR condition
+  if (splitIds.size === 1) {
+    const [splitId] = splitIds;
+    const potentials = splitPotentials[splitId];
+
+    try {
+      // OR condition: Try all KAS servers for this split, take first success
+      const result = await Promise.any(
+        Object.values(potentials).map(async (keySplitInfo) => {
+          try {
+            return await tryKasRewrap(keySplitInfo);
+          } catch (e) {
+            // Rethrow with more context
+            throw handleRewrapError(e as Error | AxiosError);
+          }
+        })
+      );
+
+      const reconstructedKey = keyMerge([result.key]);
+      return {
+        reconstructedKeyBinary: Binary.fromArrayBuffer(reconstructedKey),
+        metadata: result.metadata,
+      };
+    } catch (error) {
+      if (error instanceof AggregateError) {
+        // All KAS servers failed
+        throw error.errors[0]; // Throw the first error since we've already wrapped them
+      }
+      throw error;
+    }
+  } else {
+    // AND condition: We need successful results from all different splits
+    const splitResults = await Promise.all(
+      Object.entries(splitPotentials).map(async ([splitId, potentials]) => {
+        if (!potentials || !Object.keys(potentials).length) {
+          throw new UnsafeUrlError(
+            `Unreconstructable key - no valid KAS found for split ${JSON.stringify(splitId)}`,
+            ''
+          );
+        }
+
+        try {
+          // For each split, try all potential KAS servers until one succeeds
+          return await Promise.any(
+            Object.values(potentials).map(async (keySplitInfo) => {
+              try {
+                return await tryKasRewrap(keySplitInfo);
+              } catch (e) {
+                throw handleRewrapError(e as Error | AxiosError);
+              }
+            })
+          );
+        } catch (error) {
+          if (error instanceof AggregateError) {
+            // All KAS servers for this split failed
+            throw error.errors[0]; // Throw the first error since we've already wrapped them
+          }
+          throw error;
+        }
+      })
+    );
+
+    // Merge all the split keys
+    const reconstructedKey = keyMerge(splitResults.map((r) => r.key));
+    return {
+      reconstructedKeyBinary: Binary.fromArrayBuffer(reconstructedKey),
+      metadata: splitResults[0].metadata, // Use metadata from first split
+    };
+  }
+}
+
+function handleRewrapError(error: Error | AxiosError) {
+  if (axios.isAxiosError(error)) {
+    if (error.response?.status && error.response?.status >= 500) {
+      return new ServiceError('rewrap failure', error);
+    } else if (error.response?.status === 403) {
+      return new PermissionDeniedError('rewrap failure', error);
+    } else if (error.response?.status === 401) {
+      return new UnauthenticatedError('rewrap auth failure', error);
+    } else if (error.response?.status === 400) {
+      return new InvalidFileError(
+        'rewrap bad request; could indicate an invalid policy binding or a configuration error',
+        error
+      );
+    } else {
+      return new NetworkError('rewrap server error', error);
+    }
+  } else {
+    if (error.name === 'InvalidAccessError' || error.name === 'OperationError') {
+      return new DecryptError('unable to unwrap key from kas', error);
+    }
+    return new InvalidFileError(
+      `Unable to decrypt the response from KAS: [${error.name}: ${error.message}]`,
+      error
+    );
+  }
 }
 
 async function decryptChunk(

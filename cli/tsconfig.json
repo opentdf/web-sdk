@@ -1,7 +1,7 @@
 {
   "extends": "../lib/tsconfig.json",
   "compilerOptions": {
-    "lib": ["es2020", "ES2022.Error"],
+    "lib": ["es2021", "ES2022.Error"],
     "module": "Node16",
     "outDir": "dist"
   },
