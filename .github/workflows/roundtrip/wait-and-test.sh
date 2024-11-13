@@ -17,21 +17,22 @@ _configure_app() {
     echo "[ERROR] Couldn't ci roundtrip command line app"
     return 1
   fi
-  if ! npm i "../../../cli/opentdf-ctl-${app_version}.tgz"; then
+  if ! npm i "${ROOT_DIR}/cli/opentdf-ctl-${app_version}.tgz"; then
+    echo "[ERROR] Couldn't install current command line app"
     return 1
   fi
   return 0
 }
 
-if [ $1 = backend ]; then
+if [ "$1" = backend ]; then
   VITE_PROXY='{"/api":{"target":"http://localhost:5432","xfwd":true},"/auth":{"target":"http://localhost:5432","xfwd":true}}'
   VITE_TDF_CFG='{"oidc":{"host":"http://localhost:65432/auth/realms/tdf","clientId":"browsertest"},"kas":"http://localhost:65432/api/kas","reader":"https://secure.virtru.com/start?htmlProtocol=1"}'
 else # if [ $1 = platform ]; then
   VITE_PROXY='{"/kas":{"target":"http://localhost:8080","xfwd":true},"/auth":{"target":"http://localhost:8888","xfwd":true}}'
   VITE_TDF_CFG='{"oidc":{"host":"http://localhost:65432/auth/realms/opentdf","clientId":"browsertest"},"kas":"http://localhost:65432/kas","reader":"https://secure.virtru.com/start?htmlProtocol=1"}'
 fi
-export VITE_PROXY
-export VITE_TDF_CFG
+export "VITE_PROXY"
+export "VITE_TDF_CFG"
 
 # VITE_PROXY='{"/api":"http://localhost:5432","/auth":"http://localhost:5432"}' VITE_TDF_CFG='{"oidc":{"host":"http://localhost:65432/auth/realms/tdf","clientId":"browsertest"},"kas":"http://localhost:65432/api/kas","reader":"https://secure.virtru.com/start?htmlProtocol=1"}' npm run dev
 
@@ -102,46 +103,10 @@ _init_platform() {
     echo "[ERROR] unable to cd ${APP_DIR}"
     exit 2
   fi
-  svc=github.com/opentdf/platform/service@latest
-  if [ -f go.work ]; then
-    svc=github.com/opentdf/platform/service
-  fi
-  if ! go run "${svc}" provision keycloak -f "${APP_DIR}/keycloak_data.yaml"; then
-    echo "[ERROR] unable to provision keycloak"
-    return 1
-  fi
   if ! ./config-demo-idp.sh; then
     echo "[ERROR] unable to provision keycloak"
     return 1
   fi
-  if ! ./init-temp-keys.sh; then
-    echo "[ERROR] unable to initialize keys"
-    return 1
-  fi
-  go run "${svc}" start &>"$output" &
-  server_pid=$!
-  echo "Platform pid: $server_pid"
-  echo "Output: $output"
-  echo "Wait:"
-  limit=5
-  for i in $(seq 1 $limit); do
-    if grep -q -i 'starting http server' "$output"; then
-      return 0
-    fi
-    if ! ps $server_pid >/dev/null; then
-      echo "The server died" >&2
-      cat "${output}"
-      exit 1
-    fi
-    if [[ $i == "$limit" ]]; then
-      echo "[WARN] Breaking _init_platform loop after ${limit} iterations"
-      cat "${output}"
-      break
-    fi
-    sleep_for=$((5 + i * i * 2))
-    echo "[INFO] retrying in ${sleep_for} seconds... ( ${i} / $limit ) ..."
-    sleep ${sleep_for}
-  done
 }
 
 if ! _configure_app; then
@@ -154,7 +119,7 @@ if ! _init_webapp; then
   exit 2
 fi
 
-if [ $1 = platform ]; then
+if [ "$1" = platform ]; then
   if ! _init_platform; then
     echo "[ERROR] Couldn't run platform"
     exit 2

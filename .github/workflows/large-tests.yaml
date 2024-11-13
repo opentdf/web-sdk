@@ -1,102 +1,15 @@
-name: Build, Test, and Deliver Client
+name: Large file test
 
 on:
+  push:
+    branches:
+      - main
+      - feature/large-okish
   schedule:
     - cron: '0 4 * * 2,4'
 jobs:
-  lib:
+  large-file-test:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./lib
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: './lib/package-lock.json'
-      - run: npm ci
-      - run: npm test
-      - uses: actions/upload-artifact@v4
-        with:
-          name: coverage
-          path: lib/coverage/
-      - run: npm audit --omit dev --audit-level moderate
-      - run: npm run license-check
-      - run: npm run lint
-      - run: npm pack
-      - uses: actions/upload-artifact@v4
-        with:
-          name: opentdf-sdk-lib
-          path: ./lib/opentdf-sdk-*.tgz
-
-  cli:
-    needs:
-      - lib
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./cli
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: './cli/package-lock.json'
-      - uses: actions/download-artifact@v4
-        with:
-          name: opentdf-sdk-lib
-          path: lib/
-      - run: npm uninstall @opentdf/sdk && npm ci && npm i ../lib/opentdf-sdk-*.tgz
-      - run: npm test
-      - run: npm audit --omit dev --audit-level moderate
-      - run: npm run license-check
-      - run: npm run lint
-      - run: npm pack
-      - uses: actions/upload-artifact@v4
-        with:
-          name: opentdf-ctl
-          path: ./cli/opentdf-ctl-*.tgz
-
-  web-app:
-    needs:
-      - lib
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./web-app
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: './web-app/package-lock.json'
-      - uses: actions/download-artifact@v4
-        with:
-          name: opentdf-sdk-lib
-          path: lib/
-      - run: npm uninstall @opentdf/sdk && npm ci && npm i ../lib/opentdf-sdk-*.tgz
-      - run: npm install
-      - run: npm test
-      - run: npm audit --omit dev --audit-level moderate
-      - run: npm run license-check
-      - run: npm run lint
-      - run: npm pack
-
-  backend-roundtrip:
-    needs:
-      - cli
-      - lib
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: .github/workflows/roundtrip
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
@@ -105,44 +18,11 @@ jobs:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: './web-app/package-lock.json'
-      - uses: actions/download-artifact@v4
-        with:
-          name: opentdf-sdk-lib
-          path: lib/
-      - uses: actions/download-artifact@v4
-        with:
-          name: opentdf-ctl
-          path: cli
-      - name: Git clone backend
-        run: |
-          git clone https://github.com/opentdf/opentdf.git
-      - uses: yokawasa/action-setup-kube-tools@v0.11.1
-        with:
-          setup-tools: |
-            kubectl
-            helm
-            tilt
-          # This should be in sync with the minikube-deployed kube version below
-          kubectl: '1.23.1'
-          helm: '3.8.0'
-          tilt: '0.26.2'
-      - run: |
-          kubectl version --client
-          kustomize version
-          tilt version
-      - name: start minikube
-        id: minikube
-        uses: medyagh/setup-minikube@master
-        with:
-          minikube-version: 1.25.1
-          # This should be in sync with the setup-tools version above
-          kubernetes-version: 1.23.1
-      - name: Run tilt ci
-        env:
-          #path relative to the quickstart Tiltfile
-          TEST_SCRIPT: ../../wait-and-test.sh
-          OPENTDF_INGRESS_HOST_PORT: '5432'
-          OPENTDF_LOAD_FRONTEND: 'false'
+      - run: make all && make test
+      - name: run platform
+        uses: opentdf/platform/test/start-up-with-containers@main
+      - env:
           PLAYWRIGHT_TESTS_TO_RUN: huge roundtrip
         run: |-
-          tilt ci --file opentdf/quickstart/Tiltfile
+          ./wait-and-test.sh platform
+        working-directory: .github/workflows/roundtrip
