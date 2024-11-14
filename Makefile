@@ -44,4 +44,4 @@ format license-check lint test: ci
 	for x in $(pkgs); do (cd $$x && npm run $@) || exit 1; done
 
 doc:
-	cd lib && npm run doc
+	cd lib && npm ci && npm run doc
