@@ -33,7 +33,7 @@ services:
         username: true
 server:
   auth:
-    enabled: false
+    enabled: true
     public_client_id: 'opentdf-public'
     audience: 'http://localhost:65432'
     issuer: http://localhost:65432/auth/realms/opentdf
