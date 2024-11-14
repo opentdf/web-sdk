@@ -214,7 +214,8 @@ jobs:
           go-version: '1.22'
       - name: Git clone backend
         run: |
-          git clone --depth 1 https://github.com/opentdf/platform.git
+          git clone https://github.com/opentdf/platform.git
+          git checkout 88496cdb36d015fddffa2383c742350e3ed373b3
           go work init
           for x in platform/{protocol/go,lib/{fixtures,ocrypto},sdk,service}; do go work use "$x"; done
       - run: docker compose up -d --wait --wait-timeout 240
