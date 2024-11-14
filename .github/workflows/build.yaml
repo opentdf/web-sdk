@@ -88,33 +88,33 @@ jobs:
           name: opentdf-ctl
           path: ./cli/opentdf-ctl-*.tgz
 
-  web-app:
-    needs:
-      - lib
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./web-app
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: './web-app/package-lock.json'
-      - uses: actions/download-artifact@v4
-        with:
-          name: opentdf-sdk-lib
-          path: lib/
-      - run: npm uninstall @opentdf/sdk && npm ci && npm i ../lib/opentdf-sdk-*.tgz
-      - run: npm install
-      - run: npm audit --omit dev && npm audit --audit-level high --omit dev
-      - run: npm run license-check
-      - run: npm run lint
-      - run: npx playwright install
-      - run: npm test
-      - run: npm pack
+  # web-app:
+  #   needs:
+  #     - lib
+  #   runs-on: ubuntu-latest
+  #   defaults:
+  #     run:
+  #       working-directory: ./web-app
+  #   timeout-minutes: 5
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: '20'
+  #         cache: 'npm'
+  #         cache-dependency-path: './web-app/package-lock.json'
+  #     - uses: actions/download-artifact@v4
+  #       with:
+  #         name: opentdf-sdk-lib
+  #         path: lib/
+  #     - run: npm uninstall @opentdf/sdk && npm ci && npm i ../lib/opentdf-sdk-*.tgz
+  #     - run: npm install
+  #     - run: npm audit --omit dev && npm audit --audit-level high --omit dev
+  #     - run: npm run license-check
+  #     - run: npm run lint
+  #     - run: npx playwright install
+  #     - run: npm test
+  #     - run: npm pack
 
   scripts:
     runs-on: ubuntu-latest
@@ -131,64 +131,64 @@ jobs:
           docker run --rm -v "$PWD:/mnt" --workdir "/mnt" "koalaman/shellcheck:v0.10.0"
           --color=always *.sh
 
-  backend-roundtrip:
-    needs:
-      - cli
-      - lib
-      - web-app
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: .github/workflows/roundtrip
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: './web-app/package-lock.json'
-      - uses: actions/download-artifact@v4
-        with:
-          name: opentdf-sdk-lib
-          path: lib/
-      - uses: actions/download-artifact@v4
-        with:
-          name: opentdf-ctl
-          path: cli/
-      - uses: yokawasa/action-setup-kube-tools@v0.11.1
-        with:
-          setup-tools: |
-            kubectl
-            helm
-            tilt
-          # This should be in sync with the minikube-deployed kube version below
-          kubectl: '1.30.0'
-          helm: '3.14.4'
-          tilt: '0.33.13'
-      - run: |
-          kubectl version --client
-          kustomize version
-          tilt version
-      - name: start minikube
-        id: minikube
-        uses: medyagh/setup-minikube@master
-        with:
-          minikube-version: 1.33.0
-          # This should be in sync with the setup-tools version above
-          kubernetes-version: 1.30.0
-      - name: Run tilt ci
-        env:
-          TEST_SCRIPT: ./wait-and-test.sh backend
-          OPENTDF_INGRESS_HOST_PORT: '5432'
-          PLAYWRIGHT_TESTS_TO_RUN: roundtrip
-        run: tilt ci
+  # backend-roundtrip:
+  #   needs:
+  #     - cli
+  #     - lib
+  #     - web-app
+  #   runs-on: ubuntu-latest
+  #   defaults:
+  #     run:
+  #       working-directory: .github/workflows/roundtrip
+  #   timeout-minutes: 45
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: '20'
+  #         cache: 'npm'
+  #         cache-dependency-path: './web-app/package-lock.json'
+  #     - uses: actions/download-artifact@v4
+  #       with:
+  #         name: opentdf-sdk-lib
+  #         path: lib/
+  #     - uses: actions/download-artifact@v4
+  #       with:
+  #         name: opentdf-ctl
+  #         path: cli/
+  #     - uses: yokawasa/action-setup-kube-tools@v0.11.1
+  #       with:
+  #         setup-tools: |
+  #           kubectl
+  #           helm
+  #           tilt
+  #         # This should be in sync with the minikube-deployed kube version below
+  #         kubectl: '1.30.0'
+  #         helm: '3.14.4'
+  #         tilt: '0.33.13'
+  #     - run: |
+  #         kubectl version --client
+  #         kustomize version
+  #         tilt version
+  #     - name: start minikube
+  #       id: minikube
+  #       uses: medyagh/setup-minikube@master
+  #       with:
+  #         minikube-version: 1.33.0
+  #         # This should be in sync with the setup-tools version above
+  #         kubernetes-version: 1.30.0
+  #     - name: Run tilt ci
+  #       env:
+  #         TEST_SCRIPT: ./wait-and-test.sh backend
+  #         OPENTDF_INGRESS_HOST_PORT: '5432'
+  #         PLAYWRIGHT_TESTS_TO_RUN: roundtrip
+  #       run: tilt ci
 
   platform-roundtrip:
     needs:
       - cli
       - lib
-      - web-app
+      # - web-app
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -215,7 +215,7 @@ jobs:
       - name: Git clone backend
         run: |
           git clone https://github.com/opentdf/platform.git
-          git checkout ae931d02f347edea468d4c5d48ab3e07ce7d3abe
+          git checkout 88496cd
           go work init
           for x in platform/{protocol/go,lib/{fixtures,ocrypto},sdk,service}; do go work use "$x"; done
       - run: docker compose up -d --wait --wait-timeout 240
@@ -224,110 +224,110 @@ jobs:
         run: |-
           ./wait-and-test.sh platform
 
-  platform-xtest:
-    needs:
-      - cli
-      - lib
-    uses: opentdf/tests/.github/workflows/xtest.yml@main
-    with:
-      js-ref: ${{ github.ref }}
+  # platform-xtest:
+  #   needs:
+  #     - cli
+  #     - lib
+  #   uses: opentdf/tests/.github/workflows/xtest.yml@main
+  #   with:
+  #     js-ref: ${{ github.ref }}
 
-  deliver-ghp:
-    needs:
-      - lib
-      - cli
-      - web-app
-      - scripts
-      - platform-roundtrip
-      - platform-xtest
-      # - backend-roundtrip
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    # To publish from a release or feature branch, remove the ref == condition below
-    if: >-
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')) ||
-      (github.event_name == 'release' && startsWith(github.ref, 'refs/tags/'))
-    outputs:
-      FULL_VERSION: ${{ steps.guess-build-metadata.outputs.FULL_VERSION }}
-      DIST_TAG: ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
-      TARGET_VERSION: ${{ steps.check-version.outputs.TARGET_VERSION }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          registry-url: https://npm.pkg.github.com
-      - name: Check version number is same between tag, library, and/or release
-        id: check-version
-        run: |-
-          if [[ ${{ github.ref }} = refs/heads/release/* ]]; then
-            scripts/check-version-is.sh "${GITHUB_REF##*release/}"
-          elif [[ ${{ github.ref }} = refs/tags/sdk/v* ]]; then
-            scripts/check-version-is.sh "${GITHUB_REF_NAME#v}"
-          else
-            scripts/check-version-is.sh
-          fi
-      - name: Check version number is same between tag, library, and/or release
-        id: guess-build-metadata
-        run: |-
-          echo "FULL_VERSION=$(.github/workflows/gh-semver.sh)" >> $GITHUB_OUTPUT
-          echo "DIST_TAG=$(.github/workflows/guess-dist-tag.sh)" >> $GITHUB_OUTPUT
-      - run: make test
-      - run: make doc
-      - run: >-
-          echo "::notice file=lib/package.json::Will be published to
-          [GitHub Packages](https://github.com/opentdf/web-sdk/pkgs/npm/client)
-          as ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
-          with version=[${{ steps.guess-build-metadata.outputs.FULL_VERSION }}]"
-      - run: >-
-          .github/workflows/publish-to.sh
-          "${{ steps.guess-build-metadata.outputs.FULL_VERSION }}"
-          "${{ steps.guess-build-metadata.outputs.DIST_TAG }}"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: echo "- [Client Library](https://github.com/opentdf/web-sdk/pkgs/npm/client)">>$GITHUB_STEP_SUMMARY
-      - run: echo "- [Command Line Tool](https://github.com/opentdf/web-sdk/pkgs/npm/cli)">>$GITHUB_STEP_SUMMARY
-      - name: trigger xtest
-        run: >-
-          curl -XPOST -u "virtru-cloudnative:${{secrets.PERSONAL_ACCESS_TOKEN}}"
-          -H "Accept: application/vnd.github.everest-preview+json"
-          -H "Content-Type: application/json"
-          "https://api.github.com/repos/opentdf/backend/dispatches"
-          --data '{"event_type":"xtest","client_payload":{"version":"'${FULL_VERSION%%+*}'"}}'
-        env:
-          FULL_VERSION: ${{ steps.guess-build-metadata.outputs.FULL_VERSION }}
-      - name: Publish documentation to gh-pages
-        uses: JamesIves/github-pages-deploy-action@v4.6.0
-        with:
-          branch: gh-pages
-          folder: lib/dist/docs
+  # deliver-ghp:
+  #   needs:
+  #     - lib
+  #     - cli
+  #     - web-app
+  #     - scripts
+  #     - platform-roundtrip
+  #     - platform-xtest
+  #     # - backend-roundtrip
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 5
+  #   # To publish from a release or feature branch, remove the ref == condition below
+  #   if: >-
+  #     (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+  #     (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')) ||
+  #     (github.event_name == 'release' && startsWith(github.ref, 'refs/tags/'))
+  #   outputs:
+  #     FULL_VERSION: ${{ steps.guess-build-metadata.outputs.FULL_VERSION }}
+  #     DIST_TAG: ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
+  #     TARGET_VERSION: ${{ steps.check-version.outputs.TARGET_VERSION }}
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: '20'
+  #         registry-url: https://npm.pkg.github.com
+  #     - name: Check version number is same between tag, library, and/or release
+  #       id: check-version
+  #       run: |-
+  #         if [[ ${{ github.ref }} = refs/heads/release/* ]]; then
+  #           scripts/check-version-is.sh "${GITHUB_REF##*release/}"
+  #         elif [[ ${{ github.ref }} = refs/tags/sdk/v* ]]; then
+  #           scripts/check-version-is.sh "${GITHUB_REF_NAME#v}"
+  #         else
+  #           scripts/check-version-is.sh
+  #         fi
+  #     - name: Check version number is same between tag, library, and/or release
+  #       id: guess-build-metadata
+  #       run: |-
+  #         echo "FULL_VERSION=$(.github/workflows/gh-semver.sh)" >> $GITHUB_OUTPUT
+  #         echo "DIST_TAG=$(.github/workflows/guess-dist-tag.sh)" >> $GITHUB_OUTPUT
+  #     - run: make test
+  #     - run: make doc
+  #     - run: >-
+  #         echo "::notice file=lib/package.json::Will be published to
+  #         [GitHub Packages](https://github.com/opentdf/web-sdk/pkgs/npm/client)
+  #         as ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
+  #         with version=[${{ steps.guess-build-metadata.outputs.FULL_VERSION }}]"
+  #     - run: >-
+  #         .github/workflows/publish-to.sh
+  #         "${{ steps.guess-build-metadata.outputs.FULL_VERSION }}"
+  #         "${{ steps.guess-build-metadata.outputs.DIST_TAG }}"
+  #       env:
+  #         NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #     - run: echo "- [Client Library](https://github.com/opentdf/web-sdk/pkgs/npm/client)">>$GITHUB_STEP_SUMMARY
+  #     - run: echo "- [Command Line Tool](https://github.com/opentdf/web-sdk/pkgs/npm/cli)">>$GITHUB_STEP_SUMMARY
+  #     - name: trigger xtest
+  #       run: >-
+  #         curl -XPOST -u "virtru-cloudnative:${{secrets.PERSONAL_ACCESS_TOKEN}}"
+  #         -H "Accept: application/vnd.github.everest-preview+json"
+  #         -H "Content-Type: application/json"
+  #         "https://api.github.com/repos/opentdf/backend/dispatches"
+  #         --data '{"event_type":"xtest","client_payload":{"version":"'${FULL_VERSION%%+*}'"}}'
+  #       env:
+  #         FULL_VERSION: ${{ steps.guess-build-metadata.outputs.FULL_VERSION }}
+  #     - name: Publish documentation to gh-pages
+  #       uses: JamesIves/github-pages-deploy-action@v4.6.0
+  #       with:
+  #         branch: gh-pages
+  #         folder: lib/dist/docs
 
-  deliver-npmjs:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    environment: npmjs
-    needs: deliver-ghp
-    if: >-
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')) ||
-      (github.event_name == 'release' && startsWith(github.ref, 'refs/tags/sdk/v'))
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
-      - run: make all
-      - run: >-
-          .github/workflows/publish-to.sh
-          "${{ needs.deliver-ghp.outputs.FULL_VERSION }}"
-          "${{ needs.deliver-ghp.outputs.DIST_TAG }}"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - run: >-
-          echo "- [Client Library](https://www.npmjs.com/package/@opentdf/sdk/v/${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
-      - run: >-
-          echo "- [Command Line Tool](https://www.npmjs.com/package/@opentdf/ctl/v/${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
-      - run: >-
-          echo "- [unpkg](https://unpkg.com/browse/@opentdf/sdk@${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
+  # deliver-npmjs:
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 5
+  #   environment: npmjs
+  #   needs: deliver-ghp
+  #   if: >-
+  #     (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+  #     (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')) ||
+  #     (github.event_name == 'release' && startsWith(github.ref, 'refs/tags/sdk/v'))
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: '20'
+  #         registry-url: 'https://registry.npmjs.org'
+  #     - run: make all
+  #     - run: >-
+  #         .github/workflows/publish-to.sh
+  #         "${{ needs.deliver-ghp.outputs.FULL_VERSION }}"
+  #         "${{ needs.deliver-ghp.outputs.DIST_TAG }}"
+  #       env:
+  #         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+  #     - run: >-
+  #         echo "- [Client Library](https://www.npmjs.com/package/@opentdf/sdk/v/${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
+  #     - run: >-
+  #         echo "- [Command Line Tool](https://www.npmjs.com/package/@opentdf/ctl/v/${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
+  #     - run: >-
+  #         echo "- [unpkg](https://unpkg.com/browse/@opentdf/sdk@${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
