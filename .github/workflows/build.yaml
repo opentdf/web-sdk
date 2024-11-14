@@ -184,9 +184,7 @@ jobs:
       - cli
       - web-app
       - scripts
-      - platform-roundtrip
       - platform-xtest
-      # - backend-roundtrip
     runs-on: ubuntu-latest
     timeout-minutes: 5
     # To publish from a release or feature branch, remove the ref == condition below
