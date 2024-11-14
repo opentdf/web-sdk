@@ -215,7 +215,9 @@ jobs:
       - name: Git clone backend
         run: |
           git clone https://github.com/opentdf/platform.git
+          cd platform
           git checkout 88496cd
+          cd ..
           go work init
           for x in platform/{protocol/go,lib/{fixtures,ocrypto},sdk,service}; do go work use "$x"; done
       - run: docker compose up -d --wait --wait-timeout 240
