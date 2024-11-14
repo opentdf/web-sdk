@@ -216,7 +216,7 @@ jobs:
         run: |
           git clone https://github.com/opentdf/platform.git
           cd platform
-          git checkout 88496cd
+          git checkout ae931d0
           cd ..
           go work init
           for x in platform/{protocol/go,lib/{fixtures,ocrypto},sdk,service}; do go work use "$x"; done
