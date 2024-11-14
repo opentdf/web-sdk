@@ -275,3 +275,16 @@ jobs:
           echo "- [Command Line Tool](https://www.npmjs.com/package/@opentdf/ctl/v/${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
       - run: >-
           echo "- [unpkg](https://unpkg.com/browse/@opentdf/sdk@${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
+
+  ci:
+    needs:
+      - lib
+      - cli
+      - web-app
+      - scripts
+      - platform-xtest
+    runs-on: ubuntu-22.04
+    if: ${{ !cancelled() }}
+    steps:
+      - if: contains(needs.*.result, 'failure')
+        run: echo "Failed due to ${{ contains(needs.*.result, 'failure') }}" && exit 1
