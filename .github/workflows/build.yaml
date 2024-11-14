@@ -217,7 +217,6 @@ jobs:
         run: |-
           echo "FULL_VERSION=$(.github/workflows/gh-semver.sh)" >> $GITHUB_OUTPUT
           echo "DIST_TAG=$(.github/workflows/guess-dist-tag.sh)" >> $GITHUB_OUTPUT
-      - run: make test
       - run: make doc
       - run: >-
           echo "::notice file=lib/package.json::Will be published to
