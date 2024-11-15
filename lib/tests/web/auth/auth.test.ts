@@ -336,8 +336,14 @@ describe('AccessToken', () => {
         when: Date.now() - 10 * 60 * 1000,
       });
       // Do a refresh to cache tokenset
-      const res = await accessTokenClient.get();
-      expect(res).to.eql('a');
+      const res = await Promise.all([
+        accessTokenClient.get(),
+        accessTokenClient.get(),
+        accessTokenClient.get(),
+        accessTokenClient.get(),
+        accessTokenClient.get(),
+      ]);
+      expect(res).to.include('a');
       expect(mf.callCount).to.eql(2);
     });
   });
