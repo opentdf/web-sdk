@@ -991,7 +991,10 @@ async function unwrapKey({
     };
   }
 
-  const poolSize = concurrencyLimit === undefined ? 1 : concurrencyLimit > 1 ? concurrencyLimit : 1;
+  let poolSize = 1;
+  if (concurrencyLimit !== undefined && concurrencyLimit > 1) {
+    poolSize = concurrencyLimit;
+  }
   const splitPromises: Record<string, Promise<RewrapResponseData>> = {};
   for (const splitId of Object.keys(splitPotentials)) {
     const potentials = splitPotentials[splitId];
