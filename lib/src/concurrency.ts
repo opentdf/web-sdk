@@ -26,18 +26,15 @@ export async function allPool<T>(n: number, p: Record<string, Promise<T>>): Prom
       try {
         const { lid, value } = await Promise.race(promises);
         resolved.push(await value);
-        console.log(`succeeded on promise ${lid}`, value);
         delete pool[lid];
       } catch (err) {
-        const { lid, e } = err as LabelledFailure;
-        console.warn(`failed on promise ${lid}`, err);
+        const { e } = err as LabelledFailure;
         throw e;
       }
     }
   }
   try {
     for (const labelled of await Promise.all(Object.values(pool))) {
-      console.log(`real.all succeeded on promise ${labelled.lid}`, labelled);
       resolved.push(await labelled.value);
     }
   } catch (err) {
@@ -63,23 +60,19 @@ export async function anyPool<T>(n: number, p: Record<string, Promise<T>>): Prom
     if (Object.keys(pool).length > n - 1) {
       const promises = Object.values(pool);
       try {
-        const { lid, value } = await Promise.race(promises);
-        console.log(`any succeeded on promise ${lid}`, value);
+        const { value } = await Promise.race(promises);
         return await value;
       } catch (error) {
         const { lid, e } = error;
         rejections.push(e);
         delete pool[lid];
-        console.log(`any failed on promise ${lid}`, e);
       }
     }
   }
   try {
-    const { lid, value } = await Promise.any(Object.values(pool));
-    console.log(`real.any succeeded on promise ${lid}`);
+    const { value } = await Promise.any(Object.values(pool));
     return await value;
   } catch (errors) {
-    console.log(`real.any failed`, errors);
     if (errors instanceof AggregateError) {
       for (const error of errors.errors) {
         if ('lid' in error && 'e' in error) {
