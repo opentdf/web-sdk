@@ -59,6 +59,10 @@ export type AccessTokenResponse = {
   refresh_token?: string;
 };
 
+export type TimeStamp = {
+  when: number;
+};
+
 /**
  * Class that provides OIDC functionality to auth providers, assuming 'enhanced'
  * tokens and sessions with tdf_claims and either one or both of signing keys
@@ -84,9 +88,10 @@ export type AccessTokenResponse = {
 export class AccessToken {
   config: OIDCCredentials;
 
+  // For mocking fetch
   request?: (input: RequestInfo, init?: RequestInit) => Promise<Response>;
 
-  data?: AccessTokenResponse;
+  data?: Promise<AccessTokenResponse & TimeStamp>;
 
   baseUrl: string;
 
@@ -170,7 +175,7 @@ export class AccessToken {
     });
   }
 
-  async accessTokenLookup(cfg: OIDCCredentials) {
+  async accessTokenLookup(cfg: OIDCCredentials): Promise<AccessTokenResponse & TimeStamp> {
     const url = `${this.baseUrl}/protocol/openid-connect/token`;
     let body;
     switch (cfg.exchange) {
@@ -205,7 +210,9 @@ export class AccessToken {
         `token/code exchange fail: POST [${url}] => ${response.status} ${response.statusText}`
       );
     }
-    return response.json();
+    const r = await response.json();
+    r.when = Date.now();
+    return r;
   }
 
   /**
@@ -213,29 +220,43 @@ export class AccessToken {
    * @param validate if we should run a inline check against the OIDC 'userinfo' endpoint to make sure any cached access token is still valid
    * @returns
    */
-  async get(validate = true): Promise<string> {
-    if (this.data?.access_token) {
+  async get(validate?: boolean): Promise<string> {
+    let isNew = false;
+    const now = Date.now();
+    if (!this.data) {
+      this.data = this.accessTokenLookup(this.config);
+      isNew = true;
+    }
+    let tokenResponse: AccessTokenResponse & TimeStamp;
+    try {
+      tokenResponse = await this.data;
+    } catch (e) {
+      // Failed during token exchange.
+      delete this.data;
+      throw e;
+    }
+    if (isNew) {
+      // If we just did the first token exchange, we may have a refresh token.
+      if (tokenResponse.refresh_token) {
+        // Upgrade to refresh token type, if we have one
+        this.config = {
+          ...this.config,
+          exchange: 'refresh',
+          refreshToken: tokenResponse.refresh_token,
+        };
+      }
+      return tokenResponse.access_token;
+    }
+    if (!!validate || (validate === undefined && now - tokenResponse.when > 1000 * 60 * 5)) {
+      // If we are using an older token, and wish to validate it first, do so now
       try {
-        if (validate) {
-          await this.info(this.data.access_token);
-        }
-        return this.data.access_token;
+        await this.info(tokenResponse.access_token);
       } catch (e) {
         console.log('access_token fails on user_info endpoint; attempting to renew', e);
-        if (this.data.refresh_token) {
-          // Prefer the latest refresh_token if present over creds passed in
-          // to constructor
-          this.config = {
-            ...this.config,
-            exchange: 'refresh',
-            refreshToken: this.data.refresh_token,
-          };
-        }
         delete this.data;
+        return this.get(false);
       }
     }
-
-    const tokenResponse = (this.data = await this.accessTokenLookup(this.config));
     return tokenResponse.access_token;
   }
 
@@ -260,28 +281,22 @@ export class AccessToken {
   /**
    * Converts included refresh token or external JWT for a new one.
    */
-  async exchangeForRefreshToken(): Promise<string> {
+  async exchangeForRefreshToken(): Promise<void> {
     const cfg = this.config;
     if (cfg.exchange != 'external' && cfg.exchange != 'refresh') {
       throw new ConfigurationError('no refresh token provided!');
     }
-    const tokenResponse = (this.data = await this.accessTokenLookup(this.config));
+    const tokenResponse = await (this.data = this.accessTokenLookup(this.config));
     if (!tokenResponse.refresh_token) {
-      console.log('No refresh_token returned');
-      return (
-        (cfg.exchange == 'refresh' && cfg.refreshToken) ||
-        (cfg.exchange == 'external' && cfg.externalJwt) ||
-        ''
-      );
+      return;
     }
     // Prefer the latest refresh_token if present over creds passed in
-    // to constructor
+    // to constructor, for token exchange. Refresh tokens usually stay the same.
     this.config = {
       ...this.config,
       exchange: 'refresh',
       refreshToken: tokenResponse.refresh_token,
     };
-    return tokenResponse.access_token;
   }
 
   async withCreds(httpReq: HttpRequest): Promise<HttpRequest> {

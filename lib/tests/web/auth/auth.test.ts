@@ -297,10 +297,11 @@ describe('AccessToken', () => {
         },
         mf
       );
-      accessTokenClient.data = {
-        refresh_token: 'r',
+      accessTokenClient.data = Promise.resolve({
         access_token: 'a',
-      };
+        refresh_token: 'r',
+        when: Date.now(),
+      });
       // Do a refresh to cache tokenset
       const res = await accessTokenClient.get();
       expect(res).to.eql('a');
@@ -329,10 +330,11 @@ describe('AccessToken', () => {
         },
         mf
       );
-      accessTokenClient.data = {
-        refresh_token: 'r',
+      accessTokenClient.data = Promise.resolve({
         access_token: 'a',
-      };
+        refresh_token: 'r',
+        when: Date.now() - 10 * 60 * 1000,
+      });
       // Do a refresh to cache tokenset
       const res = await accessTokenClient.get();
       expect(res).to.eql('a');
