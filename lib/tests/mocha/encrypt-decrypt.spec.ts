@@ -2,13 +2,19 @@
 import { assert } from 'chai';
 
 import { getMocks } from '../mocks/index.js';
-import { HttpRequest } from '../../src/auth/auth.js';
-import { WebCryptoService } from '../../tdf3/index.js';
+import { HttpMethod, HttpRequest } from '../../src/auth/auth.js';
+import { AesGcmCipher, KeyInfo, SplitKey, WebCryptoService } from '../../tdf3/index.js';
 import { Client } from '../../tdf3/src/index.js';
-import { SplitKey } from '../../tdf3/src/models/encryption-information.js';
-import { AesGcmCipher } from '../../tdf3/src/ciphers/aes-gcm-cipher.js';
 import { AssertionConfig, AssertionVerificationKeys } from '../../tdf3/src/assertions.js';
 import { Scope } from '../../tdf3/src/client/builders.js';
+import {
+  InvalidFileError,
+  NetworkError,
+  PermissionDeniedError,
+  ServiceError,
+  UnauthenticatedError,
+} from '../../src/errors.js';
+
 const Mocks = getMocks();
 
 const authProvider = {
@@ -16,6 +22,277 @@ const authProvider = {
   updateClientPublicKey: async () => {},
   withCreds: async (httpReq: HttpRequest) => httpReq,
 };
+
+describe('rewrap error cases', function () {
+  const kasUrl = 'http://localhost:3000';
+  const expectedVal = 'test data';
+  let client: Client.Client;
+  let cipher: AesGcmCipher;
+  let encryptionInformation: SplitKey;
+  let key1: KeyInfo;
+
+  beforeEach(async function () {
+    // Setup base auth provider that will be modified per test
+    const baseAuthProvider = {
+      updateClientPublicKey: async () => {},
+      withCreds: async (httpReq: HttpRequest) => httpReq,
+    };
+
+    client = new Client.Client({
+      kasEndpoint: kasUrl,
+      dpopKeys: Mocks.entityKeyPair(),
+      clientId: 'id',
+      authProvider: baseAuthProvider,
+    });
+
+    cipher = new AesGcmCipher(WebCryptoService);
+    encryptionInformation = new SplitKey(cipher);
+    key1 = await encryptionInformation.generateKey();
+  });
+
+  async function encryptTestData({
+    customAuthProvider,
+  }: {
+    customAuthProvider?:
+      | {
+          updateClientPublicKey: () => Promise<void>;
+          withCreds:
+            | ((httpReq: HttpRequest) => Promise<{
+                headers: { authorization: string };
+                method: HttpMethod;
+                params?: object | undefined;
+                url: string;
+                body?: unknown;
+              }>)
+            | ((httpReq: HttpRequest) => Promise<{
+                headers: { 'x-test-response': string };
+                method: HttpMethod;
+                params?: object | undefined;
+                url: string;
+                body?: unknown;
+              }>)
+            | ((httpReq: HttpRequest) => Promise<{
+                body: { invalidField: string };
+                headers: Record<string, string>;
+                method: HttpMethod;
+                params?: object | undefined;
+                url: string;
+              }>)
+            | ((httpReq: HttpRequest) => Promise<{
+                body: { invalidKey: boolean };
+                headers: Record<string, string>;
+                method: HttpMethod;
+                params?: object | undefined;
+                url: string;
+              }>);
+        }
+      | undefined;
+  }) {
+    const keyMiddleware = async () => ({ keyForEncryption: key1, keyForManifest: key1 });
+
+    if (customAuthProvider) {
+      client = new Client.Client({
+        kasEndpoint: kasUrl,
+        dpopKeys: Mocks.entityKeyPair(),
+        clientId: 'id',
+        authProvider: customAuthProvider,
+      });
+    }
+
+    const eo = await Mocks.getEntityObject();
+    return client.encrypt({
+      eo,
+      metadata: Mocks.getMetadataObject(),
+      offline: true,
+      scope: {
+        dissem: ['user@domain.com'],
+        attributes: [],
+      },
+      keyMiddleware,
+      source: new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode(expectedVal));
+          controller.close();
+        },
+      }),
+    });
+  }
+
+  it('should handle 401 Unauthorized error', async function () {
+    const authProvider = {
+      updateClientPublicKey: async () => {},
+      withCreds: async (httpReq: HttpRequest) => ({
+        ...httpReq,
+        headers: { ...httpReq.headers, authorization: 'Invalid' },
+      }),
+    };
+
+    const encryptedStream = await encryptTestData({ customAuthProvider: authProvider });
+
+    const eo = await Mocks.getEntityObject();
+    try {
+      await client.decrypt({
+        eo,
+        source: {
+          type: 'stream',
+          location: encryptedStream.stream,
+        },
+      });
+      assert.fail('Expected UnauthenticatedError');
+    } catch (error) {
+      assert.instanceOf(error, UnauthenticatedError);
+      assert.include(error.message, 'rewrap auth failure');
+    }
+  });
+
+  it('should handle 403 Forbidden error', async function () {
+    const authProvider = {
+      updateClientPublicKey: async () => {},
+      withCreds: async (httpReq: HttpRequest) => ({
+        ...httpReq,
+        headers: { ...httpReq.headers, 'x-test-response': '403' },
+      }),
+    };
+
+    const encryptedStream = await encryptTestData({ customAuthProvider: authProvider });
+
+    const eo = await Mocks.getEntityObject();
+    try {
+      await client.decrypt({
+        eo,
+        source: {
+          type: 'stream',
+          location: encryptedStream.stream,
+        },
+      });
+      assert.fail('Expected PermissionDeniedError');
+    } catch (error) {
+      assert.instanceOf(error, PermissionDeniedError);
+      assert.include(error.message, 'rewrap failure');
+    }
+  });
+
+  it('should handle 400 Bad Request error', async function () {
+    // Modify the mock server to return 400 for invalid body
+    const authProvider = {
+      updateClientPublicKey: async () => {},
+      withCreds: async (httpReq: HttpRequest) => ({
+        ...httpReq,
+        headers: {
+          ...httpReq.headers,
+          'x-test-response': '400',
+          'x-test-response-message': 'IntegrityError',
+        },
+      }),
+    };
+
+    const encryptedStream = await encryptTestData({ customAuthProvider: authProvider });
+
+    const eo = await Mocks.getEntityObject();
+    try {
+      await client.decrypt({
+        eo,
+        source: {
+          type: 'stream',
+          location: encryptedStream.stream,
+        },
+      });
+      assert.fail('Expected InvalidFileError');
+    } catch (error) {
+      assert.instanceOf(error, InvalidFileError);
+      assert.include(error.message, 'rewrap bad request');
+    }
+  });
+
+  it('should handle 500 Server error', async function () {
+    const authProvider = {
+      updateClientPublicKey: async () => {},
+      withCreds: async (httpReq: HttpRequest) => ({
+        ...httpReq,
+        headers: { ...httpReq.headers, 'x-test-response': '500' },
+      }),
+    };
+
+    const encryptedStream = await encryptTestData({ customAuthProvider: authProvider });
+
+    const eo = await Mocks.getEntityObject();
+    try {
+      await client.decrypt({
+        eo,
+        source: {
+          type: 'stream',
+          location: encryptedStream.stream,
+        },
+      });
+      assert.fail('Expected ServiceError');
+    } catch (error) {
+      assert.instanceOf(error, ServiceError);
+      assert.include(error.message, 'rewrap failure');
+    }
+  });
+
+  it('should handle network failures', async function () {
+    try {
+      // Point to a non-existent server
+      client = new Client.Client({
+        kasEndpoint: 'http://localhost:9999',
+        dpopKeys: Mocks.entityKeyPair(),
+        clientId: 'id',
+        authProvider: {
+          updateClientPublicKey: async () => {},
+          withCreds: async (httpReq: HttpRequest) => httpReq,
+        },
+      });
+
+      const encryptedStream = await encryptTestData({});
+
+      const eo = await Mocks.getEntityObject();
+
+      await client.decrypt({
+        eo,
+        source: {
+          type: 'stream',
+          location: encryptedStream.stream,
+        },
+      });
+      assert.fail('Expected NetworkError');
+    } catch (error) {
+      assert.instanceOf(error, NetworkError);
+    }
+  });
+
+  it('should handle decrypt errors with invalid keys', async function () {
+    const authProvider = {
+      updateClientPublicKey: async () => {},
+      withCreds: async (httpReq: HttpRequest) => ({
+        ...httpReq,
+        body: { invalidKey: true },
+        headers: {
+          ...httpReq.headers,
+          'x-test-response': '400',
+          'x-test-response-message': 'DecryptError',
+        },
+      }),
+    };
+
+    const encryptedStream = await encryptTestData({ customAuthProvider: authProvider });
+
+    const eo = await Mocks.getEntityObject();
+    try {
+      await client.decrypt({
+        eo,
+        source: {
+          type: 'stream',
+          location: encryptedStream.stream,
+        },
+      });
+      assert.fail('Expected InvalidFileError');
+    } catch (error) {
+      assert.instanceOf(error, InvalidFileError);
+      assert.include(error.message, 'rewrap bad request');
+    }
+  });
+});
 
 describe('encrypt decrypt test', async function () {
   const expectedVal = 'hello world';
