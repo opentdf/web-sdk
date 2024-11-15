@@ -223,16 +223,20 @@ export class AccessToken {
   async get(validate?: boolean): Promise<string> {
     let isNew = false;
     const now = Date.now();
-    if (!this.data) {
-      this.data = this.accessTokenLookup(this.config);
+    let currentData = this.data;
+    if (!currentData) {
+      currentData = this.accessTokenLookup(this.config);
+      this.data = currentData;
       isNew = true;
     }
     let tokenResponse: AccessTokenResponse & TimeStamp;
     try {
-      tokenResponse = await this.data;
+      tokenResponse = await currentData;
     } catch (e) {
       // Failed during token exchange.
-      delete this.data;
+      if (this.data === currentData) {
+        delete this.data;
+      }
       throw e;
     }
     if (isNew) {
@@ -247,13 +251,16 @@ export class AccessToken {
       }
       return tokenResponse.access_token;
     }
+
+    // Validate if explicitly requested or, if not defined, when the token is older than 5 minutes.
     if (!!validate || (validate === undefined && now - tokenResponse.when > 1000 * 60 * 5)) {
-      // If we are using an older token, and wish to validate it first, do so now
       try {
         await this.info(tokenResponse.access_token);
       } catch (e) {
         console.log('access_token fails on user_info endpoint; attempting to renew', e);
-        delete this.data;
+        if (this.data === currentData) {
+          delete this.data;
+        }
         return this.get(false);
       }
     }
