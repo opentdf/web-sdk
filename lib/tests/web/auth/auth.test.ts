@@ -297,11 +297,10 @@ describe('AccessToken', () => {
         },
         mf
       );
-      accessTokenClient.data = Promise.resolve({
+      accessTokenClient.data = {
         access_token: 'a',
         refresh_token: 'r',
-        when: Date.now(),
-      });
+      };
       // Do a refresh to cache tokenset
       const res = await accessTokenClient.get();
       expect(res).to.eql('a');
@@ -310,15 +309,30 @@ describe('AccessToken', () => {
     });
     it('should attempt to refresh token if userinfo call throws error', async () => {
       const signingKey = await crypto.subtle.generateKey(algorithmSigner, true, ['sign']);
-      const json = fake.resolves({ access_token: 'a' });
+      const json = fake.resolves({ access_token: 'A' });
       const mf = fake((url: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
         if (!init) {
           return Promise.reject('No init found');
         }
-        if (init.method === 'POST') {
+        if (typeof (url as unknown) == 'string') {
+          url = new URL(url as string);
+        } else if (!(url instanceof URL)) {
+          return Promise.reject('url is not a string or URL');
+        }
+        if (init.method === 'POST' && url.pathname.endsWith('token')) {
           return Promise.resolve({ ...ok, json });
         }
-        return Promise.reject(`yee [${url}] [${JSON.stringify(init.headers)}]`);
+        if (url.pathname.endsWith('userinfo')) {
+          if (
+            !init.headers ||
+            !('Authorization' in init.headers) ||
+            init.headers.Authorization !== 'Bearer A'
+          ) {
+            return Promise.reject('yee');
+          }
+          return Promise.resolve({ ...ok, json: fake.resolves({ email: 'user@some.where' }) });
+        }
+        return Promise.reject('zee');
       });
       const accessTokenClient = new AccessToken(
         {
@@ -330,11 +344,11 @@ describe('AccessToken', () => {
         },
         mf
       );
-      accessTokenClient.data = Promise.resolve({
+      accessTokenClient.data = {
         access_token: 'a',
         refresh_token: 'r',
-        when: Date.now() - 10 * 60 * 1000,
-      });
+        timestamp: Date.now() - 1000 * 60 * 60,
+      };
       // Do a refresh to cache tokenset
       const res = await Promise.all([
         accessTokenClient.get(),
@@ -343,7 +357,7 @@ describe('AccessToken', () => {
         accessTokenClient.get(),
         accessTokenClient.get(),
       ]);
-      expect(res).to.include('a');
+      expect(res).to.include('A');
       expect(mf.callCount).to.eql(2);
     });
   });
