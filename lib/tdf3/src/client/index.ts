@@ -562,6 +562,7 @@ export class Client {
     streamMiddleware = async (stream: DecoratedReadableStream) => stream,
     assertionVerificationKeys,
     noVerifyAssertions,
+    concurrencyLimit = 1,
   }: DecryptParams): Promise<DecoratedReadableStream> {
     const dpopKeys = await this.dpopKeys;
     let entityObject;
@@ -587,6 +588,7 @@ export class Client {
         allowList: this.allowedKases,
         authProvider: this.authProvider,
         chunker,
+        concurrencyLimit,
         cryptoService: this.cryptoService,
         dpopKeys,
         entity: entityObject,

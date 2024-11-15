@@ -519,6 +519,7 @@ export type DecryptParams = {
   keyMiddleware?: DecryptKeyMiddleware;
   streamMiddleware?: DecryptStreamMiddleware;
   assertionVerificationKeys?: AssertionVerificationKeys;
+  concurrencyLimit?: number;
   noVerifyAssertions?: boolean;
 };
 
@@ -683,6 +684,11 @@ class DecryptParamsBuilder {
 
   _deepCopy(_params: DecryptParams) {
     return freeze({ ..._params });
+  }
+
+  withConcurrencyLimit(limit: number): DecryptParamsBuilder {
+    this._params.concurrencyLimit = limit;
+    return this;
   }
 
   /**

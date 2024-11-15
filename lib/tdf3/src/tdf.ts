@@ -65,6 +65,7 @@ import PolicyObject from '../../src/tdf/PolicyObject.js';
 import { type CryptoService, type DecryptResult } from './crypto/declarations.js';
 import { CentralDirectory } from './utils/zip-reader.js';
 import { SymmetricCipher } from './ciphers/symmetric-cipher-base.js';
+import { allPool, anyPool } from '../../src/concurrency.js';
 
 // TODO: input validation on manifest JSON
 const DEFAULT_SEGMENT_SIZE = 1024 * 1024;
@@ -163,6 +164,7 @@ export type DecryptConfiguration = {
   fileStreamServiceWorker?: string;
   assertionVerificationKeys?: AssertionVerificationKeys;
   noVerifyAssertions?: boolean;
+  concurrencyLimit?: number;
 };
 
 export type UpsertConfiguration = {
@@ -904,17 +906,24 @@ export function splitLookupTableFactory(
   return splitPotentials;
 }
 
+type RewrapResponseData = {
+  key: Uint8Array;
+  metadata: Record<string, unknown>;
+};
+
 async function unwrapKey({
   manifest,
   allowedKases,
   authProvider,
   dpopKeys,
+  concurrencyLimit,
   entity,
   cryptoService,
 }: {
   manifest: Manifest;
   allowedKases: OriginAllowList;
   authProvider: AuthProvider | AppIdAuthProvider;
+  concurrencyLimit?: number;
   dpopKeys: CryptoKeyPair;
   entity: EntityObject | undefined;
   cryptoService: CryptoService;
@@ -928,7 +937,7 @@ async function unwrapKey({
   const splitPotentials = splitLookupTableFactory(keyAccess, allowedKases);
   const isAppIdProvider = authProvider && isAppIdProviderCheck(authProvider);
 
-  async function tryKasRewrap(keySplitInfo: KeyAccessObject) {
+  async function tryKasRewrap(keySplitInfo: KeyAccessObject): Promise<RewrapResponseData> {
     const url = `${keySplitInfo.url}/${isAppIdProvider ? '' : 'v2/'}rewrap`;
     const ephemeralEncryptionKeys = await cryptoService.cryptoToPemPair(
       await cryptoService.generateKeyPair()
@@ -982,77 +991,44 @@ async function unwrapKey({
     };
   }
 
-  // Get unique split IDs to determine if we have an OR or AND condition
-  const splitIds = new Set(Object.keys(splitPotentials));
-
-  // If we have only one split ID, it's an OR condition
-  if (splitIds.size === 1) {
-    const [splitId] = splitIds;
+  const poolSize = concurrencyLimit === undefined ? 1 : concurrencyLimit > 1 ? concurrencyLimit : 1;
+  const splitPromises: Record<string, Promise<RewrapResponseData>> = {};
+  for (const splitId of Object.keys(splitPotentials)) {
     const potentials = splitPotentials[splitId];
-
-    try {
-      // OR condition: Try all KAS servers for this split, take first success
-      const result = await Promise.any(
-        Object.values(potentials).map(async (keySplitInfo) => {
-          try {
-            return await tryKasRewrap(keySplitInfo);
-          } catch (e) {
-            // Rethrow with more context
-            throw handleRewrapError(e as Error | AxiosError);
-          }
-        })
+    if (!potentials || !Object.keys(potentials).length) {
+      throw new UnsafeUrlError(
+        `Unreconstructable key - no valid KAS found for split ${JSON.stringify(splitId)}`,
+        ''
       );
-
-      const reconstructedKey = keyMerge([result.key]);
-      return {
-        reconstructedKeyBinary: Binary.fromArrayBuffer(reconstructedKey),
-        metadata: result.metadata,
-      };
-    } catch (error) {
-      if (error instanceof AggregateError) {
-        // All KAS servers failed
-        throw error.errors[0]; // Throw the first error since we've already wrapped them
-      }
-      throw error;
     }
-  } else {
-    // AND condition: We need successful results from all different splits
-    const splitResults = await Promise.all(
-      Object.entries(splitPotentials).map(async ([splitId, potentials]) => {
-        if (!potentials || !Object.keys(potentials).length) {
-          throw new UnsafeUrlError(
-            `Unreconstructable key - no valid KAS found for split ${JSON.stringify(splitId)}`,
-            ''
-          );
-        }
-
+    const anyPromises: Record<string, Promise<RewrapResponseData>> = {};
+    for (const [kas, keySplitInfo] of Object.entries(potentials)) {
+      anyPromises[kas] = (async () => {
         try {
-          // For each split, try all potential KAS servers until one succeeds
-          return await Promise.any(
-            Object.values(potentials).map(async (keySplitInfo) => {
-              try {
-                return await tryKasRewrap(keySplitInfo);
-              } catch (e) {
-                throw handleRewrapError(e as Error | AxiosError);
-              }
-            })
-          );
-        } catch (error) {
-          if (error instanceof AggregateError) {
-            // All KAS servers for this split failed
-            throw error.errors[0]; // Throw the first error since we've already wrapped them
-          }
-          throw error;
+          return await tryKasRewrap(keySplitInfo);
+        } catch (e) {
+          throw handleRewrapError(e as Error | AxiosError);
         }
-      })
-    );
-
+      })();
+    }
+    splitPromises[splitId] = anyPool(poolSize, anyPromises);
+  }
+  try {
+    const splitResults = await allPool(poolSize, splitPromises);
     // Merge all the split keys
     const reconstructedKey = keyMerge(splitResults.map((r) => r.key));
     return {
       reconstructedKeyBinary: Binary.fromArrayBuffer(reconstructedKey),
       metadata: splitResults[0].metadata, // Use metadata from first split
     };
+  } catch (e) {
+    if (e instanceof AggregateError) {
+      const errors = e.errors;
+      if (errors.length === 1) {
+        throw errors[0];
+      }
+    }
+    throw e;
   }
 }
 
