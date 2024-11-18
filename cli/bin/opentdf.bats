@@ -13,7 +13,7 @@
 }
 
 @test "fails with missing file arguments" {
-  run $BATS_TEST_DIRNAME/opentdf.mjs --kasEndpoint "https://example.com" --oidcEndpoint "http://invalid" --auth "b:c" encrypt
+  run $BATS_TEST_DIRNAME/opentdf.mjs --kasEndpoint "https://example.com" --oidcEndpoint "http://invalid" --concurrencyLimit 1 --auth "b:c" encrypt
   [ "$status" -eq 1 ]
   echo "$output"
   [[ $output == *"Must specify file or pipe"* ]]
