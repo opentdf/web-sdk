@@ -27,6 +27,7 @@ type AuthToProcess = {
   auth?: string;
   clientId?: string;
   clientSecret?: string;
+  concurrencyLimit?: number;
   oidcEndpoint: string;
   userId?: string;
 };
@@ -51,6 +52,7 @@ async function processAuth({
   auth,
   clientId,
   clientSecret,
+  concurrencyLimit,
   oidcEndpoint,
   userId,
 }: AuthToProcess): Promise<LoggedAuthProvider> {
@@ -75,7 +77,9 @@ async function processAuth({
     exchange: 'client',
     clientSecret,
   });
-  await actual.oidcAuth.get();
+  if (concurrencyLimit !== 1) {
+    await actual.oidcAuth.get();
+  }
   const requestLog: AuthProviders.HttpRequest[] = [];
   return {
     requestLog,
