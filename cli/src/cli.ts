@@ -27,6 +27,7 @@ type AuthToProcess = {
   auth?: string;
   clientId?: string;
   clientSecret?: string;
+  concurrencyLimit?: number;
   oidcEndpoint: string;
   userId?: string;
 };
@@ -51,6 +52,7 @@ async function processAuth({
   auth,
   clientId,
   clientSecret,
+  concurrencyLimit,
   oidcEndpoint,
   userId,
 }: AuthToProcess): Promise<LoggedAuthProvider> {
@@ -75,6 +77,9 @@ async function processAuth({
     exchange: 'client',
     clientSecret,
   });
+  if (concurrencyLimit !== 1) {
+    await actual.oidcAuth.get();
+  }
   const requestLog: AuthProviders.HttpRequest[] = [];
   return {
     requestLog,
@@ -119,6 +124,11 @@ async function tdf3DecryptParamsFor(argv: Partial<mainArgs>): Promise<DecryptPar
   const c = new DecryptParamsBuilder();
   if (argv.noVerifyAssertions) {
     c.withNoVerifyAssertions(true);
+  }
+  if (argv.concurrencyLimit) {
+    c.withConcurrencyLimit(argv.concurrencyLimit);
+  } else {
+    c.withConcurrencyLimit(100);
   }
   c.setFileSource(await openAsBlob(argv.file as string));
   return c.build();
@@ -235,9 +245,15 @@ export const handleArgs = (args: string[]) => {
       })
       .option('noVerifyAssertions', {
         alias: 'no-verify-assertions',
-        group: 'Security',
+        group: 'Decrypt',
         desc: 'Do not verify assertions',
         type: 'boolean',
+      })
+      .option('concurrencyLimit', {
+        alias: 'concurrency-limit',
+        group: 'Decrypt',
+        desc: 'Enable concurrent key split and share lookups',
+        type: 'number',
       })
       .option('auth', {
         group: 'OAuth and OIDC:',
