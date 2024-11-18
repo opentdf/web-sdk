@@ -995,7 +995,7 @@ async function unwrapKey({
   if (concurrencyLimit !== undefined && concurrencyLimit > 1) {
     poolSize = concurrencyLimit;
   }
-  const splitPromises: Record<string, Promise<RewrapResponseData>> = {};
+  const splitPromises: Record<string, () => Promise<RewrapResponseData>> = {};
   for (const splitId of Object.keys(splitPotentials)) {
     const potentials = splitPotentials[splitId];
     if (!potentials || !Object.keys(potentials).length) {
@@ -1004,17 +1004,17 @@ async function unwrapKey({
         ''
       );
     }
-    const anyPromises: Record<string, Promise<RewrapResponseData>> = {};
+    const anyPromises: Record<string, () => Promise<RewrapResponseData>> = {};
     for (const [kas, keySplitInfo] of Object.entries(potentials)) {
-      anyPromises[kas] = (async () => {
+      anyPromises[kas] = async () => {
         try {
           return await tryKasRewrap(keySplitInfo);
         } catch (e) {
           throw handleRewrapError(e as Error | AxiosError);
         }
-      })();
+      };
     }
-    splitPromises[splitId] = anyPool(poolSize, anyPromises);
+    splitPromises[splitId] = () => anyPool(poolSize, anyPromises);
   }
   try {
     const splitResults = await allPool(poolSize, splitPromises);
