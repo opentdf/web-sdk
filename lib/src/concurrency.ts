@@ -1,9 +1,12 @@
 type LabelledSuccess<T> = { lid: string; value: Promise<T> };
 type LabelledFailure = { lid: string; e: any };
 
-async function labelPromise<T>(label: string, promise: Promise<T>): Promise<LabelledSuccess<T>> {
+async function labelPromise<T>(
+  label: string,
+  promise: () => Promise<T>
+): Promise<LabelledSuccess<T>> {
   try {
-    const value = await promise;
+    const value = await promise();
     return { lid: label, value: Promise.resolve(value) };
   } catch (e) {
     throw { lid: label, e };
@@ -14,7 +17,10 @@ async function labelPromise<T>(label: string, promise: Promise<T>): Promise<Labe
 // but with a pool size of n. Rejects on first reject, or returns a list
 // of all successful responses. Operates with at most n 'active' promises at a time.
 // For tracking purposes, all promises must have a unique identifier.
-export async function allPool<T>(n: number, p: Record<string, Promise<T>>): Promise<Awaited<T>[]> {
+export async function allPool<T>(
+  n: number,
+  p: Record<string, () => Promise<T>>
+): Promise<Awaited<T>[]> {
   const pool: Record<string, Promise<LabelledSuccess<T>>> = {};
   const resolved: Awaited<T>[] = [];
   for (const [id, job] of Object.entries(p)) {
@@ -22,6 +28,7 @@ export async function allPool<T>(n: number, p: Record<string, Promise<T>>): Prom
     // let n jobs run and take the first one to finish out of the pool
     pool[id] = labelPromise(id, job);
     if (Object.keys(pool).length > n - 1) {
+      // When pool is full, wait for one to resolve, and remove it from the pool.
       const promises = Object.values(pool);
       try {
         const { lid, value } = await Promise.race(promises);
@@ -50,7 +57,10 @@ export async function allPool<T>(n: number, p: Record<string, Promise<T>>): Prom
 // Pooled variant of promise.any; implements most of the logic of the real any,
 // but with a pool size of n, and returns the first successful promise,
 // operating with at most n 'active' promises at a time.
-export async function anyPool<T>(n: number, p: Record<string, Promise<T>>): Promise<Awaited<T>> {
+export async function anyPool<T>(
+  n: number,
+  p: Record<string, () => Promise<T>>
+): Promise<Awaited<T>> {
   const pool: Record<string, Promise<LabelledSuccess<T>>> = {};
   const rejections = [];
   for (const [id, job] of Object.entries(p)) {
