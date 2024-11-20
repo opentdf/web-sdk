@@ -73,6 +73,10 @@ export type SessionInformation = {
   user?: User;
 };
 
+export function prettyUserDetails(user: User): string {
+  return `User ${user.userId} expires at ${new Date(user.expiresAt).toISOString()}`;
+}
+
 type AuthRequestState = SessionInformation & {
   redirectUri: string;
   /** Random state parameter. Unique per redirect request; can identify them. Proves the redirect is for the correct request. */
