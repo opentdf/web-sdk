@@ -245,13 +245,13 @@ export const handleArgs = (args: string[]) => {
       })
       .option('noVerifyAssertions', {
         alias: 'no-verify-assertions',
-        group: 'Decrypt',
+        group: 'Decrypt: ',
         desc: 'Do not verify assertions',
         type: 'boolean',
       })
       .option('concurrencyLimit', {
         alias: 'concurrency-limit',
-        group: 'Decrypt',
+        group: 'Decrypt: ',
         desc: 'Enable concurrent key split and share lookups',
         type: 'number',
       })
