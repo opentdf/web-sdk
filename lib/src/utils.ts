@@ -1,4 +1,3 @@
-import { type AxiosResponseHeaders, type RawAxiosResponseHeaders } from 'axios';
 import { exportSPKI, importX509 } from 'jose';
 
 import { base64 } from './encodings/index.js';
@@ -68,7 +67,7 @@ export const estimateSkew = async (serverEndpoint = window.origin): Promise<numb
   return estimateSkewFromHeaders(response.headers, localUnixTimeBefore);
 };
 
-export type AnyHeaders = AxiosResponseHeaders | RawAxiosResponseHeaders | Headers;
+export type AnyHeaders = Headers;
 
 /**
  * Rough estimate of number of seconds to add to the curren time to get
@@ -82,12 +81,7 @@ export type AnyHeaders = AxiosResponseHeaders | RawAxiosResponseHeaders | Header
  */
 export const estimateSkewFromHeaders = (headers: AnyHeaders, dateNowBefore?: number): number => {
   const localUnixTimeBefore = (dateNowBefore || Date.now()) / 1000;
-  let serverDateString;
-  if (headers.get) {
-    serverDateString = (headers as Headers).get('Date');
-  } else {
-    serverDateString = (headers as AxiosResponseHeaders | RawAxiosResponseHeaders).date;
-  }
+  const serverDateString = headers.get('Date');
   if (serverDateString === null) {
     throw Error('Cannot get access to Date header!');
   }
