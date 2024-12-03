@@ -11,7 +11,7 @@
     "lint": "eslint \"src/**/*.{js,jsx,ts,tsx}\"",
     "lint:fix": "eslint --fix \"src/**/*.{js,jsx,ts,tsx}\"",
     "preview": "vite preview",
-    "test": "vite build && vitest",
+    "test": "vite build && vitest --watch=false",
     "test:ui": "vite build && vitest --ui"
   },
   "dependencies": {
