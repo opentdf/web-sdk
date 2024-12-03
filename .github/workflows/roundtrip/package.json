@@ -1,9 +1,0 @@
-{
-    "name": "web-sdk-roundtrip",
-    "version": "0.0.1",
-    "description": "Simple example to encrypt and decrypt files with quickstart backend.",
-    "scripts": {},
-    "dependencies": {
-        "@opentdf/ctl": "file:../../../cli/opentdf-ctl-0.1.0.tgz"
-    }
-}
