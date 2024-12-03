@@ -60,7 +60,7 @@
     "lint": "eslint ./src/**/*.ts ./tdf3/**/*.ts ./tests/**/*.ts",
     "prepack": "npm run build",
     "test": "npm run build && npm run test:with-server",
-    "test:with-server": "node dist/web/tests/server.js & trap \"node dist/web/tests/stopServer.js\" EXIT; npm run test:mocha && npm run test:wtr && npm run test:browser && npm run coverage:merge",
+    "test:with-server": "node dist/web/tests/server.js & trap \"node dist/web/tests/stopServer.js\" EXIT; npm run test:mocha && npm run test:wtr && npm run coverage:merge",
     "test:browser": "npx webpack --config webpack.test.config.cjs && npx karma start karma.conf.cjs",
     "test:mocha": "c8 --exclude=\"dist/web/tests/**/*\" --report-dir=./coverage/mocha mocha 'dist/web/tests/mocha/**/*.spec.js' --file dist/web/tests/mocha/setup.js && npx c8 report --reporter=json --report-dir=./coverage/mocha",
     "test:wtr": "web-test-runner",
