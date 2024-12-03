@@ -107,6 +107,9 @@ make test
 make start
 ```
 
+Note: `make test` will install playwright and any necessary browser components,
+which may be several hundred megabytes in size.
+
 ## Use the platform
 
 Version 2 of this library adds support for ABAC management tasks.

@@ -40,7 +40,11 @@ dist: lib/opentdf-sdk-$(version).tgz
 audit:
 	for x in $(pkgs); do (cd $$x && npm audit --omit dev) || exit 1; done
 
-format license-check lint test: ci
+format license-check lint: ci
+	for x in $(pkgs); do (cd $$x && npm run $@) || exit 1; done
+
+test: ci
+	cd web-app && npx install playwright
 	for x in $(pkgs); do (cd $$x && npm run $@) || exit 1; done
 
 doc:
