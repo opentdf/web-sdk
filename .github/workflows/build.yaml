@@ -31,7 +31,7 @@ jobs:
           cache: 'npm'
           cache-dependency-path: './lib/package-lock.json'
       - run: npm ci
-      - run: npm run test test:browser
+      - run: npm run build && npm run test:with-server && npm run test:browser
       - uses: fingerprintjs/action-coverage-report-md@v2
         id: coverage-md
         with:
