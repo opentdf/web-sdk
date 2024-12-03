@@ -3,7 +3,7 @@ version=0.1.0
 extras=cli web-app
 pkgs=lib $(extras)
 
-.PHONY: all audit ci clean cli format i license-check lint start test version-check
+.PHONY: all audit ci clean cli format i license-check lint start test
 
 start: all
 	(cd web-app && npm run dev)
@@ -15,13 +15,6 @@ clean:
 	rm -f */*.tgz
 	rm -rf */dist
 	rm -rf */node_modules
-
-# Fail if we don't have npm marching .nvmrc content
-version-check:
-	@NPM_VERSION=$(npm version --json | jq -r '.npm'); \
-	NVMRC_VERSION=$(cat .nvmrc); \
-	echo "NPM_VERSION: $$NPM_VERSION, NVMRC_VERSION: $$NVMRC_VERSION"; \
-	[ "$(printf '%s\n' "$$NVMRC_VERSION" "$$NPM_VERSION" | sort -V | head -n1)" = "$$NVMRC_VERSION" ]
 
 ci: lib/opentdf-sdk-$(version).tgz
 	for x in $(extras); do (cd $$x && npm uninstall @opentdf/sdk && npm ci && npm i ../lib/opentdf-sdk-$(version).tgz) || exit 1; done
@@ -38,7 +31,7 @@ cli/opentdf-ctl-$(version).tgz: lib/opentdf-sdk-$(version).tgz $(shell find cli 
 web-app/opentdf-web-app-$(version).tgz: lib/opentdf-sdk-$(version).tgz $(shell find web-app -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
 	(cd web-app && npm uninstall @opentdf/sdk && npm ci && npm i ../lib/opentdf-sdk-$(version).tgz && npm pack && npm run build)
 
-lib/opentdf-sdk-$(version).tgz: $(shell find lib -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*') version-check
+lib/opentdf-sdk-$(version).tgz: $(shell find lib -not -path '*/dist*' -and -not -path '*/coverage*' -and -not -path '*/node_modules*')
 	(cd lib && npm ci --including=dev && npm pack)
 
 dist: lib/opentdf-sdk-$(version).tgz
