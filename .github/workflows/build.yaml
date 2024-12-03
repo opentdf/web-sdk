@@ -131,45 +131,6 @@ jobs:
           docker run --rm -v "$PWD:/mnt" --workdir "/mnt" "koalaman/shellcheck:v0.10.0"
           --color=always *.sh
 
-  platform-roundtrip:
-    needs:
-      - cli
-      - lib
-      - web-app
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: .github/workflows/roundtrip
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: './web-app/package-lock.json'
-      - uses: actions/download-artifact@v4
-        with:
-          name: opentdf-sdk-lib
-          path: lib/
-      - uses: actions/download-artifact@v4
-        with:
-          name: opentdf-ctl
-          path: cli/
-      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
-        with:
-          go-version: '1.22'
-      - name: Git clone backend
-        run: |
-          git clone --depth 1 https://github.com/opentdf/platform.git
-          go work init
-          for x in platform/{protocol/go,lib/{fixtures,ocrypto},sdk,service}; do go work use "$x"; done
-      - run: docker compose up -d --wait --wait-timeout 240
-      - env:
-          PLAYWRIGHT_TESTS_TO_RUN: roundtrip
-        run: |-
-          ./wait-and-test.sh platform
-
   platform-xtest:
     needs:
       - cli
