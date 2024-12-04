@@ -96,52 +96,15 @@ _init_webapp() {
   done
 }
 
-_init_platform() {
-  output=$(mktemp)
+_init_keycloak_users() {
   if ! cd "${APP_DIR}"; then
     echo "[ERROR] unable to cd ${APP_DIR}"
     exit 2
-  fi
-  svc=github.com/opentdf/platform/service@latest
-  if [ -f go.work ]; then
-    svc=github.com/opentdf/platform/service
-  fi
-  if ! go run "${svc}" provision keycloak -f "${APP_DIR}/keycloak_data.yaml"; then
-    echo "[ERROR] unable to provision keycloak"
-    return 1
   fi
   if ! ./config-demo-idp.sh; then
     echo "[ERROR] unable to provision keycloak"
     return 1
   fi
-  if ! ./init-temp-keys.sh; then
-    echo "[ERROR] unable to initialize keys"
-    return 1
-  fi
-  go run "${svc}" start &>"$output" &
-  server_pid=$!
-  echo "Platform pid: $server_pid"
-  echo "Output: $output"
-  echo "Wait:"
-  limit=5
-  for i in $(seq 1 $limit); do
-    if grep -q -i 'starting http server' "$output"; then
-      return 0
-    fi
-    if ! ps $server_pid >/dev/null; then
-      echo "The server died" >&2
-      cat "${output}"
-      exit 1
-    fi
-    if [[ $i == "$limit" ]]; then
-      echo "[WARN] Breaking _init_platform loop after ${limit} iterations"
-      cat "${output}"
-      break
-    fi
-    sleep_for=$((5 + i * i * 2))
-    echo "[INFO] retrying in ${sleep_for} seconds... ( ${i} / $limit ) ..."
-    sleep ${sleep_for}
-  done
 }
 
 if ! _configure_app; then
@@ -154,11 +117,9 @@ if ! _init_webapp; then
   exit 2
 fi
 
-if [ $1 = platform ]; then
-  if ! _init_platform; then
-    echo "[ERROR] Couldn't run platform"
-    exit 2
-  fi
+if ! _init_keycloak_users; then
+  echo "[ERROR] Couldn't run initialize keycloak users"
+  exit 2
 fi
 
 if ! "${APP}"; then
