@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import * as TDF from '../../../tdf3/src/tdf.js';
 import { KeyAccessObject } from '../../../tdf3/src/models/key-access.js';
 import { OriginAllowList } from '../../../src/access.js';
-import { InvalidFileError, TdfError, UnsafeUrlError } from '../../../src/errors.js';
+import { InvalidFileError, NetworkError, TdfError, UnsafeUrlError } from '../../../src/errors.js';
 
 const sampleCert = `
 -----BEGIN CERTIFICATE-----
@@ -88,6 +88,18 @@ describe('fetchKasPublicKey', async () => {
     const pk2 = await TDF.fetchKasPublicKey('http://localhost:3000');
     expect(pk2.publicKey).to.include('BEGIN CERTIFICATE');
     expect(pk2.kid).to.equal('r1');
+  });
+
+  it('fails on invalid auth', async () => {
+    try {
+      await TDF.fetchKasPublicKey('http://localhost:3000', 'rsa:2048', {
+        withCreds: async () => { throw new NetworkError('no creds') },
+        updateClientPublicKey: async () => { },
+      });
+      expect.fail('did not throw');
+    } catch (e) {
+      expect(() => {throw e}).to.throw(NetworkError, 'no creds');
+    }
   });
 });
 

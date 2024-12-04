@@ -175,9 +175,10 @@ export type RewrapResponse = {
  */
 export async function fetchKasPublicKey(
   kas: string,
-  algorithm?: KasPublicKeyAlgorithm
+  algorithm?: KasPublicKeyAlgorithm,
+  authProvider?: AuthProvider,
 ): Promise<KasPublicKeyInfo> {
-  return fetchKasPubKeyV2(kas, algorithm || 'rsa:2048');
+  return fetchKasPubKeyV2(kas, algorithm || 'rsa:2048', authProvider);
 }
 
 /**
