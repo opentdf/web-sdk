@@ -134,7 +134,7 @@ export class NanoTDFClient extends Client {
     delete this.iv;
 
     if (!this.kasPubKey) {
-      this.kasPubKey = await fetchECKasPubKey(this.kasUrl, this.authProvider);
+      this.kasPubKey = await fetchECKasPubKey(this.kasUrl);
     }
 
     // Create a policy for the tdf
@@ -268,7 +268,7 @@ export class NanoTDFDatasetClient extends Client {
       const ephemeralKeyPair = await this.ephemeralKeyPair;
 
       if (!this.kasPubKey) {
-        this.kasPubKey = await fetchECKasPubKey(this.kasUrl, this.authProvider);
+        this.kasPubKey = await fetchECKasPubKey(this.kasUrl);
       }
 
       // Create a policy for the tdf

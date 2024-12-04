@@ -1,4 +1,4 @@
-import { type AuthProvider, type HttpRequest } from './auth/auth.js';
+import { type AuthProvider } from './auth/auth.js';
 import {
   ConfigurationError,
   InvalidFileError,
@@ -125,14 +125,13 @@ async function noteInvalidPublicKey(url: URL, r: Promise<CryptoKey>): Promise<Cr
  * If we have KAS url but not public key we can fetch it from KAS, fetching
  * the value from `${kas}/kas_public_key`.
  */
-export async function fetchECKasPubKey(kasEndpoint: string, authProvider?: AuthProvider): Promise<KasPublicKeyInfo> {
-  return fetchKasPubKey(kasEndpoint, 'ec:secp256r1', authProvider);
+export async function fetchECKasPubKey(kasEndpoint: string): Promise<KasPublicKeyInfo> {
+  return fetchKasPubKey(kasEndpoint, 'ec:secp256r1');
 }
 
 export async function fetchKasPubKey(
   kasEndpoint: string,
-  algorithm?: KasPublicKeyAlgorithm,
-  authProvider?: AuthProvider,
+  algorithm?: KasPublicKeyAlgorithm
 ): Promise<KasPublicKeyInfo> {
   if (!kasEndpoint) {
     throw new ConfigurationError('KAS definition not found');
@@ -147,28 +146,23 @@ export async function fetchKasPubKey(
   }
   pkUrlV2.searchParams.set('algorithm', infoStatic.algorithm);
 
-  let req: HttpRequest = {url: pkUrlV2.toString(), method: "GET", headers: {}};
-  if (authProvider) {
-    req = await authProvider.withCreds(req);
-  }
-
   let kasPubKeyResponseV2: Response;
   try {
-    kasPubKeyResponseV2 = await fetch(req.url, {method: req.method});
+    kasPubKeyResponseV2 = await fetch(pkUrlV2);
   } catch (e) {
-    throw new NetworkError(`unable to fetch public key from [${req.url}]`, e);
+    throw new NetworkError(`unable to fetch public key from [${pkUrlV2}]`, e);
   }
   if (!kasPubKeyResponseV2.ok) {
     switch (kasPubKeyResponseV2.status) {
       case 404:
-        throw new ConfigurationError(`404 for [${req.url}]`);
+        throw new ConfigurationError(`404 for [${pkUrlV2}]`);
       case 401:
-        throw new UnauthenticatedError(`401 for [${req.url}]`);
+        throw new UnauthenticatedError(`401 for [${pkUrlV2}]`);
       case 403:
-        throw new PermissionDeniedError(`403 for [${req.url}]`);
+        throw new PermissionDeniedError(`403 for [${pkUrlV2}]`);
       default:
         throw new NetworkError(
-          `${req.url} => ${kasPubKeyResponseV2.status} ${kasPubKeyResponseV2.statusText}`
+          `${pkUrlV2} => ${kasPubKeyResponseV2.status} ${kasPubKeyResponseV2.statusText}`
         );
     }
   }

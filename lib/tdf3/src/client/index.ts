@@ -434,7 +434,7 @@ export class Client {
     encryptionInformation.keyAccess = await Promise.all(
       splits.map(async ({ kas, sid }) => {
         if (!(kas in this.kasKeys)) {
-          this.kasKeys[kas] = fetchKasPublicKey(kas, 'rsa:2048', this.authProvider);
+          this.kasKeys[kas] = fetchKasPublicKey(kas);
         }
         const kasPublicKey = await this.kasKeys[kas];
         return buildKeyAccess({
