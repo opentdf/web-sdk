@@ -138,13 +138,24 @@ export async function fetchKasPubKey(
   }
   // Logs insecure KAS. Secure is enforced in constructor
   validateSecureUrl(kasEndpoint);
-  const infoStatic = { url: kasEndpoint, algorithm: algorithm || 'rsa:2048' };
 
-  const pkUrlV2 = new URL('/v2/kas_public_key?v=2', kasEndpoint);
-  if (!pkUrlV2) {
-    throw new ConfigurationError(`KAS definition invalid: [${kasEndpoint}]`);
+  // Parse kasEndpoint to URL, then append to its path and update its query parameters
+  let pkUrlV2: URL;
+  try {
+    pkUrlV2 = new URL(kasEndpoint);
+  } catch (e) {
+    throw new ConfigurationError(`KAS definition invalid: [${kasEndpoint}]`, e);
   }
-  pkUrlV2.searchParams.set('algorithm', infoStatic.algorithm);
+  if (!pkUrlV2.pathname.endsWith('kas_public_key')) {
+    if (!pkUrlV2.pathname.endsWith('/')) {
+      pkUrlV2.pathname += '/';
+    }
+    pkUrlV2.pathname += 'v2/kas_public_key';
+  }
+  pkUrlV2.searchParams.set('algorithm', algorithm || 'rsa:2048');
+  if (!pkUrlV2.searchParams.get('v')) {
+    pkUrlV2.searchParams.set('v', '2');
+  }
 
   let kasPubKeyResponseV2: Response;
   try {
