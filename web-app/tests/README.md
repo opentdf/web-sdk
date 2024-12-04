@@ -5,11 +5,16 @@ running against a local or remote backend in proxy mode.
 
 ## Bring up the platform behind local (vite dev server) proxy
 
-Bring up test backend services (identity provider, database, etc.):
+Follow instructions from the https://github.com/opentdf/platform readme.
+Before starting, use the following changes to the YAML,
+adjusting the expected external port numbers to match the proxy.
 
 ```sh
-cd .github/workflows/roundtrip/
-docker compose up -d
+<opentdf-dev.yaml >opentdf.yaml yq e '
+      (.services.entityresolution.url = "http://localhost:65432/auth")
+      | (.server.auth.audience = "http://localhost:65432")
+      | (.server.auth.issuer = "http://localhost:65432/auth/realms/opentdf")
+    '
 ```
 
 > You can leave off the `-d` to track the logs; 
@@ -31,7 +36,7 @@ These will be stored in place in the folder you create them,
 with names like `kas-[type].pem`.
 
 ```sh
-./init-temp-keys.sh
+../opentdf/platform/.github/scripts/init-temp-keys.sh
 ```
 
 Start the platform and its key access service:
