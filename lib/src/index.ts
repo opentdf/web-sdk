@@ -65,8 +65,6 @@ export class NanoTDFClient extends Client {
     // Parse ciphertext
     const nanotdf = NanoTDF.from(ciphertext);
 
-    await this.fetchOIDCToken();
-
     // TODO: The version number should be fetched from the API
     const version = '0.0.1';
     const kasUrl = nanotdf.header.getKasRewrapUrl();
@@ -96,9 +94,6 @@ export class NanoTDFClient extends Client {
   async decryptLegacyTDF(ciphertext: string | TypedArray | ArrayBuffer): Promise<ArrayBuffer> {
     // Parse ciphertext
     const nanotdf = NanoTDF.from(ciphertext, undefined, true);
-
-    await this.fetchOIDCToken();
-
     const legacyVersion = '0.0.0';
     // Rewrap key on every request
     const key = await this.rewrapKey(
@@ -375,8 +370,6 @@ export class NanoTDFDatasetClient extends Client {
 
   async rewrapAndDecrypt(nanotdf: NanoTDF) {
     // TODO: The version number should be fetched from the API
-    await this.fetchOIDCToken();
-
     const version = '0.0.1';
     // Rewrap key on every request
     const ukey = await this.rewrapKey(

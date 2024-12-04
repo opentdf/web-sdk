@@ -5,7 +5,6 @@ import { Binary } from '../binary.js';
 
 import { ConfigurationError } from '../../../src/errors.js';
 import { PemKeyPair } from '../crypto/declarations.js';
-import { EntityObject } from '../../../src/tdf/EntityObject.js';
 import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 import { type Chunker } from '../utils/chunkers.js';
 import { AssertionConfig, AssertionVerificationKeys } from '../assertions.js';
@@ -41,12 +40,12 @@ export type EncryptParams = {
   scope?: Scope;
   metadata?: Metadata;
   keypair?: CryptoKeyPair;
+  // Deprecated: Only offline more is currently supported
   offline?: boolean;
   windowSize?: number;
   asHtml?: boolean;
   getPolicyId?: () => Scope['policyId'];
   mimeType?: string;
-  eo?: EntityObject;
   payloadKey?: Binary;
   keyMiddleware?: EncryptKeyMiddleware;
   splitPlan?: SplitStep[];
@@ -514,7 +513,6 @@ export type DecryptSource =
   | { type: 'file-browser'; location: Blob };
 
 export type DecryptParams = {
-  eo?: EntityObject;
   source: DecryptSource;
   keyMiddleware?: DecryptKeyMiddleware;
   streamMiddleware?: DecryptStreamMiddleware;

@@ -1,5 +1,4 @@
 import { toByteArray, fromByteArray } from 'base64-js';
-import { AppIdAuthProvider, type AuthProvider } from '../../../src/auth/auth.js';
 import * as WebCryptoService from '../crypto/index.js';
 import { KeyInfo, SplitKey } from '../models/index.js';
 
@@ -30,11 +29,6 @@ export function base64ToBuffer(b64: string): Uint8Array {
   return Uint8Array.from(atob(b64).split(''), (c) => c.charCodeAt(0));
 }
 
-export function isAppIdProviderCheck(
-  provider: AuthProvider | AppIdAuthProvider
-): provider is AppIdAuthProvider {
-  return (provider as AppIdAuthProvider)._getName !== undefined;
-}
 export function concatUint8(uint8Arrays: Uint8Array[]): Uint8Array {
   const newLength = uint8Arrays.reduce(
     (accumulator, currentValue) => accumulator + currentValue.length,
@@ -252,14 +246,14 @@ const MAX_ARGUMENTS_LENGTH = 0x1000;
 function decodeCodePointsArray(codePoints: number[]): string {
   const len = codePoints.length;
   if (len <= MAX_ARGUMENTS_LENGTH) {
-    return String.fromCharCode.apply(String, codePoints); // avoid extra slice()
+    return String.fromCharCode(...codePoints); // avoid extra slice()
   }
 
   // Decode in chunks to avoid "call stack size exceeded".
   let res = '';
   let i = 0;
   while (i < len) {
-    res += String.fromCharCode.apply(String, codePoints.slice(i, (i += MAX_ARGUMENTS_LENGTH)));
+    res += String.fromCharCode(...codePoints.slice(i, (i += MAX_ARGUMENTS_LENGTH)));
   }
   return res;
 }
