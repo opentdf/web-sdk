@@ -139,8 +139,10 @@ export async function verify(
     const combinedHash = aggregateHashAsStr + hashOfAssertion;
     encodedHash = base64.encode(combinedHash);
   } else {
-    const combinedHash = concatenateUint8Arrays(aggregateHash,
-      new Uint8Array(hex.decodeArrayBuffer(assertionHash)));
+    const combinedHash = concatenateUint8Arrays(
+      aggregateHash,
+      new Uint8Array(hex.decodeArrayBuffer(assertionHash))
+    );
     encodedHash = base64.encodeArrayBuffer(combinedHash);
   }
 
@@ -172,7 +174,10 @@ export async function CreateAssertion(
   };
 
   const assertionHash = await hash(a);
-  const combinedHash = concatenateUint8Arrays(aggregateHash, new Uint8Array(hex.decodeArrayBuffer(assertionHash)));
+  const combinedHash = concatenateUint8Arrays(
+    aggregateHash,
+    new Uint8Array(hex.decodeArrayBuffer(assertionHash))
+  );
   const encodedHash = base64.encodeArrayBuffer(combinedHash);
 
   return await sign(a, assertionHash, encodedHash, assertionConfig.signingKey);

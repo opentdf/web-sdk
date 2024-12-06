@@ -885,11 +885,13 @@ export async function readStream(cfg: DecryptConfiguration) {
   const isLegacyTDF = manifest.tdf_spec_version ? false : true;
 
   // Decode each hash and store it in an array of Uint8Array
-  const segmentHashList = segments.map(({ hash }) => new Uint8Array(base64.decodeArrayBuffer(hash)));
+  const segmentHashList = segments.map(
+    ({ hash }) => new Uint8Array(base64.decodeArrayBuffer(hash))
+  );
 
   // Concatenate all segment hashes into a single Uint8Array
   const aggregateHash = await concatenateUint8Array(segmentHashList);
-  
+
   const integrityAlgorithm = rootSignature.alg;
   if (integrityAlgorithm !== 'GMAC' && integrityAlgorithm !== 'HS256') {
     throw new UnsupportedError(`Unsupported integrity alg [${integrityAlgorithm}]`);
@@ -897,7 +899,7 @@ export async function readStream(cfg: DecryptConfiguration) {
 
   const payloadForSigCalculation = isLegacyTDF
     ? Binary.fromString(hex.encodeArrayBuffer(aggregateHash))
-  : Binary.fromArrayBuffer(aggregateHash.buffer);
+    : Binary.fromArrayBuffer(aggregateHash.buffer);
   const payloadSigInHex = await getSignature(
     keyForDecryption,
     payloadForSigCalculation,
