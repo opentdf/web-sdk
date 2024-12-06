@@ -324,7 +324,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
   let bytesProcessed = 0;
   let crcCounter = 0;
   let fileByteCount = 0;
-  let segmentHashList: Uint8Array[] = [];
+  const segmentHashList: Uint8Array[] = [];
 
   const zipWriter = new ZipWriter();
   const manifest = await _generateManifest(
