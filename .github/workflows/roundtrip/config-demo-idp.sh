@@ -3,6 +3,8 @@
 set -x
 
 : "${KC_VERSION:=24.0.3}"
+: "${DEMO_KC_SERVER:=http://localhost:65432/auth}"
+: "${DEMO_WEB_APP_URI:=http://localhost:65432/}"
 
 if ! which kcadm.sh; then
   KCADM_URL=https://github.com/keycloak/keycloak/releases/download/${KC_VERSION}/keycloak-${KC_VERSION}.zip
@@ -26,13 +28,13 @@ if ! which kcadm.sh; then
   fi
 fi
 
-kcadm.sh config credentials --server http://localhost:65432/auth \
+kcadm.sh config credentials --server "${DEMO_KC_SERVER}" \
   --realm master --user admin --password changeme
 
 kcadm.sh create clients -r opentdf \
   -s clientId=browsertest \
   -s enabled=true \
-  -s 'redirectUris=["http://localhost:65432/"]' \
+  -s 'redirectUris=["'"${DEMO_WEB_APP_URI}"'"]' \
   -s consentRequired=false \
   -s standardFlowEnabled=true \
   -s directAccessGrantsEnabled=true \

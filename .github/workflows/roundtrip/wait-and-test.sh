@@ -8,6 +8,18 @@ WEB_APP_DIR="$(cd "${ROOT_DIR}/web-app" >/dev/null && pwd)"
 
 APP="${APP_DIR}/encrypt-decrypt.sh"
 
+: "${DEMO_KAS_ALLOWLIST:=http://localhost:8080}"
+: "${DEMO_KC_SERVER:=http://localhost:8888/auth}"
+: "${DEMO_OIDC_ENDPOINT:=http://localhost:8888/auth/realms/opentdf}"
+: "${DEMO_KAS_URI:=http://localhost:8080/kas}"
+: "${DEMO_WEB_APP_URI:=http://localhost:65432/}"
+
+export DEMO_KAS_ALLOWLIST
+export DEMO_KC_SERVER
+export DEMO_OIDC_ENDPOINT
+export DEMO_KAS_URI
+export DEMO_WEB_APP_URI
+
 _configure_app() {
   app_version=$(cd "${ROOT_DIR}/lib" && node -p "require('./package.json').version")
   echo "installing opentdf-ctl-${app_version}.tgz into ${APP_DIR}"
@@ -23,12 +35,12 @@ _configure_app() {
   return 0
 }
 
-if [ $1 = backend ]; then
+if [ "$1" = backend ]; then
   VITE_PROXY='{"/api":{"target":"http://localhost:5432","xfwd":true},"/auth":{"target":"http://localhost:5432","xfwd":true}}'
   VITE_TDF_CFG='{"oidc":{"host":"http://localhost:65432/auth/realms/tdf","clientId":"browsertest"},"kas":"http://localhost:65432/api/kas","reader":"https://secure.virtru.com/start?htmlProtocol=1"}'
 else # if [ $1 = platform ]; then
   VITE_PROXY='{"/kas":{"target":"http://localhost:8080","xfwd":true},"/auth":{"target":"http://localhost:8888","xfwd":true}}'
-  VITE_TDF_CFG='{"oidc":{"host":"http://localhost:65432/auth/realms/opentdf","clientId":"browsertest"},"kas":"http://localhost:65432/kas","reader":"https://secure.virtru.com/start?htmlProtocol=1"}'
+  VITE_TDF_CFG='{"oidc":{"host":"'"${DEMO_OIDC_ENDPOINT}"'","clientId":"browsertest"},"kas":"'"${DEMO_KAS_URI}"'","reader":"https://secure.virtru.com/start?htmlProtocol=1"}'
 fi
 export VITE_PROXY
 export VITE_TDF_CFG
