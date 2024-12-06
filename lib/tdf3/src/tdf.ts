@@ -1001,12 +1001,7 @@ export async function readStream(cfg: DecryptConfiguration) {
 }
 
 async function concatenateUint8Array(uint8arrays: Uint8Array[]): Promise<Uint8Array> {
-  // Put the inputs into a Blob.
   const blob = new Blob(uint8arrays);
-
-  // Pull an ArrayBuffer out. (Has to be async.)
   const buffer = await blob.arrayBuffer();
-
-  // Convert that ArrayBuffer to a Uint8Array.
   return new Uint8Array(buffer);
 }
