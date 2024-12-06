@@ -156,15 +156,10 @@ jobs:
         with:
           name: opentdf-ctl
           path: cli/
-      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+      - name: Start up the platform with deps and containers
+        uses: opentdf/platform/test/start-up-with-containers@main
         with:
-          go-version: '1.22'
-      - name: Git clone backend
-        run: |
-          git clone --depth 1 https://github.com/opentdf/platform.git
-          go work init
-          for x in platform/{protocol/go,lib/{fixtures,ocrypto},sdk,service}; do go work use "$x"; done
-      - run: docker compose up -d --wait --wait-timeout 240
+          platform-ref: 'main'
       - env:
           PLAYWRIGHT_TESTS_TO_RUN: roundtrip
         run: |-

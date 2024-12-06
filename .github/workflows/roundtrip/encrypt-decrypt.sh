@@ -3,6 +3,11 @@ set -exuo pipefail
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null && pwd)"
 
+: "${DEMO_KAS_ALLOWLIST:=http://localhost:65432}"
+: "${DEMO_OIDC_ENDPOINT:=http://localhost:65432/auth/realms/tdf}"
+: "${DEMO_KAS_URI:=http://localhost:65432/api/kas}"
+: "${DEMO_WEB_APP_URI:=http://localhost:65432/}"
+
 cd "$APP_DIR"
 
 counter=0
@@ -12,9 +17,9 @@ _nano_test() {
   plain="./sample-${counter}.txt"
   echo "Hello World ${counter}" >"./${plain}"
   npx "$1" --log-level DEBUG \
-    --kasEndpoint http://localhost:65432/api/kas \
-    --allowList http://localhost:65432 \
-    --oidcEndpoint http://localhost:65432/auth/realms/tdf \
+    --kasEndpoint "${DEMO_KAS_URI}" \
+    --allowList "${DEMO_KAS_ALLOWLIST}" \
+    --oidcEndpoint "${DEMO_OIDC_ENDPOINT}" \
     --auth tdf-client:123-456 \
     --output sample.txt.ntdf \
     encrypt "${plain}" \
@@ -23,8 +28,8 @@ _nano_test() {
   [ -f sample.txt.ntdf ]
 
   npx "$2" --log-level DEBUG \
-    --kasEndpoint http://localhost:65432/api/kas \
-    --oidcEndpoint http://localhost:65432/auth/realms/tdf \
+    --kasEndpoint "${DEMO_KAS_URI}" \
+    --oidcEndpoint "${DEMO_OIDC_ENDPOINT}" \
     --auth tdf-client:123-456 \
     --output sample_out.txt \
     decrypt sample.txt.ntdf
@@ -42,8 +47,8 @@ _tdf3_test() {
   plain="./sample-${counter}.txt"
   echo "Hello World ${counter}" >"${plain}"
   npx "$1" --log-level DEBUG \
-    --kasEndpoint http://localhost:65432/api/kas \
-    --oidcEndpoint http://localhost:65432/auth/realms/tdf \
+    --kasEndpoint "${DEMO_KAS_URI}" \
+    --oidcEndpoint "${DEMO_OIDC_ENDPOINT}" \
     --auth tdf-client:123-456 \
     --output sample.txt.tdf \
     encrypt "${plain}" \
@@ -53,8 +58,8 @@ _tdf3_test() {
   [ -f sample.txt.tdf ]
 
   npx "$2" --log-level DEBUG \
-    --kasEndpoint http://localhost:65432/api/kas \
-    --oidcEndpoint http://localhost:65432/auth/realms/tdf \
+    --kasEndpoint "${DEMO_KAS_URI}" \
+    --oidcEndpoint "${DEMO_OIDC_ENDPOINT}" \
     --auth tdf-client:123-456 \
     --output sample_out.txt \
     --containerType tdf3 \
