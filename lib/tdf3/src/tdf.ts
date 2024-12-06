@@ -449,8 +449,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
                 alg: 'HS256',
                 key: new Uint8Array(cfg.keyForEncryption.unwrappedKeyBinary.asArrayBuffer()),
               };
-              const combinedHashString = new TextDecoder().decode(aggregateHash);
-              const assertion = await assertions.CreateAssertion(combinedHashString, {
+              const assertion = await assertions.CreateAssertion(aggregateHash, {
                 ...assertionConfig,
                 signingKey,
               });
@@ -885,16 +884,20 @@ export async function readStream(cfg: DecryptConfiguration) {
   // check if the TDF is a legacy TDF
   const isLegacyTDF = manifest.tdf_spec_version ? false : true;
 
-  // check the combined string of hashes
-  const aggregateHash = segments.map(({ hash }) => base64.decode(hash)).join('');
+  // Decode each hash and store it in an array of Uint8Array
+  const segmentHashList = segments.map(({ hash }) => new Uint8Array(base64.decodeArrayBuffer(hash)));
+
+  // Concatenate all segment hashes into a single Uint8Array
+  const aggregateHash = await concatenateUint8Array(segmentHashList);
+  
   const integrityAlgorithm = rootSignature.alg;
   if (integrityAlgorithm !== 'GMAC' && integrityAlgorithm !== 'HS256') {
     throw new UnsupportedError(`Unsupported integrity alg [${integrityAlgorithm}]`);
   }
 
   const payloadForSigCalculation = isLegacyTDF
-    ? Binary.fromString(hex.encode(aggregateHash))
-    : Binary.fromString(aggregateHash);
+    ? Binary.fromString(hex.encodeArrayBuffer(aggregateHash))
+  : Binary.fromArrayBuffer(aggregateHash.buffer);
   const payloadSigInHex = await getSignature(
     keyForDecryption,
     payloadForSigCalculation,
@@ -924,7 +927,7 @@ export async function readStream(cfg: DecryptConfiguration) {
           assertionKey = foundKey;
         }
       }
-      await assertions.verify(assertion, aggregateHash, assertionKey);
+      await assertions.verify(assertion, aggregateHash, assertionKey, isLegacyTDF);
     }
   }
 
