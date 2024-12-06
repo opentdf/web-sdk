@@ -6,4 +6,5 @@ export type Manifest = {
   payload: Payload;
   encryptionInformation: EncryptionInformation;
   assertions: Assertion[];
+  tdf_spec_version : string;
 };
