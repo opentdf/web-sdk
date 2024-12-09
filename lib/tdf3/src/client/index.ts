@@ -2,9 +2,7 @@ import { v4 } from 'uuid';
 import {
   ZipReader,
   fromBuffer,
-  fromDataSource,
   streamToBuffer,
-  type Chunker,
   keyMiddleware as defaultKeyMiddleware,
 } from '../utils/index.js';
 import { base64 } from '../../../src/encodings/index.js';

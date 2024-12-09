@@ -1,20 +1,6 @@
 import { AuthProvider } from "./auth/providers.js";
-
-/**
- * Read data from a seekable stream.
- * This is an abstraction for URLs with range queries and local file objects.
- * @param byteStart First byte to read. If negative, reads from the end. If absent, reads everything
- * @param byteEnd Index after last byte to read (exclusive)
- */
-export type Chunker = (byteStart?: number, byteEnd?: number) => Promise<Uint8Array>;
-
-export type Source =
-  | { type: 'buffer'; location: Uint8Array }
-  | { type: 'chunker'; location: Chunker }
-  | { type: 'remote'; location: string }
-  | { type: 'stream'; location: ReadableStream<Uint8Array> }
-  | { type: 'file-browser'; location: Blob };
-
+import { NanoTDFDatasetClient } from "./index.js";
+import { Source } from "./chunkers.js";
 
 export type Keys = {
   [keyID: string]: CryptoKey|CryptoKeyPair;
@@ -33,8 +19,7 @@ export type CreateOptions = {
   autoconfigure?: boolean;
 };
 
-
-export type CreateNanoTDFCollectionOptions = CreateOptions & {
+export type CreateNanoOptions = CreateOptions & {
   // When creating a new collection, use ECDSA binding with this key id from the signers, 
   // instead of the DEK.
   ecdsaBindingKeyID?: string;
@@ -44,6 +29,12 @@ export type CreateNanoTDFCollectionOptions = CreateOptions & {
   // to generate a signature for each element.
   // When absent, the nanotdf is unsigned.
   signingKeyID?: string;
+};
+;
+
+export type CreateNanoTDFCollectionOptions = CreateNanoOptions & {
+  // The maximum number of key iterations to use for a single DEK.
+  maxKeyIterations?: number
 };
 
 export type CreateNanoTDFOptions = CreateOptions & {
@@ -110,7 +101,6 @@ export class OpenTDF {
     this.defaultReadOptions = defaultReadOptions;
     this.dpopEnabled = !!disableDPoP;
     this.policyEndpoint = policyEndpoint;
-
   }
 
   async createNanoTDF(opts: CreateNanoTDFOptions): Promise<ArrayBuffer> {
@@ -125,6 +115,7 @@ export class OpenTDF {
    * @returns 
    */
   async createNanoTDFCollection(opts: CreateNanoTDFCollectionOptions): Promise<NanoTDFCollection> {
+    const c = new Collection(opts);
     throw new Error('Not implemented');
   }
 
@@ -143,7 +134,29 @@ export type NanoTDFCollection = {
 };
 
 class Collection {
-  constructor() {
+  client: NanoTDFDatasetClient;
+
+  constructor(authProvider: AuthProvider, opts: CreateNanoTDFCollectionOptions) {
+    if (opts.signers || opts.signingKeyID) {
+      throw new Error('ntdf signing not implemented');
+    }
+    if (opts.autoconfigure) {
+      throw new Error('autoconfigure not implemented');
+    }
+    if (opts.ecdsaBindingKeyID) {
+      throw new Error('custom binding key not implemented');
+    }
+
+    this.client = new NanoTDFDatasetClient({
+      authProvider,
+      kasEndpoint: opts.defaultKASEndpoint,
+      maxKeyIterations: opts.maxKeyIterations,
+    });
   }
-  
+
+  async encrypt(source: Source): Promise<ArrayBuffer> {
+    return this.client.encrypt(source);
+    throw new Error('Not implemented');
+  }
+
 }
