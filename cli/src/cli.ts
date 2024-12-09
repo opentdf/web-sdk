@@ -122,7 +122,9 @@ function addParams(client: AnyNanoClient, argv: Partial<mainArgs>) {
   log('SILLY', `Built encrypt params dissems: ${client.dissems}, attrs: ${client.dataAttributes}`);
 }
 
-async function parseAssertionVerificationKeys(s: string): Promise<assertions.AssertionVerificationKeys> {
+async function parseAssertionVerificationKeys(
+  s: string
+): Promise<assertions.AssertionVerificationKeys> {
   const u = JSON.parse(s);
   if (typeof u !== 'object' || u === null) {
     throw new Error('Invalid input: The input must be an object');
@@ -135,10 +137,13 @@ async function parseAssertionVerificationKeys(s: string): Promise<assertions.Ass
     }
 
     if (typeof assertionKey.key !== 'string' || typeof assertionKey.alg !== 'string') {
-      throw new CLIError('CRITICAL', `Invalid assertion for ${assertionName}: Missing or invalid 'key' or 'alg'`);
+      throw new CLIError(
+        'CRITICAL',
+        `Invalid assertion for ${assertionName}: Missing or invalid 'key' or 'alg'`
+      );
     }
     try {
-      u[assertionName].key = await correctAssertionKeys(assertionKey.alg, assertionKey.key)
+      u[assertionName].key = await correctAssertionKeys(assertionKey.alg, assertionKey.key);
     } catch (err) {
       throw new CLIError('CRITICAL', `Issue converting assertion key from string: ${err.message}`);
     }
@@ -151,7 +156,9 @@ async function tdf3DecryptParamsFor(argv: Partial<mainArgs>): Promise<DecryptPar
     c.withNoVerifyAssertions(true);
   }
   if (argv.assertionVerificationKeys) {
-    c.withAssertionVerificaitonKeys(await parseAssertionVerificationKeys(argv.assertionVerificationKeys))
+    c.withAssertionVerificaitonKeys(
+      await parseAssertionVerificationKeys(argv.assertionVerificationKeys)
+    );
   }
   if (argv.concurrencyLimit) {
     c.withConcurrencyLimit(argv.concurrencyLimit);
@@ -162,7 +169,7 @@ async function tdf3DecryptParamsFor(argv: Partial<mainArgs>): Promise<DecryptPar
   return c.build();
 }
 
-async function correctAssertionKeys(alg: string, key: string):  Promise<KeyLike | Uint8Array> {
+async function correctAssertionKeys(alg: string, key: string): Promise<KeyLike | Uint8Array> {
   if (alg === 'HS256') {
     // Convert key string to Uint8Array
     if (typeof key !== 'string') {
@@ -175,7 +182,7 @@ async function correctAssertionKeys(alg: string, key: string):  Promise<KeyLike 
       throw new CLIError('CRITICAL', 'RS256 key must be a PEM string');
     }
     try {
-       return await importPKCS8(key, 'RS256'); // Import private key
+      return await importPKCS8(key, 'RS256'); // Import private key
     } catch (err) {
       // If importing as a private key fails, try importing as a public key
       try {
@@ -204,9 +211,12 @@ async function parseAssertionConfig(s: string): Promise<assertions.AssertionConf
     if (assertion.signingKey) {
       const { alg, key } = assertion.signingKey;
       try {
-        a[i].signingKey.key = await correctAssertionKeys(alg, key)
+        a[i].signingKey.key = await correctAssertionKeys(alg, key);
       } catch (err) {
-        throw new CLIError('CRITICAL', `Issue converting assertion key from string: ${err.message}`);
+        throw new CLIError(
+          'CRITICAL',
+          `Issue converting assertion key from string: ${err.message}`
+        );
       }
     }
   }
