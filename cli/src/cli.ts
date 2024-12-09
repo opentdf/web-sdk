@@ -318,6 +318,7 @@ export const handleArgs = (args: string[]) => {
         group: 'Decrypt',
         desc: 'keys for assertion verification',
         type: 'string',
+        default: '',
         validate: parseAssertionVerificationKeys,
       })
       .option('concurrencyLimit', {
