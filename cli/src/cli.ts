@@ -182,7 +182,7 @@ async function parseAssertionConfig(s: string): Promise<assertions.AssertionConf
 async function tdf3EncryptParamsFor(argv: Partial<mainArgs>): Promise<EncryptParams> {
   const c = new EncryptParamsBuilder();
   if (argv.assertions?.length) {
-    c.withAssertions(parseAssertionConfig(argv.assertions));
+    c.withAssertions(await parseAssertionConfig(argv.assertions));
   }
   if (argv.attributes?.length) {
     c.setAttributes(argv.attributes.split(','));
