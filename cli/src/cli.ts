@@ -155,18 +155,18 @@ async function parseAssertionConfig(s: string): Promise<assertions.AssertionConf
         if (typeof key !== 'string') {
           throw new CLIError('CRITICAL', 'HS256 key must be a string');
         }
-        a[i].signingKey.key = new TextEncoder().encode(key);  // Update array element directly
+        a[i].signingKey.key = new TextEncoder().encode(key); // Update array element directly
       } else if (alg === 'RS256') {
         // Convert PEM string to a KeyLike object
         if (typeof key !== 'string') {
           throw new CLIError('CRITICAL', 'RS256 key must be a PEM string');
         }
         try {
-          a[i].signingKey.key = await importPKCS8(key, 'RS256');  // Import private key
+          a[i].signingKey.key = await importPKCS8(key, 'RS256'); // Import private key
         } catch (err) {
           // If importing as a private key fails, try importing as a public key
           try {
-            a[i].signingKey.key = await importSPKI(key, 'RS256');  // Import public key
+            a[i].signingKey.key = await importSPKI(key, 'RS256'); // Import public key
           } catch (err) {
             throw new CLIError('CRITICAL', `Failed to parse RS256 key: ${err.message}`);
           }
