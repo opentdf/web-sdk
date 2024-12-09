@@ -1,26 +1,40 @@
-import { AuthProvider } from "./auth/providers.js";
-import { NanoTDFDatasetClient } from "./index.js";
-import { Source } from "./chunkers.js";
+import { type AuthProvider } from './auth/providers.js';
+import { ConfigurationError, InvalidFileError } from './errors.js';
+import { NanoTDFDatasetClient } from './nanoclients.js';
+export { Client as TDF3Client } from '../tdf3/src/client/index.js';
+import NanoTDF from './nanotdf/NanoTDF.js';
+import decryptNanoTDF from './nanotdf/decrypt.js';
+import Client from './nanotdf/Client.js';
+import Header from './nanotdf/models/Header.js';
+import { fromSource, type Source } from './seekable.js';
 
 export type Keys = {
-  [keyID: string]: CryptoKey|CryptoKeyPair;
+  [keyID: string]: CryptoKey | CryptoKeyPair;
 };
 
 // Options when creating a new TDF object
 // that are shared between all container types.
 export type CreateOptions = {
-  // The KAS to use for creation, if none is specified by the attribute service.
-  defaultKASEndpoint: string;
-  // Private (or shared) keys for signing assertions and bindings
-  signers?: Keys;
-  // List of attributes that will be assigned to the object's policy
-  attributes?: string[];
   // If the policy service should be used to control creation options
   autoconfigure?: boolean;
+
+  // List of attributes that will be assigned to the object's policy
+  attributes?: string[];
+
+  // The KAS to use for creation, if none is specified by the attribute service.
+  defaultKASEndpoint?: string;
+
+  // Private (or shared) keys for signing assertions and bindings
+  signers?: Keys;
+
+  // Source of plaintext data
+  source: Source;
 };
 
-export type CreateNanoOptions = CreateOptions & {
-  // When creating a new collection, use ECDSA binding with this key id from the signers, 
+export type CreateNanoTDFOptions = CreateOptions & {
+  bindingType?: 'ecdsa' | 'gmac';
+
+  // When creating a new collection, use ECDSA binding with this key id from the signers,
   // instead of the DEK.
   ecdsaBindingKeyID?: string;
 
@@ -30,22 +44,9 @@ export type CreateNanoOptions = CreateOptions & {
   // When absent, the nanotdf is unsigned.
   signingKeyID?: string;
 };
-;
-
-export type CreateNanoTDFCollectionOptions = CreateNanoOptions & {
+export type CreateNanoTDFCollectionOptions = CreateNanoTDFOptions & {
   // The maximum number of key iterations to use for a single DEK.
-  maxKeyIterations?: number
-};
-
-export type CreateNanoTDFOptions = CreateOptions & {
-  // Source of plaintext data
-  source: Source;
-
-  // When creating a new collection, use ECDSA binding with this key id from the signers, instead of the DEK.
-  ecdsaBindingKeyID?: string;
-
-  // When creating a new collection, use this to generate a signature for each element.
-  signingKeyID?: string;
+  maxKeyIterations?: number;
 };
 
 // Settings for decrypting any variety of TDF file.
@@ -65,45 +66,111 @@ export type ReadOptions = {
 // Defaults and shared settings that are relevant to creating TDF objects.
 export type OpenTDFOptions = {
   // Policy service endpoint
-  policyEndpoint: string;
+  policyEndpoint?: string;
 
   // Default settings for 'encrypt' type requests.
-  defaultCreateOptions: CreateOptions;
+  defaultCreateOptions?: Omit<CreateOptions, 'source'>;
 
   // Default settings for 'decrypt' type requests.
-  defaultReadOptions: ReadOptions;
+  defaultReadOptions?: Omit<ReadOptions, 'source'>;
 
   // If we want to *not* send a DPoP token
-  disableDPoP: boolean;
+  disableDPoP?: boolean;
+
+  // Optional keys for DPoP requests to a server.
+  // These often must be registered via a DPoP flow with the IdP
+  // which is out of the scope of this library.
+  dpopKeys?: Promise<CryptoKeyPair>;
 
   authProvider: AuthProvider;
 };
 
 export type DecoratedStream = ReadableStream<Uint8Array> & {
-  metadata: Promise<any>;
+  // If the source is a TDF3/ZTDF, and includes metadata, and it has been read.
+  metadata?: Promise<any>;
+  // If the source is a NanoTDF, this will be set.
+  header?: Header;
 };
 
-// SDK for dealing with OpenTDF data and policy services. 
+// Cache for headers of nanotdf collections.
+// Stores keys by the header.ephemeralPublicKey value.
+// Has a demon that removes all keys that have not been accessed in the last 5 minutes.
+export class NanoHeaderCache {
+  private cache: Map<Uint8Array, { lastAccessTime: number; value: CryptoKey }>;
+  private closer: NodeJS.Timer;
+  constructor() {
+    this.cache = new Map();
+    this.closer = setInterval(() => {
+      const now = Date.now();
+      for (const [key, value] of this.cache.entries()) {
+        if (now - value.lastAccessTime > 300000) {
+          this.cache.delete(key);
+        }
+      }
+    }, 300000);
+  }
+
+  get(key: Uint8Array): CryptoKey | undefined {
+    const entry = this.cache.get(key);
+    if (entry) {
+      entry.lastAccessTime = Date.now();
+      return entry.value;
+    }
+    return undefined;
+  }
+
+  set(key: Uint8Array, value: CryptoKey) {
+    this.cache.set(key, { lastAccessTime: Date.now(), value });
+  }
+
+  close() {
+    clearInterval(this.closer);
+  }
+}
+
+// SDK for dealing with OpenTDF data and policy services.
 export class OpenTDF {
   // Configuration service and more is at this URL/connectRPC endpoint
   readonly policyEndpoint: string;
   readonly authProvider: AuthProvider;
   readonly dpopEnabled: boolean;
-  defaultCreateOptions: CreateOptions;
-  defaultReadOptions: ReadOptions;
+  defaultCreateOptions: Omit<CreateOptions, 'source'>;
+  defaultReadOptions: Omit<ReadOptions, 'source'>;
+  readonly dpopKeys: Promise<CryptoKeyPair>;
 
   // Header cache for reading nanotdf collections
-  // TODO readonly private headerCache: NanoHeaderCache;
+  private readonly headerCache: NanoHeaderCache;
 
-  constructor({authProvider, defaultCreateOptions, defaultReadOptions, disableDPoP, policyEndpoint}: OpenTDFOptions) {
+  constructor({
+    authProvider,
+    dpopKeys,
+    defaultCreateOptions,
+    defaultReadOptions,
+    disableDPoP,
+    policyEndpoint,
+  }: OpenTDFOptions) {
     this.authProvider = authProvider;
-    this.defaultCreateOptions = defaultCreateOptions;
-    this.defaultReadOptions = defaultReadOptions;
+    this.defaultCreateOptions = defaultCreateOptions || {};
+    this.defaultReadOptions = defaultReadOptions || {};
     this.dpopEnabled = !!disableDPoP;
-    this.policyEndpoint = policyEndpoint;
+    this.policyEndpoint = policyEndpoint || '';
+    this.headerCache = new NanoHeaderCache();
+    this.dpopKeys =
+      dpopKeys ??
+      crypto.subtle.generateKey(
+        {
+          name: 'RSASSA-PKCS1-v1_5',
+          hash: 'SHA-256',
+          modulusLength: 2048,
+          publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
+        },
+        true,
+        ['sign', 'verify']
+      );
   }
 
   async createNanoTDF(opts: CreateNanoTDFOptions): Promise<ArrayBuffer> {
+    opts = { ...this.defaultCreateOptions, ...opts };
     const collection = await this.createNanoTDFCollection(opts);
     const ciphertext = await collection.encrypt(opts.source);
     await collection.close();
@@ -111,21 +178,78 @@ export class OpenTDF {
   }
 
   /**
-   * Creates a new collection object, which can be used to encrypt a series of data with the same policy. 
-   * @returns 
+   * Creates a new collection object, which can be used to encrypt a series of data with the same policy.
+   * @returns
    */
   async createNanoTDFCollection(opts: CreateNanoTDFCollectionOptions): Promise<NanoTDFCollection> {
-    const c = new Collection(opts);
-    throw new Error('Not implemented');
+    opts = { ...this.defaultCreateOptions, ...opts };
+    return new Collection(this.authProvider, opts);
   }
 
   /**
    * Decrypts a nanotdf object. Optionally, stores the collection header and its DEK.
-   * @param ciphertext 
+   * @param ciphertext
    */
-  async read(opts?: ReadOptions): Promise<DecoratedStream> {
-    throw new Error('Not implemented');
+  async read(opts: ReadOptions): Promise<DecoratedStream> {
+    opts = { ...this.defaultReadOptions, ...opts };
+    const chunker = await fromSource(opts.source);
+    const prefix = await chunker(0, 3);
+    // switch for prefix, if starts with `PK` in ascii, or `L1L` in ascii:
+    if (prefix[0] === 0x50 && prefix[1] === 0x4b) {
+      throw new InvalidFileError('TDF decrypt not implemented');
+    } else if (prefix[0] === 0x4c && prefix[1] === 0x31 && prefix[2] === 0x4c) {
+      const ciphertext = await chunker();
+      const nanotdf = NanoTDF.from(ciphertext);
+      const cachedDEK = this.headerCache.get(nanotdf.header.ephemeralPublicKey);
+      if (cachedDEK) {
+        const r: DecoratedStream = await streamify(decryptNanoTDF(cachedDEK, nanotdf));
+        r.header = nanotdf.header;
+        return r;
+      }
+      const nc = new Client({
+        allowedKases: opts.allowedKASEndpoints,
+        authProvider: this.authProvider,
+        ignoreAllowList: opts.ignoreAllowlist,
+        dpopEnabled: this.dpopEnabled,
+        dpopKeys: this.dpopKeys,
+        kasEndpoint: opts.allowedKASEndpoints?.[0] || 'https://disallow.all.invalid',
+      });
+      // TODO: The version number should be fetched from the API
+      const version = '0.0.1';
+      // Rewrap key on every request
+      const dek = await nc.rewrapKey(
+        nanotdf.header.toBuffer(),
+        nanotdf.header.getKasRewrapUrl(),
+        nanotdf.header.magicNumberVersion,
+        version
+      );
+      if (!dek) {
+        // These should have thrown already.
+        throw new Error('internal: key rewrap failure');
+      }
+      this.headerCache.set(nanotdf.header.ephemeralPublicKey, dek);
+      const r: DecoratedStream = await streamify(decryptNanoTDF(dek, nanotdf));
+      r.header = nanotdf.header;
+      return r;
+    }
+    throw new InvalidFileError(`unsupported format; prefix not recognized ${prefix}`);
   }
+
+  close() {
+    this.headerCache.close();
+  }
+}
+
+async function streamify(ab: Promise<ArrayBuffer>): Promise<ReadableStream<Uint8Array>> {
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      ab.then((arrayBuffer) => {
+        controller.enqueue(new Uint8Array(arrayBuffer));
+        controller.close();
+      });
+    },
+  });
+  return stream;
 }
 
 export type NanoTDFCollection = {
@@ -134,29 +258,35 @@ export type NanoTDFCollection = {
 };
 
 class Collection {
-  client: NanoTDFDatasetClient;
+  client?: NanoTDFDatasetClient;
 
   constructor(authProvider: AuthProvider, opts: CreateNanoTDFCollectionOptions) {
     if (opts.signers || opts.signingKeyID) {
-      throw new Error('ntdf signing not implemented');
+      throw new ConfigurationError('ntdf signing not implemented');
     }
     if (opts.autoconfigure) {
-      throw new Error('autoconfigure not implemented');
+      throw new ConfigurationError('autoconfigure not implemented');
     }
     if (opts.ecdsaBindingKeyID) {
-      throw new Error('custom binding key not implemented');
+      throw new ConfigurationError('custom binding key not implemented');
     }
 
     this.client = new NanoTDFDatasetClient({
       authProvider,
-      kasEndpoint: opts.defaultKASEndpoint,
+      kasEndpoint: opts.defaultKASEndpoint ?? 'https://disallow.all.invalid',
       maxKeyIterations: opts.maxKeyIterations,
     });
   }
 
   async encrypt(source: Source): Promise<ArrayBuffer> {
-    return this.client.encrypt(source);
-    throw new Error('Not implemented');
+    if (!this.client) {
+      throw new ConfigurationError('Collection is closed');
+    }
+    const chunker = await fromSource(source);
+    return this.client.encrypt(await chunker());
   }
 
+  async close() {
+    delete this.client;
+  }
 }

@@ -1,7 +1,6 @@
 import { v4 } from 'uuid';
 import {
   ZipReader,
-  fromBuffer,
   streamToBuffer,
   keyMiddleware as defaultKeyMiddleware,
 } from '../utils/index.js';
@@ -50,6 +49,7 @@ import { type AttributeObject, type Policy, SplitKey } from '../models/index.js'
 import { plan } from '../../../src/policy/granter.js';
 import { attributeFQNsAsValues } from '../../../src/policy/api.js';
 import { type Value } from '../../../src/policy/attributes.js';
+import { type Chunker, fromBuffer, fromSource } from '../../../src/seekable.js';
 
 const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
 const HTML_BYTE_LIMIT = 100 * 1000 * 1000; // 100 MB, see WS-9476.
@@ -80,7 +80,7 @@ const makeChunkable = async (source: DecryptSource) => {
       initialChunker = source.location;
       break;
     default:
-      initialChunker = await fromDataSource(source);
+      initialChunker = await fromSource(source);
   }
 
   const magic: string = await getFirstTwoBytes(initialChunker);
@@ -556,11 +556,4 @@ export class Client {
 
 export type { AuthProvider };
 
-export {
-  DecryptParamsBuilder,
-  DecryptSource,
-  EncryptParamsBuilder,
-  HttpRequest,
-  fromDataSource,
-  withHeaders,
-};
+export { DecryptParamsBuilder, DecryptSource, EncryptParamsBuilder, HttpRequest, withHeaders };

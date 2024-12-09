@@ -20,7 +20,6 @@ import {
 } from './models/index.js';
 import { base64 } from '../../src/encodings/index.js';
 import {
-  type Chunker,
   ZipReader,
   ZipWriter,
   base64ToBuffer,
@@ -50,6 +49,7 @@ import { type CryptoService, type DecryptResult } from './crypto/declarations.js
 import { CentralDirectory } from './utils/zip-reader.js';
 import { SymmetricCipher } from './ciphers/symmetric-cipher-base.js';
 import { allPool, anyPool } from '../../src/concurrency.js';
+import { type Chunker } from '../../src/seekable.js';
 
 // TODO: input validation on manifest JSON
 const DEFAULT_SEGMENT_SIZE = 1024 * 1024;

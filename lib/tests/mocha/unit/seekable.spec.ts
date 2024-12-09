@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { createSandbox, SinonSandbox } from 'sinon';
 
-import { type Chunker } from '../../../tdf3/src/utils/chunkers.js';
+import { type Chunker } from '../../../src/seekable.js';
 
 function range(a: number, b?: number): number[] {
   if (!b) {
@@ -28,31 +28,31 @@ describe('chunkers', () => {
     const r = range(256);
     const b = new Uint8Array(r);
     it('all', async () => {
-      const { fromBuffer } = await import('../../../tdf3/src/utils/chunkers.js');
+      const { fromBuffer } = await import('../../../src/seekable.js');
       const all = await fromBuffer(b)();
       expect(all).to.deep.equal(b);
       expect(Array.from(all)).to.deep.equal(r);
     });
     it('one', async () => {
-      const { fromBuffer } = await import('../../../tdf3/src/utils/chunkers.js');
+      const { fromBuffer } = await import('../../../src/seekable.js');
       const one = await fromBuffer(b)(1, 2);
       expect(one).to.deep.equal(b.slice(1, 2));
       expect(Array.from(one)).to.deep.equal([1]);
     });
     it('negative one', async () => {
-      const { fromBuffer } = await import('../../../tdf3/src/utils/chunkers.js');
+      const { fromBuffer } = await import('../../../src/seekable.js');
       const twofiftyfive = await fromBuffer(b)(-1);
       expect(twofiftyfive).to.deep.equal(b.slice(255));
       expect(Array.from(twofiftyfive)).to.deep.equal([255]);
     });
     it('negative two', async () => {
-      const { fromBuffer } = await import('../../../tdf3/src/utils/chunkers.js');
+      const { fromBuffer } = await import('../../../src/seekable.js');
       const twofiftyfour = await fromBuffer(b)(-2);
       expect(twofiftyfour).to.deep.equal(b.slice(254));
       expect(Array.from(twofiftyfour)).to.deep.equal([254, 255]);
     });
     it('negative three to negative 2', async () => {
-      const { fromBuffer } = await import('../../../tdf3/src/utils/chunkers.js');
+      const { fromBuffer } = await import('../../../src/seekable.js');
       const twofiftyfour = await fromBuffer(b)(-3, -2);
       expect(twofiftyfour).to.deep.equal(b.slice(253, 254));
       expect(Array.from(twofiftyfour)).to.deep.equal([253]);
@@ -63,21 +63,21 @@ describe('chunkers', () => {
     const r = range(256);
     const b = new Uint8Array(r);
     it('all', async () => {
-      const { fromUrl } = await import('../../../tdf3/src/utils/chunkers.js');
+      const { fromUrl } = await import('../../../src/seekable.js');
       const c: Chunker = await fromUrl('http://localhost:3000/file');
       const all: Uint8Array = new Uint8Array(await c());
       expect(all).to.deep.equal(b);
       expect(Array.from(all)).to.deep.equal(r);
     });
     it('one', async () => {
-      const { fromUrl } = await import('../../../tdf3/src/utils/chunkers.js');
+      const { fromUrl } = await import('../../../src/seekable.js');
       const c: Chunker = await fromUrl('http://localhost:3000/file');
       const one: Uint8Array = new Uint8Array(await c(1, 2));
       expect(one).to.deep.equal(b.slice(1, 2));
       expect(Array.from(one)).to.deep.eq([1]);
     });
     it('negative one', async () => {
-      const { fromUrl } = await import('../../../tdf3/src/utils/chunkers.js');
+      const { fromUrl } = await import('../../../src/seekable.js');
       const twofiftyfive: Uint8Array = new Uint8Array(
         await (
           await fromUrl('http://localhost:3000/file')
@@ -87,7 +87,7 @@ describe('chunkers', () => {
       expect(Array.from(twofiftyfive)).to.deep.equal([255]);
     });
     it('negative two', async () => {
-      const { fromUrl } = await import('../../../tdf3/src/utils/chunkers.js');
+      const { fromUrl } = await import('../../../src/seekable.js');
       try {
         await (
           await fromUrl('http://localhost:3000/file')
@@ -98,7 +98,7 @@ describe('chunkers', () => {
       }
     });
     it('unsatisiable', async () => {
-      const { fromUrl } = await import('../../../tdf3/src/utils/chunkers.js');
+      const { fromUrl } = await import('../../../src/seekable.js');
       try {
         await (
           await fromUrl('http://localhost:3000/file')
@@ -111,7 +111,7 @@ describe('chunkers', () => {
       }
     });
     it('broken stream all', async () => {
-      const { fromUrl } = await import('../../../tdf3/src/utils/chunkers.js');
+      const { fromUrl } = await import('../../../src/seekable.js');
       try {
         const c: Chunker = await fromUrl('http://localhost:3000/error');
         await c();
@@ -123,7 +123,7 @@ describe('chunkers', () => {
       }
     });
     it('broken stream some', async () => {
-      const { fromUrl } = await import('../../../tdf3/src/utils/chunkers.js');
+      const { fromUrl } = await import('../../../src/seekable.js');
       try {
         const c: Chunker = await fromUrl('http://localhost:3000/error');
         await c(1);

@@ -6,7 +6,7 @@ import { Binary } from '../binary.js';
 import { ConfigurationError } from '../../../src/errors.js';
 import { PemKeyPair } from '../crypto/declarations.js';
 import { DecoratedReadableStream } from './DecoratedReadableStream.js';
-import { type Chunker } from '../utils/chunkers.js';
+import { type Chunker } from '../../../src/seekable.js';
 import { AssertionConfig, AssertionVerificationKeys } from '../assertions.js';
 import { Value } from '../../../src/policy/attributes.js';
 

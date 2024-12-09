@@ -24,7 +24,6 @@ const defaultOptions: EncryptOptions = {
   ecdsaBinding: false,
 };
 
-
 /**
  * NanoTDF SDK Client. Deprecated in favor of OpenTDF.
  *
@@ -402,4 +401,3 @@ export class NanoTDFDatasetClient extends Client {
     return ivVector;
   }
 }
-

@@ -1,4 +1,4 @@
-import { ConfigurationError, NetworkError } from './errors.js';
+import { ConfigurationError, InvalidFileError, NetworkError } from './errors.js';
 
 /**
  * Read data from a seekable stream.
@@ -8,19 +8,21 @@ import { ConfigurationError, NetworkError } from './errors.js';
  */
 export type Chunker = (byteStart?: number, byteEnd?: number) => Promise<Uint8Array>;
 
+/**
+ * Type union for a variety of inputs.
+ */
 export type Source =
   | { type: 'buffer'; location: Uint8Array }
   | { type: 'chunker'; location: Chunker }
+  | { type: 'file-browser'; location: Blob }
   | { type: 'remote'; location: string }
-  | { type: 'stream'; location: ReadableStream<Uint8Array> }
-  | { type: 'file-browser'; location: Blob };
+  // | { type: 'stream'; location: DecoratedReadableStream } // DEPRECATED
+  | { type: 'stream'; location: ReadableStream<Uint8Array> };
 
-
-
-
-let axiosRemoteChunk: AxiosInstance | null = null;
-
-
+/**
+ * Creates a seekable object from a browser file object.
+ * @param fileRef the browser file data
+ */
 export const fromBrowserFile = (fileRef: Blob): Chunker => {
   return async (byteStart?: number, byteEnd?: number): Promise<Uint8Array> => {
     const chunkBlob = fileRef.slice(byteStart, byteEnd);
@@ -29,43 +31,65 @@ export const fromBrowserFile = (fileRef: Blob): Chunker => {
   };
 };
 
-export const fromBuffer = (source: Uint8Array | Buffer): Chunker => {
+export const fromBuffer = (source: Uint8Array): Chunker => {
   return (byteStart?: number, byteEnd?: number) => {
     return Promise.resolve(source.slice(byteStart, byteEnd));
   };
 };
 
+export const fromString = (source: string): Chunker => {
+  return fromBuffer(new TextEncoder().encode(source));
+};
+
+async function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function getRemoteChunk(url: string, range?: string): Promise<Uint8Array> {
-  if (!axiosRemoteChunk) {
-    axiosRemoteChunk = axios.create();
-    // @ts-ignore: axiosRetry not typed
-    axiosRetry(axiosRemoteChunk, {
-      retries: 3,
-      retryDelay: axiosRetry.exponentialDelay,
-      retryCondition: () => true,
-    }); // Retries all idempotent requests (GET, HEAD, OPTIONS, PUT, DELETE)
-  }
-  try {
-    const res: AxiosResponse<ArrayBuffer> = await axiosRemoteChunk.get(url, {
-      ...(range && {
-        headers: {
-          Range: `bytes=${range}`,
-        },
-      }),
-      responseType: 'arraybuffer',
-    });
-    if (!res.data) {
+  // loop with fetch for three times, with an exponential backoff
+  // if the fetch fails with a network error
+  // this is to handle transient network errors
+  const errors: Error[] = [];
+  for (let i = 0; i < 3; i++) {
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        redirect: 'follow', // manual, *follow, error
+        ...(range && {
+          headers: {
+            Range: `bytes=${range}`,
+          },
+        }),
+      });
+    } catch (e) {
+      console.warn(`fetch failed with network error [${e}], retrying...`);
+      sleep(2 ** i * 1000);
+      continue;
+    }
+    if (!res.ok) {
+      if (res.status === 416) {
+        throw new InvalidFileError(
+          `${res.status}: range not satisfiable: requested [${range}] from [${url}]; response [${res.statusText}]`
+        );
+      } else if (res.status === 404) {
+        throw new InvalidFileError(
+          `${res.status}: [${url}] not found; response: [${res.statusText}]`
+        );
+      }
+      console.warn(`fetch failed with status [${res.status}: ${res.statusText}], retrying...`);
+      // waits for 1, 2, 4 seconds
+      sleep(2 ** i * 1000);
+      continue;
+    }
+    const data = await res.arrayBuffer();
+    if (!data) {
       throw new NetworkError(
-        'Unexpected response type: Server should have responded with an ArrayBuffer.'
+        `empty response for range request: requested [${range}] from [${url}]`
       );
     }
-    return new Uint8Array(res.data);
-  } catch (e) {
-    if (e && e.response && e.response.status === 416) {
-      console.log('Warning: Range not satisfiable');
-    }
-    throw e;
+    return new Uint8Array(data);
   }
+  throw new AggregateError(errors, 'fetch failed after 3 retries');
 }
 
 export const fromUrl = async (location: string): Promise<Chunker> => {
@@ -84,14 +108,7 @@ export const fromUrl = async (location: string): Promise<Chunker> => {
   };
 };
 
-export type DataSource =
-  | { type: 'buffer'; location: Uint8Array }
-  | { type: 'chunker'; location: Chunker }
-  | { type: 'file-browser'; location: Blob }
-  | { type: 'remote'; location: string }
-  | { type: 'stream'; location: DecoratedReadableStream };
-
-export const fromDataSource = async ({ type, location }: DataSource) => {
+export const fromSource = async ({ type, location }: Source): Promise<Chunker> => {
   switch (type) {
     case 'buffer':
       if (!(location instanceof Uint8Array)) {
@@ -114,11 +131,19 @@ export const fromDataSource = async ({ type, location }: DataSource) => {
       }
       return fromUrl(location);
     case 'stream':
-      if (!isDecoratedReadableStream(location)) {
-        throw new ConfigurationError('Invalid data source; must be DecoratedTdfStream');
-      }
-      return fromBuffer(await location.toBuffer());
+      //   if (!isDecoratedReadableStream(location)) {
+      //     throw new ConfigurationError('Invalid data source; must be DecoratedTdfStream');
+      //   }
+      //   return fromBuffer(await location.toBuffer());
+      // case 'webstream':
+      return fromBuffer(new Uint8Array(await new Response(location).arrayBuffer()));
     default:
       throw new ConfigurationError(`Data source type not defined, or not supported: ${type}}`);
   }
 };
+
+// Deprected name
+export const fromDataSource = fromSource;
+
+// Deprecated Name
+export type DataSource = Source;
