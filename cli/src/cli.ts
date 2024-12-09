@@ -22,6 +22,8 @@ import { webcrypto } from 'crypto';
 import * as assertions from '@opentdf/sdk/assertions';
 import { attributeFQNsAsValues } from '@opentdf/sdk/nano';
 import { base64 } from '@opentdf/sdk/encodings';
+import { importPKCS8, importSPKI } from 'jose'; // for RS256
+import { TextEncoder } from 'util'; // for HS256
 
 type AuthToProcess = {
   auth?: string;
@@ -134,16 +136,44 @@ async function tdf3DecryptParamsFor(argv: Partial<mainArgs>): Promise<DecryptPar
   return c.build();
 }
 
-function parseAssertionConfig(s: string): assertions.AssertionConfig[] {
+async function parseAssertionConfig(s: string): Promise<assertions.AssertionConfig[]> {
   const u = JSON.parse(s);
   // if u is null or empty, return an empty array
   if (!u) {
     return [];
   }
   const a = Array.isArray(u) ? u : [u];
-  for (const assertion of a) {
+  for (let i = 0; i < a.length; i++) {
+    const assertion = a[i];
     if (!assertions.isAssertionConfig(assertion)) {
       throw new CLIError('CRITICAL', `invalid assertion config ${JSON.stringify(assertion)}`);
+    }
+    if (assertion.signingKey) {
+      const { alg, key } = assertion.signingKey;
+      if (alg === 'HS256') {
+        // Convert key string to Uint8Array
+        if (typeof key !== 'string') {
+          throw new CLIError('CRITICAL', 'HS256 key must be a string');
+        }
+        a[i].signingKey.key = new TextEncoder().encode(key);  // Update array element directly
+      } else if (alg === 'RS256') {
+        // Convert PEM string to a KeyLike object
+        if (typeof key !== 'string') {
+          throw new CLIError('CRITICAL', 'RS256 key must be a PEM string');
+        }
+        try {
+          a[i].signingKey.key = await importPKCS8(key, 'RS256');  // Import private key
+        } catch (err) {
+          // If importing as a private key fails, try importing as a public key
+          try {
+            a[i].signingKey.key = await importSPKI(key, 'RS256');  // Import public key
+          } catch (err) {
+            throw new CLIError('CRITICAL', `Failed to parse RS256 key: ${err.message}`);
+          }
+        }
+      } else {
+        throw new CLIError('CRITICAL', `Unsupported signing key algorithm: ${alg}`);
+      }
     }
   }
   return a;
