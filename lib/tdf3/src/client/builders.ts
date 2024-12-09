@@ -682,6 +682,17 @@ class DecryptParamsBuilder {
     return this;
   }
 
+  /**
+   * Sets the assertion verification keys for the decryption parameters.
+   *
+   * @param {AssertionVerificationKeys} assertionVerificationKeys - An array of assertion configurations to be set.
+   * @returns {DecryptParamsBuilder} The current instance of the EncryptParamsBuilder for method chaining.
+   */
+  withAssertionVerificaitonKeys(assertionVerificationKeys: AssertionVerificationKeys): DecryptParamsBuilder {
+    this._params.assertionVerificationKeys = assertionVerificationKeys;
+    return this;
+  }
+
   _deepCopy(_params: DecryptParams) {
     return freeze({ ..._params });
   }
