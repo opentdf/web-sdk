@@ -25,33 +25,10 @@ const defaultOptions: EncryptOptions = {
   ecdsaBinding: false,
 };
 
+
 /**
- * NanoTDF SDK Client
+ * NanoTDF SDK Client. Deprecated in favor of OpenTDF.
  *
- * @example
- * ```
- * import { clientSecretAuthProvider, NanoTDFClient } from '@opentdf/sdk';
- *
- * const OIDC_ENDPOINT = 'http://localhost:65432/auth/realms/opentdf-demo';
- * const KAS_URL = 'http://localhost:65432/api/kas/';
- *
- * const ciphertext = '...';
- * const client = new NanoTDFClient({
- *   authProvider: await clientSecretAuthProvider({
- *     clientId: 'tdf-client',
- *     clientSecret: '123-456',
- *     oidcOrigin: OIDC_ENDPOINT,
- *   }),
- *   kasEndpoint: KAS_URL
- *  }
- * );
- * client.decrypt(ciphertext)
- *   .then(plaintext => {
- *     console.log('Plaintext', plaintext);
- *   })
- *   .catch(err => {
- *     console.error('Some error occurred', err);
- *   })
  */
 export class NanoTDFClient extends Client {
   /**
