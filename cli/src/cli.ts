@@ -170,7 +170,10 @@ async function tdf3DecryptParamsFor(argv: Partial<mainArgs>): Promise<DecryptPar
   return c.build();
 }
 
-async function correctAssertionKeys(alg: string, key: KeyLike|Uint8Array): Promise<KeyLike | Uint8Array> {
+async function correctAssertionKeys(
+  alg: string,
+  key: KeyLike | Uint8Array
+): Promise<KeyLike | Uint8Array> {
   if (alg === 'HS256') {
     // Convert key string to Uint8Array
     if (typeof key !== 'string') {
