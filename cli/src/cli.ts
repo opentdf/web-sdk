@@ -148,6 +148,7 @@ async function parseAssertionVerificationKeys(
       throw new CLIError('CRITICAL', `Issue converting assertion key from string: ${err.message}`);
     }
   }
+  return u;
 }
 
 async function tdf3DecryptParamsFor(argv: Partial<mainArgs>): Promise<DecryptParams> {
@@ -169,7 +170,7 @@ async function tdf3DecryptParamsFor(argv: Partial<mainArgs>): Promise<DecryptPar
   return c.build();
 }
 
-async function correctAssertionKeys(alg: string, key: string): Promise<KeyLike | Uint8Array> {
+async function correctAssertionKeys(alg: string, key: KeyLike|Uint8Array): Promise<KeyLike | Uint8Array> {
   if (alg === 'HS256') {
     // Convert key string to Uint8Array
     if (typeof key !== 'string') {
@@ -191,9 +192,9 @@ async function correctAssertionKeys(alg: string, key: string): Promise<KeyLike |
         throw new CLIError('CRITICAL', `Failed to parse RS256 key: ${err.message}`);
       }
     }
-  } else {
-    throw new CLIError('CRITICAL', `Unsupported signing key algorithm: ${alg}`);
   }
+  // Otherwise its an unsupported alg
+  throw new CLIError('CRITICAL', `Unsupported signing key algorithm: ${alg}`); // Handle unsupported algs
 }
 
 async function parseAssertionConfig(s: string): Promise<assertions.AssertionConfig[]> {
