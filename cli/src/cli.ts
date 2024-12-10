@@ -129,8 +129,11 @@ async function parseAssertionVerificationKeys(
   if (typeof u !== 'object' || u === null) {
     throw new Error('Invalid input: The input must be an object');
   }
-  for (const assertionName in u) {
-    const assertionKey = u[assertionName];
+  if (!('keys'in u && typeof u.keys === 'object')) {
+    throw new Error('Invalid input: invalid structure of assertionVerificationKeys');
+  }
+  for (const assertionName in u.keys) {
+    const assertionKey = u.keys[assertionName];
     // Ensure each entry has the required 'key' and 'alg' fields
     if (typeof assertionKey !== 'object' || assertionKey === null) {
       throw new CLIError('CRITICAL', `Invalid assertion for ${assertionName}: Must be an object`);
@@ -143,7 +146,7 @@ async function parseAssertionVerificationKeys(
       );
     }
     try {
-      u[assertionName].key = await correctAssertionKeys(assertionKey.alg, assertionKey.key);
+      u.keys[assertionName].key = await correctAssertionKeys(assertionKey.alg, assertionKey.key);
     } catch (err) {
       throw new CLIError('CRITICAL', `Issue converting assertion key from string: ${err.message}`);
     }
