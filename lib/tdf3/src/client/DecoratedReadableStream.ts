@@ -1,4 +1,3 @@
-import { EventEmitter } from 'eventemitter3';
 import streamSaver from 'streamsaver';
 import { fileSave } from 'browser-fs-access';
 import { isFirefox } from '../../../src/utils.js';
@@ -17,6 +16,66 @@ export type DecoratedReadableStreamSinkOptions = {
   signal?: AbortSignal;
 };
 
+/**
+ * Implements a mailbox type, where a sender can add one and only one value,
+ * and a reciever gets a promise for that value. The promise resolves if the
+ * value has already been set, or waits for a sender to set it.
+ */
+class Mailbox<T> {
+  private beenSet = false;
+  private value?: T;
+  private rejection?: any;
+  private resolve?: (value: T) => void;
+  private reject?: (reason?: any) => void;
+  private promise: Promise<T>;
+
+  constructor() {
+    this.promise = new Promise<T>((resolve, reject) => {
+      this.resolve = resolve;
+      this.reject = reject;
+    });
+  }
+
+  set(value: T): void {
+    if (this.beenSet) {
+      throw new Error('Mailbox already set');
+    }
+    this.beenSet = true;
+    if (this.resolve) {
+      this.resolve(value);
+      delete this.resolve;
+      delete this.reject;
+    } else {
+      this.value = value;
+    }
+  }
+
+  get(): Promise<T> {
+    if (this.value !== undefined) {
+      return Promise.resolve(this.value);
+    }
+    if (this.rejection !== undefined) {
+      return Promise.reject(this.rejection);
+    }
+
+    return this.promise;
+  }
+
+  fail(reason?: any): void {
+    if (this.beenSet) {
+      throw new Error('Mailbox already set');
+    }
+    this.beenSet = true;
+    if (this.reject) {
+      this.reject(reason);
+      delete this.resolve;
+      delete this.reject;
+    } else {
+      this.rejection = reason;
+    }
+  }
+}
+
 export class DecoratedReadableStream {
   KEK: null | string;
   algorithm: string;
@@ -24,12 +83,10 @@ export class DecoratedReadableStream {
   tdfSize: number;
   fileSize: number | undefined;
   stream: ReadableStream<Uint8Array>;
-  ee: EventEmitter;
-  on: EventEmitter['on'];
-  emit: EventEmitter['emit'];
-  metadata?: Metadata;
+  metadata?: Promise<Metadata>;
   manifest: Manifest;
   fileStreamServiceWorker?: string;
+  mailbox: Mailbox<Metadata> = new Mailbox();
 
   constructor(
     underlyingSource: UnderlyingSource & {
@@ -42,23 +99,10 @@ export class DecoratedReadableStream {
     this.stream = new ReadableStream(underlyingSource, {
       highWaterMark: 1,
     }) as ReadableStream<Uint8Array>;
-    this.ee = new EventEmitter();
-    this.on = (...args) => this.ee.on(...args);
-    this.emit = (...args) => this.ee.emit(...args);
   }
 
   async getMetadata() {
-    return new Promise((resolve, reject) => {
-      if (this.metadata) {
-        resolve(this.metadata);
-      } else {
-        this.on('error', reject);
-        this.on('rewrap', (rewrapResponse: Metadata) => {
-          this.metadata = rewrapResponse;
-          resolve(rewrapResponse);
-        });
-      }
-    });
+    return this.mailbox.get();
   }
 
   /**
