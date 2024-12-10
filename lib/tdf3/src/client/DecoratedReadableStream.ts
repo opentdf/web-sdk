@@ -4,7 +4,7 @@ import { fileSave } from 'browser-fs-access';
 import { isFirefox } from '../../../src/utils.js';
 
 import { type Metadata } from '../tdf.js';
-import { type Manifest, type UpsertResponse } from '../models/index.js';
+import { type Manifest } from '../models/index.js';
 import { ConfigurationError } from '../../../src/errors.js';
 
 export async function streamToBuffer(stream: ReadableStream<Uint8Array>): Promise<Uint8Array> {
@@ -29,7 +29,6 @@ export class DecoratedReadableStream {
   emit: EventEmitter['emit'];
   metadata?: Metadata;
   manifest: Manifest;
-  upsertResponse?: UpsertResponse;
   fileStreamServiceWorker?: string;
 
   constructor(

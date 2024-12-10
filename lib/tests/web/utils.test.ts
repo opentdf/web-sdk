@@ -1,5 +1,4 @@
 import { expect } from '@esm-bundle/chai';
-import axios from 'axios';
 import sinon from 'sinon';
 import {
   addNewLines,
@@ -135,10 +134,10 @@ describe('skew estimation', () => {
   });
 
   describe('estimateSkewFromHeaders', () => {
-    it('axios', async () => {
+    it('fetch', async () => {
       console.log(window.origin);
       const before = Date.now();
-      const aResponse = await axios.get(window.origin);
+      const aResponse = await fetch(window.origin);
       await new Promise((r) => setTimeout(r, 1000));
       const estimate = estimateSkewFromHeaders(aResponse.headers, before);
       expect(estimate).to.be.lessThan(3);

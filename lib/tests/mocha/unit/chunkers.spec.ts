@@ -105,7 +105,9 @@ describe('chunkers', () => {
         )(12, 5);
         expect.fail();
       } catch (e) {
-        expect(e.message).to.include('416');
+        expect(() => {
+          throw e;
+        }).to.throw('416');
       }
     });
     it('broken stream all', async () => {
@@ -115,7 +117,9 @@ describe('chunkers', () => {
         await c();
         expect.fail();
       } catch (e) {
-        expect(e.message).to.include('404');
+        expect(() => {
+          throw e;
+        }).to.throw('404');
       }
     });
     it('broken stream some', async () => {
@@ -125,7 +129,9 @@ describe('chunkers', () => {
         await c(1);
         expect.fail();
       } catch (e) {
-        expect(e.message).to.include('404');
+        expect(() => {
+          throw e;
+        }).to.throw('404');
       }
     });
   });

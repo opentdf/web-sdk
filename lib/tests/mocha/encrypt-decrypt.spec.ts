@@ -1,8 +1,8 @@
 // Simplest HTTP server that supports RANGE headers AFAIK.
-import { assert } from 'chai';
+import { assert, expect } from 'chai';
 
 import { getMocks } from '../mocks/index.js';
-import { HttpMethod, HttpRequest } from '../../src/auth/auth.js';
+import { AuthProvider, HttpRequest } from '../../src/auth/auth.js';
 import { AesGcmCipher, KeyInfo, SplitKey, WebCryptoService } from '../../tdf3/index.js';
 import { Client } from '../../tdf3/src/index.js';
 import { AssertionConfig, AssertionVerificationKeys } from '../../tdf3/src/assertions.js';
@@ -50,44 +50,7 @@ describe('rewrap error cases', function () {
     key1 = await encryptionInformation.generateKey();
   });
 
-  async function encryptTestData({
-    customAuthProvider,
-  }: {
-    customAuthProvider?:
-      | {
-          updateClientPublicKey: () => Promise<void>;
-          withCreds:
-            | ((httpReq: HttpRequest) => Promise<{
-                headers: { authorization: string };
-                method: HttpMethod;
-                params?: object | undefined;
-                url: string;
-                body?: unknown;
-              }>)
-            | ((httpReq: HttpRequest) => Promise<{
-                headers: { 'x-test-response': string };
-                method: HttpMethod;
-                params?: object | undefined;
-                url: string;
-                body?: unknown;
-              }>)
-            | ((httpReq: HttpRequest) => Promise<{
-                body: { invalidField: string };
-                headers: Record<string, string>;
-                method: HttpMethod;
-                params?: object | undefined;
-                url: string;
-              }>)
-            | ((httpReq: HttpRequest) => Promise<{
-                body: { invalidKey: boolean };
-                headers: Record<string, string>;
-                method: HttpMethod;
-                params?: object | undefined;
-                url: string;
-              }>);
-        }
-      | undefined;
-  }) {
+  async function encryptTestData({ customAuthProvider }: { customAuthProvider?: AuthProvider }) {
     const keyMiddleware = async () => ({ keyForEncryption: key1, keyForManifest: key1 });
 
     if (customAuthProvider) {
@@ -99,9 +62,7 @@ describe('rewrap error cases', function () {
       });
     }
 
-    const eo = await Mocks.getEntityObject();
     return client.encrypt({
-      eo,
       metadata: Mocks.getMetadataObject(),
       offline: true,
       scope: {
@@ -129,10 +90,8 @@ describe('rewrap error cases', function () {
 
     const encryptedStream = await encryptTestData({ customAuthProvider: authProvider });
 
-    const eo = await Mocks.getEntityObject();
     try {
       await client.decrypt({
-        eo,
         source: {
           type: 'stream',
           location: encryptedStream.stream,
@@ -156,10 +115,8 @@ describe('rewrap error cases', function () {
 
     const encryptedStream = await encryptTestData({ customAuthProvider: authProvider });
 
-    const eo = await Mocks.getEntityObject();
     try {
       await client.decrypt({
-        eo,
         source: {
           type: 'stream',
           location: encryptedStream.stream,
@@ -168,7 +125,7 @@ describe('rewrap error cases', function () {
       assert.fail('Expected PermissionDeniedError');
     } catch (error) {
       assert.instanceOf(error, PermissionDeniedError);
-      assert.include(error.message, 'rewrap failure');
+      assert.include(error.message, 'rewrap permission denied');
     }
   });
 
@@ -188,10 +145,8 @@ describe('rewrap error cases', function () {
 
     const encryptedStream = await encryptTestData({ customAuthProvider: authProvider });
 
-    const eo = await Mocks.getEntityObject();
     try {
       await client.decrypt({
-        eo,
         source: {
           type: 'stream',
           location: encryptedStream.stream,
@@ -215,10 +170,8 @@ describe('rewrap error cases', function () {
 
     const encryptedStream = await encryptTestData({ customAuthProvider: authProvider });
 
-    const eo = await Mocks.getEntityObject();
     try {
       await client.decrypt({
-        eo,
         source: {
           type: 'stream',
           location: encryptedStream.stream,
@@ -226,8 +179,9 @@ describe('rewrap error cases', function () {
       });
       assert.fail('Expected ServiceError');
     } catch (error) {
-      assert.instanceOf(error, ServiceError);
-      assert.include(error.message, 'rewrap failure');
+      expect(() => {
+        throw error;
+      }).to.throw(ServiceError, 'rewrap failure');
     }
   });
 
@@ -246,10 +200,7 @@ describe('rewrap error cases', function () {
 
       const encryptedStream = await encryptTestData({});
 
-      const eo = await Mocks.getEntityObject();
-
       await client.decrypt({
-        eo,
         source: {
           type: 'stream',
           location: encryptedStream.stream,
@@ -257,16 +208,18 @@ describe('rewrap error cases', function () {
       });
       assert.fail('Expected NetworkError');
     } catch (error) {
-      assert.instanceOf(error, NetworkError);
+      expect(() => {
+        throw error;
+      }).to.throw(NetworkError);
     }
   });
 
   it('should handle decrypt errors with invalid keys', async function () {
-    const authProvider = {
+    const authProvider: AuthProvider = {
       updateClientPublicKey: async () => {},
       withCreds: async (httpReq: HttpRequest) => ({
         ...httpReq,
-        body: { invalidKey: true },
+        body: new URLSearchParams({ invalidKey: 'true' }),
         headers: {
           ...httpReq.headers,
           'x-test-response': '400',
@@ -277,10 +230,8 @@ describe('rewrap error cases', function () {
 
     const encryptedStream = await encryptTestData({ customAuthProvider: authProvider });
 
-    const eo = await Mocks.getEntityObject();
     try {
       await client.decrypt({
-        eo,
         source: {
           type: 'stream',
           location: encryptedStream.stream,
@@ -288,8 +239,9 @@ describe('rewrap error cases', function () {
       });
       assert.fail('Expected InvalidFileError');
     } catch (error) {
-      assert.instanceOf(error, InvalidFileError);
-      assert.include(error.message, 'rewrap bad request');
+      expect(() => {
+        throw error;
+      }).to.throw(InvalidFileError, 'rewrap bad request');
     }
   });
 });
@@ -330,8 +282,6 @@ describe('encrypt decrypt test', async function () {
       ['sign', 'verify']
     );
     const publicKey = keyPair.publicKey;
-    console.log('publicKey', publicKey);
-    const eo = await Mocks.getEntityObject();
     const scope: Scope = {
       dissem: ['user@domain.com'],
       attributes: [],
@@ -342,7 +292,6 @@ describe('encrypt decrypt test', async function () {
     crypto.getRandomValues(hs256Key);
 
     const encryptedStream = await client.encrypt({
-      eo,
       metadata: Mocks.getMetadataObject(),
       offline: true,
       scope,
@@ -399,8 +348,6 @@ describe('encrypt decrypt test', async function () {
       ] as AssertionConfig[],
     });
 
-    console.log('encryptedStream', encryptedStream);
-
     // Create AssertionVerificationKeys for verification
     const assertionVerificationKeys: AssertionVerificationKeys = {
       Keys: {
@@ -416,7 +363,6 @@ describe('encrypt decrypt test', async function () {
     };
 
     const decryptStream = await client.decrypt({
-      eo,
       source: {
         type: 'stream',
         location: encryptedStream.stream,

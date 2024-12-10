@@ -1,11 +1,9 @@
 import { v4 } from 'uuid';
-import axios from 'axios';
 import {
   ZipReader,
   fromBuffer,
   fromDataSource,
   streamToBuffer,
-  isAppIdProviderCheck,
   type Chunker,
   keyMiddleware as defaultKeyMiddleware,
 } from '../utils/index.js';
@@ -24,19 +22,8 @@ import {
 import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-provider.js';
 import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider.js';
 import { CryptoService } from '../crypto/declarations.js';
-import {
-  type AuthProvider,
-  AppIdAuthProvider,
-  HttpRequest,
-  withHeaders,
-} from '../../../src/auth/auth.js';
-import EAS from '../../../src/auth/Eas.js';
-import {
-  cryptoPublicToPem,
-  pemToCryptoPublicKey,
-  rstrip,
-  validateSecureUrl,
-} from '../../../src/utils.js';
+import { type AuthProvider, HttpRequest, withHeaders } from '../../../src/auth/auth.js';
+import { pemToCryptoPublicKey, rstrip, validateSecureUrl } from '../../../src/utils.js';
 
 import {
   EncryptParams,
@@ -57,12 +44,11 @@ import {
 } from './builders.js';
 import { KasPublicKeyInfo, OriginAllowList } from '../../../src/access.js';
 import { ConfigurationError } from '../../../src/errors.js';
-import { EntityObject } from '../../../src/tdf/EntityObject.js';
 import { Binary } from '../binary.js';
 import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
 import { toCryptoKeyPair } from '../crypto/crypto-utils.js';
 import * as defaultCryptoService from '../crypto/index.js';
-import { type AttributeObject, AttributeSet, type Policy, SplitKey } from '../models/index.js';
+import { type AttributeObject, type Policy, SplitKey } from '../models/index.js';
 import { plan } from '../../../src/policy/granter.js';
 import { attributeFQNsAsValues } from '../../../src/policy/api.js';
 import { type Value } from '../../../src/policy/attributes.js';
@@ -73,28 +59,6 @@ const HTML_BYTE_LIMIT = 100 * 1000 * 1000; // 100 MB, see WS-9476.
 // No default config for now. Delegate to Virtru wrapper for endpoints.
 const defaultClientConfig = { oidcOrigin: '', cryptoService: defaultCryptoService };
 
-export const uploadBinaryToS3 = async function (
-  stream: ReadableStream<Uint8Array>,
-  uploadUrl: string,
-  fileSize: number
-) {
-  try {
-    const body: Uint8Array = await streamToBuffer(stream);
-
-    await axios.put(uploadUrl, body, {
-      headers: {
-        'Content-Length': fileSize,
-        'content-type': 'application/zip',
-        'cache-control': 'no-store',
-      },
-      maxContentLength: Infinity,
-      maxBodyLength: Infinity,
-    });
-  } catch (e) {
-    console.error(e);
-    throw e;
-  }
-};
 const getFirstTwoBytes = async (chunker: Chunker) => new TextDecoder().decode(await chunker(0, 2));
 
 const makeChunkable = async (source: DecryptSource) => {
@@ -160,7 +124,7 @@ export interface ClientConfig {
   kasPublicKey?: string;
   oidcOrigin?: string;
   externalJwt?: string;
-  authProvider?: AuthProvider | AppIdAuthProvider;
+  authProvider?: AuthProvider;
   readerUrl?: string;
   entityObjectEndpoint?: string;
   fileStreamServiceWorker?: string;
@@ -179,7 +143,7 @@ export async function createSessionKeys({
   cryptoService,
   dpopKeys,
 }: {
-  authProvider?: AuthProvider | AppIdAuthProvider;
+  authProvider?: AuthProvider;
   cryptoService: CryptoService;
   dpopKeys?: Promise<CryptoKeyPair>;
 }): Promise<CryptoKeyPair> {
@@ -197,7 +161,7 @@ export async function createSessionKeys({
   // Note that we base64 encode the PEM string here as a quick workaround, simply because
   // a formatted raw PEM string isn't a valid header value and sending it raw makes keycloak's
   // header parser barf. There are more subtle ways to solve this, but this works for now.
-  if (authProvider && !isAppIdProviderCheck(authProvider)) {
+  if (authProvider) {
     await authProvider?.updateClientPublicKey(signingKeys);
   }
   return signingKeys;
@@ -259,7 +223,7 @@ export class Client {
 
   readonly clientId?: string;
 
-  readonly authProvider?: AuthProvider | AppIdAuthProvider;
+  readonly authProvider?: AuthProvider;
 
   readonly readerUrl?: string;
 
@@ -269,8 +233,6 @@ export class Client {
    * Session binding keys. Used for DPoP and signed request bodies.
    */
   readonly dpopKeys: Promise<CryptoKeyPair>;
-
-  readonly eas?: EAS;
 
   readonly dpopEnabled: boolean;
 
@@ -330,14 +292,6 @@ export class Client {
     this.authProvider = config.authProvider;
     this.clientConfig = clientConfig;
 
-    if (this.authProvider && isAppIdProviderCheck(this.authProvider)) {
-      this.eas = new EAS({
-        authProvider: this.authProvider,
-        endpoint:
-          clientConfig.entityObjectEndpoint ?? `${clientConfig.easEndpoint}/api/entityobject`,
-      });
-    }
-
     this.clientId = clientConfig.clientId;
     if (!this.authProvider) {
       if (!clientConfig.clientId) {
@@ -388,7 +342,6 @@ export class Client {
    * @param [metadata] Additional non-secret data to store with the TDF
    * @param [opts] Test only
    * @param [mimeType] mime type of source. defaults to `unknown`
-   * @param [offline] Where to store the policy. Defaults to `false` - which results in `upsert` events to store/update a policy
    * @param [windowSize] - segment size in bytes. Defaults to a a million bytes.
    * @param [keyMiddleware] - function that handle keys
    * @param [streamMiddleware] - function that handle stream
@@ -402,14 +355,16 @@ export class Client {
     asHtml = false,
     metadata,
     mimeType,
-    offline = false,
+    offline = true,
     windowSize = DEFAULT_SEGMENT_SIZE,
-    eo,
     keyMiddleware = defaultKeyMiddleware,
     streamMiddleware = async (stream: DecoratedReadableStream) => stream,
     splitPlan,
     assertionConfigs = [],
   }: EncryptParams): Promise<DecoratedReadableStream> {
+    if (!offline) {
+      throw new ConfigurationError('online mode not supported');
+    }
     const dpopKeys = await this.dpopKeys;
 
     const policyObject = asPolicy(scope);
@@ -475,15 +430,6 @@ export class Client {
 
     const byteLimit = asHtml ? HTML_BYTE_LIMIT : GLOBAL_BYTE_LIMIT;
     const encryptionInformation = new SplitKey(new AesGcmCipher(this.cryptoService));
-    let attributeSet: undefined | AttributeSet;
-    let entity: undefined | EntityObject;
-    if (eo) {
-      entity = eo;
-      const s = new AttributeSet();
-      eo.attributes.forEach((attr) => s.addJwtAttribute(attr));
-      attributeSet = s;
-    }
-
     const splits: SplitStep[] = splitPlan?.length ? splitPlan : [{ kas: this.kasEndpoint }];
     encryptionInformation.keyAccess = await Promise.all(
       splits.map(async ({ kas, sid }) => {
@@ -492,7 +438,6 @@ export class Client {
         }
         const kasPublicKey = await this.kasKeys[kas];
         return buildKeyAccess({
-          attributeSet,
           type: offline ? 'wrapped' : 'remote',
           url: kasPublicKey.url,
           kid: kasPublicKey.kid,
@@ -505,12 +450,10 @@ export class Client {
     const { keyForEncryption, keyForManifest } = await (keyMiddleware as EncryptKeyMiddleware)();
     const ecfg: EncryptConfiguration = {
       allowList: this.allowedKases,
-      attributeSet,
       byteLimit,
       cryptoService: this.cryptoService,
       dpopKeys,
       encryptionInformation,
-      entity,
       segmentSizeDefault: windowSize,
       integrityAlgorithm: 'HS256',
       segmentIntegrityAlgorithm: 'GMAC',
@@ -556,7 +499,6 @@ export class Client {
    * @see DecryptParamsBuilder
    */
   async decrypt({
-    eo,
     source,
     keyMiddleware = async (key: Binary) => key,
     streamMiddleware = async (stream: DecoratedReadableStream) => stream,
@@ -565,17 +507,6 @@ export class Client {
     concurrencyLimit = 1,
   }: DecryptParams): Promise<DecoratedReadableStream> {
     const dpopKeys = await this.dpopKeys;
-    let entityObject;
-    if (this.eas || eo) {
-      const sessionPublicKey = await cryptoPublicToPem(dpopKeys.publicKey);
-      if (eo && eo.publicKey == sessionPublicKey) {
-        entityObject = eo;
-      } else if (this.eas) {
-        entityObject = await this.eas.fetchEntityObject({
-          publicKey: sessionPublicKey,
-        });
-      }
-    }
     if (!this.authProvider) {
       throw new ConfigurationError('AuthProvider missing');
     }
@@ -591,7 +522,6 @@ export class Client {
         concurrencyLimit,
         cryptoService: this.cryptoService,
         dpopKeys,
-        entity: entityObject,
         fileStreamServiceWorker: this.clientConfig.fileStreamServiceWorker,
         keyMiddleware,
         progressHandler: this.clientConfig.progressHandler,
@@ -629,7 +559,6 @@ export class Client {
 export type { AuthProvider };
 
 export {
-  AppIdAuthProvider,
   DecryptParamsBuilder,
   DecryptSource,
   EncryptParamsBuilder,

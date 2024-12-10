@@ -1,5 +1,6 @@
 import { type AuthProvider } from './auth/auth.js';
 import {
+  ConfigurationError,
   InvalidFileError,
   NetworkError,
   PermissionDeniedError,
@@ -8,14 +9,16 @@ import {
 } from './errors.js';
 import { pemToCryptoPublicKey, validateSecureUrl } from './utils.js';
 
-export class RewrapRequest {
-  signedRequestToken = '';
-}
+export type RewrapRequest = {
+  signedRequestToken: string;
+};
 
-export class RewrapResponse {
-  entityWrappedKey = '';
-  sessionPublicKey = '';
-}
+export type RewrapResponse = {
+  metadata: Record<string, unknown>;
+  entityWrappedKey: string;
+  sessionPublicKey: string;
+  schemaVersion: string;
+};
 
 /**
  * Get a rewrapped access key to the document, if possible
@@ -40,8 +43,10 @@ export async function fetchWrappedKey(
     body: JSON.stringify(requestBody),
   });
 
+  let response: Response;
+
   try {
-    const response = await fetch(req.url, {
+    response = await fetch(req.url, {
       method: req.method,
       mode: 'cors', // no-cors, *cors, same-origin
       cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
@@ -51,28 +56,33 @@ export async function fetchWrappedKey(
       referrerPolicy: 'no-referrer', // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
       body: req.body as BodyInit,
     });
-
-    if (!response.ok) {
-      switch (response.status) {
-        case 400:
-          throw new InvalidFileError(
-            `400 for [${req.url}]: rewrap failure [${await response.text()}]`
-          );
-        case 401:
-          throw new UnauthenticatedError(`401 for [${req.url}]`);
-        case 403:
-          throw new PermissionDeniedError(`403 for [${req.url}]`);
-        default:
-          throw new NetworkError(
-            `${req.method} ${req.url} => ${response.status} ${response.statusText}`
-          );
-      }
-    }
-
-    return response.json();
   } catch (e) {
-    throw new NetworkError(`unable to fetch wrapped key from [${url}]: ${e}`);
+    throw new NetworkError(`unable to fetch wrapped key from [${url}]`, e);
   }
+
+  if (!response.ok) {
+    switch (response.status) {
+      case 400:
+        throw new InvalidFileError(
+          `400 for [${req.url}]: rewrap bad request [${await response.text()}]`
+        );
+      case 401:
+        throw new UnauthenticatedError(`401 for [${req.url}]; rewrap auth failure`);
+      case 403:
+        throw new PermissionDeniedError(`403 for [${req.url}]; rewrap permission denied`);
+      default:
+        if (response.status >= 500) {
+          throw new ServiceError(
+            `${response.status} for [${req.url}]: rewrap failure due to service error [${await response.text()}]`
+          );
+        }
+        throw new NetworkError(
+          `${req.method} ${req.url} => ${response.status} ${response.statusText}`
+        );
+    }
+  }
+
+  return response.json();
 }
 
 export type KasPublicKeyAlgorithm = 'ec:secp256r1' | 'rsa:2048';
@@ -100,7 +110,7 @@ export type KasPublicKeyInfo = {
   key: Promise<CryptoKey>;
 };
 
-async function noteInvalidPublicKey(url: string, r: Promise<CryptoKey>): Promise<CryptoKey> {
+async function noteInvalidPublicKey(url: URL, r: Promise<CryptoKey>): Promise<CryptoKey> {
   try {
     return await r;
   } catch (e) {
@@ -116,14 +126,47 @@ async function noteInvalidPublicKey(url: string, r: Promise<CryptoKey>): Promise
  * the value from `${kas}/kas_public_key`.
  */
 export async function fetchECKasPubKey(kasEndpoint: string): Promise<KasPublicKeyInfo> {
+  return fetchKasPubKey(kasEndpoint, 'ec:secp256r1');
+}
+
+export async function fetchKasPubKey(
+  kasEndpoint: string,
+  algorithm?: KasPublicKeyAlgorithm
+): Promise<KasPublicKeyInfo> {
+  if (!kasEndpoint) {
+    throw new ConfigurationError('KAS definition not found');
+  }
+  // Logs insecure KAS. Secure is enforced in constructor
   validateSecureUrl(kasEndpoint);
-  const pkUrlV2 = `${kasEndpoint}/v2/kas_public_key?algorithm=ec:secp256r1&v=2`;
-  const kasPubKeyResponseV2 = await fetch(pkUrlV2);
+
+  // Parse kasEndpoint to URL, then append to its path and update its query parameters
+  let pkUrlV2: URL;
+  try {
+    pkUrlV2 = new URL(kasEndpoint);
+  } catch (e) {
+    throw new ConfigurationError(`KAS definition invalid: [${kasEndpoint}]`, e);
+  }
+  if (!pkUrlV2.pathname.endsWith('kas_public_key')) {
+    if (!pkUrlV2.pathname.endsWith('/')) {
+      pkUrlV2.pathname += '/';
+    }
+    pkUrlV2.pathname += 'v2/kas_public_key';
+  }
+  pkUrlV2.searchParams.set('algorithm', algorithm || 'rsa:2048');
+  if (!pkUrlV2.searchParams.get('v')) {
+    pkUrlV2.searchParams.set('v', '2');
+  }
+
+  let kasPubKeyResponseV2: Response;
+  try {
+    kasPubKeyResponseV2 = await fetch(pkUrlV2);
+  } catch (e) {
+    throw new NetworkError(`unable to fetch public key from [${pkUrlV2}]`, e);
+  }
   if (!kasPubKeyResponseV2.ok) {
     switch (kasPubKeyResponseV2.status) {
       case 404:
-        // v2 not implemented, perhaps a legacy server
-        break;
+        throw new ConfigurationError(`404 for [${pkUrlV2}]`);
       case 401:
         throw new UnauthenticatedError(`401 for [${pkUrlV2}]`);
       case 403:
@@ -133,28 +176,6 @@ export async function fetchECKasPubKey(kasEndpoint: string): Promise<KasPublicKe
           `${pkUrlV2} => ${kasPubKeyResponseV2.status} ${kasPubKeyResponseV2.statusText}`
         );
     }
-    // most likely a server that does not implement v2 endpoint, so no key identifier
-    const pkUrlV1 = `${kasEndpoint}/kas_public_key?algorithm=ec:secp256r1`;
-    const r2 = await fetch(pkUrlV1);
-    if (!r2.ok) {
-      switch (r2.status) {
-        case 401:
-          throw new UnauthenticatedError(`401 for [${pkUrlV2}]`);
-        case 403:
-          throw new PermissionDeniedError(`403 for [${pkUrlV2}]`);
-        default:
-          throw new NetworkError(
-            `unable to load KAS public key from [${pkUrlV1}]. Received [${r2.status}:${r2.statusText}]`
-          );
-      }
-    }
-    const pem = await r2.json();
-    return {
-      key: noteInvalidPublicKey(pkUrlV1, pemToCryptoPublicKey(pem)),
-      publicKey: pem,
-      url: kasEndpoint,
-      algorithm: 'ec:secp256r1',
-    };
   }
   const jsonContent = await kasPubKeyResponseV2.json();
   const { publicKey, kid }: KasPublicKeyInfo = jsonContent;
