@@ -130,9 +130,9 @@ async function parseAssertionVerificationKeys(
     throw new Error('Invalid input: The input must be an object');
   }
   // handle both cases of "keys"
-  if (!('Keys'in u && typeof u.Keys === 'object')) {
-    if ('keys'in u && typeof u.keys === 'object') {
-      u.Keys = u.keys
+  if (!('Keys' in u && typeof u.Keys === 'object')) {
+    if ('keys' in u && typeof u.keys === 'object') {
+      u.Keys = u.keys;
     } else {
       throw new Error('Invalid input: invalid structure of assertionVerificationKeys');
     }
