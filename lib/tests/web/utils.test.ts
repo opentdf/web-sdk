@@ -8,6 +8,31 @@ import {
   rstrip,
   validateSecureUrl,
 } from '../../src/utils.js';
+import { fromString } from '../../src/seekable.js';
+import { TdfError } from '../../src/errors.js';
+
+describe('errors' , () => {
+  it('Avoids errors due to loops', () => {
+    const cause = new Error();
+    cause.message = 'my message';
+    (cause as unknown as Record<string, string>).extra = 'some_stuff';
+    cause.cause = cause;
+    try {
+      throw new TdfError('message', cause);
+    } catch (e) {
+      expect(() => {throw e}).to.throw('message');
+      expect(e.cause.extra).to.be.undefined;
+      expect(e.cause.message).to.equal('my message');
+      expect(e.cause.stack).to.equal(cause.stack);
+      expect(e.cause.stack).to.equal(cause.stack);
+      expect(e.cause.cause.stack).to.equal(cause.stack);
+      expect(e.cause.cause.cause.stack).to.equal(cause.stack);
+      expect(e.cause.cause.cause.cause.stack).to.equal(cause.stack);
+      expect(e.cause.cause.cause.cause.cause.stack).to.equal(cause.stack);
+      expect(e.cause.cause.cause.cause.cause.cause).to.be.undefined;
+    }
+  });
+});
 
 describe('rstrip', () => {
   describe('default', () => {
@@ -166,5 +191,13 @@ describe('addNewLines', () => {
     expect(addNewLines(' '.repeat(65))).to.eql(
       '                                                                \r\n \r\n'
     );
+  });
+});
+
+describe('seekable tests', () => {
+  it('seekable from string', async () => {
+    const chunker = fromString('hello world');
+    const actual = await chunker();
+    expect(new TextDecoder().decode(actual)).to.be.equal('hello world');
   });
 });

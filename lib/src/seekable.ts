@@ -16,7 +16,6 @@ export type Source =
   | { type: 'chunker'; location: Chunker }
   | { type: 'file-browser'; location: Blob }
   | { type: 'remote'; location: string }
-  // | { type: 'stream'; location: DecoratedReadableStream } // DEPRECATED
   | { type: 'stream'; location: ReadableStream<Uint8Array> };
 
 /**
