@@ -97,7 +97,7 @@ const makeChunkable = async (source: DecryptSource) => {
 
 export interface ClientConfig {
   cryptoService?: CryptoService;
-  organizationName?: string;
+  /// oauth client id; used to generate oauth authProvider
   clientId?: string;
   dpopEnabled?: boolean;
   dpopKeys?: Promise<CryptoKeyPair>;
@@ -346,28 +346,26 @@ export class Client {
    * @param [eo] - (deprecated) entity object
    * @return a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} a new stream containing the TDF ciphertext
    */
-  async encrypt({
-    scope = { attributes: [], dissem: [] },
-    autoconfigure,
-    source,
-    asHtml = false,
-    metadata,
-    mimeType,
-    offline = true,
-    windowSize = DEFAULT_SEGMENT_SIZE,
-    keyMiddleware = defaultKeyMiddleware,
-    streamMiddleware = async (stream: DecoratedReadableStream) => stream,
-    splitPlan,
-    assertionConfigs = [],
-  }: EncryptParams): Promise<DecoratedReadableStream> {
-    if (!offline) {
+  async encrypt(opts: EncryptParams): Promise<DecoratedReadableStream> {
+    if (opts.offline === false) {
       throw new ConfigurationError('online mode not supported');
     }
     const dpopKeys = await this.dpopKeys;
+    const {
+      asHtml,
+      autoconfigure,
+      metadata,
+      mimeType = 'unknown',
+      windowSize = DEFAULT_SEGMENT_SIZE,
+      keyMiddleware = defaultKeyMiddleware,
+      streamMiddleware= async (stream: DecoratedReadableStream) => stream,
+    } = opts;
+    const scope = opts.scope ??  { attributes: [], dissem: [] };
 
     const policyObject = asPolicy(scope);
     validatePolicyObject(policyObject);
 
+    let splitPlan = opts.splitPlan;
     if (!splitPlan && autoconfigure) {
       let avs: Value[] = scope.attributeValues ?? [];
       const fqns: string[] = scope.attributes
@@ -426,7 +424,8 @@ export class Client {
 
     // TODO: Refactor underlying builder to remove some of this unnecessary config.
 
-    const byteLimit = asHtml ? HTML_BYTE_LIMIT : GLOBAL_BYTE_LIMIT;
+    const maxByteLimit = asHtml ? HTML_BYTE_LIMIT : GLOBAL_BYTE_LIMIT;
+    const byteLimit = (opts.byteLimit === undefined || opts.byteLimit <= 0 || opts.byteLimit > maxByteLimit) ? maxByteLimit : opts.byteLimit;
     const encryptionInformation = new SplitKey(new AesGcmCipher(this.cryptoService));
     const splits: SplitStep[] = splitPlan?.length ? splitPlan : [{ kas: this.kasEndpoint }];
     encryptionInformation.keyAccess = await Promise.all(
@@ -436,7 +435,7 @@ export class Client {
         }
         const kasPublicKey = await this.kasKeys[kas];
         return buildKeyAccess({
-          type: offline ? 'wrapped' : 'remote',
+          type: 'wrapped',
           url: kasPublicKey.url,
           kid: kasPublicKey.kid,
           publicKey: kasPublicKey.publicKey,
@@ -455,14 +454,14 @@ export class Client {
       segmentSizeDefault: windowSize,
       integrityAlgorithm: 'HS256',
       segmentIntegrityAlgorithm: 'GMAC',
-      contentStream: source,
+      contentStream: opts.source,
       mimeType,
       policy: policyObject,
       authProvider: this.authProvider,
       progressHandler: this.clientConfig.progressHandler,
       keyForEncryption,
       keyForManifest,
-      assertionConfigs,
+      assertionConfigs: opts.assertionConfigs,
     };
 
     const stream = await (streamMiddleware as EncryptStreamMiddleware)(await writeStream(ecfg));
@@ -498,6 +497,7 @@ export class Client {
    */
   async decrypt({
     source,
+    allowList,
     keyMiddleware = async (key: Binary) => key,
     streamMiddleware = async (stream: DecoratedReadableStream) => stream,
     assertionVerificationKeys,
@@ -509,12 +509,15 @@ export class Client {
       throw new ConfigurationError('AuthProvider missing');
     }
     const chunker = await makeChunkable(source);
+    if (!allowList) {
+      allowList = this.allowedKases;
+    }
 
     // Await in order to catch any errors from this call.
     // TODO: Write error event to stream and don't await.
     return await (streamMiddleware as DecryptStreamMiddleware)(
       await readStream({
-        allowList: this.allowedKases,
+        allowList,
         authProvider: this.authProvider,
         chunker,
         concurrencyLimit,

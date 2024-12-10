@@ -25,6 +25,9 @@ export type Source =
  */
 export const fromBrowserFile = (fileRef: Blob): Chunker => {
   return async (byteStart?: number, byteEnd?: number): Promise<Uint8Array> => {
+    if (byteStart === undefined) {
+      return new Uint8Array(await fileRef.arrayBuffer());
+    }
     const chunkBlob = fileRef.slice(byteStart, byteEnd);
     const arrayBuffer = await new Response(chunkBlob).arrayBuffer();
     return new Uint8Array(arrayBuffer);
@@ -141,6 +144,40 @@ export const fromSource = async ({ type, location }: Source): Promise<Chunker> =
       throw new ConfigurationError(`Data source type not defined, or not supported: ${type}}`);
   }
 };
+
+export async function sourceToStream(source: Source): Promise<ReadableStream<Uint8Array>> {
+  switch (source.type) {
+    case 'stream':
+      return source.location;
+    case 'file-browser':
+      return source.location.stream();
+    case 'chunker': {
+      const chunkSize = 8 * 1024 * 1024; // 8 megabytes
+      let offset = 0;
+      return new ReadableStream({
+        async pull(controller) {
+          const chunk = await source.location(offset, offset + chunkSize);
+          if (chunk.length === 0) {
+            controller.close();
+            return;
+          }
+          controller.enqueue(chunk);
+          offset += chunk.length;
+        },
+      });
+    }
+    default: {
+      const chunker = await fromSource(source);
+      return new ReadableStream({
+        async start(controller) {
+          const chunk = await chunker();
+          controller.enqueue(chunk);
+          controller.close();
+        },
+      });
+    }
+  }
+}
 
 // Deprected name
 export const fromDataSource = fromSource;

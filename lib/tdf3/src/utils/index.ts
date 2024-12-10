@@ -259,6 +259,18 @@ function decodeCodePointsArray(codePoints: number[]): string {
 
 const INVALID_BASE64_RE = /[^+/0-9A-Za-z-_]/g;
 
+/**
+ * Cleans a Base64 encoded string to ensure it is properly formatted.
+ *
+ * This function performs the following operations:
+ * 1. Removes any trailing equal signs (`=`) which are used as padding in Base64 encoding.
+ * 2. Trims whitespace and removes invalid Base64 characters (e.g., `\n`, `\t`).
+ * 3. Returns an empty string if the cleaned string has a length less than 2.
+ * 4. Adds padding equal signs (`=`) to the end of the string if its length is not a multiple of 4.
+ *
+ * @param str The Base64 encoded string to clean.
+ * @returns A clean Base64 encoded string.
+ */
 function base64clean(str: string) {
   // Node takes equal signs as end of the Base64 encoding
   str = str.split('=')[0];

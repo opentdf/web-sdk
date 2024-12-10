@@ -20,14 +20,28 @@ const authProvider = <AuthProvider>{
 const kasEndpoint = 'http://localhost:3000';
 
 describe('Local roundtrip Tests', () => {
-  it('seekable from string', async () => {
-    const chunker = fromString('hello world');
-    const actual = await chunker();
+  it(`ztdf roundtrip string`, async () => {
+    const client = new OpenTDF({
+      authProvider,
+      defaultReadOptions: {
+        allowedKASEndpoints: [kasEndpoint],
+      },
+    });
+    const cipherText = await client.createZTDF({
+      defaultKASEndpoint: kasEndpoint,
+      source: { type: 'chunker', location: fromString('hello world') },
+    });
+    const nanotdfParsed = await client.read({
+      source: { type: 'stream', location: cipherText },
+    });
+    expect(nanotdfParsed.metadata).to.equal(kasEndpoint);
+
+    const actual = await new Response(nanotdfParsed).arrayBuffer();
     expect(new TextDecoder().decode(actual)).to.be.equal('hello world');
   });
   for (const ecdsaBinding of [false, true]) {
     const bindingType = ecdsaBinding ? 'ecdsa' : 'gmac';
-    it(`roundtrip string (${bindingType} policy binding)`, async () => {
+    it(`nano roundtrip string (${bindingType} policy binding)`, async () => {
       const client = new OpenTDF({
         authProvider,
         defaultReadOptions: {

@@ -6,7 +6,10 @@ import NanoTDF from './nanotdf/NanoTDF.js';
 import decryptNanoTDF from './nanotdf/decrypt.js';
 import Client from './nanotdf/Client.js';
 import Header from './nanotdf/models/Header.js';
-import { fromSource, type Source } from './seekable.js';
+import { fromSource, sourceToStream, type Source } from './seekable.js';
+import { Client as TDF3Client } from '../tdf3/src/client/index.js';
+import { AssertionConfig, AssertionVerificationKeys } from '../tdf3/src/assertions.js';
+import { OriginAllowList } from './access.js';
 
 export type Keys = {
   [keyID: string]: CryptoKey | CryptoKeyPair;
@@ -20,6 +23,10 @@ export type CreateOptions = {
 
   // List of attributes that will be assigned to the object's policy
   attributes?: string[];
+
+  // If set and positive, this represents the maxiumum number of bytes to read from a stream to encrypt.
+  // This is helpful for enforcing size limits and preventing DoS attacks.
+  byteLimit?: number;
 
   // The KAS to use for creation, if none is specified by the attribute service.
   defaultKASEndpoint?: string;
@@ -44,9 +51,47 @@ export type CreateNanoTDFOptions = CreateOptions & {
   // When absent, the nanotdf is unsigned.
   signingKeyID?: string;
 };
+
 export type CreateNanoTDFCollectionOptions = CreateNanoTDFOptions & {
   // The maximum number of key iterations to use for a single DEK.
   maxKeyIterations?: number;
+};
+
+// Metadata for a TDF object.
+export type Metadata = object;
+
+
+// MIME type of the decrypted content.
+export type MimeType = `${string}/${string}`;
+
+// Template for a Key Access Object (KAO) to be filled in during encrypt.
+export type SplitStep = {
+
+  // Which KAS to use to rewrap this segment of the key
+  kas: string;
+
+  // An identifier for a key segment.
+  // Leave empty to share the key.
+  sid?: string;
+};
+
+/// Options specific to the ZTDF container format.
+export type CreateZTDFOptions = CreateOptions & {
+  // Configuration for bound metadata.
+  assertionConfigs?: AssertionConfig[];
+
+  // Unbound metadata (deprecated)
+  metadata?: Metadata;
+
+  // MIME type of the decrypted content. Used for display.
+  mimeType?: MimeType;
+
+  // How to split or share the data encryption key across multiple KASes.
+  splitPlan?: SplitStep[];
+
+  // The segment size for the content; smaller is slower, but allows faster random access.
+  // The current default is 1 MiB (2^20 bytes).
+  windowSize?: number;
 };
 
 // Settings for decrypting any variety of TDF file.
@@ -140,6 +185,7 @@ export class OpenTDF {
 
   // Header cache for reading nanotdf collections
   private readonly headerCache: NanoHeaderCache;
+  private tdf3Client: TDF3Client;
 
   constructor({
     authProvider,
@@ -155,6 +201,10 @@ export class OpenTDF {
     this.dpopEnabled = !!disableDPoP;
     this.policyEndpoint = policyEndpoint || '';
     this.headerCache = new NanoHeaderCache();
+    this.tdf3Client = new TDF3Client({
+      authProvider,
+      dpopKeys,
+    });
     this.dpopKeys =
       dpopKeys ??
       crypto.subtle.generateKey(
@@ -186,6 +236,23 @@ export class OpenTDF {
     return new Collection(this.authProvider, opts);
   }
 
+  async createZTDF(opts: CreateZTDFOptions): Promise<DecoratedStream> {
+    const oldStream = await this.tdf3Client.encrypt({
+      source: await sourceToStream(opts.source),
+      scope: {
+        attributes: opts.attributes,
+      },
+      assertionConfigs: opts.assertionConfigs,
+      byteLimit: opts.byteLimit,
+      mimeType: opts.mimeType,
+      splitPlan: opts.splitPlan,
+      windowSize: opts.windowSize,
+    });
+    const stream: DecoratedStream = oldStream.stream;
+    stream.metadata = Promise.resolve(oldStream.metadata);
+    return stream;
+  }
+
   /**
    * Decrypts a nanotdf object. Optionally, stores the collection header and its DEK.
    * @param ciphertext
@@ -196,7 +263,42 @@ export class OpenTDF {
     const prefix = await chunker(0, 3);
     // switch for prefix, if starts with `PK` in ascii, or `L1L` in ascii:
     if (prefix[0] === 0x50 && prefix[1] === 0x4b) {
-      throw new InvalidFileError('TDF decrypt not implemented');
+      const allowList = new OriginAllowList(
+        opts.allowedKASEndpoints ?? [],
+        opts.ignoreAllowlist,
+      );
+      let assertionVerificationKeys: AssertionVerificationKeys | undefined;
+      if (opts.verifiers && !opts.noVerify) {
+        assertionVerificationKeys = {Keys: {}};
+        for (const [keyID, key] of Object.entries(opts.verifiers)) {
+          if ((key as CryptoKeyPair).publicKey) {
+            const pk = (key as CryptoKeyPair).publicKey;
+            const algName = pk.algorithm.name;
+            const alg = algName.startsWith('EC') ? 'ES256' : 'RS256';
+            assertionVerificationKeys.Keys[keyID] = {
+              alg,
+              key: pk,
+            };
+          } else {
+            const k = key as CryptoKey;
+            const algName = k.algorithm.name;
+            const alg = algName.startsWith('AES') ? 'HS256' : algName.startsWith('EC') ? 'ES256' : 'RS256';
+            assertionVerificationKeys.Keys[keyID] = {
+              alg,
+              key: k,
+            };
+          }
+        }
+      }
+      const oldStream = await this.tdf3Client.decrypt({
+        source: opts.source,
+        allowList,
+        assertionVerificationKeys,
+        noVerifyAssertions: opts.noVerify,
+      });
+      const stream: DecoratedStream = oldStream.stream;
+      stream.metadata = Promise.resolve(oldStream.metadata);
+      return stream;
     } else if (prefix[0] === 0x4c && prefix[1] === 0x31 && prefix[2] === 0x4c) {
       const ciphertext = await chunker();
       const nanotdf = NanoTDF.from(ciphertext);

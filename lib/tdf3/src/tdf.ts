@@ -110,7 +110,6 @@ type Chunk = {
 export type IntegrityAlgorithm = 'GMAC' | 'HS256';
 
 export type EncryptConfiguration = {
-  allowedKases?: string[];
   allowList?: OriginAllowList;
   cryptoService: CryptoService;
   dpopKeys: CryptoKeyPair;

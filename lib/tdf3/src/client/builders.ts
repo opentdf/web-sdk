@@ -9,6 +9,7 @@ import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 import { type Chunker } from '../../../src/seekable.js';
 import { AssertionConfig, AssertionVerificationKeys } from '../assertions.js';
 import { Value } from '../../../src/policy/attributes.js';
+import { OriginAllowList } from '../../../src/access.js';
 
 export const DEFAULT_SEGMENT_SIZE: number = 1024 * 1024;
 export type Scope = {
@@ -34,6 +35,7 @@ export type SplitStep = {
 };
 
 export type EncryptParams = {
+  byteLimit?: number;
   source: ReadableStream<Uint8Array>;
   opts?: { keypair: PemKeyPair };
   autoconfigure?: boolean;
@@ -514,6 +516,7 @@ export type DecryptSource =
 
 export type DecryptParams = {
   source: DecryptSource;
+  allowList?: OriginAllowList;
   keyMiddleware?: DecryptKeyMiddleware;
   streamMiddleware?: DecryptStreamMiddleware;
   assertionVerificationKeys?: AssertionVerificationKeys;
