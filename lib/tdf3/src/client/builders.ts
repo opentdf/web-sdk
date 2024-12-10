@@ -53,6 +53,7 @@ export type EncryptParams = {
   splitPlan?: SplitStep[];
   streamMiddleware?: EncryptStreamMiddleware;
   assertionConfigs?: AssertionConfig[];
+  defaultKASEndpoint?: string;
 };
 
 // 'Readonly<EncryptParams>': scope, metadata, offline, windowSize, asHtml

@@ -10,6 +10,7 @@ import { fromSource, sourceToStream, type Source } from './seekable.js';
 import { Client as TDF3Client } from '../tdf3/src/client/index.js';
 import { AssertionConfig, AssertionVerificationKeys } from '../tdf3/src/assertions.js';
 import { OriginAllowList } from './access.js';
+import { type Manifest } from '../tdf3/src/models/manifest.js';
 
 export type Keys = {
   [keyID: string]: CryptoKey | CryptoKeyPair;
@@ -60,13 +61,11 @@ export type CreateNanoTDFCollectionOptions = CreateNanoTDFOptions & {
 // Metadata for a TDF object.
 export type Metadata = object;
 
-
 // MIME type of the decrypted content.
 export type MimeType = `${string}/${string}`;
 
 // Template for a Key Access Object (KAO) to be filled in during encrypt.
 export type SplitStep = {
-
   // Which KAS to use to rewrap this segment of the key
   kas: string;
 
@@ -133,6 +132,7 @@ export type OpenTDFOptions = {
 export type DecoratedStream = ReadableStream<Uint8Array> & {
   // If the source is a TDF3/ZTDF, and includes metadata, and it has been read.
   metadata?: Promise<any>;
+  manifest?: Promise<Manifest>;
   // If the source is a NanoTDF, this will be set.
   header?: Header;
 };
@@ -204,6 +204,7 @@ export class OpenTDF {
     this.tdf3Client = new TDF3Client({
       authProvider,
       dpopKeys,
+      kasEndpoint: 'https://disallow.all.invalid',
     });
     this.dpopKeys =
       dpopKeys ??
@@ -239,6 +240,7 @@ export class OpenTDF {
   async createZTDF(opts: CreateZTDFOptions): Promise<DecoratedStream> {
     const oldStream = await this.tdf3Client.encrypt({
       source: await sourceToStream(opts.source),
+      defaultKASEndpoint: opts.defaultKASEndpoint,
       scope: {
         attributes: opts.attributes,
       },
@@ -249,6 +251,7 @@ export class OpenTDF {
       windowSize: opts.windowSize,
     });
     const stream: DecoratedStream = oldStream.stream;
+    stream.manifest = Promise.resolve(oldStream.manifest);
     stream.metadata = Promise.resolve(oldStream.metadata);
     return stream;
   }
@@ -263,13 +266,10 @@ export class OpenTDF {
     const prefix = await chunker(0, 3);
     // switch for prefix, if starts with `PK` in ascii, or `L1L` in ascii:
     if (prefix[0] === 0x50 && prefix[1] === 0x4b) {
-      const allowList = new OriginAllowList(
-        opts.allowedKASEndpoints ?? [],
-        opts.ignoreAllowlist,
-      );
+      const allowList = new OriginAllowList(opts.allowedKASEndpoints ?? [], opts.ignoreAllowlist);
       let assertionVerificationKeys: AssertionVerificationKeys | undefined;
       if (opts.verifiers && !opts.noVerify) {
-        assertionVerificationKeys = {Keys: {}};
+        assertionVerificationKeys = { Keys: {} };
         for (const [keyID, key] of Object.entries(opts.verifiers)) {
           if ((key as CryptoKeyPair).publicKey) {
             const pk = (key as CryptoKeyPair).publicKey;
@@ -282,7 +282,11 @@ export class OpenTDF {
           } else {
             const k = key as CryptoKey;
             const algName = k.algorithm.name;
-            const alg = algName.startsWith('AES') ? 'HS256' : algName.startsWith('EC') ? 'ES256' : 'RS256';
+            const alg = algName.startsWith('AES')
+              ? 'HS256'
+              : algName.startsWith('EC')
+                ? 'ES256'
+                : 'RS256';
             assertionVerificationKeys.Keys[keyID] = {
               alg,
               key: k,

@@ -27,14 +27,19 @@ describe('Local roundtrip Tests', () => {
         allowedKASEndpoints: [kasEndpoint],
       },
     });
-    const cipherText = await client.createZTDF({
+    const cipherTextStream = await client.createZTDF({
+      autoconfigure: false,
       defaultKASEndpoint: kasEndpoint,
       source: { type: 'chunker', location: fromString('hello world') },
     });
+    const cipherManifest = await cipherTextStream.manifest;
+    expect(cipherManifest?.encryptionInformation?.keyAccess[0]?.url).to.equal(kasEndpoint);
+    const cipherTextArray = new Uint8Array(await new Response(cipherTextStream).arrayBuffer());
+
     const nanotdfParsed = await client.read({
-      source: { type: 'stream', location: cipherText },
+      source: { type: 'buffer', location: cipherTextArray },
     });
-    expect(nanotdfParsed.metadata).to.equal(kasEndpoint);
+    expect(await nanotdfParsed.metadata).to.contain({ hello: 'world' });
 
     const actual = await new Response(nanotdfParsed).arrayBuffer();
     expect(new TextDecoder().decode(actual)).to.be.equal('hello world');

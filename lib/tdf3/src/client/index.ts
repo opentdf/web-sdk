@@ -358,9 +358,9 @@ export class Client {
       mimeType = 'unknown',
       windowSize = DEFAULT_SEGMENT_SIZE,
       keyMiddleware = defaultKeyMiddleware,
-      streamMiddleware= async (stream: DecoratedReadableStream) => stream,
+      streamMiddleware = async (stream: DecoratedReadableStream) => stream,
     } = opts;
-    const scope = opts.scope ??  { attributes: [], dissem: [] };
+    const scope = opts.scope ?? { attributes: [], dissem: [] };
 
     const policyObject = asPolicy(scope);
     validatePolicyObject(policyObject);
@@ -425,9 +425,14 @@ export class Client {
     // TODO: Refactor underlying builder to remove some of this unnecessary config.
 
     const maxByteLimit = asHtml ? HTML_BYTE_LIMIT : GLOBAL_BYTE_LIMIT;
-    const byteLimit = (opts.byteLimit === undefined || opts.byteLimit <= 0 || opts.byteLimit > maxByteLimit) ? maxByteLimit : opts.byteLimit;
+    const byteLimit =
+      opts.byteLimit === undefined || opts.byteLimit <= 0 || opts.byteLimit > maxByteLimit
+        ? maxByteLimit
+        : opts.byteLimit;
     const encryptionInformation = new SplitKey(new AesGcmCipher(this.cryptoService));
-    const splits: SplitStep[] = splitPlan?.length ? splitPlan : [{ kas: this.kasEndpoint }];
+    const splits: SplitStep[] = splitPlan?.length
+      ? splitPlan
+      : [{ kas: opts.defaultKASEndpoint ?? this.kasEndpoint }];
     encryptionInformation.keyAccess = await Promise.all(
       splits.map(async ({ kas, sid }) => {
         if (!(kas in this.kasKeys)) {

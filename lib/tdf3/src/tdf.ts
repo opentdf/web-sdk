@@ -1022,6 +1022,6 @@ export async function readStream(cfg: DecryptConfiguration) {
   const outputStream = new DecoratedReadableStream(underlyingSource);
 
   outputStream.manifest = manifest;
-  outputStream.mailbox.set(metadata);
+  outputStream.metadata = metadata;
   return outputStream;
 }

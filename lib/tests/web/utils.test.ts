@@ -11,7 +11,7 @@ import {
 import { fromString } from '../../src/seekable.js';
 import { TdfError } from '../../src/errors.js';
 
-describe('errors' , () => {
+describe('errors', () => {
   it('Avoids errors due to loops', () => {
     const cause = new Error();
     cause.message = 'my message';
@@ -20,7 +20,9 @@ describe('errors' , () => {
     try {
       throw new TdfError('message', cause);
     } catch (e) {
-      expect(() => {throw e}).to.throw('message');
+      expect(() => {
+        throw e;
+      }).to.throw('message');
       expect(e.cause.extra).to.be.undefined;
       expect(e.cause.message).to.equal('my message');
       expect(e.cause.stack).to.equal(cause.stack);

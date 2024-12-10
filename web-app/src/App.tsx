@@ -1,10 +1,29 @@
 import { clsx } from 'clsx';
 import { useState, useEffect, type ChangeEvent } from 'react';
+import streamsaver from 'streamsaver';
 import { showSaveFilePicker } from 'native-file-system-adapter';
 import './App.css';
 import { type Chunker, type DecryptSource, NanoTDFClient, TDF3Client } from '@opentdf/sdk';
 import { type SessionInformation, OidcClient } from './session.js';
 import { c } from './config.js';
+
+
+async function toFile(
+  stream: ReadableStream<Uint8Array>,
+  filepath = 'download.tdf',
+  options?: {
+    encoding?: BufferEncoding;
+    signal?: AbortSignal;
+  }
+): Promise<void> {
+
+  const fileStream = streamsaver.createWriteStream(filepath, {
+    writableStrategy: { highWaterMark: 1 },
+    readableStrategy: { highWaterMark: 1 },
+  });
+
+  return stream.pipeTo(fileStream, options);
+}
 
 function decryptedFileName(encryptedFileName: string): string {
   // Groups: 1 file 'name' bit
@@ -425,7 +444,7 @@ function App() {
           cipherText.stream = cipherText.stream.pipeThrough(progressTransformers.writer);
           switch (sinkType) {
             case 'file':
-              await cipherText.toFile(downloadName, { signal: sc.signal });
+              await toFile(cipherText.stream, downloadName, { signal: sc.signal });
               break;
             case 'fsapi':
               if (!f) {
@@ -493,7 +512,7 @@ function App() {
           cipherText.stream = cipherText.stream.pipeThrough(progressTransformers.writer);
           switch (sinkType) {
             case 'file':
-              await cipherText.toFile(downloadName, { signal: sc.signal });
+              await toFile(cipherText.stream, downloadName, { signal: sc.signal });
               break;
             case 'fsapi':
               if (!f) {
@@ -571,7 +590,7 @@ function App() {
             .pipeThrough(progressTransformers.writer);
           switch (sinkType) {
             case 'file':
-              await plainText.toFile(dfn, { signal: sc.signal });
+              await toFile(plainText.stream, dfn, { signal: sc.signal });
               break;
             case 'fsapi':
               if (!f) {
