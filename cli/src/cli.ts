@@ -129,11 +129,16 @@ async function parseAssertionVerificationKeys(
   if (typeof u !== 'object' || u === null) {
     throw new Error('Invalid input: The input must be an object');
   }
-  if (!('keys' in u && typeof u.keys === 'object')) {
-    throw new Error('Invalid input: invalid structure of assertionVerificationKeys');
+  // handle both cases of "keys"
+  if (!('Keys'in u && typeof u.Keys === 'object')) {
+    if ('keys'in u && typeof u.keys === 'object') {
+      u.Keys = u.keys
+    } else {
+      throw new Error('Invalid input: invalid structure of assertionVerificationKeys');
+    }
   }
-  for (const assertionName in u.keys) {
-    const assertionKey = u.keys[assertionName];
+  for (const assertionName in u.Keys) {
+    const assertionKey = u.Keys[assertionName];
     // Ensure each entry has the required 'key' and 'alg' fields
     if (typeof assertionKey !== 'object' || assertionKey === null) {
       throw new CLIError('CRITICAL', `Invalid assertion for ${assertionName}: Must be an object`);
@@ -146,7 +151,7 @@ async function parseAssertionVerificationKeys(
       );
     }
     try {
-      u.keys[assertionName].key = await correctAssertionKeys(assertionKey.alg, assertionKey.key);
+      u.Keys[assertionName].key = await correctAssertionKeys(assertionKey.alg, assertionKey.key);
     } catch (err) {
       throw new CLIError('CRITICAL', `Issue converting assertion key from string: ${err.message}`);
     }
