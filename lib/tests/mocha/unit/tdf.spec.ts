@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import * as TDF from '../../../tdf3/src/tdf.js';
 import { KeyAccessObject } from '../../../tdf3/src/models/key-access.js';
 import { OriginAllowList } from '../../../src/access.js';
-import { InvalidFileError, TdfError, UnsafeUrlError } from '../../../src/errors.js';
+import { ConfigurationError, InvalidFileError, UnsafeUrlError } from '../../../src/errors.js';
 
 const sampleCert = `
 -----BEGIN CERTIFICATE-----
@@ -80,7 +80,20 @@ describe('fetchKasPublicKey', async () => {
       await TDF.fetchKasPublicKey('');
       expect.fail('did not throw');
     } catch (e) {
-      expect(e).to.be.an.instanceof(TdfError);
+      expect(() => {
+        throw e;
+      }).to.throw(ConfigurationError);
+    }
+  });
+
+  it('invalid kas names throw', async () => {
+    try {
+      await TDF.fetchKasPublicKey('~~~');
+      expect.fail('did not throw');
+    } catch (e) {
+      expect(() => {
+        throw e;
+      }).to.throw(ConfigurationError);
     }
   });
 
@@ -88,6 +101,17 @@ describe('fetchKasPublicKey', async () => {
     const pk2 = await TDF.fetchKasPublicKey('http://localhost:3000');
     expect(pk2.publicKey).to.include('BEGIN CERTIFICATE');
     expect(pk2.kid).to.equal('r1');
+  });
+
+  it('invalid algorithms', async () => {
+    try {
+      await TDF.fetchKasPublicKey('http://localhost:3000', 'rsa:512' as any as 'rsa:2048'); //ts-ignore
+      expect.fail('did not throw');
+    } catch (e) {
+      expect(() => {
+        throw e;
+      }).to.throw(ConfigurationError);
+    }
   });
 });
 
