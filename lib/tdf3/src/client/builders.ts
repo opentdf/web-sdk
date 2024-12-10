@@ -5,11 +5,11 @@ import { Binary } from '../binary.js';
 
 import { ConfigurationError } from '../../../src/errors.js';
 import { PemKeyPair } from '../crypto/declarations.js';
-import { EntityObject } from '../../../src/tdf/EntityObject.js';
 import { DecoratedReadableStream } from './DecoratedReadableStream.js';
-import { type Chunker } from '../utils/chunkers.js';
+import { type Chunker } from '../../../src/seekable.js';
 import { AssertionConfig, AssertionVerificationKeys } from '../assertions.js';
 import { Value } from '../../../src/policy/attributes.js';
+import { OriginAllowList } from '../../../src/access.js';
 
 export const DEFAULT_SEGMENT_SIZE: number = 1024 * 1024;
 export type Scope = {
@@ -35,18 +35,19 @@ export type SplitStep = {
 };
 
 export type EncryptParams = {
+  byteLimit?: number;
   source: ReadableStream<Uint8Array>;
   opts?: { keypair: PemKeyPair };
   autoconfigure?: boolean;
   scope?: Scope;
   metadata?: Metadata;
   keypair?: CryptoKeyPair;
+  // Deprecated: Only offline more is currently supported
   offline?: boolean;
   windowSize?: number;
   asHtml?: boolean;
   getPolicyId?: () => Scope['policyId'];
   mimeType?: string;
-  eo?: EntityObject;
   payloadKey?: Binary;
   keyMiddleware?: EncryptKeyMiddleware;
   splitPlan?: SplitStep[];
@@ -514,8 +515,8 @@ export type DecryptSource =
   | { type: 'file-browser'; location: Blob };
 
 export type DecryptParams = {
-  eo?: EntityObject;
   source: DecryptSource;
+  allowList?: OriginAllowList;
   keyMiddleware?: DecryptKeyMiddleware;
   streamMiddleware?: DecryptStreamMiddleware;
   assertionVerificationKeys?: AssertionVerificationKeys;

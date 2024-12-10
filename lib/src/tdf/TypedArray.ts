@@ -1,4 +1,4 @@
-type TypedArray =
+export type TypedArray =
   | Int8Array
   | Uint8Array
   | Int16Array
@@ -8,5 +8,3 @@ type TypedArray =
   | Uint8ClampedArray
   | Float32Array
   | Float64Array;
-
-export default TypedArray;

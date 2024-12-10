@@ -3,7 +3,7 @@ import Header from './models/Header.js';
 import DefaultParams from './models/DefaultParams.js';
 import Payload from './models/Payload.js';
 import { getBitLength as authTagLengthForCipher } from './models/Ciphers.js';
-import TypedArray from '../tdf/TypedArray.js';
+import { TypedArray } from '../tdf/TypedArray.js';
 import encrypt from '../nanotdf-crypto/encrypt.js';
 
 /**

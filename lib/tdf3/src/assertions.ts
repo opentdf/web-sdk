@@ -3,7 +3,7 @@ import { type KeyLike, SignJWT, jwtVerify } from 'jose';
 import { base64, hex } from '../../src/encodings/index.js';
 import { ConfigurationError, IntegrityError, InvalidFileError } from '../../src/errors.js';
 
-export type AssertionKeyAlg = 'RS256' | 'HS256';
+export type AssertionKeyAlg = 'ES256' | 'RS256' | 'HS256';
 export type AssertionType = 'handling' | 'other';
 export type Scope = 'tdo' | 'payload';
 export type AppliesToState = 'encrypted' | 'unencrypted';

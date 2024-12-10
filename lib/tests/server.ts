@@ -93,7 +93,7 @@ const kas: RequestListener = async (req, res) => {
       const algorithm = url.searchParams.get('algorithm') || 'rsa:2048';
       if (!['ec:secp256r1', 'rsa:2048'].includes(algorithm)) {
         console.log(`[DEBUG] invalid algorithm [${algorithm}]`);
-        res.writeHead(400);
+        res.writeHead(404);
         res.end(`{"error": "Invalid algorithm [${algorithm}]"}`);
         return;
       }

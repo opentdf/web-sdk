@@ -1,6 +1,6 @@
 import { InvalidFileError } from '../../../src/errors.js';
+import { type Chunker } from '../../../src/seekable.js';
 import { Manifest } from '../models/index.js';
-import { Chunker } from './chunkers.js';
 import { readUInt32LE, readUInt16LE, copyUint8Arr, buffToString } from './index.js';
 
 // TODO: Better document what these constants are

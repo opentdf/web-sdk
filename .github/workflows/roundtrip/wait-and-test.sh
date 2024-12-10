@@ -23,13 +23,9 @@ _configure_app() {
   return 0
 }
 
-if [ $1 = backend ]; then
-  VITE_PROXY='{"/api":{"target":"http://localhost:5432","xfwd":true},"/auth":{"target":"http://localhost:5432","xfwd":true}}'
-  VITE_TDF_CFG='{"oidc":{"host":"http://localhost:65432/auth/realms/tdf","clientId":"browsertest"},"kas":"http://localhost:65432/api/kas","reader":"https://secure.virtru.com/start?htmlProtocol=1"}'
-else # if [ $1 = platform ]; then
-  VITE_PROXY='{"/kas":{"target":"http://localhost:8080","xfwd":true},"/auth":{"target":"http://localhost:8888","xfwd":true}}'
-  VITE_TDF_CFG='{"oidc":{"host":"http://localhost:65432/auth/realms/opentdf","clientId":"browsertest"},"kas":"http://localhost:65432/kas","reader":"https://secure.virtru.com/start?htmlProtocol=1"}'
-fi
+VITE_PROXY='{"/kas":{"target":"http://localhost:8080","xfwd":true},"/auth":{"target":"http://localhost:8888","xfwd":true}}'
+VITE_TDF_CFG='{"oidc":{"host":"http://localhost:65432/auth/realms/opentdf","clientId":"browsertest"},"kas":"http://localhost:65432/kas","reader":"https://secure.virtru.com/start?htmlProtocol=1"}'
+
 export VITE_PROXY
 export VITE_TDF_CFG
 

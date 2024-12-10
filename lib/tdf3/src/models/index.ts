@@ -4,5 +4,4 @@ export * from './key-access.js';
 export * from './manifest.js';
 export * from './payload.js';
 export * from './policy.js';
-export * from './upsert-response.js';
 export * from '../assertions.js';

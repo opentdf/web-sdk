@@ -1,5 +1,4 @@
 import { toByteArray, fromByteArray } from 'base64-js';
-import { AppIdAuthProvider, type AuthProvider } from '../../../src/auth/auth.js';
 import * as WebCryptoService from '../crypto/index.js';
 import { KeyInfo, SplitKey } from '../models/index.js';
 
@@ -10,7 +9,6 @@ export { ZipReader, readUInt64LE } from './zip-reader.js';
 export { ZipWriter } from './zip-writer.js';
 export { keySplit, keyMerge } from './keysplit.js';
 export { streamToBuffer } from '../client/DecoratedReadableStream.js';
-export * from './chunkers.js';
 
 export type SupportedEncoding = 'hex' | 'utf8' | 'utf-8' | 'binary' | 'latin1' | 'base64';
 
@@ -30,11 +28,6 @@ export function base64ToBuffer(b64: string): Uint8Array {
   return Uint8Array.from(atob(b64).split(''), (c) => c.charCodeAt(0));
 }
 
-export function isAppIdProviderCheck(
-  provider: AuthProvider | AppIdAuthProvider
-): provider is AppIdAuthProvider {
-  return (provider as AppIdAuthProvider)._getName !== undefined;
-}
 export function concatUint8(uint8Arrays: Uint8Array[]): Uint8Array {
   const newLength = uint8Arrays.reduce(
     (accumulator, currentValue) => accumulator + currentValue.length,
@@ -252,20 +245,32 @@ const MAX_ARGUMENTS_LENGTH = 0x1000;
 function decodeCodePointsArray(codePoints: number[]): string {
   const len = codePoints.length;
   if (len <= MAX_ARGUMENTS_LENGTH) {
-    return String.fromCharCode.apply(String, codePoints); // avoid extra slice()
+    return String.fromCharCode(...codePoints); // avoid extra slice()
   }
 
   // Decode in chunks to avoid "call stack size exceeded".
   let res = '';
   let i = 0;
   while (i < len) {
-    res += String.fromCharCode.apply(String, codePoints.slice(i, (i += MAX_ARGUMENTS_LENGTH)));
+    res += String.fromCharCode(...codePoints.slice(i, (i += MAX_ARGUMENTS_LENGTH)));
   }
   return res;
 }
 
 const INVALID_BASE64_RE = /[^+/0-9A-Za-z-_]/g;
 
+/**
+ * Cleans a Base64 encoded string to ensure it is properly formatted.
+ *
+ * This function performs the following operations:
+ * 1. Removes any trailing equal signs (`=`) which are used as padding in Base64 encoding.
+ * 2. Trims whitespace and removes invalid Base64 characters (e.g., `\n`, `\t`).
+ * 3. Returns an empty string if the cleaned string has a length less than 2.
+ * 4. Adds padding equal signs (`=`) to the end of the string if its length is not a multiple of 4.
+ *
+ * @param str The Base64 encoded string to clean.
+ * @returns A clean Base64 encoded string.
+ */
 function base64clean(str: string) {
   // Node takes equal signs as end of the Base64 encoding
   str = str.split('=')[0];

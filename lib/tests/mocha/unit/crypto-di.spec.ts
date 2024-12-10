@@ -6,7 +6,7 @@ import {
   type DecryptResult,
   type EncryptResult,
   type PemKeyPair,
-} from 'tdf3/index.js';
+} from '../../../tdf3/index.js';
 import { Client } from '../../../tdf3/src/client/index.js';
 
 describe('CryptoService DI', () => {
@@ -14,7 +14,7 @@ describe('CryptoService DI', () => {
     const cryptoService: CryptoService = {
       name: 'mock',
       method: 'http://www.w3.org/2001/04/xmlenc#aes256-cbc',
-      cryptoToPemPair: function (keys: unknown): Promise<PemKeyPair> {
+      cryptoToPemPair: function (): Promise<PemKeyPair> {
         throw new Error('Function not implemented.');
       },
       decrypt: function (

@@ -25,13 +25,7 @@ import {
   SplitKey,
   type EncryptionInformation,
 } from './src/models/encryption-information.js';
-import {
-  AuthProvider,
-  AppIdAuthProvider,
-  type HttpMethod,
-  HttpRequest,
-  withHeaders,
-} from '../src/auth/auth.js';
+import { AuthProvider, type HttpMethod, HttpRequest, withHeaders } from '../src/auth/auth.js';
 import { AesGcmCipher } from './src/ciphers/aes-gcm-cipher.js';
 import {
   NanoTDFClient,
@@ -41,7 +35,7 @@ import {
   clientType,
 } from '../src/index.js';
 import { Algorithms, type AlgorithmName, type AlgorithmUrn } from './src/ciphers/algorithms.js';
-import { type Chunker } from './src/utils/chunkers.js';
+import { type Chunker } from '../src/seekable.js';
 
 export type {
   AlgorithmName,
@@ -63,7 +57,6 @@ export type {
 export {
   AesGcmCipher,
   Algorithms,
-  AppIdAuthProvider,
   AuthProviders,
   Binary,
   Client,

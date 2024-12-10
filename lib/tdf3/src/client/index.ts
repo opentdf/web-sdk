@@ -1,12 +1,7 @@
 import { v4 } from 'uuid';
-import axios from 'axios';
 import {
   ZipReader,
-  fromBuffer,
-  fromDataSource,
   streamToBuffer,
-  isAppIdProviderCheck,
-  type Chunker,
   keyMiddleware as defaultKeyMiddleware,
 } from '../utils/index.js';
 import { base64 } from '../../../src/encodings/index.js';
@@ -24,19 +19,8 @@ import {
 import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-provider.js';
 import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider.js';
 import { CryptoService } from '../crypto/declarations.js';
-import {
-  type AuthProvider,
-  AppIdAuthProvider,
-  HttpRequest,
-  withHeaders,
-} from '../../../src/auth/auth.js';
-import EAS from '../../../src/auth/Eas.js';
-import {
-  cryptoPublicToPem,
-  pemToCryptoPublicKey,
-  rstrip,
-  validateSecureUrl,
-} from '../../../src/utils.js';
+import { type AuthProvider, HttpRequest, withHeaders } from '../../../src/auth/auth.js';
+import { pemToCryptoPublicKey, rstrip, validateSecureUrl } from '../../../src/utils.js';
 
 import {
   EncryptParams,
@@ -57,15 +41,15 @@ import {
 } from './builders.js';
 import { KasPublicKeyInfo, OriginAllowList } from '../../../src/access.js';
 import { ConfigurationError } from '../../../src/errors.js';
-import { EntityObject } from '../../../src/tdf/EntityObject.js';
 import { Binary } from '../binary.js';
 import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
 import { toCryptoKeyPair } from '../crypto/crypto-utils.js';
 import * as defaultCryptoService from '../crypto/index.js';
-import { type AttributeObject, AttributeSet, type Policy, SplitKey } from '../models/index.js';
+import { type AttributeObject, type Policy, SplitKey } from '../models/index.js';
 import { plan } from '../../../src/policy/granter.js';
 import { attributeFQNsAsValues } from '../../../src/policy/api.js';
 import { type Value } from '../../../src/policy/attributes.js';
+import { type Chunker, fromBuffer, fromSource } from '../../../src/seekable.js';
 
 const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
 const HTML_BYTE_LIMIT = 100 * 1000 * 1000; // 100 MB, see WS-9476.
@@ -73,28 +57,6 @@ const HTML_BYTE_LIMIT = 100 * 1000 * 1000; // 100 MB, see WS-9476.
 // No default config for now. Delegate to Virtru wrapper for endpoints.
 const defaultClientConfig = { oidcOrigin: '', cryptoService: defaultCryptoService };
 
-export const uploadBinaryToS3 = async function (
-  stream: ReadableStream<Uint8Array>,
-  uploadUrl: string,
-  fileSize: number
-) {
-  try {
-    const body: Uint8Array = await streamToBuffer(stream);
-
-    await axios.put(uploadUrl, body, {
-      headers: {
-        'Content-Length': fileSize,
-        'content-type': 'application/zip',
-        'cache-control': 'no-store',
-      },
-      maxContentLength: Infinity,
-      maxBodyLength: Infinity,
-    });
-  } catch (e) {
-    console.error(e);
-    throw e;
-  }
-};
 const getFirstTwoBytes = async (chunker: Chunker) => new TextDecoder().decode(await chunker(0, 2));
 
 const makeChunkable = async (source: DecryptSource) => {
@@ -118,7 +80,7 @@ const makeChunkable = async (source: DecryptSource) => {
       initialChunker = source.location;
       break;
     default:
-      initialChunker = await fromDataSource(source);
+      initialChunker = await fromSource(source);
   }
 
   const magic: string = await getFirstTwoBytes(initialChunker);
@@ -135,7 +97,7 @@ const makeChunkable = async (source: DecryptSource) => {
 
 export interface ClientConfig {
   cryptoService?: CryptoService;
-  organizationName?: string;
+  /// oauth client id; used to generate oauth authProvider
   clientId?: string;
   dpopEnabled?: boolean;
   dpopKeys?: Promise<CryptoKeyPair>;
@@ -160,7 +122,7 @@ export interface ClientConfig {
   kasPublicKey?: string;
   oidcOrigin?: string;
   externalJwt?: string;
-  authProvider?: AuthProvider | AppIdAuthProvider;
+  authProvider?: AuthProvider;
   readerUrl?: string;
   entityObjectEndpoint?: string;
   fileStreamServiceWorker?: string;
@@ -179,7 +141,7 @@ export async function createSessionKeys({
   cryptoService,
   dpopKeys,
 }: {
-  authProvider?: AuthProvider | AppIdAuthProvider;
+  authProvider?: AuthProvider;
   cryptoService: CryptoService;
   dpopKeys?: Promise<CryptoKeyPair>;
 }): Promise<CryptoKeyPair> {
@@ -197,7 +159,7 @@ export async function createSessionKeys({
   // Note that we base64 encode the PEM string here as a quick workaround, simply because
   // a formatted raw PEM string isn't a valid header value and sending it raw makes keycloak's
   // header parser barf. There are more subtle ways to solve this, but this works for now.
-  if (authProvider && !isAppIdProviderCheck(authProvider)) {
+  if (authProvider) {
     await authProvider?.updateClientPublicKey(signingKeys);
   }
   return signingKeys;
@@ -259,7 +221,7 @@ export class Client {
 
   readonly clientId?: string;
 
-  readonly authProvider?: AuthProvider | AppIdAuthProvider;
+  readonly authProvider?: AuthProvider;
 
   readonly readerUrl?: string;
 
@@ -269,8 +231,6 @@ export class Client {
    * Session binding keys. Used for DPoP and signed request bodies.
    */
   readonly dpopKeys: Promise<CryptoKeyPair>;
-
-  readonly eas?: EAS;
 
   readonly dpopEnabled: boolean;
 
@@ -330,14 +290,6 @@ export class Client {
     this.authProvider = config.authProvider;
     this.clientConfig = clientConfig;
 
-    if (this.authProvider && isAppIdProviderCheck(this.authProvider)) {
-      this.eas = new EAS({
-        authProvider: this.authProvider,
-        endpoint:
-          clientConfig.entityObjectEndpoint ?? `${clientConfig.easEndpoint}/api/entityobject`,
-      });
-    }
-
     this.clientId = clientConfig.clientId;
     if (!this.authProvider) {
       if (!clientConfig.clientId) {
@@ -388,33 +340,32 @@ export class Client {
    * @param [metadata] Additional non-secret data to store with the TDF
    * @param [opts] Test only
    * @param [mimeType] mime type of source. defaults to `unknown`
-   * @param [offline] Where to store the policy. Defaults to `false` - which results in `upsert` events to store/update a policy
    * @param [windowSize] - segment size in bytes. Defaults to a a million bytes.
    * @param [keyMiddleware] - function that handle keys
    * @param [streamMiddleware] - function that handle stream
    * @param [eo] - (deprecated) entity object
    * @return a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} a new stream containing the TDF ciphertext
    */
-  async encrypt({
-    scope = { attributes: [], dissem: [] },
-    autoconfigure,
-    source,
-    asHtml = false,
-    metadata,
-    mimeType,
-    offline = false,
-    windowSize = DEFAULT_SEGMENT_SIZE,
-    eo,
-    keyMiddleware = defaultKeyMiddleware,
-    streamMiddleware = async (stream: DecoratedReadableStream) => stream,
-    splitPlan,
-    assertionConfigs = [],
-  }: EncryptParams): Promise<DecoratedReadableStream> {
+  async encrypt(opts: EncryptParams): Promise<DecoratedReadableStream> {
+    if (opts.offline === false) {
+      throw new ConfigurationError('online mode not supported');
+    }
     const dpopKeys = await this.dpopKeys;
+    const {
+      asHtml,
+      autoconfigure,
+      metadata,
+      mimeType = 'unknown',
+      windowSize = DEFAULT_SEGMENT_SIZE,
+      keyMiddleware = defaultKeyMiddleware,
+      streamMiddleware = async (stream: DecoratedReadableStream) => stream,
+    } = opts;
+    const scope = opts.scope ?? { attributes: [], dissem: [] };
 
     const policyObject = asPolicy(scope);
     validatePolicyObject(policyObject);
 
+    let splitPlan = opts.splitPlan;
     if (!splitPlan && autoconfigure) {
       let avs: Value[] = scope.attributeValues ?? [];
       const fqns: string[] = scope.attributes
@@ -473,17 +424,12 @@ export class Client {
 
     // TODO: Refactor underlying builder to remove some of this unnecessary config.
 
-    const byteLimit = asHtml ? HTML_BYTE_LIMIT : GLOBAL_BYTE_LIMIT;
+    const maxByteLimit = asHtml ? HTML_BYTE_LIMIT : GLOBAL_BYTE_LIMIT;
+    const byteLimit =
+      opts.byteLimit === undefined || opts.byteLimit <= 0 || opts.byteLimit > maxByteLimit
+        ? maxByteLimit
+        : opts.byteLimit;
     const encryptionInformation = new SplitKey(new AesGcmCipher(this.cryptoService));
-    let attributeSet: undefined | AttributeSet;
-    let entity: undefined | EntityObject;
-    if (eo) {
-      entity = eo;
-      const s = new AttributeSet();
-      eo.attributes.forEach((attr) => s.addJwtAttribute(attr));
-      attributeSet = s;
-    }
-
     const splits: SplitStep[] = splitPlan?.length ? splitPlan : [{ kas: this.kasEndpoint }];
     encryptionInformation.keyAccess = await Promise.all(
       splits.map(async ({ kas, sid }) => {
@@ -492,8 +438,7 @@ export class Client {
         }
         const kasPublicKey = await this.kasKeys[kas];
         return buildKeyAccess({
-          attributeSet,
-          type: offline ? 'wrapped' : 'remote',
+          type: 'wrapped',
           url: kasPublicKey.url,
           kid: kasPublicKey.kid,
           publicKey: kasPublicKey.publicKey,
@@ -505,23 +450,21 @@ export class Client {
     const { keyForEncryption, keyForManifest } = await (keyMiddleware as EncryptKeyMiddleware)();
     const ecfg: EncryptConfiguration = {
       allowList: this.allowedKases,
-      attributeSet,
       byteLimit,
       cryptoService: this.cryptoService,
       dpopKeys,
       encryptionInformation,
-      entity,
       segmentSizeDefault: windowSize,
       integrityAlgorithm: 'HS256',
       segmentIntegrityAlgorithm: 'GMAC',
-      contentStream: source,
+      contentStream: opts.source,
       mimeType,
       policy: policyObject,
       authProvider: this.authProvider,
       progressHandler: this.clientConfig.progressHandler,
       keyForEncryption,
       keyForManifest,
-      assertionConfigs,
+      assertionConfigs: opts.assertionConfigs,
     };
 
     const stream = await (streamMiddleware as EncryptStreamMiddleware)(await writeStream(ecfg));
@@ -556,8 +499,8 @@ export class Client {
    * @see DecryptParamsBuilder
    */
   async decrypt({
-    eo,
     source,
+    allowList,
     keyMiddleware = async (key: Binary) => key,
     streamMiddleware = async (stream: DecoratedReadableStream) => stream,
     assertionVerificationKeys,
@@ -565,33 +508,24 @@ export class Client {
     concurrencyLimit = 1,
   }: DecryptParams): Promise<DecoratedReadableStream> {
     const dpopKeys = await this.dpopKeys;
-    let entityObject;
-    if (this.eas || eo) {
-      const sessionPublicKey = await cryptoPublicToPem(dpopKeys.publicKey);
-      if (eo && eo.publicKey == sessionPublicKey) {
-        entityObject = eo;
-      } else if (this.eas) {
-        entityObject = await this.eas.fetchEntityObject({
-          publicKey: sessionPublicKey,
-        });
-      }
-    }
     if (!this.authProvider) {
       throw new ConfigurationError('AuthProvider missing');
     }
     const chunker = await makeChunkable(source);
+    if (!allowList) {
+      allowList = this.allowedKases;
+    }
 
     // Await in order to catch any errors from this call.
     // TODO: Write error event to stream and don't await.
     return await (streamMiddleware as DecryptStreamMiddleware)(
       await readStream({
-        allowList: this.allowedKases,
+        allowList,
         authProvider: this.authProvider,
         chunker,
         concurrencyLimit,
         cryptoService: this.cryptoService,
         dpopKeys,
-        entity: entityObject,
         fileStreamServiceWorker: this.clientConfig.fileStreamServiceWorker,
         keyMiddleware,
         progressHandler: this.clientConfig.progressHandler,
@@ -628,12 +562,4 @@ export class Client {
 
 export type { AuthProvider };
 
-export {
-  AppIdAuthProvider,
-  DecryptParamsBuilder,
-  DecryptSource,
-  EncryptParamsBuilder,
-  HttpRequest,
-  fromDataSource,
-  withHeaders,
-};
+export { DecryptParamsBuilder, DecryptSource, EncryptParamsBuilder, HttpRequest, withHeaders };
