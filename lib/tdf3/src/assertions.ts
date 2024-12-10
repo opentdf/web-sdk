@@ -140,7 +140,6 @@ export async function verify(
   }
 }
 
-
 /**
  * Creates an Assertion object with the specified properties.
  */

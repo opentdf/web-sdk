@@ -60,13 +60,11 @@ export type CreateNanoTDFCollectionOptions = CreateNanoTDFOptions & {
 // Metadata for a TDF object.
 export type Metadata = object;
 
-
 // MIME type of the decrypted content.
 export type MimeType = `${string}/${string}`;
 
 // Template for a Key Access Object (KAO) to be filled in during encrypt.
 export type SplitStep = {
-
   // Which KAS to use to rewrap this segment of the key
   kas: string;
 
@@ -263,13 +261,10 @@ export class OpenTDF {
     const prefix = await chunker(0, 3);
     // switch for prefix, if starts with `PK` in ascii, or `L1L` in ascii:
     if (prefix[0] === 0x50 && prefix[1] === 0x4b) {
-      const allowList = new OriginAllowList(
-        opts.allowedKASEndpoints ?? [],
-        opts.ignoreAllowlist,
-      );
+      const allowList = new OriginAllowList(opts.allowedKASEndpoints ?? [], opts.ignoreAllowlist);
       let assertionVerificationKeys: AssertionVerificationKeys | undefined;
       if (opts.verifiers && !opts.noVerify) {
-        assertionVerificationKeys = {Keys: {}};
+        assertionVerificationKeys = { Keys: {} };
         for (const [keyID, key] of Object.entries(opts.verifiers)) {
           if ((key as CryptoKeyPair).publicKey) {
             const pk = (key as CryptoKeyPair).publicKey;
@@ -282,7 +277,11 @@ export class OpenTDF {
           } else {
             const k = key as CryptoKey;
             const algName = k.algorithm.name;
-            const alg = algName.startsWith('AES') ? 'HS256' : algName.startsWith('EC') ? 'ES256' : 'RS256';
+            const alg = algName.startsWith('AES')
+              ? 'HS256'
+              : algName.startsWith('EC')
+                ? 'ES256'
+                : 'RS256';
             assertionVerificationKeys.Keys[keyID] = {
               alg,
               key: k,
