@@ -6,7 +6,7 @@ import EmbeddedPolicy from './models/Policy/EmbeddedPolicy.js';
 import Payload from './models/Payload.js';
 import getHkdfSalt from './helpers/getHkdfSalt.js';
 import { getBitLength as authTagLengthForCipher } from './models/Ciphers.js';
-import { TypedArray } from '../tdf/index.js';
+import { TypedArray } from '../tdf/TypedArray.js';
 import { GMAC_BINDING_LEN } from './constants.js';
 import { AlgorithmName, KeyFormat, KeyUsageType } from './../nanotdf-crypto/enums.js';
 

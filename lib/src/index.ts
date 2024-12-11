@@ -9,7 +9,9 @@ import {
   DefaultParams,
 } from './nanotdf/index.js';
 import { keyAgreement } from './nanotdf-crypto/index.js';
-import { TypedArray, createAttribute, Policy } from './tdf/index.js';
+import { Policy } from './tdf/Policy.js';
+import { type TypedArray } from './tdf/TypedArray.js';
+import { createAttribute } from './tdf/AttributeObject.js';
 import { fetchECKasPubKey } from './access.js';
 import { ClientConfig } from './nanotdf/Client.js';
 import { ConfigurationError } from './errors.js';
