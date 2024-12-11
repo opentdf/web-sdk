@@ -1,4 +1,4 @@
-import { TypedArray } from '../tdf/index.js';
+import { TypedArray } from '../tdf/TypedArray.js';
 import { base64 } from '../encodings/index.js';
 import Header from './models/Header.js';
 import Payload from './models/Payload.js';
