@@ -45,7 +45,7 @@ import { htmlWrapperTemplate } from './templates/index.js';
 // TODO: remove dependencies from ciphers so that we can open-source instead of relying on other Virtru libs
 import { AesGcmCipher } from './ciphers/index.js';
 import { type AuthProvider, reqSignature } from '../../src/auth/auth.js';
-import PolicyObject from '../../src/tdf/PolicyObject.js';
+import { PolicyObject } from '../../src/tdf/PolicyObject.js';
 import { type CryptoService, type DecryptResult } from './crypto/declarations.js';
 import { CentralDirectory } from './utils/zip-reader.js';
 import { SymmetricCipher } from './ciphers/symmetric-cipher-base.js';
