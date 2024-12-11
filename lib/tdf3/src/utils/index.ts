@@ -1,9 +1,9 @@
-import { toByteArray, fromByteArray } from 'base64-js';
 import * as WebCryptoService from '../crypto/index.js';
 import { KeyInfo, SplitKey } from '../models/index.js';
 
 import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
 import { ConfigurationError } from '../../../src/errors.js';
+import { decodeArrayBuffer, encodeArrayBuffer } from '../../../src/encodings/base64.js';
 
 export { ZipReader, readUInt64LE } from './zip-reader.js';
 export { ZipWriter } from './zip-writer.js';
@@ -116,9 +116,9 @@ function latin1Slice(buf: Uint8Array, start: number, end: number): string {
 
 function base64Slice(buf: Uint8Array, start: number, end: number): string {
   if (start === 0 && end === buf.length) {
-    return fromByteArray(buf);
+    return encodeArrayBuffer(buf);
   } else {
-    return fromByteArray(buf.slice(start, end));
+    return encodeArrayBuffer(buf.slice(start, end));
   }
 }
 
@@ -260,6 +260,18 @@ function decodeCodePointsArray(codePoints: number[]): string {
 
 const INVALID_BASE64_RE = /[^+/0-9A-Za-z-_]/g;
 
+/**
+ * Cleans a Base64 encoded string to ensure it is properly formatted.
+ *
+ * This function performs the following operations:
+ * 1. Removes any trailing equal signs (`=`) which are used as padding in Base64 encoding.
+ * 2. Trims whitespace and removes invalid Base64 characters (e.g., `\n`, `\t`).
+ * 3. Returns an empty string if the cleaned string has a length less than 2.
+ * 4. Adds padding equal signs (`=`) to the end of the string if its length is not a multiple of 4.
+ *
+ * @param str The Base64 encoded string to clean.
+ * @returns A clean Base64 encoded string.
+ */
 function base64clean(str: string) {
   // Node takes equal signs as end of the Base64 encoding
   str = str.split('=')[0];
@@ -274,8 +286,8 @@ function base64clean(str: string) {
   return str;
 }
 
-export function base64ToBytes(str: string) {
-  return toByteArray(base64clean(str));
+export function base64ToBytes(str: string): Uint8Array {
+  return new Uint8Array(decodeArrayBuffer(base64clean(str)));
 }
 
 /**
