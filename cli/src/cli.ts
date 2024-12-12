@@ -125,7 +125,14 @@ function addParams(client: AnyNanoClient, argv: Partial<mainArgs>) {
 async function parseAssertionVerificationKeys(
   s: string
 ): Promise<assertions.AssertionVerificationKeys> {
-  const u = JSON.parse(s);
+  let u;
+  try {
+    u = JSON.parse(s);
+  } catch(err) {
+    // try as file name:
+    const jsonFile = await openAsBlob(s);
+    u = JSON.parse(await jsonFile.text())
+  }
   if (typeof u !== 'object' || u === null) {
     throw new Error('Invalid input: The input must be an object');
   }
@@ -209,7 +216,15 @@ async function correctAssertionKeys(
 }
 
 async function parseAssertionConfig(s: string): Promise<assertions.AssertionConfig[]> {
-  const u = JSON.parse(s);
+  let u;
+  try {
+    u = JSON.parse(s);
+  } catch(err) {
+    // try as file name:
+    const jsonFile = await openAsBlob(s);
+    u = JSON.parse(await jsonFile.text())
+  }
+  
   // if u is null or empty, return an empty array
   if (!u) {
     return [];
@@ -338,7 +353,7 @@ export const handleArgs = (args: string[]) => {
       .option('assertionVerificationKeys', {
         alias: 'with-assertion-verification-keys',
         group: 'Decrypt',
-        desc: 'keys for assertion verification',
+        desc: 'keys for assertion verification or path to a json file containing keys for assertion verification',
         type: 'string',
         default: '',
         validate: parseAssertionVerificationKeys,
@@ -395,7 +410,7 @@ export const handleArgs = (args: string[]) => {
       .options({
         assertions: {
           group: 'Encrypt Options:',
-          desc: 'ZTDF assertion config objects',
+          desc: 'ZTDF assertion config objects or path to a json file containing ZTDF assertion config objects',
           type: 'string',
           default: '',
           validate: parseAssertionConfig,
