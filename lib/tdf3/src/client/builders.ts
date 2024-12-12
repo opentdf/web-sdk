@@ -688,7 +688,7 @@ class DecryptParamsBuilder {
    * @param {AssertionVerificationKeys} assertionVerificationKeys - An array of assertion configurations to be set.
    * @returns {DecryptParamsBuilder} The current instance of the EncryptParamsBuilder for method chaining.
    */
-  withAssertionVerificaitonKeys(
+  withAssertionVerificationKeys(
     assertionVerificationKeys: AssertionVerificationKeys
   ): DecryptParamsBuilder {
     this._params.assertionVerificationKeys = assertionVerificationKeys;
