@@ -128,10 +128,10 @@ async function parseAssertionVerificationKeys(
   let u;
   try {
     u = JSON.parse(s);
-  } catch(err) {
+  } catch (err) {
     // try as file name:
     const jsonFile = await openAsBlob(s);
-    u = JSON.parse(await jsonFile.text())
+    u = JSON.parse(await jsonFile.text());
   }
   if (typeof u !== 'object' || u === null) {
     throw new Error('Invalid input: The input must be an object');
@@ -219,12 +219,12 @@ async function parseAssertionConfig(s: string): Promise<assertions.AssertionConf
   let u;
   try {
     u = JSON.parse(s);
-  } catch(err) {
+  } catch (err) {
     // try as file name:
     const jsonFile = await openAsBlob(s);
-    u = JSON.parse(await jsonFile.text())
+    u = JSON.parse(await jsonFile.text());
   }
-  
+
   // if u is null or empty, return an empty array
   if (!u) {
     return [];
