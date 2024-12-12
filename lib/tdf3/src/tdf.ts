@@ -1023,8 +1023,6 @@ export async function readStream(cfg: DecryptConfiguration) {
   const outputStream = new DecoratedReadableStream(underlyingSource);
 
   outputStream.manifest = manifest;
-  outputStream.emit('manifest', manifest);
   outputStream.metadata = metadata;
-  outputStream.emit('rewrap', metadata);
   return outputStream;
 }
