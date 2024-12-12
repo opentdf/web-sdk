@@ -333,7 +333,6 @@ export class Client {
    *
    * @param scope dissem and attributes for constructing the policy
    * @param source source object of unencrypted data
-   * @param [asHtml] If we should wrap the TDF data in a self-opening HTML wrapper. Defaults to false
    * @param [autoconfigure] If we should use scope.attributes to configure KAOs
    * @param [metadata] Additional non-secret data to store with the TDF
    * @param [opts] Test only
@@ -348,12 +347,11 @@ export class Client {
     if (opts.offline === false) {
       throw new ConfigurationError('online mode not supported');
     }
-    if (asHtml) {
+    if (opts.asHtml) {
       throw new ConfigurationError('html mode not supported');
     }
     const dpopKeys = await this.dpopKeys;
     const {
-      asHtml,
       autoconfigure,
       metadata,
       mimeType = 'unknown',
