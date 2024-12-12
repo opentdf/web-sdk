@@ -35,7 +35,7 @@ import {
   clientType,
 } from '../src/index.js';
 import { Algorithms, type AlgorithmName, type AlgorithmUrn } from './src/ciphers/algorithms.js';
-import { type Chunker } from './src/utils/chunkers.js';
+import { type Chunker } from '../src/seekable.js';
 
 export type {
   AlgorithmName,
