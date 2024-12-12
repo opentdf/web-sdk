@@ -1,4 +1,4 @@
-import { type TypedArray } from '../tdf/index.js';
+import { type TypedArray } from '../tdf/TypedArray.js';
 import * as base64 from '../encodings/base64.js';
 import { generateKeyPair, keyAgreement } from '../nanotdf-crypto/index.js';
 import getHkdfSalt from './helpers/getHkdfSalt.js';

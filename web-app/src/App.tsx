@@ -7,7 +7,6 @@ import { type Chunker, type DecryptSource, NanoTDFClient, TDF3Client } from '@op
 import { type SessionInformation, OidcClient } from './session.js';
 import { c } from './config.js';
 
-
 async function toFile(
   stream: ReadableStream<Uint8Array>,
   filepath = 'download.tdf',
@@ -16,7 +15,6 @@ async function toFile(
     signal?: AbortSignal;
   }
 ): Promise<void> {
-
   const fileStream = streamsaver.createWriteStream(filepath, {
     writableStrategy: { highWaterMark: 1 },
     readableStrategy: { highWaterMark: 1 },

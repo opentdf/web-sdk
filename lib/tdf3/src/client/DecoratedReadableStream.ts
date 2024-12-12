@@ -35,6 +35,10 @@ export class DecoratedReadableStream {
     }) as ReadableStream<Uint8Array>;
   }
 
+  async getMetadata() {
+    return this.metadata;
+  }
+
   /**
    * Dump the stream content to a buffer. This will consume the stream.
    * @return the plaintext in Buffer form.
@@ -59,5 +63,9 @@ export class DecoratedReadableStream {
 }
 
 export function isDecoratedReadableStream(s: unknown): s is DecoratedReadableStream {
-  return typeof (s as DecoratedReadableStream)?.stream !== 'undefined';
+  return (
+    typeof (s as DecoratedReadableStream)?.stream !== 'undefined' &&
+    typeof (s as DecoratedReadableStream)?.toBuffer !== 'undefined' &&
+    typeof (s as DecoratedReadableStream)?.toString !== 'undefined'
+  );
 }
