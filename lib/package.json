@@ -67,7 +67,6 @@
     "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))"
   },
   "dependencies": {
-    "base64-js": "^1.5.1",
     "browser-fs-access": "^0.34.1",
     "buffer-crc32": "^0.2.13",
     "dpop": "^1.2.0",
