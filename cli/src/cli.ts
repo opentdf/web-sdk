@@ -172,7 +172,7 @@ async function tdf3DecryptParamsFor(argv: Partial<mainArgs>): Promise<DecryptPar
     c.withNoVerifyAssertions(true);
   }
   if (argv.assertionVerificationKeys) {
-    c.withAssertionVerificaitonKeys(
+    c.withAssertionVerificationKeys(
       await parseAssertionVerificationKeys(argv.assertionVerificationKeys)
     );
   }
