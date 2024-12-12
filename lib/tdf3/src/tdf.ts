@@ -22,7 +22,6 @@ import { base64 } from '../../src/encodings/index.js';
 import {
   ZipReader,
   ZipWriter,
-  base64ToBuffer,
   keyMerge,
   buffToString,
   concatUint8,
@@ -38,7 +37,6 @@ import {
   UnsafeUrlError,
   UnsupportedFeatureError as UnsupportedError,
 } from '../../src/errors.js';
-import { htmlWrapperTemplate } from './templates/index.js';
 
 // configurable
 // TODO: remove dependencies from ciphers so that we can open-source instead of relying on other Virtru libs
@@ -177,51 +175,6 @@ export async function fetchKasPublicKey(
   algorithm?: KasPublicKeyAlgorithm
 ): Promise<KasPublicKeyInfo> {
   return fetchKasPubKeyV2(kas, algorithm || 'rsa:2048');
-}
-
-/**
- *
- * @param payload The TDF content to encode in HTML
- * @param manifest A copy of the manifest
- * @param transferUrl reader web-service start page
- * @return utf-8 encoded HTML data
- */
-export function wrapHtml(
-  payload: Uint8Array,
-  manifest: Manifest | string,
-  transferUrl: string
-): Uint8Array {
-  const { origin } = new URL(transferUrl);
-  const exportManifest: string = typeof manifest === 'string' ? manifest : JSON.stringify(manifest);
-
-  const fullHtmlString = htmlWrapperTemplate({
-    transferUrl,
-    transferBaseUrl: origin,
-    manifest: base64.encode(exportManifest),
-    payload: buffToString(payload, 'base64'),
-  });
-
-  return new TextEncoder().encode(fullHtmlString);
-}
-
-export function unwrapHtml(htmlPayload: ArrayBuffer | Uint8Array | Binary | string) {
-  let html;
-  if (htmlPayload instanceof ArrayBuffer || ArrayBuffer.isView(htmlPayload)) {
-    html = new TextDecoder().decode(htmlPayload);
-  } else {
-    html = htmlPayload.toString();
-  }
-  const payloadRe = /<input id=['"]?data-input['"]?[^>]*?value=['"]?([a-zA-Z0-9+/=]+)['"]?/;
-  const reResult = payloadRe.exec(html);
-  if (reResult === null) {
-    throw new InvalidFileError('Payload is missing');
-  }
-  const base64Payload = reResult[1];
-  try {
-    return base64ToBuffer(base64Payload);
-  } catch (e) {
-    throw new InvalidFileError('There was a problem extracting the TDF3 payload', e);
-  }
 }
 
 export async function extractPemFromKeyString(keyString: string): Promise<string> {

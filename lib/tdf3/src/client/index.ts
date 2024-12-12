@@ -10,12 +10,11 @@ import {
   EncryptConfiguration,
   fetchKasPublicKey,
   loadTDFStream,
-  unwrapHtml,
   validatePolicyObject,
   readStream,
-  wrapHtml,
   writeStream,
 } from '../tdf.js';
+import { unwrapHtml } from '../utils/unwrap.js';
 import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-provider.js';
 import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider.js';
 import { CryptoService } from '../crypto/declarations.js';
@@ -52,7 +51,6 @@ import { type Value } from '../../../src/policy/attributes.js';
 import { type Chunker, fromBuffer, fromSource } from '../../../src/seekable.js';
 
 const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
-const HTML_BYTE_LIMIT = 100 * 1000 * 1000; // 100 MB, see WS-9476.
 
 // No default config for now. Delegate to Virtru wrapper for endpoints.
 const defaultClientConfig = { oidcOrigin: '', cryptoService: defaultCryptoService };
@@ -350,6 +348,9 @@ export class Client {
     if (opts.offline === false) {
       throw new ConfigurationError('online mode not supported');
     }
+    if (asHtml) {
+      throw new ConfigurationError('html mode not supported');
+    }
     const dpopKeys = await this.dpopKeys;
     const {
       asHtml,
@@ -424,7 +425,7 @@ export class Client {
 
     // TODO: Refactor underlying builder to remove some of this unnecessary config.
 
-    const maxByteLimit = asHtml ? HTML_BYTE_LIMIT : GLOBAL_BYTE_LIMIT;
+    const maxByteLimit = GLOBAL_BYTE_LIMIT;
     const byteLimit =
       opts.byteLimit === undefined || opts.byteLimit <= 0 || opts.byteLimit > maxByteLimit
         ? maxByteLimit
@@ -469,24 +470,7 @@ export class Client {
       assertionConfigs: opts.assertionConfigs,
     };
 
-    const stream = await (streamMiddleware as EncryptStreamMiddleware)(await writeStream(ecfg));
-
-    if (!asHtml) {
-      return stream;
-    }
-
-    // Wrap if it's html.
-    if (!stream.manifest) {
-      throw new Error('internal: missing manifest in encrypt function');
-    }
-    const htmlBuf = wrapHtml(await stream.toBuffer(), stream.manifest, this.readerUrl ?? '');
-
-    return new DecoratedReadableStream({
-      pull(controller: ReadableStreamDefaultController) {
-        controller.enqueue(htmlBuf);
-        controller.close();
-      },
-    });
+    return (streamMiddleware as EncryptStreamMiddleware)(await writeStream(ecfg));
   }
 
   /**
