@@ -1,29 +1,51 @@
-import {
-  type DecoratedReadableStream,
-  isDecoratedReadableStream,
-} from '../client/DecoratedReadableStream.js';
-import { ConfigurationError, InvalidFileError, NetworkError } from '../../../src/errors.js';
+import { ConfigurationError, InvalidFileError, NetworkError } from './errors.js';
 
 /**
  * Read data from a seekable stream.
+ * This is an abstraction for URLs with range queries and local file objects.
  * @param byteStart First byte to read. If negative, reads from the end. If absent, reads everything
  * @param byteEnd Index after last byte to read (exclusive)
  */
 export type Chunker = (byteStart?: number, byteEnd?: number) => Promise<Uint8Array>;
 
+/**
+ * Type union for a variety of inputs.
+ */
+export type Source =
+  | { type: 'buffer'; location: Uint8Array }
+  | { type: 'chunker'; location: Chunker }
+  | { type: 'file-browser'; location: Blob }
+  | { type: 'remote'; location: string }
+  | { type: 'stream'; location: ReadableStream<Uint8Array> };
+
+/**
+ * Creates a seekable object from a browser file object.
+ * @param fileRef the browser file data
+ */
 export const fromBrowserFile = (fileRef: Blob): Chunker => {
   return async (byteStart?: number, byteEnd?: number): Promise<Uint8Array> => {
+    if (byteStart === undefined) {
+      return new Uint8Array(await fileRef.arrayBuffer());
+    }
     const chunkBlob = fileRef.slice(byteStart, byteEnd);
     const arrayBuffer = await new Response(chunkBlob).arrayBuffer();
     return new Uint8Array(arrayBuffer);
   };
 };
 
-export const fromBuffer = (source: Uint8Array | Buffer): Chunker => {
+export const fromBuffer = (source: Uint8Array): Chunker => {
   return (byteStart?: number, byteEnd?: number) => {
     return Promise.resolve(source.slice(byteStart, byteEnd));
   };
 };
+
+export const fromString = (source: string): Chunker => {
+  return fromBuffer(new TextEncoder().encode(source));
+};
+
+async function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 async function getRemoteChunk(url: string, range?: string): Promise<Uint8Array> {
   // loop with fetch for three times, with an exponential backoff
@@ -88,14 +110,7 @@ export const fromUrl = async (location: string): Promise<Chunker> => {
   };
 };
 
-export type DataSource =
-  | { type: 'buffer'; location: Uint8Array }
-  | { type: 'chunker'; location: Chunker }
-  | { type: 'file-browser'; location: Blob }
-  | { type: 'remote'; location: string }
-  | { type: 'stream'; location: DecoratedReadableStream };
-
-export const fromDataSource = async ({ type, location }: DataSource) => {
+export const fromSource = async ({ type, location }: Source): Promise<Chunker> => {
   switch (type) {
     case 'buffer':
       if (!(location instanceof Uint8Array)) {
@@ -118,14 +133,48 @@ export const fromDataSource = async ({ type, location }: DataSource) => {
       }
       return fromUrl(location);
     case 'stream':
-      if (!isDecoratedReadableStream(location)) {
-        throw new ConfigurationError('Invalid data source; must be DecoratedTdfStream');
-      }
-      return fromBuffer(await location.toBuffer());
+      return fromBuffer(new Uint8Array(await new Response(location).arrayBuffer()));
     default:
       throw new ConfigurationError(`Data source type not defined, or not supported: ${type}}`);
   }
 };
-async function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+
+export async function sourceToStream(source: Source): Promise<ReadableStream<Uint8Array>> {
+  switch (source.type) {
+    case 'stream':
+      return source.location;
+    case 'file-browser':
+      return source.location.stream();
+    case 'chunker': {
+      const chunkSize = 8 * 1024 * 1024; // 8 megabytes
+      let offset = 0;
+      return new ReadableStream({
+        async pull(controller) {
+          const chunk = await source.location(offset, offset + chunkSize);
+          if (chunk.length === 0) {
+            controller.close();
+            return;
+          }
+          controller.enqueue(chunk);
+          offset += chunk.length;
+        },
+      });
+    }
+    default: {
+      const chunker = await fromSource(source);
+      return new ReadableStream({
+        async start(controller) {
+          const chunk = await chunker();
+          controller.enqueue(chunk);
+          controller.close();
+        },
+      });
+    }
+  }
 }
+
+// Deprected name, prefer `fromSource`
+export const fromDataSource = fromSource;
+
+// Deprecated Name; prefer just `Source`
+export type DataSource = Source;

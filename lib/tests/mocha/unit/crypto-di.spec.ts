@@ -6,7 +6,7 @@ import {
   type DecryptResult,
   type EncryptResult,
   type PemKeyPair,
-} from 'tdf3/index.js';
+} from '../../../tdf3/index.js';
 import { Client } from '../../../tdf3/src/client/index.js';
 
 describe('CryptoService DI', () => {

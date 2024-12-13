@@ -9,7 +9,6 @@ export { ZipReader, readUInt64LE } from './zip-reader.js';
 export { ZipWriter } from './zip-writer.js';
 export { keySplit, keyMerge } from './keysplit.js';
 export { streamToBuffer } from '../client/DecoratedReadableStream.js';
-export * from './chunkers.js';
 
 export type SupportedEncoding = 'hex' | 'utf8' | 'utf-8' | 'binary' | 'latin1' | 'base64';
 
