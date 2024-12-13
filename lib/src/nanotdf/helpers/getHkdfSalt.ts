@@ -1,4 +1,4 @@
-import { TypedArray } from '../../tdf/index.js';
+import { TypedArray } from '../../tdf/TypedArray.js';
 
 import { digest, enums } from '../../nanotdf-crypto/index.js';
 

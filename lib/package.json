@@ -1,6 +1,6 @@
 {
   "name": "@opentdf/sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "OpenTDF for the Web",
   "homepage": "https://github.com/opentdf/web-sdk",
   "bugs": {
@@ -67,16 +67,11 @@
     "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))"
   },
   "dependencies": {
-    "axios": "^1.6.1",
-    "axios-retry": "^3.9.0",
-    "base64-js": "^1.5.1",
     "browser-fs-access": "^0.34.1",
     "buffer-crc32": "^0.2.13",
     "dpop": "^1.2.0",
-    "eventemitter3": "^5.0.1",
     "jose": "^4.14.4",
     "json-canonicalize": "^1.0.6",
-    "streamsaver": "^2.0.6",
     "uuid": "~9.0.0"
   },
   "devDependencies": {

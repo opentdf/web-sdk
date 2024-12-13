@@ -34,13 +34,6 @@ type createAttributeSetContext = {
   createAttribute: (prop: CreateAttributePayload) => AttributeObject;
 };
 
-type GetEntityObjectContext = {
-  aaPrivateKey: string;
-  entityPublicKey: string;
-  createJwtAttribute: (prop: CreateAttributePayload) => Promise<{ jwt?: string }>;
-  getUserId: () => string;
-};
-
 type GetPolicyObjectContext = {
   getUserId: () => string;
 };
@@ -183,32 +176,6 @@ tN5S0umLPkMUJ6zBIxh1RQK1ZYjfuKij+EEimbqtte9rYyQr3Q==
       const attributes = arrayOfAttrOptions.map((options) => this.createAttribute(options));
       aSet.addAttributes(attributes);
       return aSet;
-    },
-
-    async getEntityObject(this: GetEntityObjectContext, attributes = []) {
-      const jwtAttributes = await Promise.all(
-        attributes.map(async (options) => {
-          const attrJwt = await this.createJwtAttribute(options);
-          return attrJwt;
-        })
-      );
-      const baseObject = {
-        userId: this.getUserId(),
-        aliases: [],
-        attributes: jwtAttributes,
-        publicKey: this.entityPublicKey,
-        cert: {},
-      };
-
-      const pkKeyLike = await importPKCS8(this.aaPrivateKey, 'RS256');
-
-      baseObject.cert = await new SignJWT(baseObject)
-        .setProtectedHeader({ alg: 'RS256' })
-        .setIssuedAt()
-        .setExpirationTime('24h')
-        .sign(pkKeyLike);
-
-      return baseObject;
     },
 
     getUserId() {

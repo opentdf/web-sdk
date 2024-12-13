@@ -1,7 +1,7 @@
 import { type AttributeObject } from './AttributeObject.js';
 import { v4 as uuid } from 'uuid';
 
-export default class Policy {
+export class Policy {
   static CURRENT_VERSION = '1.1.0';
 
   private uuidStr = uuid();

@@ -1,11 +1,5 @@
-import { EventEmitter } from 'eventemitter3';
-import streamSaver from 'streamsaver';
-import { fileSave } from 'browser-fs-access';
-import { isFirefox } from '../../../src/utils.js';
-
 import { type Metadata } from '../tdf.js';
-import { type Manifest, type UpsertResponse } from '../models/index.js';
-import { ConfigurationError } from '../../../src/errors.js';
+import { type Manifest } from '../models/index.js';
 
 export async function streamToBuffer(stream: ReadableStream<Uint8Array>): Promise<Uint8Array> {
   const accumulator = await new Response(stream).arrayBuffer();
@@ -24,12 +18,8 @@ export class DecoratedReadableStream {
   tdfSize: number;
   fileSize: number | undefined;
   stream: ReadableStream<Uint8Array>;
-  ee: EventEmitter;
-  on: EventEmitter['on'];
-  emit: EventEmitter['emit'];
   metadata?: Metadata;
   manifest: Manifest;
-  upsertResponse?: UpsertResponse;
   fileStreamServiceWorker?: string;
 
   constructor(
@@ -43,23 +33,10 @@ export class DecoratedReadableStream {
     this.stream = new ReadableStream(underlyingSource, {
       highWaterMark: 1,
     }) as ReadableStream<Uint8Array>;
-    this.ee = new EventEmitter();
-    this.on = (...args) => this.ee.on(...args);
-    this.emit = (...args) => this.ee.emit(...args);
   }
 
   async getMetadata() {
-    return new Promise((resolve, reject) => {
-      if (this.metadata) {
-        resolve(this.metadata);
-      } else {
-        this.on('error', reject);
-        this.on('rewrap', (rewrapResponse: Metadata) => {
-          this.metadata = rewrapResponse;
-          resolve(rewrapResponse);
-        });
-      }
-    });
+    return this.metadata;
   }
 
   /**
@@ -83,66 +60,12 @@ export class DecoratedReadableStream {
   async toString(): Promise<string> {
     return new Response(this.stream).text();
   }
-
-  /**
-   * Dump the stream content to a local file. This will consume the stream.
-   *
-   * @param filepath The path of the local file to write plaintext to.
-   * @param encoding The charset encoding to use. Defaults to utf-8.
-   */
-  async toFile(
-    filepath = 'download.tdf',
-    options?: BufferEncoding | DecoratedReadableStreamSinkOptions
-  ): Promise<void> {
-    if (options && typeof options === 'string') {
-      throw new ConfigurationError('unsupported operation: Cannot set encoding in browser');
-    }
-    if (isFirefox()) {
-      await fileSave(new Response(this.stream), {
-        fileName: filepath,
-        extensions: [`.${filepath.split('.').pop()}`],
-      });
-      return;
-    }
-
-    if (this.fileStreamServiceWorker) {
-      streamSaver.mitm = this.fileStreamServiceWorker;
-    }
-
-    const fileStream = streamSaver.createWriteStream(filepath, {
-      writableStrategy: { highWaterMark: 1 },
-      readableStrategy: { highWaterMark: 1 },
-    });
-
-    if (WritableStream) {
-      return this.stream.pipeTo(fileStream, options);
-    }
-
-    // Write (pipe) manually
-    const reader = this.stream.getReader();
-    const writer = fileStream.getWriter();
-    const pump = async (): Promise<void> => {
-      const res = await reader.read();
-
-      if (res.done) {
-        return await writer.close();
-      } else {
-        await writer.write(res.value);
-        return pump();
-      }
-    };
-    return pump();
-
-    // const pump = (): Promise<void> =>
-    //   reader.read().then((res) => (res.done ? writer.close() : writer.write(res.value).then(pump)));
-    // pump();
-  }
 }
 
 export function isDecoratedReadableStream(s: unknown): s is DecoratedReadableStream {
   return (
+    typeof (s as DecoratedReadableStream)?.stream !== 'undefined' &&
     typeof (s as DecoratedReadableStream)?.toBuffer !== 'undefined' &&
-    typeof (s as DecoratedReadableStream)?.toFile !== 'undefined' &&
     typeof (s as DecoratedReadableStream)?.toString !== 'undefined'
   );
 }

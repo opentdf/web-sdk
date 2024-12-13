@@ -1,23 +1,18 @@
-import axios, { AxiosError } from 'axios';
 import { unsigned } from './utils/buffer-crc32.js';
 import { exportSPKI, importX509 } from 'jose';
 import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
-import { EntityObject } from '../../src/tdf/index.js';
-import { pemToCryptoPublicKey, validateSecureUrl } from '../../src/utils.js';
+import { fetchKasPubKey as fetchKasPubKeyV2, fetchWrappedKey } from '../../src/access.js';
 import { DecryptParams } from './client/builders.js';
 import { AssertionConfig, AssertionKey, AssertionVerificationKeys } from './assertions.js';
 import * as assertions from './assertions.js';
 
 import {
-  AttributeSet,
-  isRemote as isRemoteKeyAccess,
   KeyAccessType,
   KeyInfo,
   Manifest,
   Policy,
   Remote as KeyAccessRemote,
   SplitKey,
-  UpsertResponse,
   Wrapped as KeyAccessWrapped,
   KeyAccess,
   KeyAccessObject,
@@ -29,7 +24,6 @@ import {
   ZipReader,
   ZipWriter,
   base64ToBuffer,
-  isAppIdProviderCheck,
   keyMerge,
   buffToString,
   concatUint8,
@@ -42,10 +36,6 @@ import {
   InvalidFileError,
   IntegrityError,
   NetworkError,
-  PermissionDeniedError,
-  ServiceError,
-  TdfError,
-  UnauthenticatedError,
   UnsafeUrlError,
   UnsupportedFeatureError as UnsupportedError,
 } from '../../src/errors.js';
@@ -54,14 +44,8 @@ import { htmlWrapperTemplate } from './templates/index.js';
 // configurable
 // TODO: remove dependencies from ciphers so that we can open-source instead of relying on other Virtru libs
 import { AesGcmCipher } from './ciphers/index.js';
-import {
-  type AuthProvider,
-  AppIdAuthProvider,
-  HttpRequest,
-  type HttpMethod,
-  reqSignature,
-} from '../../src/auth/auth.js';
-import PolicyObject from '../../src/tdf/PolicyObject.js';
+import { type AuthProvider, reqSignature } from '../../src/auth/auth.js';
+import { PolicyObject } from '../../src/tdf/PolicyObject.js';
 import { type CryptoService, type DecryptResult } from './crypto/declarations.js';
 import { CentralDirectory } from './utils/zip-reader.js';
 import { SymmetricCipher } from './ciphers/symmetric-cipher-base.js';
@@ -92,12 +76,10 @@ export type Metadata = {
 };
 
 export type BuildKeyAccess = {
-  attributeSet?: AttributeSet;
   type: KeyAccessType;
   url?: string;
   kid?: string;
   publicKey: string;
-  attributeUrl?: string;
   metadata?: Metadata;
   sid?: string;
 };
@@ -139,9 +121,7 @@ export type EncryptConfiguration = {
   contentStream: ReadableStream<Uint8Array>;
   mimeType?: string;
   policy: Policy;
-  entity?: EntityObject;
-  attributeSet?: AttributeSet;
-  authProvider?: AuthProvider | AppIdAuthProvider;
+  authProvider?: AuthProvider;
   byteLimit: number;
   progressHandler?: (bytesProcessed: number) => void;
   keyForEncryption: KeyInfo;
@@ -152,9 +132,8 @@ export type EncryptConfiguration = {
 export type DecryptConfiguration = {
   allowedKases?: string[];
   allowList?: OriginAllowList;
-  authProvider: AuthProvider | AppIdAuthProvider;
+  authProvider: AuthProvider;
   cryptoService: CryptoService;
-  entity?: EntityObject;
 
   dpopKeys: CryptoKeyPair;
 
@@ -170,8 +149,7 @@ export type DecryptConfiguration = {
 export type UpsertConfiguration = {
   allowedKases?: string[];
   allowList?: OriginAllowList;
-  authProvider: AuthProvider | AppIdAuthProvider;
-  entity?: EntityObject;
+  authProvider: AuthProvider;
 
   privateKey: CryptoKey;
 
@@ -186,12 +164,6 @@ export type RewrapRequest = {
 
 export type KasPublicKeyFormat = 'pkcs8' | 'jwks';
 
-type KasPublicKeyParams = {
-  algorithm?: KasPublicKeyAlgorithm;
-  fmt?: KasPublicKeyFormat;
-  v?: '1' | '2';
-};
-
 export type RewrapResponse = {
   entityWrappedKey: string;
   sessionPublicKey: string;
@@ -205,96 +177,9 @@ export async function fetchKasPublicKey(
   kas: string,
   algorithm?: KasPublicKeyAlgorithm
 ): Promise<KasPublicKeyInfo> {
-  if (!kas) {
-    throw new ConfigurationError('KAS definition not found');
-  }
-  // Logs insecure KAS. Secure is enforced in constructor
-  validateSecureUrl(kas);
-  const infoStatic = { url: kas, algorithm: algorithm || 'rsa:2048' };
-  const params: KasPublicKeyParams = {};
-  if (algorithm) {
-    params.algorithm = algorithm;
-  }
-  const v2Url = `${kas}/v2/kas_public_key`;
-  try {
-    const response: { data: string | KasPublicKeyInfo } = await axios.get(v2Url, {
-      params: {
-        ...params,
-        v: '2',
-      },
-    });
-    const publicKey =
-      typeof response.data === 'string'
-        ? await extractPemFromKeyString(response.data)
-        : response.data.publicKey;
-    return {
-      publicKey,
-      key: pemToCryptoPublicKey(publicKey),
-      ...infoStatic,
-      ...(typeof response.data !== 'string' && response.data.kid && { kid: response.data.kid }),
-    };
-  } catch (cause) {
-    const status = cause?.response?.status;
-    switch (status) {
-      case 400:
-      case 404:
-        // KAS does not yet implement v2, maybe
-        break;
-      case 401:
-        throw new UnauthenticatedError(`[${v2Url}] requires auth`, cause);
-      case 403:
-        throw new PermissionDeniedError(`[${v2Url}] permission denied`, cause);
-      default:
-        if (status && status >= 400 && status < 500) {
-          throw new ConfigurationError(
-            `[${v2Url}] request error [${status}] [${cause.name}] [${cause.message}]`,
-            cause
-          );
-        }
-        throw new NetworkError(
-          `[${v2Url}] error [${status}] [${cause.name}] [${cause.message}]`,
-          cause
-        );
-    }
-  }
-  // Retry with v1 params
-  const v1Url = `${kas}/kas_public_key`;
-  try {
-    const response: { data: string | KasPublicKeyInfo } = await axios.get(v1Url, {
-      params,
-    });
-    const publicKey =
-      typeof response.data === 'string'
-        ? await extractPemFromKeyString(response.data)
-        : response.data.publicKey;
-    // future proof: allow v2 response even if not specified.
-    return {
-      publicKey,
-      key: pemToCryptoPublicKey(publicKey),
-      ...infoStatic,
-      ...(typeof response.data !== 'string' && response.data.kid && { kid: response.data.kid }),
-    };
-  } catch (cause) {
-    const status = cause?.response?.status;
-    switch (status) {
-      case 401:
-        throw new UnauthenticatedError(`[${v1Url}] requires auth`, cause);
-      case 403:
-        throw new PermissionDeniedError(`[${v1Url}] permission denied`, cause);
-      default:
-        if (status && status >= 400 && status < 500) {
-          throw new ConfigurationError(
-            `[${v2Url}] request error [${status}] [${cause.name}] [${cause.message}]`,
-            cause
-          );
-        }
-        throw new NetworkError(
-          `[${v1Url}] error [${status}] [${cause.name}] [${cause.message}]`,
-          cause
-        );
-    }
-  }
+  return fetchKasPubKeyV2(kas, algorithm || 'rsa:2048');
 }
+
 /**
  *
  * @param payload The TDF content to encode in HTML
@@ -360,7 +245,6 @@ export async function extractPemFromKeyString(keyString: string): Promise<string
  * is missing it throws an error.
  * @param  {Object} options
  * @param  {String} options.type - enum representing how the object key is treated
- * @param  {String} options.attributeUrl - URL of the attribute to use for pubKey and kasUrl. Omit to use default.
  * @param  {String} options.url - directly set the KAS URL
  * @param  {String} options.publicKey - directly set the (KAS) public key
  * @param  {String?} options.kid - Key identifier of KAS public key
@@ -368,12 +252,10 @@ export async function extractPemFromKeyString(keyString: string): Promise<string
  * @return {KeyAccess}- the key access object loaded
  */
 export async function buildKeyAccess({
-  attributeSet,
   type,
   url,
   publicKey,
   kid,
-  attributeUrl,
   metadata,
   sid = '',
 }: BuildKeyAccess): Promise<KeyAccess> {
@@ -395,27 +277,11 @@ export async function buildKeyAccess({
     }
   }
 
-  // If an attributeUrl is provided try to load with that first.
-  if (attributeUrl && attributeSet) {
-    const attr = attributeSet.get(attributeUrl);
-    if (attr && attr.kasUrl && attr.pubKey) {
-      return createKeyAccess(type, attr.kasUrl, attr.kid, attr.pubKey, metadata);
-    }
-  }
-
   // if url and pulicKey are specified load the key access object with them
   if (url && publicKey) {
     return createKeyAccess(type, url, kid, await extractPemFromKeyString(publicKey), metadata);
   }
 
-  // Assume the default attribute is the source for kasUrl and pubKey
-  const defaultAttr = attributeSet?.getDefault();
-  if (defaultAttr) {
-    const { pubKey, kasUrl } = defaultAttr;
-    if (pubKey && kasUrl) {
-      return createKeyAccess(type, kasUrl, kid, await extractPemFromKeyString(pubKey), metadata);
-    }
-  }
   // All failed. Raise an error.
   throw new ConfigurationError('TDF.buildKeyAccess: No source for kasUrl or pubKey');
 }
@@ -481,113 +347,6 @@ async function getSignature(
   }
 }
 
-function buildRequest(method: HttpMethod, url: string, body?: unknown): HttpRequest {
-  return {
-    headers: {},
-    method: method,
-    url: url,
-    body,
-  };
-}
-
-export async function upsert({
-  allowedKases,
-  allowList,
-  authProvider,
-  entity,
-  privateKey,
-  unsavedManifest,
-  ignoreType,
-}: UpsertConfiguration): Promise<UpsertResponse> {
-  const allowed = (() => {
-    if (allowList) {
-      return allowList;
-    }
-    if (!allowedKases) {
-      throw new ConfigurationError('Upsert cannot be done without allowlist');
-    }
-    return new OriginAllowList(allowedKases);
-  })();
-  const { keyAccess, policy } = unsavedManifest.encryptionInformation;
-  const isAppIdProvider = authProvider && isAppIdProviderCheck(authProvider);
-  if (authProvider === undefined) {
-    throw new ConfigurationError('Upsert cannot be done without auth provider');
-  }
-  return Promise.all(
-    keyAccess.map(async (keyAccessObject) => {
-      // We only care about remote key access objects for the policy sync portion
-      const isRemote = isRemoteKeyAccess(keyAccessObject);
-      if (!ignoreType && !isRemote) {
-        return;
-      }
-
-      if (!allowed.allows(keyAccessObject.url)) {
-        throw new UnsafeUrlError(`Unexpected KAS url: [${keyAccessObject.url}]`);
-      }
-
-      const url = `${keyAccessObject.url}/${isAppIdProvider ? '' : 'v2/'}upsert`;
-
-      //TODO I dont' think we need a body at all for KAS requests
-      // Do we need ANY of this if it's already embedded in the EO in the Bearer OIDC token?
-      const body: Record<string, unknown> = {
-        keyAccess: keyAccessObject,
-        policy: unsavedManifest.encryptionInformation.policy,
-        entity: isAppIdProviderCheck(authProvider) ? entity : undefined,
-        authToken: undefined,
-        clientPayloadSignature: undefined,
-      };
-
-      if (isAppIdProviderCheck(authProvider)) {
-        body.authToken = await reqSignature({}, privateKey);
-      } else {
-        body.clientPayloadSignature = await reqSignature(body, privateKey);
-      }
-      const httpReq = await authProvider.withCreds(buildRequest('POST', url, body));
-
-      try {
-        const response = await axios.post(httpReq.url, httpReq.body, {
-          headers: httpReq.headers,
-        });
-
-        // Remove additional properties which were needed to sync, but not that we want to save to
-        // the manifest
-        delete keyAccessObject.wrappedKey;
-        delete keyAccessObject.encryptedMetadata;
-        delete keyAccessObject.policyBinding;
-
-        if (isRemote) {
-          // Decode the policy and extract only the required info to save -- the uuid
-          const decodedPolicy = JSON.parse(base64.decode(policy));
-          unsavedManifest.encryptionInformation.policy = base64.encode(
-            JSON.stringify({ uuid: decodedPolicy.uuid })
-          );
-        }
-        return response.data;
-      } catch (e) {
-        if (e.response) {
-          if (e.response.status >= 500) {
-            throw new ServiceError('upsert failure', e);
-          } else if (e.response.status === 403) {
-            throw new PermissionDeniedError('upsert failure', e);
-          } else if (e.response.status === 401) {
-            throw new UnauthenticatedError('upsert auth failure', e);
-          } else if (e.response.status === 400) {
-            throw new ConfigurationError('upsert bad request; likely a configuration error', e);
-          } else {
-            throw new NetworkError('upsert server error', e);
-          }
-        } else if (e.request) {
-          throw new NetworkError('upsert request failure', e);
-        }
-        throw new TdfError(
-          `Unable to perform upsert operation on the KAS: [${e.name}: ${e.message}], response: [${e?.response?.body}]`,
-          e
-        );
-      }
-    })
-  );
-}
-
 export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedReadableStream> {
   if (!cfg.authProvider) {
     throw new ConfigurationError('No authorization middleware defined');
@@ -630,17 +389,6 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
     // Set in encrypt; should never be reached.
     throw new ConfigurationError('internal: please use "loadTDFStream" first to load a manifest.');
   }
-  const pkKeyLike = cfg.dpopKeys.privateKey;
-
-  // For all remote key access objects, sync its policy
-  const upsertResponse = await upsert({
-    allowedKases: cfg.allowList ? undefined : cfg.allowedKases,
-    allowList: cfg.allowList,
-    authProvider: cfg.authProvider,
-    entity: cfg.entity,
-    privateKey: pkKeyLike,
-    unsavedManifest: manifest,
-  });
 
   // determine default segment size by writing empty buffer
   const { segmentSizeDefault } = cfg;
@@ -803,12 +551,6 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
   const plaintextStream = new DecoratedReadableStream(underlingSource);
   plaintextStream.manifest = manifest;
 
-  if (upsertResponse) {
-    plaintextStream.upsertResponse = upsertResponse;
-    plaintextStream.tdfSize = totalByteCount;
-    plaintextStream.algorithm = manifest.encryptionInformation.method.algorithm;
-  }
-
   return plaintextStream;
 
   // nested helper fn's
@@ -917,28 +659,25 @@ async function unwrapKey({
   authProvider,
   dpopKeys,
   concurrencyLimit,
-  entity,
   cryptoService,
 }: {
   manifest: Manifest;
   allowedKases: OriginAllowList;
-  authProvider: AuthProvider | AppIdAuthProvider;
+  authProvider: AuthProvider;
   concurrencyLimit?: number;
   dpopKeys: CryptoKeyPair;
-  entity: EntityObject | undefined;
   cryptoService: CryptoService;
 }) {
   if (authProvider === undefined) {
     throw new ConfigurationError(
-      'upsert requires auth provider; must be configured in client constructor'
+      'rewrap requires auth provider; must be configured in client constructor'
     );
   }
   const { keyAccess } = manifest.encryptionInformation;
   const splitPotentials = splitLookupTableFactory(keyAccess, allowedKases);
-  const isAppIdProvider = authProvider && isAppIdProviderCheck(authProvider);
 
   async function tryKasRewrap(keySplitInfo: KeyAccessObject): Promise<RewrapResponseData> {
-    const url = `${keySplitInfo.url}/${isAppIdProvider ? '' : 'v2/'}rewrap`;
+    const url = `${keySplitInfo.url}/v2/rewrap`;
     const ephemeralEncryptionKeys = await cryptoService.cryptoToPemPair(
       await cryptoService.generateKeyPair()
     );
@@ -952,32 +691,14 @@ async function unwrapKey({
     });
 
     const jwtPayload = { requestBody: requestBodyStr };
-    const signedRequestToken = await reqSignature(
-      isAppIdProvider ? {} : jwtPayload,
-      dpopKeys.privateKey
+    const signedRequestToken = await reqSignature(jwtPayload, dpopKeys.privateKey);
+
+    const { entityWrappedKey, metadata } = await fetchWrappedKey(
+      url,
+      { signedRequestToken },
+      authProvider,
+      '0.0.1'
     );
-
-    let requestBody;
-    if (isAppIdProvider) {
-      requestBody = {
-        keyAccess: keySplitInfo,
-        policy: manifest.encryptionInformation.policy,
-        entity: {
-          ...entity,
-          publicKey: clientPublicKey,
-        },
-        authToken: signedRequestToken,
-      };
-    } else {
-      requestBody = {
-        signedRequestToken,
-      };
-    }
-
-    const httpReq = await authProvider.withCreds(buildRequest('POST', url, requestBody));
-    const {
-      data: { entityWrappedKey, metadata },
-    } = await axios.post(httpReq.url, httpReq.body, { headers: httpReq.headers });
 
     const key = Binary.fromString(base64.decode(entityWrappedKey));
     const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(
@@ -1010,7 +731,7 @@ async function unwrapKey({
         try {
           return await tryKasRewrap(keySplitInfo);
         } catch (e) {
-          throw handleRewrapError(e as Error | AxiosError);
+          throw handleRewrapError(e as Error);
         }
       };
     }
@@ -1035,31 +756,11 @@ async function unwrapKey({
   }
 }
 
-function handleRewrapError(error: Error | AxiosError) {
-  if (axios.isAxiosError(error)) {
-    if (error.response?.status && error.response?.status >= 500) {
-      return new ServiceError('rewrap failure', error);
-    } else if (error.response?.status === 403) {
-      return new PermissionDeniedError('rewrap failure', error);
-    } else if (error.response?.status === 401) {
-      return new UnauthenticatedError('rewrap auth failure', error);
-    } else if (error.response?.status === 400) {
-      return new InvalidFileError(
-        'rewrap bad request; could indicate an invalid policy binding or a configuration error',
-        error
-      );
-    } else {
-      return new NetworkError('rewrap server error', error);
-    }
-  } else {
-    if (error.name === 'InvalidAccessError' || error.name === 'OperationError') {
-      return new DecryptError('unable to unwrap key from kas', error);
-    }
-    return new InvalidFileError(
-      `Unable to decrypt the response from KAS: [${error.name}: ${error.message}]`,
-      error
-    );
+function handleRewrapError(error: Error) {
+  if (error.name === 'InvalidAccessError' || error.name === 'OperationError') {
+    return new DecryptError('unable to unwrap key from kas', error);
   }
+  return error;
 }
 
 async function decryptChunk(
@@ -1211,7 +912,6 @@ export async function readStream(cfg: DecryptConfiguration) {
     authProvider: cfg.authProvider,
     allowedKases: allowList,
     dpopKeys: cfg.dpopKeys,
-    entity: cfg.entity,
     cryptoService: cfg.cryptoService,
   });
   // async function unwrapKey(manifest: Manifest, allowedKases: string[], authProvider: AuthProvider | AppIdAuthProvider, publicKey: string, privateKey: string, entity: EntityObject) {
@@ -1323,8 +1023,6 @@ export async function readStream(cfg: DecryptConfiguration) {
   const outputStream = new DecoratedReadableStream(underlyingSource);
 
   outputStream.manifest = manifest;
-  outputStream.emit('manifest', manifest);
   outputStream.metadata = metadata;
-  outputStream.emit('rewrap', metadata);
   return outputStream;
 }

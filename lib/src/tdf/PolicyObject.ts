@@ -5,7 +5,7 @@ export interface PolicyObjectBody {
   readonly dissem: string[];
 }
 
-export default interface PolicyObject {
+export interface PolicyObject {
   readonly uuid: string;
   readonly body: PolicyObjectBody;
   readonly schemaVersion?: string;

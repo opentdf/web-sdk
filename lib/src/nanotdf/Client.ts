@@ -1,4 +1,4 @@
-import { type TypedArray } from '../tdf/index.js';
+import { type TypedArray } from '../tdf/TypedArray.js';
 import * as base64 from '../encodings/base64.js';
 import { generateKeyPair, keyAgreement } from '../nanotdf-crypto/index.js';
 import getHkdfSalt from './helpers/getHkdfSalt.js';
@@ -128,8 +128,23 @@ export default class Client {
     ephemeralKeyPair?: CryptoKeyPair,
     dpopEnabled = false
   ) {
+    const enwrapAuthProvider = (a: AuthProvider): AuthProvider => {
+      return {
+        updateClientPublicKey: async (signingKey) => {
+          await a.updateClientPublicKey(signingKey);
+        },
+        withCreds: async (httpReq) => {
+          const signer = await this.requestSignerKeyPair;
+          if (!signer) {
+            throw new ConfigurationError('failed to find or generate signer session key');
+          }
+          await a.updateClientPublicKey(signer);
+          return a.withCreds(httpReq);
+        },
+      };
+    };
     if (isAuthProvider(optsOrOldAuthProvider)) {
-      this.authProvider = optsOrOldAuthProvider;
+      this.authProvider = enwrapAuthProvider(optsOrOldAuthProvider);
       if (!kasUrl) {
         throw new ConfigurationError('please specify kasEndpoint');
       }
@@ -155,7 +170,7 @@ export default class Client {
         ephemeralKeyPair,
         kasEndpoint,
       } = optsOrOldAuthProvider;
-      this.authProvider = authProvider;
+      this.authProvider = enwrapAuthProvider(authProvider);
       // TODO Disallow http KAS. For now just log as error
       validateSecureUrl(kasEndpoint);
       this.kasUrl = kasEndpoint;
@@ -186,26 +201,6 @@ export default class Client {
   }
 
   /**
-   * Explicitly get a new Entity Object using the supplied EntityAttributeService.
-   *
-   * This method is expected to be called at least once per encrypt/decrypt cycle. If the entityObject is expired then
-   * this will need to be called again.
-   *
-   * @security the ephemeralKeyPair must be set in the constructor if desired to use here. If this is wished to be changed
-   * then a new client should be initialized.
-   * @performance key pair is generated when the entity object is fetched IFF the ephemeralKeyPair is not set. This will
-   * either be set on the first call or passed in the constructor.
-   */
-  async fetchOIDCToken(): Promise<void> {
-    const signer = await this.requestSignerKeyPair;
-    if (!signer) {
-      throw new ConfigurationError('failed to find or generate signer session key');
-    }
-
-    await this.authProvider.updateClientPublicKey(signer);
-  }
-
-  /**
    * Rewrap key
    *
    * @important the `fetchEntityObject` method must be called prior to
@@ -224,8 +219,6 @@ export default class Client {
       throw new UnsafeUrlError(`request URL ∉ ${this.allowedKases.origins};`, kasRewrapUrl);
     }
 
-    // Ensure the ephemeral key pair has been set or generated (see createOidcServiceProvider)
-    await this.fetchOIDCToken();
     const ephemeralKeyPair = await this.ephemeralKeyPair;
     const requestSignerKeyPair = await this.requestSignerKeyPair;
 
