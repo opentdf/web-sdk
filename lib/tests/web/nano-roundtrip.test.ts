@@ -1,7 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import { type AuthProvider, HttpRequest, withHeaders } from '../../src/auth/auth.js';
 
-import { NanoTDFClient } from '../../src/index.js';
+import { NanoTDFClient } from '../../src/nanoclients.js';
 import NanoTDF from '../../src/nanotdf/NanoTDF.js';
 
 const authProvider = <AuthProvider>{

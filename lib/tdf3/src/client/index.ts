@@ -40,7 +40,6 @@ import {
 } from './builders.js';
 import { KasPublicKeyInfo, OriginAllowList } from '../../../src/access.js';
 import { ConfigurationError } from '../../../src/errors.js';
-import { type Chunker, fromBuffer, fromDataSource, fromSource } from '../../../src/seekable.js';
 import { Binary } from '../binary.js';
 import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
 import { toCryptoKeyPair } from '../crypto/crypto-utils.js';
@@ -49,6 +48,7 @@ import { type AttributeObject, type Policy, SplitKey } from '../models/index.js'
 import { plan } from '../../../src/policy/granter.js';
 import { attributeFQNsAsValues } from '../../../src/policy/api.js';
 import { type Value } from '../../../src/policy/attributes.js';
+import { type Chunker, fromBuffer, fromSource } from '../../../src/seekable.js';
 
 const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
 
@@ -95,7 +95,7 @@ const makeChunkable = async (source: DecryptSource) => {
 
 export interface ClientConfig {
   cryptoService?: CryptoService;
-  organizationName?: string;
+  /// oauth client id; used to generate oauth authProvider
   clientId?: string;
   dpopEnabled?: boolean;
   dpopKeys?: Promise<CryptoKeyPair>;
@@ -333,7 +333,6 @@ export class Client {
    *
    * @param scope dissem and attributes for constructing the policy
    * @param source source object of unencrypted data
-   * @param [asHtml] If we should wrap the TDF data in a self-opening HTML wrapper. Defaults to false
    * @param [autoconfigure] If we should use scope.attributes to configure KAOs
    * @param [metadata] Additional non-secret data to store with the TDF
    * @param [opts] Test only
@@ -344,31 +343,28 @@ export class Client {
    * @param [eo] - (deprecated) entity object
    * @return a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} a new stream containing the TDF ciphertext
    */
-  async encrypt({
-    scope = { attributes: [], dissem: [] },
-    autoconfigure,
-    source,
-    asHtml,
-    metadata,
-    mimeType,
-    offline = true,
-    windowSize = DEFAULT_SEGMENT_SIZE,
-    keyMiddleware = defaultKeyMiddleware,
-    streamMiddleware = async (stream: DecoratedReadableStream) => stream,
-    splitPlan,
-    assertionConfigs = [],
-  }: EncryptParams): Promise<DecoratedReadableStream> {
-    if (!offline) {
+  async encrypt(opts: EncryptParams): Promise<DecoratedReadableStream> {
+    if (opts.offline === false) {
       throw new ConfigurationError('online mode not supported');
     }
-    if (asHtml) {
+    if (opts.asHtml) {
       throw new ConfigurationError('html mode not supported');
     }
     const dpopKeys = await this.dpopKeys;
+    const {
+      autoconfigure,
+      metadata,
+      mimeType = 'unknown',
+      windowSize = DEFAULT_SEGMENT_SIZE,
+      keyMiddleware = defaultKeyMiddleware,
+      streamMiddleware = async (stream: DecoratedReadableStream) => stream,
+    } = opts;
+    const scope = opts.scope ?? { attributes: [], dissem: [] };
 
     const policyObject = asPolicy(scope);
     validatePolicyObject(policyObject);
 
+    let splitPlan = opts.splitPlan;
     if (!splitPlan && autoconfigure) {
       let avs: Value[] = scope.attributeValues ?? [];
       const fqns: string[] = scope.attributes
@@ -427,9 +423,15 @@ export class Client {
 
     // TODO: Refactor underlying builder to remove some of this unnecessary config.
 
-    const byteLimit = GLOBAL_BYTE_LIMIT;
+    const maxByteLimit = GLOBAL_BYTE_LIMIT;
+    const byteLimit =
+      opts.byteLimit === undefined || opts.byteLimit <= 0 || opts.byteLimit > maxByteLimit
+        ? maxByteLimit
+        : opts.byteLimit;
     const encryptionInformation = new SplitKey(new AesGcmCipher(this.cryptoService));
-    const splits: SplitStep[] = splitPlan?.length ? splitPlan : [{ kas: this.kasEndpoint }];
+    const splits: SplitStep[] = splitPlan?.length
+      ? splitPlan
+      : [{ kas: opts.defaultKASEndpoint ?? this.kasEndpoint }];
     encryptionInformation.keyAccess = await Promise.all(
       splits.map(async ({ kas, sid }) => {
         if (!(kas in this.kasKeys)) {
@@ -437,7 +439,7 @@ export class Client {
         }
         const kasPublicKey = await this.kasKeys[kas];
         return buildKeyAccess({
-          type: offline ? 'wrapped' : 'remote',
+          type: 'wrapped',
           url: kasPublicKey.url,
           kid: kasPublicKey.kid,
           publicKey: kasPublicKey.publicKey,
@@ -456,14 +458,14 @@ export class Client {
       segmentSizeDefault: windowSize,
       integrityAlgorithm: 'HS256',
       segmentIntegrityAlgorithm: 'GMAC',
-      contentStream: source,
+      contentStream: opts.source,
       mimeType,
       policy: policyObject,
       authProvider: this.authProvider,
       progressHandler: this.clientConfig.progressHandler,
       keyForEncryption,
       keyForManifest,
-      assertionConfigs,
+      assertionConfigs: opts.assertionConfigs,
     };
 
     return (streamMiddleware as EncryptStreamMiddleware)(await writeStream(ecfg));
@@ -482,6 +484,7 @@ export class Client {
    */
   async decrypt({
     source,
+    allowList,
     keyMiddleware = async (key: Binary) => key,
     streamMiddleware = async (stream: DecoratedReadableStream) => stream,
     assertionVerificationKeys,
@@ -493,12 +496,15 @@ export class Client {
       throw new ConfigurationError('AuthProvider missing');
     }
     const chunker = await makeChunkable(source);
+    if (!allowList) {
+      allowList = this.allowedKases;
+    }
 
     // Await in order to catch any errors from this call.
     // TODO: Write error event to stream and don't await.
     return await (streamMiddleware as DecryptStreamMiddleware)(
       await readStream({
-        allowList: this.allowedKases,
+        allowList,
         authProvider: this.authProvider,
         chunker,
         concurrencyLimit,
@@ -540,12 +546,4 @@ export class Client {
 
 export type { AuthProvider };
 
-export {
-  DecryptParamsBuilder,
-  DecryptSource,
-  EncryptParamsBuilder,
-  HttpRequest,
-  fromDataSource,
-  fromSource,
-  withHeaders,
-};
+export { DecryptParamsBuilder, DecryptSource, EncryptParamsBuilder, HttpRequest, withHeaders };
