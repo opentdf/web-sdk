@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 
 set -x
 
@@ -44,3 +45,6 @@ kcadm.sh create clients -r opentdf \
 
 kcadm.sh create users -r opentdf -s username=user1 -s enabled=true -s firstName=Alice -s lastName=User
 kcadm.sh set-password -r opentdf --username user1 --new-password testuser123
+
+OTDFCTL=$(${SCRIPT_DIR}/otdfctl.sh)
+

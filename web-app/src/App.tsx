@@ -3,7 +3,14 @@ import { useState, useEffect, type ChangeEvent } from 'react';
 import streamsaver from 'streamsaver';
 import { showSaveFilePicker } from 'native-file-system-adapter';
 import './App.css';
-import { type Chunker, type DecryptSource, NanoTDFClient, TDF3Client } from '@opentdf/sdk';
+import {
+  type Chunker,
+  type DecryptSource,
+  type SplitStep,
+  EncryptParams,
+  NanoTDFClient,
+  TDF3Client,
+} from '@opentdf/sdk';
 import { type SessionInformation, OidcClient } from './session.js';
 import { c } from './config.js';
 
@@ -221,10 +228,13 @@ function humanReadableDurationEstimate(ms: number) {
 
 function App() {
   const [authState, setAuthState] = useState<SessionInformation>({ sessionState: 'start' });
+  const [autoconfigure, setAutoconfigure] = useState<boolean>(true);
   const [decryptContainerType, setDecryptContainerType] = useState<Containers>('tdf');
   const [downloadState, setDownloadState] = useState<string | undefined>();
   const [encryptContainerType, setEncryptContainerType] = useState<Containers>('tdf');
   const [inputSource, setInputSource] = useState<InputSource | undefined>();
+  const [rawAttributeList, setRawAttributeList] = useState<string>('');
+  const [rawSplitPlan, setSplitPlan] = useState<string>('');
   const [sinkType, setSinkType] = useState<SinkType>('file');
   const [streamController, setStreamController] = useState<CurrentDataController>();
 
@@ -347,6 +357,11 @@ function App() {
     }
     const inputFileName = fileNameFor(inputSource);
     console.log(`Encrypting [${inputFileName}] as ${encryptContainerType} to ${sinkType}`);
+    let attributeList: URL[] = [];
+    if (rawAttributeList?.trim()) {
+      // split rawAttributeList by whitespace
+      attributeList = rawAttributeList.split(/\s+/).map((url) => new URL(url));
+    }
     switch (encryptContainerType) {
       case 'nano': {
         if ('url' in inputSource) {
@@ -361,6 +376,9 @@ function App() {
           kasEndpoint: c.kas,
           dpopKeys: oidcClient.getSigningKey(),
         });
+        if (attributeList.length) {
+          nanoClient.dataAttributes = attributeList.map((url) => url.toString());
+        }
         setDownloadState('Encrypting...');
         switch (sinkType) {
           case 'file':
@@ -434,10 +452,22 @@ function App() {
             f = await getNewFileHandle('html', downloadName);
           }
           const progressTransformers = makeProgressPair(size, 'Encrypt');
+          const splitPlan: SplitStep[] = autoconfigure ? undefined : JSON.parse(rawSplitPlan);
+          console.log('Split Plan', splitPlan);
+
+          let scope: EncryptParams['scope'];
+          if (attributeList.length) {
+            scope = {
+              attributes: attributeList.map((url) => url.toString()),
+            };
+          }
+
           const cipherText = await client.encrypt({
             source: source.pipeThrough(progressTransformers.reader),
             offline: true,
             asHtml: true,
+            scope,
+            splitPlan,
           });
           cipherText.stream = cipherText.stream.pipeThrough(progressTransformers.writer);
           switch (sinkType) {
@@ -468,6 +498,12 @@ function App() {
           dpopKeys: oidcClient.getSigningKey(),
           kasEndpoint: c.kas,
         });
+        let scope: EncryptParams['scope'];
+        if (attributeList.length) {
+          scope = {
+            attributes: attributeList.map((url) => url.toString()),
+          };
+        }
         const sc = new AbortController();
         setStreamController(sc);
         let source: ReadableStream<Uint8Array>, size: number;
@@ -503,9 +539,13 @@ function App() {
             f = await getNewFileHandle('tdf', downloadName);
           }
           const progressTransformers = makeProgressPair(size, 'Encrypt');
+          const splitPlan: SplitStep[] = autoconfigure ? undefined : JSON.parse(rawSplitPlan);
+          console.log('Split Plan', splitPlan);
           const cipherText = await client.encrypt({
             source: source.pipeThrough(progressTransformers.reader),
             offline: true,
+            scope,
+            splitPlan,
           });
           cipherText.stream = cipherText.stream.pipeThrough(progressTransformers.writer);
           switch (sinkType) {
@@ -796,7 +836,8 @@ function App() {
             <form className="column">
               <h2>Encrypt</h2>
               <div className="card horizontal-flow">
-                <div>
+                <fieldset className="Output">
+                  <legend>Container</legend>
                   <input
                     type="radio"
                     id="htmlEncrypt"
@@ -826,7 +867,37 @@ function App() {
                     checked={encryptContainerType === 'nano'}
                   />{' '}
                   <label htmlFor="nanoEncrypt">nano</label>
-                </div>
+                </fieldset>
+                <fieldset className="Output">
+                  <legend>🏷️ Attributes</legend>
+                  <textarea
+                    id="attributeList"
+                    name="attributeList"
+                    placeholder={`https://kas/attr/a/value/1\nhttps://kas/attr/b/value/1`}
+                    onChange={(e) => setRawAttributeList(e.target.value)}
+                  />
+                </fieldset>
+                <fieldset className="Output">
+                  <legend>🔐 KAO generation</legend>
+                  <input
+                    type="checkbox"
+                    id="autoconfigure"
+                    name="autoconfigure"
+                    value={autoconfigure}
+                    checked={autoconfigure}
+                    onChange={(e) => setAutoconfigure(e.target.checked)}
+                    disabled={encryptContainerType == 'nano'}
+                  />
+                  <label htmlFor="autoconfigure">Autoconfigure</label>
+                  <br />
+                  <textarea
+                    id="splitPlan"
+                    name="splitPlan"
+                    placeholder={JSON.stringify([{ sid: 'a', kas: c.kas }])}
+                    disabled={autoconfigure || encryptContainerType == 'nano'}
+                    onChange={(e) => setSplitPlan(e.target.value)}
+                  />
+                </fieldset>
                 <button id="encryptButton" onClick={() => handleEncrypt()} type="button">
                   Encrypt
                 </button>
@@ -835,7 +906,8 @@ function App() {
             <form className="column">
               <h2>Decrypt</h2>
               <div className="card horizontal-flow">
-                <div>
+                <fieldset className="Output">
+                  <legend>Container</legend>
                   <input
                     type="radio"
                     id="tdfDecrypt"
@@ -855,7 +927,7 @@ function App() {
                     checked={decryptContainerType === 'nano'}
                   />{' '}
                   <label htmlFor="nanoDecrypt">nano</label>
-                </div>
+                </fieldset>
                 <button id="decryptButton" onClick={() => handleDecrypt()} type="button">
                   decrypt
                 </button>
