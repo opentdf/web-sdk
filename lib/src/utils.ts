@@ -1,7 +1,7 @@
 import { exportSPKI, importX509 } from 'jose';
 
 import { base64 } from './encodings/index.js';
-import { pemCertToCrypto, pemPublicToCrypto } from './nanotdf-crypto/index.js';
+import { pemCertToCrypto, pemPublicToCrypto } from './nanotdf-crypto/pemPublicToCrypto.js';
 import { ConfigurationError } from './errors.js';
 
 /**

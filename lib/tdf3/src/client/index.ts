@@ -1,10 +1,7 @@
 import { v4 } from 'uuid';
 import {
   ZipReader,
-  fromBuffer,
-  fromDataSource,
   streamToBuffer,
-  type Chunker,
   keyMiddleware as defaultKeyMiddleware,
 } from '../utils/index.js';
 import { base64 } from '../../../src/encodings/index.js';
@@ -44,6 +41,7 @@ import {
 } from './builders.js';
 import { KasPublicKeyInfo, OriginAllowList } from '../../../src/access.js';
 import { ConfigurationError } from '../../../src/errors.js';
+import { type Chunker, fromBuffer, fromDataSource, fromSource } from '../../../src/seekable.js';
 import { Binary } from '../binary.js';
 import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
 import { toCryptoKeyPair } from '../crypto/crypto-utils.js';
@@ -82,7 +80,7 @@ const makeChunkable = async (source: DecryptSource) => {
       initialChunker = source.location;
       break;
     default:
-      initialChunker = await fromDataSource(source);
+      initialChunker = await fromSource(source);
   }
 
   const magic: string = await getFirstTwoBytes(initialChunker);
@@ -564,5 +562,6 @@ export {
   EncryptParamsBuilder,
   HttpRequest,
   fromDataSource,
+  fromSource,
   withHeaders,
 };
