@@ -105,6 +105,9 @@ export type ReadOptions = {
   verifiers?: Keys;
   // Optionally disable assertion verification
   noVerify?: boolean;
+
+  // If set, prevents more than this number of concurrent requests to the KAS.
+  concurrencyLimit?: number;
 };
 
 // Defaults and shared settings that are relevant to creating TDF objects.

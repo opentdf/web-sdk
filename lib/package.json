@@ -25,6 +25,11 @@
   "main": "./dist/cjs/tdf3/index.js",
   "exports": {
     ".": {
+      "types": "./dist/types/src/index.d.ts",
+      "require": "./dist/cjs/src/index.js",
+      "import": "./dist/web/src/index.js"
+    },
+    "./singlecontainer": {
       "types": "./dist/types/tdf3/index.d.ts",
       "require": "./dist/cjs/tdf3/index.js",
       "import": "./dist/web/tdf3/index.js"
@@ -44,9 +49,9 @@
       }
     },
     "./nano": {
-      "types": "./dist/types/src/index.d.ts",
-      "require": "./dist/cjs/src/index.js",
-      "import": "./dist/web/src/index.js"
+      "types": "./dist/types/src/nanoindex.d.ts",
+      "require": "./dist/cjs/src/nanoindex.js",
+      "import": "./dist/web/src/nanoindex.js"
     }
   },
   "scripts": {
@@ -85,7 +90,6 @@
     "@types/node": "^20.4.5",
     "@types/send": "^0.17.1",
     "@types/sinon": "~10.0.15",
-    "@types/streamsaver": "^2.0.1",
     "@types/uuid": "~9.0.2",
     "@types/wicg-file-system-access": "^2020.9.6",
     "@typescript-eslint/eslint-plugin": "^6.2.1",

@@ -1,21 +1,20 @@
 import './polyfills.js';
 import { createWriteStream, openAsBlob } from 'node:fs';
-import { readFile, stat, writeFile } from 'node:fs/promises';
+import { stat, writeFile } from 'node:fs/promises';
 import { Writable } from 'node:stream';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import {
   type AuthProvider,
-  type EncryptParams,
+  type CreateOptions,
+  type CreateNanoTDFOptions,
+  type CreateZTDFOptions,
   type HttpRequest,
+  type ReadOptions,
+  type Source,
   AuthProviders,
-  NanoTDFClient,
-  NanoTDFDatasetClient,
-  TDF3Client,
   version,
-  EncryptParamsBuilder,
-  DecryptParams,
-  DecryptParamsBuilder,
+  OpenTDF,
 } from '@opentdf/sdk';
 import { CLIError, Level, log } from './logger.js';
 import { webcrypto } from 'crypto';
@@ -108,30 +107,17 @@ const rstrip = (str: string, suffix = ' '): string => {
   return str;
 };
 
-type AnyNanoClient = NanoTDFClient | NanoTDFDatasetClient;
-
-function addParams(client: AnyNanoClient, argv: Partial<mainArgs>) {
-  if (argv.attributes?.length) {
-    client.dataAttributes = argv.attributes.split(',');
-  }
-  if (argv.usersWithAccess?.length) {
-    client.dissems = argv.usersWithAccess.split(',');
-  }
-  log('SILLY', `Built encrypt params dissems: ${client.dissems}, attrs: ${client.dataAttributes}`);
-}
-
-async function tdf3DecryptParamsFor(argv: Partial<mainArgs>): Promise<DecryptParams> {
-  const c = new DecryptParamsBuilder();
+async function parseReadOptions(argv: Partial<mainArgs>): Promise<ReadOptions> {
+  const r: ReadOptions = { source: await fileAsSource(argv.file as string) };
   if (argv.noVerifyAssertions) {
-    c.withNoVerifyAssertions(true);
+    r.noVerify = true;
   }
-  if (argv.concurrencyLimit) {
-    c.withConcurrencyLimit(argv.concurrencyLimit);
+  if (argv.concurrencyLimit !== undefined) {
+    r.concurrencyLimit = argv.concurrencyLimit;
   } else {
-    c.withConcurrencyLimit(100);
+    r.concurrencyLimit = 100;
   }
-  c.setFileSource(await openAsBlob(argv.file as string));
-  return c.build();
+  return r;
 }
 
 function parseAssertionConfig(s: string): assertions.AssertionConfig[] {
@@ -149,32 +135,42 @@ function parseAssertionConfig(s: string): assertions.AssertionConfig[] {
   return a;
 }
 
-async function tdf3EncryptParamsFor(argv: Partial<mainArgs>): Promise<EncryptParams> {
-  const c = new EncryptParamsBuilder();
-  if (argv.assertions?.length) {
-    c.withAssertions(parseAssertionConfig(argv.assertions));
-  }
+async function parseCreateOptions(argv: Partial<mainArgs>): Promise<CreateOptions> {
+  const c: CreateOptions = {
+    source: { type: 'file-browser', location: await openAsBlob(argv.file as string) },
+  };
   if (argv.attributes?.length) {
-    c.setAttributes(argv.attributes.split(','));
+    c.attributes = argv.attributes.split(',');
   }
-  if (argv.usersWithAccess?.length) {
-    c.setUsersWithAccess(argv.usersWithAccess.split(','));
-  }
-  if (argv.mimeType?.length) {
-    c.setMimeType(argv.mimeType);
-  }
-  if (argv.autoconfigure) {
-    c.withAutoconfigure();
-  }
-  // use offline mode, we do not have upsert for v2
-  c.setOffline();
-  // FIXME TODO must call file.close() after we are done
-  const buffer = await processDataIn(argv.file as string);
-  c.setBufferSource(buffer);
-  return c.build();
+  c.autoconfigure = !!argv.autoconfigure;
+  return c;
 }
 
-async function processDataIn(file: string) {
+async function parseCreateZTDFOptions(argv: Partial<mainArgs>): Promise<CreateZTDFOptions> {
+  const c: CreateZTDFOptions = await parseCreateOptions(argv);
+  if (argv.assertions?.length) {
+    c.assertionConfigs = parseAssertionConfig(argv.assertions);
+  }
+  if (argv.mimeType?.length) {
+    if (argv.mimeType && /^[a-z]+\/[a-z0-9-+.]+$/.test(argv.mimeType)) {
+      c.mimeType = argv.mimeType as `${string}/${string}`;
+    } else {
+      throw new CLIError('CRITICAL', 'Invalid mimeType format');
+    }
+  }
+  return c;
+}
+
+async function parseCreateNanoTDFOptions(argv: Partial<mainArgs>): Promise<CreateZTDFOptions> {
+  const c: CreateNanoTDFOptions = await parseCreateOptions(argv);
+  const ecdsaBinding = argv.policyBinding?.toLowerCase() == 'ecdsa';
+  if (ecdsaBinding) {
+    c.bindingType = 'ecdsa';
+  }
+  return c;
+}
+
+async function fileAsSource(file: string): Promise<Source> {
   if (!file) {
     throw new CLIError('CRITICAL', 'Must specify file or pipe');
   }
@@ -187,7 +183,7 @@ async function processDataIn(file: string) {
     throw new CLIError('CRITICAL', `File is not accessable [${file}]`);
   }
   log('DEBUG', `Using input from file [${file}]`);
-  return readFile(file);
+  return { type: 'file-browser', location: await openAsBlob(file) };
 }
 
 export const handleArgs = (args: string[]) => {
@@ -343,14 +339,6 @@ export const handleArgs = (args: string[]) => {
           type: 'string',
           description: 'Owner email address',
         },
-        usersWithAccess: {
-          alias: 'users-with-access',
-          group: 'Encrypt Options:',
-          desc: 'Add users to the policy',
-          type: 'string',
-          default: '',
-          validate: (users: string) => users.split(','),
-        },
       })
 
       // COMMANDS
@@ -422,56 +410,25 @@ export const handleArgs = (args: string[]) => {
           const ignoreAllowList = !!argv.ignoreAllowList;
           const authProvider = await processAuth(argv);
           log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
+          const client = new OpenTDF({
+            authProvider,
+            defaultCreateOptions: {
+              defaultKASEndpoint: argv.kasEndpoint,
+            },
+            defaultReadOptions: {
+              allowedKASEndpoints: allowedKases,
+              ignoreAllowlist: ignoreAllowList,
+              noVerify: !!argv.noVerifyAssertions,
+            },
+            disableDPoP: !argv.dpop,
+            policyEndpoint: guessPolicyUrl(argv),
+          });
+          log('SILLY', `Initialized client ${JSON.stringify(client)}`);
 
-          const kasEndpoint = argv.kasEndpoint;
-          if (argv.containerType === 'tdf3' || argv.containerType == 'ztdf') {
-            log('DEBUG', `TDF3 Client`);
-            const client = new TDF3Client({
-              allowedKases,
-              ignoreAllowList,
-              authProvider,
-              kasEndpoint,
-              dpopEnabled: argv.dpop,
-            });
-            log('SILLY', `Initialized client ${JSON.stringify(client)}`);
-            log('DEBUG', `About to decrypt [${argv.file}]`);
-            const ct = await client.decrypt(await tdf3DecryptParamsFor(argv));
-            if (argv.output) {
-              const destination = createWriteStream(argv.output);
-              await ct.stream.pipeTo(Writable.toWeb(destination));
-            } else {
-              console.log(await ct.toString());
-            }
-          } else {
-            const dpopEnabled = !!argv.dpop;
-            const client =
-              argv.containerType === 'nano'
-                ? new NanoTDFClient({
-                    allowedKases,
-                    ignoreAllowList,
-                    authProvider,
-                    kasEndpoint,
-                    dpopEnabled,
-                  })
-                : new NanoTDFDatasetClient({
-                    allowedKases,
-                    ignoreAllowList,
-                    authProvider,
-                    kasEndpoint,
-                    dpopEnabled,
-                  });
-            const buffer = await processDataIn(argv.file as string);
-
-            log('DEBUG', 'Decrypt data.');
-            const plaintext = await client.decrypt(buffer);
-
-            log('DEBUG', 'Handle output.');
-            if (argv.output) {
-              await writeFile(argv.output, new Uint8Array(plaintext));
-            } else {
-              console.log(new TextDecoder().decode(plaintext));
-            }
-          }
+          log('DEBUG', `About to TDF3 decrypt [${argv.file}]`);
+          const ct = await client.read(await parseReadOptions(argv));
+          const destination = createWriteStream(argv.output as string);
+          await ct.pipeTo(Writable.toWeb(destination));
           const lastRequest = authProvider.requestLog[authProvider.requestLog.length - 1];
           let accessToken = null;
           let dpopToken = null;
@@ -510,50 +467,29 @@ export const handleArgs = (args: string[]) => {
           log('DEBUG', 'Running encrypt command');
           const authProvider = await processAuth(argv);
           log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
-          const kasEndpoint = argv.kasEndpoint;
-          const ignoreAllowList = !!argv.ignoreAllowList;
-          const allowedKases = argv.allowList?.split(',');
+
+          const client = new OpenTDF({
+            authProvider,
+            defaultCreateOptions: {
+              defaultKASEndpoint: argv.kasEndpoint,
+            },
+            disableDPoP: !argv.dpop,
+            policyEndpoint: guessPolicyUrl(argv),
+          });
+          log('SILLY', `Initialized client ${JSON.stringify(client)}`);
 
           if ('tdf3' === argv.containerType || 'ztdf' === argv.containerType) {
-            log('DEBUG', `TDF3 Client`);
-            const policyEndpoint: string = guessPolicyUrl(argv);
-            const client = new TDF3Client({
-              allowedKases,
-              ignoreAllowList,
-              authProvider,
-              kasEndpoint,
-              policyEndpoint,
-              dpopEnabled: argv.dpop,
-            });
-            log('SILLY', `Initialized client ${JSON.stringify(client)}`);
-            const ct = await client.encrypt(await tdf3EncryptParamsFor(argv));
+            log('DEBUG', `TDF3 Create`);
+            const ct = await client.createZTDF(await parseCreateZTDFOptions(argv));
             if (!ct) {
               throw new CLIError('CRITICAL', 'Encrypt configuration error: No output?');
             }
-            if (argv.output) {
-              const destination = createWriteStream(argv.output);
-              await ct.stream.pipeTo(Writable.toWeb(destination));
-            } else {
-              console.log(await ct.toString());
-            }
+            const destination = createWriteStream(argv.output as string);
+            await ct.pipeTo(Writable.toWeb(destination));
           } else {
-            const dpopEnabled = !!argv.dpop;
-            const ecdsaBinding = argv.policyBinding.toLowerCase() == 'ecdsa';
-            const client =
-              argv.containerType === 'nano'
-                ? new NanoTDFClient({ allowedKases, authProvider, dpopEnabled, kasEndpoint })
-                : new NanoTDFDatasetClient({
-                    allowedKases,
-                    authProvider,
-                    dpopEnabled,
-                    kasEndpoint,
-                  });
             log('SILLY', `Initialized client ${JSON.stringify(client)}`);
 
-            addParams(client, argv);
-
-            const buffer = await processDataIn(argv.file as string);
-            const cyphertext = await client.encrypt(buffer, { ecdsaBinding });
+            const cyphertext = await client.createNanoTDF(await parseCreateNanoTDFOptions(argv));
 
             log('DEBUG', `Handle cyphertext output ${JSON.stringify(cyphertext)}`);
             if (argv.output) {

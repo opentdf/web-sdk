@@ -24,11 +24,11 @@ test('login', async ({ page }) => {
 });
 
 const scenarios = {
-  nano: { encryptSelector: '#nanoEncrypt', decryptSelector: '#nanoDecrypt' },
-  tdf: { encryptSelector: '#zipEncrypt', decryptSelector: '#tdfDecrypt' },
+  nano: { encryptSelector: '#nanoEncrypt' },
+  tdf: { encryptSelector: '#zipEncrypt' },
 };
 
-for (const [name, { encryptSelector, decryptSelector }] of Object.entries(scenarios)) {
+for (const [name, { encryptSelector }] of Object.entries(scenarios)) {
   test(`roundtrip ${name}`, async ({ page }) => {
     page.on('download', (download) =>
       download.path().then((r) => console.log(`Saves ${download.suggestedFilename()} as ${r}`))
@@ -52,7 +52,6 @@ for (const [name, { encryptSelector, decryptSelector }] of Object.entries(scenar
     await page.locator('#clearFile').click();
     await loadFile(page, cipherTextPath);
     const plainDownloadPromise = page.waitForEvent('download');
-    await page.locator(decryptSelector).click();
     await page.locator('#fileSink').click();
     await page.locator('#decryptButton').click();
     const download2 = await plainDownloadPromise;
