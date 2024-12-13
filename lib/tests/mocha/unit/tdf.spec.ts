@@ -42,23 +42,6 @@ HJg=
 `.trim();
 
 describe('TDF', () => {
-  it('Encodes the postMessage origin properly in wrapHtml', () => {
-    const cipherText = new TextEncoder().encode('abcezas123');
-    const transferUrl = 'https://local.virtru.com/start?htmlProtocol=1';
-    const wrapped = TDF.wrapHtml(cipherText, JSON.stringify({ thisIs: 'metadata' }), transferUrl);
-    const rawHtml = new TextDecoder().decode(wrapped);
-    expect(rawHtml).to.include("'https://local.virtru.com', [channel.port2]);");
-  });
-
-  it('Round Trip wrapHtml and unwrapHtml', () => {
-    const cipherText = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2]);
-    const transferUrl = 'https://local.virtru.com/start?htmlProtocol=1';
-    const wrapped = TDF.wrapHtml(cipherText, JSON.stringify({ thisIs: 'metadata' }), transferUrl);
-    expect(TDF.unwrapHtml(wrapped)).to.eql(cipherText);
-    expect(TDF.unwrapHtml(wrapped.buffer)).to.eql(cipherText);
-    expect(TDF.unwrapHtml(new TextDecoder().decode(wrapped))).to.eql(cipherText);
-  });
-
   it('should return key', async () => {
     const pem = await TDF.extractPemFromKeyString(sampleCert);
     expect(pem).to.include('-----BEGIN PUBLIC KEY-----');

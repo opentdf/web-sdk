@@ -24,10 +24,6 @@ const hexSliceLookupTable = (() => {
   return table;
 })();
 
-export function base64ToBuffer(b64: string): Uint8Array {
-  return Uint8Array.from(atob(b64).split(''), (c) => c.charCodeAt(0));
-}
-
 export function concatUint8(uint8Arrays: Uint8Array[]): Uint8Array {
   const newLength = uint8Arrays.reduce(
     (accumulator, currentValue) => accumulator + currentValue.length,
