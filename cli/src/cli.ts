@@ -22,6 +22,7 @@ import { webcrypto } from 'crypto';
 import * as assertions from '@opentdf/sdk/assertions';
 import { attributeFQNsAsValues } from '@opentdf/sdk/nano';
 import { base64 } from '@opentdf/sdk/encodings';
+import { importPKCS8, importSPKI, KeyLike } from 'jose'; // for RS256
 
 type AuthToProcess = {
   auth?: string;
@@ -120,10 +121,70 @@ function addParams(client: AnyNanoClient, argv: Partial<mainArgs>) {
   log('SILLY', `Built encrypt params dissems: ${client.dissems}, attrs: ${client.dataAttributes}`);
 }
 
+async function parseAssertionVerificationKeys(
+  s: string
+): Promise<assertions.AssertionVerificationKeys> {
+  let u;
+  try {
+    u = JSON.parse(s);
+  } catch (err) {
+    // try as file name:
+    try {
+      const jsonFile = await openAsBlob(s);
+      u = JSON.parse(await jsonFile.text());
+    } catch (err2) {
+      throw new CLIError(
+        'CRITICAL',
+        `Failed to open/parse assertion verification keys as string or file path ${err.message}`,
+        err
+      );
+    }
+  }
+  if (typeof u !== 'object' || u === null) {
+    throw new Error('Invalid input: The input must be an object');
+  }
+  // handle both cases of "keys"
+  if (!('Keys' in u && typeof u.Keys === 'object')) {
+    if ('keys' in u && typeof u.keys === 'object') {
+      u.Keys = u.keys;
+    } else {
+      throw new CLIError(
+        'CRITICAL',
+        'Invalid input: invalid structure of assertionVerificationKeys'
+      );
+    }
+  }
+  for (const assertionName in u.Keys) {
+    const assertionKey = u.Keys[assertionName];
+    // Ensure each entry has the required 'key' and 'alg' fields
+    if (typeof assertionKey !== 'object' || assertionKey === null) {
+      throw new CLIError('CRITICAL', `Invalid assertion for ${assertionName}: Must be an object`);
+    }
+
+    if (typeof assertionKey.key !== 'string' || typeof assertionKey.alg !== 'string') {
+      throw new CLIError(
+        'CRITICAL',
+        `Invalid assertion for ${assertionName}: Missing or invalid 'key' or 'alg'`
+      );
+    }
+    try {
+      u.Keys[assertionName].key = await correctAssertionKeys(assertionKey.alg, assertionKey.key);
+    } catch (err) {
+      throw new CLIError('CRITICAL', `Issue converting assertion key from string: ${err.message}`);
+    }
+  }
+  return u;
+}
+
 async function tdf3DecryptParamsFor(argv: Partial<mainArgs>): Promise<DecryptParams> {
   const c = new DecryptParamsBuilder();
   if (argv.noVerifyAssertions) {
     c.withNoVerifyAssertions(true);
+  }
+  if (argv.assertionVerificationKeys) {
+    c.withAssertionVerificationKeys(
+      await parseAssertionVerificationKeys(argv.assertionVerificationKeys)
+    );
   }
   if (argv.concurrencyLimit) {
     c.withConcurrencyLimit(argv.concurrencyLimit);
@@ -134,8 +195,52 @@ async function tdf3DecryptParamsFor(argv: Partial<mainArgs>): Promise<DecryptPar
   return c.build();
 }
 
-function parseAssertionConfig(s: string): assertions.AssertionConfig[] {
-  const u = JSON.parse(s);
+async function correctAssertionKeys(
+  alg: string,
+  key: KeyLike | Uint8Array
+): Promise<KeyLike | Uint8Array> {
+  if (alg === 'HS256') {
+    // Convert key string to Uint8Array
+    if (typeof key !== 'string') {
+      throw new CLIError('CRITICAL', 'HS256 key must be a string');
+    }
+    return new TextEncoder().encode(key); // Update array element directly
+  } else if (alg === 'RS256') {
+    // Convert PEM string to a KeyLike object
+    if (typeof key !== 'string') {
+      throw new CLIError('CRITICAL', 'RS256 key must be a PEM string');
+    }
+    try {
+      return await importPKCS8(key, 'RS256'); // Import private key
+    } catch (err) {
+      // If importing as a private key fails, try importing as a public key
+      try {
+        return await importSPKI(key, 'RS256'); // Import public key
+      } catch (err) {}
+    }
+  }
+  // Otherwise its an unsupported alg
+  throw new CLIError('CRITICAL', `Unsupported signing key algorithm: ${alg}`); // Handle unsupported algs
+}
+
+async function parseAssertionConfig(s: string): Promise<assertions.AssertionConfig[]> {
+  let u;
+  try {
+    u = JSON.parse(s);
+  } catch (err) {
+    // try as file name:
+    try {
+      const jsonFile = await openAsBlob(s);
+      u = JSON.parse(await jsonFile.text());
+    } catch (err2) {
+      throw new CLIError(
+        'CRITICAL',
+        `Failed to open/parse assertions as string or file path ${err.message}`,
+        err
+      );
+    }
+  }
+
   // if u is null or empty, return an empty array
   if (!u) {
     return [];
@@ -145,6 +250,18 @@ function parseAssertionConfig(s: string): assertions.AssertionConfig[] {
     if (!assertions.isAssertionConfig(assertion)) {
       throw new CLIError('CRITICAL', `invalid assertion config ${JSON.stringify(assertion)}`);
     }
+    if (assertion.signingKey) {
+      const { alg, key } = assertion.signingKey;
+      try {
+        assertion.signingKey.key = await correctAssertionKeys(alg, key);
+      } catch (err) {
+        throw new CLIError(
+          'CRITICAL',
+          `Issue converting assertion key from string: ${err.message}`,
+          err
+        );
+      }
+    }
   }
   return a;
 }
@@ -152,7 +269,7 @@ function parseAssertionConfig(s: string): assertions.AssertionConfig[] {
 async function tdf3EncryptParamsFor(argv: Partial<mainArgs>): Promise<EncryptParams> {
   const c = new EncryptParamsBuilder();
   if (argv.assertions?.length) {
-    c.withAssertions(parseAssertionConfig(argv.assertions));
+    c.withAssertions(await parseAssertionConfig(argv.assertions));
   }
   if (argv.attributes?.length) {
     c.setAttributes(argv.attributes.split(','));
@@ -249,6 +366,14 @@ export const handleArgs = (args: string[]) => {
         desc: 'Do not verify assertions',
         type: 'boolean',
       })
+      .option('assertionVerificationKeys', {
+        alias: 'with-assertion-verification-keys',
+        group: 'Decrypt',
+        desc: 'keys for assertion verification or path to a json file containing keys for assertion verification',
+        type: 'string',
+        default: '',
+        validate: parseAssertionVerificationKeys,
+      })
       .option('concurrencyLimit', {
         alias: 'concurrency-limit',
         group: 'Decrypt',
@@ -301,7 +426,7 @@ export const handleArgs = (args: string[]) => {
       .options({
         assertions: {
           group: 'Encrypt Options:',
-          desc: 'ZTDF assertion config objects',
+          desc: 'ZTDF assertion config objects or path to a json file containing ZTDF assertion config objects',
           type: 'string',
           default: '',
           validate: parseAssertionConfig,
