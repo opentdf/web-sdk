@@ -8,7 +8,7 @@ const aex = {
   pubKey: 'PUBKEY',
 };
 
-describe('EncyptParamsBuilder', () => {
+describe('EncryptParamsBuilder', () => {
   describe('setAttributes', () => {
     it('should accept valid attribute', () => {
       const paramsBuilder = new EncryptParamsBuilder();
