@@ -1,4 +1,3 @@
-import './polyfills.js';
 import { createWriteStream, openAsBlob } from 'node:fs';
 import { readFile, stat, writeFile } from 'node:fs/promises';
 import { Writable } from 'node:stream';

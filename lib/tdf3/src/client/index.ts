@@ -394,7 +394,7 @@ export class Client {
         }
       }
       if (
-        avs.length != scope.attributes?.length ||
+        avs.length != (scope.attributes?.length || 0) ||
         !avs.map(({ fqn }) => fqn).every((a) => fqns.indexOf(a) >= 0)
       ) {
         throw new ConfigurationError(
