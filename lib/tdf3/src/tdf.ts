@@ -276,22 +276,30 @@ async function _generateManifest(
 }
 
 async function getSignature(
-  unwrappedKeyBinary: Binary,
-  payloadBinary: Binary,
+  unwrappedKey: Uint8Array,
+  content: Uint8Array,
   algorithmType: IntegrityAlgorithm,
   cryptoService: CryptoService
-) {
+) : Promise<Uint8Array> {
   switch (algorithmType.toUpperCase()) {
     case 'GMAC':
       // use the auth tag baked into the encrypted payload
-      return buffToString(Uint8Array.from(payloadBinary.asByteArray()).slice(-16), 'hex');
+      return content.slice(-16);
     case 'HS256':
       // simple hmac is the default
-      return await cryptoService.hmac(
-        buffToString(new Uint8Array(unwrappedKeyBinary.asArrayBuffer()), 'hex'),
-        buffToString(new Uint8Array(payloadBinary.asArrayBuffer()), 'utf-8')
+      const cryptoKey = await crypto.subtle.importKey(
+         'raw',
+         unwrappedKey,
+         {
+          name: 'HMAC',
+          hash: { name: 'SHA-256' },
+        },
+        true,
+        ['sign', 'verify']
       );
-    default:
+      const signature = await crypto.subtle.sign('HMAC', cryptoKey, content);
+      return new Uint8Array(signature);
+    default:``
       throw new ConfigurationError(`Unsupported signature alg [${algorithmType}]`);
   }
 }
@@ -418,16 +426,16 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
 
         // hash the concat of all hashes
         const aggregateHash = await concatenateUint8Array(segmentHashList);
-        const payloadSigInHex = await getSignature(
-          cfg.keyForEncryption.unwrappedKeyBinary,
-          Binary.fromArrayBuffer(aggregateHash.buffer),
+
+        const payloadSig = await getSignature(
+          new Uint8Array(cfg.keyForEncryption.unwrappedKeyBinary.asArrayBuffer()),
+          aggregateHash,
           cfg.integrityAlgorithm,
           cfg.cryptoService
         );
 
-        const payloadSig = hex.decodeArrayBuffer(payloadSigInHex);
-        manifest.encryptionInformation.integrityInformation.rootSignature.sig =
-          base64.encodeArrayBuffer(payloadSig);
+        const rootSig = base64.encodeArrayBuffer(payloadSig);
+        manifest.encryptionInformation.integrityInformation.rootSignature.sig = rootSig;
         manifest.encryptionInformation.integrityInformation.rootSignature.alg =
           cfg.integrityAlgorithm;
 
@@ -533,14 +541,13 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
       cfg.keyForEncryption.unwrappedKeyBinary
     );
     const payloadBuffer = new Uint8Array(encryptedResult.payload.asByteArray());
-    const payloadSigInHex = await getSignature(
-      cfg.keyForEncryption.unwrappedKeyBinary,
-      encryptedResult.payload,
+    const payloadSig = await getSignature(
+      new Uint8Array(cfg.keyForEncryption.unwrappedKeyBinary.asArrayBuffer()),
+      new Uint8Array(encryptedResult.payload.asArrayBuffer()),
       cfg.segmentIntegrityAlgorithm,
       cfg.cryptoService
     );
-
-    const payloadSig = hex.decodeArrayBuffer(payloadSigInHex);
+    
     segmentHashList.push(new Uint8Array(payloadSig));
 
     segmentInfos.push({
@@ -726,16 +733,14 @@ async function decryptChunk(
 ): Promise<DecryptResult> {
   if (segmentIntegrityAlgorithm !== 'GMAC' && segmentIntegrityAlgorithm !== 'HS256') {
   }
-  const segmentHashAsHex = await getSignature(
-    reconstructedKeyBinary,
-    Binary.fromArrayBuffer(encryptedChunk.buffer),
+  const segmentSig = await getSignature(
+    new Uint8Array(reconstructedKeyBinary.asArrayBuffer()),
+    encryptedChunk,
     segmentIntegrityAlgorithm,
     cryptoService
   );
 
-  const segmentHash = isLegacyTDF
-    ? btoa(segmentHashAsHex)
-    : btoa(String.fromCharCode(...new Uint8Array(hex.decodeArrayBuffer(segmentHashAsHex))));
+  const segmentHash = isLegacyTDF ? base64.encode(hex.encodeArrayBuffer(segmentSig)) :base64.encodeArrayBuffer(segmentSig);
 
   if (hash !== segmentHash) {
     throw new IntegrityError('Failed integrity check on segment hash');
@@ -897,19 +902,18 @@ export async function readStream(cfg: DecryptConfiguration) {
     throw new UnsupportedError(`Unsupported integrity alg [${integrityAlgorithm}]`);
   }
 
-  const payloadForSigCalculation = isLegacyTDF
-    ? Binary.fromString(hex.encodeArrayBuffer(aggregateHash))
-    : Binary.fromArrayBuffer(aggregateHash.buffer);
-  const payloadSigInHex = await getSignature(
-    keyForDecryption,
+  const payloadForSigCalculation = isLegacyTDF ?
+  new TextEncoder().encode(hex.encodeArrayBuffer(aggregateHash)) : aggregateHash;
+  const payloadSig = await getSignature(
+    new Uint8Array(keyForDecryption.asArrayBuffer()),
     payloadForSigCalculation,
     integrityAlgorithm,
     cfg.cryptoService
   );
 
   const rootSig = isLegacyTDF
-    ? base64.encode(payloadSigInHex)
-    : base64.encodeArrayBuffer(hex.decodeArrayBuffer(payloadSigInHex));
+    ? base64.encode(hex.encodeArrayBuffer(payloadSig))
+    : base64.encodeArrayBuffer(payloadSig);
 
   if (manifest.encryptionInformation.integrityInformation.rootSignature.sig !== rootSig) {
     throw new IntegrityError('Failed integrity check on root signature');
