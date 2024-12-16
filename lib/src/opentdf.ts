@@ -227,9 +227,11 @@ export class OpenTDF {
   async createNanoTDF(opts: CreateNanoTDFOptions): Promise<DecoratedStream> {
     opts = { ...this.defaultCreateOptions, ...opts };
     const collection = await this.createNanoTDFCollection(opts);
-    const ciphertext = await collection.encrypt(opts.source);
-    await collection.close();
-    return ciphertext;
+    try {
+      return await collection.encrypt(opts.source);
+    } finally {
+      await collection.close();
+    }
   }
 
   /**
