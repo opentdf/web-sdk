@@ -73,7 +73,6 @@ describe('CryptoService DI', () => {
     });
     try {
       await c.encrypt({
-        asHtml: false,
         source: new ReadableStream({
           pull(controller) {
             controller.enqueue(new TextEncoder().encode('hello world'));

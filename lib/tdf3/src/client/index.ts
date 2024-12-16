@@ -10,12 +10,11 @@ import {
   EncryptConfiguration,
   fetchKasPublicKey,
   loadTDFStream,
-  unwrapHtml,
   validatePolicyObject,
   readStream,
-  wrapHtml,
   writeStream,
 } from '../tdf.js';
+import { unwrapHtml } from '../utils/unwrap.js';
 import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-provider.js';
 import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider.js';
 import { CryptoService } from '../crypto/declarations.js';
@@ -52,7 +51,6 @@ import { attributeFQNsAsValues } from '../../../src/policy/api.js';
 import { type Value } from '../../../src/policy/attributes.js';
 
 const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
-const HTML_BYTE_LIMIT = 100 * 1000 * 1000; // 100 MB, see WS-9476.
 
 // No default config for now. Delegate to Virtru wrapper for endpoints.
 const defaultClientConfig = { oidcOrigin: '', cryptoService: defaultCryptoService };
@@ -350,7 +348,7 @@ export class Client {
     scope = { attributes: [], dissem: [] },
     autoconfigure,
     source,
-    asHtml = false,
+    asHtml,
     metadata,
     mimeType,
     offline = true,
@@ -362,6 +360,9 @@ export class Client {
   }: EncryptParams): Promise<DecoratedReadableStream> {
     if (!offline) {
       throw new ConfigurationError('online mode not supported');
+    }
+    if (asHtml) {
+      throw new ConfigurationError('html mode not supported');
     }
     const dpopKeys = await this.dpopKeys;
 
@@ -426,7 +427,7 @@ export class Client {
 
     // TODO: Refactor underlying builder to remove some of this unnecessary config.
 
-    const byteLimit = asHtml ? HTML_BYTE_LIMIT : GLOBAL_BYTE_LIMIT;
+    const byteLimit = GLOBAL_BYTE_LIMIT;
     const encryptionInformation = new SplitKey(new AesGcmCipher(this.cryptoService));
     const splits: SplitStep[] = splitPlan?.length ? splitPlan : [{ kas: this.kasEndpoint }];
     encryptionInformation.keyAccess = await Promise.all(
@@ -465,24 +466,7 @@ export class Client {
       assertionConfigs,
     };
 
-    const stream = await (streamMiddleware as EncryptStreamMiddleware)(await writeStream(ecfg));
-
-    if (!asHtml) {
-      return stream;
-    }
-
-    // Wrap if it's html.
-    if (!stream.manifest) {
-      throw new Error('internal: missing manifest in encrypt function');
-    }
-    const htmlBuf = wrapHtml(await stream.toBuffer(), stream.manifest, this.readerUrl ?? '');
-
-    return new DecoratedReadableStream({
-      pull(controller: ReadableStreamDefaultController) {
-        controller.enqueue(htmlBuf);
-        controller.close();
-      },
-    });
+    return (streamMiddleware as EncryptStreamMiddleware)(await writeStream(ecfg));
   }
 
   /**

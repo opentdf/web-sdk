@@ -40,10 +40,7 @@ export type EncryptParams = {
   scope?: Scope;
   metadata?: Metadata;
   keypair?: CryptoKeyPair;
-  // Deprecated: Only offline more is currently supported
-  offline?: boolean;
   windowSize?: number;
-  asHtml?: boolean;
   getPolicyId?: () => Scope['policyId'];
   mimeType?: string;
   payloadKey?: Binary;
@@ -51,10 +48,14 @@ export type EncryptParams = {
   splitPlan?: SplitStep[];
   streamMiddleware?: EncryptStreamMiddleware;
   assertionConfigs?: AssertionConfig[];
+
+  // Unsupported
+  asHtml?: boolean;
+  // Unsupported
+  offline?: boolean;
 };
 
 // 'Readonly<EncryptParams>': scope, metadata, offline, windowSize, asHtml
-
 // deep copy is expensive, could be faster is Immer used, but to keep SDK work
 // stable we can just make this object readonly
 function freeze<Type>(obj: Type): Readonly<Type> {
@@ -75,9 +76,7 @@ class EncryptParamsBuilder {
         attributes: [],
       },
       keypair: undefined,
-      offline: false,
       windowSize: DEFAULT_SEGMENT_SIZE,
-      asHtml: false,
       assertionConfigs: [],
     }
   ) {
@@ -382,37 +381,24 @@ class EncryptParamsBuilder {
   }
 
   /**
-   * Whether the encrypted data should be formatted using html. This allows authorized users to
-   * double click and read using the Virtru Secure Reader, at the cost of reduced space efficiency.
-   * <br/><br/>
-   * This is enabled by default.
-   * @return {boolean} true if the encrypted data will be in html format.
+   * @deprecated This feature is not supported
    */
   hasHtmlFormat(): boolean {
-    return !!this._params.asHtml;
+    return false;
   }
 
   /**
-   * Specify that the encrypted data should be formatted using html. This allows authorized users to
-   * double click and read using the Virtru Secure Reader, at the cost of reduced space efficiency.
-   * <br/><br/>
-   * This is enabled by default.
+   * @deprecated This feature is not supported
    */
   setHtmlFormat() {
-    this._params.asHtml = true;
+    throw new ConfigurationError('HTML format is not supported');
   }
 
   /**
-   * Specify that the encrypted data should be formatted using html. This allows authorized users to
-   * double click and read using the Virtru Secure Reader, at the cost of reduced space efficiency.
-   * Returns this object for method chaining.
-   * <br/><br/>
-   * This is enabled by default.
-   * @return {EncryptParamsBuilder} - this object.
+   * @deprecated This feature is not supported
    */
   withHtmlFormat(): EncryptParamsBuilder {
-    this.setHtmlFormat();
-    return this;
+    throw new ConfigurationError('HTML format is not supported');
   }
 
   /**

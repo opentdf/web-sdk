@@ -29,7 +29,7 @@ function decryptedFileName(encryptedFileName: string): string {
   // [non-capture group] - match how safari and chrome insert counters before extension.
   //    I'm guessing this has some fascinating internationalizations but for now WFM is enough.
   // 3: TDF container type extension
-  const m = encryptedFileName.match(/^(.+)\.(\w+)(?:-\d+| \(\d+\))?\.(ntdf|tdf|tdf\.html)$/);
+  const m = encryptedFileName.match(/^(.+)\.(\w+)(?:-\d+| \(\d+\))?\.(ntdf|tdf|ztdf)$/);
   console.log(encryptedFileName, m);
   if (!m) {
     console.warn(`Unable to extract raw file name from ${encryptedFileName}`);
@@ -39,7 +39,7 @@ function decryptedFileName(encryptedFileName: string): string {
 }
 
 function decryptedFileExtension(encryptedFileName: string): string {
-  const m = encryptedFileName.match(/^(.+)\.(\w+)\.(ntdf|tdf|tdf\.html)$/);
+  const m = encryptedFileName.match(/^(.+)\.(\w+)\.(ntdf|tdf|ztdf)$/);
   if (!m) {
     console.warn(`Unable to extract raw file name from ${encryptedFileName}`);
     return `${encryptedFileName}.decrypted`;
@@ -79,7 +79,7 @@ async function getNewFileHandle(
   return showSaveFilePicker(options);
 }
 
-type Containers = 'html' | 'tdf' | 'nano';
+type Containers = 'tdf' | 'nano';
 type CurrentDataController = AbortController | undefined;
 type FileInputSource = {
   type: 'file';
@@ -387,79 +387,6 @@ function App() {
           case 'none':
             break;
         }
-        break;
-      }
-      case 'html': {
-        const client = new TDF3Client({
-          authProvider: oidcClient,
-          dpopKeys: oidcClient.getSigningKey(),
-          kasEndpoint: c.kas,
-          readerUrl: c.reader,
-        });
-        let source: ReadableStream<Uint8Array>, size: number;
-        const sc = new AbortController();
-        setStreamController(sc);
-        switch (inputSource.type) {
-          case 'file':
-            size = inputSource.file.size;
-            source = inputSource.file.stream() as unknown as ReadableStream<Uint8Array>;
-            break;
-          case 'bytes':
-            size = inputSource.length;
-            source = randomStream(inputSource);
-            break;
-          case 'url':
-            // NOTE: Attaching the signal to the pipeline (in pipeTo, below)
-            // is insufficient (at least in Chrome) to abort the fetch itself.
-            // So aborting a sink in a pipeline does *NOT* cancel its sources
-            const fr = await fetch(inputSource.url, { signal: sc.signal });
-            if (!fr.ok) {
-              throw Error(
-                `Error on fetch [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`
-              );
-            }
-            if (!fr.body) {
-              throw Error(
-                `Failed to fetch input [${inputSource.url}]: ${fr.status} code received; [${fr.statusText}]`
-              );
-            }
-            size = parseInt(fr.headers.get('Content-Length') || '-1');
-            source = fr.body;
-            break;
-        }
-        try {
-          const downloadName = `${inputFileName}.tdf.html`;
-          let f;
-          if (sinkType == 'fsapi') {
-            f = await getNewFileHandle('html', downloadName);
-          }
-          const progressTransformers = makeProgressPair(size, 'Encrypt');
-          const cipherText = await client.encrypt({
-            source: source.pipeThrough(progressTransformers.reader),
-            offline: true,
-            asHtml: true,
-          });
-          cipherText.stream = cipherText.stream.pipeThrough(progressTransformers.writer);
-          switch (sinkType) {
-            case 'file':
-              await toFile(cipherText.stream, downloadName, { signal: sc.signal });
-              break;
-            case 'fsapi':
-              if (!f) {
-                throw new Error();
-              }
-              const writable = await f.createWritable();
-              await cipherText.stream.pipeTo(writable, { signal: sc.signal });
-              break;
-            case 'none':
-              await cipherText.stream.pipeTo(drain(), { signal: sc.signal });
-              break;
-          }
-        } catch (e) {
-          setDownloadState(`Encrypt Failed: ${e}`);
-          console.error('Encrypt Failed', e);
-        }
-        setStreamController(undefined);
         break;
       }
       case 'tdf': {
@@ -797,16 +724,6 @@ function App() {
               <h2>Encrypt</h2>
               <div className="card horizontal-flow">
                 <div>
-                  <input
-                    type="radio"
-                    id="htmlEncrypt"
-                    name="container"
-                    value="html"
-                    onChange={handleContainerFormatRadioChange(setEncryptContainerType)}
-                    checked={encryptContainerType === 'html'}
-                  />{' '}
-                  <label htmlFor="htmlEncrypt">HTML</label>
-                  <br />
                   <input
                     type="radio"
                     id="zipEncrypt"
