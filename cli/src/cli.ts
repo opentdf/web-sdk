@@ -1,5 +1,3 @@
-import whyIsNodeRunning from 'why-is-node-running' // should be your first import
-
 import { createWriteStream, openAsBlob } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { Writable } from 'node:stream';
@@ -589,7 +587,6 @@ export const handleArgs = (args: string[]) => {
             }
             console.assert(accessToken, 'No access_token found');
             console.assert(!argv.dpop || dpopToken, 'DPoP requested but absent');
-            setImmediate(() => whyIsNodeRunning())
           } finally {
             client.close();
           }
