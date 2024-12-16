@@ -1,3 +1,5 @@
+import whyIsNodeRunning from 'why-is-node-running' // should be your first import
+
 import { createWriteStream, openAsBlob } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { Writable } from 'node:stream';
@@ -553,12 +555,19 @@ export const handleArgs = (args: string[]) => {
           });
           try {
             log('SILLY', `Initialized client`);
-
             log('DEBUG', `About to TDF3 decrypt [${argv.file}]`);
             const ct = await client.read(await parseReadOptions(argv));
+            log('SILLY', `acquired read stream`);
             const destination = argv.output ? createWriteStream(argv.output) : process.stdout;
-            await ct.pipeTo(Writable.toWeb(destination));
+            log('SILLY', `acquired destination stream`);
+            try {
+              await ct.pipeTo(Writable.toWeb(destination));
+            } catch (e) {
+              log('ERROR', `Failed to pipe to destination stream: ${e}`);
+            }
+            log('SILLY', `piped to destination stream`);
             const lastRequest = authProvider.requestLog[authProvider.requestLog.length - 1];
+            log('SILLY', `last request is ${JSON.stringify(lastRequest)}`);
             let accessToken = null;
             let dpopToken = null;
             for (const h of Object.keys(lastRequest.headers)) {
@@ -580,6 +589,7 @@ export const handleArgs = (args: string[]) => {
             }
             console.assert(accessToken, 'No access_token found');
             console.assert(!argv.dpop || dpopToken, 'DPoP requested but absent');
+            setImmediate(() => whyIsNodeRunning())
           } finally {
             client.close();
           }
