@@ -109,9 +109,7 @@ const rstrip = (str: string, suffix = ' '): string => {
   return str;
 };
 
-async function parseAssertionVerificationKeys(
-  s: string
-): Promise<Keys> {
+async function parseAssertionVerificationKeys(s: string): Promise<Keys> {
   let u: assertions.AssertionVerificationKeys;
   try {
     u = JSON.parse(s);
@@ -201,7 +199,7 @@ async function correctAssertionKeys(
       // If importing as a private key fails, try importing as a public key
       try {
         return await importSPKI(key, 'RS256'); // Import public key
-      } catch (err) { }
+      } catch (err) {}
     }
   }
   // Otherwise its an unsupported alg
