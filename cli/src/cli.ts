@@ -23,7 +23,6 @@ import * as assertions from '@opentdf/sdk/assertions';
 import { attributeFQNsAsValues } from '@opentdf/sdk/nano';
 import { base64 } from '@opentdf/sdk/encodings';
 import { importPKCS8, importSPKI, KeyLike } from 'jose'; // for RS256
-import { TextEncoder } from 'util'; // for HS256
 
 type AuthToProcess = {
   auth?: string;
@@ -130,8 +129,16 @@ async function parseAssertionVerificationKeys(
     u = JSON.parse(s);
   } catch (err) {
     // try as file name:
-    const jsonFile = await openAsBlob(s);
-    u = JSON.parse(await jsonFile.text());
+    try {
+      const jsonFile = await openAsBlob(s);
+      u = JSON.parse(await jsonFile.text());
+    } catch (err2) {
+      throw new CLIError(
+        'CRITICAL',
+        `Failed to open/parse assertion verification keys as string or file path ${err.message}`,
+        err
+      );
+    }
   }
   if (typeof u !== 'object' || u === null) {
     throw new Error('Invalid input: The input must be an object');
@@ -141,7 +148,10 @@ async function parseAssertionVerificationKeys(
     if ('keys' in u && typeof u.keys === 'object') {
       u.Keys = u.keys;
     } else {
-      throw new Error('Invalid input: invalid structure of assertionVerificationKeys');
+      throw new CLIError(
+        'CRITICAL',
+        'Invalid input: invalid structure of assertionVerificationKeys'
+      );
     }
   }
   for (const assertionName in u.Keys) {
@@ -206,9 +216,7 @@ async function correctAssertionKeys(
       // If importing as a private key fails, try importing as a public key
       try {
         return await importSPKI(key, 'RS256'); // Import public key
-      } catch (err) {
-        throw new CLIError('CRITICAL', `Failed to parse RS256 key: ${err.message}`);
-      }
+      } catch (err) {}
     }
   }
   // Otherwise its an unsupported alg
@@ -221,8 +229,16 @@ async function parseAssertionConfig(s: string): Promise<assertions.AssertionConf
     u = JSON.parse(s);
   } catch (err) {
     // try as file name:
-    const jsonFile = await openAsBlob(s);
-    u = JSON.parse(await jsonFile.text());
+    try {
+      const jsonFile = await openAsBlob(s);
+      u = JSON.parse(await jsonFile.text());
+    } catch (err2) {
+      throw new CLIError(
+        'CRITICAL',
+        `Failed to open/parse assertions as string or file path ${err.message}`,
+        err
+      );
+    }
   }
 
   // if u is null or empty, return an empty array
@@ -230,19 +246,19 @@ async function parseAssertionConfig(s: string): Promise<assertions.AssertionConf
     return [];
   }
   const a = Array.isArray(u) ? u : [u];
-  for (let i = 0; i < a.length; i++) {
-    const assertion = a[i];
+  for (const assertion of a) {
     if (!assertions.isAssertionConfig(assertion)) {
       throw new CLIError('CRITICAL', `invalid assertion config ${JSON.stringify(assertion)}`);
     }
     if (assertion.signingKey) {
       const { alg, key } = assertion.signingKey;
       try {
-        a[i].signingKey.key = await correctAssertionKeys(alg, key);
+        assertion.signingKey.key = await correctAssertionKeys(alg, key);
       } catch (err) {
         throw new CLIError(
           'CRITICAL',
-          `Issue converting assertion key from string: ${err.message}`
+          `Issue converting assertion key from string: ${err.message}`,
+          err
         );
       }
     }
