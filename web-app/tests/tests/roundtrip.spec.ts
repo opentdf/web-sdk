@@ -24,11 +24,11 @@ test('login', async ({ page }) => {
 });
 
 const scenarios = {
-  nano: { encryptSelector: '#nanoEncrypt', decryptSelector: '#nanoDecrypt' },
-  tdf: { encryptSelector: '#zipEncrypt', decryptSelector: '#tdfDecrypt' },
+  nano: { encryptSelector: '#nanoEncrypt' },
+  tdf: { encryptSelector: '#zipEncrypt' },
 };
 
-for (const [name, { encryptSelector, decryptSelector }] of Object.entries(scenarios)) {
+for (const [name, { encryptSelector }] of Object.entries(scenarios)) {
   test(`roundtrip ${name}`, async ({ page }) => {
     page.on('download', (download) =>
       download.path().then((r) => console.log(`Saves ${download.suggestedFilename()} as ${r}`))
@@ -52,7 +52,6 @@ for (const [name, { encryptSelector, decryptSelector }] of Object.entries(scenar
     await page.locator('#clearFile').click();
     await loadFile(page, cipherTextPath);
     const plainDownloadPromise = page.waitForEvent('download');
-    await page.locator(decryptSelector).click();
     await page.locator('#fileSink').click();
     await page.locator('#decryptButton').click();
     const download2 = await plainDownloadPromise;
@@ -69,11 +68,11 @@ for (const [name, { encryptSelector, decryptSelector }] of Object.entries(scenar
 }
 
 test('Remote Source Streaming', async ({ page }) => {
-  const server = await serve('.', 8000);
+  const server = await serve('.', 8086);
 
   try {
     await authorize(page);
-    await page.locator('#urlSelector').fill('http://localhost:8000/README.md');
+    await page.locator('#urlSelector').fill('http://localhost:8086/README.md');
 
     const downloadPromise = page.waitForEvent('download');
     await page.locator('#zipEncrypt').click();
@@ -94,9 +93,8 @@ test('Remote Source Streaming', async ({ page }) => {
     fs.copyFileSync(cipherTextPath, targetPath);
 
     // Clear file selector and upload againg
-    await page.locator('#urlSelector').fill('http://localhost:8000/README.md.tdf');
+    await page.locator('#urlSelector').fill('http://localhost:8086/README.md.tdf');
     const plainDownloadPromise = page.waitForEvent('download');
-    await page.locator('#tdfDecrypt').click();
     await page.locator('#fileSink').click();
     await page.locator('#decryptButton').click();
     const download2 = await plainDownloadPromise;

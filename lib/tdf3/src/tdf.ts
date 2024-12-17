@@ -22,7 +22,6 @@ import { base64 } from '../../src/encodings/index.js';
 import { ZipReader, ZipWriter, keyMerge, buffToString, concatUint8 } from './utils/index.js';
 import { Binary } from './binary.js';
 import { KasPublicKeyAlgorithm, KasPublicKeyInfo, OriginAllowList } from '../../src/access.js';
-import { allPool, anyPool } from '../../src/concurrency.js';
 import {
   ConfigurationError,
   DecryptError,
@@ -32,7 +31,6 @@ import {
   UnsafeUrlError,
   UnsupportedFeatureError as UnsupportedError,
 } from '../../src/errors.js';
-import { type Chunker } from '../../src/seekable.js';
 
 // configurable
 // TODO: remove dependencies from ciphers so that we can open-source instead of relying on other Virtru libs
@@ -42,6 +40,8 @@ import { PolicyObject } from '../../src/tdf/PolicyObject.js';
 import { type CryptoService, type DecryptResult } from './crypto/declarations.js';
 import { CentralDirectory } from './utils/zip-reader.js';
 import { SymmetricCipher } from './ciphers/symmetric-cipher-base.js';
+import { allPool, anyPool } from '../../src/concurrency.js';
+import { type Chunker } from '../../src/seekable.js';
 
 // TODO: input validation on manifest JSON
 const DEFAULT_SEGMENT_SIZE = 1024 * 1024;
@@ -102,7 +102,6 @@ type Chunk = {
 export type IntegrityAlgorithm = 'GMAC' | 'HS256';
 
 export type EncryptConfiguration = {
-  allowedKases?: string[];
   allowList?: OriginAllowList;
   cryptoService: CryptoService;
   dpopKeys: CryptoKeyPair;

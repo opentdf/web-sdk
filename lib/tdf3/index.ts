@@ -33,7 +33,7 @@ import {
   AuthProviders,
   version,
   clientType,
-} from '../src/index.js';
+} from '../src/nanoindex.js';
 import { Algorithms, type AlgorithmName, type AlgorithmUrn } from './src/ciphers/algorithms.js';
 import { type Chunker } from '../src/seekable.js';
 
@@ -82,3 +82,15 @@ export {
 };
 
 export * as WebCryptoService from './src/crypto/index.js';
+export {
+  type CreateNanoTDFCollectionOptions,
+  type CreateNanoTDFOptions,
+  type CreateOptions,
+  type CreateZTDFOptions,
+  type DecoratedStream,
+  type Keys,
+  type OpenTDFOptions,
+  type NanoTDFCollection,
+  type ReadOptions,
+  OpenTDF,
+} from '../src/opentdf.js';

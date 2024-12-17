@@ -71,6 +71,7 @@ export class NanoTDFClient extends Client {
   async decryptLegacyTDF(ciphertext: string | TypedArray | ArrayBuffer): Promise<ArrayBuffer> {
     // Parse ciphertext
     const nanotdf = NanoTDF.from(ciphertext, undefined, true);
+
     const legacyVersion = '0.0.0';
     // Rewrap key on every request
     const key = await this.rewrapKey(
