@@ -115,6 +115,9 @@ export type OpenTDFOptions = {
   // Policy service endpoint
   policyEndpoint?: string;
 
+  // Auth provider for connections to the policy service and KASes.
+  authProvider: AuthProvider;
+
   // Default settings for 'encrypt' type requests.
   defaultCreateOptions?: Omit<CreateOptions, 'source'>;
 
@@ -129,7 +132,8 @@ export type OpenTDFOptions = {
   // which is out of the scope of this library.
   dpopKeys?: Promise<CryptoKeyPair>;
 
-  authProvider: AuthProvider;
+  // Configuration options for the collection header cache.
+  rewrapCacheOptions?: RewrapCacheOptions;
 };
 
 export type DecoratedStream = ReadableStream<Uint8Array> & {
@@ -140,25 +144,55 @@ export type DecoratedStream = ReadableStream<Uint8Array> & {
   header?: Header;
 };
 
+// Configuration options for the collection header cache.
+export type RewrapCacheOptions = {
+  // If we should disable (bypass) the cache.
+  bypass?: boolean;
+
+  // Evict keys after this many milliseconds.
+  maxAge?: number;
+
+  // Check for expired keys once every this many milliseconds.
+  pollInterval?: number;
+};
+
+const defaultRewrapCacheOptions: Required<RewrapCacheOptions> = {
+  bypass: false,
+  maxAge: 300000,
+  pollInterval: 500,
+};
+
 // Cache for headers of nanotdf collections.
-// Stores keys by the header.ephemeralPublicKey value.
-// Has a demon that removes all keys that have not been accessed in the last 5 minutes.
-export class NanoHeaderCache {
-  private cache: Map<Uint8Array, { lastAccessTime: number; value: CryptoKey }>;
-  private closer: NodeJS.Timer;
-  constructor() {
+// This allows the SDK to quickly open multiple entries of the same collection.
+// It has a demon that removes all keys that have not been accessed in the last 5 minutes.
+// To cancel the demon, and clear the cache, call `close()`.
+export class RewrapCache {
+  private cache?: Map<Uint8Array, { lastAccessTime: number; value: CryptoKey }>;
+  private closer?: NodeJS.Timer;
+  constructor(opts?: RewrapCacheOptions) {
+    const { bypass, maxAge, pollInterval } = { ...defaultRewrapCacheOptions, ...opts };
+    if (bypass) {
+      return;
+    }
     this.cache = new Map();
     this.closer = setInterval(() => {
       const now = Date.now();
-      for (const [key, value] of this.cache.entries()) {
-        if (now - value.lastAccessTime > 300000) {
-          this.cache.delete(key);
+      const c = this.cache;
+      if (!c) {
+        return;
+      }
+      for (const [key, value] of c.entries()) {
+        if (now - value.lastAccessTime > maxAge) {
+          c.delete(key);
         }
       }
-    }, 500);
+    }, pollInterval);
   }
 
   get(key: Uint8Array): CryptoKey | undefined {
+    if (!this.cache) {
+      return undefined;
+    }
     const entry = this.cache.get(key);
     if (entry) {
       entry.lastAccessTime = Date.now();
@@ -168,11 +202,18 @@ export class NanoHeaderCache {
   }
 
   set(key: Uint8Array, value: CryptoKey) {
+    if (!this.cache) {
+      return;
+    }
     this.cache.set(key, { lastAccessTime: Date.now(), value });
   }
 
   close() {
-    clearInterval(this.closer);
+    if (this.closer) {
+      clearInterval(this.closer);
+      delete this.closer;
+      delete this.cache;
+    }
   }
 }
 
@@ -187,7 +228,7 @@ export class OpenTDF {
   readonly dpopKeys: Promise<CryptoKeyPair>;
 
   // Header cache for reading nanotdf collections
-  private readonly headerCache: NanoHeaderCache;
+  private readonly rewrapCache: RewrapCache;
   private tdf3Client: TDF3Client;
 
   constructor({
@@ -197,13 +238,14 @@ export class OpenTDF {
     defaultReadOptions,
     disableDPoP,
     policyEndpoint,
+    rewrapCacheOptions,
   }: OpenTDFOptions) {
     this.authProvider = authProvider;
     this.defaultCreateOptions = defaultCreateOptions || {};
     this.defaultReadOptions = defaultReadOptions || {};
     this.dpopEnabled = !!disableDPoP;
     this.policyEndpoint = policyEndpoint || '';
-    this.headerCache = new NanoHeaderCache();
+    this.rewrapCache = new RewrapCache(rewrapCacheOptions);
     this.tdf3Client = new TDF3Client({
       authProvider,
       dpopKeys,
@@ -315,7 +357,7 @@ export class OpenTDF {
     } else if (prefix[0] === 0x4c && prefix[1] === 0x31 && prefix[2] === 0x4c) {
       const ciphertext = await chunker();
       const nanotdf = NanoTDF.from(ciphertext);
-      const cachedDEK = this.headerCache.get(nanotdf.header.ephemeralPublicKey);
+      const cachedDEK = this.rewrapCache.get(nanotdf.header.ephemeralPublicKey);
       if (cachedDEK) {
         const r: DecoratedStream = await streamify(decryptNanoTDF(cachedDEK, nanotdf));
         r.header = nanotdf.header;
@@ -342,7 +384,7 @@ export class OpenTDF {
         // These should have thrown already.
         throw new Error('internal: key rewrap failure');
       }
-      this.headerCache.set(nanotdf.header.ephemeralPublicKey, dek);
+      this.rewrapCache.set(nanotdf.header.ephemeralPublicKey, dek);
       const r: DecoratedStream = await streamify(decryptNanoTDF(dek, nanotdf));
       r.header = nanotdf.header;
       return r;
@@ -351,7 +393,7 @@ export class OpenTDF {
   }
 
   close() {
-    this.headerCache.close();
+    this.rewrapCache.close();
   }
 }
 
