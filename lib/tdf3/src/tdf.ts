@@ -4,6 +4,8 @@ import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
 import { fetchKasPubKey as fetchKasPubKeyV2, fetchWrappedKey } from '../../src/access.js';
 import { DecryptParams } from './client/builders.js';
 import { AssertionConfig, AssertionKey, AssertionVerificationKeys } from './assertions.js';
+import { version } from './version.js';
+import { hex } from '../../src/encodings/index.js';
 import * as assertions from './assertions.js';
 
 import {
@@ -269,26 +271,35 @@ async function _generateManifest(
     // generate the manifest first, then insert integrity information into it
     encryptionInformation: encryptionInformationStr,
     assertions: assertions,
+    tdf_spec_version: version,
   };
 }
 
 async function getSignature(
-  unwrappedKeyBinary: Binary,
-  payloadBinary: Binary,
+  unwrappedKey: Uint8Array,
+  content: Uint8Array,
   algorithmType: IntegrityAlgorithm,
   cryptoService: CryptoService
-) {
+) : Promise<Uint8Array> {
   switch (algorithmType.toUpperCase()) {
     case 'GMAC':
       // use the auth tag baked into the encrypted payload
-      return buffToString(Uint8Array.from(payloadBinary.asByteArray()).slice(-16), 'hex');
+      return content.slice(-16);
     case 'HS256':
       // simple hmac is the default
-      return await cryptoService.hmac(
-        buffToString(new Uint8Array(unwrappedKeyBinary.asArrayBuffer()), 'hex'),
-        buffToString(new Uint8Array(payloadBinary.asArrayBuffer()), 'utf-8')
+      const cryptoKey = await crypto.subtle.importKey(
+         'raw',
+         unwrappedKey,
+         {
+          name: 'HMAC',
+          hash: { name: 'SHA-256' },
+        },
+        true,
+        ['sign', 'verify']
       );
-    default:
+      const signature = await crypto.subtle.sign('HMAC', cryptoKey, content);
+      return new Uint8Array(signature);
+    default:``
       throw new ConfigurationError(`Unsupported signature alg [${algorithmType}]`);
   }
 }
@@ -321,7 +332,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
   let bytesProcessed = 0;
   let crcCounter = 0;
   let fileByteCount = 0;
-  let aggregateHash = '';
+  const segmentHashList: Uint8Array[] = [];
 
   const zipWriter = new ZipWriter();
   const manifest = await _generateManifest(
@@ -414,14 +425,17 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
         fileByteCount = 0;
 
         // hash the concat of all hashes
-        const payloadSigStr = await getSignature(
-          cfg.keyForEncryption.unwrappedKeyBinary,
-          Binary.fromString(aggregateHash),
+        const aggregateHash = await concatenateUint8Array(segmentHashList);
+
+        const payloadSig = await getSignature(
+          new Uint8Array(cfg.keyForEncryption.unwrappedKeyBinary.asArrayBuffer()),
+          aggregateHash,
           cfg.integrityAlgorithm,
           cfg.cryptoService
         );
-        manifest.encryptionInformation.integrityInformation.rootSignature.sig =
-          base64.encode(payloadSigStr);
+
+        const rootSig = base64.encodeArrayBuffer(payloadSig);
+        manifest.encryptionInformation.integrityInformation.rootSignature.sig = rootSig;
         manifest.encryptionInformation.integrityInformation.rootSignature.alg =
           cfg.integrityAlgorithm;
 
@@ -527,18 +541,17 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
       cfg.keyForEncryption.unwrappedKeyBinary
     );
     const payloadBuffer = new Uint8Array(encryptedResult.payload.asByteArray());
-    const payloadSigStr = await getSignature(
-      cfg.keyForEncryption.unwrappedKeyBinary,
-      encryptedResult.payload,
+    const payloadSig = await getSignature(
+      new Uint8Array(cfg.keyForEncryption.unwrappedKeyBinary.asArrayBuffer()),
+      new Uint8Array(encryptedResult.payload.asArrayBuffer()),
       cfg.segmentIntegrityAlgorithm,
       cfg.cryptoService
     );
-
-    // combined string of all hashes for root signature
-    aggregateHash += payloadSigStr;
+    
+    segmentHashList.push(new Uint8Array(payloadSig));
 
     segmentInfos.push({
-      hash: base64.encode(payloadSigStr),
+      hash: base64.encodeArrayBuffer(payloadSig),
       segmentSize: chunk.length === segmentSizeDefault ? undefined : chunk.length,
       encryptedSegmentSize:
         payloadBuffer.length === encryptedSegmentSizeDefault ? undefined : payloadBuffer.length,
@@ -715,17 +728,21 @@ async function decryptChunk(
   hash: string,
   cipher: SymmetricCipher,
   segmentIntegrityAlgorithm: IntegrityAlgorithm,
-  cryptoService: CryptoService
+  cryptoService: CryptoService,
+  isLegacyTDF: boolean
 ): Promise<DecryptResult> {
   if (segmentIntegrityAlgorithm !== 'GMAC' && segmentIntegrityAlgorithm !== 'HS256') {
   }
-  const segmentHashStr = await getSignature(
-    reconstructedKeyBinary,
-    Binary.fromArrayBuffer(encryptedChunk.buffer),
+  const segmentSig = await getSignature(
+    new Uint8Array(reconstructedKeyBinary.asArrayBuffer()),
+    encryptedChunk,
     segmentIntegrityAlgorithm,
     cryptoService
   );
-  if (hash !== btoa(segmentHashStr)) {
+
+  const segmentHash = isLegacyTDF ? base64.encode(hex.encodeArrayBuffer(segmentSig)) :base64.encodeArrayBuffer(segmentSig);
+
+  if (hash !== segmentHash) {
     throw new IntegrityError('Failed integrity check on segment hash');
   }
   return await cipher.decrypt(encryptedChunk, reconstructedKeyBinary);
@@ -738,7 +755,8 @@ async function updateChunkQueue(
   reconstructedKeyBinary: Binary,
   cipher: SymmetricCipher,
   segmentIntegrityAlgorithm: IntegrityAlgorithm,
-  cryptoService: CryptoService
+  cryptoService: CryptoService,
+  isLegacyTDF: boolean
 ) {
   const chunksInOneDownload = 500;
   let requests = [];
@@ -779,6 +797,7 @@ async function updateChunkQueue(
             slice,
             cipher,
             segmentIntegrityAlgorithm,
+            isLegacyTDF,
           });
         }
       })()
@@ -793,6 +812,7 @@ export async function sliceAndDecrypt({
   cipher,
   cryptoService,
   segmentIntegrityAlgorithm,
+  isLegacyTDF,
 }: {
   buffer: Uint8Array;
   reconstructedKeyBinary: Binary;
@@ -800,6 +820,7 @@ export async function sliceAndDecrypt({
   cipher: SymmetricCipher;
   cryptoService: CryptoService;
   segmentIntegrityAlgorithm: IntegrityAlgorithm;
+  isLegacyTDF: boolean;
 }) {
   for (const index in slice) {
     const { encryptedOffset, encryptedSegmentSize, _resolve, _reject } = slice[index];
@@ -817,7 +838,8 @@ export async function sliceAndDecrypt({
         slice[index]['hash'],
         cipher,
         segmentIntegrityAlgorithm,
-        cryptoService
+        cryptoService,
+        isLegacyTDF
       );
       slice[index].decryptedChunk = result;
       if (_resolve) {
@@ -864,23 +886,36 @@ export async function readStream(cfg: DecryptConfiguration) {
   const keyForDecryption = await cfg.keyMiddleware(reconstructedKeyBinary);
   const encryptedSegmentSizeDefault = defaultSegmentSize || DEFAULT_SEGMENT_SIZE;
 
-  // check the combined string of hashes
-  const aggregateHash = segments.map(({ hash }) => base64.decode(hash)).join('');
+  // check if the TDF is a legacy TDF
+  const isLegacyTDF = manifest.tdf_spec_version ? false : true;
+
+  // Decode each hash and store it in an array of Uint8Array
+  const segmentHashList = segments.map(
+    ({ hash }) => new Uint8Array(base64.decodeArrayBuffer(hash))
+  );
+
+  // Concatenate all segment hashes into a single Uint8Array
+  const aggregateHash = await concatenateUint8Array(segmentHashList);
+
   const integrityAlgorithm = rootSignature.alg;
   if (integrityAlgorithm !== 'GMAC' && integrityAlgorithm !== 'HS256') {
     throw new UnsupportedError(`Unsupported integrity alg [${integrityAlgorithm}]`);
   }
-  const payloadSigStr = await getSignature(
-    keyForDecryption,
-    Binary.fromString(aggregateHash),
+
+  const payloadForSigCalculation = isLegacyTDF ?
+  new TextEncoder().encode(hex.encodeArrayBuffer(aggregateHash)) : aggregateHash;
+  const payloadSig = await getSignature(
+    new Uint8Array(keyForDecryption.asArrayBuffer()),
+    payloadForSigCalculation,
     integrityAlgorithm,
     cfg.cryptoService
   );
 
-  if (
-    manifest.encryptionInformation.integrityInformation.rootSignature.sig !==
-    base64.encode(payloadSigStr)
-  ) {
+  const rootSig = isLegacyTDF
+    ? base64.encode(hex.encodeArrayBuffer(payloadSig))
+    : base64.encodeArrayBuffer(payloadSig);
+
+  if (manifest.encryptionInformation.integrityInformation.rootSignature.sig !== rootSig) {
     throw new IntegrityError('Failed integrity check on root signature');
   }
 
@@ -898,7 +933,7 @@ export async function readStream(cfg: DecryptConfiguration) {
           assertionKey = foundKey;
         }
       }
-      await assertions.verify(assertion, aggregateHash, assertionKey);
+      await assertions.verify(assertion, aggregateHash, assertionKey, isLegacyTDF);
     }
   }
 
@@ -939,7 +974,8 @@ export async function readStream(cfg: DecryptConfiguration) {
     keyForDecryption,
     cipher,
     segmentIntegrityAlg,
-    cfg.cryptoService
+    cfg.cryptoService,
+    isLegacyTDF
   );
 
   let progress = 0;
@@ -971,4 +1007,10 @@ export async function readStream(cfg: DecryptConfiguration) {
   outputStream.manifest = manifest;
   outputStream.metadata = metadata;
   return outputStream;
+}
+
+async function concatenateUint8Array(uint8arrays: Uint8Array[]): Promise<Uint8Array> {
+  const blob = new Blob(uint8arrays);
+  const buffer = await blob.arrayBuffer();
+  return new Uint8Array(buffer);
 }
