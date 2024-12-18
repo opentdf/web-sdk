@@ -12,7 +12,7 @@ _nano_test() {
   plain="./sample-${counter}.txt"
   echo "Hello World ${counter}" >"./${plain}"
   npx "$1" --log-level DEBUG \
-    --kasEndpoint http://localhost:65432/api/kas \
+    --kasEndpoint http://localhost:65432/kas \
     --allowList http://localhost:65432 \
     --oidcEndpoint http://localhost:65432/auth/realms/opentdf \
     --auth opentdf:secret \
@@ -23,7 +23,7 @@ _nano_test() {
   [ -f sample.txt.ntdf ]
 
   npx "$2" --log-level DEBUG \
-    --kasEndpoint http://localhost:65432/api/kas \
+    --kasEndpoint http://localhost:65432/kas \
     --oidcEndpoint http://localhost:65432/auth/realms/opentdf \
     --auth opentdf:secret \
     --output sample_out.txt \
@@ -42,7 +42,7 @@ _tdf3_test() {
   plain="./sample-${counter}.txt"
   echo "Hello World ${counter}" >"${plain}"
   npx "$1" --log-level DEBUG \
-    --kasEndpoint http://localhost:65432/api/kas \
+    --kasEndpoint http://localhost:65432/kas \
     --oidcEndpoint http://localhost:65432/auth/realms/opentdf \
     --auth opentdf:secret \
     --output sample.txt.tdf \
@@ -53,7 +53,7 @@ _tdf3_test() {
   [ -f sample.txt.tdf ]
 
   npx "$2" --log-level DEBUG \
-    --kasEndpoint http://localhost:65432/api/kas \
+    --kasEndpoint http://localhost:65432/kas \
     --oidcEndpoint http://localhost:65432/auth/realms/opentdf \
     --auth opentdf:secret \
     --output sample_out.txt \
