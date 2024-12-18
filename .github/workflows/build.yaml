@@ -112,7 +112,7 @@ jobs:
       - run: npm audit --omit dev && npm audit --audit-level high --omit dev
       - run: npm run license-check
       - run: npm run lint
-      - run: npx playwright install
+      - run: npx playwright@1.49 install
       - run: npm test
       - run: npm pack
 
