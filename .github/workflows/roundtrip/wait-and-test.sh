@@ -158,7 +158,8 @@ if [ $1 = platform ]; then
 fi
 
 if ! "${APP}"; then
-  return $?
+  echo "[ERROR] Encrypt/decrypt failure"
+  exit 2
 fi
 
 if ! cd "${WEB_APP_DIR}"; then
