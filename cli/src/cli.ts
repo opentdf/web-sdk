@@ -108,7 +108,9 @@ const rstrip = (str: string, suffix = ' '): string => {
   return str;
 };
 
-async function parseAssertionVerificationKeys(s: string): Promise<assertions.AssertionVerificationKeys> {
+async function parseAssertionVerificationKeys(
+  s: string
+): Promise<assertions.AssertionVerificationKeys> {
   let u: assertions.AssertionVerificationKeys;
   try {
     u = JSON.parse(s);
@@ -167,7 +169,9 @@ async function parseReadOptions(argv: Partial<mainArgs>): Promise<ReadOptions> {
     r.noVerify = true;
   }
   if (argv.assertionVerificationKeys) {
-    r.assertionVerificationKeys = await parseAssertionVerificationKeys(argv.assertionVerificationKeys);
+    r.assertionVerificationKeys = await parseAssertionVerificationKeys(
+      argv.assertionVerificationKeys
+    );
   }
   if (argv.concurrencyLimit) {
     r.concurrencyLimit = argv.concurrencyLimit;
