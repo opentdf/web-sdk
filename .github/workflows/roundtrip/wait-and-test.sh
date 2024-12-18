@@ -176,7 +176,7 @@ if ! npm i; then
   exit 2
 fi
 
-if ! npx playwright install; then
+if ! npx playwright install --with-deps; then
   echo "[ERROR] Unable to install playwright"
   exit 2
 fi
