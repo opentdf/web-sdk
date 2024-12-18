@@ -14,7 +14,7 @@ _nano_test() {
   npx "$1" --log-level DEBUG \
     --kasEndpoint http://localhost:65432/api/kas \
     --allowList http://localhost:65432 \
-    --oidcEndpoint http://localhost:65432/auth/realms/tdf \
+    --oidcEndpoint http://localhost:65432/auth/realms/opentdf \
     --auth tdf-client:123-456 \
     --output sample.txt.ntdf \
     encrypt "${plain}" \
@@ -24,7 +24,7 @@ _nano_test() {
 
   npx "$2" --log-level DEBUG \
     --kasEndpoint http://localhost:65432/api/kas \
-    --oidcEndpoint http://localhost:65432/auth/realms/tdf \
+    --oidcEndpoint http://localhost:65432/auth/realms/opentdf \
     --auth tdf-client:123-456 \
     --output sample_out.txt \
     decrypt sample.txt.ntdf
@@ -43,7 +43,7 @@ _tdf3_test() {
   echo "Hello World ${counter}" >"${plain}"
   npx "$1" --log-level DEBUG \
     --kasEndpoint http://localhost:65432/api/kas \
-    --oidcEndpoint http://localhost:65432/auth/realms/tdf \
+    --oidcEndpoint http://localhost:65432/auth/realms/opentdf \
     --auth tdf-client:123-456 \
     --output sample.txt.tdf \
     encrypt "${plain}" \
@@ -54,7 +54,7 @@ _tdf3_test() {
 
   npx "$2" --log-level DEBUG \
     --kasEndpoint http://localhost:65432/api/kas \
-    --oidcEndpoint http://localhost:65432/auth/realms/tdf \
+    --oidcEndpoint http://localhost:65432/auth/realms/opentdf \
     --auth tdf-client:123-456 \
     --output sample_out.txt \
     --containerType tdf3 \

@@ -14,14 +14,14 @@ Sample round trip execution:
 echo hello-world >sample.txt
 bin/opentdf.mjs encrypt \
   --kasEndpoint http://localhost:65432/api/kas \
-  --oidcEndpoint http://localhost:65432/auth/realms/tdf \
+  --oidcEndpoint http://localhost:65432/auth/realms/opentdf \
   --auth tdf-client:123-456 \
   --containerType tdf3 \
   --output sample.tdf \
   sample.txt
 bin/opentdf.mjs \
   --kasEndpoint http://localhost:65432/api/kas \
-  --oidcEndpoint http://localhost:65432/auth/realms/tdf \
+  --oidcEndpoint http://localhost:65432/auth/realms/opentdf \
   --auth tdf-client:123-456 \
   --containerType tdf3 \
   --userId alice@somewhere.there \

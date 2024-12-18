@@ -13,7 +13,7 @@ import { AuthProviders, NanoTDFClient } from '@opentdf/sdk';
 const kasEndpoint = "http://localhost:65432/kas";
 
 // Authentication options (vary by middleware)
-const oidcOrigin = "http://localhost:65432/auth/realms/tdf";
+const oidcOrigin = "http://localhost:65432/auth/realms/opentdf";
 const clientId = "applicationNameFromIdP";
 const refreshToken = "refreshTokenValueFromIdP";
 
@@ -46,7 +46,7 @@ This should not be used in a browser, but within a Deno or Node process.
 import { AuthProviders } from '@opentdf/sdk';
 
 // Authentication options (vary by middleware)
-const oidcOrigin = "http://localhost:65432/auth/realms/tdf";
+const oidcOrigin = "http://localhost:65432/auth/realms/opentdf";
 const clientId = "username";
 const clientSecret = "IdP_GENERATED_SECRET";
 
