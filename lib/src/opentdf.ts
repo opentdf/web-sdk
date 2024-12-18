@@ -102,7 +102,7 @@ export type ReadOptions = {
   // Optionally disable checking the allowlist
   ignoreAllowlist?: boolean;
   // Public (or shared) keys for verifying assertions
-  verifiers?: Keys;
+  assertionVerificationKeys?: AssertionVerificationKeys;
   // Optionally disable assertion verification
   noVerify?: boolean;
 
@@ -318,37 +318,10 @@ export class OpenTDF {
     // switch for prefix, if starts with `PK` in ascii, or `L1L` in ascii:
     if (prefix[0] === 0x50 && prefix[1] === 0x4b) {
       const allowList = new OriginAllowList(opts.allowedKASEndpoints ?? [], opts.ignoreAllowlist);
-      let assertionVerificationKeys: AssertionVerificationKeys | undefined;
-      if (opts.verifiers && !opts.noVerify) {
-        assertionVerificationKeys = { Keys: {} };
-        for (const [keyID, key] of Object.entries(opts.verifiers)) {
-          if ((key as CryptoKeyPair).publicKey) {
-            const pk = (key as CryptoKeyPair).publicKey;
-            const algName = pk.algorithm.name;
-            const alg = algName.startsWith('EC') ? 'ES256' : 'RS256';
-            assertionVerificationKeys.Keys[keyID] = {
-              alg,
-              key: pk,
-            };
-          } else {
-            const k = key as CryptoKey;
-            const algName = k.algorithm.name;
-            const alg = algName.startsWith('AES')
-              ? 'HS256'
-              : algName.startsWith('EC')
-                ? 'ES256'
-                : 'RS256';
-            assertionVerificationKeys.Keys[keyID] = {
-              alg,
-              key: k,
-            };
-          }
-        }
-      }
       const oldStream = await this.tdf3Client.decrypt({
         source: opts.source,
         allowList,
-        assertionVerificationKeys,
+        assertionVerificationKeys: opts.assertionVerificationKeys,
         noVerifyAssertions: opts.noVerify,
       });
       const stream: DecoratedStream = oldStream.stream;

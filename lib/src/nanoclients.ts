@@ -170,7 +170,7 @@ export type DatasetConfig = ClientConfig & {
  * ```
  * import { clientSecretAuthProvider, NanoTDFDatasetClient } from '@opentdf/sdk';
  *
- * const OIDC_ENDPOINT = 'http://localhost:65432/auth/realms/tdf';
+ * const OIDC_ENDPOINT = 'http://localhost:65432/auth/realms/opentdf';
  * const KAS_URL = 'http://localhost:65432/api/kas/';
  *
  * const ciphertext = '...';

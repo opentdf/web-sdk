@@ -91,7 +91,7 @@ jobs:
   web-app:
     needs:
       - lib
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04 # NOTE: Playwright not yet supported on 24.04
     defaults:
       run:
         working-directory: ./web-app
@@ -136,7 +136,7 @@ jobs:
       - cli
       - lib
       - web-app
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04 # NOTE: Playwright not yet supported on 24.04
     defaults:
       run:
         working-directory: .github/workflows/roundtrip

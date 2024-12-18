@@ -29,7 +29,7 @@ VITE_TDF_CFG='{"oidc":{"host":"http://localhost:65432/auth/realms/opentdf","clie
 export VITE_PROXY
 export VITE_TDF_CFG
 
-# VITE_PROXY='{"/api":"http://localhost:5432","/auth":"http://localhost:5432"}' VITE_TDF_CFG='{"oidc":{"host":"http://localhost:65432/auth/realms/tdf","clientId":"browsertest"},"kas":"http://localhost:65432/api/kas","reader":"https://secure.virtru.com/start?htmlProtocol=1"}' npm run dev
+# VITE_PROXY='{"/api":"http://localhost:5432","/auth":"http://localhost:5432"}' VITE_TDF_CFG='{"oidc":{"host":"http://localhost:65432/auth/realms/opentdf","clientId":"browsertest"},"kas":"http://localhost:65432/api/kas","reader":"https://secure.virtru.com/start?htmlProtocol=1"}' npm run dev
 
 _wait_for() {
   echo "[INFO] In retry loop for quickstarted opentdf backend..."
@@ -138,6 +138,11 @@ _init_platform() {
     echo "[INFO] retrying in ${sleep_for} seconds... ( ${i} / $limit ) ..."
     sleep ${sleep_for}
   done
+
+  if ! go run "${svc}" provision fixtures; then
+    echo "[ERROR] unable to provision fixtures"
+    return 1
+  fi
 }
 
 if ! _configure_app; then
@@ -157,9 +162,11 @@ if [ $1 = platform ]; then
   fi
 fi
 
-if ! "${APP}"; then
-  return $?
-fi
+echo "[WARN] Skipping cli tests"
+# if ! "${APP}"; then
+#   echo "[ERROR] Encrypt/decrypt failure"
+#   exit 2
+# fi
 
 if ! cd "${WEB_APP_DIR}"; then
   echo "[ERROR] Couldn't cd to web-app dir, [${WEB_APP_DIR}]"

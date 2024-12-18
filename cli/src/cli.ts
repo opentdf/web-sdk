@@ -10,7 +10,6 @@ import {
   type CreateZTDFOptions,
   type HttpRequest,
   type ReadOptions,
-  type Keys,
   type Source,
   AuthProviders,
   version,
@@ -109,7 +108,9 @@ const rstrip = (str: string, suffix = ' '): string => {
   return str;
 };
 
-async function parseAssertionVerificationKeys(s: string): Promise<Keys> {
+async function parseAssertionVerificationKeys(
+  s: string
+): Promise<assertions.AssertionVerificationKeys> {
   let u: assertions.AssertionVerificationKeys;
   try {
     u = JSON.parse(s);
@@ -159,7 +160,7 @@ async function parseAssertionVerificationKeys(s: string): Promise<Keys> {
       throw new CLIError('CRITICAL', `Issue converting assertion key from string: ${err.message}`);
     }
   }
-  return u.Keys;
+  return u;
 }
 
 async function parseReadOptions(argv: Partial<mainArgs>): Promise<ReadOptions> {
@@ -168,7 +169,9 @@ async function parseReadOptions(argv: Partial<mainArgs>): Promise<ReadOptions> {
     r.noVerify = true;
   }
   if (argv.assertionVerificationKeys) {
-    r.verifiers = await parseAssertionVerificationKeys(argv.assertionVerificationKeys);
+    r.assertionVerificationKeys = await parseAssertionVerificationKeys(
+      argv.assertionVerificationKeys
+    );
   }
   if (argv.concurrencyLimit) {
     r.concurrencyLimit = argv.concurrencyLimit;
