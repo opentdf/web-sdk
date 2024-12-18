@@ -138,6 +138,11 @@ _init_platform() {
     echo "[INFO] retrying in ${sleep_for} seconds... ( ${i} / $limit ) ..."
     sleep ${sleep_for}
   done
+
+  if ! go run "${svc}" provision fixtures; then
+    echo "[ERROR] unable to provision fixtures"
+    return 1
+  fi
 }
 
 if ! _configure_app; then

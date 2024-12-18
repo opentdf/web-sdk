@@ -15,17 +15,17 @@ _nano_test() {
     --kasEndpoint http://localhost:65432/api/kas \
     --allowList http://localhost:65432 \
     --oidcEndpoint http://localhost:65432/auth/realms/opentdf \
-    --auth tdf-client:123-456 \
+    --auth opentdf:secret \
     --output sample.txt.ntdf \
     encrypt "${plain}" \
-    --attributes https://example.com/attr/Classification/value/S,https://example.com/attr/COI/value/PRX
+    --attributes https://example.com/attr/attr1/value/value1
 
   [ -f sample.txt.ntdf ]
 
   npx "$2" --log-level DEBUG \
     --kasEndpoint http://localhost:65432/api/kas \
     --oidcEndpoint http://localhost:65432/auth/realms/opentdf \
-    --auth tdf-client:123-456 \
+    --auth opentdf:secret \
     --output sample_out.txt \
     decrypt sample.txt.ntdf
 
@@ -44,18 +44,18 @@ _tdf3_test() {
   npx "$1" --log-level DEBUG \
     --kasEndpoint http://localhost:65432/api/kas \
     --oidcEndpoint http://localhost:65432/auth/realms/opentdf \
-    --auth tdf-client:123-456 \
+    --auth opentdf:secret \
     --output sample.txt.tdf \
     encrypt "${plain}" \
     --containerType tdf3 \
-    --attributes https://example.com/attr/Classification/value/S,https://example.com/attr/COI/value/PRX
+    --attributes https://example.com/attr/attr1/value/value1
 
   [ -f sample.txt.tdf ]
 
   npx "$2" --log-level DEBUG \
     --kasEndpoint http://localhost:65432/api/kas \
     --oidcEndpoint http://localhost:65432/auth/realms/opentdf \
-    --auth tdf-client:123-456 \
+    --auth opentdf:secret \
     --output sample_out.txt \
     --containerType tdf3 \
     decrypt sample.txt.tdf
