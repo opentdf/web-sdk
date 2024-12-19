@@ -110,8 +110,9 @@ export function isAssertionConfig(obj: unknown): obj is AssertionConfig {
  */
 export async function verify(
   thiz: Assertion,
-  aggregateHash: string,
-  key: AssertionKey
+  aggregateHash: Uint8Array,
+  key: AssertionKey,
+  isLegacyTDF: boolean
 ): Promise<void> {
   let payload: AssertionPayload;
   try {
@@ -126,12 +127,23 @@ export async function verify(
 
   // Get the hash of the assertion
   const hashOfAssertion = await hash(thiz);
-  const combinedHash = aggregateHash + hashOfAssertion;
-  const encodedHash = base64.encode(combinedHash);
 
   // check if assertionHash is same as hashOfAssertion
   if (hashOfAssertion !== assertionHash) {
     throw new IntegrityError('Assertion hash mismatch');
+  }
+
+  let encodedHash: string;
+  if (isLegacyTDF) {
+    const aggregateHashAsStr = new TextDecoder('utf-8').decode(aggregateHash);
+    const combinedHash = aggregateHashAsStr + hashOfAssertion;
+    encodedHash = base64.encode(combinedHash);
+  } else {
+    const combinedHash = concatenateUint8Arrays(
+      aggregateHash,
+      new Uint8Array(hex.decodeArrayBuffer(assertionHash))
+    );
+    encodedHash = base64.encodeArrayBuffer(combinedHash);
   }
 
   // check if assertionSig is same as encodedHash
@@ -144,7 +156,7 @@ export async function verify(
  * Creates an Assertion object with the specified properties.
  */
 export async function CreateAssertion(
-  aggregateHash: string,
+  aggregateHash: Uint8Array,
   assertionConfig: AssertionConfig
 ): Promise<Assertion> {
   if (!assertionConfig.signingKey) {
@@ -162,8 +174,11 @@ export async function CreateAssertion(
   };
 
   const assertionHash = await hash(a);
-  const combinedHash = aggregateHash + assertionHash;
-  const encodedHash = base64.encode(combinedHash);
+  const combinedHash = concatenateUint8Arrays(
+    aggregateHash,
+    new Uint8Array(hex.decodeArrayBuffer(assertionHash))
+  );
+  const encodedHash = base64.encodeArrayBuffer(combinedHash);
 
   return await sign(a, assertionHash, encodedHash, assertionConfig.signingKey);
 }
@@ -189,3 +204,13 @@ export type AssertionVerificationKeys = {
   DefaultKey?: AssertionKey;
   Keys: Record<string, AssertionKey>;
 };
+
+function concatenateUint8Arrays(array1: Uint8Array, array2: Uint8Array): Uint8Array {
+  const combinedLength = array1.length + array2.length;
+  const combinedArray = new Uint8Array(combinedLength);
+
+  combinedArray.set(array1, 0);
+  combinedArray.set(array2, array1.length);
+
+  return combinedArray;
+}
