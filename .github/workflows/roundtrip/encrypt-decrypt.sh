@@ -15,10 +15,9 @@ _nano_test() {
     --kasEndpoint http://localhost:65432/kas \
     --ignoreAllowList \
     --oidcEndpoint http://localhost:65432/auth/realms/opentdf \
-    --auth opentdf:secret \
+    --auth testclient:secret \
     --output sample.txt.ntdf \
-    encrypt "${plain}" \
-    --attributes https://example.com/attr/attr1/value/value1
+    encrypt "${plain}" 
 
   [ -f sample.txt.ntdf ]
 
@@ -26,7 +25,7 @@ _nano_test() {
     --kasEndpoint http://localhost:65432/kas \
     --ignoreAllowList \
     --oidcEndpoint http://localhost:65432/auth/realms/opentdf \
-    --auth opentdf:secret \
+    --auth testclient:secret \
     --output sample_out.txt \
     decrypt sample.txt.ntdf
 
@@ -46,11 +45,10 @@ _tdf3_test() {
     --kasEndpoint http://localhost:65432/kas \
     --ignoreAllowList \
     --oidcEndpoint http://localhost:65432/auth/realms/opentdf \
-    --auth opentdf:secret \
+    --auth testclient:secret \
     --output sample.txt.tdf \
     encrypt "${plain}" \
-    --containerType tdf3 \
-    --attributes https://example.com/attr/attr1/value/value1
+    --containerType tdf3 
 
   [ -f sample.txt.tdf ]
 
@@ -58,7 +56,7 @@ _tdf3_test() {
     --kasEndpoint http://localhost:65432/kas \
     --ignoreAllowList \
     --oidcEndpoint http://localhost:65432/auth/realms/opentdf \
-    --auth opentdf:secret \
+    --auth testclient:secret \
     --output sample_out.txt \
     --containerType tdf3 \
     decrypt sample.txt.tdf
