@@ -162,11 +162,10 @@ if [ $1 = platform ]; then
   fi
 fi
 
-echo "[WARN] Skipping cli tests"
-# if ! "${APP}"; then
-#   echo "[ERROR] Encrypt/decrypt failure"
-#   exit 2
-# fi
+if ! "${APP}"; then
+  echo "[ERROR] Encrypt/decrypt failure"
+  exit 2
+fi
 
 if ! cd "${WEB_APP_DIR}"; then
   echo "[ERROR] Couldn't cd to web-app dir, [${WEB_APP_DIR}]"
