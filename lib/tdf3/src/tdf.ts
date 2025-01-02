@@ -21,7 +21,7 @@ import {
   SplitType,
 } from './models/index.js';
 import { base64 } from '../../src/encodings/index.js';
-import { ZipReader, ZipWriter, keyMerge, buffToString, concatUint8 } from './utils/index.js';
+import { ZipReader, ZipWriter, keyMerge, concatUint8 } from './utils/index.js';
 import { Binary } from './binary.js';
 import { KasPublicKeyAlgorithm, KasPublicKeyInfo, OriginAllowList } from '../../src/access.js';
 import {
