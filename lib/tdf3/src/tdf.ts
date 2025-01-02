@@ -280,7 +280,7 @@ async function getSignature(
   content: Uint8Array,
   algorithmType: IntegrityAlgorithm,
   cryptoService: CryptoService
-) : Promise<Uint8Array> {
+): Promise<Uint8Array> {
   switch (algorithmType.toUpperCase()) {
     case 'GMAC':
       // use the auth tag baked into the encrypted payload
@@ -288,9 +288,9 @@ async function getSignature(
     case 'HS256':
       // simple hmac is the default
       const cryptoKey = await crypto.subtle.importKey(
-         'raw',
-         unwrappedKey,
-         {
+        'raw',
+        unwrappedKey,
+        {
           name: 'HMAC',
           hash: { name: 'SHA-256' },
         },
@@ -299,7 +299,8 @@ async function getSignature(
       );
       const signature = await crypto.subtle.sign('HMAC', cryptoKey, content);
       return new Uint8Array(signature);
-    default:``
+    default:
+      ``;
       throw new ConfigurationError(`Unsupported signature alg [${algorithmType}]`);
   }
 }
@@ -547,7 +548,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
       cfg.segmentIntegrityAlgorithm,
       cfg.cryptoService
     );
-    
+
     segmentHashList.push(new Uint8Array(payloadSig));
 
     segmentInfos.push({
@@ -740,7 +741,9 @@ async function decryptChunk(
     cryptoService
   );
 
-  const segmentHash = isLegacyTDF ? base64.encode(hex.encodeArrayBuffer(segmentSig)) :base64.encodeArrayBuffer(segmentSig);
+  const segmentHash = isLegacyTDF
+    ? base64.encode(hex.encodeArrayBuffer(segmentSig))
+    : base64.encodeArrayBuffer(segmentSig);
 
   if (hash !== segmentHash) {
     throw new IntegrityError('Failed integrity check on segment hash');
@@ -902,8 +905,9 @@ export async function readStream(cfg: DecryptConfiguration) {
     throw new UnsupportedError(`Unsupported integrity alg [${integrityAlgorithm}]`);
   }
 
-  const payloadForSigCalculation = isLegacyTDF ?
-  new TextEncoder().encode(hex.encodeArrayBuffer(aggregateHash)) : aggregateHash;
+  const payloadForSigCalculation = isLegacyTDF
+    ? new TextEncoder().encode(hex.encodeArrayBuffer(aggregateHash))
+    : aggregateHash;
   const payloadSig = await getSignature(
     new Uint8Array(keyForDecryption.asArrayBuffer()),
     payloadForSigCalculation,
