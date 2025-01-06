@@ -905,12 +905,9 @@ export async function readStream(cfg: DecryptConfiguration) {
     throw new UnsupportedError(`Unsupported integrity alg [${integrityAlgorithm}]`);
   }
 
-  const payloadForSigCalculation = isLegacyTDF
-    ? new TextEncoder().encode(hex.encodeArrayBuffer(aggregateHash))
-    : aggregateHash;
   const payloadSig = await getSignature(
     new Uint8Array(keyForDecryption.asArrayBuffer()),
-    payloadForSigCalculation,
+    aggregateHash,
     integrityAlgorithm,
     cfg.cryptoService
   );
