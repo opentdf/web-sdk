@@ -13,6 +13,7 @@ import {
   type Source,
   AuthProviders,
   version,
+  tdfSpecVersion,
   OpenTDF,
   DecoratedStream,
 } from '@opentdf/sdk';
@@ -650,6 +651,7 @@ export const handleArgs = (args: string[]) => {
         JSON.stringify({
           '@opentdf/ctl': process.env.npm_package_version || 'UNRELEASED',
           '@opentdf/sdk': version,
+          tdfSpecVersion,
         })
       )
       .alias('version', 'V')
