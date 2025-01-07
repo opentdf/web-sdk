@@ -278,8 +278,7 @@ async function _generateManifest(
 async function getSignature(
   unwrappedKey: Uint8Array,
   content: Uint8Array,
-  algorithmType: IntegrityAlgorithm,
-  cryptoService: CryptoService
+  algorithmType: IntegrityAlgorithm
 ): Promise<Uint8Array> {
   switch (algorithmType.toUpperCase()) {
     case 'GMAC':
@@ -431,8 +430,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
         const payloadSig = await getSignature(
           new Uint8Array(cfg.keyForEncryption.unwrappedKeyBinary.asArrayBuffer()),
           aggregateHash,
-          cfg.integrityAlgorithm,
-          cfg.cryptoService
+          cfg.integrityAlgorithm
         );
 
         const rootSig = base64.encodeArrayBuffer(payloadSig);
@@ -545,8 +543,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
     const payloadSig = await getSignature(
       new Uint8Array(cfg.keyForEncryption.unwrappedKeyBinary.asArrayBuffer()),
       new Uint8Array(encryptedResult.payload.asArrayBuffer()),
-      cfg.segmentIntegrityAlgorithm,
-      cfg.cryptoService
+      cfg.segmentIntegrityAlgorithm
     );
 
     segmentHashList.push(new Uint8Array(payloadSig));
@@ -737,8 +734,7 @@ async function decryptChunk(
   const segmentSig = await getSignature(
     new Uint8Array(reconstructedKeyBinary.asArrayBuffer()),
     encryptedChunk,
-    segmentIntegrityAlgorithm,
-    cryptoService
+    segmentIntegrityAlgorithm
   );
 
   const segmentHash = isLegacyTDF
@@ -908,8 +904,7 @@ export async function readStream(cfg: DecryptConfiguration) {
   const payloadSig = await getSignature(
     new Uint8Array(keyForDecryption.asArrayBuffer()),
     aggregateHash,
-    integrityAlgorithm,
-    cfg.cryptoService
+    integrityAlgorithm
   );
 
   const rootSig = isLegacyTDF
