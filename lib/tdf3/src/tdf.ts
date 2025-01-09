@@ -45,6 +45,7 @@ import { type Chunker } from '../../src/seekable.js';
 
 // TODO: input validation on manifest JSON
 const DEFAULT_SEGMENT_SIZE = 1024 * 1024;
+const DEFAULT_MIME_TYPE = 'application/octet-stream';
 
 /**
  * Configuration for TDF3
@@ -250,7 +251,7 @@ async function _generateManifest(
   keyInfo: KeyInfo,
   encryptionInformation: SplitKey,
   policy: Policy,
-  mimeType: string | undefined
+  mimeType: string = DEFAULT_MIME_TYPE
 ): Promise<Manifest> {
   // (maybe) Fields are quoted to avoid renaming
   const payload = {
@@ -259,7 +260,7 @@ async function _generateManifest(
     protocol: 'zip',
     isEncrypted: true,
     schemaVersion: '3.0.0',
-    ...(mimeType && { mimeType }),
+    mimeType: mimeType,
   };
 
   const encryptionInformationStr = await encryptionInformation.write(policy, keyInfo);
