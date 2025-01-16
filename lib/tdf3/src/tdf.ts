@@ -1,13 +1,35 @@
-import { unsigned } from './utils/buffer-crc32.js';
 import { exportSPKI, importX509 } from 'jose';
-import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
-import { fetchKasPubKey as fetchKasPubKeyV2, fetchWrappedKey } from '../../src/access.js';
-import { DecryptParams } from './client/builders.js';
-import { AssertionConfig, AssertionKey, AssertionVerificationKeys } from './assertions.js';
-import { tdfSpecVersion } from '../../src/version.js';
-import { hex } from '../../src/encodings/index.js';
-import * as assertions from './assertions.js';
 
+import {
+  KasPublicKeyAlgorithm,
+  KasPublicKeyInfo,
+  OriginAllowList,
+  fetchKasPubKey as fetchKasPubKeyV2,
+  fetchWrappedKey,
+} from '../../src/access.js';
+import { type AuthProvider, reqSignature } from '../../src/auth/auth.js';
+import { allPool, anyPool } from '../../src/concurrency.js';
+import { base64, hex } from '../../src/encodings/index.js';
+import {
+  ConfigurationError,
+  DecryptError,
+  InvalidFileError,
+  IntegrityError,
+  NetworkError,
+  UnsafeUrlError,
+  UnsupportedFeatureError as UnsupportedError,
+} from '../../src/errors.js';
+import { type Chunker } from '../../src/seekable.js';
+import { PolicyObject } from '../../src/tdf/PolicyObject.js';
+import { tdfSpecVersion } from '../../src/version.js';
+import { AssertionConfig, AssertionKey, AssertionVerificationKeys } from './assertions.js';
+import * as assertions from './assertions.js';
+import { Binary } from './binary.js';
+import { AesGcmCipher } from './ciphers/aes-gcm-cipher.js';
+import { SymmetricCipher } from './ciphers/symmetric-cipher-base.js';
+import { DecryptParams } from './client/builders.js';
+import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
+import { type CryptoService, type DecryptResult } from './crypto/declarations.js';
 import {
   KeyAccessType,
   KeyInfo,
@@ -20,30 +42,9 @@ import {
   KeyAccessObject,
   SplitType,
 } from './models/index.js';
-import { base64 } from '../../src/encodings/index.js';
+import { unsigned } from './utils/buffer-crc32.js';
 import { ZipReader, ZipWriter, keyMerge, concatUint8 } from './utils/index.js';
-import { Binary } from './binary.js';
-import { KasPublicKeyAlgorithm, KasPublicKeyInfo, OriginAllowList } from '../../src/access.js';
-import {
-  ConfigurationError,
-  DecryptError,
-  InvalidFileError,
-  IntegrityError,
-  NetworkError,
-  UnsafeUrlError,
-  UnsupportedFeatureError as UnsupportedError,
-} from '../../src/errors.js';
-
-// configurable
-// TODO: remove dependencies from ciphers so that we can open-source instead of relying on other Virtru libs
-import { AesGcmCipher } from './ciphers/index.js';
-import { type AuthProvider, reqSignature } from '../../src/auth/auth.js';
-import { PolicyObject } from '../../src/tdf/PolicyObject.js';
-import { type CryptoService, type DecryptResult } from './crypto/declarations.js';
 import { CentralDirectory } from './utils/zip-reader.js';
-import { SymmetricCipher } from './ciphers/symmetric-cipher-base.js';
-import { allPool, anyPool } from '../../src/concurrency.js';
-import { type Chunker } from '../../src/seekable.js';
 
 // TODO: input validation on manifest JSON
 const DEFAULT_SEGMENT_SIZE = 1024 * 1024;
@@ -284,7 +285,7 @@ async function getSignature(
     case 'GMAC':
       // use the auth tag baked into the encrypted payload
       return content.slice(-16);
-    case 'HS256':
+    case 'HS256': {
       // simple hmac is the default
       const cryptoKey = await crypto.subtle.importKey(
         'raw',
@@ -298,8 +299,8 @@ async function getSignature(
       );
       const signature = await crypto.subtle.sign('HMAC', cryptoKey, content);
       return new Uint8Array(signature);
+    }
     default:
-      ``;
       throw new ConfigurationError(`Unsupported signature alg [${algorithmType}]`);
   }
 }
@@ -886,7 +887,7 @@ export async function readStream(cfg: DecryptConfiguration) {
   const encryptedSegmentSizeDefault = defaultSegmentSize || DEFAULT_SEGMENT_SIZE;
 
   // check if the TDF is a legacy TDF
-  const isLegacyTDF = manifest.tdf_spec_version ? false : true;
+  const isLegacyTDF = !manifest.tdf_spec_version;
 
   // Decode each hash and store it in an array of Uint8Array
   const segmentHashList = segments.map(
