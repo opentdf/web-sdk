@@ -8,4 +8,7 @@ export const version = '0.2.0';
  */
 export const clientType = 'web-sdk';
 
+/**
+ * Version of the opentdf/spec this library is targeting
+ */
 export const tdfSpecVersion = '4.3.0';

@@ -16,16 +16,15 @@ if ! grep --fixed-strings --line-regexp --quiet "version=${expected_version}" "M
   exit 1
 fi
 
-for f in lib{,/tdf3}/src/version.ts; do
-  if ! grep --fixed-strings --line-regexp --quiet "export const version = '${expected_version}';" "$f"; then
-    if grep --quiet "^export const version" "$f"; then
-      echo "::error file=$f,line=$(sed -n '/export const version/=' $f)::Incorrect version line, should be setting it to [${expected_version}]"
-    else
-      echo "::error file=$f::Missing version line [version=${expected_version}]"
-    fi
-    exit 1
+f=lib/src/version.ts
+if ! grep --fixed-strings --line-regexp --quiet "export const version = '${expected_version}';" "$f"; then
+  if grep --quiet "^export const version" "$f"; then
+    echo "::error file=$f,line=$(sed -n '/export const version/=' $f)::Incorrect version line, should be setting it to [${expected_version}]"
+  else
+    echo "::error file=$f::Missing version line [version=${expected_version}]"
   fi
-done
+  exit 1
+fi
 
 for x in lib cli web-app; do
   sub_version="$(cd $x && node -p "require('./package.json').version")"
@@ -36,7 +35,7 @@ for x in lib cli web-app; do
 done
 
 if [[ "${GITHUB_ACTION:-}" ]]; then
-  echo "TARGET_VERSION=$expected_version" >>$GITHUB_OUTPUT
+  echo "TARGET_VERSION=$expected_version" >>"$GITHUB_OUTPUT"
 else
   echo "SUCCESS: TARGET_VERSION=$expected_version"
 fi

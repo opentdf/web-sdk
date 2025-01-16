@@ -12,4 +12,4 @@ if [ $? -ne 0 ]; then
   npm install @bufbuild/protoc-gen-es @bufbuild/buf @connectrpc/protoc-gen-connect-es
 fi
 npx buf generate platform/service
-echo "Generated Typescript code from Protobuf files (src: platform/service, dst: lib/src/platform)" 
+echo "Generated Typescript code from Protobuf files (src: platform/service, dst: lib/src/platform)"

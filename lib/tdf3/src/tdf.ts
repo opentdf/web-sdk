@@ -4,7 +4,7 @@ import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
 import { fetchKasPubKey as fetchKasPubKeyV2, fetchWrappedKey } from '../../src/access.js';
 import { DecryptParams } from './client/builders.js';
 import { AssertionConfig, AssertionKey, AssertionVerificationKeys } from './assertions.js';
-import { version } from './version.js';
+import { tdfSpecVersion } from '../../src/version.js';
 import { hex } from '../../src/encodings/index.js';
 import * as assertions from './assertions.js';
 
@@ -271,7 +271,7 @@ async function _generateManifest(
     // generate the manifest first, then insert integrity information into it
     encryptionInformation: encryptionInformationStr,
     assertions: assertions,
-    tdf_spec_version: version,
+    tdf_spec_version: tdfSpecVersion,
   };
 }
 
