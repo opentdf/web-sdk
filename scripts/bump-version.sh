@@ -46,12 +46,7 @@ if ! sed_i "s/version=${old_version}/version=${new_version}/" "Makefile"; then
   exit 1
 fi
 
-if ! sed_i "s/export const version = '[^']\{1,\}';\$/export const version = \'${new_version}\';/" lib{,/tdf3}/src/version.ts; then
-  echo "Unable to change version in version files"
-  exit 1
-fi
-
-if ! sed_i "s/export const version = '[^']\{1,\}';\$/export const version = \'${new_version}\';/" lib{,/tdf3}/src/version.ts; then
+if ! sed_i "s/export const version = '[^']\{1,\}';\$/export const version = \'${new_version}\';/" lib/src/version.ts; then
   echo "Unable to change version in version files"
   exit 1
 fi
