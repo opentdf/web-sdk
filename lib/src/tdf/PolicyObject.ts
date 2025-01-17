@@ -8,5 +8,4 @@ export interface PolicyObjectBody {
 export interface PolicyObject {
   readonly uuid: string;
   readonly body: PolicyObjectBody;
-  readonly schemaVersion?: string;
 }

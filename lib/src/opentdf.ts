@@ -209,7 +209,7 @@ export class RewrapCache {
   }
 
   close() {
-    if (this.closer) {
+    if (this.closer !== undefined) {
       clearInterval(this.closer);
       delete this.closer;
       delete this.cache;

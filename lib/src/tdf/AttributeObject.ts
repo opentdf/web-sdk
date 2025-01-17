@@ -7,8 +7,6 @@ export interface AttributeObject {
   /** PEM encoded public key */
   readonly pubKey: string;
   readonly kasUrl: string;
-  /** The most recent version 1.1.0. */
-  readonly schemaVersion?: string;
 }
 
 export async function createAttribute(
@@ -22,6 +20,5 @@ export async function createAttribute(
     displayName: '',
     pubKey: pubKey.publicKey,
     kasUrl,
-    schemaVersion: '1.1.0',
   };
 }

@@ -261,7 +261,6 @@ async function _generateManifest(
     url: '0.payload',
     protocol: 'zip',
     isEncrypted: true,
-    schemaVersion: '3.0.0',
     ...(mimeType && { mimeType }),
   };
 
@@ -272,7 +271,7 @@ async function _generateManifest(
     // generate the manifest first, then insert integrity information into it
     encryptionInformation: encryptionInformationStr,
     assertions: assertions,
-    tdf_spec_version: tdfSpecVersion,
+    schemaVersion: tdfSpecVersion,
   };
 }
 
@@ -887,7 +886,8 @@ export async function readStream(cfg: DecryptConfiguration) {
   const encryptedSegmentSizeDefault = defaultSegmentSize || DEFAULT_SEGMENT_SIZE;
 
   // check if the TDF is a legacy TDF
-  const isLegacyTDF = !manifest.tdf_spec_version;
+  const specVersion = manifest.schemaVersion || manifest.tdf_spec_version;
+  const isLegacyTDF = !specVersion || specVersion.startsWith('3.');
 
   // Decode each hash and store it in an array of Uint8Array
   const segmentHashList = segments.map(
