@@ -536,7 +536,11 @@ export const handleArgs = (args: string[]) => {
         },
         async (argv) => {
           log('DEBUG', 'Running decrypt command');
-          const allowedKases = argv.allowList?.split(',');
+          let allowedKases = argv.allowList?.split(',');
+          if (!allowedKases) {
+            allowedKases = argv.kasEndpoint ? [argv.kasEndpoint] : [];
+          }
+          log('DEBUG', `Allowed KASes: ${allowedKases}`);
           const ignoreAllowList = !!argv.ignoreAllowList;
           const authProvider = await processAuth(argv);
           log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
