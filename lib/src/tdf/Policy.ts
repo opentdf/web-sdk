@@ -7,7 +7,6 @@ export class Policy {
   private uuidStr = uuid();
   private dataAttributesList: AttributeObject[] = [];
   private dissemList: string[] = [];
-  // private schemaVersionStr = Policy.CURRENT_VERSION;
 
   /**
    * Adds a group of entities, to the Policy's dissem list

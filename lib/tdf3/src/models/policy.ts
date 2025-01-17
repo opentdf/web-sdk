@@ -9,7 +9,6 @@ export type PolicyBody = {
 };
 
 export type Policy = {
-  tdf_spec_version?: string;
   uuid?: string;
   body?: PolicyBody;
 };
