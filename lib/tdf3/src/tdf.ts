@@ -80,8 +80,8 @@ export type BuildKeyAccess = {
 
 type Segment = {
   hash: string;
-  segmentSize: number | undefined;
-  encryptedSegmentSize: number | undefined;
+  segmentSize?: number;
+  encryptedSegmentSize?: number;
 };
 
 type EntryInfo = {
@@ -91,14 +91,32 @@ type EntryInfo = {
   fileByteCount?: number;
 };
 
+type Mailbox<T> = Promise<T> & {
+  set: (value: T) => void;
+  reject: (error: Error) => void;
+};
+
+function mailbox<T>(): Mailbox<T> {
+  let set: (value: T) => void;
+  let reject: (error: Error) => void;
+
+  const promise = new Promise<T>((resolve, rejectFn) => {
+    set = resolve;
+    reject = rejectFn;
+  }) as Mailbox<T>;
+
+  promise.set = set!;
+  promise.reject = reject!;
+
+  return promise;
+}
+
 type Chunk = {
   hash: string;
+  plainSegmentSize?: number;
   encryptedOffset: number;
   encryptedSegmentSize?: number;
-  decryptedChunk?: null | DecryptResult;
-  promise: Promise<unknown>;
-  _resolve?: (value: unknown) => void;
-  _reject?: (value: unknown) => void;
+  decryptedChunk: Mailbox<DecryptResult>;
 };
 
 export type IntegrityAlgorithm = 'GMAC' | 'HS256';
@@ -723,10 +741,10 @@ async function decryptChunk(
   hash: string,
   cipher: SymmetricCipher,
   segmentIntegrityAlgorithm: IntegrityAlgorithm,
-  cryptoService: CryptoService,
   isLegacyTDF: boolean
 ): Promise<DecryptResult> {
   if (segmentIntegrityAlgorithm !== 'GMAC' && segmentIntegrityAlgorithm !== 'HS256') {
+    throw new UnsupportedError(`Unsupported integrity alg [${segmentIntegrityAlgorithm}]`);
   }
   const segmentSig = await getSignature(
     new Uint8Array(reconstructedKeyBinary.asArrayBuffer()),
@@ -806,7 +824,6 @@ export async function sliceAndDecrypt({
   reconstructedKeyBinary,
   slice,
   cipher,
-  cryptoService,
   segmentIntegrityAlgorithm,
   isLegacyTDF,
 }: {
@@ -819,13 +836,17 @@ export async function sliceAndDecrypt({
   isLegacyTDF: boolean;
 }) {
   for (const index in slice) {
-    const { encryptedOffset, encryptedSegmentSize, _resolve, _reject } = slice[index];
+    const { encryptedOffset, encryptedSegmentSize, plainSegmentSize } = slice[index];
 
     const offset =
       slice[0].encryptedOffset === 0 ? encryptedOffset : encryptedOffset % slice[0].encryptedOffset;
     const encryptedChunk = new Uint8Array(
       buffer.slice(offset, offset + (encryptedSegmentSize as number))
     );
+
+    if (encryptedChunk.length !== encryptedSegmentSize) {
+      throw new DecryptError('Failed to fetch entire segment');
+    }
 
     try {
       const result = await decryptChunk(
@@ -834,19 +855,14 @@ export async function sliceAndDecrypt({
         slice[index]['hash'],
         cipher,
         segmentIntegrityAlgorithm,
-        cryptoService,
         isLegacyTDF
       );
-      slice[index].decryptedChunk = result;
-      if (_resolve) {
-        _resolve(null);
+      if (plainSegmentSize && result.payload.length() !== plainSegmentSize) {
+        throw new DecryptError(`incorrect segment size: found [${result.payload.length()}], expected [${plainSegmentSize}]`);
       }
+      slice[index].decryptedChunk.set(result);
     } catch (e) {
-      if (_reject) {
-        _reject(e);
-      } else {
-        throw e;
-      }
+      slice[index].decryptedChunk.reject(e);
     }
   }
 }
@@ -869,6 +885,7 @@ export async function readStream(cfg: DecryptConfiguration) {
     encryptedSegmentSizeDefault: defaultSegmentSize,
     rootSignature,
     segmentHashAlg,
+    segmentSizeDefault,
     segments,
   } = manifest.encryptionInformation.integrityInformation;
   const { metadata, reconstructedKeyBinary } = await unwrapKey({
@@ -933,23 +950,18 @@ export async function readStream(cfg: DecryptConfiguration) {
 
   let mapOfRequestsOffset = 0;
   const chunkMap = new Map(
-    segments.map(({ hash, encryptedSegmentSize = encryptedSegmentSizeDefault }) => {
+    segments.map(({ hash, encryptedSegmentSize = encryptedSegmentSizeDefault, segmentSize = segmentSizeDefault }) => {
       const result = (() => {
-        let _resolve, _reject;
         const chunk: Chunk = {
           hash,
           encryptedOffset: mapOfRequestsOffset,
           encryptedSegmentSize,
-          promise: new Promise((resolve, reject) => {
-            _resolve = resolve;
-            _reject = reject;
-          }),
+          decryptedChunk: mailbox<DecryptResult>(),
+          plainSegmentSize: segmentSize,
         };
-        chunk._resolve = _resolve;
-        chunk._reject = _reject;
         return chunk;
       })();
-      mapOfRequestsOffset += encryptedSegmentSize || encryptedSegmentSizeDefault;
+      mapOfRequestsOffset += encryptedSegmentSize;
       return [hash, result];
     })
   );
@@ -981,16 +993,11 @@ export async function readStream(cfg: DecryptConfiguration) {
       }
 
       const [hash, chunk] = chunkMap.entries().next().value;
-      if (!chunk.decryptedChunk) {
-        await chunk.promise;
-      }
-      const decryptedSegment = chunk.decryptedChunk;
+      const decryptedSegment = await chunk.decryptedChunk;
 
       controller.enqueue(new Uint8Array(decryptedSegment.payload.asByteArray()));
       progress += chunk.encryptedSegmentSize;
       cfg.progressHandler?.(progress);
-
-      chunk.decryptedChunk = null;
       chunkMap.delete(hash);
     },
     ...(cfg.fileStreamServiceWorker && { fileStreamServiceWorker: cfg.fileStreamServiceWorker }),
