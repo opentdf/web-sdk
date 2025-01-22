@@ -922,14 +922,6 @@ export async function readStream(cfg: DecryptConfiguration) {
     integrityAlgorithm
   );
 
-  const rootSig = isLegacyTDF
-    ? base64.encode(hex.encodeArrayBuffer(payloadSig))
-    : base64.encodeArrayBuffer(payloadSig);
-
-  if (manifest.encryptionInformation.integrityInformation.rootSignature.sig !== rootSig) {
-    throw new IntegrityError('Failed integrity check on root signature');
-  }
-
   if (!cfg.noVerifyAssertions) {
     for (const assertion of manifest.assertions || []) {
       // Create a default assertion key
@@ -946,6 +938,14 @@ export async function readStream(cfg: DecryptConfiguration) {
       }
       await assertions.verify(assertion, aggregateHash, assertionKey, isLegacyTDF);
     }
+  }
+
+  const rootSig = isLegacyTDF
+    ? base64.encode(hex.encodeArrayBuffer(payloadSig))
+    : base64.encodeArrayBuffer(payloadSig);
+
+  if (manifest.encryptionInformation.integrityInformation.rootSignature.sig !== rootSig) {
+    throw new IntegrityError('Failed integrity check on root signature');
   }
 
   let mapOfRequestsOffset = 0;
