@@ -858,7 +858,9 @@ export async function sliceAndDecrypt({
         isLegacyTDF
       );
       if (plainSegmentSize && result.payload.length() !== plainSegmentSize) {
-        throw new DecryptError(`incorrect segment size: found [${result.payload.length()}], expected [${plainSegmentSize}]`);
+        throw new DecryptError(
+          `incorrect segment size: found [${result.payload.length()}], expected [${plainSegmentSize}]`
+        );
       }
       slice[index].decryptedChunk.set(result);
     } catch (e) {
@@ -950,20 +952,26 @@ export async function readStream(cfg: DecryptConfiguration) {
 
   let mapOfRequestsOffset = 0;
   const chunkMap = new Map(
-    segments.map(({ hash, encryptedSegmentSize = encryptedSegmentSizeDefault, segmentSize = segmentSizeDefault }) => {
-      const result = (() => {
-        const chunk: Chunk = {
-          hash,
-          encryptedOffset: mapOfRequestsOffset,
-          encryptedSegmentSize,
-          decryptedChunk: mailbox<DecryptResult>(),
-          plainSegmentSize: segmentSize,
-        };
-        return chunk;
-      })();
-      mapOfRequestsOffset += encryptedSegmentSize;
-      return [hash, result];
-    })
+    segments.map(
+      ({
+        hash,
+        encryptedSegmentSize = encryptedSegmentSizeDefault,
+        segmentSize = segmentSizeDefault,
+      }) => {
+        const result = (() => {
+          const chunk: Chunk = {
+            hash,
+            encryptedOffset: mapOfRequestsOffset,
+            encryptedSegmentSize,
+            decryptedChunk: mailbox<DecryptResult>(),
+            plainSegmentSize: segmentSize,
+          };
+          return chunk;
+        })();
+        mapOfRequestsOffset += encryptedSegmentSize;
+        return [hash, result];
+      }
+    )
   );
 
   const cipher = new AesGcmCipher(cfg.cryptoService);
