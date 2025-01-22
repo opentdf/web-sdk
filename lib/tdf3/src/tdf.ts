@@ -35,7 +35,6 @@ import {
   KeyInfo,
   Manifest,
   Policy,
-  Remote as KeyAccessRemote,
   SplitKey,
   Wrapped as KeyAccessWrapped,
   KeyAccess,
@@ -219,10 +218,8 @@ export async function buildKeyAccess({
     switch (type) {
       case 'wrapped':
         return new KeyAccessWrapped(kasUrl, kasKeyIdentifier, pubKey, metadata, sid);
-      case 'remote':
-        return new KeyAccessRemote(kasUrl, kasKeyIdentifier, pubKey, metadata, sid);
       default:
-        throw new ConfigurationError(`buildKeyAccess: Key access type ${type} is unknown`);
+        throw new ConfigurationError(`buildKeyAccess: Key access type [${type}] is unsupported`);
     }
   }
 
