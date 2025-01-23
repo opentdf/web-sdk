@@ -2,6 +2,7 @@ import { expect } from 'chai';
 
 import * as TDF from '../../../tdf3/src/tdf.js';
 import { KeyAccessObject } from '../../../tdf3/src/models/key-access.js';
+import { PolicyBody, type Policy } from '../../../tdf3/src/models/policy.js';
 import { OriginAllowList } from '../../../src/access.js';
 import { ConfigurationError, InvalidFileError, UnsafeUrlError } from '../../../src/errors.js';
 
@@ -95,6 +96,43 @@ describe('fetchKasPublicKey', async () => {
         throw e;
       }).to.throw(ConfigurationError);
     }
+  });
+});
+
+describe('validatePolicyObject', () => {
+  const testCases: { title: string; policy: Partial<Policy>; error?: string }[] = [
+    {
+      title: 'missing uuid',
+      policy: { body: { dataAttributes: [], dissem: ['someDissem'] } },
+      error: 'uuid',
+    },
+    {
+      title: 'missing body',
+      policy: { uuid: 'someUuid' },
+      error: 'body',
+    },
+    {
+      title: 'missing body.dissem',
+      policy: { uuid: 'someUuid', body: {} as PolicyBody },
+      error: 'dissem',
+    },
+    {
+      title: 'valid policy',
+      policy: { uuid: 'someUuid', body: { dataAttributes: [], dissem: ['someDissem'] } },
+    },
+  ];
+
+  testCases.forEach(({ title, policy, error }) => {
+    it(`should handle ${title}`, () => {
+      if (error) {
+        expect(() => TDF.validatePolicyObject(policy as Policy)).to.throw(
+          ConfigurationError,
+          error
+        );
+      } else {
+        expect(() => TDF.validatePolicyObject(policy as Policy)).to.not.throw();
+      }
+    });
   });
 });
 
