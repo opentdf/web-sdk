@@ -562,11 +562,8 @@ export const handleArgs = (args: string[]) => {
             log('DEBUG', `About to TDF3 decrypt [${argv.file}]`);
             const ct = await client.read(await parseReadOptions(argv));
             const destination = argv.output ? createWriteStream(argv.output) : process.stdout;
-            try {
-              await ct.pipeTo(Writable.toWeb(destination));
-            } catch (e) {
-              log('ERROR', `Failed to pipe to destination stream: ${e}`);
-            }
+            await ct.pipeTo(Writable.toWeb(destination));
+
             const lastRequest = authProvider.requestLog[authProvider.requestLog.length - 1];
             log('SILLY', `last request is ${JSON.stringify(lastRequest)}`);
             let accessToken = null;
