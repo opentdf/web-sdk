@@ -33,7 +33,14 @@ describe('Local roundtrip Tests', () => {
       source: { type: 'chunker', location: fromString('hello world') },
     });
     const cipherManifest = await cipherTextStream.manifest;
-    expect(cipherManifest?.encryptionInformation?.keyAccess[0]?.url).to.equal(kasEndpoint);
+    const kao = cipherManifest?.encryptionInformation?.keyAccess[0];
+    expect(kao).to.contain({
+      url: kasEndpoint,
+      kid: 'r1',
+      type: 'wrapped',
+      protocol: 'kas',
+      schemaVersion: '1.0',
+    });
     const cipherTextArray = new Uint8Array(await new Response(cipherTextStream).arrayBuffer());
 
     const nanotdfParsed = await client.read({
