@@ -15,6 +15,42 @@ on:
     types:
       - created
 jobs:
+  ccc:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./lib
+    timeout-minutes: 5
+    steps:
+      - name: Conventional Commits Check
+        if: contains(fromJSON('["pull_request", "pull_request_target"]'), github.event_name)
+        id: conventional-commits
+        uses: amannn/action-semantic-pull-request@0723387faaf9b38adef4775cd42cfd5155ed6017
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Types include:
+          #   - fix: fixes
+          #   - feat: features and enhancements
+          #   - chore: non-feature or enhancement (i.e. docs, ci, linting, automated, etc)
+          types: |
+            fix
+            feat
+            chore
+            revert
+          # Scopes include:
+          #   - sdk: changes to @opentdf/sdk (was lib)
+          #   - cli: changes to @opentdf/ctl
+          #   - ci: anything related to ci
+          #   - tests: test only changes
+          #   - docs: anything related solely to documentation
+          scopes: |
+            ci
+            cli
+            docs
+            sdk
+            tests
+
   lib:
     runs-on: ubuntu-latest
     defaults:
