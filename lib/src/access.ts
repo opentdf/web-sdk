@@ -114,6 +114,15 @@ export const keyAlgorithmToPublicKeyAlgorithm = (a: KeyAlgorithm): KasPublicKeyA
   throw new Error(`unsupported key algorithm: ${a.name}`);
 };
 
+export const publicKeyAlgorithmToJwa = (a: KasPublicKeyAlgorithm): string => {
+  switch (a) {
+    case 'ec:secp256r1':
+      return 'ES256';
+    case 'rsa:2048':
+      return 'RS256';
+  }
+};
+
 /**
  * Information about one of a KAS's published public keys.
  * A KAS may publish multiple keys with a given algorithm type.

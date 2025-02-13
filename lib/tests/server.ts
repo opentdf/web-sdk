@@ -211,7 +211,7 @@ const kas: RequestListener = async (req, res) => {
             namedCurve: 'P-256',
           },
           false,
-          ['deriveKey']
+          ['deriveBits', 'deriveKey']
         );
         const kek = await keyAgreement(sessionKeyPair.privateKey, clientPublicKey, {
           hkdfSalt: new TextEncoder().encode('salt'),

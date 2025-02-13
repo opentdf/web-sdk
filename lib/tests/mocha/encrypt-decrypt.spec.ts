@@ -278,6 +278,7 @@ describe('encrypt decrypt test', async function () {
           authProvider,
         });
         const keyPair = await crypto.subtle.generateKey(
+        const assertionKeys = await crypto.subtle.generateKey(
           {
             name: 'RSASSA-PKCS1-v1_5',
             modulusLength: 2048,
@@ -287,7 +288,7 @@ describe('encrypt decrypt test', async function () {
           true,
           ['sign', 'verify']
         );
-        const publicKey = keyPair.publicKey;
+        const assertionPublicKey = assertionKeys.publicKey;
         const scope: Scope = {
           dissem: ['user@domain.com'],
           attributes: [],
@@ -296,6 +297,8 @@ describe('encrypt decrypt test', async function () {
         // Generate a random HS256 key
         const hs256Key = new Uint8Array(32);
         crypto.getRandomValues(hs256Key);
+
+        console.log('ASDF about to encrypt');
 
         const encryptedStream = await client.encrypt({
           metadata: Mocks.getMetadataObject(),
@@ -337,7 +340,7 @@ describe('encrypt decrypt test', async function () {
               appliesToState: 'encrypted',
               signingKey: {
                 alg: 'RS256',
-                key: keyPair.privateKey,
+                key: assertionKeys.privateKey,
               },
             },
             {
@@ -364,7 +367,7 @@ describe('encrypt decrypt test', async function () {
             },
             assertion2: {
               alg: 'RS256',
-              key: publicKey,
+              key: assertionPublicKey,
             },
           },
         };

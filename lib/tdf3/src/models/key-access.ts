@@ -1,5 +1,4 @@
 import { base64, hex } from '../../../src/encodings/index.js';
-import { generateKeyPair } from '../../../src/nanotdf-crypto/generateKeyPair.js';
 import { generateRandomNumber } from '../../../src/nanotdf-crypto/generateRandomNumber.js';
 import { keyAgreement } from '../../../src/nanotdf-crypto/keyAgreement.js';
 import { pemPublicToCrypto } from '../../../src/nanotdf-crypto/pemPublicToCrypto.js';
@@ -18,7 +17,7 @@ export function isRemote(keyAccessJSON: KeyAccess | KeyAccessObject): boolean {
 
 export class ECWrapped {
   readonly type = 'ec-wrapped';
-  readonly ephemeralKeyPair;
+  readonly ephemeralKeyPair: Promise<CryptoKeyPair>;
   keyAccessObject?: KeyAccessObject;
 
   constructor(
@@ -28,7 +27,14 @@ export class ECWrapped {
     public readonly metadata: unknown,
     public readonly sid: string
   ) {
-    this.ephemeralKeyPair = generateKeyPair();
+    this.ephemeralKeyPair = crypto.subtle.generateKey(
+      {
+        name: 'ECDH',
+        namedCurve: 'P-256',
+      },
+      false,
+      ['deriveBits', 'deriveKey']
+    );
   }
 
   async write(

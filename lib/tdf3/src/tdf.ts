@@ -6,6 +6,7 @@ import {
   OriginAllowList,
   fetchKasPubKey as fetchKasPubKeyV2,
   fetchWrappedKey,
+  publicKeyAlgorithmToJwa,
 } from '../../src/access.js';
 import { type AuthProvider, reqSignature } from '../../src/auth/auth.js';
 import { allPool, anyPool } from '../../src/concurrency.js';
@@ -80,6 +81,7 @@ export type Metadata = {
 
 export type BuildKeyAccess = {
   type: KeyAccessType;
+  alg?: KasPublicKeyAlgorithm;
   url?: string;
   kid?: string;
   publicKey: string;
@@ -201,13 +203,17 @@ export async function fetchKasPublicKey(
   return fetchKasPubKeyV2(kas, algorithm || 'rsa:2048');
 }
 
-export async function extractPemFromKeyString(keyString: string): Promise<string> {
+export async function extractPemFromKeyString(
+  keyString: string,
+  alg: KasPublicKeyAlgorithm
+): Promise<string> {
   let pem: string = keyString;
 
   // Skip the public key extraction if we find that the KAS url provides a
   // PEM-encoded key instead of certificate
   if (keyString.includes('CERTIFICATE')) {
-    const cert = await importX509(keyString, 'RS256', { extractable: true });
+    const a = publicKeyAlgorithmToJwa(alg);
+    const cert = await importX509(keyString, a, { extractable: true });
     pem = await exportSPKI(cert);
   }
 
@@ -234,32 +240,34 @@ export async function buildKeyAccess({
   kid,
   metadata,
   sid = '',
+  alg = 'rsa:2048',
 }: BuildKeyAccess): Promise<KeyAccess> {
-  /** Internal function to keep it DRY */
-  function createKeyAccess(
-    type: KeyAccessType,
-    kasUrl: string,
-    kasKeyIdentifier: string | undefined,
-    pubKey: string,
-    metadata?: Metadata
-  ) {
-    switch (type) {
-      case 'wrapped':
-        return new Wrapped(kasUrl, kasKeyIdentifier, pubKey, metadata, sid);
-      case 'ec-wrapped':
-        return new ECWrapped(kasUrl, kasKeyIdentifier, pubKey, metadata, sid);
-      default:
-        throw new ConfigurationError(`buildKeyAccess: Key access type [${type}] is unsupported`);
-    }
-  }
-
   // if url and pulicKey are specified load the key access object with them
-  if (url && publicKey) {
-    return createKeyAccess(type, url, kid, await extractPemFromKeyString(publicKey), metadata);
+  if (!url && !publicKey) {
+    throw new ConfigurationError('TDF.buildKeyAccess: No source for kasUrl or pubKey');
+  } else if (!url) {
+    throw new ConfigurationError('TDF.buildKeyAccess: No kasUrl');
+  } else if (!publicKey) {
+    throw new ConfigurationError('TDF.buildKeyAccess: No kas public key');
   }
 
-  // All failed. Raise an error.
-  throw new ConfigurationError('TDF.buildKeyAccess: No source for kasUrl or pubKey');
+  let pubKey: string;
+  try {
+    pubKey = await extractPemFromKeyString(publicKey, alg);
+  } catch (e) {
+    throw new ConfigurationError(
+      `TDF.buildKeyAccess: Invalid public key [${publicKey}], caused by [${e}]`,
+      e
+    );
+  }
+  switch (type) {
+    case 'wrapped':
+      return new Wrapped(url, kid, pubKey, metadata, sid);
+    case 'ec-wrapped':
+      return new ECWrapped(url, kid, pubKey, metadata, sid);
+    default:
+      throw new ConfigurationError(`buildKeyAccess: Key access type [${type}] is unsupported`);
+  }
 }
 
 export function validatePolicyObject(policy: Policy): void {
