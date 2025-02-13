@@ -87,6 +87,33 @@ export async function fetchWrappedKey(
 
 export type KasPublicKeyAlgorithm = 'ec:secp256r1' | 'rsa:2048';
 
+export const isPublicKeyAlgorithm = (a: string): a is KasPublicKeyAlgorithm => {
+  return a === 'ec:secp256r1' || a === 'rsa:2048';
+};
+
+export const keyAlgorithmToPublicKeyAlgorithm = (a: KeyAlgorithm): KasPublicKeyAlgorithm => {
+  if (a.name === 'ECDSA' || a.name === 'ECDH') {
+    const eca = a as EcKeyAlgorithm;
+    if (eca.namedCurve === 'P-256') {
+      return 'ec:secp256r1';
+    }
+    throw new Error(`unsupported EC curve: ${eca.namedCurve}`);
+  }
+  if (a.name === 'RSA-OAEP') {
+    const rsaa = a as RsaHashedKeyAlgorithm;
+    if (rsaa.modulusLength === 2048) {
+      // if (rsaa.hash.name !== 'RSASSA-PKCS1-v1_5') {
+      //   throw new Error(`unsupported RSA hash: ${rsaa.hash.name}`);
+      // }
+      if (rsaa.publicExponent.toString() !== '1,0,1') {
+        throw new Error(`unsupported RSA public exponent: ${rsaa.publicExponent}`);
+      }
+      return 'rsa:2048';
+    }
+  }
+  throw new Error(`unsupported key algorithm: ${a.name}`);
+};
+
 /**
  * Information about one of a KAS's published public keys.
  * A KAS may publish multiple keys with a given algorithm type.
@@ -188,7 +215,7 @@ export async function fetchKasPubKey(
     key: noteInvalidPublicKey(pkUrlV2, pemToCryptoPublicKey(publicKey)),
     publicKey,
     url: kasEndpoint,
-    algorithm: 'ec:secp256r1',
+    algorithm: algorithm || 'rsa:2048',
     ...(kid && { kid }),
   };
 }

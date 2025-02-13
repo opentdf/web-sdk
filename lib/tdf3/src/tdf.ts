@@ -19,6 +19,9 @@ import {
   UnsafeUrlError,
   UnsupportedFeatureError as UnsupportedError,
 } from '../../src/errors.js';
+import { generateKeyPair } from '../../src/nanotdf-crypto/generateKeyPair.js';
+import { keyAgreement } from '../../src/nanotdf-crypto/keyAgreement.js';
+import { pemPublicToCrypto } from '../../src/nanotdf-crypto/pemPublicToCrypto.js';
 import { type Chunker } from '../../src/seekable.js';
 import { PolicyObject } from '../../src/tdf/PolicyObject.js';
 import { tdfSpecVersion } from '../../src/version.js';
@@ -29,14 +32,20 @@ import { AesGcmCipher } from './ciphers/aes-gcm-cipher.js';
 import { SymmetricCipher } from './ciphers/symmetric-cipher-base.js';
 import { DecryptParams } from './client/builders.js';
 import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
-import { type CryptoService, type DecryptResult } from './crypto/declarations.js';
 import {
+  AnyKeyPair,
+  PemKeyPair,
+  type CryptoService,
+  type DecryptResult,
+} from './crypto/declarations.js';
+import {
+  ECWrapped,
   KeyAccessType,
   KeyInfo,
   Manifest,
   Policy,
   SplitKey,
-  Wrapped as KeyAccessWrapped,
+  Wrapped,
   KeyAccess,
   KeyAccessObject,
   SplitType,
@@ -155,6 +164,7 @@ export type DecryptConfiguration = {
   assertionVerificationKeys?: AssertionVerificationKeys;
   noVerifyAssertions?: boolean;
   concurrencyLimit?: number;
+  wrappingKeyAlgorithm?: KasPublicKeyAlgorithm;
 };
 
 export type UpsertConfiguration = {
@@ -235,7 +245,9 @@ export async function buildKeyAccess({
   ) {
     switch (type) {
       case 'wrapped':
-        return new KeyAccessWrapped(kasUrl, kasKeyIdentifier, pubKey, metadata, sid);
+        return new Wrapped(kasUrl, kasKeyIdentifier, pubKey, metadata, sid);
+      case 'ec-wrapped':
+        return new ECWrapped(kasUrl, kasKeyIdentifier, pubKey, metadata, sid);
       default:
         throw new ConfigurationError(`buildKeyAccess: Key access type [${type}] is unsupported`);
     }
@@ -632,6 +644,7 @@ async function unwrapKey({
   dpopKeys,
   concurrencyLimit,
   cryptoService,
+  wrappingKeyAlgorithm,
 }: {
   manifest: Manifest;
   allowedKases: OriginAllowList;
@@ -639,6 +652,7 @@ async function unwrapKey({
   concurrencyLimit?: number;
   dpopKeys: CryptoKeyPair;
   cryptoService: CryptoService;
+  wrappingKeyAlgorithm?: KasPublicKeyAlgorithm;
 }) {
   if (authProvider === undefined) {
     throw new ConfigurationError(
@@ -650,9 +664,18 @@ async function unwrapKey({
 
   async function tryKasRewrap(keySplitInfo: KeyAccessObject): Promise<RewrapResponseData> {
     const url = `${keySplitInfo.url}/v2/rewrap`;
-    const ephemeralEncryptionKeys = await cryptoService.cryptoToPemPair(
-      await cryptoService.generateKeyPair()
-    );
+    let ephemeralEncryptionKeysRaw: AnyKeyPair;
+    let ephemeralEncryptionKeys: PemKeyPair;
+    if (wrappingKeyAlgorithm === 'ec:secp256r1') {
+      ephemeralEncryptionKeysRaw = await generateKeyPair();
+      ephemeralEncryptionKeys = await cryptoService.cryptoToPemPair(ephemeralEncryptionKeysRaw);
+    } else if (wrappingKeyAlgorithm === 'rsa:2048' || !wrappingKeyAlgorithm) {
+      ephemeralEncryptionKeysRaw = await cryptoService.generateKeyPair();
+      ephemeralEncryptionKeys = await cryptoService.cryptoToPemPair(ephemeralEncryptionKeysRaw);
+    } else {
+      throw new ConfigurationError(`Unsupported wrapping key algorithm [${wrappingKeyAlgorithm}]`);
+    }
+
     const clientPublicKey = ephemeralEncryptionKeys.publicKey;
 
     const requestBodyStr = JSON.stringify({
@@ -665,13 +688,31 @@ async function unwrapKey({
     const jwtPayload = { requestBody: requestBodyStr };
     const signedRequestToken = await reqSignature(jwtPayload, dpopKeys.privateKey);
 
-    const { entityWrappedKey, metadata } = await fetchWrappedKey(
+    const { entityWrappedKey, metadata, sessionPublicKey } = await fetchWrappedKey(
       url,
       { signedRequestToken },
       authProvider,
       '0.0.1'
     );
 
+    if (wrappingKeyAlgorithm === 'ec:secp256r1') {
+      const serverEphemeralKey: CryptoKey = await pemPublicToCrypto(sessionPublicKey);
+      const ekr = ephemeralEncryptionKeysRaw as CryptoKeyPair;
+      const kek = await keyAgreement(ekr.privateKey, serverEphemeralKey, {
+        hkdfSalt: new TextEncoder().encode('salt'),
+        hkdfHash: 'SHA-256',
+      });
+      const wrappedKeyAndNonce = base64.decodeArrayBuffer(entityWrappedKey);
+      const iv = wrappedKeyAndNonce.slice(0, 12);
+      const wrappedKey = wrappedKeyAndNonce.slice(12);
+
+      const dek = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, kek, wrappedKey);
+
+      return {
+        key: new Uint8Array(dek),
+        metadata,
+      };
+    }
     const key = Binary.fromString(base64.decode(entityWrappedKey));
     const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(
       key,

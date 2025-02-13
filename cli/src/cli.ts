@@ -16,6 +16,7 @@ import {
   tdfSpecVersion,
   OpenTDF,
   DecoratedStream,
+  isPublicKeyAlgorithm,
 } from '@opentdf/sdk';
 import { CLIError, Level, log } from './logger.js';
 import { webcrypto } from 'crypto';
@@ -174,6 +175,12 @@ async function parseReadOptions(argv: Partial<mainArgs>): Promise<ReadOptions> {
       argv.assertionVerificationKeys
     );
   }
+  if (argv.rewrapKeyType?.length) {
+    if (!isPublicKeyAlgorithm(argv.rewrapKeyType)) {
+      throw new CLIError('CRITICAL', `Unsupported rewrap key algorithm: [${argv.rewrapKeyType}]`);
+    }
+    r.wrappingKeyAlgorithm = argv.rewrapKeyType;
+  }
   if (argv.concurrencyLimit) {
     r.concurrencyLimit = argv.concurrencyLimit;
   } else {
@@ -271,6 +278,12 @@ async function parseCreateZTDFOptions(argv: Partial<mainArgs>): Promise<CreateZT
   const c: CreateZTDFOptions = await parseCreateOptions(argv);
   if (argv.assertions?.length) {
     c.assertionConfigs = await parseAssertionConfig(argv.assertions);
+  }
+  if (argv.encapKeyType?.length) {
+    if (!isPublicKeyAlgorithm(argv.encapKeyType)) {
+      throw new CLIError('CRITICAL', `Unsupported rewrap key algorithm: [${argv.encapKeyType}]`);
+    }
+    c.wrappingKeyAlgorithm = argv.encapKeyType;
   }
   if (argv.mimeType?.length) {
     if (argv.mimeType && /^[a-z]+\/[a-z0-9-+.]+$/.test(argv.mimeType)) {
@@ -452,6 +465,13 @@ export const handleArgs = (args: string[]) => {
           description: 'Container format',
           default: 'nano',
         },
+        encapKeyType: {
+          alias: 'encapsulation-algorithm',
+          group: 'Encrypt Options:',
+          desc: 'Key type for wrapping keys',
+          type: 'string',
+          default: 'rsa:2048',
+        },
         policyBinding: {
           group: 'Encrypt Options:',
           choices: bindingTypes,
@@ -463,6 +483,13 @@ export const handleArgs = (args: string[]) => {
           desc: 'Mime type for the plain text file (only supported for ztdf)',
           type: 'string',
           default: '',
+        },
+        rewrapKeyType: {
+          alias: 'rewrap-encapsulation-algorithm',
+          group: 'Decrypt Options:',
+          desc: 'Key type for rewrap',
+          type: 'string',
+          default: 'rsa:2048',
         },
         userId: {
           group: 'Encrypt Options:',

@@ -1,14 +1,84 @@
-import { Binary } from '../binary.js';
 import { base64, hex } from '../../../src/encodings/index.js';
+import { generateKeyPair } from '../../../src/nanotdf-crypto/generateKeyPair.js';
+import { generateRandomNumber } from '../../../src/nanotdf-crypto/generateRandomNumber.js';
+import { keyAgreement } from '../../../src/nanotdf-crypto/keyAgreement.js';
+import { pemPublicToCrypto } from '../../../src/nanotdf-crypto/pemPublicToCrypto.js';
+import { cryptoPublicToPem } from '../../../src/utils.js';
+import { Binary } from '../binary.js';
 import * as cryptoService from '../crypto/index.js';
 import { Policy } from './policy.js';
 
-export type KeyAccessType = 'remote' | 'wrapped';
+export type KeyAccessType = 'remote' | 'wrapped' | 'ec-wrapped';
 
 export const schemaVersion = '1.0';
 
 export function isRemote(keyAccessJSON: KeyAccess | KeyAccessObject): boolean {
   return keyAccessJSON.type === 'remote';
+}
+
+export class ECWrapped {
+  readonly type = 'ec-wrapped';
+  readonly ephemeralKeyPair;
+  keyAccessObject?: KeyAccessObject;
+
+  constructor(
+    public readonly url: string,
+    public readonly kid: string | undefined,
+    public readonly publicKey: string,
+    public readonly metadata: unknown,
+    public readonly sid: string
+  ) {
+    this.ephemeralKeyPair = generateKeyPair();
+  }
+
+  async write(
+    policy: Policy,
+    dek: Uint8Array,
+    encryptedMetadataStr: string
+  ): Promise<KeyAccessObject> {
+    const policyStr = JSON.stringify(policy);
+    const [ek, clientPublicKey] = await Promise.all([
+      this.ephemeralKeyPair,
+      pemPublicToCrypto(this.publicKey),
+    ]);
+    const kek = await keyAgreement(ek.privateKey, clientPublicKey, {
+      hkdfSalt: new TextEncoder().encode('salt'),
+      hkdfHash: 'SHA-256',
+    });
+    const iv = generateRandomNumber(12);
+    const cek = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, tagLength: 128 }, kek, dek);
+    const entityWrappedKey = new Uint8Array(iv.length + cek.byteLength);
+    entityWrappedKey.set(iv);
+    entityWrappedKey.set(new Uint8Array(cek), iv.length);
+
+    const policyBinding = await cryptoService.hmac(
+      hex.encodeArrayBuffer(dek),
+      base64.encode(policyStr)
+    );
+
+    const ephemeralPublicKeyPEM = await cryptoPublicToPem(ek.publicKey);
+    const kao: KeyAccessObject = {
+      type: 'ec-wrapped',
+      url: this.url,
+      protocol: 'kas',
+      wrappedKey: base64.encodeArrayBuffer(entityWrappedKey),
+      encryptedMetadata: base64.encode(encryptedMetadataStr),
+      policyBinding: {
+        alg: 'HS256',
+        hash: base64.encode(policyBinding),
+      },
+      schemaVersion,
+      ephemeralPublicKey: ephemeralPublicKeyPEM,
+    };
+    if (this.kid) {
+      kao.kid = this.kid;
+    }
+    if (this.sid?.length) {
+      kao.sid = this.sid;
+    }
+    this.keyAccessObject = kao;
+    return kao;
+  }
 }
 
 export class Wrapped {
@@ -63,7 +133,7 @@ export class Wrapped {
   }
 }
 
-export type KeyAccess = Wrapped;
+export type KeyAccess = ECWrapped | Wrapped;
 
 /**
  * A KeyAccess object stores all information about how an object key OR one key split is stored.
@@ -130,4 +200,9 @@ export type KeyAccessObject = {
    * Version information for the KAO format.
    */
   schemaVersion?: string;
+
+  /**
+   * PEM encoded ephemeral public key, if wrapped with a KAS EC key.
+   */
+  ephemeralPublicKey?: string;
 };
