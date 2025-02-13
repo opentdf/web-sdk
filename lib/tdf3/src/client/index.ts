@@ -48,7 +48,7 @@ import { Binary } from '../binary.js';
 import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
 import { toCryptoKeyPair } from '../crypto/crypto-utils.js';
 import * as defaultCryptoService from '../crypto/index.js';
-import { type AttributeObject, KeyAccessType, type Policy, SplitKey } from '../models/index.js';
+import { type AttributeObject, type Policy, SplitKey } from '../models/index.js';
 import { plan } from '../../../src/policy/granter.js';
 import { attributeFQNsAsValues } from '../../../src/policy/api.js';
 import { type Value } from '../../../src/policy/attributes.js';
@@ -431,8 +431,6 @@ export class Client {
       });
     }
 
-    console.log('ASDF initialize cipher');
-
     // TODO: Refactor underlying builder to remove some of this unnecessary config.
 
     const maxByteLimit = GLOBAL_BYTE_LIMIT;
@@ -455,7 +453,6 @@ export class Client {
             `Mismatched wrapping key algorithm: [${kasPublicKey.algorithm}] is not requested type, [${wrappingKeyAlgorithm}]`
           );
         }
-        console.log('ASDF about to build key access', kasPublicKey.algorithm);
         let type: KeyAccessType;
         switch (kasPublicKey.algorithm) {
           case 'rsa:2048':
@@ -478,7 +475,6 @@ export class Client {
         });
       })
     );
-    console.log('ASDF about to run encryption middleware');
     const { keyForEncryption, keyForManifest } = await (keyMiddleware as EncryptKeyMiddleware)();
     const ecfg: EncryptConfiguration = {
       allowList: this.allowedKases,
@@ -499,7 +495,6 @@ export class Client {
       assertionConfigs: opts.assertionConfigs,
     };
 
-    console.log('ASDF about to writeStream');
     return (streamMiddleware as EncryptStreamMiddleware)(await writeStream(ecfg));
   }
 
