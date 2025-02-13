@@ -7,7 +7,7 @@ import {
 import { base64 } from '../../../src/encodings/index.js';
 import {
   buildKeyAccess,
-  EncryptConfiguration,
+  type EncryptConfiguration,
   fetchKasPublicKey,
   loadTDFStream,
   validatePolicyObject,
@@ -22,13 +22,13 @@ import { type AuthProvider, HttpRequest, withHeaders } from '../../../src/auth/a
 import { pemToCryptoPublicKey, rstrip, validateSecureUrl } from '../../../src/utils.js';
 
 import {
-  EncryptParams,
-  DecryptParams,
+  type EncryptParams,
+  type DecryptParams,
   type Scope,
-  DecryptStreamMiddleware,
-  EncryptKeyMiddleware,
-  EncryptStreamMiddleware,
-  SplitStep,
+  type DecryptStreamMiddleware,
+  type EncryptKeyMiddleware,
+  type EncryptStreamMiddleware,
+  type SplitStep,
 } from './builders.js';
 import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 
@@ -39,7 +39,7 @@ import {
   EncryptParamsBuilder,
 } from './builders.js';
 import {
-  KasPublicKeyInfo,
+  type KasPublicKeyInfo,
   keyAlgorithmToPublicKeyAlgorithm,
   OriginAllowList,
 } from '../../../src/access.js';
@@ -48,7 +48,7 @@ import { Binary } from '../binary.js';
 import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
 import { toCryptoKeyPair } from '../crypto/crypto-utils.js';
 import * as defaultCryptoService from '../crypto/index.js';
-import { type AttributeObject, type Policy, SplitKey } from '../models/index.js';
+import { type AttributeObject, type KeyAccessType, type Policy, SplitKey } from '../models/index.js';
 import { plan } from '../../../src/policy/granter.js';
 import { attributeFQNsAsValues } from '../../../src/policy/api.js';
 import { type Value } from '../../../src/policy/attributes.js';
