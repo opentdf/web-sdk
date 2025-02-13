@@ -43,6 +43,7 @@ export class ECWrapped {
     encryptedMetadataStr: string
   ): Promise<KeyAccessObject> {
     const policyStr = JSON.stringify(policy);
+    console.log('ASDF about to resolbe keys');
     const [ek, clientPublicKey] = await Promise.all([
       this.ephemeralKeyPair,
       pemPublicToCrypto(this.publicKey),
@@ -52,16 +53,19 @@ export class ECWrapped {
       hkdfHash: 'SHA-256',
     });
     const iv = generateRandomNumber(12);
+    console.log('ASDF about to encrypt dek');
     const cek = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, tagLength: 128 }, kek, dek);
     const entityWrappedKey = new Uint8Array(iv.length + cek.byteLength);
     entityWrappedKey.set(iv);
     entityWrappedKey.set(new Uint8Array(cek), iv.length);
 
+    console.log('ASDF about to bind to policy');
     const policyBinding = await cryptoService.hmac(
       hex.encodeArrayBuffer(dek),
       base64.encode(policyStr)
     );
 
+    console.log('ASDF about to export public key');
     const ephemeralPublicKeyPEM = await cryptoPublicToPem(ek.publicKey);
     const kao: KeyAccessObject = {
       type: 'ec-wrapped',
@@ -83,6 +87,7 @@ export class ECWrapped {
       kao.sid = this.sid;
     }
     this.keyAccessObject = kao;
+    console.log('ASDF generated kao', kao);
     return kao;
   }
 }
@@ -104,6 +109,7 @@ export class Wrapped {
     keyBuffer: Uint8Array,
     encryptedMetadataStr: string
   ): Promise<KeyAccessObject> {
+    console.log('ASDF about to resolllve keys');
     const policyStr = JSON.stringify(policy);
     const unwrappedKeyBinary = Binary.fromArrayBuffer(keyBuffer.buffer);
     const wrappedKeyBinary = await cryptoService.encryptWithPublicKey(

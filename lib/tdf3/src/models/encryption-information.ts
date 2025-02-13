@@ -78,6 +78,7 @@ export class SplitKey {
   }
 
   async getKeyAccessObjects(policy: Policy, keyInfo: KeyInfo): Promise<KeyAccessObject[]> {
+    console.log('ASDF keyAccess getter', this.keyAccess);
     const splitIds = [...new Set(this.keyAccess.map(({ sid }) => sid))].sort((a, b) =>
       a.localeCompare(b)
     );

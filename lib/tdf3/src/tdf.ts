@@ -213,6 +213,7 @@ export async function extractPemFromKeyString(
   // PEM-encoded key instead of certificate
   if (keyString.includes('CERTIFICATE')) {
     const a = publicKeyAlgorithmToJwa(alg);
+    console.log('ASDF about to import x509', a, keyString);
     const cert = await importX509(keyString, a, { extractable: true });
     pem = await exportSPKI(cert);
   }
@@ -939,6 +940,7 @@ export async function readStream(cfg: DecryptConfiguration) {
     segmentSizeDefault,
     segments,
   } = manifest.encryptionInformation.integrityInformation;
+  console.log('ASDF about to unwrap');
   const { metadata, reconstructedKeyBinary } = await unwrapKey({
     manifest,
     authProvider: cfg.authProvider,
