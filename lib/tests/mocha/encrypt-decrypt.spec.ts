@@ -277,7 +277,6 @@ describe('encrypt decrypt test', async function () {
           clientId: 'id',
           authProvider,
         });
-        const keyPair = await crypto.subtle.generateKey(
         const assertionKeys = await crypto.subtle.generateKey(
           {
             name: 'RSASSA-PKCS1-v1_5',
