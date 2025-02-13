@@ -453,27 +453,26 @@ export class Client {
             `Mismatched wrapping key algorithm: [${kasPublicKey.algorithm}] is not requested type, [${wrappingKeyAlgorithm}]`
           );
         }
-        if (kasPublicKey.algorithm === 'rsa:2048') {
-          return buildKeyAccess({
-            type: 'wrapped',
-            url: kasPublicKey.url,
-            kid: kasPublicKey.kid,
-            publicKey: kasPublicKey.publicKey,
-            metadata,
-            sid,
-          });
-        } else if (kasPublicKey.algorithm === 'ec:secp256r1') {
-          return buildKeyAccess({
-            type: 'ec-wrapped',
-            url: kasPublicKey.url,
-            kid: kasPublicKey.kid,
-            publicKey: kasPublicKey.publicKey,
-            metadata,
-            sid,
-          });
-        } else {
-          throw new ConfigurationError(`Unsupported algorithm ${kasPublicKey.algorithm}`);
+        let type: KeyAccessType;
+        switch (kasPublicKey.algorithm) {
+          case 'rsa:2048':
+            type = 'wrapped';
+            break;
+          case 'ec:secp256r1':
+            type = 'ec-wrapped';
+            break;
+          default:
+            throw new ConfigurationError(`Unsupported algorithm ${kasPublicKey.algorithm}`);
         }
+        return buildKeyAccess({
+          alg: kasPublicKey.algorithm,
+          type,
+          url: kasPublicKey.url,
+          kid: kasPublicKey.kid,
+          publicKey: kasPublicKey.publicKey,
+          metadata,
+          sid,
+        });
       })
     );
     const { keyForEncryption, keyForManifest } = await (keyMiddleware as EncryptKeyMiddleware)();
