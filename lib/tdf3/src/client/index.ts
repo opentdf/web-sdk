@@ -48,7 +48,12 @@ import { Binary } from '../binary.js';
 import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
 import { toCryptoKeyPair } from '../crypto/crypto-utils.js';
 import * as defaultCryptoService from '../crypto/index.js';
-import { type AttributeObject, type KeyAccessType, type Policy, SplitKey } from '../models/index.js';
+import {
+  type AttributeObject,
+  type KeyAccessType,
+  type Policy,
+  SplitKey,
+} from '../models/index.js';
 import { plan } from '../../../src/policy/granter.js';
 import { attributeFQNsAsValues } from '../../../src/policy/api.js';
 import { type Value } from '../../../src/policy/attributes.js';
