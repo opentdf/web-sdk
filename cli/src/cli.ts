@@ -292,6 +292,7 @@ async function parseCreateZTDFOptions(argv: Partial<mainArgs>): Promise<CreateZT
       throw new CLIError('CRITICAL', 'Invalid mimeType format');
     }
   }
+  log('DEBUG', `CreateZTDFOptions: ${JSON.stringify(c)}`);
   return c;
 }
 
@@ -303,6 +304,7 @@ async function parseCreateNanoTDFOptions(argv: Partial<mainArgs>): Promise<Creat
   }
   // NOTE autoconfigure is not yet supported in nanotdf
   delete c.autoconfigure;
+  log('DEBUG', `CreateNanoTDFOptions: ${JSON.stringify(c)}`);
   return c;
 }
 
