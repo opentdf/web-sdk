@@ -308,6 +308,7 @@ export class OpenTDF {
       },
       splitPlan: opts.splitPlan,
       windowSize: opts.windowSize,
+      wrappingKeyAlgorithm: opts.wrappingKeyAlgorithm,
     });
     const stream: DecoratedStream = oldStream.stream;
     stream.manifest = Promise.resolve(oldStream.manifest);
