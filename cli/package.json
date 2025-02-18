@@ -38,6 +38,7 @@
     "@types/sinon": "^17.0.3",
     "@types/yargs": "^17.0.33",
     "chai": "^5.1.2",
+    "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-chai-friendly": "^1.0.1",
     "eslint-plugin-prettier": "^5.2.3",
     "globals": "^15.15.0",
