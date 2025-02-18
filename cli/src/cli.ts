@@ -124,7 +124,7 @@ async function parseAssertionVerificationKeys(
       throw new CLIError(
         'CRITICAL',
         `Failed to open/parse assertion verification keys as string or file path ${err.message}`,
-        err
+        err2
       );
     }
   }
@@ -201,9 +201,12 @@ async function correctAssertionKeys(
       return await importPKCS8(key, 'RS256'); // Import private key
     } catch (err) {
       // If importing as a private key fails, try importing as a public key
+      log('SILLY', `Failed to import RS256 key as private key: ${err.message}`);
       try {
         return await importSPKI(key, 'RS256'); // Import public key
-      } catch (err) {}
+      } catch (err) {
+        throw new CLIError('CRITICAL', `Issue converting RS256 key: ${err.message}`, err);
+      }
     }
   }
   // Otherwise its an unsupported alg
@@ -222,7 +225,7 @@ async function parseAssertionConfig(s: string): Promise<assertions.AssertionConf
     } catch (err2) {
       throw new CLIError(
         'CRITICAL',
-        `Failed to open/parse assertions as string or file path ${err.message}`,
+        `Failed to open/parse assertions as string or file path ${err.message} [${err2}]`,
         err
       );
     }
@@ -300,7 +303,7 @@ async function fileAsSource(file: string): Promise<Source> {
       throw new CLIError('CRITICAL', `File does not exist [${file}]`);
     }
   } catch (e) {
-    throw new CLIError('CRITICAL', `File is not accessable [${file}]`);
+    throw new CLIError('CRITICAL', `File is not accessable [${file}]`, e);
   }
   log('DEBUG', `Using input from file [${file}]`);
   return { type: 'file-browser', location: await openAsBlob(file) };
@@ -527,7 +530,6 @@ export const handleArgs = (args: string[]) => {
       .command(
         'decrypt [file]',
         'Decrypt TDF to string',
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
         (yargs) => {
           yargs.strict().positional('file', {
             describe: 'path to plain text file',
@@ -595,7 +597,6 @@ export const handleArgs = (args: string[]) => {
       .command(
         'encrypt [file]',
         'Encrypt file or pipe to a TDF',
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
         (yargs) => {
           yargs.strict().positional('file', {
             describe: 'path to plain text file',
@@ -663,7 +664,7 @@ export const handleArgs = (args: string[]) => {
 
 export type mainArgs = Awaited<ReturnType<typeof handleArgs>>;
 export const main = async (argsPromise: mainArgs) => {
-  argsPromise;
+  return argsPromise;
 };
 
 handleArgs(hideBin(process.argv))

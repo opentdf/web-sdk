@@ -1,9 +1,0 @@
-env:
-  browser: true
-  node: true
-extends:
-  - plugin:@typescript-eslint/recommended
-  - prettier
-parserOptions:
-  project: ['**/tsconfig.json']
-root: true

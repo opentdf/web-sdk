@@ -95,6 +95,11 @@ class EncryptParamsBuilder {
    * @param {Readable} readStream - a Readable Stream to encrypt.
    */
   setStreamSource(readStream: ReadableStream<Uint8Array>) {
+    if (!readStream?.getReader) {
+      throw new ConfigurationError(
+        `Source must be a WebReadableStream. Run node streams through stream.Readable.toWeb()`
+      );
+    }
     this._params.source = readStream;
   }
 
@@ -119,6 +124,9 @@ class EncryptParamsBuilder {
    * @param {string} string - a string to encrypt.
    */
   setStringSource(string: string) {
+    if (!(string && typeof string === 'string')) {
+      throw new ConfigurationError('StringSource must be a string');
+    }
     const stream = new ReadableStream({
       pull(controller) {
         controller.enqueue(new TextEncoder().encode(string));
@@ -627,6 +635,9 @@ class DecryptParamsBuilder {
    * @param source (node) the path of the local file to decrypt, or the Blob (browser/node)
    */
   setFileSource(source: Blob) {
+    if (!(source instanceof Blob)) {
+      throw new ConfigurationError('File source must be a Blob');
+    }
     this._params.source = { type: 'file-browser', location: source };
   }
 

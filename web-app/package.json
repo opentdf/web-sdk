@@ -23,24 +23,27 @@
     "streamsaver": "^2.0.6"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.2.0",
+    "@eslint/js": "^9.20.0",
     "@playwright/test": "^1.48.2",
     "@rollup/plugin-inject": "^5.0.5",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@types/streamsaver": "^2.0.1",
     "@types/wicg-file-system-access": "^2023.10.5",
-    "@typescript-eslint/eslint-plugin": "^6.2.1",
-    "@typescript-eslint/parser": "^6.2.1",
-    "@vitejs/plugin-react": "^4.3.3",
-    "@vitest/ui": "^2.1.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "@vitest/ui": "^3.0.6",
     "buffer": "^6.0.3",
-    "eslint": "^8.9.0",
-    "eslint-config-prettier": "^8.9.0",
+    "eslint-config-prettier": "^10.0.1",
+    "eslint-plugin-chai-friendly": "^1.0.1",
+    "eslint-plugin-prettier": "^5.2.3",
+    "globals": "^15.15.0",
     "license-checker": "^25.0.1",
     "playwright": "^1.48.2",
     "prettier": "^3.3.3",
-    "typescript": "^5.1.6",
-    "vite": "^5.4.11",
-    "vitest": "^2.1.4"
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.24.1",
+    "vite": "^6.1.0",
+    "vitest": "^3.0.6"
   }
 }
