@@ -1,0 +1,30 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /lib
+    schedule:
+      interval: daily
+    commit-message:
+      prefix: 'fix(sdk):'
+      prefix-development: 'chore(sdk):'
+  - package-ecosystem: npm
+    directory: /cli
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: 'fix(cli):'
+      prefix-development: 'chore(cli):'
+  - package-ecosystem: npm
+    directories:
+      - /web-app
+      - /web-app/tests
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: 'chore(docs):'
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: 'chore(ci):'
