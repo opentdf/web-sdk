@@ -86,7 +86,7 @@ jobs:
           path: ./lib/opentdf-sdk-*.tgz
       - name: SonarCloud Scan
         if: fromJSON(env.do_sonarscan)
-        uses: SonarSource/sonarcloud-github-action@master
+        uses: SonarSource/sonarcloud-github-action@v5.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
