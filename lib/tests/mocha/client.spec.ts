@@ -1,4 +1,4 @@
-import { assert } from 'chai';
+import { assert, expect } from 'chai';
 import { Client as TDF } from '../../tdf3/src/index.js';
 import { DecoratedReadableStream } from '../../tdf3/src/client/DecoratedReadableStream.js';
 
@@ -23,35 +23,26 @@ describe('client wrapper tests', function () {
 
   it('encrypt params null string source', function () {
     const paramsBuilder = new TDF.EncryptParamsBuilder();
-    try {
+    expect(() => {
       // @ts-ignore
       paramsBuilder.setStringSource(null);
-      throw new Error("didn't throw");
-    } catch (e) {
-      // TODO: type check exception
-    }
+    }).to.throw();
   });
 
   it('encrypt params bad string source', function () {
     const paramsBuilder = new TDF.EncryptParamsBuilder();
-    try {
+    expect(() => {
       // @ts-ignore
       paramsBuilder.setStringSource(42);
-      throw new Error("didn't throw");
-    } catch (e) {
-      // TODO: type check exception
-    }
+    }).to.throw();
   });
 
   it('encrypt params null file source', function () {
     const paramsBuilder = new TDF.DecryptParamsBuilder();
-    try {
+    expect(() => {
       // @ts-ignore
       paramsBuilder.setFileSource(null);
-      throw new Error("didn't throw");
-    } catch (e) {
-      // TODO: type check exception
-    }
+    }).to.throw();
   });
 
   it('encrypt "online" param should be true by default', () => {
@@ -84,13 +75,10 @@ describe('client wrapper tests', function () {
 
   it('encrypt params bad file source', function () {
     const paramsBuilder = new TDF.DecryptParamsBuilder();
-    try {
+    expect(() => {
       // @ts-ignore
       paramsBuilder.setFileSource(42);
-      throw new Error("didn't throw");
-    } catch (e) {
-      // TODO: type check exception
-    }
+    }).to.throw();
   });
 
   it('encrypt params policy id', function () {
