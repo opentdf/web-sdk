@@ -168,7 +168,7 @@ const defaultRewrapCacheOptions: Required<RewrapCacheOptions> = {
 // To cancel the demon, and clear the cache, call `close()`.
 export class RewrapCache {
   private cache?: Map<Uint8Array, { lastAccessTime: number; value: CryptoKey }>;
-  private closer?: NodeJS.Timer;
+  private closer?: ReturnType<typeof setInterval>;
   constructor(opts?: RewrapCacheOptions) {
     const { bypass, maxAge, pollInterval } = { ...defaultRewrapCacheOptions, ...opts };
     if (bypass) {
