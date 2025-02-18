@@ -11,10 +11,6 @@ export type KeyAccessType = 'remote' | 'wrapped' | 'ec-wrapped';
 
 export const schemaVersion = '1.0';
 
-export function isRemote(keyAccessJSON: KeyAccess | KeyAccessObject): boolean {
-  return keyAccessJSON.type === 'remote';
-}
-
 export class ECWrapped {
   readonly type = 'ec-wrapped';
   readonly ephemeralKeyPair: Promise<CryptoKeyPair>;
@@ -25,7 +21,7 @@ export class ECWrapped {
     public readonly kid: string | undefined,
     public readonly publicKey: string,
     public readonly metadata: unknown,
-    public readonly sid: string
+    public readonly sid?: string
   ) {
     this.ephemeralKeyPair = crypto.subtle.generateKey(
       {
@@ -96,7 +92,7 @@ export class Wrapped {
     public readonly kid: string | undefined,
     public readonly publicKey: string,
     public readonly metadata: unknown,
-    public readonly sid: string
+    public readonly sid?: string
   ) {}
 
   async write(
