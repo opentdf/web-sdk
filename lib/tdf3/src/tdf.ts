@@ -6,6 +6,7 @@ import {
   OriginAllowList,
   fetchKasPubKey as fetchKasPubKeyV2,
   fetchWrappedKey,
+  publicKeyAlgorithmToJwa,
 } from '../../src/access.js';
 import { type AuthProvider, reqSignature } from '../../src/auth/auth.js';
 import { allPool, anyPool } from '../../src/concurrency.js';
@@ -19,6 +20,9 @@ import {
   UnsafeUrlError,
   UnsupportedFeatureError as UnsupportedError,
 } from '../../src/errors.js';
+import { generateKeyPair } from '../../src/nanotdf-crypto/generateKeyPair.js';
+import { keyAgreement } from '../../src/nanotdf-crypto/keyAgreement.js';
+import { pemPublicToCrypto } from '../../src/nanotdf-crypto/pemPublicToCrypto.js';
 import { type Chunker } from '../../src/seekable.js';
 import { PolicyObject } from '../../src/tdf/PolicyObject.js';
 import { tdfSpecVersion } from '../../src/version.js';
@@ -29,14 +33,20 @@ import { AesGcmCipher } from './ciphers/aes-gcm-cipher.js';
 import { SymmetricCipher } from './ciphers/symmetric-cipher-base.js';
 import { DecryptParams } from './client/builders.js';
 import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
-import { type CryptoService, type DecryptResult } from './crypto/declarations.js';
 import {
+  AnyKeyPair,
+  PemKeyPair,
+  type CryptoService,
+  type DecryptResult,
+} from './crypto/declarations.js';
+import {
+  ECWrapped,
   KeyAccessType,
   KeyInfo,
   Manifest,
   Policy,
   SplitKey,
-  Wrapped as KeyAccessWrapped,
+  Wrapped,
   KeyAccess,
   KeyAccessObject,
   SplitType,
@@ -71,6 +81,7 @@ export type Metadata = {
 
 export type BuildKeyAccess = {
   type: KeyAccessType;
+  alg?: KasPublicKeyAlgorithm;
   url?: string;
   kid?: string;
   publicKey: string;
@@ -155,6 +166,7 @@ export type DecryptConfiguration = {
   assertionVerificationKeys?: AssertionVerificationKeys;
   noVerifyAssertions?: boolean;
   concurrencyLimit?: number;
+  wrappingKeyAlgorithm?: KasPublicKeyAlgorithm;
 };
 
 export type UpsertConfiguration = {
@@ -191,13 +203,17 @@ export async function fetchKasPublicKey(
   return fetchKasPubKeyV2(kas, algorithm || 'rsa:2048');
 }
 
-export async function extractPemFromKeyString(keyString: string): Promise<string> {
+export async function extractPemFromKeyString(
+  keyString: string,
+  alg: KasPublicKeyAlgorithm
+): Promise<string> {
   let pem: string = keyString;
 
   // Skip the public key extraction if we find that the KAS url provides a
   // PEM-encoded key instead of certificate
   if (keyString.includes('CERTIFICATE')) {
-    const cert = await importX509(keyString, 'RS256', { extractable: true });
+    const a = publicKeyAlgorithmToJwa(alg);
+    const cert = await importX509(keyString, a, { extractable: true });
     pem = await exportSPKI(cert);
   }
 
@@ -224,30 +240,34 @@ export async function buildKeyAccess({
   kid,
   metadata,
   sid = '',
+  alg = 'rsa:2048',
 }: BuildKeyAccess): Promise<KeyAccess> {
-  /** Internal function to keep it DRY */
-  function createKeyAccess(
-    type: KeyAccessType,
-    kasUrl: string,
-    kasKeyIdentifier: string | undefined,
-    pubKey: string,
-    metadata?: Metadata
-  ) {
-    switch (type) {
-      case 'wrapped':
-        return new KeyAccessWrapped(kasUrl, kasKeyIdentifier, pubKey, metadata, sid);
-      default:
-        throw new ConfigurationError(`buildKeyAccess: Key access type [${type}] is unsupported`);
-    }
-  }
-
   // if url and pulicKey are specified load the key access object with them
-  if (url && publicKey) {
-    return createKeyAccess(type, url, kid, await extractPemFromKeyString(publicKey), metadata);
+  if (!url && !publicKey) {
+    throw new ConfigurationError('TDF.buildKeyAccess: No source for kasUrl or pubKey');
+  } else if (!url) {
+    throw new ConfigurationError('TDF.buildKeyAccess: No kasUrl');
+  } else if (!publicKey) {
+    throw new ConfigurationError('TDF.buildKeyAccess: No kas public key');
   }
 
-  // All failed. Raise an error.
-  throw new ConfigurationError('TDF.buildKeyAccess: No source for kasUrl or pubKey');
+  let pubKey: string;
+  try {
+    pubKey = await extractPemFromKeyString(publicKey, alg);
+  } catch (e) {
+    throw new ConfigurationError(
+      `TDF.buildKeyAccess: Invalid public key [${publicKey}], caused by [${e}]`,
+      e
+    );
+  }
+  switch (type) {
+    case 'wrapped':
+      return new Wrapped(url, kid, pubKey, metadata, sid);
+    case 'ec-wrapped':
+      return new ECWrapped(url, kid, pubKey, metadata, sid);
+    default:
+      throw new ConfigurationError(`buildKeyAccess: Key access type [${type}] is unsupported`);
+  }
 }
 
 export function validatePolicyObject(policy: Policy): void {
@@ -632,6 +652,7 @@ async function unwrapKey({
   dpopKeys,
   concurrencyLimit,
   cryptoService,
+  wrappingKeyAlgorithm,
 }: {
   manifest: Manifest;
   allowedKases: OriginAllowList;
@@ -639,6 +660,7 @@ async function unwrapKey({
   concurrencyLimit?: number;
   dpopKeys: CryptoKeyPair;
   cryptoService: CryptoService;
+  wrappingKeyAlgorithm?: KasPublicKeyAlgorithm;
 }) {
   if (authProvider === undefined) {
     throw new ConfigurationError(
@@ -650,9 +672,18 @@ async function unwrapKey({
 
   async function tryKasRewrap(keySplitInfo: KeyAccessObject): Promise<RewrapResponseData> {
     const url = `${keySplitInfo.url}/v2/rewrap`;
-    const ephemeralEncryptionKeys = await cryptoService.cryptoToPemPair(
-      await cryptoService.generateKeyPair()
-    );
+    let ephemeralEncryptionKeysRaw: AnyKeyPair;
+    let ephemeralEncryptionKeys: PemKeyPair;
+    if (wrappingKeyAlgorithm === 'ec:secp256r1') {
+      ephemeralEncryptionKeysRaw = await generateKeyPair();
+      ephemeralEncryptionKeys = await cryptoService.cryptoToPemPair(ephemeralEncryptionKeysRaw);
+    } else if (wrappingKeyAlgorithm === 'rsa:2048' || !wrappingKeyAlgorithm) {
+      ephemeralEncryptionKeysRaw = await cryptoService.generateKeyPair();
+      ephemeralEncryptionKeys = await cryptoService.cryptoToPemPair(ephemeralEncryptionKeysRaw);
+    } else {
+      throw new ConfigurationError(`Unsupported wrapping key algorithm [${wrappingKeyAlgorithm}]`);
+    }
+
     const clientPublicKey = ephemeralEncryptionKeys.publicKey;
 
     const requestBodyStr = JSON.stringify({
@@ -665,13 +696,31 @@ async function unwrapKey({
     const jwtPayload = { requestBody: requestBodyStr };
     const signedRequestToken = await reqSignature(jwtPayload, dpopKeys.privateKey);
 
-    const { entityWrappedKey, metadata } = await fetchWrappedKey(
+    const { entityWrappedKey, metadata, sessionPublicKey } = await fetchWrappedKey(
       url,
       { signedRequestToken },
       authProvider,
       '0.0.1'
     );
 
+    if (wrappingKeyAlgorithm === 'ec:secp256r1') {
+      const serverEphemeralKey: CryptoKey = await pemPublicToCrypto(sessionPublicKey);
+      const ekr = ephemeralEncryptionKeysRaw as CryptoKeyPair;
+      const kek = await keyAgreement(ekr.privateKey, serverEphemeralKey, {
+        hkdfSalt: new TextEncoder().encode('salt'),
+        hkdfHash: 'SHA-256',
+      });
+      const wrappedKeyAndNonce = base64.decodeArrayBuffer(entityWrappedKey);
+      const iv = wrappedKeyAndNonce.slice(0, 12);
+      const wrappedKey = wrappedKeyAndNonce.slice(12);
+
+      const dek = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, kek, wrappedKey);
+
+      return {
+        key: new Uint8Array(dek),
+        metadata,
+      };
+    }
     const key = Binary.fromString(base64.decode(entityWrappedKey));
     const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(
       key,

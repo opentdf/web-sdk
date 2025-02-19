@@ -78,7 +78,7 @@ export class SplitKey {
   }
 
   async getKeyAccessObjects(policy: Policy, keyInfo: KeyInfo): Promise<KeyAccessObject[]> {
-    const splitIds = [...new Set(this.keyAccess.map(({ sid }) => sid))].sort((a, b) =>
+    const splitIds = [...new Set(this.keyAccess.map(({ sid }) => sid))].sort((a = '', b = '') =>
       a.localeCompare(b)
     );
     const unwrappedKeySplitBuffers = await keySplit(
@@ -93,7 +93,7 @@ export class SplitKey {
     const keyAccessObjects = [];
     for (const item of this.keyAccess) {
       // use the key split to encrypt metadata for each key access object
-      const unwrappedKeySplitBuffer = splitsByName[item.sid];
+      const unwrappedKeySplitBuffer = splitsByName[item.sid || ''];
       const unwrappedKeySplitBinary = Binary.fromArrayBuffer(unwrappedKeySplitBuffer.buffer);
 
       const metadata = item.metadata || '';
