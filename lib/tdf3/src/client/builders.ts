@@ -9,7 +9,7 @@ import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 import { type Chunker } from '../../../src/seekable.js';
 import { AssertionConfig, AssertionVerificationKeys } from '../assertions.js';
 import { Value } from '../../../src/policy/attributes.js';
-import { OriginAllowList } from '../../../src/access.js';
+import { KasPublicKeyAlgorithm, OriginAllowList } from '../../../src/access.js';
 
 export const DEFAULT_SEGMENT_SIZE: number = 1024 * 1024;
 export type Scope = {
@@ -51,6 +51,9 @@ export type EncryptParams = {
   streamMiddleware?: EncryptStreamMiddleware;
   assertionConfigs?: AssertionConfig[];
   defaultKASEndpoint?: string;
+
+  // Preferred wrapping key algorithm. Used when KID resolution is not available.
+  wrappingKeyAlgorithm?: KasPublicKeyAlgorithm;
 
   // Unsupported
   asHtml?: boolean;
@@ -517,6 +520,7 @@ export type DecryptParams = {
   assertionVerificationKeys?: AssertionVerificationKeys;
   concurrencyLimit?: number;
   noVerifyAssertions?: boolean;
+  wrappingKeyAlgorithm?: KasPublicKeyAlgorithm;
 };
 
 /**

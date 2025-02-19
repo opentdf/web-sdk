@@ -7,7 +7,7 @@ interface GenerateKeyPairOptions {
   isExtractable: boolean;
 }
 
-export default async function generateKeyPair(
+export async function generateKeyPair(
   { type: name, curve: namedCurve, keyUsages, isExtractable }: GenerateKeyPairOptions = {
     type: AlgorithmName.ECDH,
     curve: NamedCurve.P256,
