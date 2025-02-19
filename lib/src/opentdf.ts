@@ -9,8 +9,10 @@ import Header from './nanotdf/models/Header.js';
 import { fromSource, sourceToStream, type Source } from './seekable.js';
 import { Client as TDF3Client } from '../tdf3/src/client/index.js';
 import { AssertionConfig, AssertionVerificationKeys } from '../tdf3/src/assertions.js';
-import { OriginAllowList } from './access.js';
+import { type KasPublicKeyAlgorithm, OriginAllowList, isPublicKeyAlgorithm } from './access.js';
 import { type Manifest } from '../tdf3/src/models/manifest.js';
+
+export { type KasPublicKeyAlgorithm, isPublicKeyAlgorithm };
 
 export type Keys = {
   [keyID: string]: CryptoKey | CryptoKeyPair;
@@ -91,6 +93,9 @@ export type CreateZTDFOptions = CreateOptions & {
   // The segment size for the content; smaller is slower, but allows faster random access.
   // The current default is 1 MiB (2^20 bytes).
   windowSize?: number;
+
+  // Preferred algorithm to use for Key Access Objects.
+  wrappingKeyAlgorithm?: KasPublicKeyAlgorithm;
 };
 
 // Settings for decrypting any variety of TDF file.
@@ -108,6 +113,9 @@ export type ReadOptions = {
 
   // If set, prevents more than this number of concurrent requests to the KAS.
   concurrencyLimit?: number;
+
+  // Type of key to use for wrapping responses.
+  wrappingKeyAlgorithm?: KasPublicKeyAlgorithm;
 };
 
 // Defaults and shared settings that are relevant to creating TDF objects.
@@ -138,7 +146,7 @@ export type OpenTDFOptions = {
 
 export type DecoratedStream = ReadableStream<Uint8Array> & {
   // If the source is a TDF3/ZTDF, and includes metadata, and it has been read.
-  metadata?: Promise<any>;
+  metadata?: Promise<unknown>;
   manifest?: Promise<Manifest>;
   // If the source is a NanoTDF, this will be set.
   header?: Header;
@@ -300,6 +308,7 @@ export class OpenTDF {
       },
       splitPlan: opts.splitPlan,
       windowSize: opts.windowSize,
+      wrappingKeyAlgorithm: opts.wrappingKeyAlgorithm,
     });
     const stream: DecoratedStream = oldStream.stream;
     stream.manifest = Promise.resolve(oldStream.manifest);
@@ -323,6 +332,7 @@ export class OpenTDF {
         allowList,
         assertionVerificationKeys: opts.assertionVerificationKeys,
         noVerifyAssertions: opts.noVerify,
+        wrappingKeyAlgorithm: opts.wrappingKeyAlgorithm,
       });
       const stream: DecoratedStream = oldStream.stream;
       stream.metadata = Promise.resolve(oldStream.metadata);

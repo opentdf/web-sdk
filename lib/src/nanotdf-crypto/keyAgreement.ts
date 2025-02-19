@@ -27,6 +27,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+import { keyAlgorithmToPublicKeyAlgorithm } from '../access.js';
 import { ConfigurationError } from '../errors.js';
 import { AlgorithmName, CipherType, HashType, KeyFormat, KeyType, KeyUsageType } from './enums.js';
 
@@ -69,19 +70,25 @@ export async function keyAgreement(
     isExtractable: true,
   }
 ): Promise<CryptoKey> {
-  if (
-    publicKey?.algorithm?.name !== AlgorithmName.ECDSA &&
-    publicKey?.algorithm?.name !== AlgorithmName.ECDH
-  ) {
-    throw new ConfigurationError('CryptoKey is expected to be of type ECDSA or ECDH');
+  for (const k of [privateKey, publicKey]) {
+    const mechanism = keyAlgorithmToPublicKeyAlgorithm(k.algorithm);
+    if (mechanism !== 'ec:secp256r1') {
+      throw new ConfigurationError(
+        `${k.type} CryptoKey is expected to be of type ECDSA or ECDH, not [${k.algorithm?.name}]`
+      );
+    }
   }
 
   if (privateKey.type !== KeyType.Private) {
-    throw new ConfigurationError('Expected input of privateKey to be a CryptoKey of type private');
+    throw new ConfigurationError(
+      `Expected input of privateKey to be a CryptoKey of type private, not [${privateKey.type}]`
+    );
   }
 
   if (publicKey.type !== KeyType.Public) {
-    throw new ConfigurationError('Expected input of publicKey to be a CryptoKey of type public');
+    throw new ConfigurationError(
+      `Expected input of publicKey to be a CryptoKey of type public, not [${publicKey.type}]`
+    );
   }
 
   const {
