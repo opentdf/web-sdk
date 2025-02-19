@@ -268,7 +268,7 @@ jobs:
       - run: echo "- [Client Library](https://github.com/opentdf/web-sdk/pkgs/npm/client)">>$GITHUB_STEP_SUMMARY
       - run: echo "- [Command Line Tool](https://github.com/opentdf/web-sdk/pkgs/npm/cli)">>$GITHUB_STEP_SUMMARY
       - name: Publish documentation to gh-pages
-        uses: JamesIves/github-pages-deploy-action@v4.6.0
+        uses: JamesIves/github-pages-deploy-action@v4.7.2
         with:
           branch: gh-pages
           folder: lib/dist/docs
