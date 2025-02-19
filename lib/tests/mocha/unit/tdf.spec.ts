@@ -5,6 +5,7 @@ import { KeyAccessObject } from '../../../tdf3/src/models/key-access.js';
 import { PolicyBody, type Policy } from '../../../tdf3/src/models/policy.js';
 import { OriginAllowList } from '../../../src/access.js';
 import { ConfigurationError, InvalidFileError, UnsafeUrlError } from '../../../src/errors.js';
+import { getMocks } from '../../mocks/index.js';
 
 const sampleCert = `
 -----BEGIN CERTIFICATE-----
@@ -42,9 +43,11 @@ HJg=
 -----END CERTIFICATE-----
 `.trim();
 
+const { kasECCert } = getMocks();
+
 describe('TDF', () => {
   it('should return key', async () => {
-    const pem = await TDF.extractPemFromKeyString(sampleCert);
+    const pem = await TDF.extractPemFromKeyString(sampleCert, 'rsa:2048');
     expect(pem).to.include('-----BEGIN PUBLIC KEY-----');
     expect(pem).to.include('-----END PUBLIC KEY-----');
   });
@@ -53,8 +56,14 @@ describe('TDF', () => {
     const sampleKey = sampleCert
       .replace('BEGIN CERTIFICATE', 'BEGIN PUBLIC KEY')
       .replace('END CERTIFICATE', 'END PUBLIC KEY');
-    const pem = await TDF.extractPemFromKeyString(sampleKey);
+    const pem = await TDF.extractPemFromKeyString(sampleKey, 'rsa:2048');
     expect(pem).to.equal(sampleKey);
+  });
+
+  it('should return ec pem', async () => {
+    const pem = await TDF.extractPemFromKeyString(kasECCert, 'ec:secp256r1');
+    expect(pem).to.include('-----BEGIN PUBLIC KEY-----');
+    expect(pem).to.include('-----END PUBLIC KEY-----');
   });
 });
 

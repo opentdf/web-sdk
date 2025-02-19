@@ -7,7 +7,7 @@ import {
 import { base64 } from '../../../src/encodings/index.js';
 import {
   buildKeyAccess,
-  EncryptConfiguration,
+  type EncryptConfiguration,
   fetchKasPublicKey,
   loadTDFStream,
   validatePolicyObject,
@@ -22,13 +22,13 @@ import { type AuthProvider, HttpRequest, withHeaders } from '../../../src/auth/a
 import { pemToCryptoPublicKey, rstrip, validateSecureUrl } from '../../../src/utils.js';
 
 import {
-  EncryptParams,
-  DecryptParams,
+  type EncryptParams,
+  type DecryptParams,
   type Scope,
-  DecryptStreamMiddleware,
-  EncryptKeyMiddleware,
-  EncryptStreamMiddleware,
-  SplitStep,
+  type DecryptStreamMiddleware,
+  type EncryptKeyMiddleware,
+  type EncryptStreamMiddleware,
+  type SplitStep,
 } from './builders.js';
 import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 
@@ -38,13 +38,22 @@ import {
   type DecryptSource,
   EncryptParamsBuilder,
 } from './builders.js';
-import { KasPublicKeyInfo, OriginAllowList } from '../../../src/access.js';
+import {
+  type KasPublicKeyInfo,
+  keyAlgorithmToPublicKeyAlgorithm,
+  OriginAllowList,
+} from '../../../src/access.js';
 import { ConfigurationError } from '../../../src/errors.js';
 import { Binary } from '../binary.js';
 import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
 import { toCryptoKeyPair } from '../crypto/crypto-utils.js';
 import * as defaultCryptoService from '../crypto/index.js';
-import { type AttributeObject, type Policy, SplitKey } from '../models/index.js';
+import {
+  type AttributeObject,
+  type KeyAccessType,
+  type Policy,
+  SplitKey,
+} from '../models/index.js';
 import { plan } from '../../../src/policy/granter.js';
 import { attributeFQNsAsValues } from '../../../src/policy/api.js';
 import { type Value } from '../../../src/policy/attributes.js';
@@ -56,6 +65,23 @@ const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
 const defaultClientConfig = { oidcOrigin: '', cryptoService: defaultCryptoService };
 
 const getFirstTwoBytes = async (chunker: Chunker) => new TextDecoder().decode(await chunker(0, 2));
+
+// Convert a PEM string to a CryptoKey
+export const resolveKasInfo = async (
+  pem: string,
+  uri: string,
+  kid?: string
+): Promise<KasPublicKeyInfo> => {
+  const k: CryptoKey = await pemToCryptoPublicKey(pem);
+  const algorithm = keyAlgorithmToPublicKeyAlgorithm(k.algorithm);
+  return {
+    key: Promise.resolve(k),
+    publicKey: pem,
+    url: uri,
+    algorithm,
+    kid: kid,
+  };
+};
 
 const makeChunkable = async (source: DecryptSource) => {
   if (!source) {
@@ -213,7 +239,7 @@ export class Client {
    */
   readonly allowedKases: OriginAllowList;
 
-  readonly kasKeys: Record<string, Promise<KasPublicKeyInfo>> = {};
+  readonly kasKeys: Record<string, Promise<KasPublicKeyInfo>[]> = {};
 
   readonly easEndpoint?: string;
 
@@ -319,12 +345,9 @@ export class Client {
       dpopKeys: clientConfig.dpopKeys,
     });
     if (clientConfig.kasPublicKey) {
-      this.kasKeys[this.kasEndpoint] = Promise.resolve({
-        url: this.kasEndpoint,
-        algorithm: 'rsa:2048',
-        key: pemToCryptoPublicKey(clientConfig.kasPublicKey),
-        publicKey: clientConfig.kasPublicKey,
-      });
+      this.kasKeys[this.kasEndpoint] = [
+        resolveKasInfo(clientConfig.kasPublicKey, this.kasEndpoint),
+      ];
     }
   }
 
@@ -358,6 +381,7 @@ export class Client {
       windowSize = DEFAULT_SEGMENT_SIZE,
       keyMiddleware = defaultKeyMiddleware,
       streamMiddleware = async (stream: DecoratedReadableStream) => stream,
+      wrappingKeyAlgorithm = 'rsa:2048',
     } = opts;
     const scope = opts.scope ?? { attributes: [], dissem: [] };
 
@@ -403,18 +427,9 @@ export class Client {
       splitPlan = detailedPlan.map((kat) => {
         const { kas, sid } = kat;
         if (kas?.publicKey?.cached?.keys && !(kas.uri in this.kasKeys)) {
-          const keys = kas.publicKey.cached.keys.filter(
-            ({ alg }) => alg == 'KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048'
-          );
+          const keys = kas.publicKey.cached.keys;
           if (keys?.length) {
-            const key = keys[0];
-            this.kasKeys[kas.uri] = Promise.resolve({
-              key: pemToCryptoPublicKey(key.pem),
-              publicKey: key.pem,
-              url: kas.uri,
-              algorithm: 'rsa:2048',
-              kid: key.kid,
-            });
+            this.kasKeys[kas.uri] = keys.map((key) => resolveKasInfo(key.pem, kas.uri, key.kid));
           }
         }
         return { kas: kas.uri, sid };
@@ -435,11 +450,28 @@ export class Client {
     encryptionInformation.keyAccess = await Promise.all(
       splits.map(async ({ kas, sid }) => {
         if (!(kas in this.kasKeys)) {
-          this.kasKeys[kas] = fetchKasPublicKey(kas);
+          this.kasKeys[kas] = [fetchKasPublicKey(kas, wrappingKeyAlgorithm)];
         }
-        const kasPublicKey = await this.kasKeys[kas];
+        const kasPublicKey = await Promise.any(this.kasKeys[kas]);
+        if (kasPublicKey.algorithm !== wrappingKeyAlgorithm) {
+          console.warn(
+            `Mismatched wrapping key algorithm: [${kasPublicKey.algorithm}] is not requested type, [${wrappingKeyAlgorithm}]`
+          );
+        }
+        let type: KeyAccessType;
+        switch (kasPublicKey.algorithm) {
+          case 'rsa:2048':
+            type = 'wrapped';
+            break;
+          case 'ec:secp256r1':
+            type = 'ec-wrapped';
+            break;
+          default:
+            throw new ConfigurationError(`Unsupported algorithm ${kasPublicKey.algorithm}`);
+        }
         return buildKeyAccess({
-          type: 'wrapped',
+          alg: kasPublicKey.algorithm,
+          type,
           url: kasPublicKey.url,
           kid: kasPublicKey.kid,
           publicKey: kasPublicKey.publicKey,
@@ -490,6 +522,7 @@ export class Client {
     assertionVerificationKeys,
     noVerifyAssertions,
     concurrencyLimit = 1,
+    wrappingKeyAlgorithm,
   }: DecryptParams): Promise<DecoratedReadableStream> {
     const dpopKeys = await this.dpopKeys;
     if (!this.authProvider) {
@@ -515,6 +548,7 @@ export class Client {
         progressHandler: this.clientConfig.progressHandler,
         assertionVerificationKeys,
         noVerifyAssertions,
+        wrappingKeyAlgorithm,
       })
     );
   }
