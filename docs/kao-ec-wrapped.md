@@ -1,12 +1,14 @@
-# EC Encryption for DEK in ECWrapped KAO
+# How we use EC Encryption to encapsulate the DEK
 
 ## Overview
 
-In our system,
-we use Elliptic Curve (EC) encryption to securely encode the Data Encryption Key (DEK) within ECWrapped Key Access Objects (KAO).
+Our system uses hybrid Elliptic Curve (EC) encryption to encapsulate splits or shares of the Data Encryption Key (DEK).
+We place each share in a Key Access Object (KAO), which includes metadata binding the fragment to a policy,
+how the fragment can be used to reconstruct the DEK,
+and information about how the fragment is encapsulated, such as the KAS URL.
 This document explains the process and the underlying mechanisms involved.
 
-## Key Components
+## Terms
 
 1. **Elliptic Curve Cryptography (ECC)**:
 A public key cryptography approach based on the algebraic structure of elliptic curves over finite fields.
@@ -23,8 +25,8 @@ A process to derive a shared secret between two parties using their private and 
 
 ### 1. Initialization
 
-When an ECWrapped KAO is created,
-an ephemeral key pair is generated using the P-256 curve:
+When creating an ECWrapped KAO,
+we generate an ephemeral key pair using the P-256 curve:
 
 ```typescript
 const ephemera = crypto.subtle.generateKey(
@@ -40,7 +42,7 @@ const ephemera = crypto.subtle.generateKey(
 ### 2. Key Agreement
 
 To securely transmit the DEK,
-a key agreement is performed between the ephemeral private key and the recipient's public key.
+we perform a key agreement between the ephemeral private key and the recipient's public key.
 This derives a shared secret (KEK - Key Encryption Key):
 
 ```typescript
@@ -80,8 +82,8 @@ const kek = await crypto.subtle.deriveKey(
 
 ### 3. Encryption
 
-The DEK is then encrypted using the derived KEK with AES-GCM algorithm.
-A 12-byte initialization vector (IV) is also generated for this encryption.
+We then encrypt the DEK using the derived KEK with the AES-GCM algorithm.
+We also generate a 12-byte initialization vector (IV) for this encryption.
 
 ```typescript
 const iv = generateRandomNumber(12);
@@ -93,7 +95,7 @@ entityWrappedKey.set(new Uint8Array(cek), iv.length);
 
 ### 4. Storing in KAO
 
-The encrypted DEK (entityWrappedKey) along with other metadata is stored in the KAO:
+We store the encrypted DEK (entityWrappedKey) along with other metadata in the KAO:
 
 ```typescript
 const ephemeralPublicKeyPEM = await cryptoPublicToPem(ek.publicKey);
@@ -114,11 +116,12 @@ const kao: KeyAccessObject = {
 
 ### 5. Decrypting Server Responses
 
-When the server responds to the KAS rewrap requests,
-the response is decrypted using key agreement and ECDH.
+Rewrap requests can indicate which algorithm they wish to use for the response
+by the  the server responds to the KAS rewrap requests,
+we decrypt the response using key agreement and ECDH.
 The `unwrapKey` method in `tdf.ts` handles this process.
 
-The server's ephemeral public key is used to derive a shared secret (KEK) with the client's ephemeral private key:
+We use the server's ephemeral public key to derive a shared secret (KEK) with the client's ephemeral private key:
 
 ```typescript
 const serverEphemeralKey: CryptoKey = await pemPublicToCrypto(sessionPublicKey);
@@ -129,7 +132,7 @@ const kek = await keyAgreement(ekr.privateKey, serverEphemeralKey, {
 });
 ```
 
-The encrypted DEK is then decrypted using the derived KEK and the initialization vector (IV) from the response:
+We then decrypt the encrypted DEK using the derived KEK and the initialization vector (IV) from the response:
 
 ```typescript
 const wrappedKeyAndNonce = base64.decodeArrayBuffer(entityWrappedKey);
