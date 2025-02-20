@@ -76,7 +76,7 @@
     "dpop": "^1.4.1",
     "jose": "^5.10.0",
     "json-canonicalize": "^1.0.6",
-    "uuid": "~11.0.5"
+    "uuid": "~11.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.20.0",
