@@ -34,14 +34,3 @@ export enum KeyType {
   Private = 'private',
   Public = 'public',
 }
-
-export enum KeyUsageType {
-  Encrypt = 'encrypt',
-  Decrypt = 'decrypt',
-  DeriveBits = 'deriveBits',
-  DeriveKey = 'deriveKey',
-  Verify = 'verify',
-  Sign = 'sign',
-  UnwrapKey = 'unwrapKey',
-  WrapKey = 'wrapKey',
-}

@@ -27,13 +27,13 @@ When an ECWrapped KAO is created,
 an ephemeral key pair is generated using the P-256 curve:
 
 ```typescript
-this.ephemeralKeyPair = crypto.subtle.generateKey(
+const ephemera = crypto.subtle.generateKey(
   {
     name: 'ECDH',
     namedCurve: 'P-256',
   },
-  false,
-  ['deriveBits', 'deriveKey']
+  /* extractable: */ false,
+  /* keyUsages: */ ['deriveBits', 'deriveKey']
 );
 ```
 
@@ -44,16 +44,44 @@ a key agreement is performed between the ephemeral private key and the recipient
 This derives a shared secret (KEK - Key Encryption Key):
 
 ```typescript
-const kek = await keyAgreement(ek.privateKey, clientPublicKey, {
-  hkdfSalt: new TextEncoder().encode('salt'),
-  hkdfHash: 'SHA-256',
-});
+const kasPublicKey: CryptoKey = /* Fetch or otherwise load known KAS public key value */;
+const sharedSecret = await crypto.subtle.deriveBits(
+    {
+        name: 'ECDH',
+        public: kasPublicKey,
+    },
+    ephemera.privateKey,
+    256
+);
+const ikm = await crypto.subtle.importKey(
+    'raw',
+    sharedSecret,
+    {
+        name: 'HKDF',
+    },
+    false,
+    ['deriveKey']
+);
+const kek = await crypto.subtle.deriveKey(
+    {
+        name: 'HKDF',
+        hash: 'SHA-256',
+        salt: new TextEncoder().encode('salt'),
+    },
+    ikm,
+    {
+        name: 'AES-GCM',
+        length: 256,
+    },
+    false,
+    ['encrypt', 'decrypt']
+);
 ```
 
 ### 3. Encryption
 
 The DEK is then encrypted using the derived KEK with AES-GCM algorithm.
-An initialization vector (IV) is also generated for this encryption:
+A 12-byte initialization vector (IV) is also generated for this encryption.
 
 ```typescript
 const iv = generateRandomNumber(12);
@@ -74,14 +102,40 @@ const kao: KeyAccessObject = {
   url: this.url,
   protocol: 'kas',
   wrappedKey: base64.encodeArrayBuffer(entityWrappedKey),
-  encryptedMetadata: base64.encode(encryptedMetadataStr),
+  encryptedMetadata: base64.encodeArrayBuffer(encryptedMetadata),
   policyBinding: {
     alg: 'HS256',
-    hash: base64.encode(policyBinding),
+    hash: base64.encodeArrayBuffer(policyBinding),
   },
   schemaVersion,
   ephemeralPublicKey: ephemeralPublicKeyPEM,
 };
+```
+
+### 5. Decrypting Server Responses
+
+When the server responds to the KAS rewrap requests,
+the response is decrypted using key agreement and ECDH.
+The `unwrapKey` method in `tdf.ts` handles this process.
+
+The server's ephemeral public key is used to derive a shared secret (KEK) with the client's ephemeral private key:
+
+```typescript
+const serverEphemeralKey: CryptoKey = await pemPublicToCrypto(sessionPublicKey);
+const ekr = ephemeralEncryptionKeysRaw as CryptoKeyPair;
+const kek = await keyAgreement(ekr.privateKey, serverEphemeralKey, {
+  hkdfSalt: new TextEncoder().encode('salt'),
+  hkdfHash: 'SHA-256',
+});
+```
+
+The encrypted DEK is then decrypted using the derived KEK and the initialization vector (IV) from the response:
+
+```typescript
+const wrappedKeyAndNonce = base64.decodeArrayBuffer(entityWrappedKey);
+const iv = wrappedKeyAndNonce.slice(0, 12);
+const wrappedKey = wrappedKeyAndNonce.slice(12);
+const dek = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, kek, wrappedKey);
 ```
 
 ## Conclusion

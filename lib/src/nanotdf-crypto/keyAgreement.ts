@@ -92,8 +92,6 @@ export async function keyAgreement(
   }
 
   const {
-    bitLength = 256,
-    hkdfHash = HashType.Sha256,
     hkdfInfo = new Uint8Array(),
     hkdfSalt = new Uint8Array(),
     keyCipher = CipherType.AesGcm,
@@ -107,33 +105,33 @@ export async function keyAgreement(
     ],
   } = options;
 
-  const derivedBits = await crypto.subtle.deriveBits(
+  const sharedSecret = await crypto.subtle.deriveBits(
     {
       name: AlgorithmName.ECDH,
       public: publicKey,
     },
     privateKey,
-    bitLength
+    256
   );
 
-  const derivedKey = await crypto.subtle.importKey(
+  const ikm = await crypto.subtle.importKey(
     KeyFormat.Raw,
-    derivedBits,
+    sharedSecret,
     {
       name: AlgorithmName.HKDF,
     },
     false,
-    [KEY_USAGE_DERIVE_KEY]
+    ['deriveKey']
   );
 
   const symmetricKey = await crypto.subtle.deriveKey(
     {
-      name: AlgorithmName.HKDF,
-      hash: hkdfHash,
+      name: 'HKDF',
+      hash: 'SHA-256',
       salt: hkdfSalt,
       info: hkdfInfo,
     },
-    derivedKey,
+    ikm,
     {
       name: keyCipher,
       length: keyLength,
