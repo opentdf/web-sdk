@@ -1,1 +1,5 @@
 *  @opentdf/developers
+
+# @opentdf/security added on 2025-02-04 package.json,package-lock.json
+**/package.json @opentdf/developers @opentdf/security
+**/package-lock.json @opentdf/developers @opentdf/security
