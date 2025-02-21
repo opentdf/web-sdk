@@ -674,12 +674,15 @@ async function unwrapKey({
     const url = `${keySplitInfo.url}/v2/rewrap`;
     let ephemeralEncryptionKeysRaw: AnyKeyPair;
     let ephemeralEncryptionKeys: PemKeyPair;
+    let algorithm: string;
     if (wrappingKeyAlgorithm === 'ec:secp256r1') {
       ephemeralEncryptionKeysRaw = await generateKeyPair();
       ephemeralEncryptionKeys = await cryptoService.cryptoToPemPair(ephemeralEncryptionKeysRaw);
+      algorithm = 'ES256';
     } else if (wrappingKeyAlgorithm === 'rsa:2048' || !wrappingKeyAlgorithm) {
       ephemeralEncryptionKeysRaw = await cryptoService.generateKeyPair();
       ephemeralEncryptionKeys = await cryptoService.cryptoToPemPair(ephemeralEncryptionKeysRaw);
+      algorithm = 'RS256';
     } else {
       throw new ConfigurationError(`Unsupported wrapping key algorithm [${wrappingKeyAlgorithm}]`);
     }
@@ -687,7 +690,7 @@ async function unwrapKey({
     const clientPublicKey = ephemeralEncryptionKeys.publicKey;
 
     const requestBodyStr = JSON.stringify({
-      algorithm: 'RS256',
+      algorithm,
       keyAccess: keySplitInfo,
       policy: manifest.encryptionInformation.policy,
       clientPublicKey,

@@ -39,11 +39,11 @@ export class ECWrapped {
     encryptedMetadataStr: string
   ): Promise<KeyAccessObject> {
     const policyStr = JSON.stringify(policy);
-    const [ek, clientPublicKey] = await Promise.all([
+    const [ek, kasPublic] = await Promise.all([
       this.ephemeralKeyPair,
       pemPublicToCrypto(this.publicKey),
     ]);
-    const kek = await keyAgreement(ek.privateKey, clientPublicKey, {
+    const kek = await keyAgreement(ek.privateKey, kasPublic, {
       hkdfSalt: new TextEncoder().encode('salt'),
       hkdfHash: 'SHA-256',
     });

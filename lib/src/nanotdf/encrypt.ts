@@ -8,7 +8,7 @@ import getHkdfSalt from './helpers/getHkdfSalt.js';
 import { getBitLength as authTagLengthForCipher } from './models/Ciphers.js';
 import { TypedArray } from '../tdf/TypedArray.js';
 import { GMAC_BINDING_LEN } from './constants.js';
-import { AlgorithmName, KeyFormat, KeyUsageType } from './../nanotdf-crypto/enums.js';
+import { AlgorithmName, KeyFormat } from './../nanotdf-crypto/enums.js';
 
 import {
   encrypt as cryptoEncrypt,
@@ -190,7 +190,7 @@ async function convertECDHToECDSA(key: CryptoKey, curveName: string): Promise<Cr
       namedCurve: curveName,
     },
     true,
-    [KeyUsageType.Sign]
+    ['sign']
   );
 
   return ecdsaPrivateKey;
