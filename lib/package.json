@@ -74,7 +74,7 @@
   "dependencies": {
     "buffer-crc32": "^1.0.0",
     "dpop": "^1.4.1",
-    "jose": "^5.10.0",
+    "jose": "^6.0.6",
     "json-canonicalize": "^1.0.6",
     "uuid": "~11.1.0"
   },
