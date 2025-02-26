@@ -29,7 +29,6 @@
 
 import * as base64 from '../encodings/base64.js';
 import { importX509 } from 'jose';
-import { type KeyObject } from 'crypto';
 import { encodeArrayBuffer as hexEncodeArrayBuffer } from '../encodings/hex.js';
 import { ConfigurationError, TdfError } from '../errors.js';
 
@@ -181,19 +180,6 @@ function toJwsAlg(hex: string) {
     return 'RSA-OAEP-512';
   }
 }
-function toSubtleAlg(hex: string) {
-  const name = guessAlgorithmName(hex);
-  if (name === ECDH || name === ECDSA) {
-    return {
-      name,
-      namedCurve: guessCurveName(hex),
-    };
-  }
-  return {
-    name,
-    hash: { name: SHA_512 },
-  };
-}
 
 export async function pemCertToCrypto(
   pem: string,
@@ -207,26 +193,10 @@ export async function pemCertToCrypto(
   const arrayBuffer = base64.decodeArrayBuffer(b64);
   const hex = hexEncodeArrayBuffer(arrayBuffer);
   const jwsAlg = toJwsAlg(hex);
-  const keylike = await importX509(pem, jwsAlg, { extractable: options.isExtractable });
-  const { type } = keylike;
+  const key = await importX509(pem, jwsAlg, { extractable: options.isExtractable });
+  const { type } = key;
   if (type !== 'public') {
     throw new ConfigurationError('unpublic');
   }
-  // FIXME Jose workaround for node clients.
-  // jose returns a crypto key on node, but we expect a subtle-crypto key
-  // The below should convert it, I hope, by exporting to a JWK and back.
-  if ((keylike as KeyObject)?.export) {
-    const keyObject = keylike as KeyObject;
-    const subtleAlg = toSubtleAlg(hex);
-    const keyUsages = guessKeyUsages(subtleAlg.name, options.usages);
-    const subtleKey = await crypto.subtle.importKey(
-      'jwk',
-      keyObject.export({ format: 'jwk' }),
-      subtleAlg,
-      options.isExtractable,
-      keyUsages
-    );
-    return subtleKey;
-  }
-  return keylike as CryptoKey;
+  return key;
 }

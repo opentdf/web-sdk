@@ -1,4 +1,4 @@
-import { type JWTHeaderParameters, type JWTPayload, type KeyLike, SignJWT } from 'jose';
+import { type JWTHeaderParameters, type JWTPayload, SignJWT } from 'jose';
 
 export type HttpMethod =
   | 'GET'
@@ -60,7 +60,7 @@ function getTimestampInSeconds() {
  */
 export async function reqSignature(
   toSign: unknown,
-  privateKey: KeyLike,
+  privateKey: CryptoKey,
   jwtProtectedHeader: JWTHeaderParameters = { alg: 'RS256' }
 ) {
   const now = getTimestampInSeconds();

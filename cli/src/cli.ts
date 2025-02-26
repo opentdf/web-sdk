@@ -22,7 +22,7 @@ import { webcrypto } from 'crypto';
 import * as assertions from '@opentdf/sdk/assertions';
 import { attributeFQNsAsValues } from '@opentdf/sdk/nano';
 import { base64 } from '@opentdf/sdk/encodings';
-import { importPKCS8, importSPKI, KeyLike } from 'jose'; // for RS256
+import { type CryptoKey, importPKCS8, importSPKI } from 'jose'; // for RS256
 
 type AuthToProcess = {
   auth?: string;
@@ -143,20 +143,20 @@ async function parseAssertionVerificationKeys(
     }
   }
   for (const assertionName in u.Keys) {
-    const assertionKey = u.Keys[assertionName];
+    const assertionKey: assertions.AssertionKey = u.Keys[assertionName];
     // Ensure each entry has the required 'key' and 'alg' fields
     if (typeof assertionKey !== 'object' || assertionKey === null) {
       throw new CLIError('CRITICAL', `Invalid assertion for ${assertionName}: Must be an object`);
     }
 
-    if (typeof assertionKey.key !== 'string' || typeof assertionKey.alg !== 'string') {
+    if (typeof assertionKey.alg !== 'string') {
       throw new CLIError(
         'CRITICAL',
         `Invalid assertion for ${assertionName}: Missing or invalid 'key' or 'alg'`
       );
     }
     try {
-      u.Keys[assertionName].key = await correctAssertionKeys(assertionKey.alg, assertionKey.key);
+      u.Keys[assertionName].key = await correctAssertionKeys(assertionKey);
     } catch (err) {
       throw new CLIError('CRITICAL', `Issue converting assertion key from string: ${err.message}`);
     }
@@ -182,10 +182,10 @@ async function parseReadOptions(argv: Partial<mainArgs>): Promise<ReadOptions> {
   return r;
 }
 
-async function correctAssertionKeys(
-  alg: string,
-  key: KeyLike | Uint8Array
-): Promise<KeyLike | Uint8Array> {
+async function correctAssertionKeys({
+  alg,
+  key,
+}: assertions.AssertionKey): Promise<CryptoKey | Uint8Array> {
   if (alg === 'HS256') {
     // Convert key string to Uint8Array
     if (typeof key !== 'string') {
@@ -240,17 +240,17 @@ async function parseAssertionConfig(s: string): Promise<assertions.AssertionConf
     if (!assertions.isAssertionConfig(assertion)) {
       throw new CLIError('CRITICAL', `invalid assertion config ${JSON.stringify(assertion)}`);
     }
-    if (assertion.signingKey) {
-      const { alg, key } = assertion.signingKey;
-      try {
-        assertion.signingKey.key = await correctAssertionKeys(alg, key);
-      } catch (err) {
-        throw new CLIError(
-          'CRITICAL',
-          `Issue converting assertion key from string: ${err.message}`,
-          err
-        );
-      }
+    if (!assertion.signingKey) {
+      continue;
+    }
+    try {
+      assertion.signingKey.key = await correctAssertionKeys(assertion.signingKey);
+    } catch (err) {
+      throw new CLIError(
+        'CRITICAL',
+        `Issue converting assertion key from string: ${err.message}`,
+        err
+      );
     }
   }
   return a;

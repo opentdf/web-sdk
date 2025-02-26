@@ -74,7 +74,7 @@ function encodeFallback(input: string, urlSafe?: boolean): string {
  * Copyright (c) 2012 Niklas von Hertzen
  * MIT License
  */
-function encodeArrayBuffer(arrayBuffer: ArrayBuffer, urlSafe?: boolean): string {
+function encodeArrayBuffer(arrayBuffer: ArrayBufferLike, urlSafe?: boolean): string {
   const bytes = new Uint8Array(arrayBuffer);
   const len = bytes.length;
   const chars = urlSafe ? charsUrlSafe : charsStandard;
