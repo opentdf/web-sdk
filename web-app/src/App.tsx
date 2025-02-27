@@ -10,10 +10,7 @@ import { c } from './config.js';
 async function toFile(
   stream: ReadableStream<Uint8Array>,
   filepath = 'download.tdf',
-  options?: {
-    encoding?: BufferEncoding;
-    signal?: AbortSignal;
-  }
+  options?: StreamPipeOptions
 ): Promise<void> {
   const fileStream = streamsaver.createWriteStream(filepath, {
     writableStrategy: { highWaterMark: 1 },

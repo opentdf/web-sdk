@@ -10,6 +10,7 @@
     "license-check": "license-checker --production --onlyAllow 'Apache-2.0; BSD; CC-BY-4.0; ISC; MIT'",
     "lint": "eslint \"src/**/*.{js,jsx,ts,tsx}\"",
     "lint:fix": "eslint --fix \"src/**/*.{js,jsx,ts,tsx}\"",
+    "prepack": "npm run build",
     "preview": "vite preview",
     "test": "vite build && vitest",
     "test:ui": "vite build && vitest --ui"
