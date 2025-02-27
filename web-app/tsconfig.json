@@ -12,7 +12,7 @@
       "ESNext"
     ],
     "module": "ESNext",
-    "moduleResolution": "node16",
+    "moduleResolution": "bundler",
     "noEmit": true,
     "noImplicitOverride": true,
     "resolveJsonModule": true,

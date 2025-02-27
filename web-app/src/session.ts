@@ -146,7 +146,7 @@ const extractAuthorizationResponse = (url: string): AuthorizationResponse | null
 function createCodeVerifier(): string {
   const r = new Uint8Array(32);
   crypto.getRandomValues(r);
-  const verifier = base64.encodeArrayBuffer(r, true);
+  const verifier = base64.encodeArrayBuffer(r.buffer, true);
   return verifier;
 }
 
