@@ -1,6 +1,6 @@
 {
   "name": "web-app",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "license": "BSD-3-Clause-Clear",
   "type": "module",
   "scripts": {
@@ -16,7 +16,7 @@
     "test:ui": "vite build && vitest --ui"
   },
   "dependencies": {
-    "@opentdf/sdk": "file:../lib/opentdf-sdk-0.2.0.tgz",
+    "@opentdf/sdk": "file:../lib/opentdf-sdk-0.3.0.tgz",
     "clsx": "^2.1.1",
     "native-file-system-adapter": "^3.0.1",
     "react": "^19.0.0",
