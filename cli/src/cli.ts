@@ -653,7 +653,6 @@ export const handleArgs = (args: string[]) => {
       .version(
         'version',
         JSON.stringify({
-          '@opentdf/ctl': process.env.npm_package_version || 'UNRELEASED',
           '@opentdf/sdk': version,
           tdfSpecVersion,
         })

@@ -1,6 +1,6 @@
 import { type AuthProvider } from './auth/providers.js';
 import { ConfigurationError, InvalidFileError } from './errors.js';
-import { NanoTDFDatasetClient } from './nanoclients.js';
+import { type EncryptOptions as NanoEncryptOptions, NanoTDFDatasetClient } from './nanoclients.js';
 export { Client as TDF3Client } from '../tdf3/src/client/index.js';
 import NanoTDF from './nanotdf/NanoTDF.js';
 import decryptNanoTDF from './nanotdf/decrypt.js';
@@ -8,11 +8,34 @@ import Client from './nanotdf/Client.js';
 import Header from './nanotdf/models/Header.js';
 import { fromSource, sourceToStream, type Source } from './seekable.js';
 import { Client as TDF3Client } from '../tdf3/src/client/index.js';
-import { AssertionConfig, AssertionVerificationKeys } from '../tdf3/src/assertions.js';
+import {
+  type Assertion,
+  AssertionConfig,
+  AssertionVerificationKeys,
+} from '../tdf3/src/assertions.js';
 import { type KasPublicKeyAlgorithm, OriginAllowList, isPublicKeyAlgorithm } from './access.js';
 import { type Manifest } from '../tdf3/src/models/manifest.js';
+import { type Payload } from '../tdf3/src/models/payload.js';
+import {
+  type Segment,
+  type SplitType,
+  type EncryptionInformation,
+} from '../tdf3/src/models/encryption-information.js';
+import { type KeyAccessObject } from '../tdf3/src/models/key-access.js';
+import { type IntegrityAlgorithm } from '../tdf3/src/tdf.js';
 
-export { type KasPublicKeyAlgorithm, isPublicKeyAlgorithm };
+export {
+  type Assertion,
+  type EncryptionInformation,
+  type IntegrityAlgorithm,
+  type KasPublicKeyAlgorithm,
+  type KeyAccessObject,
+  type Manifest,
+  type Payload,
+  type Segment,
+  type SplitType,
+  isPublicKeyAlgorithm,
+};
 
 export type Keys = {
   [keyID: string]: CryptoKey | CryptoKeyPair;
@@ -399,6 +422,7 @@ export type NanoTDFCollection = {
 
 class Collection {
   client?: NanoTDFDatasetClient;
+  encryptOptions?: NanoEncryptOptions;
 
   constructor(authProvider: AuthProvider, opts: CreateNanoTDFCollectionOptions) {
     if (opts.signers || opts.signingKeyID) {
@@ -409,6 +433,14 @@ class Collection {
     }
     if (opts.ecdsaBindingKeyID) {
       throw new ConfigurationError('custom binding key not implemented');
+    }
+    switch (opts.bindingType) {
+      case 'ecdsa':
+        this.encryptOptions = { ecdsaBinding: true };
+        break;
+      case 'gmac':
+        this.encryptOptions = { ecdsaBinding: false };
+        break;
     }
 
     this.client = new NanoTDFDatasetClient({
@@ -423,7 +455,7 @@ class Collection {
       throw new ConfigurationError('Collection is closed');
     }
     const chunker = await fromSource(source);
-    const cipherChunk = await this.client.encrypt(await chunker());
+    const cipherChunk = await this.client.encrypt(await chunker(), this.encryptOptions);
     const stream: DecoratedStream = new ReadableStream<Uint8Array>({
       start(controller) {
         controller.enqueue(new Uint8Array(cipherChunk));
