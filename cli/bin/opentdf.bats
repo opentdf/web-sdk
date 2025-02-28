@@ -23,5 +23,5 @@
   run $BATS_TEST_DIRNAME/opentdf.mjs --version
   echo "$output"
   [[ $output == *"@opentdf/sdk\":\""* ]]
-  [[ $output == *"@opentdf/ctl\":\""* ]]
+  [[ $output == *"tdfSpecVersion\":\""* ]]
 }
