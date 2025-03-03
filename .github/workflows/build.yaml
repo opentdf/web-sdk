@@ -213,6 +213,7 @@ jobs:
       - lib
     uses: opentdf/tests/.github/workflows/xtest.yml@main
     with:
+      focus-sdk: js
       js-ref: ${{ github.ref }}
 
   deliver-ghp:
