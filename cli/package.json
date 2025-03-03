@@ -33,7 +33,7 @@
     "@eslint/js": "^9.21.0",
     "@esm-bundle/chai": "4.3.4-fix.0",
     "@types/mocha": "10.0.10",
-    "@types/node": "^22.13.5",
+    "@types/node": "^22.13.8",
     "@types/readable-stream": "^4.0.18",
     "@types/sinon": "^17.0.4",
     "@types/yargs": "^17.0.33",
@@ -44,11 +44,11 @@
     "globals": "^16.0.0",
     "license-checker-rseidelsohn": "^4.4.2",
     "mocha": "^11.1.0",
-    "prettier": "^3.5.2",
+    "prettier": "^3.5.3",
     "sinon": "^19.0.2",
     "ts-node": "^10.9.2",
-    "typescript": "^5.7.3",
-    "typescript-eslint": "^8.25.0"
+    "typescript": "^5.8.2",
+    "typescript-eslint": "^8.26.0"
   },
   "dependencies": {
     "@opentdf/sdk": "file:../lib/opentdf-sdk-0.3.0.tgz",
