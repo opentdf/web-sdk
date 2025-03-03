@@ -9,19 +9,18 @@ expected_version="${1:-$lib_version}"
 
 if ! grep --fixed-strings --line-regexp --quiet "version=${expected_version}" "Makefile"; then
   if grep --quiet "^version=" "Makefile"; then
-    echo "::error file=Makefile,line=$(sed -n '/version/=' $f)::Incorrect version line, should be setting it to [${expected_version}]"
+    echo "::error file=Makefile,line=$(sed -n '/version/=' Makefile)::Incorrect version line, should be setting it to [${expected_version}]"
   else
     echo "::error file=Makefile::Makefile missing version line [version=${expected_version}]"
   fi
   exit 1
 fi
 
-f=lib/src/version.ts
-if ! grep --fixed-strings --line-regexp --quiet "export const version = '${expected_version}';" "$f"; then
-  if grep --quiet "^export const version" "$f"; then
-    echo "::error file=$f,line=$(sed -n '/export const version/=' $f)::Incorrect version line, should be setting it to [${expected_version}]"
+if ! grep --fixed-strings --line-regexp --quiet "export const version = '${expected_version}';" "lib/src/version.ts"; then
+  if grep --quiet "^export const version" "lib/src/version.ts"; then
+    echo "::error file=lib/src/version.ts,line=$(sed -n '/export const version/=' lib/src/version.ts)::Incorrect version line, should be setting it to [${expected_version}]"
   else
-    echo "::error file=$f::Missing version line [version=${expected_version}]"
+    echo "::error file=lib/src/version.ts::Missing version line [version=${expected_version}]"
   fi
   exit 1
 fi
