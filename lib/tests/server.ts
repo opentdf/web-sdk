@@ -12,7 +12,7 @@ import { Binary } from '../tdf3/index.js';
 import { type KeyAccessObject } from '../tdf3/src/models/index.js';
 import { valueFor } from './web/policy/mock-attrs.js';
 import { AttributeAndValue } from '../src/policy/attributes.js';
-import { ztdfSalt } from 'tdf3/src/crypto/salt.js';
+import { ztdfSalt } from '../tdf3/src/crypto/salt.js';
 
 const Mocks = getMocks();
 
