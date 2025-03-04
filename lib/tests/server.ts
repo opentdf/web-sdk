@@ -12,6 +12,7 @@ import { Binary } from '../tdf3/index.js';
 import { type KeyAccessObject } from '../tdf3/src/models/index.js';
 import { valueFor } from './web/policy/mock-attrs.js';
 import { AttributeAndValue } from '../src/policy/attributes.js';
+import { ztdfSalt } from 'tdf3/src/crypto/salt.js';
 
 const Mocks = getMocks();
 
@@ -185,7 +186,7 @@ const kas: RequestListener = async (req, res) => {
             ['deriveBits', 'deriveKey']
           );
           const kek = await keyAgreement(kasPrivateKey, ephemeralKey, {
-            hkdfSalt: new TextEncoder().encode('salt'),
+            hkdfSalt: await ztdfSalt,
             hkdfHash: 'SHA-256',
           });
           const iv = wk.slice(0, 12);
@@ -214,7 +215,7 @@ const kas: RequestListener = async (req, res) => {
           ['deriveBits', 'deriveKey']
         );
         const kek = await keyAgreement(sessionKeyPair.privateKey, clientPublicKey, {
-          hkdfSalt: new TextEncoder().encode('salt'),
+          hkdfSalt: await ztdfSalt,
           hkdfHash: 'SHA-256',
         });
         const iv = generateRandomNumber(12);
