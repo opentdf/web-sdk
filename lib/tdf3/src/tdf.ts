@@ -54,6 +54,7 @@ import {
 import { unsigned } from './utils/buffer-crc32.js';
 import { ZipReader, ZipWriter, keyMerge, concatUint8 } from './utils/index.js';
 import { CentralDirectory } from './utils/zip-reader.js';
+import { ztdfSalt } from './crypto/salt.js';
 
 // TODO: input validation on manifest JSON
 const DEFAULT_SEGMENT_SIZE = 1024 * 1024;
@@ -707,7 +708,7 @@ async function unwrapKey({
       const serverEphemeralKey: CryptoKey = await pemPublicToCrypto(sessionPublicKey);
       const ekr = ephemeralEncryptionKeysRaw as CryptoKeyPair;
       const kek = await keyAgreement(ekr.privateKey, serverEphemeralKey, {
-        hkdfSalt: new TextEncoder().encode('salt'),
+        hkdfSalt: await ztdfSalt,
         hkdfHash: 'SHA-256',
       });
       const wrappedKeyAndNonce = base64.decodeArrayBuffer(entityWrappedKey);
