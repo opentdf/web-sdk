@@ -5,6 +5,7 @@ import { pemPublicToCrypto } from '../../../src/nanotdf-crypto/pemPublicToCrypto
 import { cryptoPublicToPem } from '../../../src/utils.js';
 import { Binary } from '../binary.js';
 import * as cryptoService from '../crypto/index.js';
+import { ztdfSalt } from '../crypto/salt.js';
 import { Policy } from './policy.js';
 
 export type KeyAccessType = 'remote' | 'wrapped' | 'ec-wrapped';
@@ -44,7 +45,7 @@ export class ECWrapped {
       pemPublicToCrypto(this.publicKey),
     ]);
     const kek = await keyAgreement(ek.privateKey, clientPublicKey, {
-      hkdfSalt: new TextEncoder().encode('salt'),
+      hkdfSalt: await ztdfSalt,
       hkdfHash: 'SHA-256',
     });
     const iv = generateRandomNumber(12);
