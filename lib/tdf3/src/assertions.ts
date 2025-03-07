@@ -1,5 +1,5 @@
 import { canonicalizeEx } from 'json-canonicalize';
-import { type KeyLike, SignJWT, jwtVerify } from 'jose';
+import { SignJWT, jwtVerify } from 'jose';
 import { base64, hex } from '../../src/encodings/index.js';
 import { ConfigurationError, IntegrityError, InvalidFileError } from '../../src/errors.js';
 
@@ -185,7 +185,7 @@ export async function CreateAssertion(
 
 export type AssertionKey = {
   alg: AssertionKeyAlg;
-  key: KeyLike | Uint8Array;
+  key: CryptoKey | Uint8Array;
 };
 
 // AssertionConfig is a shadow of Assertion with the addition of the signing key.
