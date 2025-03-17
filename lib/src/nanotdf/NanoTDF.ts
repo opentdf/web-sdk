@@ -1,4 +1,3 @@
-import { TypedArray } from '../tdf/TypedArray.js';
 import { base64 } from '../encodings/index.js';
 import Header from './models/Header.js';
 import Payload from './models/Payload.js';
@@ -22,7 +21,7 @@ export default class NanoTDF {
   public signature?: Signature;
 
   static from(
-    content: TypedArray | ArrayBuffer | string,
+    content: ArrayBufferLike | string,
     encoding?: EncodingEnum,
     legacyTDF = false
   ): NanoTDF {

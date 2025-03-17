@@ -1,4 +1,3 @@
-import { type TypedArray } from '../tdf/TypedArray.js';
 import * as base64 from '../encodings/base64.js';
 import { generateKeyPair, keyAgreement } from '../nanotdf-crypto/index.js';
 import getHkdfSalt from './helpers/getHkdfSalt.js';
@@ -210,9 +209,9 @@ export default class Client {
    * @param clientVersion version of the client, as SemVer
    */
   async rewrapKey(
-    nanoTdfHeader: TypedArray | ArrayBuffer,
+    nanoTdfHeader: ArrayBufferLike,
     kasRewrapUrl: string,
-    magicNumberVersion: TypedArray | ArrayBuffer,
+    magicNumberVersion: ArrayBufferLike,
     clientVersion: string
   ): Promise<CryptoKey> {
     if (!this.allowedKases.allows(kasRewrapUrl)) {

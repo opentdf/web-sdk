@@ -3,7 +3,6 @@ import Header from './models/Header.js';
 import DefaultParams from './models/DefaultParams.js';
 import Payload from './models/Payload.js';
 import { getBitLength as authTagLengthForCipher } from './models/Ciphers.js';
-import { TypedArray } from '../tdf/TypedArray.js';
 import encrypt from '../nanotdf-crypto/encrypt.js';
 
 /**
@@ -18,7 +17,7 @@ export default async function encryptDataset(
   symmetricKey: CryptoKey,
   header: Header,
   iv: Uint8Array,
-  data: string | TypedArray | ArrayBuffer
+  data: string | ArrayBufferLike
 ): Promise<ArrayBuffer> {
   // Auth tag length for policy and payload
   const authTagLengthInBytes = authTagLengthForCipher(DefaultParams.symmetricCipher) / 8;

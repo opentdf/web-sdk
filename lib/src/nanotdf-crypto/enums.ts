@@ -18,7 +18,6 @@ export enum CipherType {
 }
 
 export enum HashType {
-  Sha1 = 'SHA-1',
   Sha256 = 'SHA-256',
   Sha384 = 'SHA-384',
   Sha512 = 'SHA-512',

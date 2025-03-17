@@ -1,8 +1,7 @@
-import { TypedArray } from '../tdf/TypedArray.js';
 
 export default function digest(
   hashType: AlgorithmIdentifier,
-  data: TypedArray | ArrayBuffer
+  data: ArrayBufferLike
 ): Promise<ArrayBuffer> {
   return crypto.subtle.digest(hashType, data);
 }
