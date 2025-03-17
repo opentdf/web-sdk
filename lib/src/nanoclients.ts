@@ -95,10 +95,7 @@ export class NanoTDFClient extends Client {
    * @returns A promise that resolves to the encrypted data as an ArrayBuffer.
    * @throws If the initialization vector is not a number.
    */
-  async encrypt(
-    data: string | ArrayBufferLike,
-    options?: EncryptOptions
-  ): Promise<ArrayBuffer> {
+  async encrypt(data: string | ArrayBufferLike, options?: EncryptOptions): Promise<ArrayBuffer> {
     // For encrypt always generate the client ephemeralKeyPair
     const ephemeralKeyPair = await this.ephemeralKeyPair;
     const initializationVector = this.iv;
@@ -233,10 +230,7 @@ export class NanoTDFDatasetClient extends Client {
    *
    * @param data to decrypt
    */
-  async encrypt(
-    data: string | ArrayBufferLike,
-    options?: EncryptOptions
-  ): Promise<ArrayBuffer> {
+  async encrypt(data: string | ArrayBufferLike, options?: EncryptOptions): Promise<ArrayBuffer> {
     // Intial encrypt
     if (this.keyIterationCount == 0) {
       const mergedOptions: EncryptOptions = { ...defaultOptions, ...options };

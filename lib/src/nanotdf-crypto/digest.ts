@@ -1,4 +1,3 @@
-
 export default function digest(
   hashType: AlgorithmIdentifier,
   data: ArrayBufferLike
