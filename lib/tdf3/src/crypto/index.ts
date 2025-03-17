@@ -39,7 +39,7 @@ export function rsaOaepSha1(
   return {
     name: 'RSA-OAEP',
     hash: {
-      name: 'SHA-256',
+      name: 'SHA-1',
     },
     modulusLength,
     publicExponent: new Uint8Array([0x01, 0x00, 0x01]), // 24 bit representation of 65537
@@ -130,14 +130,9 @@ export async function encryptWithPublicKey(payload: Binary, publicKey: string): 
   publicKey = removePemFormatting(publicKey);
 
   const keyBuffer = base64Decode(publicKey);
-  const cryptoKey =
-      await crypto.subtle.importKey(
-        'spki',
-        keyBuffer,
-        algoDomString,
-        false,
-        ['encrypt'],
-      );
+  const cryptoKey = await crypto.subtle.importKey('spki', keyBuffer, algoDomString, false, [
+    'encrypt',
+  ]);
   const result = await crypto.subtle.encrypt(
     { name: 'RSA-OAEP' },
     cryptoKey,
