@@ -597,10 +597,14 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
   }
 }
 
+export type InspectedTDFOverview = {
+  manifest: Manifest;
+  zipReader: ZipReader;
+  centralDirectory: CentralDirectory[];
+};
+
 // load the TDF as a stream in memory, for further use in reading and key syncing
-export async function loadTDFStream(
-  chunker: Chunker
-): Promise<{ manifest: Manifest; zipReader: ZipReader; centralDirectory: CentralDirectory[] }> {
+export async function loadTDFStream(chunker: Chunker): Promise<InspectedTDFOverview> {
   const zipReader = new ZipReader(chunker);
   const centralDirectory = await zipReader.getCentralDirectory();
   const manifest = await zipReader.getManifest(centralDirectory, '0.manifest.json');
@@ -920,6 +924,14 @@ export async function sliceAndDecrypt({
 }
 
 export async function readStream(cfg: DecryptConfiguration) {
+  const overview = await loadTDFStream(cfg.chunker);
+  return decryptStreamFrom(cfg, overview);
+}
+
+export async function decryptStreamFrom(
+  cfg: DecryptConfiguration,
+  { manifest, zipReader, centralDirectory }: InspectedTDFOverview
+) {
   let { allowList } = cfg;
   if (!allowList) {
     if (!cfg.allowedKases) {
@@ -927,10 +939,11 @@ export async function readStream(cfg: DecryptConfiguration) {
     }
     allowList = new OriginAllowList(cfg.allowedKases);
   }
-  const { manifest, zipReader, centralDirectory } = await loadTDFStream(cfg.chunker);
+
   if (!manifest) {
     throw new InvalidFileError('Missing manifest data');
   }
+
   cfg.keyMiddleware ??= async (key) => key;
 
   const {
