@@ -91,7 +91,7 @@ _tdf3_inspect_test() {
   cat sample_inspect_out.txt
 
   [ -f sample_inspect_out.txt ]
-  grep -q 'https://attr.io/attr/a/value/1'
+  grep -q 'https://attr.io/attr/a/value/1' sample_inspect_out.txt
 
   echo "Inspect tdf3 successful!"
   rm -f "${plain}" sample-with-attrs.txt.tdf sample_inspect_out.txt
