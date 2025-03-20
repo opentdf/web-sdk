@@ -79,7 +79,7 @@ _tdf3_inspect_test() {
     --oidcEndpoint http://localhost:65432/auth/realms/opentdf \
     --auth testclient:secret \
     --output sample-with-attrs.txt.tdf \
-    --attributes 'https://attr.io/name/a/value/1,https://attr.io/name/x/value/2' \
+    --attributes 'https://attr.io/attr/a/value/1,https://attr.io/attr/x/value/2' \
     encrypt "${plain}" \
     --containerType tdf3 
 
@@ -89,7 +89,7 @@ _tdf3_inspect_test() {
     inspect sample-with-attrs.txt.tdf > sample_inspect_out.txt
 
   [ -f sample_inspect_out.txt ]
-  grep -q 'https://attr.io/name/a/value/1'
+  grep -q 'https://attr.io/attr/a/value/1'
 
   echo "Inspect tdf3 successful!"
   rm -f "${plain}" sample-with-attrs.txt.tdf sample_inspect_out.txt
