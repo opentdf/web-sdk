@@ -40,7 +40,7 @@ type LoggedAuthProvider = AuthProvider & {
 
 class InvalidAuthProvider {
   async updateClientPublicKey(): Promise<void> {}
-  withCreds(httpReq: HttpRequest): Promise<HttpRequest> {
+  withCreds(): Promise<HttpRequest> {
     throw new Error('Method not implemented.');
   }
 }
@@ -585,8 +585,8 @@ export const handleArgs = (args: string[]) => {
               const dataAttributes = await reader.attributes();
               console.log(JSON.stringify({ manifest, dataAttributes }, null, 2));
             } catch (err) {
-              console.error(err)
-              console.log(JSON.stringify({ manifest}, null, 2));
+              console.error(err);
+              console.log(JSON.stringify({ manifest }, null, 2));
             }
           } finally {
             ct.close();
