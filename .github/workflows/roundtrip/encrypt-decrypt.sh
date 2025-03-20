@@ -68,3 +68,31 @@ _tdf3_test() {
 }
 
 _tdf3_test @opentdf/ctl @opentdf/ctl
+
+_tdf3_inspect_test() {
+  counter=$((counter + 1))
+  plain="./sample-${counter}.txt"
+  echo "Hello World ${counter}" >"${plain}"
+  npx "$1" --log-level DEBUG \
+    --kasEndpoint http://localhost:65432/kas \
+    --ignoreAllowList \
+    --oidcEndpoint http://localhost:65432/auth/realms/opentdf \
+    --auth testclient:secret \
+    --output sample-with-attrs.txt.tdf \
+    --attributes 'https://attr.io/name/a/value/1,https://attr.io/name/x/value/2' \
+    encrypt "${plain}" \
+    --containerType tdf3 
+
+  [ -f sample-with-attrs.txt.tdf ]
+
+  npx "$2" --log-level DEBUG \
+    inspect sample-with-attrs.txt.tdf > sample_inspect_out.txt
+
+  [ -f sample_inspect_out.txt ]
+  jq -r '.attributes[]' sample_inspect_out.txt | grep -q 'https://attr.io/name/a/value/1'
+
+  echo "Inspect tdf3 successful!"
+  rm -f "${plain}" sample-with-attrs.txt.tdf sample_inspect_out.txt
+}
+
+_tdf3_inspect_test @opentdf/ctl

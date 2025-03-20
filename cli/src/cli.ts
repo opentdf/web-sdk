@@ -581,8 +581,13 @@ export const handleArgs = (args: string[]) => {
           try {
             const reader = ct.open(await parseReadOptions(argv));
             const manifest = await reader.manifest();
-            const dataAttributes = await reader.attributes();
-            console.log(JSON.stringify({ manifest, dataAttributes }, null, 2));
+            try {
+              const dataAttributes = await reader.attributes();
+              console.log(JSON.stringify({ manifest, dataAttributes }, null, 2));
+            } catch (err) {
+              console.error(err)
+              console.log(JSON.stringify({ manifest}, null, 2));
+            }
           } finally {
             ct.close();
           }
