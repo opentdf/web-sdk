@@ -90,7 +90,8 @@ export {
   type DecoratedStream,
   type Keys,
   type OpenTDFOptions,
-  type NanoTDFCollection,
+  type NanoTDFCollectionWriter,
   type ReadOptions,
+  type TDFReader,
   OpenTDF,
 } from '../src/opentdf.js';

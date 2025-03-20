@@ -9,7 +9,7 @@
 @test "requires optional arguments" {
   run $BATS_TEST_DIRNAME/opentdf.mjs encrypt noone
   echo "$output"
-  [[ $output == *"Missing required"* ]]
+  [[ $output == *"must be specified"* ]]
 }
 
 @test "fails with missing file arguments" {

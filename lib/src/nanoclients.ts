@@ -10,7 +10,6 @@ import {
 } from './nanotdf/index.js';
 import { keyAgreement } from './nanotdf-crypto/index.js';
 import { Policy } from './tdf/Policy.js';
-import { type TypedArray } from './tdf/TypedArray.js';
 import { createAttribute } from './tdf/AttributeObject.js';
 import { fetchECKasPubKey } from './access.js';
 import { ClientConfig } from './nanotdf/Client.js';
@@ -38,7 +37,7 @@ export class NanoTDFClient extends Client {
    *
    * @param ciphertext Ciphertext to decrypt
    */
-  async decrypt(ciphertext: string | TypedArray | ArrayBuffer): Promise<ArrayBuffer> {
+  async decrypt(ciphertext: string | ArrayBufferLike): Promise<ArrayBuffer> {
     // Parse ciphertext
     const nanotdf = NanoTDF.from(ciphertext);
 
@@ -68,7 +67,7 @@ export class NanoTDFClient extends Client {
    *
    * @param ciphertext Ciphertext to decrypt
    */
-  async decryptLegacyTDF(ciphertext: string | TypedArray | ArrayBuffer): Promise<ArrayBuffer> {
+  async decryptLegacyTDF(ciphertext: string | ArrayBufferLike): Promise<ArrayBuffer> {
     // Parse ciphertext
     const nanotdf = NanoTDF.from(ciphertext, undefined, true);
 
@@ -91,15 +90,12 @@ export class NanoTDFClient extends Client {
   /**
    * Encrypts the given data using the NanoTDF encryption scheme.
    *
-   * @param {string | TypedArray | ArrayBuffer} data - The data to be encrypted.
-   * @param {EncryptOptions} [options=defaultOptions] - The encryption options (currently unused).
-   * @returns {Promise<ArrayBuffer>} A promise that resolves to the encrypted data as an ArrayBuffer.
-   * @throws {Error} If the initialization vector is not a number.
+   * @param data The data to be encrypted.
+   * @param options The encryption options (currently unused).
+   * @returns A promise that resolves to the encrypted data as an ArrayBuffer.
+   * @throws If the initialization vector is not a number.
    */
-  async encrypt(
-    data: string | TypedArray | ArrayBuffer,
-    options?: EncryptOptions
-  ): Promise<ArrayBuffer> {
+  async encrypt(data: string | ArrayBufferLike, options?: EncryptOptions): Promise<ArrayBuffer> {
     // For encrypt always generate the client ephemeralKeyPair
     const ephemeralKeyPair = await this.ephemeralKeyPair;
     const initializationVector = this.iv;
@@ -234,10 +230,7 @@ export class NanoTDFDatasetClient extends Client {
    *
    * @param data to decrypt
    */
-  async encrypt(
-    data: string | TypedArray | ArrayBuffer,
-    options?: EncryptOptions
-  ): Promise<ArrayBuffer> {
+  async encrypt(data: string | ArrayBufferLike, options?: EncryptOptions): Promise<ArrayBuffer> {
     // Intial encrypt
     if (this.keyIterationCount == 0) {
       const mergedOptions: EncryptOptions = { ...defaultOptions, ...options };
@@ -323,7 +316,7 @@ export class NanoTDFDatasetClient extends Client {
    *
    * @param ciphertext Ciphertext to decrypt
    */
-  async decrypt(ciphertext: string | TypedArray | ArrayBuffer): Promise<ArrayBuffer> {
+  async decrypt(ciphertext: string | ArrayBufferLike): Promise<ArrayBuffer> {
     // Parse ciphertext
     const nanotdf = NanoTDF.from(ciphertext);
 

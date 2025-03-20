@@ -30,13 +30,20 @@ type AuthToProcess = {
   clientId?: string;
   clientSecret?: string;
   concurrencyLimit?: number;
-  oidcEndpoint: string;
+  oidcEndpoint?: string;
   userId?: string;
 };
 
 type LoggedAuthProvider = AuthProvider & {
   requestLog: HttpRequest[];
 };
+
+class InvalidAuthProvider {
+  async updateClientPublicKey(): Promise<void> {}
+  withCreds(): Promise<HttpRequest> {
+    throw new Error('Method not implemented.');
+  }
+}
 
 const bindingTypes = ['ecdsa', 'gmac'];
 
@@ -59,6 +66,9 @@ async function processAuth({
   userId,
 }: AuthToProcess): Promise<LoggedAuthProvider> {
   log('DEBUG', 'Processing auth params');
+  if (!oidcEndpoint) {
+    throw new CLIError('CRITICAL', 'oidcEndpoint must be specified');
+  }
   if (auth) {
     log('DEBUG', 'Processing an auth string');
     const authParts = auth.split(':');
@@ -355,7 +365,6 @@ export const handleArgs = (args: string[]) => {
         description: 'URL to non-default KAS instance (https://mykas.net)',
       })
       .option('oidcEndpoint', {
-        demandOption: true,
         group: 'Server Endpoints:',
         type: 'string',
         description: 'URL to non-default OIDC IdP (https://myidp.net)',
@@ -500,7 +509,6 @@ export const handleArgs = (args: string[]) => {
         },
       })
 
-      // COMMANDS
       .options({
         logLevel: {
           group: 'Verbosity:',
@@ -523,7 +531,7 @@ export const handleArgs = (args: string[]) => {
 
       .command(
         'attrs',
-        'Look up defintions of attributes',
+        'Look up definitions of attributes',
         (yargs) => {
           yargs.strict();
         },
@@ -557,6 +565,36 @@ export const handleArgs = (args: string[]) => {
       )
 
       .command(
+        'inspect [file]',
+        'Inspect TDF or nanoTDF and extract header information, without decrypting',
+        (yargs) => {
+          yargs.strict().positional('file', {
+            describe: 'path to encrypted file',
+            type: 'string',
+          });
+        },
+        async (argv) => {
+          log('DEBUG', 'Running inspect command');
+          const ct = new OpenTDF({
+            authProvider: new InvalidAuthProvider(),
+          });
+          try {
+            const reader = ct.open(await parseReadOptions(argv));
+            const manifest = await reader.manifest();
+            try {
+              const dataAttributes = await reader.attributes();
+              console.log(JSON.stringify({ manifest, dataAttributes }, null, 2));
+            } catch (err) {
+              console.error(err);
+              console.log(JSON.stringify({ manifest }, null, 2));
+            }
+          } finally {
+            ct.close();
+          }
+        }
+      )
+
+      .command(
         'decrypt [file]',
         'Decrypt TDF to string',
         (yargs) => {
@@ -573,6 +611,9 @@ export const handleArgs = (args: string[]) => {
           }
           log('DEBUG', `Allowed KASes: ${allowedKases}`);
           const ignoreAllowList = !!argv.ignoreAllowList;
+          if (!argv.oidcEndpoint) {
+            throw new CLIError('CRITICAL', 'oidcEndpoint must be specified');
+          }
           const authProvider = await processAuth(argv);
           log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
           const client = new OpenTDF({

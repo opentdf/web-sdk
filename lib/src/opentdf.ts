@@ -6,7 +6,7 @@ import NanoTDF from './nanotdf/NanoTDF.js';
 import decryptNanoTDF from './nanotdf/decrypt.js';
 import Client from './nanotdf/Client.js';
 import Header from './nanotdf/models/Header.js';
-import { fromSource, sourceToStream, type Source } from './seekable.js';
+import { Chunker, fromSource, sourceToStream, type Source } from './seekable.js';
 import { Client as TDF3Client } from '../tdf3/src/client/index.js';
 import {
   type Assertion,
@@ -22,7 +22,15 @@ import {
   type EncryptionInformation,
 } from '../tdf3/src/models/encryption-information.js';
 import { type KeyAccessObject } from '../tdf3/src/models/key-access.js';
-import { type IntegrityAlgorithm } from '../tdf3/src/tdf.js';
+import {
+  decryptStreamFrom,
+  InspectedTDFOverview,
+  loadTDFStream,
+  type IntegrityAlgorithm,
+} from '../tdf3/src/tdf.js';
+import { base64 } from './encodings/index.js';
+import { PolicyObject } from './tdf/PolicyObject.js';
+import PolicyType from './nanotdf/enum/PolicyTypeEnum.js';
 
 export {
   type Assertion,
@@ -248,6 +256,30 @@ export class RewrapCache {
   }
 }
 
+/**
+ * A TDF reader that can decrypt and inspect a TDF file.
+ */
+export type TDFReader = {
+  /**
+   * Decrypt the payload.
+   */
+  decrypt: () => Promise<DecoratedStream>;
+  /**
+   * Mark this reader as closed and release any resources, such as open files.
+   */
+  close: () => Promise<void>;
+
+  /**
+   * Only present on ZTDF files
+   */
+  manifest: () => Promise<Manifest>;
+
+  /**
+   * @returns Any data attributes found in the policy. Currently only works for plain text, embedded policies (not remote or encrypted policies)
+   */
+  attributes: () => Promise<string[]>;
+};
+
 // SDK for dealing with OpenTDF data and policy services.
 export class OpenTDF {
   // Configuration service and more is at this URL/connectRPC endpoint
@@ -260,7 +292,7 @@ export class OpenTDF {
 
   // Header cache for reading nanotdf collections
   private readonly rewrapCache: RewrapCache;
-  private tdf3Client: TDF3Client;
+  readonly tdf3Client: TDF3Client;
 
   constructor({
     authProvider,
@@ -311,7 +343,9 @@ export class OpenTDF {
    * Creates a new collection object, which can be used to encrypt a series of data with the same policy.
    * @returns
    */
-  async createNanoTDFCollection(opts: CreateNanoTDFCollectionOptions): Promise<NanoTDFCollection> {
+  async createNanoTDFCollection(
+    opts: CreateNanoTDFCollectionOptions
+  ): Promise<NanoTDFCollectionWriter> {
     opts = { ...this.defaultCreateOptions, ...opts };
     return new Collection(this.authProvider, opts);
   }
@@ -340,66 +374,227 @@ export class OpenTDF {
   }
 
   /**
-   * Decrypts a nanotdf object. Optionally, stores the collection header and its DEK.
-   * @param ciphertext
+   * Opens a TDF file for inspection and decryption.
+   * @param opts the file to open, and any appropriate configuration options
+   * @returns
    */
-  async read(opts: ReadOptions): Promise<DecoratedStream> {
+  open(opts: ReadOptions): TDFReader {
     opts = { ...this.defaultReadOptions, ...opts };
-    const chunker = await fromSource(opts.source);
-    const prefix = await chunker(0, 3);
-    // switch for prefix, if starts with `PK` in ascii, or `L1L` in ascii:
-    if (prefix[0] === 0x50 && prefix[1] === 0x4b) {
-      const allowList = new OriginAllowList(opts.allowedKASEndpoints ?? [], opts.ignoreAllowlist);
-      const oldStream = await this.tdf3Client.decrypt({
-        source: opts.source,
-        allowList,
-        assertionVerificationKeys: opts.assertionVerificationKeys,
-        noVerifyAssertions: opts.noVerify,
-        wrappingKeyAlgorithm: opts.wrappingKeyAlgorithm,
-      });
-      const stream: DecoratedStream = oldStream.stream;
-      stream.metadata = Promise.resolve(oldStream.metadata);
-      return stream;
-    } else if (prefix[0] === 0x4c && prefix[1] === 0x31 && prefix[2] === 0x4c) {
-      const ciphertext = await chunker();
-      const nanotdf = NanoTDF.from(ciphertext);
-      const cachedDEK = this.rewrapCache.get(nanotdf.header.ephemeralPublicKey);
-      if (cachedDEK) {
-        const r: DecoratedStream = await streamify(decryptNanoTDF(cachedDEK, nanotdf));
-        r.header = nanotdf.header;
-        return r;
-      }
-      const nc = new Client({
-        allowedKases: opts.allowedKASEndpoints,
-        authProvider: this.authProvider,
-        ignoreAllowList: opts.ignoreAllowlist,
-        dpopEnabled: this.dpopEnabled,
-        dpopKeys: this.dpopKeys,
-        kasEndpoint: opts.allowedKASEndpoints?.[0] || 'https://disallow.all.invalid',
-      });
-      // TODO: The version number should be fetched from the API
-      const version = '0.0.1';
-      // Rewrap key on every request
-      const dek = await nc.rewrapKey(
-        nanotdf.header.toBuffer(),
-        nanotdf.header.getKasRewrapUrl(),
-        nanotdf.header.magicNumberVersion,
-        version
-      );
-      if (!dek) {
-        // These should have thrown already.
-        throw new Error('internal: key rewrap failure');
-      }
-      this.rewrapCache.set(nanotdf.header.ephemeralPublicKey, dek);
-      const r: DecoratedStream = await streamify(decryptNanoTDF(dek, nanotdf));
-      r.header = nanotdf.header;
-      return r;
-    }
-    throw new InvalidFileError(`unsupported format; prefix not recognized ${prefix}`);
+    return new UnknownTypeReader(this, opts, this.rewrapCache);
+  }
+
+  async read(opts: ReadOptions): Promise<DecoratedStream> {
+    const reader = this.open(opts);
+    return reader.decrypt();
   }
 
   close() {
     this.rewrapCache.close();
+  }
+}
+
+class UnknownTypeReader {
+  delegate: Promise<TDFReader>;
+  state: 'init' | 'resolving' | 'loaded' | 'decrypting' | 'closing' | 'done' | 'error' = 'init';
+  constructor(
+    readonly outer: OpenTDF,
+    readonly opts: ReadOptions,
+    private readonly rewrapCache: RewrapCache
+  ) {
+    this.delegate = this.resolveType();
+  }
+
+  async resolveType(): Promise<TDFReader> {
+    if (this.state === 'done') {
+      throw new ConfigurationError('reader is closed');
+    }
+    this.state = 'resolving';
+    const chunker = await fromSource(this.opts.source);
+    const prefix = await chunker(0, 3);
+    if (prefix[0] === 0x50 && prefix[1] === 0x4b) {
+      this.state = 'loaded';
+      return new ZTDFReader(this.outer.tdf3Client, this.opts, chunker);
+    } else if (prefix[0] === 0x4c && prefix[1] === 0x31 && prefix[2] === 0x4c) {
+      this.state = 'loaded';
+      return new NanoTDFReader(this.outer, this.opts, chunker, this.rewrapCache);
+    }
+    this.state = 'done';
+    throw new InvalidFileError(`unsupported format; prefix not recognized ${prefix}`);
+  }
+
+  async decrypt(): Promise<DecoratedStream> {
+    const actual = await this.delegate;
+    return actual.decrypt();
+  }
+
+  async attributes(): Promise<string[]> {
+    const actual = await this.delegate;
+    return actual.attributes();
+  }
+
+  async manifest(): Promise<Manifest> {
+    const actual = await this.delegate;
+    return actual.manifest();
+  }
+
+  async close() {
+    if (this.state === 'done') {
+      return;
+    }
+    if (this.state === 'init') {
+      // delegate resolve never started
+      this.state = 'done';
+      return;
+    }
+    this.state = 'closing';
+    const actual = await this.delegate;
+    return actual.close().then(() => {
+      this.state = 'done';
+    });
+  }
+}
+
+class NanoTDFReader {
+  container: Promise<NanoTDF>;
+  constructor(
+    readonly outer: OpenTDF,
+    readonly opts: ReadOptions,
+    readonly chunker: Chunker,
+    private readonly rewrapCache: RewrapCache
+  ) {
+    // lazily load the container
+    this.container = new Promise(async (resolve, reject) => {
+      try {
+        const ciphertext = await chunker();
+        const nanotdf = NanoTDF.from(ciphertext);
+        resolve(nanotdf);
+      } catch (e) {
+        reject(e);
+      }
+    });
+  }
+
+  async decrypt(): Promise<DecoratedStream> {
+    const nanotdf = await this.container;
+    const cachedDEK = this.rewrapCache.get(nanotdf.header.ephemeralPublicKey);
+    if (cachedDEK) {
+      const r: DecoratedStream = await streamify(decryptNanoTDF(cachedDEK, nanotdf));
+      r.header = nanotdf.header;
+      return r;
+    }
+    const nc = new Client({
+      allowedKases: this.opts.allowedKASEndpoints,
+      authProvider: this.outer.authProvider,
+      ignoreAllowList: this.opts.ignoreAllowlist,
+      dpopEnabled: this.outer.dpopEnabled,
+      dpopKeys: this.outer.dpopKeys,
+      kasEndpoint: this.opts.allowedKASEndpoints?.[0] || 'https://disallow.all.invalid',
+    });
+    // TODO: The version number should be fetched from the API
+    const version = '0.0.1';
+    // Rewrap key on every request
+    const dek = await nc.rewrapKey(
+      nanotdf.header.toBuffer(),
+      nanotdf.header.getKasRewrapUrl(),
+      nanotdf.header.magicNumberVersion,
+      version
+    );
+    if (!dek) {
+      // These should have thrown already.
+      throw new Error('internal: key rewrap failure');
+    }
+    this.rewrapCache.set(nanotdf.header.ephemeralPublicKey, dek);
+    const r: DecoratedStream = await streamify(decryptNanoTDF(dek, nanotdf));
+    // TODO figure out how to attach policy and metadata to the stream
+    r.header = nanotdf.header;
+    return r;
+  }
+
+  async close() {}
+
+  async manifest(): Promise<Manifest> {
+    return {} as Manifest;
+  }
+
+  async attributes(): Promise<string[]> {
+    const nanotdf = await this.container;
+    if (!nanotdf.header.policy?.content) {
+      return [];
+    }
+    if (nanotdf.header.policy.type !== PolicyType.EmbeddedText) {
+      throw new Error('unsupported policy type');
+    }
+    const policyString = new TextDecoder().decode(nanotdf.header.policy.content);
+    const policy = JSON.parse(policyString) as PolicyObject;
+    return policy.body.dataAttributes.map((a) => a.attribute);
+  }
+}
+
+class ZTDFReader {
+  overview: Promise<InspectedTDFOverview>;
+  constructor(
+    readonly client: TDF3Client,
+    readonly opts: ReadOptions,
+    readonly source: Chunker
+  ) {
+    this.overview = loadTDFStream(source);
+  }
+
+  async decrypt(): Promise<DecoratedStream> {
+    const {
+      assertionVerificationKeys,
+      noVerify: noVerifyAssertions,
+      wrappingKeyAlgorithm,
+    } = this.opts;
+    const allowList = new OriginAllowList(
+      this.opts.allowedKASEndpoints ?? [],
+      this.opts.ignoreAllowlist
+    );
+    const dpopKeys = await this.client.dpopKeys;
+
+    const { authProvider, cryptoService } = this.client;
+    if (!authProvider) {
+      throw new ConfigurationError('authProvider is required');
+    }
+
+    const overview = await this.overview;
+    const oldStream = await decryptStreamFrom(
+      {
+        allowList,
+        authProvider,
+        chunker: this.source,
+        concurrencyLimit: 1,
+        cryptoService,
+        dpopKeys,
+        fileStreamServiceWorker: this.client.clientConfig.fileStreamServiceWorker,
+        keyMiddleware: async (k) => k,
+        progressHandler: this.client.clientConfig.progressHandler,
+        assertionVerificationKeys,
+        noVerifyAssertions,
+        wrappingKeyAlgorithm,
+      },
+      overview
+    );
+    const stream: DecoratedStream = oldStream.stream;
+    stream.manifest = Promise.resolve(overview.manifest);
+    stream.metadata = Promise.resolve(oldStream.metadata);
+    return stream;
+  }
+
+  async close() {
+    // TODO figure out how to close a chunker, if we want to.
+  }
+
+  async manifest(): Promise<Manifest> {
+    const overview = await this.overview;
+    return overview.manifest;
+  }
+
+  async attributes(): Promise<string[]> {
+    const manifest = await this.manifest();
+    const policyJSON = base64.decode(manifest.encryptionInformation.policy);
+    const policy = JSON.parse(policyJSON) as PolicyObject;
+    return policy.body.dataAttributes.map((a) => a.attribute);
   }
 }
 
@@ -415,7 +610,7 @@ async function streamify(ab: Promise<ArrayBuffer>): Promise<ReadableStream<Uint8
   return stream;
 }
 
-export type NanoTDFCollection = {
+export type NanoTDFCollectionWriter = {
   encrypt: (source: Source) => Promise<ReadableStream<Uint8Array>>;
   close: () => Promise<void>;
 };
