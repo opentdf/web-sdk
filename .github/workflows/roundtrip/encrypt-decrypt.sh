@@ -88,6 +88,8 @@ _tdf3_inspect_test() {
   npx "$1" --log-level DEBUG \
     inspect sample-with-attrs.txt.tdf > sample_inspect_out.txt
 
+  cat sample_inspect_out.txt
+
   [ -f sample_inspect_out.txt ]
   grep -q 'https://attr.io/attr/a/value/1'
 
