@@ -1,7 +1,9 @@
-import { type AttributeObject } from './AttributeObject.js';
 import { v4 as uuid } from 'uuid';
 
-export class Policy {
+import { type AttributeObject } from '../../tdf3/src/models/attribute.js';
+import { type Policy } from '../../tdf3/src/models/policy.js';
+
+export class PolicyBuilder {
   static CURRENT_VERSION = '1.1.0';
 
   private uuidStr = uuid();
@@ -33,18 +35,22 @@ export class Policy {
     this.dataAttributesList.push(attribute);
   }
 
+  toPolicy(): Policy {
+    return {
+      uuid: this.uuidStr,
+      body: {
+        dataAttributes: this.dataAttributesList,
+        dissem: this.dissemList,
+      },
+    };
+  }
+
   /**
    * Returns the JSON string of Policy object
    *
    * @return {string} [The constructed Policy object as JSON string]
    */
   toJSON(): string {
-    return JSON.stringify({
-      uuid: this.uuidStr,
-      body: {
-        dataAttributes: this.dataAttributesList,
-        dissem: this.dissemList,
-      },
-    });
+    return JSON.stringify(this.toPolicy());
   }
 }

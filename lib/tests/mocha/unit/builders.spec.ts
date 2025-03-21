@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 
-import { type AttributeObject } from '../../../src/tdf/AttributeObject.js';
+import { type AttributeObject } from '../../../tdf3/src/models/attribute.js';
 import { EncryptParamsBuilder } from '../../../tdf3/src/client/builders.js';
 
 const aex = {

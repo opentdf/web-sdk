@@ -1,14 +1,6 @@
 import { decodeJwt } from 'jose';
 
-export type AttributeObject = {
-  attribute: string;
-  kasUrl?: string;
-  kid?: string;
-  pubKey?: string;
-  displayName?: string;
-  isDefault?: boolean;
-  jwt?: string;
-};
+import { type AttributeObject } from './attribute.js';
 
 export class AttributeSet {
   attributes: AttributeObject[];

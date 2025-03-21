@@ -9,11 +9,11 @@ import {
   DefaultParams,
 } from './nanotdf/index.js';
 import { keyAgreement } from './nanotdf-crypto/index.js';
-import { Policy } from './tdf/Policy.js';
-import { createAttribute } from './tdf/AttributeObject.js';
+import { PolicyBuilder } from './tdf/Policy.js';
 import { fetchECKasPubKey } from './access.js';
-import { ClientConfig } from './nanotdf/Client.js';
+import { type ClientConfig } from './nanotdf/Client.js';
 import { ConfigurationError } from './errors.js';
+import { type AttributeObject } from '../tdf3/src/models/attribute.js';
 
 // Define the EncryptOptions type
 export type EncryptOptions = {
@@ -112,11 +112,15 @@ export class NanoTDFClient extends Client {
     }
 
     // Create a policy for the tdf
-    const policy = new Policy();
+    const policy = new PolicyBuilder();
 
     // Add data attributes.
     for (const dataAttribute of this.dataAttributes) {
-      const attribute = await createAttribute(dataAttribute, this.kasPubKey, this.kasUrl);
+      const attribute: AttributeObject = {
+        attribute: dataAttribute,
+        pubKey: this.kasPubKey.publicKey,
+        kasUrl: this.kasUrl,
+      }
       policy.addAttribute(attribute);
     }
 
@@ -243,11 +247,15 @@ export class NanoTDFDatasetClient extends Client {
       }
 
       // Create a policy for the tdf
-      const policy = new Policy();
+      const policy = new PolicyBuilder();
 
       // Add data attributes.
       for (const dataAttribute of this.dataAttributes) {
-        const attribute = await createAttribute(dataAttribute, this.kasPubKey, this.kasUrl);
+        const attribute = {
+          attribute: dataAttribute,
+          kasPubKey: this.kasPubKey.publicKey,
+          kasUrl: this.kasUrl,
+        };
         policy.addAttribute(attribute);
       }
 

@@ -24,7 +24,6 @@ import { generateKeyPair } from '../../src/nanotdf-crypto/generateKeyPair.js';
 import { keyAgreement } from '../../src/nanotdf-crypto/keyAgreement.js';
 import { pemPublicToCrypto } from '../../src/nanotdf-crypto/pemPublicToCrypto.js';
 import { type Chunker } from '../../src/seekable.js';
-import { PolicyObject } from '../../src/tdf/PolicyObject.js';
 import { tdfSpecVersion } from '../../src/version.js';
 import { AssertionConfig, AssertionKey, AssertionVerificationKeys } from './assertions.js';
 import * as assertions from './assertions.js';
@@ -73,12 +72,7 @@ export type EncryptionOptions = {
 
 type KeyMiddleware = DecryptParams['keyMiddleware'];
 
-export type Metadata = {
-  connectOptions?: {
-    testUrl: string;
-  };
-  policyObject?: PolicyObject;
-};
+export type Metadata = unknown;
 
 export type BuildKeyAccess = {
   type: KeyAccessType;
