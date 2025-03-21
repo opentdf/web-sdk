@@ -24,7 +24,6 @@ import { generateKeyPair } from '../../src/nanotdf-crypto/generateKeyPair.js';
 import { keyAgreement } from '../../src/nanotdf-crypto/keyAgreement.js';
 import { pemPublicToCrypto } from '../../src/nanotdf-crypto/pemPublicToCrypto.js';
 import { type Chunker } from '../../src/seekable.js';
-import { PolicyObject } from '../../src/tdf/PolicyObject.js';
 import { tdfSpecVersion } from '../../src/version.js';
 import { AssertionConfig, AssertionKey, AssertionVerificationKeys } from './assertions.js';
 import * as assertions from './assertions.js';
@@ -55,6 +54,7 @@ import { unsigned } from './utils/buffer-crc32.js';
 import { ZipReader, ZipWriter, keyMerge, concatUint8 } from './utils/index.js';
 import { CentralDirectory } from './utils/zip-reader.js';
 import { ztdfSalt } from './crypto/salt.js';
+import { Payload } from './models/payload.js';
 
 // TODO: input validation on manifest JSON
 const DEFAULT_SEGMENT_SIZE = 1024 * 1024;
@@ -73,12 +73,7 @@ export type EncryptionOptions = {
 
 type KeyMiddleware = DecryptParams['keyMiddleware'];
 
-export type Metadata = {
-  connectOptions?: {
-    testUrl: string;
-  };
-  policyObject?: PolicyObject;
-};
+export type Metadata = unknown;
 
 export type BuildKeyAccess = {
   type: KeyAccessType;
@@ -292,7 +287,7 @@ async function _generateManifest(
   mimeType: string | undefined
 ): Promise<Manifest> {
   // (maybe) Fields are quoted to avoid renaming
-  const payload = {
+  const payload: Payload = {
     type: 'reference',
     url: '0.payload',
     protocol: 'zip',

@@ -1,7 +1,7 @@
 import { SignJWT, importPKCS8, JWTPayload } from 'jose';
 import { v4 } from 'uuid';
 
-import { AttributeObject } from '../../src/tdf/AttributeObject.js';
+import { AttributeObject } from '../../tdf3/src/models/attribute.js';
 import { toCryptoKeyPair } from '../../tdf3/src/crypto/crypto-utils.js';
 import { AttributeSet } from '../../tdf3/src/models/attribute-set.js';
 import {

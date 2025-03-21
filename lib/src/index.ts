@@ -4,3 +4,4 @@ export { attributeFQNsAsValues } from './policy/api.js';
 export { version, clientType, tdfSpecVersion } from './version.js';
 export * from './opentdf.js';
 export * from './seekable.js';
+export * from '../tdf3/src/models/index.js';

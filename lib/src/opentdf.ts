@@ -29,8 +29,8 @@ import {
   type IntegrityAlgorithm,
 } from '../tdf3/src/tdf.js';
 import { base64 } from './encodings/index.js';
-import { PolicyObject } from './tdf/PolicyObject.js';
 import PolicyType from './nanotdf/enum/PolicyTypeEnum.js';
+import { Policy } from '../tdf3/src/models/policy.js';
 
 export {
   type Assertion,
@@ -525,8 +525,8 @@ class NanoTDFReader {
       throw new Error('unsupported policy type');
     }
     const policyString = new TextDecoder().decode(nanotdf.header.policy.content);
-    const policy = JSON.parse(policyString) as PolicyObject;
-    return policy.body.dataAttributes.map((a) => a.attribute);
+    const policy = JSON.parse(policyString) as Policy;
+    return policy?.body?.dataAttributes.map((a) => a.attribute) || [];
   }
 }
 
@@ -593,8 +593,8 @@ class ZTDFReader {
   async attributes(): Promise<string[]> {
     const manifest = await this.manifest();
     const policyJSON = base64.decode(manifest.encryptionInformation.policy);
-    const policy = JSON.parse(policyJSON) as PolicyObject;
-    return policy.body.dataAttributes.map((a) => a.attribute);
+    const policy = JSON.parse(policyJSON) as Policy;
+    return policy?.body?.dataAttributes.map((a) => a.attribute) || [];
   }
 }
 
