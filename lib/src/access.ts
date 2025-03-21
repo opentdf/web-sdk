@@ -38,7 +38,6 @@ export async function fetchWrappedKey(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'virtru-ntdf-version': clientVersion,
     },
     body: JSON.stringify(requestBody),
   });
