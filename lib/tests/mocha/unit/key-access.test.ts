@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 
-import { ECWrapped, Wrapped } from '../../../tdf3/src/models/key-access.js';
+import { ECWrapped, Wrapped } from '../../../tdf3/src/kao-builders.js';
 import { Policy } from '../../../tdf3/src/models/policy.js';
 import { base64 } from '../../../src/encodings/index.js';
 
