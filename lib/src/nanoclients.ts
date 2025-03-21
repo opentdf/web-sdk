@@ -120,7 +120,7 @@ export class NanoTDFClient extends Client {
         attribute: dataAttribute,
         pubKey: this.kasPubKey.publicKey,
         kasUrl: this.kasUrl,
-      }
+      };
       policy.addAttribute(attribute);
     }
 
