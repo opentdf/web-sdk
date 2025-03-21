@@ -54,6 +54,7 @@ import { unsigned } from './utils/buffer-crc32.js';
 import { ZipReader, ZipWriter, keyMerge, concatUint8 } from './utils/index.js';
 import { CentralDirectory } from './utils/zip-reader.js';
 import { ztdfSalt } from './crypto/salt.js';
+import { Payload } from './models/payload.js';
 
 // TODO: input validation on manifest JSON
 const DEFAULT_SEGMENT_SIZE = 1024 * 1024;
@@ -286,7 +287,7 @@ async function _generateManifest(
   mimeType: string | undefined
 ): Promise<Manifest> {
   // (maybe) Fields are quoted to avoid renaming
-  const payload = {
+  const payload: Payload = {
     type: 'reference',
     url: '0.payload',
     protocol: 'zip',
