@@ -1,5 +1,4 @@
 export * from './attribute.js';
-export * from './attribute-set.js';
 export * from './encryption-information.js';
 export * from './key-access.js';
 export * from './manifest.js';

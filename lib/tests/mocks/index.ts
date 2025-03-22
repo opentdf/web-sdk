@@ -1,9 +1,7 @@
 import { SignJWT, importPKCS8, JWTPayload } from 'jose';
 import { v4 } from 'uuid';
 
-import { AttributeObject } from '../../tdf3/src/models/attribute.js';
 import { toCryptoKeyPair } from '../../tdf3/src/crypto/crypto-utils.js';
-import { AttributeSet } from '../../tdf3/src/models/attribute-set.js';
 import {
   entityECPrivateKey,
   entityECPublicKey,
@@ -28,10 +26,6 @@ type CreateAttributePayload = {
 type CreateJwtAttributeContext = {
   aaPrivateKey: string;
   createAttribute: (prop: CreateAttributePayload) => JWTPayload;
-};
-
-type createAttributeSetContext = {
-  createAttribute: (prop: CreateAttributePayload) => AttributeObject;
 };
 
 type GetPolicyObjectContext = {
@@ -166,16 +160,6 @@ tN5S0umLPkMUJ6zBIxh1RQK1ZYjfuKij+EEimbqtte9rYyQr3Q==
         console.log('Mocks.createJwtAttribute failed', e);
         return {};
       }
-    },
-
-    async createAttributeSet(
-      this: createAttributeSetContext,
-      arrayOfAttrOptions: CreateAttributePayload[] = []
-    ) {
-      const aSet = new AttributeSet();
-      const attributes = arrayOfAttrOptions.map((options) => this.createAttribute(options));
-      aSet.addAttributes(attributes);
-      return aSet;
     },
 
     getUserId() {
