@@ -38,23 +38,14 @@ import {
   type CryptoService,
   type DecryptResult,
 } from './crypto/declarations.js';
-import {
-  ECWrapped,
-  KeyAccessType,
-  KeyInfo,
-  Manifest,
-  Policy,
-  SplitKey,
-  Wrapped,
-  KeyAccess,
-  KeyAccessObject,
-  SplitType,
-} from './models/index.js';
+import { ECWrapped, KeyAccess, Wrapped } from './kao-builders.js';
+import { KeyAccessType, Manifest, Policy, KeyAccessObject, SplitType } from './models/index.js';
 import { unsigned } from './utils/buffer-crc32.js';
 import { ZipReader, ZipWriter, keyMerge, concatUint8 } from './utils/index.js';
 import { CentralDirectory } from './utils/zip-reader.js';
 import { ztdfSalt } from './crypto/salt.js';
 import { Payload } from './models/payload.js';
+import { KeyInfo, SplitKey } from './splits.js';
 
 // TODO: input validation on manifest JSON
 const DEFAULT_SEGMENT_SIZE = 1024 * 1024;
