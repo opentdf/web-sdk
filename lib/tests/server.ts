@@ -66,7 +66,7 @@ const kas: RequestListener = async (req, res) => {
   console.log('[INFO]: server request: ', req.method, req.url, req.headers);
   res.setHeader(
     'Access-Control-Allow-Headers',
-    'authorization, content-type, dpop, range, virtru-ntdf-version, x-test-response, x-test-response-message'
+    'authorization, content-type, dpop, range, x-test-response, x-test-response-message'
   );
   res.setHeader('Access-Control-Allow-Origin', '*');
   // GET should be allowed for everything except rewrap, POST only for rewrap but IDC
