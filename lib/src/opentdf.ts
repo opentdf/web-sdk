@@ -127,6 +127,9 @@ export type CreateZTDFOptions = CreateOptions & {
 
   // Preferred algorithm to use for Key Access Objects.
   wrappingKeyAlgorithm?: KasPublicKeyAlgorithm;
+
+  // TDF spec version to target
+  tdfSpecVersion?: '4.2.2' | '4.3.0';
 };
 
 // Settings for decrypting any variety of TDF file.
@@ -366,6 +369,7 @@ export class OpenTDF {
       splitPlan: opts.splitPlan,
       windowSize: opts.windowSize,
       wrappingKeyAlgorithm: opts.wrappingKeyAlgorithm,
+      tdfSpecVersion: opts.tdfSpecVersion ?? '4.3.0',
     });
     const stream: DecoratedStream = oldStream.stream;
     stream.manifest = Promise.resolve(oldStream.manifest);
