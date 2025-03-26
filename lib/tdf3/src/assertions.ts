@@ -2,6 +2,7 @@ import { canonicalizeEx } from 'json-canonicalize';
 import { SignJWT, jwtVerify } from 'jose';
 import { base64, hex } from '../../src/encodings/index.js';
 import { ConfigurationError, IntegrityError, InvalidFileError } from '../../src/errors.js';
+import { KnownTDFSpecVersion, SupportedTDFSpecVersion } from 'src/version.js';
 
 export type AssertionKeyAlg = 'ES256' | 'RS256' | 'HS256';
 export type AssertionType = 'handling' | 'other';
@@ -112,7 +113,7 @@ export async function verify(
   thiz: Assertion,
   aggregateHash: Uint8Array,
   key: AssertionKey,
-  isLegacyTDF: boolean
+  tdfSpecVersion: KnownTDFSpecVersion
 ): Promise<void> {
   let payload: AssertionPayload;
   try {
@@ -134,16 +135,21 @@ export async function verify(
   }
 
   let encodedHash: string;
-  if (isLegacyTDF) {
-    const aggregateHashAsStr = new TextDecoder('utf-8').decode(aggregateHash);
-    const combinedHash = aggregateHashAsStr + hashOfAssertion;
-    encodedHash = base64.encode(combinedHash);
-  } else {
-    const combinedHash = concatenateUint8Arrays(
-      aggregateHash,
-      new Uint8Array(hex.decodeArrayBuffer(assertionHash))
-    );
-    encodedHash = base64.encodeArrayBuffer(combinedHash);
+  switch (tdfSpecVersion) {
+    case '4.2.2': {
+      const aggregateHashAsStr = new TextDecoder('utf-8').decode(aggregateHash);
+      const combinedHash = aggregateHashAsStr + hashOfAssertion;
+      encodedHash = base64.encode(combinedHash);
+      break;
+    }
+    case '4.3.0': {
+      const combinedHash = concatenateUint8Arrays(
+        aggregateHash,
+        new Uint8Array(hex.decodeArrayBuffer(assertionHash))
+      );
+      encodedHash = base64.encodeArrayBuffer(combinedHash);
+      break;
+    }
   }
 
   // check if assertionSig is same as encodedHash
@@ -156,8 +162,9 @@ export async function verify(
  * Creates an Assertion object with the specified properties.
  */
 export async function CreateAssertion(
-  aggregateHash: Uint8Array,
-  assertionConfig: AssertionConfig
+  aggregateHash: Uint8Array | string,
+  assertionConfig: AssertionConfig,
+  tdfSpecVersion?: SupportedTDFSpecVersion
 ): Promise<Assertion> {
   if (!assertionConfig.signingKey) {
     throw new ConfigurationError('Assertion signing key is required');
@@ -174,11 +181,29 @@ export async function CreateAssertion(
   };
 
   const assertionHash = await hash(a);
-  const combinedHash = concatenateUint8Arrays(
-    aggregateHash,
-    new Uint8Array(hex.decodeArrayBuffer(assertionHash))
-  );
-  const encodedHash = base64.encodeArrayBuffer(combinedHash);
+  let encodedHash: string;
+  switch (tdfSpecVersion || '4.3.0') {
+    case '4.2.2':
+      if (typeof aggregateHash !== 'string') {
+        throw new ConfigurationError('Aggregate hash must be a string for TDF spec version 4.2.2');
+      }
+      encodedHash = base64.encode(aggregateHash + assertionHash);
+      break;
+    case '4.3.0':
+      if (typeof aggregateHash === 'string') {
+        throw new ConfigurationError(
+          'Aggregate hash must be a typed array for TDF spec version 4.2.2'
+        );
+      }
+      const combinedHash = concatenateUint8Arrays(
+        aggregateHash,
+        new Uint8Array(hex.decodeArrayBuffer(assertionHash))
+      );
+      encodedHash = base64.encodeArrayBuffer(combinedHash);
+      break;
+    default:
+      throw new ConfigurationError(`Unsupported TDF spec version: ${tdfSpecVersion}`);
+  }
 
   return await sign(a, assertionHash, encodedHash, assertionConfig.signingKey);
 }

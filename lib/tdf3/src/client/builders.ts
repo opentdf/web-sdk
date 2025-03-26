@@ -10,6 +10,7 @@ import { type Chunker } from '../../../src/seekable.js';
 import { AssertionConfig, AssertionVerificationKeys } from '../assertions.js';
 import { Value } from '../../../src/policy/attributes.js';
 import { KasPublicKeyAlgorithm, OriginAllowList } from '../../../src/access.js';
+import { SupportedTDFSpecVersion } from '../../../src/version.js';
 
 export const DEFAULT_SEGMENT_SIZE: number = 1024 * 1024;
 export type Scope = {
@@ -59,6 +60,9 @@ export type EncryptParams = {
   asHtml?: boolean;
   // Unsupported
   offline?: boolean;
+
+  // TDF spec version to target
+  tdfSpecVersion?: SupportedTDFSpecVersion;
 };
 
 // 'Readonly<EncryptParams>': scope, metadata, offline, windowSize, asHtml
