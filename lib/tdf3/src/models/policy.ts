@@ -13,7 +13,7 @@ export type Policy = {
   body?: PolicyBody;
 };
 
-export function validatePolicyObject(policyMaybe: unknown): policyMaybe is Policy {
+export function isPolicyObject(policyMaybe: unknown): policyMaybe is Policy {
   if (typeof policyMaybe !== 'object') {
     throw new ConfigurationError(
       `The given policy reference must be an object, not: ${policyMaybe}`

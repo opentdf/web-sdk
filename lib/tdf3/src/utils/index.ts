@@ -1,5 +1,5 @@
 import * as WebCryptoService from '../crypto/index.js';
-import { KeyInfo, SplitKey } from '../models/index.js';
+import { KeyInfo, SplitKey } from '../splits.js';
 
 import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
 import { ConfigurationError } from '../../../src/errors.js';
