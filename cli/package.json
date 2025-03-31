@@ -45,7 +45,7 @@
     "license-checker-rseidelsohn": "^4.4.2",
     "mocha": "^11.1.0",
     "prettier": "^3.5.3",
-    "sinon": "^19.0.2",
+    "sinon": "^20.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.2",
     "typescript-eslint": "^8.26.0"
