@@ -208,10 +208,13 @@ jobs:
             platform/protocol/go/go.sum
             platform/sdk/go.sum
             platform/service/go.sum
-      - name: Git configure backend
+      - run: find ./ -name go.mod
+      - name: go configure backend
         run: |-
           go work init
-          for x in platform/{protocol/go,lib/{fixtures,ocrypto},sdk,service}; do go work use "$x"; done
+          for x in platform/{protocol/go,lib/{fixtures,ocrypto},sdk,service}; do
+            go work use "$x"
+          done
       - run: docker compose up -d --wait --wait-timeout 240
       - env:
           PLAYWRIGHT_TESTS_TO_RUN: roundtrip
