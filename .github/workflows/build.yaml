@@ -193,12 +193,23 @@ jobs:
         with:
           name: opentdf-ctl
           path: cli/
+      - name: Git clone backend
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
+        with:
+          path: platform
+          repository: opentdf/platform
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0
         with:
-          go-version: '1.23'
-      - name: Git clone backend
-        run: |
-          git clone --depth 1 https://github.com/opentdf/platform.git
+          go-version-file: platform/service/go.mod
+          check-latest: false
+          cache-dependency-path: |
+            platform/lib/fixtures/go.sum
+            platform/lib/ocrypto/go.sum
+            platform/protocol/go/go.sum
+            platform/sdk/go.sum
+            platform/service/go.sum
+      - name: Git configure backend
+        run: |-
           go work init
           for x in platform/{protocol/go,lib/{fixtures,ocrypto},sdk,service}; do go work use "$x"; done
       - run: docker compose up -d --wait --wait-timeout 240
