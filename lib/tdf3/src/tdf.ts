@@ -1,4 +1,5 @@
 import { exportSPKI, importX509 } from 'jose';
+import { compareVersions } from 'compare-versions';
 
 import {
   KasPublicKeyAlgorithm,
@@ -58,6 +59,8 @@ import { Payload } from './models/payload.js';
 
 // TODO: input validation on manifest JSON
 const DEFAULT_SEGMENT_SIZE = 1024 * 1024;
+
+const HEX_SEMVER_THRESHOLD = "4.3.0";
 
 /**
  * Configuration for TDF3
@@ -346,7 +349,7 @@ function getSignatureHash(signature: Uint8Array, isLegacyHexEncode: boolean): st
 }
 
 function isTargetSpecLegacyTDF(targetSpecVersion?: string): boolean {
-  return !!targetSpecVersion?.startsWith('3.');
+  return  !!targetSpecVersion && compareVersions(targetSpecVersion, HEX_SEMVER_THRESHOLD) === -1
 }
 
 export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedReadableStream> {
@@ -976,7 +979,7 @@ export async function decryptStreamFrom(
 
   // check if the TDF is a legacy TDF
   const specVersion = manifest.schemaVersion || manifest.tdf_spec_version;
-  const isLegacyTDF = !specVersion || specVersion.startsWith('3.');
+  const isLegacyTDF = !specVersion || compareVersions(specVersion, HEX_SEMVER_THRESHOLD) === -1;
 
   // Decode each hash and store it in an array of Uint8Array
   const segmentHashList = segments.map(
