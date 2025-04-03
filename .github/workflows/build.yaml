@@ -215,6 +215,7 @@ jobs:
     with:
       focus-sdk: js
       js-ref: ${{ github.ref }} latest lts
+      platform-ref: main lts
 
   deliver-ghp:
     needs:
