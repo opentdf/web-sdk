@@ -285,7 +285,8 @@ async function _generateManifest(
   keyInfo: KeyInfo,
   encryptionInformation: SplitKey,
   policy: Policy,
-  mimeType: string | undefined
+  mimeType: string | undefined,
+  targetSpecVersion: string | undefined,
 ): Promise<Manifest> {
   // (maybe) Fields are quoted to avoid renaming
   const payload: Payload = {
@@ -303,7 +304,8 @@ async function _generateManifest(
     // generate the manifest first, then insert integrity information into it
     encryptionInformation: encryptionInformationStr,
     assertions: assertions,
-    schemaVersion: tdfSpecVersion,
+    // when `targetSpecVersion` is provided, overrides the tdfSpecVersion
+    schemaVersion: targetSpecVersion || tdfSpecVersion,
   };
 }
 
@@ -336,14 +338,15 @@ async function getSignature(
   }
 }
 
-function getSignatureHash(signature: Uint8Array, isLegacyTDF: boolean): string {
-  return isLegacyTDF
-    ? base64.encode(hex.encodeArrayBuffer(signature)) //  <= 3.0.0 Legacy format
-    : base64.encodeArrayBuffer(signature); // >= 4.0.0 Current format
+
+function getSignatureHash(signature: Uint8Array, isLegacyHexEncode: boolean): string {
+  return isLegacyHexEncode
+    ? base64.encode(hex.encodeArrayBuffer(signature))
+    : base64.encodeArrayBuffer(signature);
 }
 
-function isTargetSpecLegacyTDF(specVersion?: string): boolean {
-  return !!specVersion?.startsWith('3.');
+function isTargetSpecLegacyTDF(targetSpecVersion?: string): boolean {
+  return !!targetSpecVersion?.startsWith('3.');
 }
 
 export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedReadableStream> {
@@ -381,7 +384,8 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
     cfg.keyForManifest,
     cfg.encryptionInformation,
     cfg.policy,
-    cfg.mimeType
+    cfg.mimeType,
+    cfg.targetSpecVersion
   );
 
   if (!manifest) {
