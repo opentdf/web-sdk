@@ -60,7 +60,7 @@ import { Payload } from './models/payload.js';
 // TODO: input validation on manifest JSON
 const DEFAULT_SEGMENT_SIZE = 1024 * 1024;
 
-const HEX_SEMVER_THRESHOLD = "4.3.0";
+const HEX_SEMVER_THRESHOLD = '4.3.0';
 
 /**
  * Configuration for TDF3
@@ -289,7 +289,7 @@ async function _generateManifest(
   encryptionInformation: SplitKey,
   policy: Policy,
   mimeType: string | undefined,
-  targetSpecVersion: string | undefined,
+  targetSpecVersion: string | undefined
 ): Promise<Manifest> {
   // (maybe) Fields are quoted to avoid renaming
   const payload: Payload = {
@@ -341,7 +341,6 @@ async function getSignature(
   }
 }
 
-
 function getSignatureHash(signature: Uint8Array, isLegacyHexEncode: boolean): string {
   return isLegacyHexEncode
     ? base64.encode(hex.encodeArrayBuffer(signature))
@@ -349,7 +348,7 @@ function getSignatureHash(signature: Uint8Array, isLegacyHexEncode: boolean): st
 }
 
 function isTargetSpecLegacyTDF(targetSpecVersion?: string): boolean {
-  return  !!targetSpecVersion && compareVersions(targetSpecVersion, HEX_SEMVER_THRESHOLD) === -1
+  return !!targetSpecVersion && compareVersions(targetSpecVersion, HEX_SEMVER_THRESHOLD) === -1;
 }
 
 export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedReadableStream> {
