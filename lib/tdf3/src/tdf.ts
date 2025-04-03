@@ -339,11 +339,11 @@ async function getSignature(
 function getSignatureHash(signature: Uint8Array, isLegacyTDF: boolean): string {
   return isLegacyTDF
     ? base64.encode(hex.encodeArrayBuffer(signature)) //  <= 3.0.0 Legacy format
-    : base64.encodeArrayBuffer(signature);             // >= 4.0.0 Current format
+    : base64.encodeArrayBuffer(signature); // >= 4.0.0 Current format
 }
 
 function isTargetSpecLegacyTDF(specVersion?: string): boolean {
-  return !!specVersion?.startsWith('3.')
+  return !!specVersion?.startsWith('3.');
 }
 
 export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedReadableStream> {
@@ -1011,7 +1011,7 @@ export async function decryptStreamFrom(
     }
   }
 
-  const rootSig = getSignatureHash(payloadSig, isLegacyTDF)
+  const rootSig = getSignatureHash(payloadSig, isLegacyTDF);
   if (manifest.encryptionInformation.integrityInformation.rootSignature.sig !== rootSig) {
     throw new IntegrityError('Failed integrity check on root signature');
   }
