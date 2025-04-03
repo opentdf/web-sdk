@@ -59,17 +59,17 @@ jobs:
         working-directory: ./lib
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
         with:
           fetch-depth: ${{ !fromJSON(env.do_sonarscan) && 1 || 0 }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e #v4.3.0
         with:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: './lib/package-lock.json'
       - run: npm ci
       - run: npm test
-      - uses: fingerprintjs/action-coverage-report-md@v2
+      - uses: fingerprintjs/action-coverage-report-md@72dfb7de7581612640a8e599e918b2eda98f9bba #v2.0.1
         id: coverage-md
         with:
           srcBasePath: './'
@@ -81,13 +81,13 @@ jobs:
       - run: npm run license-check
       - run: npm run lint
       - run: npm pack
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 #v4.6.2
         with:
           name: opentdf-sdk-lib
           path: ./lib/opentdf-sdk-*.tgz
       - name: SonarCloud Scan
         if: fromJSON(env.do_sonarscan)
-        uses: SonarSource/sonarqube-scan-action@v5.0.0
+        uses: SonarSource/sonarqube-scan-action@0303d6b62e310685c0e34d0b9cde218036885c4d #v5.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -101,13 +101,13 @@ jobs:
         working-directory: ./cli
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
+      - uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e #v4.3.0
         with:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: './cli/package-lock.json'
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e #v4.2.1
         with:
           name: opentdf-sdk-lib
           path: lib/
@@ -120,7 +120,7 @@ jobs:
       - name: Setup Bats and bats libs
         uses: bats-core/bats-action@3.0.0
       - run: bats bin/opentdf.bats
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 #v4.6.2
         with:
           name: opentdf-ctl
           path: ./cli/opentdf-ctl-*.tgz
@@ -134,13 +134,13 @@ jobs:
         working-directory: ./web-app
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
+      - uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e #v4.3.0
         with:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: './web-app/package-lock.json'
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e #v4.2.1
         with:
           name: opentdf-sdk-lib
           path: lib/
@@ -160,7 +160,7 @@ jobs:
         working-directory: .github/workflows
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
       - name: 🦇🦇🦇🦇🦇🦇
         run: docker run --rm -v "$PWD:/mnt" --workdir "/mnt" bats/bats:1.11.0 *.bats
       - name: 🦪 ✔ 🧼🧼🧼
@@ -179,28 +179,42 @@ jobs:
         working-directory: .github/workflows/roundtrip
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
+      - uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e #v4.3.0
         with:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: './web-app/package-lock.json'
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e #v4.2.1
         with:
           name: opentdf-sdk-lib
           path: lib/
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e #v4.2.1
         with:
           name: opentdf-ctl
           path: cli/
-      - uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34
-        with:
-          go-version: '1.22'
       - name: Git clone backend
-        run: |
-          git clone --depth 1 https://github.com/opentdf/platform.git
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
+        with:
+          path: .github/workflows/roundtrip/platform
+          repository: opentdf/platform
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0
+        with:
+          go-version-file: .github/workflows/roundtrip/platform/service/go.mod
+          check-latest: false
+          cache-dependency-path: |
+            .github/workflows/roundtrip/platform/lib/fixtures/go.sum
+            .github/workflows/roundtrip/platform/lib/ocrypto/go.sum
+            .github/workflows/roundtrip/platform/protocol/go/go.sum
+            .github/workflows/roundtrip/platform/sdk/go.sum
+            .github/workflows/roundtrip/platform/service/go.sum
+      - run: find ./ -name go.mod
+      - name: go configure backend
+        run: |-
           go work init
-          for x in platform/{protocol/go,lib/{fixtures,ocrypto},sdk,service}; do go work use "$x"; done
+          for x in platform/{protocol/go,lib/{fixtures,ocrypto},sdk,service}; do
+            go work use "$x"
+          done
       - run: docker compose up -d --wait --wait-timeout 240
       - env:
           PLAYWRIGHT_TESTS_TO_RUN: roundtrip
@@ -236,8 +250,8 @@ jobs:
       DIST_TAG: ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
       TARGET_VERSION: ${{ steps.check-version.outputs.TARGET_VERSION }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
+      - uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e #v4.3.0
         with:
           node-version: '22'
           registry-url: https://npm.pkg.github.com
@@ -271,7 +285,7 @@ jobs:
       - run: echo "- [Client Library](https://github.com/opentdf/web-sdk/pkgs/npm/client)">>$GITHUB_STEP_SUMMARY
       - run: echo "- [Command Line Tool](https://github.com/opentdf/web-sdk/pkgs/npm/cli)">>$GITHUB_STEP_SUMMARY
       - name: Publish documentation to gh-pages
-        uses: JamesIves/github-pages-deploy-action@v4.7.3
+        uses: JamesIves/github-pages-deploy-action@6c2d9db40f9296374acc17b90404b6e8864128c8 #v4.7.3
         with:
           branch: gh-pages
           folder: lib/dist/docs
@@ -286,8 +300,8 @@ jobs:
       (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')) ||
       (github.event_name == 'release' && startsWith(github.ref, 'refs/tags/sdk/v'))
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
+      - uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e #v4.3.0
         with:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
