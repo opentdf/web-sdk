@@ -145,6 +145,7 @@ export type EncryptConfiguration = {
   keyForEncryption: KeyInfo;
   keyForManifest: KeyInfo;
   assertionConfigs?: AssertionConfig[];
+  targetSpecVersion?: string;
 };
 
 export type DecryptConfiguration = {
@@ -335,6 +336,16 @@ async function getSignature(
   }
 }
 
+function getSignatureHash(signature: Uint8Array, isLegacyTDF: boolean): string {
+  return isLegacyTDF
+    ? base64.encode(hex.encodeArrayBuffer(signature)) //  <= 3.0.0 Legacy format
+    : base64.encodeArrayBuffer(signature);             // >= 4.0.0 Current format
+}
+
+function isTargetSpecLegacyTDF(specVersion?: string): boolean {
+  return !!specVersion?.startsWith('3.')
+}
+
 export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedReadableStream> {
   if (!cfg.authProvider) {
     throw new ConfigurationError('No authorization middleware defined');
@@ -464,7 +475,9 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
           cfg.integrityAlgorithm
         );
 
-        const rootSig = base64.encodeArrayBuffer(payloadSig);
+        const isLegacyTarget = isTargetSpecLegacyTDF(cfg.targetSpecVersion);
+        const rootSig = getSignatureHash(payloadSig, isLegacyTarget);
+
         manifest.encryptionInformation.integrityInformation.rootSignature.sig = rootSig;
         manifest.encryptionInformation.integrityInformation.rootSignature.alg =
           cfg.integrityAlgorithm;
@@ -579,8 +592,9 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
 
     segmentHashList.push(new Uint8Array(payloadSig));
 
+    const isLegacyTarget = isTargetSpecLegacyTDF(cfg.targetSpecVersion);
     segmentInfos.push({
-      hash: base64.encodeArrayBuffer(payloadSig),
+      hash: getSignatureHash(payloadSig, isLegacyTarget),
       segmentSize: chunk.length === segmentSizeDefault ? undefined : chunk.length,
       encryptedSegmentSize:
         payloadBuffer.length === encryptedSegmentSizeDefault ? undefined : payloadBuffer.length,
@@ -801,10 +815,7 @@ async function decryptChunk(
     segmentIntegrityAlgorithm
   );
 
-  const segmentHash = isLegacyTDF
-    ? base64.encode(hex.encodeArrayBuffer(segmentSig))
-    : base64.encodeArrayBuffer(segmentSig);
-
+  const segmentHash = getSignatureHash(segmentSig, isLegacyTDF);
   if (hash !== segmentHash) {
     throw new IntegrityError('Failed integrity check on segment hash');
   }
@@ -1000,10 +1011,7 @@ export async function decryptStreamFrom(
     }
   }
 
-  const rootSig = isLegacyTDF
-    ? base64.encode(hex.encodeArrayBuffer(payloadSig))
-    : base64.encodeArrayBuffer(payloadSig);
-
+  const rootSig = getSignatureHash(payloadSig, isLegacyTDF)
   if (manifest.encryptionInformation.integrityInformation.rootSignature.sig !== rootSig) {
     throw new IntegrityError('Failed integrity check on root signature');
   }
