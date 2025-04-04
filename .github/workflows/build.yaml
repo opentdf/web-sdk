@@ -228,7 +228,8 @@ jobs:
     uses: opentdf/tests/.github/workflows/xtest.yml@main
     with:
       focus-sdk: js
-      js-ref: ${{ github.ref }}
+      js-ref: ${{ github.ref }} latest lts
+      platform-ref: main lts
 
   deliver-ghp:
     needs:
