@@ -73,7 +73,6 @@
   },
   "dependencies": {
     "buffer-crc32": "^1.0.0",
-    "compare-versions": "^6.1.1",
     "dpop": "^1.4.1",
     "jose": "^6.0.8",
     "json-canonicalize": "^1.0.6",
