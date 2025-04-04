@@ -16,7 +16,7 @@ import {
   tdfSpecVersion,
   OpenTDF,
   DecoratedStream,
-  isPublicKeyAlgorithm
+  isPublicKeyAlgorithm,
 } from '@opentdf/sdk';
 import { CLIError, Level, log } from './logger.js';
 import { webcrypto } from 'crypto';
