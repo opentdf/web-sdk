@@ -16,7 +16,7 @@ import {
   tdfSpecVersion,
   OpenTDF,
   DecoratedStream,
-  isPublicKeyAlgorithm,
+  isPublicKeyAlgorithm
 } from '@opentdf/sdk';
 import { CLIError, Level, log } from './logger.js';
 import { webcrypto } from 'crypto';
@@ -24,6 +24,7 @@ import * as assertions from '@opentdf/sdk/assertions';
 import { attributeFQNsAsValues } from '@opentdf/sdk/nano';
 import { base64 } from '@opentdf/sdk/encodings';
 import { type CryptoKey, importPKCS8, importSPKI } from 'jose'; // for RS256
+import { SupportedTDFSpecVersion } from 'src/version.js';
 
 type AuthToProcess = {
   auth?: string;
@@ -303,7 +304,7 @@ async function parseCreateZTDFOptions(argv: Partial<mainArgs>): Promise<CreateZT
     }
   }
   if (argv.tdfSpecVersion) {
-    c.tdfSpecVersion = argv.tdfSpecVersion;
+    c.tdfSpecVersion = argv.tdfSpecVersion as SupportedTDFSpecVersion;
   }
   log('DEBUG', `CreateZTDFOptions: ${JSON.stringify(c)}`);
   return c;
