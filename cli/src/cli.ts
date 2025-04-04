@@ -303,7 +303,7 @@ async function parseCreateZTDFOptions(argv: Partial<mainArgs>): Promise<CreateZT
     }
   }
   if (argv.tdfSpecVersion) {
-    c.tdfSpecVersion = argv.tdfSpecVersion;
+    c.tdfSpecVersion = argv.tdfSpecVersion as never;
   }
   log('DEBUG', `CreateZTDFOptions: ${JSON.stringify(c)}`);
   return c;
