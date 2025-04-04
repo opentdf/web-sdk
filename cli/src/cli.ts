@@ -24,6 +24,7 @@ import * as assertions from '@opentdf/sdk/assertions';
 import { attributeFQNsAsValues } from '@opentdf/sdk/nano';
 import { base64 } from '@opentdf/sdk/encodings';
 import { type CryptoKey, importPKCS8, importSPKI } from 'jose'; // for RS256
+import { SupportedTDFSpecVersion } from 'src/version.js';
 
 type AuthToProcess = {
   auth?: string;
@@ -302,6 +303,9 @@ async function parseCreateZTDFOptions(argv: Partial<mainArgs>): Promise<CreateZT
       throw new CLIError('CRITICAL', 'Invalid mimeType format');
     }
   }
+  if (argv.tdfSpecVersion) {
+    c.tdfSpecVersion = argv.tdfSpecVersion as SupportedTDFSpecVersion;
+  }
   log('DEBUG', `CreateZTDFOptions: ${JSON.stringify(c)}`);
   return c;
 }
@@ -506,6 +510,12 @@ export const handleArgs = (args: string[]) => {
           group: 'Encrypt Options:',
           type: 'string',
           description: 'Owner email address',
+        },
+        tdfSpecVersion: {
+          group: 'Encrypt Options:',
+          choices: ['4.2.2', '4.3.0'],
+          description: 'TDF spec version for file creation',
+          default: tdfSpecVersion,
         },
       })
 
