@@ -531,13 +531,10 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
                 alg: 'HS256',
                 key: new Uint8Array(cfg.keyForEncryption.unwrappedKeyBinary.asArrayBuffer()),
               };
-              const assertion = await assertions.CreateAssertion(
-                aggregateHash,
-                {
-                  ...assertionConfig,
-                  signingKey,
-                }
-              );
+              const assertion = await assertions.CreateAssertion(aggregateHash, {
+                ...assertionConfig,
+                signingKey,
+              });
 
               // Add signed assertion to the signedAssertions array
               signedAssertions.push(assertion);
@@ -863,8 +860,8 @@ async function decryptChunk(
   );
 
   const segmentHash = isTargetSpecLegacyTDF(specVersion)
-        ? base64.encode(hex.encodeArrayBuffer(segmentSig))
-        : base64.encodeArrayBuffer(segmentSig);
+    ? base64.encode(hex.encodeArrayBuffer(segmentSig))
+    : base64.encodeArrayBuffer(segmentSig);
 
   if (hash !== segmentHash) {
     throw new IntegrityError('Failed integrity check on segment hash');
@@ -1062,8 +1059,8 @@ export async function decryptStreamFrom(
   }
 
   const rootSig = isLegacyTDF
-        ? base64.encode(hex.encodeArrayBuffer(payloadSig))
-        : base64.encodeArrayBuffer(payloadSig);
+    ? base64.encode(hex.encodeArrayBuffer(payloadSig))
+    : base64.encodeArrayBuffer(payloadSig);
 
   if (manifest.encryptionInformation.integrityInformation.rootSignature.sig !== rootSig) {
     throw new IntegrityError('Failed integrity check on root signature');
