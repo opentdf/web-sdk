@@ -302,6 +302,9 @@ async function parseCreateZTDFOptions(argv: Partial<mainArgs>): Promise<CreateZT
       throw new CLIError('CRITICAL', 'Invalid mimeType format');
     }
   }
+  if (argv.tdfSpecVersion) {
+    c.tdfSpecVersion = argv.tdfSpecVersion as never;
+  }
   log('DEBUG', `CreateZTDFOptions: ${JSON.stringify(c)}`);
   return c;
 }
@@ -506,6 +509,12 @@ export const handleArgs = (args: string[]) => {
           group: 'Encrypt Options:',
           type: 'string',
           description: 'Owner email address',
+        },
+        tdfSpecVersion: {
+          group: 'Encrypt Options:',
+          type: 'string',
+          description: 'TDF spec version for file creation',
+          default: tdfSpecVersion,
         },
       })
 
