@@ -17,7 +17,7 @@ _nano_test() {
     --oidcEndpoint http://localhost:65432/auth/realms/opentdf \
     --auth testclient:secret \
     --output sample.txt.ntdf \
-    encrypt "${plain}" 
+    encrypt "${plain}"
 
   [ -f sample.txt.ntdf ]
 
@@ -48,7 +48,8 @@ _tdf3_test() {
     --auth testclient:secret \
     --output sample.txt.tdf \
     encrypt "${plain}" \
-    --containerType tdf3 
+    --containerType tdf3 \
+    --tdfSpecVersion "$3"
 
   [ -f sample.txt.tdf ]
 
@@ -67,7 +68,8 @@ _tdf3_test() {
   rm -f "${plain}" sample.txt.tdf sample_out.txt
 }
 
-_tdf3_test @opentdf/ctl @opentdf/ctl
+_tdf3_test @opentdf/ctl @opentdf/ctl "4.2.2"
+_tdf3_test @opentdf/ctl @opentdf/ctl "4.3.0"
 
 _tdf3_inspect_test() {
   counter=$((counter + 1))
@@ -81,7 +83,7 @@ _tdf3_inspect_test() {
     --output sample-with-attrs.txt.tdf \
     --attributes 'https://attr.io/attr/a/value/1,https://attr.io/attr/x/value/2' \
     encrypt "${plain}" \
-    --containerType tdf3 
+    --containerType tdf3
 
   [ -f sample-with-attrs.txt.tdf ]
 
