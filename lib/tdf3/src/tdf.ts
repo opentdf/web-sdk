@@ -480,7 +480,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
         fileByteCount = 0;
 
         let aggregateHash: string | Uint8Array;
-        if (tdfSpecVersion === '4.2.2') {
+        if (cfg.tdfSpecVersion === '4.2.2') {
           aggregateHash = aggregateHash422;
           const payloadSigStr = await getSignatureVersion422(
             cfg.keyForEncryption.unwrappedKeyBinary,
@@ -613,7 +613,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
     );
     const payloadBuffer = new Uint8Array(encryptedResult.payload.asByteArray());
     let hash: string;
-    if (tdfSpecVersion === '4.2.2') {
+    if (cfg.tdfSpecVersion === '4.2.2') {
       const payloadSigStr = await getSignatureVersion422(
         cfg.keyForEncryption.unwrappedKeyBinary,
         encryptedResult.payload,
