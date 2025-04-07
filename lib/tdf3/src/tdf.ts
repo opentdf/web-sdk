@@ -51,13 +51,15 @@ import {
   SplitType,
 } from './models/index.js';
 import { unsigned } from './utils/buffer-crc32.js';
-import { ZipReader, ZipWriter, keyMerge, concatUint8 } from './utils/index.js';
+import { ZipReader, ZipWriter, keyMerge, concatUint8, buffToString } from './utils/index.js';
 import { CentralDirectory } from './utils/zip-reader.js';
 import { ztdfSalt } from './crypto/salt.js';
 import { Payload } from './models/payload.js';
 
 // TODO: input validation on manifest JSON
 const DEFAULT_SEGMENT_SIZE = 1024 * 1024;
+
+const HEX_SEMVER_VERSION = '4.2.2';
 
 /**
  * Configuration for TDF3
@@ -145,6 +147,7 @@ export type EncryptConfiguration = {
   keyForEncryption: KeyInfo;
   keyForManifest: KeyInfo;
   assertionConfigs?: AssertionConfig[];
+  tdfSpecVersion?: string;
 };
 
 export type DecryptConfiguration = {
@@ -284,7 +287,8 @@ async function _generateManifest(
   keyInfo: KeyInfo,
   encryptionInformation: SplitKey,
   policy: Policy,
-  mimeType: string | undefined
+  mimeType: string | undefined,
+  targetSpecVersion: string | undefined
 ): Promise<Manifest> {
   // (maybe) Fields are quoted to avoid renaming
   const payload: Payload = {
@@ -302,7 +306,8 @@ async function _generateManifest(
     // generate the manifest first, then insert integrity information into it
     encryptionInformation: encryptionInformationStr,
     assertions: assertions,
-    schemaVersion: tdfSpecVersion,
+    // when `targetSpecVersion` is provided, overrides the tdfSpecVersion
+    schemaVersion: targetSpecVersion || tdfSpecVersion,
   };
 }
 
@@ -335,6 +340,30 @@ async function getSignature(
   }
 }
 
+async function getSignatureVersion422(
+  unwrappedKeyBinary: Binary,
+  payloadBinary: Binary,
+  algorithmType: IntegrityAlgorithm,
+  cryptoService: CryptoService
+): Promise<string> {
+  switch (algorithmType.toUpperCase()) {
+    case 'GMAC':
+      // use the auth tag baked into the encrypted payload
+      return buffToString(Uint8Array.from(payloadBinary.asByteArray()).slice(-16), 'hex');
+    case 'HS256':
+      return await cryptoService.hmac(
+        buffToString(new Uint8Array(unwrappedKeyBinary.asArrayBuffer()), 'hex'),
+        buffToString(new Uint8Array(payloadBinary.asArrayBuffer()), 'utf-8')
+      );
+    default:
+      throw new ConfigurationError(`Unsupported signature alg [${algorithmType}]`);
+  }
+}
+
+function isTargetSpecLegacyTDF(targetSpecVersion?: string): boolean {
+  return targetSpecVersion === HEX_SEMVER_VERSION;
+}
+
 export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedReadableStream> {
   if (!cfg.authProvider) {
     throw new ConfigurationError('No authorization middleware defined');
@@ -363,6 +392,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
   let bytesProcessed = 0;
   let crcCounter = 0;
   let fileByteCount = 0;
+  let aggregateHash422 = '';
   const segmentHashList: Uint8Array[] = [];
 
   const zipWriter = new ZipWriter();
@@ -370,7 +400,8 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
     cfg.keyForManifest,
     cfg.encryptionInformation,
     cfg.policy,
-    cfg.mimeType
+    cfg.mimeType,
+    cfg.tdfSpecVersion ?? '4.3.0'
   );
 
   if (!manifest) {
@@ -455,17 +486,30 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
         crcCounter = 0;
         fileByteCount = 0;
 
-        // hash the concat of all hashes
-        const aggregateHash = await concatenateUint8Array(segmentHashList);
+        let aggregateHash: string | Uint8Array;
+        if (isTargetSpecLegacyTDF(cfg.tdfSpecVersion)) {
+          aggregateHash = aggregateHash422;
+          const payloadSigStr = await getSignatureVersion422(
+            cfg.keyForEncryption.unwrappedKeyBinary,
+            Binary.fromString(aggregateHash),
+            cfg.integrityAlgorithm,
+            cfg.cryptoService
+          );
+          manifest.encryptionInformation.integrityInformation.rootSignature.sig =
+            base64.encode(payloadSigStr);
+        } else {
+          // hash the concat of all hashes
+          aggregateHash = await concatenateUint8Array(segmentHashList);
 
-        const payloadSig = await getSignature(
-          new Uint8Array(cfg.keyForEncryption.unwrappedKeyBinary.asArrayBuffer()),
-          aggregateHash,
-          cfg.integrityAlgorithm
-        );
+          const payloadSig = await getSignature(
+            new Uint8Array(cfg.keyForEncryption.unwrappedKeyBinary.asArrayBuffer()),
+            aggregateHash,
+            cfg.integrityAlgorithm
+          );
 
-        const rootSig = base64.encodeArrayBuffer(payloadSig);
-        manifest.encryptionInformation.integrityInformation.rootSignature.sig = rootSig;
+          const rootSig = base64.encodeArrayBuffer(payloadSig);
+          manifest.encryptionInformation.integrityInformation.rootSignature.sig = rootSig;
+        }
         manifest.encryptionInformation.integrityInformation.rootSignature.alg =
           cfg.integrityAlgorithm;
 
@@ -571,16 +615,30 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
       cfg.keyForEncryption.unwrappedKeyBinary
     );
     const payloadBuffer = new Uint8Array(encryptedResult.payload.asByteArray());
-    const payloadSig = await getSignature(
-      new Uint8Array(cfg.keyForEncryption.unwrappedKeyBinary.asArrayBuffer()),
-      new Uint8Array(encryptedResult.payload.asArrayBuffer()),
-      cfg.segmentIntegrityAlgorithm
-    );
+    let hash: string;
+    if (isTargetSpecLegacyTDF(cfg.tdfSpecVersion)) {
+      const payloadSigStr = await getSignatureVersion422(
+        cfg.keyForEncryption.unwrappedKeyBinary,
+        encryptedResult.payload,
+        cfg.segmentIntegrityAlgorithm,
+        cfg.cryptoService
+      );
+      // combined string of all hashes for root signature
+      aggregateHash422 += payloadSigStr;
+      hash = base64.encode(payloadSigStr);
+    } else {
+      const payloadSig = await getSignature(
+        new Uint8Array(cfg.keyForEncryption.unwrappedKeyBinary.asArrayBuffer()),
+        new Uint8Array(encryptedResult.payload.asArrayBuffer()),
+        cfg.segmentIntegrityAlgorithm
+      );
 
-    segmentHashList.push(new Uint8Array(payloadSig));
+      segmentHashList.push(new Uint8Array(payloadSig));
+      hash = base64.encodeArrayBuffer(payloadSig);
+    }
 
     segmentInfos.push({
-      hash: base64.encodeArrayBuffer(payloadSig),
+      hash,
       segmentSize: chunk.length === segmentSizeDefault ? undefined : chunk.length,
       encryptedSegmentSize:
         payloadBuffer.length === encryptedSegmentSizeDefault ? undefined : payloadBuffer.length,
@@ -790,7 +848,7 @@ async function decryptChunk(
   hash: string,
   cipher: SymmetricCipher,
   segmentIntegrityAlgorithm: IntegrityAlgorithm,
-  isLegacyTDF: boolean
+  specVersion: string
 ): Promise<DecryptResult> {
   if (segmentIntegrityAlgorithm !== 'GMAC' && segmentIntegrityAlgorithm !== 'HS256') {
     throw new UnsupportedError(`Unsupported integrity alg [${segmentIntegrityAlgorithm}]`);
@@ -801,7 +859,7 @@ async function decryptChunk(
     segmentIntegrityAlgorithm
   );
 
-  const segmentHash = isLegacyTDF
+  const segmentHash = isTargetSpecLegacyTDF(specVersion)
     ? base64.encode(hex.encodeArrayBuffer(segmentSig))
     : base64.encodeArrayBuffer(segmentSig);
 
@@ -819,7 +877,7 @@ async function updateChunkQueue(
   cipher: SymmetricCipher,
   segmentIntegrityAlgorithm: IntegrityAlgorithm,
   cryptoService: CryptoService,
-  isLegacyTDF: boolean
+  specVersion: string
 ) {
   const chunksInOneDownload = 500;
   let requests = [];
@@ -860,7 +918,7 @@ async function updateChunkQueue(
             slice,
             cipher,
             segmentIntegrityAlgorithm,
-            isLegacyTDF,
+            specVersion,
           });
         }
       })()
@@ -874,7 +932,7 @@ export async function sliceAndDecrypt({
   slice,
   cipher,
   segmentIntegrityAlgorithm,
-  isLegacyTDF,
+  specVersion,
 }: {
   buffer: Uint8Array;
   reconstructedKeyBinary: Binary;
@@ -882,7 +940,7 @@ export async function sliceAndDecrypt({
   cipher: SymmetricCipher;
   cryptoService: CryptoService;
   segmentIntegrityAlgorithm: IntegrityAlgorithm;
-  isLegacyTDF: boolean;
+  specVersion: string;
 }) {
   for (const index in slice) {
     const { encryptedOffset, encryptedSegmentSize, plainSegmentSize } = slice[index];
@@ -904,7 +962,7 @@ export async function sliceAndDecrypt({
         slice[index]['hash'],
         cipher,
         segmentIntegrityAlgorithm,
-        isLegacyTDF
+        specVersion
       );
       if (plainSegmentSize && result.payload.length() !== plainSegmentSize) {
         throw new DecryptError(
@@ -960,8 +1018,8 @@ export async function decryptStreamFrom(
   const encryptedSegmentSizeDefault = defaultSegmentSize || DEFAULT_SEGMENT_SIZE;
 
   // check if the TDF is a legacy TDF
-  const specVersion = manifest.schemaVersion || manifest.tdf_spec_version;
-  const isLegacyTDF = !specVersion || specVersion.startsWith('3.');
+  const specVersion = manifest.schemaVersion || manifest.tdf_spec_version || '4.2.2';
+  const isLegacyTDF = isTargetSpecLegacyTDF(specVersion);
 
   // Decode each hash and store it in an array of Uint8Array
   const segmentHashList = segments.map(
@@ -1047,7 +1105,7 @@ export async function decryptStreamFrom(
     cipher,
     segmentIntegrityAlg,
     cfg.cryptoService,
-    isLegacyTDF
+    specVersion
   );
 
   let progress = 0;
