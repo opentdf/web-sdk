@@ -73,9 +73,7 @@ export class SplitKey {
       } else if (typeof metadata === 'string') {
         metadataStr = metadata;
       } else {
-        throw new ConfigurationError(
-          "KAO generation failure: metadata isn't a string or object"
-        );
+        throw new ConfigurationError("KAO generation failure: metadata isn't a string or object");
       }
 
       const metadataBinary = Binary.fromArrayBuffer(new TextEncoder().encode(metadataStr));
