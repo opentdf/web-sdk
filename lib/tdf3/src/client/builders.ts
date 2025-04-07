@@ -59,6 +59,8 @@ export type EncryptParams = {
   asHtml?: boolean;
   // Unsupported
   offline?: boolean;
+  // TDF spec version to target
+  tdfSpecVersion?: string;
 };
 
 // 'Readonly<EncryptParams>': scope, metadata, offline, windowSize, asHtml
