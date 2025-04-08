@@ -261,7 +261,7 @@ jobs:
           if [[ ${{ github.ref }} = refs/heads/release/* ]]; then
             scripts/check-version-is.sh "${GITHUB_REF##*release/}"
           elif [[ ${{ github.ref }} = refs/tags/sdk/v* ]]; then
-            scripts/check-version-is.sh "${GITHUB_REF_NAME#v}"
+            scripts/check-version-is.sh "${GITHUB_REF_NAME#sdk/v}"
           else
             scripts/check-version-is.sh
           fi
