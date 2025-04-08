@@ -537,10 +537,14 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
                 alg: 'HS256',
                 key: new Uint8Array(cfg.keyForEncryption.unwrappedKeyBinary.asArrayBuffer()),
               };
-              const assertion = await assertions.CreateAssertion(aggregateHash, {
-                ...assertionConfig,
-                signingKey,
-              });
+              const assertion = await assertions.CreateAssertion(
+                aggregateHash,
+                {
+                  ...assertionConfig,
+                  signingKey,
+                },
+                cfg.tdfSpecVersion
+              );
 
               // Add signed assertion to the signedAssertions array
               signedAssertions.push(assertion);
