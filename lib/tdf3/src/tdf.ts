@@ -308,7 +308,7 @@ async function _generateManifest(
     assertions: assertions,
   };
   const schemaVersion = targetSpecVersion || tdfSpecVersion;
-  if (schemaVersion == '4.2.2') {
+  if (schemaVersion === '4.2.2') {
     return partial;
   }
   return {
