@@ -6,7 +6,8 @@ export type Manifest = {
   payload: Payload;
   encryptionInformation: EncryptionInformation;
   assertions: Assertion[];
-  schemaVersion: string;
+  // Required in later versions, optional prior to 4.3.0
+  schemaVersion?: string;
   // Deprecated
   tdf_spec_version?: string;
 };
