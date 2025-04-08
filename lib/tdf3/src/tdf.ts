@@ -306,8 +306,6 @@ async function _generateManifest(
     // generate the manifest first, then insert integrity information into it
     encryptionInformation: encryptionInformationStr,
     assertions: assertions,
-    // when `targetSpecVersion` is provided, overrides the tdfSpecVersion
-    schemaVersion: targetSpecVersion || tdfSpecVersion,
   };
   const schemaVersion = targetSpecVersion || tdfSpecVersion;
   if (schemaVersion == '4.2.2') {
