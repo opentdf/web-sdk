@@ -381,6 +381,7 @@ export class Client {
       windowSize = DEFAULT_SEGMENT_SIZE,
       keyMiddleware = defaultKeyMiddleware,
       streamMiddleware = async (stream: DecoratedReadableStream) => stream,
+      tdfSpecVersion,
       wrappingKeyAlgorithm = 'rsa:2048',
     } = opts;
     const scope = opts.scope ?? { attributes: [], dissem: [] };
@@ -498,6 +499,7 @@ export class Client {
       keyForEncryption,
       keyForManifest,
       assertionConfigs: opts.assertionConfigs,
+      tdfSpecVersion,
     };
 
     return (streamMiddleware as EncryptStreamMiddleware)(await writeStream(ecfg));

@@ -287,8 +287,8 @@ async function _generateManifest(
   keyInfo: KeyInfo,
   encryptionInformation: SplitKey,
   policy: Policy,
-  mimeType: string | undefined,
-  targetSpecVersion: string | undefined
+  mimeType?: string,
+  targetSpecVersion?: string
 ): Promise<Manifest> {
   // (maybe) Fields are quoted to avoid renaming
   const payload: Payload = {
@@ -401,7 +401,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
     cfg.encryptionInformation,
     cfg.policy,
     cfg.mimeType,
-    cfg.tdfSpecVersion ?? '4.3.0'
+    cfg.tdfSpecVersion
   );
 
   if (!manifest) {
