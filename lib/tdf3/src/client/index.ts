@@ -48,16 +48,12 @@ import { Binary } from '../binary.js';
 import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
 import { toCryptoKeyPair } from '../crypto/crypto-utils.js';
 import * as defaultCryptoService from '../crypto/index.js';
-import {
-  type AttributeObject,
-  type KeyAccessType,
-  type Policy,
-  SplitKey,
-} from '../models/index.js';
+import { type AttributeObject, type KeyAccessType, type Policy } from '../models/index.js';
 import { plan } from '../../../src/policy/granter.js';
 import { attributeFQNsAsValues } from '../../../src/policy/api.js';
 import { type Value } from '../../../src/policy/attributes.js';
 import { type Chunker, fromBuffer, fromSource } from '../../../src/seekable.js';
+import { SplitKey } from '../splits.js';
 
 const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
 
