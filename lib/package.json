@@ -52,6 +52,11 @@
       "types": "./dist/types/src/nanoindex.d.ts",
       "require": "./dist/cjs/src/nanoindex.js",
       "import": "./dist/web/src/nanoindex.js"
+    },
+    "./platform": {
+      "types": "./dist/types/src/platform.d.ts",
+      "require": "./dist/cjs/src/platform.js",
+      "import": "./dist/web/src/platform.js"
     }
   },
   "scripts": {
@@ -79,6 +84,8 @@
     "uuid": "~11.1.0"
   },
   "devDependencies": {
+    "@bufbuild/buf": "^1.52.1",
+    "@bufbuild/protoc-gen-es": "^2.2.5",
     "@eslint/js": "^9.21.0",
     "@esm-bundle/chai": "~4.3.4-fix.0",
     "@types/buffer-crc32": "^0.2.4",
