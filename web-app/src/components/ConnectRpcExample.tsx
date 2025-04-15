@@ -1,0 +1,48 @@
+import { AuthProvider, OpenTDF } from '@opentdf/sdk';
+import { useState } from 'react';
+
+interface ConnectRpcExampleProps {
+  authProvider: AuthProvider;
+}
+
+export function ConnectRpcExample({ authProvider }: ConnectRpcExampleProps) {
+  const [result, setResult] = useState('');
+
+  const client = new OpenTDF({
+    authProvider,
+    platformUrl: '/api',
+  });
+
+  const handleWellknown = async () => {
+    const response = await client.services.wellknown.getWellKnownConfiguration({});
+    setResult(JSON.stringify(response.configuration));
+  };
+
+  const handleKas = async () => {
+    const response = await client.services.access.publicKey({});
+    setResult(response.publicKey);
+  };
+
+  const handlePolicy = async () => {
+    const response = await client.services.attributes.listAttributes({});
+    setResult(response.attributes.map((s) => `${s}`).join(','));
+  };
+
+  return (
+    <>
+      <fieldset>
+        <legend>Connect RPC</legend>
+        <button id="wellknown_config" onClick={handleWellknown}>
+          Wellknown
+        </button>
+        <button id="public_kas_key" onClick={handleKas}>
+          Public Key Kas
+        </button>
+        <button id="policy_list_attr" onClick={handlePolicy}>
+          Policy List Attributes
+        </button>
+        <textarea id="connect_result" value={result} readOnly></textarea>
+      </fieldset>
+    </>
+  );
+}

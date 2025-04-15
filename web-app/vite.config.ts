@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react';
 
 const require = createRequire(import.meta.url)
 
-function proxy(): Record<string, string> {
+function proxy(): Record<string, unknown> {
   const { VITE_PROXY } = process.env;
   if (VITE_PROXY) {
     console.log(`using VITE_PROXY [${VITE_PROXY}]`);
@@ -14,6 +14,11 @@ function proxy(): Record<string, string> {
   return {
     '/kas': 'http://localhost:8080',
     '/auth': 'http://localhost:8888',
+    "/api": {
+      target: "http://localhost:8080",
+      changeOrigin: true,
+      rewrite: (path) => path.replace(/^\/api/, ""),
+    },
   };
 }
 

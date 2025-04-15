@@ -34,4 +34,20 @@ describe('basic', () => {
     await expect(details).toContainText('index.html');
     await expect(details).toContainText('Content Type: text/html');
   }, 15_000);
+
+  test('connect rpc example', async () => {
+    await page.goto('http://localhost:3000');
+
+    let element = await page.locator('#wellknown_config');
+    await expect(element).toContainText('Wellknown');
+
+    element = await page.locator('#public_kas_key');
+    await expect(element).toContainText('Public Key Kas');
+
+    element = await page.locator('#policy_list_attr');
+    await expect(element).toContainText('Policy List Attributes');
+
+    element = await page.locator('#connect_result');
+    await expect(element).toHaveValue('');
+  }, 15_000);
 });
