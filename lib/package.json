@@ -77,6 +77,8 @@
     "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))"
   },
   "dependencies": {
+    "@connectrpc/connect": "^2.0.2",
+    "@connectrpc/connect-web": "^2.0.2",
     "buffer-crc32": "^1.0.0",
     "dpop": "^1.4.1",
     "jose": "^6.0.8",
