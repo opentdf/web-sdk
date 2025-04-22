@@ -303,6 +303,7 @@ export class Client {
         throw new ConfigurationError(`Invalid KAS endpoint [${this.kasEndpoint}]`);
       }
     } else {
+      // TODO KAS: fix here
       if (!validateSecureUrl(this.kasEndpoint)) {
         throw new ConfigurationError(
           `Invalid KAS endpoint [${this.kasEndpoint}]; to force, please list it among allowedKases`
@@ -445,6 +446,7 @@ export class Client {
         ? maxByteLimit
         : opts.byteLimit;
     const encryptionInformation = new SplitKey(new AesGcmCipher(this.cryptoService));
+    // TODO KAS: check here
     const splits: SplitStep[] = splitPlan?.length
       ? splitPlan
       : [{ kas: opts.defaultKASEndpoint ?? this.kasEndpoint }];
@@ -516,6 +518,8 @@ export class Client {
    * @return a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} stream containing the decrypted plaintext.
    * @see DecryptParamsBuilder
    */
+
+  // TODO KAS: fix here
   async decrypt({
     source,
     allowList,
@@ -531,6 +535,7 @@ export class Client {
       throw new ConfigurationError('AuthProvider missing');
     }
     const chunker = await makeChunkable(source);
+    // TODO KAS: fix here for real
     if (!allowList) {
       allowList = this.allowedKases;
     }

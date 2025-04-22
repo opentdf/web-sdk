@@ -478,6 +478,7 @@ class NanoTDFReader {
     });
   }
 
+  // TODO KAS: Check here in the PR please
   async decrypt(): Promise<DecoratedStream> {
     const nanotdf = await this.container;
     const cachedDEK = this.rewrapCache.get(nanotdf.header.ephemeralPublicKey);
@@ -550,6 +551,7 @@ class ZTDFReader {
       noVerify: noVerifyAssertions,
       wrappingKeyAlgorithm,
     } = this.opts;
+    // TODO fix here ?
     const allowList = new OriginAllowList(
       this.opts.allowedKASEndpoints ?? [],
       this.opts.ignoreAllowlist

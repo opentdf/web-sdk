@@ -148,6 +148,7 @@ export default class Client {
         throw new ConfigurationError('please specify kasEndpoint');
       }
       // TODO Disallow http KAS. For now just log as error
+      // TODO KAS: check here in PR please
       validateSecureUrl(kasUrl);
       this.kasUrl = kasUrl;
       this.allowedKases = new OriginAllowList([kasUrl]);
@@ -171,6 +172,7 @@ export default class Client {
       } = optsOrOldAuthProvider;
       this.authProvider = enwrapAuthProvider(authProvider);
       // TODO Disallow http KAS. For now just log as error
+      // TODO KAS: fix here
       validateSecureUrl(kasEndpoint);
       this.kasUrl = kasEndpoint;
       this.allowedKases = new OriginAllowList(allowedKases || [kasEndpoint], !!ignoreAllowList);
@@ -214,6 +216,7 @@ export default class Client {
     magicNumberVersion: ArrayBufferLike,
     clientVersion: string
   ): Promise<CryptoKey> {
+    // TODO KAS: fix here for real
     if (!this.allowedKases.allows(kasRewrapUrl)) {
       throw new UnsafeUrlError(`request URL ∉ ${this.allowedKases.origins};`, kasRewrapUrl);
     }

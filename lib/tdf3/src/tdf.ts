@@ -674,6 +674,7 @@ export async function loadTDFStream(chunker: Chunker): Promise<InspectedTDFOverv
   return { manifest, zipReader, centralDirectory };
 }
 
+/// TODO KAS: fix here?
 export function splitLookupTableFactory(
   keyAccess: KeyAccessObject[],
   allowedKases: OriginAllowList
@@ -991,6 +992,7 @@ export async function readStream(cfg: DecryptConfiguration) {
   return decryptStreamFrom(cfg, overview);
 }
 
+// TODO: fix here
 export async function decryptStreamFrom(
   cfg: DecryptConfiguration,
   { manifest, zipReader, centralDirectory }: InspectedTDFOverview
