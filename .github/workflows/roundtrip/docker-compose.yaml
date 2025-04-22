@@ -1,6 +1,6 @@
 services:
   keycloak:
-    image: keycloak/keycloak:25.0
+    image: keycloak/keycloak:24.0.5
     restart: always
     command:
     - "start-dev"
