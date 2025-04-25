@@ -588,6 +588,13 @@ class ZTDFReader {
       throw new ConfigurationError('platformUrl is required when allowedKasEndpoints is empty');
     }
 
+    const dpopKeys = await this.client.dpopKeys;
+
+    const { authProvider, cryptoService } = this.client;
+    if (!authProvider) {
+      throw new ConfigurationError('authProvider is required');
+    }
+
     let allowList: OriginAllowList | undefined;
 
     if (this.opts.allowedKASEndpoints?.length || this.opts.ignoreAllowlist) {
@@ -596,14 +603,7 @@ class ZTDFReader {
         this.opts.ignoreAllowlist
       );
     } else if (this.opts.platformUrl) {
-      allowList = await fetchKeyAccessServers(this.opts.platformUrl);
-    }
-
-    const dpopKeys = await this.client.dpopKeys;
-
-    const { authProvider, cryptoService } = this.client;
-    if (!authProvider) {
-      throw new ConfigurationError('authProvider is required');
+      allowList = await fetchKeyAccessServers(this.opts.platformUrl, authProvider);
     }
 
     const overview = await this.overview;

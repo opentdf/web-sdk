@@ -156,12 +156,52 @@ async function noteInvalidPublicKey(url: URL, r: Promise<CryptoKey>): Promise<Cr
   }
 }
 
-export async function fetchKeyAccessServers(platformUrl: string): Promise<OriginAllowList> {
-  // TODO KAS: fetch the list correctly and test it /key-access-servers
-  // This should allow for the tests to pass but it needs to be replaced with
-  // '/policy.kasregistry.KeyAccessServerRegistryService/ListKeyAccessServers'
-  console.log('TODO fetchKeyAccessServers', platformUrl);
-  return new OriginAllowList([platformUrl], false);
+export async function fetchKeyAccessServers(
+  platformUrl: string,
+  authProvider: AuthProvider
+): Promise<OriginAllowList> {
+  let nextOffset = 0;
+  const allServers = [];
+  do {
+    const req = await authProvider.withCreds({
+      url: `${platformUrl}/policy.kasregistry.KeyAccessServerRegistryService/ListKeyAccessServers`,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        pagination: {
+          offset: nextOffset,
+        },
+      }),
+    });
+    let response: Response;
+    try {
+      response = await fetch(req.url, {
+        method: req.method,
+        headers: req.headers,
+        body: req.body as BodyInit,
+        mode: 'cors',
+        cache: 'no-cache',
+        credentials: 'same-origin',
+        redirect: 'follow',
+        referrerPolicy: 'no-referrer',
+      });
+    } catch (e) {
+      throw new NetworkError(`unable to fetch kas list from [${req.url}]`, e);
+    }
+    if (response.ok) {
+      const { keyAccessServers = [], pagination = {} } = await response.json();
+      allServers.push(...keyAccessServers);
+      nextOffset = pagination.nextOffset || 0;
+    }
+  } while (nextOffset > 0);
+
+  if (!allServers.length) {
+    throw new ConfigurationError('There are no available KAS');
+  }
+  const serverUrls = allServers.map((server) => server.uri);
+  return new OriginAllowList(serverUrls, false);
 }
 
 /**

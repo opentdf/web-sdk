@@ -227,7 +227,7 @@ export default class Client {
     let allowedKases = this.allowedKases;
 
     if (!allowedKases) {
-      allowedKases = await fetchKeyAccessServers(this.platformUrl);
+      allowedKases = await fetchKeyAccessServers(this.platformUrl, this.authProvider);
     }
 
     if (!allowedKases.allows(kasRewrapUrl)) {

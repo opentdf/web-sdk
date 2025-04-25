@@ -547,7 +547,7 @@ export class Client {
     if (!allowList && this.allowedKases) {
       allowList = this.allowedKases;
     } else if (this.platformUrl) {
-      allowList = await fetchKeyAccessServers(this.platformUrl);
+      allowList = await fetchKeyAccessServers(this.platformUrl, this.authProvider);
     } else {
       throw new ConfigurationError('platformUrl is required when allowedKases is empty');
     }
