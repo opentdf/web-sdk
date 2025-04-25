@@ -181,8 +181,8 @@ export default class Client {
       validateSecureUrl(kasEndpoint);
       this.kasUrl = kasEndpoint;
       this.platformUrl = platformUrl;
-      if (allowedKases?.length) {
-        this.allowedKases = new OriginAllowList(allowedKases, !!ignoreAllowList);
+      if (allowedKases?.length || ignoreAllowList) {
+        this.allowedKases = new OriginAllowList(allowedKases || [], ignoreAllowList);
       }
       this.dpopEnabled = !!dpopEnabled;
       if (dpopKeys) {

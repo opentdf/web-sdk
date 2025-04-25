@@ -491,7 +491,11 @@ class NanoTDFReader {
     readonly chunker: Chunker,
     private readonly rewrapCache: RewrapCache
   ) {
-    if (!this.outer.platformUrl && !this.opts.allowedKASEndpoints?.length) {
+    if (
+      !this.opts.ignoreAllowlist &&
+      !this.outer.platformUrl &&
+      !this.opts.allowedKASEndpoints?.length
+    ) {
       throw new ConfigurationError('platformUrl is required when allowedKasEndpoints is empty');
     }
     // lazily load the container
@@ -580,14 +584,17 @@ class ZTDFReader {
       wrappingKeyAlgorithm,
     } = this.opts;
 
-    if (!this.opts.allowedKASEndpoints && !this.opts.platformUrl) {
+    if (!this.opts.ignoreAllowlist && !this.opts.allowedKASEndpoints && !this.opts.platformUrl) {
       throw new ConfigurationError('platformUrl is required when allowedKasEndpoints is empty');
     }
 
     let allowList: OriginAllowList | undefined;
 
-    if (this.opts.allowedKASEndpoints?.length) {
-      allowList = new OriginAllowList(this.opts.allowedKASEndpoints, this.opts.ignoreAllowlist);
+    if (this.opts.allowedKASEndpoints?.length || this.opts.ignoreAllowlist) {
+      allowList = new OriginAllowList(
+        this.opts.allowedKASEndpoints || [],
+        this.opts.ignoreAllowlist
+      );
     } else if (this.opts.platformUrl) {
       allowList = await fetchKeyAccessServers(this.opts.platformUrl);
     }
