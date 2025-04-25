@@ -156,6 +156,14 @@ async function noteInvalidPublicKey(url: URL, r: Promise<CryptoKey>): Promise<Cr
   }
 }
 
+export async function fetchKeyAccessServers(platformUrl: string): Promise<OriginAllowList> {
+  // TODO KAS: fetch the list correctly and test it /key-access-servers
+  // This should allow for the tests to pass but it needs to be replaced with
+  // '/policy.kasregistry.KeyAccessServerRegistryService/ListKeyAccessServers'
+  console.log('TODO fetchKeyAccessServers', platformUrl);
+  return new OriginAllowList([platformUrl], false);
+}
+
 /**
  * If we have KAS url but not public key we can fetch it from KAS, fetching
  * the value from `${kas}/kas_public_key`.

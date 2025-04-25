@@ -39,6 +39,7 @@ import {
   EncryptParamsBuilder,
 } from './builders.js';
 import {
+  fetchKeyAccessServers,
   type KasPublicKeyInfo,
   keyAlgorithmToPublicKeyAlgorithm,
   OriginAllowList,
@@ -125,7 +126,7 @@ export interface ClientConfig {
   clientId?: string;
   dpopEnabled?: boolean;
   dpopKeys?: Promise<CryptoKeyPair>;
-  kasEndpoint?: string;
+  kasEndpoint: string;
   /**
    * Service to use to look up ABAC. Used during autoconfigure. Defaults to
    * kasEndpoint without the trailing `/kas` path segment, if present.
@@ -133,9 +134,11 @@ export interface ClientConfig {
   policyEndpoint?: string;
   /**
    * List of allowed KASes to connect to for rewrap requests.
-   * Defaults to `[kasEndpoint]`.
+   * Defaults to `[]`.
    */
   allowedKases?: string[];
+  // Platform URL to use to lookup allowed KASes when allowedKases is empty
+  platformUrl?: string;
   ignoreAllowList?: boolean;
   easEndpoint?: string;
   // DEPRECATED Ignored
@@ -237,7 +240,12 @@ export class Client {
    * List of allowed KASes to connect to for rewrap requests.
    * Defaults to `[this.kasEndpoint]`.
    */
-  readonly allowedKases: OriginAllowList;
+  readonly allowedKases?: OriginAllowList;
+
+  /**
+   * URL of the platform, required to fetch list of allowed KASes when allowedKases is empty
+   */
+  readonly platformUrl?: string;
 
   readonly kasKeys: Record<string, Promise<KasPublicKeyInfo>[]> = {};
 
@@ -287,6 +295,14 @@ export class Client {
       this.kasEndpoint = clientConfig.keyRewrapEndpoint.replace(/\/rewrap$/, '');
     }
     this.kasEndpoint = rstrip(this.kasEndpoint, '/');
+
+    if (!validateSecureUrl(this.kasEndpoint)) {
+      throw new ConfigurationError(`Invalid KAS endpoint [${this.kasEndpoint}]`);
+    }
+    if (config.platformUrl) {
+      this.platformUrl = config.platformUrl;
+    }
+
     if (clientConfig.policyEndpoint) {
       this.policyEndpoint = rstrip(clientConfig.policyEndpoint, '/');
     } else if (this.kasEndpoint.endsWith('/kas')) {
@@ -299,17 +315,12 @@ export class Client {
         clientConfig.allowedKases,
         !!clientConfig.ignoreAllowList
       );
-      if (!validateSecureUrl(this.kasEndpoint) && !this.allowedKases.allows(kasOrigin)) {
-        throw new ConfigurationError(`Invalid KAS endpoint [${this.kasEndpoint}]`);
-      }
-    } else {
-      // TODO KAS: fix here
-      if (!validateSecureUrl(this.kasEndpoint)) {
+      if (!this.allowedKases.allows(kasOrigin)) {
+        // TODO PR: ask if in this cases it makes more sense to add defaultKASEndpoint to the allow list if the allowList is not empty but doesn't have the defaultKas
         throw new ConfigurationError(
-          `Invalid KAS endpoint [${this.kasEndpoint}]; to force, please list it among allowedKases`
+          `Invalid KAS endpoint [${this.kasEndpoint}]. When allowedKases is set, defaultKASEndpoint needs to be in the allow list`
         );
       }
-      this.allowedKases = new OriginAllowList([kasOrigin], !!clientConfig.ignoreAllowList);
     }
 
     this.authProvider = config.authProvider;
@@ -518,8 +529,6 @@ export class Client {
    * @return a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} stream containing the decrypted plaintext.
    * @see DecryptParamsBuilder
    */
-
-  // TODO KAS: fix here
   async decrypt({
     source,
     allowList,
@@ -535,9 +544,12 @@ export class Client {
       throw new ConfigurationError('AuthProvider missing');
     }
     const chunker = await makeChunkable(source);
-    // TODO KAS: fix here for real
-    if (!allowList) {
+    if (!allowList && this.allowedKases) {
       allowList = this.allowedKases;
+    } else if (this.platformUrl) {
+      allowList = await fetchKeyAccessServers(this.platformUrl);
+    } else {
+      throw new ConfigurationError('platformUrl is required when allowedKases is empty');
     }
 
     // Await in order to catch any errors from this call.

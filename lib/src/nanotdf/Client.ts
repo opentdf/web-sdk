@@ -2,7 +2,12 @@ import * as base64 from '../encodings/base64.js';
 import { generateKeyPair, keyAgreement } from '../nanotdf-crypto/index.js';
 import getHkdfSalt from './helpers/getHkdfSalt.js';
 import DefaultParams from './models/DefaultParams.js';
-import { fetchWrappedKey, KasPublicKeyInfo, OriginAllowList } from '../access.js';
+import {
+  fetchKeyAccessServers,
+  fetchWrappedKey,
+  KasPublicKeyInfo,
+  OriginAllowList,
+} from '../access.js';
 import { AuthProvider, isAuthProvider, reqSignature } from '../auth/providers.js';
 import { ConfigurationError, DecryptError, TdfError, UnsafeUrlError } from '../errors.js';
 import { cryptoPublicToPem, pemToCryptoPublicKey, validateSecureUrl } from '../utils.js';
@@ -15,6 +20,7 @@ export interface ClientConfig {
   dpopKeys?: Promise<CryptoKeyPair>;
   ephemeralKeyPair?: Promise<CryptoKeyPair>;
   kasEndpoint: string;
+  platformUrl: string;
 }
 
 function toJWSAlg(c: CryptoKey): string {
@@ -99,12 +105,13 @@ export default class Client {
   static readonly INITIAL_RELEASE_IV_SIZE = 3;
   static readonly IV_SIZE = 12;
 
-  allowedKases: OriginAllowList;
+  allowedKases?: OriginAllowList;
   /*
     These variables are expected to be either assigned during initialization or within the methods.
     This is needed as the flow is very specific. Errors should be thrown if the necessary step is not completed.
   */
   protected kasUrl: string;
+  readonly platformUrl: string;
   kasPubKey?: KasPublicKeyInfo;
   readonly authProvider: AuthProvider;
   readonly dpopEnabled: boolean;
@@ -148,10 +155,8 @@ export default class Client {
         throw new ConfigurationError('please specify kasEndpoint');
       }
       // TODO Disallow http KAS. For now just log as error
-      // TODO KAS: check here in PR please
       validateSecureUrl(kasUrl);
       this.kasUrl = kasUrl;
-      this.allowedKases = new OriginAllowList([kasUrl]);
       this.dpopEnabled = dpopEnabled;
 
       if (ephemeralKeyPair) {
@@ -169,13 +174,16 @@ export default class Client {
         dpopKeys,
         ephemeralKeyPair,
         kasEndpoint,
+        platformUrl,
       } = optsOrOldAuthProvider;
       this.authProvider = enwrapAuthProvider(authProvider);
       // TODO Disallow http KAS. For now just log as error
-      // TODO KAS: fix here
       validateSecureUrl(kasEndpoint);
       this.kasUrl = kasEndpoint;
-      this.allowedKases = new OriginAllowList(allowedKases || [kasEndpoint], !!ignoreAllowList);
+      this.platformUrl = platformUrl;
+      if (allowedKases?.length) {
+        this.allowedKases = new OriginAllowList(allowedKases, !!ignoreAllowList);
+      }
       this.dpopEnabled = !!dpopEnabled;
       if (dpopKeys) {
         this.requestSignerKeyPair = dpopKeys;
@@ -216,9 +224,14 @@ export default class Client {
     magicNumberVersion: ArrayBufferLike,
     clientVersion: string
   ): Promise<CryptoKey> {
-    // TODO KAS: fix here for real
-    if (!this.allowedKases.allows(kasRewrapUrl)) {
-      throw new UnsafeUrlError(`request URL ∉ ${this.allowedKases.origins};`, kasRewrapUrl);
+    let allowedKases = this.allowedKases;
+
+    if (!allowedKases) {
+      allowedKases = await fetchKeyAccessServers(this.platformUrl);
+    }
+
+    if (!allowedKases.allows(kasRewrapUrl)) {
+      throw new UnsafeUrlError(`request URL ∉ ${allowedKases.origins};`, kasRewrapUrl);
     }
 
     const ephemeralKeyPair = await this.ephemeralKeyPair;

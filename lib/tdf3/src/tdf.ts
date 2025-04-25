@@ -674,7 +674,6 @@ export async function loadTDFStream(chunker: Chunker): Promise<InspectedTDFOverv
   return { manifest, zipReader, centralDirectory };
 }
 
-/// TODO KAS: fix here?
 export function splitLookupTableFactory(
   keyAccess: KeyAccessObject[],
   allowedKases: OriginAllowList
@@ -992,7 +991,13 @@ export async function readStream(cfg: DecryptConfiguration) {
   return decryptStreamFrom(cfg, overview);
 }
 
-// TODO: fix here
+// TODO: potentially might need fixing here
+// By the time this function is called the allow list will be already set.
+// Verify that this function is not exported in the sdk and only exported for internal use
+// Verify this during tests and PR
+// Remove this comment before merging!
+// https://www.youtube.com/watch?v=NGrLb6W5YOM
+// Don't leave me here all by myself!
 export async function decryptStreamFrom(
   cfg: DecryptConfiguration,
   { manifest, zipReader, centralDirectory }: InspectedTDFOverview
