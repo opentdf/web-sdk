@@ -614,7 +614,7 @@ export const handleArgs = (args: string[]) => {
         },
         async (argv) => {
           log('DEBUG', 'Running decrypt command');
-          let allowedKases = argv.allowList?.split(',');
+          const allowedKases = argv.allowList?.split(',');
           log('DEBUG', `Allowed KASes: ${allowedKases}`);
           const ignoreAllowList = !!argv.ignoreAllowList;
           if (!argv.oidcEndpoint) {

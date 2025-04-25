@@ -41,6 +41,7 @@ describe('rewrap error cases', function () {
 
     client = new Client.Client({
       kasEndpoint: kasUrl,
+      allowedKases: [kasUrl],
       dpopKeys: Mocks.entityKeyPair(),
       clientId: 'id',
       authProvider: baseAuthProvider,
@@ -57,6 +58,7 @@ describe('rewrap error cases', function () {
     if (customAuthProvider) {
       client = new Client.Client({
         kasEndpoint: kasUrl,
+        allowedKases: [kasUrl],
         dpopKeys: Mocks.entityKeyPair(),
         clientId: 'id',
         authProvider: customAuthProvider,
@@ -191,6 +193,7 @@ describe('rewrap error cases', function () {
       // Point to a non-existent server
       client = new Client.Client({
         kasEndpoint: 'http://localhost:9999',
+        allowedKases: ['http://localhost:9999'],
         dpopKeys: Mocks.entityKeyPair(),
         clientId: 'id',
         authProvider: {
@@ -273,6 +276,7 @@ describe('encrypt decrypt test', async function () {
         // });
         const client = new Client.Client({
           kasEndpoint: kasUrl,
+          allowedKases: [kasUrl],
           dpopKeys: Mocks.entityKeyPair(),
           clientId: 'id',
           authProvider,
