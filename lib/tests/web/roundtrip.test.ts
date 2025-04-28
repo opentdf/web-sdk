@@ -52,6 +52,64 @@ describe('Local roundtrip Tests', () => {
     const actual = await new Response(nanotdfParsed).arrayBuffer();
     expect(new TextDecoder().decode(actual)).to.be.equal('hello world');
   });
+  it(`ztdf roundtrip string with platformUrl`, async () => {
+    const client = new OpenTDF({
+      authProvider,
+      platformUrl,
+    });
+    const cipherTextStream = await client.createZTDF({
+      autoconfigure: false,
+      defaultKASEndpoint: kasEndpoint,
+      source: { type: 'chunker', location: fromString('hello world') },
+    });
+    const cipherManifest = await cipherTextStream.manifest;
+    const kao = cipherManifest?.encryptionInformation?.keyAccess[0];
+    expect(kao).to.contain({
+      url: kasEndpoint,
+      kid: 'r1',
+      type: 'wrapped',
+      protocol: 'kas',
+      schemaVersion: '1.0',
+    });
+    const cipherTextArray = new Uint8Array(await new Response(cipherTextStream).arrayBuffer());
+
+    const nanotdfParsed = await client.read({
+      source: { type: 'buffer', location: cipherTextArray },
+    });
+    expect(await nanotdfParsed.metadata).to.contain({ hello: 'world' });
+
+    const actual = await new Response(nanotdfParsed).arrayBuffer();
+    expect(new TextDecoder().decode(actual)).to.be.equal('hello world');
+  });
+  it(`ztdf roundtrip string without platform url nor allowedList should fail`, async () => {
+    const client = new OpenTDF({
+      authProvider,
+    });
+    const cipherTextStream = await client.createZTDF({
+      autoconfigure: false,
+      defaultKASEndpoint: kasEndpoint,
+      source: { type: 'chunker', location: fromString('hello world') },
+    });
+    const cipherManifest = await cipherTextStream.manifest;
+    const kao = cipherManifest?.encryptionInformation?.keyAccess[0];
+    expect(kao).to.contain({
+      url: kasEndpoint,
+      kid: 'r1',
+      type: 'wrapped',
+      protocol: 'kas',
+      schemaVersion: '1.0',
+    });
+    const cipherTextArray = new Uint8Array(await new Response(cipherTextStream).arrayBuffer());
+
+    try {
+      await client.read({
+        source: { type: 'buffer', location: cipherTextArray },
+      });
+    } catch (e) {
+      expect(e.message).to.contains('platformUrl is required when allowedKasEndpoints is empty');
+      return;
+    }
+  });
   for (const ecdsaBinding of [false, true]) {
     const bindingType = ecdsaBinding ? 'ecdsa' : 'gmac';
     it(`nano roundtrip string (${bindingType} policy binding)`, async () => {
