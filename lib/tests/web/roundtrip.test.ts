@@ -18,6 +18,7 @@ const authProvider = <AuthProvider>{
 };
 
 const kasEndpoint = 'http://localhost:3000';
+const platformUrl = 'http://localhost:3000';
 
 describe('Local roundtrip Tests', () => {
   it(`ztdf roundtrip string`, async () => {
@@ -51,6 +52,64 @@ describe('Local roundtrip Tests', () => {
     const actual = await new Response(nanotdfParsed).arrayBuffer();
     expect(new TextDecoder().decode(actual)).to.be.equal('hello world');
   });
+  it(`ztdf roundtrip string with platformUrl`, async () => {
+    const client = new OpenTDF({
+      authProvider,
+      platformUrl,
+    });
+    const cipherTextStream = await client.createZTDF({
+      autoconfigure: false,
+      defaultKASEndpoint: kasEndpoint,
+      source: { type: 'chunker', location: fromString('hello world') },
+    });
+    const cipherManifest = await cipherTextStream.manifest;
+    const kao = cipherManifest?.encryptionInformation?.keyAccess[0];
+    expect(kao).to.contain({
+      url: kasEndpoint,
+      kid: 'r1',
+      type: 'wrapped',
+      protocol: 'kas',
+      schemaVersion: '1.0',
+    });
+    const cipherTextArray = new Uint8Array(await new Response(cipherTextStream).arrayBuffer());
+
+    const nanotdfParsed = await client.read({
+      source: { type: 'buffer', location: cipherTextArray },
+    });
+    expect(await nanotdfParsed.metadata).to.contain({ hello: 'world' });
+
+    const actual = await new Response(nanotdfParsed).arrayBuffer();
+    expect(new TextDecoder().decode(actual)).to.be.equal('hello world');
+  });
+  it(`ztdf roundtrip string without platform url nor allowedList should fail`, async () => {
+    const client = new OpenTDF({
+      authProvider,
+    });
+    const cipherTextStream = await client.createZTDF({
+      autoconfigure: false,
+      defaultKASEndpoint: kasEndpoint,
+      source: { type: 'chunker', location: fromString('hello world') },
+    });
+    const cipherManifest = await cipherTextStream.manifest;
+    const kao = cipherManifest?.encryptionInformation?.keyAccess[0];
+    expect(kao).to.contain({
+      url: kasEndpoint,
+      kid: 'r1',
+      type: 'wrapped',
+      protocol: 'kas',
+      schemaVersion: '1.0',
+    });
+    const cipherTextArray = new Uint8Array(await new Response(cipherTextStream).arrayBuffer());
+
+    try {
+      await client.read({
+        source: { type: 'buffer', location: cipherTextArray },
+      });
+    } catch (e) {
+      expect(e.message).to.contains('platformUrl is required when allowedKasEndpoints is empty');
+      return;
+    }
+  });
   for (const ecdsaBinding of [false, true]) {
     const bindingType = ecdsaBinding ? 'ecdsa' : 'gmac';
     it(`nano roundtrip string (${bindingType} policy binding)`, async () => {
@@ -75,9 +134,9 @@ describe('Local roundtrip Tests', () => {
       expect(new TextDecoder().decode(actual)).to.be.equal('hello world');
     });
     it(`roundtrip string (${bindingType} policy binding, deprecated API)`, async () => {
-      const client = new NanoTDFClient({ authProvider, kasEndpoint });
+      const client = new NanoTDFClient({ authProvider, kasEndpoint, platformUrl });
       const cipherText = await client.encrypt('hello world', { ecdsaBinding });
-      const client2 = new NanoTDFClient({ authProvider, kasEndpoint });
+      const client2 = new NanoTDFClient({ authProvider, kasEndpoint, platformUrl });
       const nanotdfParsed = NanoTDF.from(cipherText);
 
       expect(nanotdfParsed.header.kas.url).to.equal(kasEndpoint);

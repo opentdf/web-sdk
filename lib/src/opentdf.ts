@@ -13,7 +13,12 @@ import {
   AssertionConfig,
   AssertionVerificationKeys,
 } from '../tdf3/src/assertions.js';
-import { type KasPublicKeyAlgorithm, OriginAllowList, isPublicKeyAlgorithm } from './access.js';
+import {
+  type KasPublicKeyAlgorithm,
+  OriginAllowList,
+  fetchKeyAccessServers,
+  isPublicKeyAlgorithm,
+} from './access.js';
 import { type Manifest } from '../tdf3/src/models/manifest.js';
 import { type Payload } from '../tdf3/src/models/payload.js';
 import {
@@ -87,6 +92,7 @@ export type CreateNanoTDFOptions = CreateOptions & {
 };
 
 export type CreateNanoTDFCollectionOptions = CreateNanoTDFOptions & {
+  platformUrl: string;
   // The maximum number of key iterations to use for a single DEK.
   maxKeyIterations?: number;
 };
@@ -136,6 +142,8 @@ export type CreateZTDFOptions = CreateOptions & {
 export type ReadOptions = {
   // ciphertext
   source: Source;
+  // Platform URL
+  platformUrl?: string;
   // list of KASes that may be contacted for a rewrap
   allowedKASEndpoints?: string[];
   // Optionally disable checking the allowlist
@@ -156,6 +164,9 @@ export type ReadOptions = {
 export type OpenTDFOptions = {
   // Policy service endpoint
   policyEndpoint?: string;
+
+  // Platform URL
+  platformUrl?: string;
 
   // Auth provider for connections to the policy service and KASes.
   authProvider: AuthProvider;
@@ -286,6 +297,7 @@ export type TDFReader = {
 // SDK for dealing with OpenTDF data and policy services.
 export class OpenTDF {
   // Configuration service and more is at this URL/connectRPC endpoint
+  readonly platformUrl: string;
   readonly policyEndpoint: string;
   readonly authProvider: AuthProvider;
   readonly dpopEnabled: boolean;
@@ -305,11 +317,19 @@ export class OpenTDF {
     disableDPoP,
     policyEndpoint,
     rewrapCacheOptions,
+    platformUrl,
   }: OpenTDFOptions) {
     this.authProvider = authProvider;
     this.defaultCreateOptions = defaultCreateOptions || {};
     this.defaultReadOptions = defaultReadOptions || {};
     this.dpopEnabled = !!disableDPoP;
+    if (platformUrl) {
+      this.platformUrl = platformUrl;
+    } else {
+      console.warn(
+        "Warning: 'platformUrl' is required for security to ensure the SDK uses the platform-configured Key Access Server list"
+      );
+    }
     this.policyEndpoint = policyEndpoint || '';
     this.rewrapCache = new RewrapCache(rewrapCacheOptions);
     this.tdf3Client = new TDF3Client({
@@ -333,8 +353,14 @@ export class OpenTDF {
   }
 
   async createNanoTDF(opts: CreateNanoTDFOptions): Promise<DecoratedStream> {
-    opts = { ...this.defaultCreateOptions, ...opts };
-    const collection = await this.createNanoTDFCollection(opts);
+    opts = {
+      ...this.defaultCreateOptions,
+      ...opts,
+    };
+    const collection = await this.createNanoTDFCollection({
+      ...opts,
+      platformUrl: this.platformUrl,
+    });
     try {
       return await collection.encrypt(opts.source);
     } finally {
@@ -415,6 +441,9 @@ class UnknownTypeReader {
     this.state = 'resolving';
     const chunker = await fromSource(this.opts.source);
     const prefix = await chunker(0, 3);
+    if (!this.opts.platformUrl && this.outer.platformUrl) {
+      this.opts.platformUrl = this.outer.platformUrl;
+    }
     if (prefix[0] === 0x50 && prefix[1] === 0x4b) {
       this.state = 'loaded';
       return new ZTDFReader(this.outer.tdf3Client, this.opts, chunker);
@@ -466,6 +495,13 @@ class NanoTDFReader {
     readonly chunker: Chunker,
     private readonly rewrapCache: RewrapCache
   ) {
+    if (
+      !this.opts.ignoreAllowlist &&
+      !this.outer.platformUrl &&
+      !this.opts.allowedKASEndpoints?.length
+    ) {
+      throw new ConfigurationError('platformUrl is required when allowedKasEndpoints is empty');
+    }
     // lazily load the container
     this.container = new Promise(async (resolve, reject) => {
       try {
@@ -493,6 +529,7 @@ class NanoTDFReader {
       dpopEnabled: this.outer.dpopEnabled,
       dpopKeys: this.outer.dpopKeys,
       kasEndpoint: this.opts.allowedKASEndpoints?.[0] || 'https://disallow.all.invalid',
+      platformUrl: this.outer.platformUrl,
     });
     // TODO: The version number should be fetched from the API
     const version = '0.0.1';
@@ -550,15 +587,27 @@ class ZTDFReader {
       noVerify: noVerifyAssertions,
       wrappingKeyAlgorithm,
     } = this.opts;
-    const allowList = new OriginAllowList(
-      this.opts.allowedKASEndpoints ?? [],
-      this.opts.ignoreAllowlist
-    );
+
+    if (!this.opts.ignoreAllowlist && !this.opts.allowedKASEndpoints && !this.opts.platformUrl) {
+      throw new ConfigurationError('platformUrl is required when allowedKasEndpoints is empty');
+    }
+
     const dpopKeys = await this.client.dpopKeys;
 
     const { authProvider, cryptoService } = this.client;
     if (!authProvider) {
       throw new ConfigurationError('authProvider is required');
+    }
+
+    let allowList: OriginAllowList | undefined;
+
+    if (this.opts.allowedKASEndpoints?.length || this.opts.ignoreAllowlist) {
+      allowList = new OriginAllowList(
+        this.opts.allowedKASEndpoints || [],
+        this.opts.ignoreAllowlist
+      );
+    } else if (this.opts.platformUrl) {
+      allowList = await fetchKeyAccessServers(this.opts.platformUrl, authProvider);
     }
 
     const overview = await this.overview;
@@ -646,6 +695,7 @@ class Collection {
       authProvider,
       kasEndpoint: opts.defaultKASEndpoint ?? 'https://disallow.all.invalid',
       maxKeyIterations: opts.maxKeyIterations,
+      platformUrl: opts.platformUrl,
     });
   }
 
