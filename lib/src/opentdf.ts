@@ -325,6 +325,10 @@ export class OpenTDF {
     this.dpopEnabled = !!disableDPoP;
     if (platformUrl) {
       this.platformUrl = platformUrl;
+    } else {
+      console.warn(
+        "Warning: 'platformUrl' is required for security to ensure the SDK uses the platform-configured Key Access Server list"
+      );
     }
     this.policyEndpoint = policyEndpoint || '';
     this.rewrapCache = new RewrapCache(rewrapCacheOptions);
