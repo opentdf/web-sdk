@@ -373,6 +373,15 @@ const kas: RequestListener = async (req, res) => {
       });
       res.statusCode = 200;
       res.end('Server stopped');
+    } else if (
+      url.pathname === '/policy.kasregistry.KeyAccessServerRegistryService/ListKeyAccessServers'
+    ) {
+      console.log('Listed Key Access Servers!');
+      res.writeHead(200);
+      res.end(
+        JSON.stringify({ keyAccessServers: [{ uri: 'http://localhost:3000' }], pagination: {} })
+      );
+      return;
     } else {
       console.log(`[DEBUG] invalid path [${url.pathname}]`);
       res.statusCode = 404;
