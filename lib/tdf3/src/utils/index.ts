@@ -5,7 +5,10 @@ import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
 import { ConfigurationError } from '../../../src/errors.js';
 import { decodeArrayBuffer, encodeArrayBuffer } from '../../../src/encodings/base64.js';
 
-export { ZipReader, readUInt64LE } from './zip-reader.js';
+export {
+  ZipReader,
+  readUInt64LE
+} from './zip-reader.js';
 export { ZipWriter } from './zip-writer.js';
 export { keySplit, keyMerge } from './keysplit.js';
 export { streamToBuffer } from '../client/DecoratedReadableStream.js';
@@ -128,9 +131,7 @@ export function buffToString(
     start = 0;
   }
 
-  if (end > source.length) {
-    end = source.length;
-  }
+  if (end > source.length) { end = source.length; }
 
   // Return early if start > buffer.length. Done here to prevent potential uint32
   // coercion fail below.

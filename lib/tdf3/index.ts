@@ -23,7 +23,7 @@ import { Client, Errors, TDF3Client } from './src/index.js';
 import {
   type KeyInfo,
   SplitKey,
-  type EncryptionInformation,
+  type EncryptionInformation
 } from './src/models/encryption-information.js';
 import { AuthProvider, type HttpMethod, HttpRequest, withHeaders } from '../src/auth/auth.js';
 import { AesGcmCipher } from './src/ciphers/aes-gcm-cipher.js';
@@ -51,7 +51,7 @@ export type {
   EncryptStreamMiddleware,
   DecryptKeyMiddleware,
   DecryptStreamMiddleware,
-  SplitStep,
+  SplitStep
 };
 
 export {
