@@ -621,7 +621,7 @@ export const handleArgs = (args: string[]) => {
             throw new CLIError('CRITICAL', 'oidcEndpoint must be specified');
           }
           const authProvider = await processAuth(argv);
-          log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
+            log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
           const client = new OpenTDF({
             authProvider,
             defaultCreateOptions: {
