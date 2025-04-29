@@ -591,7 +591,7 @@ export const handleArgs = (args: string[]) => {
           log('DEBUG', 'Running inspect command');
           const ct = new OpenTDF({
             platformUrl: argv.platformUrl,
-            authProvider: new InvalidAuthProvider()
+            authProvider: new InvalidAuthProvider(),
           });
           try {
             const reader = ct.open(await parseReadOptions(argv));
