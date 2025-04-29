@@ -632,10 +632,10 @@ export const handleArgs = (args: string[]) => {
               allowedKASEndpoints: allowedKases,
               ignoreAllowlist: ignoreAllowList,
               noVerify: !!argv.noVerifyAssertions,
-              platformUrl: guessedPolicyEndpoint,
             },
             disableDPoP: !argv.dpop,
             policyEndpoint: guessedPolicyEndpoint,
+            platformUrl: guessedPolicyEndpoint,
           });
           try {
             log('SILLY', `Initialized client`);
