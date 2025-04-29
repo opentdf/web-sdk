@@ -192,7 +192,9 @@ export async function fetchKeyAccessServers(
     }
     // if we get an error from the kas registry, throw an error
     if (!response.ok) {
-      throw new ServiceError(`unable to fetch kas list from [${req.url}], status: ${response.status}`);
+      throw new ServiceError(
+        `unable to fetch kas list from [${req.url}], status: ${response.status}`
+      );
     }
     const { keyAccessServers = [], pagination = {} } = await response.json();
     allServers.push(...keyAccessServers);
@@ -202,7 +204,7 @@ export async function fetchKeyAccessServers(
   const serverUrls = allServers.map((server) => server.uri);
   // add base platform kas
   serverUrls.push(`${platformUrl}/kas`);
-  
+
   return new OriginAllowList(serverUrls, false);
 }
 

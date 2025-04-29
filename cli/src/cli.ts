@@ -622,8 +622,8 @@ export const handleArgs = (args: string[]) => {
           }
           const authProvider = await processAuth(argv);
           log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
-            const guessedPolicyEndpoint = guessPolicyUrl(argv);
-            const client = new OpenTDF({
+          const guessedPolicyEndpoint = guessPolicyUrl(argv);
+          const client = new OpenTDF({
             authProvider,
             defaultCreateOptions: {
               defaultKASEndpoint: argv.kasEndpoint,
@@ -636,7 +636,7 @@ export const handleArgs = (args: string[]) => {
             },
             disableDPoP: !argv.dpop,
             policyEndpoint: guessedPolicyEndpoint,
-            });
+          });
           try {
             log('SILLY', `Initialized client`);
             log('DEBUG', `About to TDF3 decrypt [${argv.file}]`);
