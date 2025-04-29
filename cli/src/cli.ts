@@ -622,6 +622,7 @@ export const handleArgs = (args: string[]) => {
           }
           const authProvider = await processAuth(argv);
           log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
+          const guessedPolicyEndpoint = guessPolicyUrl(argv);
           const client = new OpenTDF({
             authProvider,
             defaultCreateOptions: {
@@ -633,7 +634,8 @@ export const handleArgs = (args: string[]) => {
               noVerify: !!argv.noVerifyAssertions,
             },
             disableDPoP: !argv.dpop,
-            policyEndpoint: guessPolicyUrl(argv),
+            policyEndpoint: guessedPolicyEndpoint,
+            platformUrl: guessedPolicyEndpoint,
           });
           try {
             log('SILLY', `Initialized client`);

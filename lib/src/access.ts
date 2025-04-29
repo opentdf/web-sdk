@@ -190,17 +190,23 @@ export async function fetchKeyAccessServers(
     } catch (e) {
       throw new NetworkError(`unable to fetch kas list from [${req.url}]`, e);
     }
-    if (response.ok) {
-      const { keyAccessServers = [], pagination = {} } = await response.json();
-      allServers.push(...keyAccessServers);
-      nextOffset = pagination.nextOffset || 0;
+    // if we get an error from the kas registry, throw an error
+    if (!response.ok) {
+      throw new ServiceError(
+        `unable to fetch kas list from [${req.url}], status: ${response.status}`
+      );
     }
+    const { keyAccessServers = [], pagination = {} } = await response.json();
+    allServers.push(...keyAccessServers);
+    nextOffset = pagination.nextOffset || 0;
   } while (nextOffset > 0);
 
-  if (!allServers.length) {
-    throw new ConfigurationError('There are no available KAS');
-  }
   const serverUrls = allServers.map((server) => server.uri);
+  // add base platform kas
+  if (!serverUrls.includes(`${platformUrl}/kas`)) {
+    serverUrls.push(`${platformUrl}/kas`);
+  }
+
   return new OriginAllowList(serverUrls, false);
 }
 
