@@ -203,7 +203,9 @@ export async function fetchKeyAccessServers(
 
   const serverUrls = allServers.map((server) => server.uri);
   // add base platform kas
-  serverUrls.push(`${platformUrl}/kas`);
+  if (!serverUrls.includes(`${platformUrl}/kas`)) {
+    serverUrls.push(`${platformUrl}/kas`);
+  }
 
   return new OriginAllowList(serverUrls, false);
 }
