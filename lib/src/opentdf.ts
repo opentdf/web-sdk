@@ -497,7 +497,7 @@ class NanoTDFReader {
   ) {
     if (
       !this.opts.ignoreAllowlist &&
-      !this.outer.platformUrl &&
+      !this.opts.platformUrl &&
       !this.opts.allowedKASEndpoints?.length
     ) {
       throw new ConfigurationError('platformUrl is required when allowedKasEndpoints is empty');
@@ -529,7 +529,7 @@ class NanoTDFReader {
       dpopEnabled: this.outer.dpopEnabled,
       dpopKeys: this.outer.dpopKeys,
       kasEndpoint: this.opts.allowedKASEndpoints?.[0] || 'https://disallow.all.invalid',
-      platformUrl: this.outer.platformUrl,
+      platformUrl: this.opts.platformUrl || this.outer.platformUrl,
     });
     // TODO: The version number should be fetched from the API
     const version = '0.0.1';
