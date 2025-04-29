@@ -613,7 +613,7 @@ export const handleArgs = (args: string[]) => {
           });
         },
         async (argv) => {
-            log('DEBUG', 'Running decrypt command');
+          log('DEBUG', 'Running decrypt command');
           const allowedKases = argv.allowList?.split(',');
           log('DEBUG', `Allowed KASes: ${allowedKases}`);
           const ignoreAllowList = !!argv.ignoreAllowList;
