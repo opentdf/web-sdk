@@ -367,6 +367,11 @@ export const handleArgs = (args: string[]) => {
         type: 'string',
         description: 'URL to non-default KAS instance (https://mykas.net)',
       })
+      .option('platformUrl', {
+        group: 'Server Endpoints:',
+        type: 'string',
+        description: 'URL to the platform (https://myplatform.net)',
+      })
       .option('oidcEndpoint', {
         group: 'Server Endpoints:',
         type: 'string',
@@ -585,7 +590,8 @@ export const handleArgs = (args: string[]) => {
         async (argv) => {
           log('DEBUG', 'Running inspect command');
           const ct = new OpenTDF({
-            authProvider: new InvalidAuthProvider(),
+            platformUrl: argv.platformUrl,
+            authProvider: new InvalidAuthProvider()
           });
           try {
             const reader = ct.open(await parseReadOptions(argv));
@@ -623,6 +629,7 @@ export const handleArgs = (args: string[]) => {
           const authProvider = await processAuth(argv);
           log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
           const client = new OpenTDF({
+            platformUrl: argv.platformUrl,
             authProvider,
             defaultCreateOptions: {
               defaultKASEndpoint: argv.kasEndpoint,
@@ -685,6 +692,7 @@ export const handleArgs = (args: string[]) => {
           log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
 
           const client = new OpenTDF({
+            platformUrl: argv.platformUrl,
             authProvider,
             defaultCreateOptions: {
               defaultKASEndpoint: argv.kasEndpoint,
