@@ -165,7 +165,7 @@ export async function fetchKeyAccessServers(
   do {
     const req = await authProvider.withCreds({
       url: `${platformUrl}/policy.kasregistry.KeyAccessServerRegistryService/ListKeyAccessServers`,
-      method: 'POST',
+      method: 'GET',
       headers: {
         'Content-Type': 'application/json',
       },
