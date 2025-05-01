@@ -164,16 +164,11 @@ export async function fetchKeyAccessServers(
   const allServers = [];
   do {
     const req = await authProvider.withCreds({
-      url: `${platformUrl}/policy.kasregistry.KeyAccessServerRegistryService/ListKeyAccessServers`,
-      method: 'POST',
+      url: `${platformUrl}/key-access-servers?pagination.offset=${nextOffset}`,
+      method: 'GET',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        pagination: {
-          offset: nextOffset,
-        },
-      }),
     });
     let response: Response;
     try {
