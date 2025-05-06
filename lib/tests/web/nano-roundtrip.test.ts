@@ -16,14 +16,15 @@ const authProvider = <AuthProvider>{
 };
 
 const kasEndpoint = 'http://localhost:3000';
+const platformUrl = 'http://localhost:3000';
 
 describe('Local roundtrip Tests', () => {
   for (const ecdsaBinding of [false, true]) {
     const bindingName = ecdsaBinding ? 'ecdsa' : 'gmac';
     it(`roundtrip string (${bindingName} policy binding)`, async () => {
-      const client = new NanoTDFClient({ authProvider, kasEndpoint });
+      const client = new NanoTDFClient({ authProvider, kasEndpoint, platformUrl });
       const cipherText = await client.encrypt('hello world', { ecdsaBinding });
-      const client2 = new NanoTDFClient({ authProvider, kasEndpoint });
+      const client2 = new NanoTDFClient({ authProvider, kasEndpoint, platformUrl });
       const nanotdfParsed = NanoTDF.from(cipherText);
 
       expect(nanotdfParsed.header.kas.url).to.equal(kasEndpoint);

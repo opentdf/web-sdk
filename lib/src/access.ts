@@ -156,6 +156,55 @@ async function noteInvalidPublicKey(url: URL, r: Promise<CryptoKey>): Promise<Cr
   }
 }
 
+export async function fetchKeyAccessServers(
+  platformUrl: string,
+  authProvider: AuthProvider
+): Promise<OriginAllowList> {
+  let nextOffset = 0;
+  const allServers = [];
+  do {
+    const req = await authProvider.withCreds({
+      url: `${platformUrl}/key-access-servers?pagination.offset=${nextOffset}`,
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    let response: Response;
+    try {
+      response = await fetch(req.url, {
+        method: req.method,
+        headers: req.headers,
+        body: req.body as BodyInit,
+        mode: 'cors',
+        cache: 'no-cache',
+        credentials: 'same-origin',
+        redirect: 'follow',
+        referrerPolicy: 'no-referrer',
+      });
+    } catch (e) {
+      throw new NetworkError(`unable to fetch kas list from [${req.url}]`, e);
+    }
+    // if we get an error from the kas registry, throw an error
+    if (!response.ok) {
+      throw new ServiceError(
+        `unable to fetch kas list from [${req.url}], status: ${response.status}`
+      );
+    }
+    const { keyAccessServers = [], pagination = {} } = await response.json();
+    allServers.push(...keyAccessServers);
+    nextOffset = pagination.nextOffset || 0;
+  } while (nextOffset > 0);
+
+  const serverUrls = allServers.map((server) => server.uri);
+  // add base platform kas
+  if (!serverUrls.includes(`${platformUrl}/kas`)) {
+    serverUrls.push(`${platformUrl}/kas`);
+  }
+
+  return new OriginAllowList(serverUrls, false);
+}
+
 /**
  * If we have KAS url but not public key we can fetch it from KAS, fetching
  * the value from `${kas}/kas_public_key`.

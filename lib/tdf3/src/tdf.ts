@@ -301,13 +301,19 @@ async function _generateManifest(
 
   const encryptionInformationStr = await encryptionInformation.write(policy, keyInfo);
   const assertions: assertions.Assertion[] = [];
-  return {
+  const partial = {
     payload,
     // generate the manifest first, then insert integrity information into it
     encryptionInformation: encryptionInformationStr,
     assertions: assertions,
-    // when `targetSpecVersion` is provided, overrides the tdfSpecVersion
-    schemaVersion: targetSpecVersion || tdfSpecVersion,
+  };
+  const schemaVersion = targetSpecVersion || tdfSpecVersion;
+  if (schemaVersion === '4.2.2') {
+    return partial;
+  }
+  return {
+    ...partial,
+    schemaVersion,
   };
 }
 
@@ -531,10 +537,14 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
                 alg: 'HS256',
                 key: new Uint8Array(cfg.keyForEncryption.unwrappedKeyBinary.asArrayBuffer()),
               };
-              const assertion = await assertions.CreateAssertion(aggregateHash, {
-                ...assertionConfig,
-                signingKey,
-              });
+              const assertion = await assertions.CreateAssertion(
+                aggregateHash,
+                {
+                  ...assertionConfig,
+                  signingKey,
+                },
+                cfg.tdfSpecVersion
+              );
 
               // Add signed assertion to the signedAssertions array
               signedAssertions.push(assertion);
@@ -981,6 +991,13 @@ export async function readStream(cfg: DecryptConfiguration) {
   return decryptStreamFrom(cfg, overview);
 }
 
+// TODO: potentially might need fixing here
+// By the time this function is called the allow list will be already set.
+// Verify that this function is not exported in the sdk and only exported for internal use
+// Verify this during tests and PR
+// Remove this comment before merging!
+// https://www.youtube.com/watch?v=NGrLb6W5YOM
+// Don't leave me here all by myself!
 export async function decryptStreamFrom(
   cfg: DecryptConfiguration,
   { manifest, zipReader, centralDirectory }: InspectedTDFOverview

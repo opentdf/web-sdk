@@ -379,7 +379,7 @@ export const handleArgs = (args: string[]) => {
       })
       .option('allowList', {
         group: 'Security:',
-        desc: 'allowed KAS origins, comma separated; defaults to [kasEndpoint]',
+        desc: 'allowed KAS origins, comma separated; defaults to the list from "/key-access-servers" endpoint',
         type: 'string',
         validate: (uris: string) => uris.split(','),
       })
@@ -614,10 +614,7 @@ export const handleArgs = (args: string[]) => {
         },
         async (argv) => {
           log('DEBUG', 'Running decrypt command');
-          let allowedKases = argv.allowList?.split(',');
-          if (!allowedKases) {
-            allowedKases = argv.kasEndpoint ? [argv.kasEndpoint] : [];
-          }
+          const allowedKases = argv.allowList?.split(',');
           log('DEBUG', `Allowed KASes: ${allowedKases}`);
           const ignoreAllowList = !!argv.ignoreAllowList;
           if (!argv.oidcEndpoint) {
@@ -625,6 +622,7 @@ export const handleArgs = (args: string[]) => {
           }
           const authProvider = await processAuth(argv);
           log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
+          const guessedPolicyEndpoint = guessPolicyUrl(argv);
           const client = new OpenTDF({
             authProvider,
             defaultCreateOptions: {
@@ -636,7 +634,8 @@ export const handleArgs = (args: string[]) => {
               noVerify: !!argv.noVerifyAssertions,
             },
             disableDPoP: !argv.dpop,
-            policyEndpoint: guessPolicyUrl(argv),
+            policyEndpoint: guessedPolicyEndpoint,
+            platformUrl: guessedPolicyEndpoint,
           });
           try {
             log('SILLY', `Initialized client`);
