@@ -2,8 +2,8 @@
 // @generated from file policy/registeredresources/registered_resources.proto (package policy.registeredresources, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv1";
-import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv1";
+import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
+import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1";
 import { file_buf_validate_validate } from "../../buf/validate/validate_pb.js";
 import type { MetadataMutable, MetadataUpdateEnum } from "../../common/common_pb.js";
 import { file_common_common } from "../../common/common_pb.js";
@@ -17,7 +17,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file policy/registeredresources/registered_resources.proto.
  */
 export const file_policy_registeredresources_registered_resources: GenFile = /*@__PURE__*/
-  fileDesc("CjVwb2xpY3kvcmVnaXN0ZXJlZHJlc291cmNlcy9yZWdpc3RlcmVkX3Jlc291cmNlcy5wcm90bxIacG9saWN5LnJlZ2lzdGVyZWRyZXNvdXJjZXMiwQMKH0NyZWF0ZVJlZ2lzdGVyZWRSZXNvdXJjZVJlcXVlc3QSogIKBG5hbWUYASABKAlCkwK6SI8CugGDAgoOcnJfbmFtZV9mb3JtYXQSswFSZWdpc3RlcmVkIFJlc291cmNlIE5hbWUgbXVzdCBiZSBhbiBhbHBoYW51bWVyaWMgc3RyaW5nLCBhbGxvd2luZyBoeXBoZW5zIGFuZCB1bmRlcnNjb3JlcyBidXQgbm90IGFzIHRoZSBmaXJzdCBvciBsYXN0IGNoYXJhY3Rlci4gVGhlIHN0b3JlZCBuYW1lIHdpbGwgYmUgbm9ybWFsaXplZCB0byBsb3dlciBjYXNlLho7dGhpcy5tYXRjaGVzKCdeW2EtekEtWjAtOV0oPzpbYS16QS1aMC05Xy1dKlthLXpBLVowLTldKT8kJynIAQFyAxj9ARJOCgZ2YWx1ZXMYAiADKAlCPrpIO5IBOAgAGAEiMnIwGP0BMiteW2EtekEtWjAtOV0oPzpbYS16QS1aMC05Xy1dKlthLXpBLVowLTldKT8kEikKCG1ldGFkYXRhGGQgASgLMhcuY29tbW9uLk1ldGFkYXRhTXV0YWJsZSJQCiBDcmVhdGVSZWdpc3RlcmVkUmVzb3VyY2VSZXNwb25zZRIsCghyZXNvdXJjZRgBIAEoCzIaLnBvbGljeS5SZWdpc3RlcmVkUmVzb3VyY2UibwocR2V0UmVnaXN0ZXJlZFJlc291cmNlUmVxdWVzdBIfCgtyZXNvdXJjZV9pZBgBIAEoCUIIukgFcgOwAQFIABIZCgNmcW4YAiABKAlCCrpIB3IFEAGIAQFIAEITCgppZGVudGlmaWVyEgW6SAIIASJNCh1HZXRSZWdpc3RlcmVkUmVzb3VyY2VSZXNwb25zZRIsCghyZXNvdXJjZRgBIAEoCzIaLnBvbGljeS5SZWdpc3RlcmVkUmVzb3VyY2UiSQoeTGlzdFJlZ2lzdGVyZWRSZXNvdXJjZXNSZXF1ZXN0EicKCnBhZ2luYXRpb24YCiABKAsyEy5wb2xpY3kuUGFnZVJlcXVlc3QiegofTGlzdFJlZ2lzdGVyZWRSZXNvdXJjZXNSZXNwb25zZRItCglyZXNvdXJjZXMYASADKAsyGi5wb2xpY3kuUmVnaXN0ZXJlZFJlc291cmNlEigKCnBhZ2luYXRpb24YCiABKAsyFC5wb2xpY3kuUGFnZVJlc3BvbnNlIt0DCh9VcGRhdGVSZWdpc3RlcmVkUmVzb3VyY2VSZXF1ZXN0EhQKAmlkGAEgASgJQgi6SAVyA7ABARK6AgoEbmFtZRgCIAEoCUKrArpIpwK6AZsCCg5ycl9uYW1lX2Zvcm1hdBKzAVJlZ2lzdGVyZWQgUmVzb3VyY2UgTmFtZSBtdXN0IGJlIGFuIGFscGhhbnVtZXJpYyBzdHJpbmcsIGFsbG93aW5nIGh5cGhlbnMgYW5kIHVuZGVyc2NvcmVzIGJ1dCBub3QgYXMgdGhlIGZpcnN0IG9yIGxhc3QgY2hhcmFjdGVyLiBUaGUgc3RvcmVkIG5hbWUgd2lsbCBiZSBub3JtYWxpemVkIHRvIGxvd2VyIGNhc2UuGlNzaXplKHRoaXMpID4gMCA/IHRoaXMubWF0Y2hlcygnXlthLXpBLVowLTldKD86W2EtekEtWjAtOV8tXSpbYS16QS1aMC05XSk/JCcpIDogdHJ1ZcgBAHIDGP0BEikKCG1ldGFkYXRhGGQgASgLMhcuY29tbW9uLk1ldGFkYXRhTXV0YWJsZRI8ChhtZXRhZGF0YV91cGRhdGVfYmVoYXZpb3IYZSABKA4yGi5jb21tb24uTWV0YWRhdGFVcGRhdGVFbnVtIlAKIFVwZGF0ZVJlZ2lzdGVyZWRSZXNvdXJjZVJlc3BvbnNlEiwKCHJlc291cmNlGAEgASgLMhoucG9saWN5LlJlZ2lzdGVyZWRSZXNvdXJjZSI3Ch9EZWxldGVSZWdpc3RlcmVkUmVzb3VyY2VSZXF1ZXN0EhQKAmlkGAEgASgJQgi6SAVyA7ABASJQCiBEZWxldGVSZWdpc3RlcmVkUmVzb3VyY2VSZXNwb25zZRIsCghyZXNvdXJjZRgBIAEoCzIaLnBvbGljeS5SZWdpc3RlcmVkUmVzb3VyY2UimQMKJENyZWF0ZVJlZ2lzdGVyZWRSZXNvdXJjZVZhbHVlUmVxdWVzdBIdCgtyZXNvdXJjZV9pZBgBIAEoCUIIukgFcgOwAQESpgIKBXZhbHVlGAIgASgJQpYCukiSAroBhgIKD3JyX3ZhbHVlX2Zvcm1hdBK1AVJlZ2lzdGVyZWQgUmVzb3VyY2UgVmFsdWUgbXVzdCBiZSBhbiBhbHBoYW51bWVyaWMgc3RyaW5nLCBhbGxvd2luZyBoeXBoZW5zIGFuZCB1bmRlcnNjb3JlcyBidXQgbm90IGFzIHRoZSBmaXJzdCBvciBsYXN0IGNoYXJhY3Rlci4gVGhlIHN0b3JlZCB2YWx1ZSB3aWxsIGJlIG5vcm1hbGl6ZWQgdG8gbG93ZXIgY2FzZS4aO3RoaXMubWF0Y2hlcygnXlthLXpBLVowLTldKD86W2EtekEtWjAtOV8tXSpbYS16QS1aMC05XSk/JCcpyAEBcgMY/QESKQoIbWV0YWRhdGEYZCABKAsyFy5jb21tb24uTWV0YWRhdGFNdXRhYmxlIlcKJUNyZWF0ZVJlZ2lzdGVyZWRSZXNvdXJjZVZhbHVlUmVzcG9uc2USLgoFdmFsdWUYASABKAsyHy5wb2xpY3kuUmVnaXN0ZXJlZFJlc291cmNlVmFsdWUicQohR2V0UmVnaXN0ZXJlZFJlc291cmNlVmFsdWVSZXF1ZXN0EhwKCHZhbHVlX2lkGAEgASgJQgi6SAVyA7ABAUgAEhkKA2ZxbhgCIAEoCUIKukgHcgUQAYgBAUgAQhMKCmlkZW50aWZpZXISBbpIAggBIlQKIkdldFJlZ2lzdGVyZWRSZXNvdXJjZVZhbHVlUmVzcG9uc2USLgoFdmFsdWUYASABKAsyHy5wb2xpY3kuUmVnaXN0ZXJlZFJlc291cmNlVmFsdWUimgIKI0xpc3RSZWdpc3RlcmVkUmVzb3VyY2VWYWx1ZXNSZXF1ZXN0EskBCgtyZXNvdXJjZV9pZBgBIAEoCUKzAbpIrwG6AasBChRvcHRpb25hbF91dWlkX2Zvcm1hdBIjT3B0aW9uYWwgZmllbGQgbXVzdCBiZSBhIHZhbGlkIFVVSUQabnNpemUodGhpcykgPT0gMCB8fCB0aGlzLm1hdGNoZXMoJ1swLTlhLWZBLUZdezh9LVswLTlhLWZBLUZdezR9LVswLTlhLWZBLUZdezR9LVswLTlhLWZBLUZdezR9LVswLTlhLWZBLUZdezEyfScpEicKCnBhZ2luYXRpb24YCiABKAsyEy5wb2xpY3kuUGFnZVJlcXVlc3QigQEKJExpc3RSZWdpc3RlcmVkUmVzb3VyY2VWYWx1ZXNSZXNwb25zZRIvCgZ2YWx1ZXMYASADKAsyHy5wb2xpY3kuUmVnaXN0ZXJlZFJlc291cmNlVmFsdWUSKAoKcGFnaW5hdGlvbhgKIAEoCzIULnBvbGljeS5QYWdlUmVzcG9uc2Ui5gMKJFVwZGF0ZVJlZ2lzdGVyZWRSZXNvdXJjZVZhbHVlUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQESvgIKBXZhbHVlGAIgASgJQq4CukiqAroBngIKD3JyX3ZhbHVlX2Zvcm1hdBK1AVJlZ2lzdGVyZWQgUmVzb3VyY2UgVmFsdWUgbXVzdCBiZSBhbiBhbHBoYW51bWVyaWMgc3RyaW5nLCBhbGxvd2luZyBoeXBoZW5zIGFuZCB1bmRlcnNjb3JlcyBidXQgbm90IGFzIHRoZSBmaXJzdCBvciBsYXN0IGNoYXJhY3Rlci4gVGhlIHN0b3JlZCB2YWx1ZSB3aWxsIGJlIG5vcm1hbGl6ZWQgdG8gbG93ZXIgY2FzZS4aU3NpemUodGhpcykgPiAwID8gdGhpcy5tYXRjaGVzKCdeW2EtekEtWjAtOV0oPzpbYS16QS1aMC05Xy1dKlthLXpBLVowLTldKT8kJykgOiB0cnVlyAEAcgMY/QESKQoIbWV0YWRhdGEYZCABKAsyFy5jb21tb24uTWV0YWRhdGFNdXRhYmxlEjwKGG1ldGFkYXRhX3VwZGF0ZV9iZWhhdmlvchhlIAEoDjIaLmNvbW1vbi5NZXRhZGF0YVVwZGF0ZUVudW0iVwolVXBkYXRlUmVnaXN0ZXJlZFJlc291cmNlVmFsdWVSZXNwb25zZRIuCgV2YWx1ZRgBIAEoCzIfLnBvbGljeS5SZWdpc3RlcmVkUmVzb3VyY2VWYWx1ZSI8CiREZWxldGVSZWdpc3RlcmVkUmVzb3VyY2VWYWx1ZVJlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBIlcKJURlbGV0ZVJlZ2lzdGVyZWRSZXNvdXJjZVZhbHVlUmVzcG9uc2USLgoFdmFsdWUYASABKAsyHy5wb2xpY3kuUmVnaXN0ZXJlZFJlc291cmNlVmFsdWViBnByb3RvMw", [file_buf_validate_validate, file_common_common, file_policy_objects, file_policy_selectors]);
+  fileDesc("CjVwb2xpY3kvcmVnaXN0ZXJlZHJlc291cmNlcy9yZWdpc3RlcmVkX3Jlc291cmNlcy5wcm90bxIacG9saWN5LnJlZ2lzdGVyZWRyZXNvdXJjZXMiwQMKH0NyZWF0ZVJlZ2lzdGVyZWRSZXNvdXJjZVJlcXVlc3QSogIKBG5hbWUYASABKAlCkwK6SI8CugGDAgoOcnJfbmFtZV9mb3JtYXQSswFSZWdpc3RlcmVkIFJlc291cmNlIE5hbWUgbXVzdCBiZSBhbiBhbHBoYW51bWVyaWMgc3RyaW5nLCBhbGxvd2luZyBoeXBoZW5zIGFuZCB1bmRlcnNjb3JlcyBidXQgbm90IGFzIHRoZSBmaXJzdCBvciBsYXN0IGNoYXJhY3Rlci4gVGhlIHN0b3JlZCBuYW1lIHdpbGwgYmUgbm9ybWFsaXplZCB0byBsb3dlciBjYXNlLho7dGhpcy5tYXRjaGVzKCdeW2EtekEtWjAtOV0oPzpbYS16QS1aMC05Xy1dKlthLXpBLVowLTldKT8kJynIAQFyAxj9ARJOCgZ2YWx1ZXMYAiADKAlCPrpIO5IBOAgAGAEiMnIwGP0BMiteW2EtekEtWjAtOV0oPzpbYS16QS1aMC05Xy1dKlthLXpBLVowLTldKT8kEikKCG1ldGFkYXRhGGQgASgLMhcuY29tbW9uLk1ldGFkYXRhTXV0YWJsZSJQCiBDcmVhdGVSZWdpc3RlcmVkUmVzb3VyY2VSZXNwb25zZRIsCghyZXNvdXJjZRgBIAEoCzIaLnBvbGljeS5SZWdpc3RlcmVkUmVzb3VyY2UiigMKHEdldFJlZ2lzdGVyZWRSZXNvdXJjZVJlcXVlc3QSFgoCaWQYASABKAlCCLpIBXIDsAEBSAASvAIKBG5hbWUYAiABKAlCqwK6SKcCugGbAgoOcnJfbmFtZV9mb3JtYXQSswFSZWdpc3RlcmVkIFJlc291cmNlIE5hbWUgbXVzdCBiZSBhbiBhbHBoYW51bWVyaWMgc3RyaW5nLCBhbGxvd2luZyBoeXBoZW5zIGFuZCB1bmRlcnNjb3JlcyBidXQgbm90IGFzIHRoZSBmaXJzdCBvciBsYXN0IGNoYXJhY3Rlci4gVGhlIHN0b3JlZCBuYW1lIHdpbGwgYmUgbm9ybWFsaXplZCB0byBsb3dlciBjYXNlLhpTc2l6ZSh0aGlzKSA+IDAgPyB0aGlzLm1hdGNoZXMoJ15bYS16QS1aMC05XSg/OlthLXpBLVowLTlfLV0qW2EtekEtWjAtOV0pPyQnKSA6IHRydWXIAQByAxj9AUgAQhMKCmlkZW50aWZpZXISBbpIAggBIk0KHUdldFJlZ2lzdGVyZWRSZXNvdXJjZVJlc3BvbnNlEiwKCHJlc291cmNlGAEgASgLMhoucG9saWN5LlJlZ2lzdGVyZWRSZXNvdXJjZSJJCh5MaXN0UmVnaXN0ZXJlZFJlc291cmNlc1JlcXVlc3QSJwoKcGFnaW5hdGlvbhgKIAEoCzITLnBvbGljeS5QYWdlUmVxdWVzdCJ6Ch9MaXN0UmVnaXN0ZXJlZFJlc291cmNlc1Jlc3BvbnNlEi0KCXJlc291cmNlcxgBIAMoCzIaLnBvbGljeS5SZWdpc3RlcmVkUmVzb3VyY2USKAoKcGFnaW5hdGlvbhgKIAEoCzIULnBvbGljeS5QYWdlUmVzcG9uc2Ui3QMKH1VwZGF0ZVJlZ2lzdGVyZWRSZXNvdXJjZVJlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBEroCCgRuYW1lGAIgASgJQqsCukinAroBmwIKDnJyX25hbWVfZm9ybWF0ErMBUmVnaXN0ZXJlZCBSZXNvdXJjZSBOYW1lIG11c3QgYmUgYW4gYWxwaGFudW1lcmljIHN0cmluZywgYWxsb3dpbmcgaHlwaGVucyBhbmQgdW5kZXJzY29yZXMgYnV0IG5vdCBhcyB0aGUgZmlyc3Qgb3IgbGFzdCBjaGFyYWN0ZXIuIFRoZSBzdG9yZWQgbmFtZSB3aWxsIGJlIG5vcm1hbGl6ZWQgdG8gbG93ZXIgY2FzZS4aU3NpemUodGhpcykgPiAwID8gdGhpcy5tYXRjaGVzKCdeW2EtekEtWjAtOV0oPzpbYS16QS1aMC05Xy1dKlthLXpBLVowLTldKT8kJykgOiB0cnVlyAEAcgMY/QESKQoIbWV0YWRhdGEYZCABKAsyFy5jb21tb24uTWV0YWRhdGFNdXRhYmxlEjwKGG1ldGFkYXRhX3VwZGF0ZV9iZWhhdmlvchhlIAEoDjIaLmNvbW1vbi5NZXRhZGF0YVVwZGF0ZUVudW0iUAogVXBkYXRlUmVnaXN0ZXJlZFJlc291cmNlUmVzcG9uc2USLAoIcmVzb3VyY2UYASABKAsyGi5wb2xpY3kuUmVnaXN0ZXJlZFJlc291cmNlIjcKH0RlbGV0ZVJlZ2lzdGVyZWRSZXNvdXJjZVJlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBIlAKIERlbGV0ZVJlZ2lzdGVyZWRSZXNvdXJjZVJlc3BvbnNlEiwKCHJlc291cmNlGAEgASgLMhoucG9saWN5LlJlZ2lzdGVyZWRSZXNvdXJjZSKZAwokQ3JlYXRlUmVnaXN0ZXJlZFJlc291cmNlVmFsdWVSZXF1ZXN0Eh0KC3Jlc291cmNlX2lkGAEgASgJQgi6SAVyA7ABARKmAgoFdmFsdWUYAiABKAlClgK6SJICugGGAgoPcnJfdmFsdWVfZm9ybWF0ErUBUmVnaXN0ZXJlZCBSZXNvdXJjZSBWYWx1ZSBtdXN0IGJlIGFuIGFscGhhbnVtZXJpYyBzdHJpbmcsIGFsbG93aW5nIGh5cGhlbnMgYW5kIHVuZGVyc2NvcmVzIGJ1dCBub3QgYXMgdGhlIGZpcnN0IG9yIGxhc3QgY2hhcmFjdGVyLiBUaGUgc3RvcmVkIHZhbHVlIHdpbGwgYmUgbm9ybWFsaXplZCB0byBsb3dlciBjYXNlLho7dGhpcy5tYXRjaGVzKCdeW2EtekEtWjAtOV0oPzpbYS16QS1aMC05Xy1dKlthLXpBLVowLTldKT8kJynIAQFyAxj9ARIpCghtZXRhZGF0YRhkIAEoCzIXLmNvbW1vbi5NZXRhZGF0YU11dGFibGUiVwolQ3JlYXRlUmVnaXN0ZXJlZFJlc291cmNlVmFsdWVSZXNwb25zZRIuCgV2YWx1ZRgBIAEoCzIfLnBvbGljeS5SZWdpc3RlcmVkUmVzb3VyY2VWYWx1ZSJrCiFHZXRSZWdpc3RlcmVkUmVzb3VyY2VWYWx1ZVJlcXVlc3QSFgoCaWQYASABKAlCCLpIBXIDsAEBSAASGQoDZnFuGAIgASgJQgq6SAdyBRABiAEBSABCEwoKaWRlbnRpZmllchIFukgCCAEiVAoiR2V0UmVnaXN0ZXJlZFJlc291cmNlVmFsdWVSZXNwb25zZRIuCgV2YWx1ZRgBIAEoCzIfLnBvbGljeS5SZWdpc3RlcmVkUmVzb3VyY2VWYWx1ZSJNCihHZXRSZWdpc3RlcmVkUmVzb3VyY2VWYWx1ZXNCeUZRTnNSZXF1ZXN0EiEKBGZxbnMYASADKAlCE7pIEJIBDQgBGAEiB3IFEAGIAQEi7wEKKUdldFJlZ2lzdGVyZWRSZXNvdXJjZVZhbHVlc0J5RlFOc1Jlc3BvbnNlEm0KDWZxbl92YWx1ZV9tYXAYASADKAsyVi5wb2xpY3kucmVnaXN0ZXJlZHJlc291cmNlcy5HZXRSZWdpc3RlcmVkUmVzb3VyY2VWYWx1ZXNCeUZRTnNSZXNwb25zZS5GcW5WYWx1ZU1hcEVudHJ5GlMKEEZxblZhbHVlTWFwRW50cnkSCwoDa2V5GAEgASgJEi4KBXZhbHVlGAIgASgLMh8ucG9saWN5LlJlZ2lzdGVyZWRSZXNvdXJjZVZhbHVlOgI4ASKaAgojTGlzdFJlZ2lzdGVyZWRSZXNvdXJjZVZhbHVlc1JlcXVlc3QSyQEKC3Jlc291cmNlX2lkGAEgASgJQrMBukivAboBqwEKFG9wdGlvbmFsX3V1aWRfZm9ybWF0EiNPcHRpb25hbCBmaWVsZCBtdXN0IGJlIGEgdmFsaWQgVVVJRBpuc2l6ZSh0aGlzKSA9PSAwIHx8IHRoaXMubWF0Y2hlcygnWzAtOWEtZkEtRl17OH0tWzAtOWEtZkEtRl17NH0tWzAtOWEtZkEtRl17NH0tWzAtOWEtZkEtRl17NH0tWzAtOWEtZkEtRl17MTJ9JykSJwoKcGFnaW5hdGlvbhgKIAEoCzITLnBvbGljeS5QYWdlUmVxdWVzdCKBAQokTGlzdFJlZ2lzdGVyZWRSZXNvdXJjZVZhbHVlc1Jlc3BvbnNlEi8KBnZhbHVlcxgBIAMoCzIfLnBvbGljeS5SZWdpc3RlcmVkUmVzb3VyY2VWYWx1ZRIoCgpwYWdpbmF0aW9uGAogASgLMhQucG9saWN5LlBhZ2VSZXNwb25zZSLmAwokVXBkYXRlUmVnaXN0ZXJlZFJlc291cmNlVmFsdWVSZXF1ZXN0EhQKAmlkGAEgASgJQgi6SAVyA7ABARK+AgoFdmFsdWUYAiABKAlCrgK6SKoCugGeAgoPcnJfdmFsdWVfZm9ybWF0ErUBUmVnaXN0ZXJlZCBSZXNvdXJjZSBWYWx1ZSBtdXN0IGJlIGFuIGFscGhhbnVtZXJpYyBzdHJpbmcsIGFsbG93aW5nIGh5cGhlbnMgYW5kIHVuZGVyc2NvcmVzIGJ1dCBub3QgYXMgdGhlIGZpcnN0IG9yIGxhc3QgY2hhcmFjdGVyLiBUaGUgc3RvcmVkIHZhbHVlIHdpbGwgYmUgbm9ybWFsaXplZCB0byBsb3dlciBjYXNlLhpTc2l6ZSh0aGlzKSA+IDAgPyB0aGlzLm1hdGNoZXMoJ15bYS16QS1aMC05XSg/OlthLXpBLVowLTlfLV0qW2EtekEtWjAtOV0pPyQnKSA6IHRydWXIAQByAxj9ARIpCghtZXRhZGF0YRhkIAEoCzIXLmNvbW1vbi5NZXRhZGF0YU11dGFibGUSPAoYbWV0YWRhdGFfdXBkYXRlX2JlaGF2aW9yGGUgASgOMhouY29tbW9uLk1ldGFkYXRhVXBkYXRlRW51bSJXCiVVcGRhdGVSZWdpc3RlcmVkUmVzb3VyY2VWYWx1ZVJlc3BvbnNlEi4KBXZhbHVlGAEgASgLMh8ucG9saWN5LlJlZ2lzdGVyZWRSZXNvdXJjZVZhbHVlIjwKJERlbGV0ZVJlZ2lzdGVyZWRSZXNvdXJjZVZhbHVlUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQEiVwolRGVsZXRlUmVnaXN0ZXJlZFJlc291cmNlVmFsdWVSZXNwb25zZRIuCgV2YWx1ZRgBIAEoCzIfLnBvbGljeS5SZWdpc3RlcmVkUmVzb3VyY2VWYWx1ZTKIDgoaUmVnaXN0ZXJlZFJlc291cmNlc1NlcnZpY2USlwEKGENyZWF0ZVJlZ2lzdGVyZWRSZXNvdXJjZRI7LnBvbGljeS5yZWdpc3RlcmVkcmVzb3VyY2VzLkNyZWF0ZVJlZ2lzdGVyZWRSZXNvdXJjZVJlcXVlc3QaPC5wb2xpY3kucmVnaXN0ZXJlZHJlc291cmNlcy5DcmVhdGVSZWdpc3RlcmVkUmVzb3VyY2VSZXNwb25zZSIAEo4BChVHZXRSZWdpc3RlcmVkUmVzb3VyY2USOC5wb2xpY3kucmVnaXN0ZXJlZHJlc291cmNlcy5HZXRSZWdpc3RlcmVkUmVzb3VyY2VSZXF1ZXN0GjkucG9saWN5LnJlZ2lzdGVyZWRyZXNvdXJjZXMuR2V0UmVnaXN0ZXJlZFJlc291cmNlUmVzcG9uc2UiABKUAQoXTGlzdFJlZ2lzdGVyZWRSZXNvdXJjZXMSOi5wb2xpY3kucmVnaXN0ZXJlZHJlc291cmNlcy5MaXN0UmVnaXN0ZXJlZFJlc291cmNlc1JlcXVlc3QaOy5wb2xpY3kucmVnaXN0ZXJlZHJlc291cmNlcy5MaXN0UmVnaXN0ZXJlZFJlc291cmNlc1Jlc3BvbnNlIgASlwEKGFVwZGF0ZVJlZ2lzdGVyZWRSZXNvdXJjZRI7LnBvbGljeS5yZWdpc3RlcmVkcmVzb3VyY2VzLlVwZGF0ZVJlZ2lzdGVyZWRSZXNvdXJjZVJlcXVlc3QaPC5wb2xpY3kucmVnaXN0ZXJlZHJlc291cmNlcy5VcGRhdGVSZWdpc3RlcmVkUmVzb3VyY2VSZXNwb25zZSIAEpcBChhEZWxldGVSZWdpc3RlcmVkUmVzb3VyY2USOy5wb2xpY3kucmVnaXN0ZXJlZHJlc291cmNlcy5EZWxldGVSZWdpc3RlcmVkUmVzb3VyY2VSZXF1ZXN0GjwucG9saWN5LnJlZ2lzdGVyZWRyZXNvdXJjZXMuRGVsZXRlUmVnaXN0ZXJlZFJlc291cmNlUmVzcG9uc2UiABKmAQodQ3JlYXRlUmVnaXN0ZXJlZFJlc291cmNlVmFsdWUSQC5wb2xpY3kucmVnaXN0ZXJlZHJlc291cmNlcy5DcmVhdGVSZWdpc3RlcmVkUmVzb3VyY2VWYWx1ZVJlcXVlc3QaQS5wb2xpY3kucmVnaXN0ZXJlZHJlc291cmNlcy5DcmVhdGVSZWdpc3RlcmVkUmVzb3VyY2VWYWx1ZVJlc3BvbnNlIgASnQEKGkdldFJlZ2lzdGVyZWRSZXNvdXJjZVZhbHVlEj0ucG9saWN5LnJlZ2lzdGVyZWRyZXNvdXJjZXMuR2V0UmVnaXN0ZXJlZFJlc291cmNlVmFsdWVSZXF1ZXN0Gj4ucG9saWN5LnJlZ2lzdGVyZWRyZXNvdXJjZXMuR2V0UmVnaXN0ZXJlZFJlc291cmNlVmFsdWVSZXNwb25zZSIAErIBCiFHZXRSZWdpc3RlcmVkUmVzb3VyY2VWYWx1ZXNCeUZRTnMSRC5wb2xpY3kucmVnaXN0ZXJlZHJlc291cmNlcy5HZXRSZWdpc3RlcmVkUmVzb3VyY2VWYWx1ZXNCeUZRTnNSZXF1ZXN0GkUucG9saWN5LnJlZ2lzdGVyZWRyZXNvdXJjZXMuR2V0UmVnaXN0ZXJlZFJlc291cmNlVmFsdWVzQnlGUU5zUmVzcG9uc2UiABKjAQocTGlzdFJlZ2lzdGVyZWRSZXNvdXJjZVZhbHVlcxI/LnBvbGljeS5yZWdpc3RlcmVkcmVzb3VyY2VzLkxpc3RSZWdpc3RlcmVkUmVzb3VyY2VWYWx1ZXNSZXF1ZXN0GkAucG9saWN5LnJlZ2lzdGVyZWRyZXNvdXJjZXMuTGlzdFJlZ2lzdGVyZWRSZXNvdXJjZVZhbHVlc1Jlc3BvbnNlIgASpgEKHVVwZGF0ZVJlZ2lzdGVyZWRSZXNvdXJjZVZhbHVlEkAucG9saWN5LnJlZ2lzdGVyZWRyZXNvdXJjZXMuVXBkYXRlUmVnaXN0ZXJlZFJlc291cmNlVmFsdWVSZXF1ZXN0GkEucG9saWN5LnJlZ2lzdGVyZWRyZXNvdXJjZXMuVXBkYXRlUmVnaXN0ZXJlZFJlc291cmNlVmFsdWVSZXNwb25zZSIAEqYBCh1EZWxldGVSZWdpc3RlcmVkUmVzb3VyY2VWYWx1ZRJALnBvbGljeS5yZWdpc3RlcmVkcmVzb3VyY2VzLkRlbGV0ZVJlZ2lzdGVyZWRSZXNvdXJjZVZhbHVlUmVxdWVzdBpBLnBvbGljeS5yZWdpc3RlcmVkcmVzb3VyY2VzLkRlbGV0ZVJlZ2lzdGVyZWRSZXNvdXJjZVZhbHVlUmVzcG9uc2UiAGIGcHJvdG8z", [file_buf_validate_validate, file_common_common, file_policy_objects, file_policy_selectors]);
 
 /**
  * @generated from message policy.registeredresources.CreateRegisteredResourceRequest
@@ -81,16 +81,16 @@ export type GetRegisteredResourceRequest = Message<"policy.registeredresources.G
    */
   identifier: {
     /**
-     * @generated from field: string resource_id = 1;
+     * @generated from field: string id = 1;
      */
     value: string;
-    case: "resourceId";
+    case: "id";
   } | {
     /**
-     * @generated from field: string fqn = 2;
+     * @generated from field: string name = 2;
      */
     value: string;
-    case: "fqn";
+    case: "name";
   } | { case: undefined; value?: undefined };
 };
 
@@ -311,10 +311,10 @@ export type GetRegisteredResourceValueRequest = Message<"policy.registeredresour
    */
   identifier: {
     /**
-     * @generated from field: string value_id = 1;
+     * @generated from field: string id = 1;
      */
     value: string;
-    case: "valueId";
+    case: "id";
   } | {
     /**
      * @generated from field: string fqn = 2;
@@ -349,6 +349,42 @@ export const GetRegisteredResourceValueResponseSchema: GenMessage<GetRegisteredR
   messageDesc(file_policy_registeredresources_registered_resources, 13);
 
 /**
+ * @generated from message policy.registeredresources.GetRegisteredResourceValuesByFQNsRequest
+ */
+export type GetRegisteredResourceValuesByFQNsRequest = Message<"policy.registeredresources.GetRegisteredResourceValuesByFQNsRequest"> & {
+  /**
+   * Required
+   *
+   * @generated from field: repeated string fqns = 1;
+   */
+  fqns: string[];
+};
+
+/**
+ * Describes the message policy.registeredresources.GetRegisteredResourceValuesByFQNsRequest.
+ * Use `create(GetRegisteredResourceValuesByFQNsRequestSchema)` to create a new message.
+ */
+export const GetRegisteredResourceValuesByFQNsRequestSchema: GenMessage<GetRegisteredResourceValuesByFQNsRequest> = /*@__PURE__*/
+  messageDesc(file_policy_registeredresources_registered_resources, 14);
+
+/**
+ * @generated from message policy.registeredresources.GetRegisteredResourceValuesByFQNsResponse
+ */
+export type GetRegisteredResourceValuesByFQNsResponse = Message<"policy.registeredresources.GetRegisteredResourceValuesByFQNsResponse"> & {
+  /**
+   * @generated from field: map<string, policy.RegisteredResourceValue> fqn_value_map = 1;
+   */
+  fqnValueMap: { [key: string]: RegisteredResourceValue };
+};
+
+/**
+ * Describes the message policy.registeredresources.GetRegisteredResourceValuesByFQNsResponse.
+ * Use `create(GetRegisteredResourceValuesByFQNsResponseSchema)` to create a new message.
+ */
+export const GetRegisteredResourceValuesByFQNsResponseSchema: GenMessage<GetRegisteredResourceValuesByFQNsResponse> = /*@__PURE__*/
+  messageDesc(file_policy_registeredresources_registered_resources, 15);
+
+/**
  * @generated from message policy.registeredresources.ListRegisteredResourceValuesRequest
  */
 export type ListRegisteredResourceValuesRequest = Message<"policy.registeredresources.ListRegisteredResourceValuesRequest"> & {
@@ -372,7 +408,7 @@ export type ListRegisteredResourceValuesRequest = Message<"policy.registeredreso
  * Use `create(ListRegisteredResourceValuesRequestSchema)` to create a new message.
  */
 export const ListRegisteredResourceValuesRequestSchema: GenMessage<ListRegisteredResourceValuesRequest> = /*@__PURE__*/
-  messageDesc(file_policy_registeredresources_registered_resources, 14);
+  messageDesc(file_policy_registeredresources_registered_resources, 16);
 
 /**
  * @generated from message policy.registeredresources.ListRegisteredResourceValuesResponse
@@ -394,7 +430,7 @@ export type ListRegisteredResourceValuesResponse = Message<"policy.registeredres
  * Use `create(ListRegisteredResourceValuesResponseSchema)` to create a new message.
  */
 export const ListRegisteredResourceValuesResponseSchema: GenMessage<ListRegisteredResourceValuesResponse> = /*@__PURE__*/
-  messageDesc(file_policy_registeredresources_registered_resources, 15);
+  messageDesc(file_policy_registeredresources_registered_resources, 17);
 
 /**
  * @generated from message policy.registeredresources.UpdateRegisteredResourceValueRequest
@@ -433,7 +469,7 @@ export type UpdateRegisteredResourceValueRequest = Message<"policy.registeredres
  * Use `create(UpdateRegisteredResourceValueRequestSchema)` to create a new message.
  */
 export const UpdateRegisteredResourceValueRequestSchema: GenMessage<UpdateRegisteredResourceValueRequest> = /*@__PURE__*/
-  messageDesc(file_policy_registeredresources_registered_resources, 16);
+  messageDesc(file_policy_registeredresources_registered_resources, 18);
 
 /**
  * @generated from message policy.registeredresources.UpdateRegisteredResourceValueResponse
@@ -450,7 +486,7 @@ export type UpdateRegisteredResourceValueResponse = Message<"policy.registeredre
  * Use `create(UpdateRegisteredResourceValueResponseSchema)` to create a new message.
  */
 export const UpdateRegisteredResourceValueResponseSchema: GenMessage<UpdateRegisteredResourceValueResponse> = /*@__PURE__*/
-  messageDesc(file_policy_registeredresources_registered_resources, 17);
+  messageDesc(file_policy_registeredresources_registered_resources, 19);
 
 /**
  * @generated from message policy.registeredresources.DeleteRegisteredResourceValueRequest
@@ -469,7 +505,7 @@ export type DeleteRegisteredResourceValueRequest = Message<"policy.registeredres
  * Use `create(DeleteRegisteredResourceValueRequestSchema)` to create a new message.
  */
 export const DeleteRegisteredResourceValueRequestSchema: GenMessage<DeleteRegisteredResourceValueRequest> = /*@__PURE__*/
-  messageDesc(file_policy_registeredresources_registered_resources, 18);
+  messageDesc(file_policy_registeredresources_registered_resources, 20);
 
 /**
  * @generated from message policy.registeredresources.DeleteRegisteredResourceValueResponse
@@ -486,5 +522,102 @@ export type DeleteRegisteredResourceValueResponse = Message<"policy.registeredre
  * Use `create(DeleteRegisteredResourceValueResponseSchema)` to create a new message.
  */
 export const DeleteRegisteredResourceValueResponseSchema: GenMessage<DeleteRegisteredResourceValueResponse> = /*@__PURE__*/
-  messageDesc(file_policy_registeredresources_registered_resources, 19);
+  messageDesc(file_policy_registeredresources_registered_resources, 21);
+
+/**
+ * Registered Resources
+ *
+ * @generated from service policy.registeredresources.RegisteredResourcesService
+ */
+export const RegisteredResourcesService: GenService<{
+  /**
+   * @generated from rpc policy.registeredresources.RegisteredResourcesService.CreateRegisteredResource
+   */
+  createRegisteredResource: {
+    methodKind: "unary";
+    input: typeof CreateRegisteredResourceRequestSchema;
+    output: typeof CreateRegisteredResourceResponseSchema;
+  },
+  /**
+   * @generated from rpc policy.registeredresources.RegisteredResourcesService.GetRegisteredResource
+   */
+  getRegisteredResource: {
+    methodKind: "unary";
+    input: typeof GetRegisteredResourceRequestSchema;
+    output: typeof GetRegisteredResourceResponseSchema;
+  },
+  /**
+   * @generated from rpc policy.registeredresources.RegisteredResourcesService.ListRegisteredResources
+   */
+  listRegisteredResources: {
+    methodKind: "unary";
+    input: typeof ListRegisteredResourcesRequestSchema;
+    output: typeof ListRegisteredResourcesResponseSchema;
+  },
+  /**
+   * @generated from rpc policy.registeredresources.RegisteredResourcesService.UpdateRegisteredResource
+   */
+  updateRegisteredResource: {
+    methodKind: "unary";
+    input: typeof UpdateRegisteredResourceRequestSchema;
+    output: typeof UpdateRegisteredResourceResponseSchema;
+  },
+  /**
+   * @generated from rpc policy.registeredresources.RegisteredResourcesService.DeleteRegisteredResource
+   */
+  deleteRegisteredResource: {
+    methodKind: "unary";
+    input: typeof DeleteRegisteredResourceRequestSchema;
+    output: typeof DeleteRegisteredResourceResponseSchema;
+  },
+  /**
+   * @generated from rpc policy.registeredresources.RegisteredResourcesService.CreateRegisteredResourceValue
+   */
+  createRegisteredResourceValue: {
+    methodKind: "unary";
+    input: typeof CreateRegisteredResourceValueRequestSchema;
+    output: typeof CreateRegisteredResourceValueResponseSchema;
+  },
+  /**
+   * @generated from rpc policy.registeredresources.RegisteredResourcesService.GetRegisteredResourceValue
+   */
+  getRegisteredResourceValue: {
+    methodKind: "unary";
+    input: typeof GetRegisteredResourceValueRequestSchema;
+    output: typeof GetRegisteredResourceValueResponseSchema;
+  },
+  /**
+   * @generated from rpc policy.registeredresources.RegisteredResourcesService.GetRegisteredResourceValuesByFQNs
+   */
+  getRegisteredResourceValuesByFQNs: {
+    methodKind: "unary";
+    input: typeof GetRegisteredResourceValuesByFQNsRequestSchema;
+    output: typeof GetRegisteredResourceValuesByFQNsResponseSchema;
+  },
+  /**
+   * @generated from rpc policy.registeredresources.RegisteredResourcesService.ListRegisteredResourceValues
+   */
+  listRegisteredResourceValues: {
+    methodKind: "unary";
+    input: typeof ListRegisteredResourceValuesRequestSchema;
+    output: typeof ListRegisteredResourceValuesResponseSchema;
+  },
+  /**
+   * @generated from rpc policy.registeredresources.RegisteredResourcesService.UpdateRegisteredResourceValue
+   */
+  updateRegisteredResourceValue: {
+    methodKind: "unary";
+    input: typeof UpdateRegisteredResourceValueRequestSchema;
+    output: typeof UpdateRegisteredResourceValueResponseSchema;
+  },
+  /**
+   * @generated from rpc policy.registeredresources.RegisteredResourcesService.DeleteRegisteredResourceValue
+   */
+  deleteRegisteredResourceValue: {
+    methodKind: "unary";
+    input: typeof DeleteRegisteredResourceValueRequestSchema;
+    output: typeof DeleteRegisteredResourceValueResponseSchema;
+  },
+}> = /*@__PURE__*/
+  serviceDesc(file_policy_registeredresources_registered_resources, 0);
 

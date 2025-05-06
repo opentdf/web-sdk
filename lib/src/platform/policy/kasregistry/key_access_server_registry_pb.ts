@@ -5,10 +5,10 @@
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1";
 import { file_buf_validate_validate } from "../../buf/validate/validate_pb.js";
-import type { MetadataMutable, MetadataUpdateEnum } from "../../common/common_pb.js";
+import type { Metadata, MetadataMutable, MetadataUpdateEnum } from "../../common/common_pb.js";
 import { file_common_common } from "../../common/common_pb.js";
 import { file_google_api_annotations } from "../../google/api/annotations_pb.js";
-import type { KasPublicKey, Key, KeyAccessServer, PublicKey } from "../objects_pb.js";
+import type { Algorithm, KasKey, KasPublicKey, Key, KeyAccessServer, KeyMode, KeyStatus, PublicKey, SourceType } from "../objects_pb.js";
 import { file_policy_objects } from "../objects_pb.js";
 import type { PageRequest, PageResponse } from "../selectors_pb.js";
 import { file_policy_selectors } from "../selectors_pb.js";
@@ -18,7 +18,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file policy/kasregistry/key_access_server_registry.proto.
  */
 export const file_policy_kasregistry_key_access_server_registry: GenFile = /*@__PURE__*/
-  fileDesc("CjNwb2xpY3kva2FzcmVnaXN0cnkva2V5X2FjY2Vzc19zZXJ2ZXJfcmVnaXN0cnkucHJvdG8SEnBvbGljeS5rYXNyZWdpc3RyeSLOAwoZR2V0S2V5QWNjZXNzU2VydmVyUmVxdWVzdBIZCgJpZBgBIAEoCUINGAG6SAjYAQJyA7ABARIaCgZrYXNfaWQYAiABKAlCCLpIBXIDsAEBSAASFwoEbmFtZRgDIAEoCUIHukgEcgIQAUgAEhkKA3VyaRgEIAEoCUIKukgHcgUQAYgBAUgAOrcCukizAhqoAQoQZXhjbHVzaXZlX2ZpZWxkcxJKRWl0aGVyIHVzZSBkZXByZWNhdGVkICdpZCcgZmllbGQgb3Igb25lIG9mICdrYXNfaWQnIG9yICd1cmknLCBidXQgbm90IGJvdGgaSCEoaGFzKHRoaXMuaWQpICYmIChoYXModGhpcy5rYXNfaWQpIHx8IGhhcyh0aGlzLnVyaSkgfHwgaGFzKHRoaXMubmFtZSkpKRqFAQoPcmVxdWlyZWRfZmllbGRzEi1FaXRoZXIgaWQgb3Igb25lIG9mIGthc19pZCBvciB1cmkgbXVzdCBiZSBzZXQaQ2hhcyh0aGlzLmlkKSB8fCBoYXModGhpcy5rYXNfaWQpIHx8IGhhcyh0aGlzLnVyaSkgfHwgaGFzKHRoaXMubmFtZSlCDAoKaWRlbnRpZmllciJQChpHZXRLZXlBY2Nlc3NTZXJ2ZXJSZXNwb25zZRIyChFrZXlfYWNjZXNzX3NlcnZlchgBIAEoCzIXLnBvbGljeS5LZXlBY2Nlc3NTZXJ2ZXIiRgobTGlzdEtleUFjY2Vzc1NlcnZlcnNSZXF1ZXN0EicKCnBhZ2luYXRpb24YCiABKAsyEy5wb2xpY3kuUGFnZVJlcXVlc3QifQocTGlzdEtleUFjY2Vzc1NlcnZlcnNSZXNwb25zZRIzChJrZXlfYWNjZXNzX3NlcnZlcnMYASADKAsyFy5wb2xpY3kuS2V5QWNjZXNzU2VydmVyEigKCnBhZ2luYXRpb24YCiABKAsyFC5wb2xpY3kuUGFnZVJlc3BvbnNlIrsFChxDcmVhdGVLZXlBY2Nlc3NTZXJ2ZXJSZXF1ZXN0EoICCgN1cmkYASABKAlC9AG6SPABugHsAQoKdXJpX2Zvcm1hdBLPAVVSSSBtdXN0IGJlIGEgdmFsaWQgVVJMIChlLmcuLCAnaHR0cHM6Ly9kZW1vLmNvbS8nKSBmb2xsb3dlZCBieSBhZGRpdGlvbmFsIHNlZ21lbnRzLiBFYWNoIHNlZ21lbnQgbXVzdCBzdGFydCBhbmQgZW5kIHdpdGggYW4gYWxwaGFudW1lcmljIGNoYXJhY3RlciwgY2FuIGNvbnRhaW4gaHlwaGVucywgYWxwaGFudW1lcmljIGNoYXJhY3RlcnMsIGFuZCBzbGFzaGVzLhoMdGhpcy5pc1VyaSgpEi0KCnB1YmxpY19rZXkYAiABKAsyES5wb2xpY3kuUHVibGljS2V5Qga6SAPIAQESuwIKBG5hbWUYFCABKAlCrAK6SKgCugGcAgoPa2FzX25hbWVfZm9ybWF0ErMBUmVnaXN0ZXJlZCBLQVMgbmFtZSBtdXN0IGJlIGFuIGFscGhhbnVtZXJpYyBzdHJpbmcsIGFsbG93aW5nIGh5cGhlbnMsIGFuZCB1bmRlcnNjb3JlcyBidXQgbm90IGFzIHRoZSBmaXJzdCBvciBsYXN0IGNoYXJhY3Rlci4gVGhlIHN0b3JlZCBLQVMgbmFtZSB3aWxsIGJlIG5vcm1hbGl6ZWQgdG8gbG93ZXIgY2FzZS4aU3NpemUodGhpcykgPiAwID8gdGhpcy5tYXRjaGVzKCdeW2EtekEtWjAtOV0oPzpbYS16QS1aMC05Xy1dKlthLXpBLVowLTldKT8kJykgOiB0cnVlyAEAcgMY/QESKQoIbWV0YWRhdGEYZCABKAsyFy5jb21tb24uTWV0YWRhdGFNdXRhYmxlIlMKHUNyZWF0ZUtleUFjY2Vzc1NlcnZlclJlc3BvbnNlEjIKEWtleV9hY2Nlc3Nfc2VydmVyGAEgASgLMhcucG9saWN5LktleUFjY2Vzc1NlcnZlciKnBgocVXBkYXRlS2V5QWNjZXNzU2VydmVyUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQESpwIKA3VyaRgCIAEoCUKZArpIlQK6AZECChNvcHRpb25hbF91cmlfZm9ybWF0EtgBT3B0aW9uYWwgVVJJIG11c3QgYmUgYSB2YWxpZCBVUkwgKGUuZy4sICdodHRwczovL2RlbW8uY29tLycpIGZvbGxvd2VkIGJ5IGFkZGl0aW9uYWwgc2VnbWVudHMuIEVhY2ggc2VnbWVudCBtdXN0IHN0YXJ0IGFuZCBlbmQgd2l0aCBhbiBhbHBoYW51bWVyaWMgY2hhcmFjdGVyLCBjYW4gY29udGFpbiBoeXBoZW5zLCBhbHBoYW51bWVyaWMgY2hhcmFjdGVycywgYW5kIHNsYXNoZXMuGh9zaXplKHRoaXMpID09IDAgfHwgdGhpcy5pc1VyaSgpEiUKCnB1YmxpY19rZXkYAyABKAsyES5wb2xpY3kuUHVibGljS2V5ErYCCgRuYW1lGBQgASgJQqcCukijAroBlwIKD2thc19uYW1lX2Zvcm1hdBKzAVJlZ2lzdGVyZWQgS0FTIG5hbWUgbXVzdCBiZSBhbiBhbHBoYW51bWVyaWMgc3RyaW5nLCBhbGxvd2luZyBoeXBoZW5zLCBhbmQgdW5kZXJzY29yZXMgYnV0IG5vdCBhcyB0aGUgZmlyc3Qgb3IgbGFzdCBjaGFyYWN0ZXIuIFRoZSBzdG9yZWQgS0FTIG5hbWUgd2lsbCBiZSBub3JtYWxpemVkIHRvIGxvd2VyIGNhc2UuGk5zaXplKHRoaXMpID09IDAgfHwgdGhpcy5tYXRjaGVzKCdeW2EtekEtWjAtOV0oPzpbYS16QS1aMC05Xy1dKlthLXpBLVowLTldKT8kJynIAQByAxj9ARIpCghtZXRhZGF0YRhkIAEoCzIXLmNvbW1vbi5NZXRhZGF0YU11dGFibGUSPAoYbWV0YWRhdGFfdXBkYXRlX2JlaGF2aW9yGGUgASgOMhouY29tbW9uLk1ldGFkYXRhVXBkYXRlRW51bSJTCh1VcGRhdGVLZXlBY2Nlc3NTZXJ2ZXJSZXNwb25zZRIyChFrZXlfYWNjZXNzX3NlcnZlchgBIAEoCzIXLnBvbGljeS5LZXlBY2Nlc3NTZXJ2ZXIiNAocRGVsZXRlS2V5QWNjZXNzU2VydmVyUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQEiUwodRGVsZXRlS2V5QWNjZXNzU2VydmVyUmVzcG9uc2USMgoRa2V5X2FjY2Vzc19zZXJ2ZXIYASABKAsyFy5wb2xpY3kuS2V5QWNjZXNzU2VydmVyIi4KE0dyYW50ZWRQb2xpY3lPYmplY3QSCgoCaWQYASABKAkSCwoDZnFuGAIgASgJIpACChVLZXlBY2Nlc3NTZXJ2ZXJHcmFudHMSMgoRa2V5X2FjY2Vzc19zZXJ2ZXIYASABKAsyFy5wb2xpY3kuS2V5QWNjZXNzU2VydmVyEkEKEG5hbWVzcGFjZV9ncmFudHMYAiADKAsyJy5wb2xpY3kua2FzcmVnaXN0cnkuR3JhbnRlZFBvbGljeU9iamVjdBJBChBhdHRyaWJ1dGVfZ3JhbnRzGAMgAygLMicucG9saWN5Lmthc3JlZ2lzdHJ5LkdyYW50ZWRQb2xpY3lPYmplY3QSPQoMdmFsdWVfZ3JhbnRzGAQgAygLMicucG9saWN5Lmthc3JlZ2lzdHJ5LkdyYW50ZWRQb2xpY3lPYmplY3QiiAEKFkNyZWF0ZVB1YmxpY0tleVJlcXVlc3QSGAoGa2FzX2lkGAEgASgJQgi6SAVyA7ABARIpCgNrZXkYAiABKAsyFC5wb2xpY3kuS2FzUHVibGljS2V5Qga6SAPIAQESKQoIbWV0YWRhdGEYZCABKAsyFy5jb21tb24uTWV0YWRhdGFNdXRhYmxlIjMKF0NyZWF0ZVB1YmxpY0tleVJlc3BvbnNlEhgKA2tleRgBIAEoCzILLnBvbGljeS5LZXkiOwoTR2V0UHVibGljS2V5UmVxdWVzdBIWCgJpZBgBIAEoCUIIukgFcgOwAQFIAEIMCgppZGVudGlmaWVyIjAKFEdldFB1YmxpY0tleVJlc3BvbnNlEhgKA2tleRgBIAEoCzILLnBvbGljeS5LZXkipgEKFUxpc3RQdWJsaWNLZXlzUmVxdWVzdBIaCgZrYXNfaWQYASABKAlCCLpIBXIDsAEBSAASGwoIa2FzX25hbWUYAiABKAlCB7pIBHICEAFIABIdCgdrYXNfdXJpGAMgASgJQgq6SAdyBRABiAEBSAASJwoKcGFnaW5hdGlvbhgKIAEoCzITLnBvbGljeS5QYWdlUmVxdWVzdEIMCgprYXNfZmlsdGVyIl0KFkxpc3RQdWJsaWNLZXlzUmVzcG9uc2USGQoEa2V5cxgBIAMoCzILLnBvbGljeS5LZXkSKAoKcGFnaW5hdGlvbhgKIAEoCzIULnBvbGljeS5QYWdlUmVzcG9uc2Ui0AEKG0xpc3RQdWJsaWNLZXlNYXBwaW5nUmVxdWVzdBIaCgZrYXNfaWQYASABKAlCCLpIBXIDsAEBSAASGwoIa2FzX25hbWUYAiABKAlCB7pIBHICEAFIABIdCgdrYXNfdXJpGAMgASgJQgq6SAdyBRABiAEBSAASIgoNcHVibGljX2tleV9pZBgEIAEoCUILukgI2AECcgOwAQESJwoKcGFnaW5hdGlvbhgKIAEoCzITLnBvbGljeS5QYWdlUmVxdWVzdEIMCgprYXNfZmlsdGVyIoQFChxMaXN0UHVibGljS2V5TWFwcGluZ1Jlc3BvbnNlEl4KE3B1YmxpY19rZXlfbWFwcGluZ3MYASADKAsyQS5wb2xpY3kua2FzcmVnaXN0cnkuTGlzdFB1YmxpY0tleU1hcHBpbmdSZXNwb25zZS5QdWJsaWNLZXlNYXBwaW5nEigKCnBhZ2luYXRpb24YCiABKAsyFC5wb2xpY3kuUGFnZVJlc3BvbnNlGpYBChBQdWJsaWNLZXlNYXBwaW5nEg4KBmthc19pZBgCIAEoCRIQCghrYXNfbmFtZRgDIAEoCRIPCgdrYXNfdXJpGAQgASgJEk8KC3B1YmxpY19rZXlzGAUgAygLMjoucG9saWN5Lmthc3JlZ2lzdHJ5Lkxpc3RQdWJsaWNLZXlNYXBwaW5nUmVzcG9uc2UuUHVibGljS2V5GpgCCglQdWJsaWNLZXkSGAoDa2V5GAEgASgLMgsucG9saWN5LktleRJMCgZ2YWx1ZXMYBiADKAsyPC5wb2xpY3kua2FzcmVnaXN0cnkuTGlzdFB1YmxpY0tleU1hcHBpbmdSZXNwb25zZS5Bc3NvY2lhdGlvbhJRCgtkZWZpbml0aW9ucxgHIAMoCzI8LnBvbGljeS5rYXNyZWdpc3RyeS5MaXN0UHVibGljS2V5TWFwcGluZ1Jlc3BvbnNlLkFzc29jaWF0aW9uElAKCm5hbWVzcGFjZXMYCCADKAsyPC5wb2xpY3kua2FzcmVnaXN0cnkuTGlzdFB1YmxpY0tleU1hcHBpbmdSZXNwb25zZS5Bc3NvY2lhdGlvbhomCgtBc3NvY2lhdGlvbhIKCgJpZBgBIAEoCRILCgNmcW4YAiABKAkilwEKFlVwZGF0ZVB1YmxpY0tleVJlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBEikKCG1ldGFkYXRhGGQgASgLMhcuY29tbW9uLk1ldGFkYXRhTXV0YWJsZRI8ChhtZXRhZGF0YV91cGRhdGVfYmVoYXZpb3IYZSABKA4yGi5jb21tb24uTWV0YWRhdGFVcGRhdGVFbnVtIjMKF1VwZGF0ZVB1YmxpY0tleVJlc3BvbnNlEhgKA2tleRgBIAEoCzILLnBvbGljeS5LZXkiMgoaRGVhY3RpdmF0ZVB1YmxpY0tleVJlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBIjcKG0RlYWN0aXZhdGVQdWJsaWNLZXlSZXNwb25zZRIYCgNrZXkYASABKAsyCy5wb2xpY3kuS2V5IjAKGEFjdGl2YXRlUHVibGljS2V5UmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQEiNQoZQWN0aXZhdGVQdWJsaWNLZXlSZXNwb25zZRIYCgNrZXkYASABKAsyCy5wb2xpY3kuS2V5Iv0GCiBMaXN0S2V5QWNjZXNzU2VydmVyR3JhbnRzUmVxdWVzdBLEAQoGa2FzX2lkGAEgASgJQrMBukivAboBqwEKFG9wdGlvbmFsX3V1aWRfZm9ybWF0EiNPcHRpb25hbCBmaWVsZCBtdXN0IGJlIGEgdmFsaWQgVVVJRBpuc2l6ZSh0aGlzKSA9PSAwIHx8IHRoaXMubWF0Y2hlcygnWzAtOWEtZkEtRl17OH0tWzAtOWEtZkEtRl17NH0tWzAtOWEtZkEtRl17NH0tWzAtOWEtZkEtRl17NH0tWzAtOWEtZkEtRl17MTJ9JykSqwIKB2thc191cmkYAiABKAlCmQK6SJUCugGRAgoTb3B0aW9uYWxfdXJpX2Zvcm1hdBLYAU9wdGlvbmFsIFVSSSBtdXN0IGJlIGEgdmFsaWQgVVJMIChlLmcuLCAnaHR0cHM6Ly9kZW1vLmNvbS8nKSBmb2xsb3dlZCBieSBhZGRpdGlvbmFsIHNlZ21lbnRzLiBFYWNoIHNlZ21lbnQgbXVzdCBzdGFydCBhbmQgZW5kIHdpdGggYW4gYWxwaGFudW1lcmljIGNoYXJhY3RlciwgY2FuIGNvbnRhaW4gaHlwaGVucywgYWxwaGFudW1lcmljIGNoYXJhY3RlcnMsIGFuZCBzbGFzaGVzLhofc2l6ZSh0aGlzKSA9PSAwIHx8IHRoaXMuaXNVcmkoKRK6AgoIa2FzX25hbWUYAyABKAlCpwK6SKMCugGXAgoPa2FzX25hbWVfZm9ybWF0ErMBUmVnaXN0ZXJlZCBLQVMgbmFtZSBtdXN0IGJlIGFuIGFscGhhbnVtZXJpYyBzdHJpbmcsIGFsbG93aW5nIGh5cGhlbnMsIGFuZCB1bmRlcnNjb3JlcyBidXQgbm90IGFzIHRoZSBmaXJzdCBvciBsYXN0IGNoYXJhY3Rlci4gVGhlIHN0b3JlZCBLQVMgbmFtZSB3aWxsIGJlIG5vcm1hbGl6ZWQgdG8gbG93ZXIgY2FzZS4aTnNpemUodGhpcykgPT0gMCB8fCB0aGlzLm1hdGNoZXMoJ15bYS16QS1aMC05XSg/OlthLXpBLVowLTlfLV0qW2EtekEtWjAtOV0pPyQnKcgBAHIDGP0BEicKCnBhZ2luYXRpb24YCiABKAsyEy5wb2xpY3kuUGFnZVJlcXVlc3QijAEKIUxpc3RLZXlBY2Nlc3NTZXJ2ZXJHcmFudHNSZXNwb25zZRI9CgZncmFudHMYASADKAsyKS5wb2xpY3kua2FzcmVnaXN0cnkuS2V5QWNjZXNzU2VydmVyR3JhbnRzQgIYARIoCgpwYWdpbmF0aW9uGAogASgLMhQucG9saWN5LlBhZ2VSZXNwb25zZTLtBwoeS2V5QWNjZXNzU2VydmVyUmVnaXN0cnlTZXJ2aWNlEpkBChRMaXN0S2V5QWNjZXNzU2VydmVycxIvLnBvbGljeS5rYXNyZWdpc3RyeS5MaXN0S2V5QWNjZXNzU2VydmVyc1JlcXVlc3QaMC5wb2xpY3kua2FzcmVnaXN0cnkuTGlzdEtleUFjY2Vzc1NlcnZlcnNSZXNwb25zZSIekAIBgtPkkwIVEhMva2V5LWFjY2Vzcy1zZXJ2ZXJzEpgBChJHZXRLZXlBY2Nlc3NTZXJ2ZXISLS5wb2xpY3kua2FzcmVnaXN0cnkuR2V0S2V5QWNjZXNzU2VydmVyUmVxdWVzdBouLnBvbGljeS5rYXNyZWdpc3RyeS5HZXRLZXlBY2Nlc3NTZXJ2ZXJSZXNwb25zZSIjkAIBgtPkkwIaEhgva2V5LWFjY2Vzcy1zZXJ2ZXJzL3tpZH0SnAEKFUNyZWF0ZUtleUFjY2Vzc1NlcnZlchIwLnBvbGljeS5rYXNyZWdpc3RyeS5DcmVhdGVLZXlBY2Nlc3NTZXJ2ZXJSZXF1ZXN0GjEucG9saWN5Lmthc3JlZ2lzdHJ5LkNyZWF0ZUtleUFjY2Vzc1NlcnZlclJlc3BvbnNlIh6C0+STAhg6ASoiEy9rZXktYWNjZXNzLXNlcnZlcnMSoQEKFVVwZGF0ZUtleUFjY2Vzc1NlcnZlchIwLnBvbGljeS5rYXNyZWdpc3RyeS5VcGRhdGVLZXlBY2Nlc3NTZXJ2ZXJSZXF1ZXN0GjEucG9saWN5Lmthc3JlZ2lzdHJ5LlVwZGF0ZUtleUFjY2Vzc1NlcnZlclJlc3BvbnNlIiOC0+STAh06ASoyGC9rZXktYWNjZXNzLXNlcnZlcnMve2lkfRKeAQoVRGVsZXRlS2V5QWNjZXNzU2VydmVyEjAucG9saWN5Lmthc3JlZ2lzdHJ5LkRlbGV0ZUtleUFjY2Vzc1NlcnZlclJlcXVlc3QaMS5wb2xpY3kua2FzcmVnaXN0cnkuRGVsZXRlS2V5QWNjZXNzU2VydmVyUmVzcG9uc2UiIILT5JMCGioYL2tleS1hY2Nlc3Mtc2VydmVycy97aWR9Eq8BChlMaXN0S2V5QWNjZXNzU2VydmVyR3JhbnRzEjQucG9saWN5Lmthc3JlZ2lzdHJ5Lkxpc3RLZXlBY2Nlc3NTZXJ2ZXJHcmFudHNSZXF1ZXN0GjUucG9saWN5Lmthc3JlZ2lzdHJ5Lkxpc3RLZXlBY2Nlc3NTZXJ2ZXJHcmFudHNSZXNwb25zZSIlkAIBgtPkkwIcEhova2V5LWFjY2Vzcy1zZXJ2ZXJzL2dyYW50c2IGcHJvdG8z", [file_buf_validate_validate, file_common_common, file_google_api_annotations, file_policy_objects, file_policy_selectors]);
+  fileDesc("CjNwb2xpY3kva2FzcmVnaXN0cnkva2V5X2FjY2Vzc19zZXJ2ZXJfcmVnaXN0cnkucHJvdG8SEnBvbGljeS5rYXNyZWdpc3RyeSLOAwoZR2V0S2V5QWNjZXNzU2VydmVyUmVxdWVzdBIZCgJpZBgBIAEoCUINGAG6SAjYAQJyA7ABARIaCgZrYXNfaWQYAiABKAlCCLpIBXIDsAEBSAASFwoEbmFtZRgDIAEoCUIHukgEcgIQAUgAEhkKA3VyaRgEIAEoCUIKukgHcgUQAYgBAUgAOrcCukizAhqoAQoQZXhjbHVzaXZlX2ZpZWxkcxJKRWl0aGVyIHVzZSBkZXByZWNhdGVkICdpZCcgZmllbGQgb3Igb25lIG9mICdrYXNfaWQnIG9yICd1cmknLCBidXQgbm90IGJvdGgaSCEoaGFzKHRoaXMuaWQpICYmIChoYXModGhpcy5rYXNfaWQpIHx8IGhhcyh0aGlzLnVyaSkgfHwgaGFzKHRoaXMubmFtZSkpKRqFAQoPcmVxdWlyZWRfZmllbGRzEi1FaXRoZXIgaWQgb3Igb25lIG9mIGthc19pZCBvciB1cmkgbXVzdCBiZSBzZXQaQ2hhcyh0aGlzLmlkKSB8fCBoYXModGhpcy5rYXNfaWQpIHx8IGhhcyh0aGlzLnVyaSkgfHwgaGFzKHRoaXMubmFtZSlCDAoKaWRlbnRpZmllciJQChpHZXRLZXlBY2Nlc3NTZXJ2ZXJSZXNwb25zZRIyChFrZXlfYWNjZXNzX3NlcnZlchgBIAEoCzIXLnBvbGljeS5LZXlBY2Nlc3NTZXJ2ZXIiRgobTGlzdEtleUFjY2Vzc1NlcnZlcnNSZXF1ZXN0EicKCnBhZ2luYXRpb24YCiABKAsyEy5wb2xpY3kuUGFnZVJlcXVlc3QifQocTGlzdEtleUFjY2Vzc1NlcnZlcnNSZXNwb25zZRIzChJrZXlfYWNjZXNzX3NlcnZlcnMYASADKAsyFy5wb2xpY3kuS2V5QWNjZXNzU2VydmVyEigKCnBhZ2luYXRpb24YCiABKAsyFC5wb2xpY3kuUGFnZVJlc3BvbnNlIukFChxDcmVhdGVLZXlBY2Nlc3NTZXJ2ZXJSZXF1ZXN0EoICCgN1cmkYASABKAlC9AG6SPABugHsAQoKdXJpX2Zvcm1hdBLPAVVSSSBtdXN0IGJlIGEgdmFsaWQgVVJMIChlLmcuLCAnaHR0cHM6Ly9kZW1vLmNvbS8nKSBmb2xsb3dlZCBieSBhZGRpdGlvbmFsIHNlZ21lbnRzLiBFYWNoIHNlZ21lbnQgbXVzdCBzdGFydCBhbmQgZW5kIHdpdGggYW4gYWxwaGFudW1lcmljIGNoYXJhY3RlciwgY2FuIGNvbnRhaW4gaHlwaGVucywgYWxwaGFudW1lcmljIGNoYXJhY3RlcnMsIGFuZCBzbGFzaGVzLhoMdGhpcy5pc1VyaSgpEiUKCnB1YmxpY19rZXkYAiABKAsyES5wb2xpY3kuUHVibGljS2V5EjQKC3NvdXJjZV90eXBlGAMgASgOMhIucG9saWN5LlNvdXJjZVR5cGVCC7pICMgBAIIBAhABErsCCgRuYW1lGBQgASgJQqwCukioAroBnAIKD2thc19uYW1lX2Zvcm1hdBKzAVJlZ2lzdGVyZWQgS0FTIG5hbWUgbXVzdCBiZSBhbiBhbHBoYW51bWVyaWMgc3RyaW5nLCBhbGxvd2luZyBoeXBoZW5zLCBhbmQgdW5kZXJzY29yZXMgYnV0IG5vdCBhcyB0aGUgZmlyc3Qgb3IgbGFzdCBjaGFyYWN0ZXIuIFRoZSBzdG9yZWQgS0FTIG5hbWUgd2lsbCBiZSBub3JtYWxpemVkIHRvIGxvd2VyIGNhc2UuGlNzaXplKHRoaXMpID4gMCA/IHRoaXMubWF0Y2hlcygnXlthLXpBLVowLTldKD86W2EtekEtWjAtOV8tXSpbYS16QS1aMC05XSk/JCcpIDogdHJ1ZcgBAHIDGP0BEikKCG1ldGFkYXRhGGQgASgLMhcuY29tbW9uLk1ldGFkYXRhTXV0YWJsZSJTCh1DcmVhdGVLZXlBY2Nlc3NTZXJ2ZXJSZXNwb25zZRIyChFrZXlfYWNjZXNzX3NlcnZlchgBIAEoCzIXLnBvbGljeS5LZXlBY2Nlc3NTZXJ2ZXIi3QYKHFVwZGF0ZUtleUFjY2Vzc1NlcnZlclJlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBEqcCCgN1cmkYAiABKAlCmQK6SJUCugGRAgoTb3B0aW9uYWxfdXJpX2Zvcm1hdBLYAU9wdGlvbmFsIFVSSSBtdXN0IGJlIGEgdmFsaWQgVVJMIChlLmcuLCAnaHR0cHM6Ly9kZW1vLmNvbS8nKSBmb2xsb3dlZCBieSBhZGRpdGlvbmFsIHNlZ21lbnRzLiBFYWNoIHNlZ21lbnQgbXVzdCBzdGFydCBhbmQgZW5kIHdpdGggYW4gYWxwaGFudW1lcmljIGNoYXJhY3RlciwgY2FuIGNvbnRhaW4gaHlwaGVucywgYWxwaGFudW1lcmljIGNoYXJhY3RlcnMsIGFuZCBzbGFzaGVzLhofc2l6ZSh0aGlzKSA9PSAwIHx8IHRoaXMuaXNVcmkoKRIlCgpwdWJsaWNfa2V5GAMgASgLMhEucG9saWN5LlB1YmxpY0tleRI0Cgtzb3VyY2VfdHlwZRgEIAEoDjISLnBvbGljeS5Tb3VyY2VUeXBlQgu6SAjIAQCCAQIQARK2AgoEbmFtZRgUIAEoCUKnArpIowK6AZcCCg9rYXNfbmFtZV9mb3JtYXQSswFSZWdpc3RlcmVkIEtBUyBuYW1lIG11c3QgYmUgYW4gYWxwaGFudW1lcmljIHN0cmluZywgYWxsb3dpbmcgaHlwaGVucywgYW5kIHVuZGVyc2NvcmVzIGJ1dCBub3QgYXMgdGhlIGZpcnN0IG9yIGxhc3QgY2hhcmFjdGVyLiBUaGUgc3RvcmVkIEtBUyBuYW1lIHdpbGwgYmUgbm9ybWFsaXplZCB0byBsb3dlciBjYXNlLhpOc2l6ZSh0aGlzKSA9PSAwIHx8IHRoaXMubWF0Y2hlcygnXlthLXpBLVowLTldKD86W2EtekEtWjAtOV8tXSpbYS16QS1aMC05XSk/JCcpyAEAcgMY/QESKQoIbWV0YWRhdGEYZCABKAsyFy5jb21tb24uTWV0YWRhdGFNdXRhYmxlEjwKGG1ldGFkYXRhX3VwZGF0ZV9iZWhhdmlvchhlIAEoDjIaLmNvbW1vbi5NZXRhZGF0YVVwZGF0ZUVudW0iUwodVXBkYXRlS2V5QWNjZXNzU2VydmVyUmVzcG9uc2USMgoRa2V5X2FjY2Vzc19zZXJ2ZXIYASABKAsyFy5wb2xpY3kuS2V5QWNjZXNzU2VydmVyIjQKHERlbGV0ZUtleUFjY2Vzc1NlcnZlclJlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBIlMKHURlbGV0ZUtleUFjY2Vzc1NlcnZlclJlc3BvbnNlEjIKEWtleV9hY2Nlc3Nfc2VydmVyGAEgASgLMhcucG9saWN5LktleUFjY2Vzc1NlcnZlciIuChNHcmFudGVkUG9saWN5T2JqZWN0EgoKAmlkGAEgASgJEgsKA2ZxbhgCIAEoCSKQAgoVS2V5QWNjZXNzU2VydmVyR3JhbnRzEjIKEWtleV9hY2Nlc3Nfc2VydmVyGAEgASgLMhcucG9saWN5LktleUFjY2Vzc1NlcnZlchJBChBuYW1lc3BhY2VfZ3JhbnRzGAIgAygLMicucG9saWN5Lmthc3JlZ2lzdHJ5LkdyYW50ZWRQb2xpY3lPYmplY3QSQQoQYXR0cmlidXRlX2dyYW50cxgDIAMoCzInLnBvbGljeS5rYXNyZWdpc3RyeS5HcmFudGVkUG9saWN5T2JqZWN0Ej0KDHZhbHVlX2dyYW50cxgEIAMoCzInLnBvbGljeS5rYXNyZWdpc3RyeS5HcmFudGVkUG9saWN5T2JqZWN0IogBChZDcmVhdGVQdWJsaWNLZXlSZXF1ZXN0EhgKBmthc19pZBgBIAEoCUIIukgFcgOwAQESKQoDa2V5GAIgASgLMhQucG9saWN5Lkthc1B1YmxpY0tleUIGukgDyAEBEikKCG1ldGFkYXRhGGQgASgLMhcuY29tbW9uLk1ldGFkYXRhTXV0YWJsZSIzChdDcmVhdGVQdWJsaWNLZXlSZXNwb25zZRIYCgNrZXkYASABKAsyCy5wb2xpY3kuS2V5IjsKE0dldFB1YmxpY0tleVJlcXVlc3QSFgoCaWQYASABKAlCCLpIBXIDsAEBSABCDAoKaWRlbnRpZmllciIwChRHZXRQdWJsaWNLZXlSZXNwb25zZRIYCgNrZXkYASABKAsyCy5wb2xpY3kuS2V5IqYBChVMaXN0UHVibGljS2V5c1JlcXVlc3QSGgoGa2FzX2lkGAEgASgJQgi6SAVyA7ABAUgAEhsKCGthc19uYW1lGAIgASgJQge6SARyAhABSAASHQoHa2FzX3VyaRgDIAEoCUIKukgHcgUQAYgBAUgAEicKCnBhZ2luYXRpb24YCiABKAsyEy5wb2xpY3kuUGFnZVJlcXVlc3RCDAoKa2FzX2ZpbHRlciJdChZMaXN0UHVibGljS2V5c1Jlc3BvbnNlEhkKBGtleXMYASADKAsyCy5wb2xpY3kuS2V5EigKCnBhZ2luYXRpb24YCiABKAsyFC5wb2xpY3kuUGFnZVJlc3BvbnNlItABChtMaXN0UHVibGljS2V5TWFwcGluZ1JlcXVlc3QSGgoGa2FzX2lkGAEgASgJQgi6SAVyA7ABAUgAEhsKCGthc19uYW1lGAIgASgJQge6SARyAhABSAASHQoHa2FzX3VyaRgDIAEoCUIKukgHcgUQAYgBAUgAEiIKDXB1YmxpY19rZXlfaWQYBCABKAlCC7pICNgBAnIDsAEBEicKCnBhZ2luYXRpb24YCiABKAsyEy5wb2xpY3kuUGFnZVJlcXVlc3RCDAoKa2FzX2ZpbHRlciKEBQocTGlzdFB1YmxpY0tleU1hcHBpbmdSZXNwb25zZRJeChNwdWJsaWNfa2V5X21hcHBpbmdzGAEgAygLMkEucG9saWN5Lmthc3JlZ2lzdHJ5Lkxpc3RQdWJsaWNLZXlNYXBwaW5nUmVzcG9uc2UuUHVibGljS2V5TWFwcGluZxIoCgpwYWdpbmF0aW9uGAogASgLMhQucG9saWN5LlBhZ2VSZXNwb25zZRqWAQoQUHVibGljS2V5TWFwcGluZxIOCgZrYXNfaWQYAiABKAkSEAoIa2FzX25hbWUYAyABKAkSDwoHa2FzX3VyaRgEIAEoCRJPCgtwdWJsaWNfa2V5cxgFIAMoCzI6LnBvbGljeS5rYXNyZWdpc3RyeS5MaXN0UHVibGljS2V5TWFwcGluZ1Jlc3BvbnNlLlB1YmxpY0tleRqYAgoJUHVibGljS2V5EhgKA2tleRgBIAEoCzILLnBvbGljeS5LZXkSTAoGdmFsdWVzGAYgAygLMjwucG9saWN5Lmthc3JlZ2lzdHJ5Lkxpc3RQdWJsaWNLZXlNYXBwaW5nUmVzcG9uc2UuQXNzb2NpYXRpb24SUQoLZGVmaW5pdGlvbnMYByADKAsyPC5wb2xpY3kua2FzcmVnaXN0cnkuTGlzdFB1YmxpY0tleU1hcHBpbmdSZXNwb25zZS5Bc3NvY2lhdGlvbhJQCgpuYW1lc3BhY2VzGAggAygLMjwucG9saWN5Lmthc3JlZ2lzdHJ5Lkxpc3RQdWJsaWNLZXlNYXBwaW5nUmVzcG9uc2UuQXNzb2NpYXRpb24aJgoLQXNzb2NpYXRpb24SCgoCaWQYASABKAkSCwoDZnFuGAIgASgJIpcBChZVcGRhdGVQdWJsaWNLZXlSZXF1ZXN0EhQKAmlkGAEgASgJQgi6SAVyA7ABARIpCghtZXRhZGF0YRhkIAEoCzIXLmNvbW1vbi5NZXRhZGF0YU11dGFibGUSPAoYbWV0YWRhdGFfdXBkYXRlX2JlaGF2aW9yGGUgASgOMhouY29tbW9uLk1ldGFkYXRhVXBkYXRlRW51bSIzChdVcGRhdGVQdWJsaWNLZXlSZXNwb25zZRIYCgNrZXkYASABKAsyCy5wb2xpY3kuS2V5IjIKGkRlYWN0aXZhdGVQdWJsaWNLZXlSZXF1ZXN0EhQKAmlkGAEgASgJQgi6SAVyA7ABASI3ChtEZWFjdGl2YXRlUHVibGljS2V5UmVzcG9uc2USGAoDa2V5GAEgASgLMgsucG9saWN5LktleSIwChhBY3RpdmF0ZVB1YmxpY0tleVJlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBIjUKGUFjdGl2YXRlUHVibGljS2V5UmVzcG9uc2USGAoDa2V5GAEgASgLMgsucG9saWN5LktleSL9BgogTGlzdEtleUFjY2Vzc1NlcnZlckdyYW50c1JlcXVlc3QSxAEKBmthc19pZBgBIAEoCUKzAbpIrwG6AasBChRvcHRpb25hbF91dWlkX2Zvcm1hdBIjT3B0aW9uYWwgZmllbGQgbXVzdCBiZSBhIHZhbGlkIFVVSUQabnNpemUodGhpcykgPT0gMCB8fCB0aGlzLm1hdGNoZXMoJ1swLTlhLWZBLUZdezh9LVswLTlhLWZBLUZdezR9LVswLTlhLWZBLUZdezR9LVswLTlhLWZBLUZdezR9LVswLTlhLWZBLUZdezEyfScpEqsCCgdrYXNfdXJpGAIgASgJQpkCukiVAroBkQIKE29wdGlvbmFsX3VyaV9mb3JtYXQS2AFPcHRpb25hbCBVUkkgbXVzdCBiZSBhIHZhbGlkIFVSTCAoZS5nLiwgJ2h0dHBzOi8vZGVtby5jb20vJykgZm9sbG93ZWQgYnkgYWRkaXRpb25hbCBzZWdtZW50cy4gRWFjaCBzZWdtZW50IG11c3Qgc3RhcnQgYW5kIGVuZCB3aXRoIGFuIGFscGhhbnVtZXJpYyBjaGFyYWN0ZXIsIGNhbiBjb250YWluIGh5cGhlbnMsIGFscGhhbnVtZXJpYyBjaGFyYWN0ZXJzLCBhbmQgc2xhc2hlcy4aH3NpemUodGhpcykgPT0gMCB8fCB0aGlzLmlzVXJpKCkSugIKCGthc19uYW1lGAMgASgJQqcCukijAroBlwIKD2thc19uYW1lX2Zvcm1hdBKzAVJlZ2lzdGVyZWQgS0FTIG5hbWUgbXVzdCBiZSBhbiBhbHBoYW51bWVyaWMgc3RyaW5nLCBhbGxvd2luZyBoeXBoZW5zLCBhbmQgdW5kZXJzY29yZXMgYnV0IG5vdCBhcyB0aGUgZmlyc3Qgb3IgbGFzdCBjaGFyYWN0ZXIuIFRoZSBzdG9yZWQgS0FTIG5hbWUgd2lsbCBiZSBub3JtYWxpemVkIHRvIGxvd2VyIGNhc2UuGk5zaXplKHRoaXMpID09IDAgfHwgdGhpcy5tYXRjaGVzKCdeW2EtekEtWjAtOV0oPzpbYS16QS1aMC05Xy1dKlthLXpBLVowLTldKT8kJynIAQByAxj9ARInCgpwYWdpbmF0aW9uGAogASgLMhMucG9saWN5LlBhZ2VSZXF1ZXN0IowBCiFMaXN0S2V5QWNjZXNzU2VydmVyR3JhbnRzUmVzcG9uc2USPQoGZ3JhbnRzGAEgAygLMikucG9saWN5Lmthc3JlZ2lzdHJ5LktleUFjY2Vzc1NlcnZlckdyYW50c0ICGAESKAoKcGFnaW5hdGlvbhgKIAEoCzIULnBvbGljeS5QYWdlUmVzcG9uc2UiqgIKEENyZWF0ZUtleVJlcXVlc3QSGAoGa2FzX2lkGAEgASgJQgi6SAVyA7ABARIXCgZrZXlfaWQYAiABKAlCB7pIBHICEAESMgoNa2V5X2FsZ29yaXRobRgDIAEoDjIRLnBvbGljeS5BbGdvcml0aG1CCLpIBYIBAhABEisKCGtleV9tb2RlGAQgASgOMg8ucG9saWN5LktleU1vZGVCCLpIBYIBAhABEiIKDnB1YmxpY19rZXlfY3R4GAUgASgMQgq6SAfIAQF6AhABEhcKD3ByaXZhdGVfa2V5X2N0eBgGIAEoDBIaChJwcm92aWRlcl9jb25maWdfaWQYByABKAkSKQoIbWV0YWRhdGEYZCABKAsyFy5jb21tb24uTWV0YWRhdGFNdXRhYmxlIjQKEUNyZWF0ZUtleVJlc3BvbnNlEh8KB2thc19rZXkYASABKAsyDi5wb2xpY3kuS2FzS2V5InEKDUdldEtleVJlcXVlc3QSFgoCaWQYAiABKAlCCLpIBXIDsAEBSAASMwoDa2V5GAMgASgLMiQucG9saWN5Lmthc3JlZ2lzdHJ5Lkthc0tleUlkZW50aWZpZXJIAEITCgppZGVudGlmaWVyEgW6SAIIASIxCg5HZXRLZXlSZXNwb25zZRIfCgdrYXNfa2V5GAEgASgLMg4ucG9saWN5Lkthc0tleSK/AQoPTGlzdEtleXNSZXF1ZXN0EjIKDWtleV9hbGdvcml0aG0YASABKA4yES5wb2xpY3kuQWxnb3JpdGhtQgi6SAWCAQIQARIaCgZrYXNfaWQYAiABKAlCCLpIBXIDsAEBSAASEgoIa2FzX25hbWUYAyABKAlIABIRCgdrYXNfdXJpGAQgASgJSAASJwoKcGFnaW5hdGlvbhgKIAEoCzITLnBvbGljeS5QYWdlUmVxdWVzdEIMCgprYXNfZmlsdGVyIl4KEExpc3RLZXlzUmVzcG9uc2USIAoIa2FzX2tleXMYASADKAsyDi5wb2xpY3kuS2FzS2V5EigKCnBhZ2luYXRpb24YCiABKAsyFC5wb2xpY3kuUGFnZVJlc3BvbnNlIsIBChBVcGRhdGVLZXlSZXF1ZXN0EhQKAmlkGAEgASgJQgi6SAVyA7ABARIvCgprZXlfc3RhdHVzGAIgASgOMhEucG9saWN5LktleVN0YXR1c0IIukgFggECEAESKQoIbWV0YWRhdGEYZCABKAsyFy5jb21tb24uTWV0YWRhdGFNdXRhYmxlEjwKGG1ldGFkYXRhX3VwZGF0ZV9iZWhhdmlvchhlIAEoDjIaLmNvbW1vbi5NZXRhZGF0YVVwZGF0ZUVudW0iNAoRVXBkYXRlS2V5UmVzcG9uc2USHwoHa2FzX2tleRgBIAEoCzIOLnBvbGljeS5LYXNLZXkijQEKEEthc0tleUlkZW50aWZpZXISGgoGa2FzX2lkGAIgASgJQgi6SAVyA7ABAUgAEhcKBG5hbWUYAyABKAlCB7pIBHICEAFIABIZCgN1cmkYBCABKAlCCrpIB3IFEAGIAQFIABIUCgNraWQYBSABKAlCB7pIBHICEAFCEwoKaWRlbnRpZmllchIFukgCCAEinQMKEFJvdGF0ZUtleVJlcXVlc3QSFgoCaWQYASABKAlCCLpIBXIDsAEBSAASMwoDa2V5GAIgASgLMiQucG9saWN5Lmthc3JlZ2lzdHJ5Lkthc0tleUlkZW50aWZpZXJIABI8CgduZXdfa2V5GAMgASgLMisucG9saWN5Lmthc3JlZ2lzdHJ5LlJvdGF0ZUtleVJlcXVlc3QuTmV3S2V5Gu8BCgZOZXdLZXkSFwoGa2V5X2lkGAEgASgJQge6SARyAhABEi4KCWFsZ29yaXRobRgCIAEoDjIRLnBvbGljeS5BbGdvcml0aG1CCLpIBYIBAhABEisKCGtleV9tb2RlGAMgASgOMg8ucG9saWN5LktleU1vZGVCCLpIBYIBAhABEhcKD3ByaXZhdGVfa2V5X2N0eBgEIAEoDBIWCg5wdWJsaWNfa2V5X2N0eBgFIAEoDBIaChJwcm92aWRlcl9jb25maWdfaWQYBiABKAkSIgoIbWV0YWRhdGEYZCABKAsyEC5jb21tb24uTWV0YWRhdGFCDAoKYWN0aXZlX2tleSI0ChFSb3RhdGVLZXlSZXNwb25zZRIfCgdrYXNfa2V5GAEgASgLMg4ucG9saWN5Lkthc0tleTKtCwoeS2V5QWNjZXNzU2VydmVyUmVnaXN0cnlTZXJ2aWNlEpkBChRMaXN0S2V5QWNjZXNzU2VydmVycxIvLnBvbGljeS5rYXNyZWdpc3RyeS5MaXN0S2V5QWNjZXNzU2VydmVyc1JlcXVlc3QaMC5wb2xpY3kua2FzcmVnaXN0cnkuTGlzdEtleUFjY2Vzc1NlcnZlcnNSZXNwb25zZSIekAIBgtPkkwIVEhMva2V5LWFjY2Vzcy1zZXJ2ZXJzEpgBChJHZXRLZXlBY2Nlc3NTZXJ2ZXISLS5wb2xpY3kua2FzcmVnaXN0cnkuR2V0S2V5QWNjZXNzU2VydmVyUmVxdWVzdBouLnBvbGljeS5rYXNyZWdpc3RyeS5HZXRLZXlBY2Nlc3NTZXJ2ZXJSZXNwb25zZSIjkAIBgtPkkwIaEhgva2V5LWFjY2Vzcy1zZXJ2ZXJzL3tpZH0SnAEKFUNyZWF0ZUtleUFjY2Vzc1NlcnZlchIwLnBvbGljeS5rYXNyZWdpc3RyeS5DcmVhdGVLZXlBY2Nlc3NTZXJ2ZXJSZXF1ZXN0GjEucG9saWN5Lmthc3JlZ2lzdHJ5LkNyZWF0ZUtleUFjY2Vzc1NlcnZlclJlc3BvbnNlIh6C0+STAhg6ASoiEy9rZXktYWNjZXNzLXNlcnZlcnMSoQEKFVVwZGF0ZUtleUFjY2Vzc1NlcnZlchIwLnBvbGljeS5rYXNyZWdpc3RyeS5VcGRhdGVLZXlBY2Nlc3NTZXJ2ZXJSZXF1ZXN0GjEucG9saWN5Lmthc3JlZ2lzdHJ5LlVwZGF0ZUtleUFjY2Vzc1NlcnZlclJlc3BvbnNlIiOC0+STAh06ASoyGC9rZXktYWNjZXNzLXNlcnZlcnMve2lkfRKeAQoVRGVsZXRlS2V5QWNjZXNzU2VydmVyEjAucG9saWN5Lmthc3JlZ2lzdHJ5LkRlbGV0ZUtleUFjY2Vzc1NlcnZlclJlcXVlc3QaMS5wb2xpY3kua2FzcmVnaXN0cnkuRGVsZXRlS2V5QWNjZXNzU2VydmVyUmVzcG9uc2UiIILT5JMCGioYL2tleS1hY2Nlc3Mtc2VydmVycy97aWR9Eq8BChlMaXN0S2V5QWNjZXNzU2VydmVyR3JhbnRzEjQucG9saWN5Lmthc3JlZ2lzdHJ5Lkxpc3RLZXlBY2Nlc3NTZXJ2ZXJHcmFudHNSZXF1ZXN0GjUucG9saWN5Lmthc3JlZ2lzdHJ5Lkxpc3RLZXlBY2Nlc3NTZXJ2ZXJHcmFudHNSZXNwb25zZSIlkAIBgtPkkwIcEhova2V5LWFjY2Vzcy1zZXJ2ZXJzL2dyYW50cxJaCglDcmVhdGVLZXkSJC5wb2xpY3kua2FzcmVnaXN0cnkuQ3JlYXRlS2V5UmVxdWVzdBolLnBvbGljeS5rYXNyZWdpc3RyeS5DcmVhdGVLZXlSZXNwb25zZSIAElEKBkdldEtleRIhLnBvbGljeS5rYXNyZWdpc3RyeS5HZXRLZXlSZXF1ZXN0GiIucG9saWN5Lmthc3JlZ2lzdHJ5LkdldEtleVJlc3BvbnNlIgASVwoITGlzdEtleXMSIy5wb2xpY3kua2FzcmVnaXN0cnkuTGlzdEtleXNSZXF1ZXN0GiQucG9saWN5Lmthc3JlZ2lzdHJ5Lkxpc3RLZXlzUmVzcG9uc2UiABJaCglVcGRhdGVLZXkSJC5wb2xpY3kua2FzcmVnaXN0cnkuVXBkYXRlS2V5UmVxdWVzdBolLnBvbGljeS5rYXNyZWdpc3RyeS5VcGRhdGVLZXlSZXNwb25zZSIAEloKCVJvdGF0ZUtleRIkLnBvbGljeS5rYXNyZWdpc3RyeS5Sb3RhdGVLZXlSZXF1ZXN0GiUucG9saWN5Lmthc3JlZ2lzdHJ5LlJvdGF0ZUtleVJlc3BvbnNlIgBiBnByb3RvMw", [file_buf_validate_validate, file_common_common, file_google_api_annotations, file_policy_objects, file_policy_selectors]);
 
 /**
  * @generated from message policy.kasregistry.GetKeyAccessServerRequest
@@ -135,11 +135,18 @@ export type CreateKeyAccessServerRequest = Message<"policy.kasregistry.CreateKey
   uri: string;
 
   /**
-   * Required
+   * Deprecated
    *
    * @generated from field: policy.PublicKey public_key = 2;
    */
   publicKey?: PublicKey;
+
+  /**
+   * Optional
+   *
+   * @generated from field: policy.SourceType source_type = 3;
+   */
+  sourceType: SourceType;
 
   /**
    * Optional
@@ -199,11 +206,23 @@ export type UpdateKeyAccessServerRequest = Message<"policy.kasregistry.UpdateKey
   uri: string;
 
   /**
+   * Deprecated
    * Optional
    *
    * @generated from field: policy.PublicKey public_key = 3;
    */
   publicKey?: PublicKey;
+
+  /**
+   * Optional
+   * Using UNSPECIFIED will result in a successful update,
+   * but will not actually update the underlying source.
+   * You should not update KAS's from INTERNAL/EXTERNAL
+   * to unspecified.
+   *
+   * @generated from field: policy.SourceType source_type = 4;
+   */
+  sourceType: SourceType;
 
   /**
    * Optional
@@ -864,6 +883,496 @@ export const ListKeyAccessServerGrantsResponseSchema: GenMessage<ListKeyAccessSe
   messageDesc(file_policy_kasregistry_key_access_server_registry, 27);
 
 /**
+ * Create a new asymmetric key for the specified Key Access Server (KAS)
+ *
+ * @generated from message policy.kasregistry.CreateKeyRequest
+ */
+export type CreateKeyRequest = Message<"policy.kasregistry.CreateKeyRequest"> & {
+  /**
+   * Required
+   *
+   * The unique identifier of the Key Access Server
+   *
+   * @generated from field: string kas_id = 1;
+   */
+  kasId: string;
+
+  /**
+   * Required
+   *
+   * A user-defined identifier for the key
+   *
+   * @generated from field: string key_id = 2;
+   */
+  keyId: string;
+
+  /**
+   * Required
+   *
+   * The algorithm to be used for the key
+   *
+   * @generated from field: policy.Algorithm key_algorithm = 3;
+   */
+  keyAlgorithm: Algorithm;
+
+  /**
+   * Required
+   *
+   * The mode of the key (e.g., local or external)
+   *
+   * @generated from field: policy.KeyMode key_mode = 4;
+   */
+  keyMode: KeyMode;
+
+  /**
+   * Required
+   *
+   * Context or additional data specific to the public key, based on the key provider implementation
+   *
+   * @generated from field: bytes public_key_ctx = 5;
+   */
+  publicKeyCtx: Uint8Array;
+
+  /**
+   * Optional
+   *
+   * Context or additional data specific to the private key, based on the key provider implementation
+   *
+   * @generated from field: bytes private_key_ctx = 6;
+   */
+  privateKeyCtx: Uint8Array;
+
+  /**
+   * Optional
+   *
+   * Configuration ID for the key provider, if applicable
+   *
+   * @generated from field: string provider_config_id = 7;
+   */
+  providerConfigId: string;
+
+  /**
+   * Common metadata
+   *
+   * Mutable metadata for the key
+   *
+   * @generated from field: common.MetadataMutable metadata = 100;
+   */
+  metadata?: MetadataMutable;
+};
+
+/**
+ * Describes the message policy.kasregistry.CreateKeyRequest.
+ * Use `create(CreateKeyRequestSchema)` to create a new message.
+ */
+export const CreateKeyRequestSchema: GenMessage<CreateKeyRequest> = /*@__PURE__*/
+  messageDesc(file_policy_kasregistry_key_access_server_registry, 28);
+
+/**
+ * Response to a CreateKeyRequest, containing the created asymmetric key
+ *
+ * @generated from message policy.kasregistry.CreateKeyResponse
+ */
+export type CreateKeyResponse = Message<"policy.kasregistry.CreateKeyResponse"> & {
+  /**
+   * The created asymmetric key for a KAS.
+   *
+   * @generated from field: policy.KasKey kas_key = 1;
+   */
+  kasKey?: KasKey;
+};
+
+/**
+ * Describes the message policy.kasregistry.CreateKeyResponse.
+ * Use `create(CreateKeyResponseSchema)` to create a new message.
+ */
+export const CreateKeyResponseSchema: GenMessage<CreateKeyResponse> = /*@__PURE__*/
+  messageDesc(file_policy_kasregistry_key_access_server_registry, 29);
+
+/**
+ * Retrieve an existing asymmetric key from the Key Management System
+ *
+ * @generated from message policy.kasregistry.GetKeyRequest
+ */
+export type GetKeyRequest = Message<"policy.kasregistry.GetKeyRequest"> & {
+  /**
+   * @generated from oneof policy.kasregistry.GetKeyRequest.identifier
+   */
+  identifier: {
+    /**
+     * The unique identifier of the key to retrieve
+     *
+     * @generated from field: string id = 2;
+     */
+    value: string;
+    case: "id";
+  } | {
+    /**
+     * @generated from field: policy.kasregistry.KasKeyIdentifier key = 3;
+     */
+    value: KasKeyIdentifier;
+    case: "key";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message policy.kasregistry.GetKeyRequest.
+ * Use `create(GetKeyRequestSchema)` to create a new message.
+ */
+export const GetKeyRequestSchema: GenMessage<GetKeyRequest> = /*@__PURE__*/
+  messageDesc(file_policy_kasregistry_key_access_server_registry, 30);
+
+/**
+ * Response to a GetKeyRequest, containing the requested asymmetric key
+ *
+ * @generated from message policy.kasregistry.GetKeyResponse
+ */
+export type GetKeyResponse = Message<"policy.kasregistry.GetKeyResponse"> & {
+  /**
+   * The requested asymmetric key for a KAS.
+   *
+   * @generated from field: policy.KasKey kas_key = 1;
+   */
+  kasKey?: KasKey;
+};
+
+/**
+ * Describes the message policy.kasregistry.GetKeyResponse.
+ * Use `create(GetKeyResponseSchema)` to create a new message.
+ */
+export const GetKeyResponseSchema: GenMessage<GetKeyResponse> = /*@__PURE__*/
+  messageDesc(file_policy_kasregistry_key_access_server_registry, 31);
+
+/**
+ * List all asymmetric keys managed by a specific Key Access Server or with a given algorithm
+ *
+ * @generated from message policy.kasregistry.ListKeysRequest
+ */
+export type ListKeysRequest = Message<"policy.kasregistry.ListKeysRequest"> & {
+  /**
+   * Filter keys by algorithm
+   *
+   * @generated from field: policy.Algorithm key_algorithm = 1;
+   */
+  keyAlgorithm: Algorithm;
+
+  /**
+   * @generated from oneof policy.kasregistry.ListKeysRequest.kas_filter
+   */
+  kasFilter: {
+    /**
+     * Filter keys by the KAS ID
+     *
+     * @generated from field: string kas_id = 2;
+     */
+    value: string;
+    case: "kasId";
+  } | {
+    /**
+     * Filter keys by the KAS name
+     *
+     * @generated from field: string kas_name = 3;
+     */
+    value: string;
+    case: "kasName";
+  } | {
+    /**
+     * Filter keys by the KAS URI
+     *
+     * @generated from field: string kas_uri = 4;
+     */
+    value: string;
+    case: "kasUri";
+  } | { case: undefined; value?: undefined };
+
+  /**
+   * Optional
+   *
+   * Pagination request for the list of keys
+   *
+   * @generated from field: policy.PageRequest pagination = 10;
+   */
+  pagination?: PageRequest;
+};
+
+/**
+ * Describes the message policy.kasregistry.ListKeysRequest.
+ * Use `create(ListKeysRequestSchema)` to create a new message.
+ */
+export const ListKeysRequestSchema: GenMessage<ListKeysRequest> = /*@__PURE__*/
+  messageDesc(file_policy_kasregistry_key_access_server_registry, 32);
+
+/**
+ * Response to a ListKeysRequest, containing the list of asymmetric keys and pagination information
+ *
+ * @generated from message policy.kasregistry.ListKeysResponse
+ */
+export type ListKeysResponse = Message<"policy.kasregistry.ListKeysResponse"> & {
+  /**
+   * The list of kas keys
+   *
+   * @generated from field: repeated policy.KasKey kas_keys = 1;
+   */
+  kasKeys: KasKey[];
+
+  /**
+   * Pagination response for the list of keys
+   *
+   * @generated from field: policy.PageResponse pagination = 10;
+   */
+  pagination?: PageResponse;
+};
+
+/**
+ * Describes the message policy.kasregistry.ListKeysResponse.
+ * Use `create(ListKeysResponseSchema)` to create a new message.
+ */
+export const ListKeysResponseSchema: GenMessage<ListKeysResponse> = /*@__PURE__*/
+  messageDesc(file_policy_kasregistry_key_access_server_registry, 33);
+
+/**
+ * Update an existing asymmetric key in the Key Management System
+ *
+ * @generated from message policy.kasregistry.UpdateKeyRequest
+ */
+export type UpdateKeyRequest = Message<"policy.kasregistry.UpdateKeyRequest"> & {
+  /**
+   * Required
+   *
+   * The unique identifier of the key to update
+   *
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * Optional
+   *
+   * The new status of the key (e.g., active, inactive)
+   *
+   * @generated from field: policy.KeyStatus key_status = 2;
+   */
+  keyStatus: KeyStatus;
+
+  /**
+   * Optional
+   * Common metadata
+   *
+   * Mutable metadata for the key
+   *
+   * @generated from field: common.MetadataMutable metadata = 100;
+   */
+  metadata?: MetadataMutable;
+
+  /**
+   * The behavior for updating the metadata
+   *
+   * @generated from field: common.MetadataUpdateEnum metadata_update_behavior = 101;
+   */
+  metadataUpdateBehavior: MetadataUpdateEnum;
+};
+
+/**
+ * Describes the message policy.kasregistry.UpdateKeyRequest.
+ * Use `create(UpdateKeyRequestSchema)` to create a new message.
+ */
+export const UpdateKeyRequestSchema: GenMessage<UpdateKeyRequest> = /*@__PURE__*/
+  messageDesc(file_policy_kasregistry_key_access_server_registry, 34);
+
+/**
+ * Response to an UpdateKeyRequest, containing the updated asymmetric key
+ *
+ * @generated from message policy.kasregistry.UpdateKeyResponse
+ */
+export type UpdateKeyResponse = Message<"policy.kasregistry.UpdateKeyResponse"> & {
+  /**
+   * The updated kas key
+   *
+   * @generated from field: policy.KasKey kas_key = 1;
+   */
+  kasKey?: KasKey;
+};
+
+/**
+ * Describes the message policy.kasregistry.UpdateKeyResponse.
+ * Use `create(UpdateKeyResponseSchema)` to create a new message.
+ */
+export const UpdateKeyResponseSchema: GenMessage<UpdateKeyResponse> = /*@__PURE__*/
+  messageDesc(file_policy_kasregistry_key_access_server_registry, 35);
+
+/**
+ * Nested message for specifying the active key using KAS ID and Key ID
+ *
+ * @generated from message policy.kasregistry.KasKeyIdentifier
+ */
+export type KasKeyIdentifier = Message<"policy.kasregistry.KasKeyIdentifier"> & {
+  /**
+   * Required UUID of the Key Access Server
+   *
+   * @generated from oneof policy.kasregistry.KasKeyIdentifier.identifier
+   */
+  identifier: {
+    /**
+     * @generated from field: string kas_id = 2;
+     */
+    value: string;
+    case: "kasId";
+  } | {
+    /**
+     * @generated from field: string name = 3;
+     */
+    value: string;
+    case: "name";
+  } | {
+    /**
+     * @generated from field: string uri = 4;
+     */
+    value: string;
+    case: "uri";
+  } | { case: undefined; value?: undefined };
+
+  /**
+   * Required Key ID of the key in question
+   *
+   * @generated from field: string kid = 5;
+   */
+  kid: string;
+};
+
+/**
+ * Describes the message policy.kasregistry.KasKeyIdentifier.
+ * Use `create(KasKeyIdentifierSchema)` to create a new message.
+ */
+export const KasKeyIdentifierSchema: GenMessage<KasKeyIdentifier> = /*@__PURE__*/
+  messageDesc(file_policy_kasregistry_key_access_server_registry, 36);
+
+/**
+ * @generated from message policy.kasregistry.RotateKeyRequest
+ */
+export type RotateKeyRequest = Message<"policy.kasregistry.RotateKeyRequest"> & {
+  /**
+   * Required (Current Active Key ID)
+   *
+   * @generated from oneof policy.kasregistry.RotateKeyRequest.active_key
+   */
+  activeKey: {
+    /**
+     * Current Active Key UUID
+     *
+     * @generated from field: string id = 1;
+     */
+    value: string;
+    case: "id";
+  } | {
+    /**
+     * Alternative way to specify the active key using KAS ID and Key ID
+     *
+     * @generated from field: policy.kasregistry.KasKeyIdentifier key = 2;
+     */
+    value: KasKeyIdentifier;
+    case: "key";
+  } | { case: undefined; value?: undefined };
+
+  /**
+   * Information about the new key to be rotated in
+   *
+   * @generated from field: policy.kasregistry.RotateKeyRequest.NewKey new_key = 3;
+   */
+  newKey?: RotateKeyRequest_NewKey;
+};
+
+/**
+ * Describes the message policy.kasregistry.RotateKeyRequest.
+ * Use `create(RotateKeyRequestSchema)` to create a new message.
+ */
+export const RotateKeyRequestSchema: GenMessage<RotateKeyRequest> = /*@__PURE__*/
+  messageDesc(file_policy_kasregistry_key_access_server_registry, 37);
+
+/**
+ * Nested message for specifying the new key details
+ *
+ * @generated from message policy.kasregistry.RotateKeyRequest.NewKey
+ */
+export type RotateKeyRequest_NewKey = Message<"policy.kasregistry.RotateKeyRequest.NewKey"> & {
+  /**
+   * Required
+   *
+   * @generated from field: string key_id = 1;
+   */
+  keyId: string;
+
+  /**
+   * Required
+   *
+   * @generated from field: policy.Algorithm algorithm = 2;
+   */
+  algorithm: Algorithm;
+
+  /**
+   * Required
+   *
+   * @generated from field: policy.KeyMode key_mode = 3;
+   */
+  keyMode: KeyMode;
+
+  /**
+   * Required
+   *
+   * Specific structure based on key provider implementation
+   *
+   * @generated from field: bytes private_key_ctx = 4;
+   */
+  privateKeyCtx: Uint8Array;
+
+  /**
+   * Optional
+   *
+   * @generated from field: bytes public_key_ctx = 5;
+   */
+  publicKeyCtx: Uint8Array;
+
+  /**
+   * @generated from field: string provider_config_id = 6;
+   */
+  providerConfigId: string;
+
+  /**
+   * Common metadata fields
+   *
+   * @generated from field: common.Metadata metadata = 100;
+   */
+  metadata?: Metadata;
+};
+
+/**
+ * Describes the message policy.kasregistry.RotateKeyRequest.NewKey.
+ * Use `create(RotateKeyRequest_NewKeySchema)` to create a new message.
+ */
+export const RotateKeyRequest_NewKeySchema: GenMessage<RotateKeyRequest_NewKey> = /*@__PURE__*/
+  messageDesc(file_policy_kasregistry_key_access_server_registry, 37, 0);
+
+/**
+ * Response message for the RotateKey request
+ *
+ * @generated from message policy.kasregistry.RotateKeyResponse
+ */
+export type RotateKeyResponse = Message<"policy.kasregistry.RotateKeyResponse"> & {
+  /**
+   * The newly rotated Kas Key
+   *
+   * @generated from field: policy.KasKey kas_key = 1;
+   */
+  kasKey?: KasKey;
+};
+
+/**
+ * Describes the message policy.kasregistry.RotateKeyResponse.
+ * Use `create(RotateKeyResponseSchema)` to create a new message.
+ */
+export const RotateKeyResponseSchema: GenMessage<RotateKeyResponse> = /*@__PURE__*/
+  messageDesc(file_policy_kasregistry_key_access_server_registry, 38);
+
+/**
  * @generated from service policy.kasregistry.KeyAccessServerRegistryService
  */
 export const KeyAccessServerRegistryService: GenService<{
@@ -916,6 +1425,57 @@ export const KeyAccessServerRegistryService: GenService<{
     methodKind: "unary";
     input: typeof ListKeyAccessServerGrantsRequestSchema;
     output: typeof ListKeyAccessServerGrantsResponseSchema;
+  },
+  /**
+   * KAS Key Management
+   * Request to create a new key in the Key Access Service.
+   *
+   * @generated from rpc policy.kasregistry.KeyAccessServerRegistryService.CreateKey
+   */
+  createKey: {
+    methodKind: "unary";
+    input: typeof CreateKeyRequestSchema;
+    output: typeof CreateKeyResponseSchema;
+  },
+  /**
+   * Request to retrieve a key from the Key Access Service.
+   *
+   * @generated from rpc policy.kasregistry.KeyAccessServerRegistryService.GetKey
+   */
+  getKey: {
+    methodKind: "unary";
+    input: typeof GetKeyRequestSchema;
+    output: typeof GetKeyResponseSchema;
+  },
+  /**
+   * Request to list keys in the Key Access Service.
+   *
+   * @generated from rpc policy.kasregistry.KeyAccessServerRegistryService.ListKeys
+   */
+  listKeys: {
+    methodKind: "unary";
+    input: typeof ListKeysRequestSchema;
+    output: typeof ListKeysResponseSchema;
+  },
+  /**
+   * Request to update a key in the Key Access Service.
+   *
+   * @generated from rpc policy.kasregistry.KeyAccessServerRegistryService.UpdateKey
+   */
+  updateKey: {
+    methodKind: "unary";
+    input: typeof UpdateKeyRequestSchema;
+    output: typeof UpdateKeyResponseSchema;
+  },
+  /**
+   * Request to rotate a key in the Key Access Service.
+   *
+   * @generated from rpc policy.kasregistry.KeyAccessServerRegistryService.RotateKey
+   */
+  rotateKey: {
+    methodKind: "unary";
+    input: typeof RotateKeyRequestSchema;
+    output: typeof RotateKeyResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_policy_kasregistry_key_access_server_registry, 0);
