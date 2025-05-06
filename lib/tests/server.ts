@@ -399,16 +399,18 @@ const kas: RequestListener = async (req, res) => {
       res.setHeader('Content-Type', 'application/json');
       res.end(JSON.stringify({ health: { endpoint: '/healthz' } }));
       return;
-    } else if ((url.pathname = '/policy.attributes.AttributesService/ListAttributes')) {
+    } else if (url.pathname === '/policy.attributes.AttributesService/ListAttributes') {
       const token = req.headers['authorization'] as string;
       if (!token || !token.startsWith('Bearer dummy-auth-token')) {
         res.statusCode = 401;
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify({ status: 'error' }));
+        return;
       } else {
         res.statusCode = 200;
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify({ status: 'ok' }));
+        return;
       }
     } else {
       console.log(`[DEBUG] invalid path [${url.pathname}]`);

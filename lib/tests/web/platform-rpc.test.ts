@@ -28,7 +28,7 @@ describe('Local Platform Connect RPC Client Tests', () => {
         'wellknownconfiguration.GetWellKnownConfigurationResponse'
       );
     } catch (e) {
-      expect.fail('Test failed missing method');
+      expect.fail('Test failed missing method', e);
     }
   });
 
@@ -42,7 +42,7 @@ describe('Local Platform Connect RPC Client Tests', () => {
       const response = await client.services.attributes.listAttributes({});
       expect(response.$typeName).to.equal('policy.attributes.ListAttributesResponse');
     } catch (e) {
-      expect.fail('Test failed missing auth headers');
+      expect.fail('Test failed missing auth headers', e);
     }
   });
 });
