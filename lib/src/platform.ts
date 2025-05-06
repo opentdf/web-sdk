@@ -20,7 +20,7 @@ export * as platformConnectWeb from '@connectrpc/connect-web';
 export * as platformConnect from '@connectrpc/connect';
 
 import { createConnectTransport } from '@connectrpc/connect-web';
-import { AuthProvider } from 'tdf3/index.js';
+import { AuthProvider } from '../tdf3/index.js';
 
 import { Client, createClient, Interceptor } from '@connectrpc/connect';
 import { WellKnownService } from './platform/wellknownconfiguration/wellknown_configuration_pb.js';
