@@ -6,7 +6,6 @@ import './App.css';
 import { type Chunker, type Source, OpenTDF } from '@opentdf/sdk';
 import { type SessionInformation, OidcClient } from './session.js';
 import { c } from './config.js';
-import { ConnectRpcExample } from './components/ConnectRpcExample';
 
 async function toFile(
   stream: ReadableStream<Uint8Array>,
@@ -672,7 +671,6 @@ function App() {
           </div>
         )}
       </div>
-      <ConnectRpcExample authProvider={oidcClient} />
     </div>
   );
 }
