@@ -23,7 +23,7 @@ describe('Local Platform Connect RPC Client Tests', () => {
     });
 
     try {
-      const response = await client.services.wellknown.getWellKnownConfiguration({});
+      const response = await client.services.v1.wellknown.getWellKnownConfiguration({});
       expect(response.$typeName).to.equal(
         'wellknownconfiguration.GetWellKnownConfigurationResponse'
       );
@@ -39,7 +39,7 @@ describe('Local Platform Connect RPC Client Tests', () => {
     });
 
     try {
-      const response = await client.services.attributes.listAttributes({});
+      const response = await client.services.v1.attributes.listAttributes({});
       expect(response.$typeName).to.equal('policy.attributes.ListAttributesResponse');
     } catch (e) {
       expect.fail('Test failed missing auth headers', e);

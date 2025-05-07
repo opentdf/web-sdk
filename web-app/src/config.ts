@@ -14,7 +14,8 @@ function cfg(): TDFConfig {
   if (!VITE_TDF_CFG) {
     return {
       oidc: {
-        host: 'http://localhost:65432/auth/realms/opentdf',
+        // points to keycloak login otherwise iss won't match
+        host: 'http://localhost:8888/auth/realms/opentdf',
         clientId: 'browsertest',
       },
       kas: 'http://localhost:65432/kas',

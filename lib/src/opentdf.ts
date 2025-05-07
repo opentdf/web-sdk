@@ -36,7 +36,7 @@ import {
 import { base64 } from './encodings/index.js';
 import PolicyType from './nanotdf/enum/PolicyTypeEnum.js';
 import { Policy } from '../tdf3/src/models/policy.js';
-import { PlatformClient, PlatformServices } from './platform.js';
+import { CreatePlatformClient, PlatformServices } from './platform.js';
 import { Interceptor } from '@connectrpc/connect';
 
 export {
@@ -190,9 +190,6 @@ export type OpenTDFOptions = {
   // Configuration options for the collection header cache.
   rewrapCacheOptions?: RewrapCacheOptions;
 
-  // Whether to use the auth provider interceptor (default: true).
-  useAuthProviderInterceptor?: boolean;
-
   // Array of custom interceptors to apply to rpc requests.
   platformClientInterceptors?: Interceptor[];
 };
@@ -316,7 +313,6 @@ export class OpenTDF {
   // Header cache for reading nanotdf collections
   private readonly rewrapCache: RewrapCache;
   readonly tdf3Client: TDF3Client;
-  readonly platformClient: PlatformClient;
   readonly services: PlatformServices;
 
   constructor({
@@ -328,7 +324,6 @@ export class OpenTDF {
     policyEndpoint,
     rewrapCacheOptions,
     platformUrl,
-    useAuthProviderInterceptor,
     platformClientInterceptors,
   }: OpenTDFOptions) {
     this.authProvider = authProvider;
@@ -362,13 +357,12 @@ export class OpenTDF {
         true,
         ['sign', 'verify']
       );
-    this.platformClient = new PlatformClient({
+
+    this.services = CreatePlatformClient({
       authProvider,
       platformUrl: platformUrl || '',
-      useAuthProviderInterceptor,
       clientInterceptors: platformClientInterceptors,
     });
-    this.services = this.platformClient.services;
   }
 
   async createNanoTDF(opts: CreateNanoTDFOptions): Promise<DecoratedStream> {

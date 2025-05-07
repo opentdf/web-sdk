@@ -14,17 +14,17 @@ export function ConnectRpcExample({ authProvider }: ConnectRpcExampleProps) {
   });
 
   const handleWellknown = async () => {
-    const response = await client.services.wellknown.getWellKnownConfiguration({});
+    const response = await client.services.v1.wellknown.getWellKnownConfiguration({});
     setResult(JSON.stringify(response.configuration));
   };
 
   const handleKas = async () => {
-    const response = await client.services.access.publicKey({});
+    const response = await client.services.v1.access.publicKey({});
     setResult(response.publicKey);
   };
 
   const handlePolicy = async () => {
-    const response = await client.services.attributes.listAttributes({});
+    const response = await client.services.v1.attributes.listAttributes({});
     setResult(response.attributes.map((s) => `${s}`).join(','));
   };
 

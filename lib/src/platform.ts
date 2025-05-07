@@ -36,75 +36,67 @@ import { SubjectMappingService } from './platform/policy/subjectmapping/subject_
 import { UnsafeService } from './platform/policy/unsafe/unsafe_pb.js';
 
 export interface PlatformServices {
-  authorization: Client<typeof AuthorizationService>;
-  entityResolution: Client<typeof EntityResolutionService>;
-  access: Client<typeof AccessService>;
-  action: Client<typeof ActionService>;
-  attributes: Client<typeof AttributesService>;
-  keyAccessServerRegistry: Client<typeof KeyAccessServerRegistryService>;
-  namespace: Client<typeof NamespaceService>;
-  resourceMapping: Client<typeof ResourceMappingService>;
-  subjectMapping: Client<typeof SubjectMappingService>;
-  unsafe: Client<typeof UnsafeService>;
-  wellknown: Client<typeof WellKnownService>;
+  v1: {
+    authorization: Client<typeof AuthorizationService>;
+    entityResolution: Client<typeof EntityResolutionService>;
+    access: Client<typeof AccessService>;
+    action: Client<typeof ActionService>;
+    attributes: Client<typeof AttributesService>;
+    keyAccessServerRegistry: Client<typeof KeyAccessServerRegistryService>;
+    namespace: Client<typeof NamespaceService>;
+    resourceMapping: Client<typeof ResourceMappingService>;
+    subjectMapping: Client<typeof SubjectMappingService>;
+    unsafe: Client<typeof UnsafeService>;
+    wellknown: Client<typeof WellKnownService>;
+  };
 }
 
 export interface PlatformClientOptions {
-  // Optional authentication provider for generating credentials.
+  // Optional authentication provider for generating auth interceptor.
   authProvider?: AuthProvider;
-
-  // Whether to use the auth provider interceptor (default: true).
-  useAuthProviderInterceptor?: boolean;
-
   // Array of custom interceptors to apply to rpc requests.
   clientInterceptors?: Interceptor[];
-
   // Base URL of the platform API.
   platformUrl: string;
 }
 
-export class PlatformClient {
-  private readonly transport: ReturnType<typeof createConnectTransport>;
-  readonly services: PlatformServices;
-
-  constructor(options: PlatformClientOptions) {
-    const useAuthProviderInterceptor = options.useAuthProviderInterceptor ?? true;
-
-    if (!options.authProvider && !options.clientInterceptors?.length) {
-      // TODO: define if this should throw
-      console.warn('authProvider or clientInterceptors is required');
-    }
-
-    const interceptors: Interceptor[] = [];
-
-    if (options.authProvider && useAuthProviderInterceptor) {
-      const authInterceptor = createAuthInterceptor(options.authProvider);
-      interceptors.push(authInterceptor);
-    }
-
-    if (options.clientInterceptors?.length) {
-      interceptors.push(...options.clientInterceptors);
-    }
-
-    this.transport = createConnectTransport({
-      baseUrl: options.platformUrl,
-      interceptors,
-    });
-
-    this.services = {
-      authorization: createClient(AuthorizationService, this.transport),
-      entityResolution: createClient(EntityResolutionService, this.transport),
-      access: createClient(AccessService, this.transport),
-      action: createClient(ActionService, this.transport),
-      attributes: createClient(AttributesService, this.transport),
-      keyAccessServerRegistry: createClient(KeyAccessServerRegistryService, this.transport),
-      namespace: createClient(NamespaceService, this.transport),
-      resourceMapping: createClient(ResourceMappingService, this.transport),
-      subjectMapping: createClient(SubjectMappingService, this.transport),
-      unsafe: createClient(UnsafeService, this.transport),
-      wellknown: createClient(WellKnownService, this.transport),
-    };
+export function CreatePlatformClient(options: PlatformClientOptions): PlatformServices {
+  if (!options.authProvider && !options.clientInterceptors?.length) {
+    // TODO: define if this should throw
+    console.warn('authProvider or clientInterceptors is required');
   }
+
+  const interceptors: Interceptor[] = [];
+
+  if (options.authProvider) {
+    const authInterceptor = createAuthInterceptor(options.authProvider);
+    interceptors.push(authInterceptor);
+  }
+
+  if (options.clientInterceptors?.length) {
+    interceptors.push(...options.clientInterceptors);
+  }
+
+  const transport = createConnectTransport({
+    baseUrl: options.platformUrl,
+    interceptors,
+  });
+
+  return {
+    v1: {
+      authorization: createClient(AuthorizationService, transport),
+      entityResolution: createClient(EntityResolutionService, transport),
+      access: createClient(AccessService, transport),
+      action: createClient(ActionService, transport),
+      attributes: createClient(AttributesService, transport),
+      keyAccessServerRegistry: createClient(KeyAccessServerRegistryService, transport),
+      namespace: createClient(NamespaceService, transport),
+      resourceMapping: createClient(ResourceMappingService, transport),
+      subjectMapping: createClient(SubjectMappingService, transport),
+      unsafe: createClient(UnsafeService, transport),
+      wellknown: createClient(WellKnownService, transport),
+    },
+  };
 }
 
 /**
