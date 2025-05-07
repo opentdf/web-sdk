@@ -18,7 +18,7 @@ const clientId = "applicationNameFromIdP";
 const refreshToken = "refreshTokenValueFromIdP";
 
 // AuthProviders are middlewares that add `Authorization` or other bearer tokens to requests.
-// These include The `refresh` provider can be handed a refresh and optional access token. 
+// These include The `refresh` provider can be handed a refresh and optional access token.
 const authProvider = await AuthProviders.refreshAuthProvider({
   clientId,
   exchange: 'refresh',
@@ -79,6 +79,63 @@ A more complete example of using an OIDC compatible provider
 with support for authorization code flow with PKCE and DPoP
 is available in the [sample `web-app` folder](./web-app/src/session.ts)
 
+## Platform Client
+
+The Platform Client provides an interface to interact with the OpenTDF platform's RPC services.
+
+### Usage Example
+
+Below is an example of how to use the `OpenTDF` client to interact with the platform's RPC services.
+
+```typescript
+import { AuthProvider, OpenTDF } from '@opentdf/sdk';
+
+const authProvider: AuthProvider = {/* configure your auth provider */};
+const client = new OpenTDF({
+  authProvider,
+  platformUrl: '/api',
+});
+
+async function exampleUsage() {
+  // Fetch well-known configuration
+  const wellKnownResponse = await client.services.v1.wellknown.getWellKnownConfiguration({});
+  console.log('Well-known configuration:', wellKnownResponse.configuration);
+
+  // List policy attributes
+  const attributesResponse = await client.services.v1.attributes.listAttributes({});
+  console.log('Policy Attributes:', attributesResponse.attributes);
+}
+
+exampleUsage();
+```
+
+### Using Interceptor
+
+The `OpenTDF` client supports the use of interceptors for customizing RPC calls. Interceptors allow you to modify requests or responses, such as adding custom headers or handling authentication, before or after the RPC call is executed.
+
+Below is an example of using an interceptor to add an `Authorization` header to all outgoing requests:
+
+```typescript
+import { platformConnect } from '@opentdf/sdk';
+
+const authInterceptor: platformConnect.Interceptor = (next) => async (req) => {
+  req.header.set('Authorization', `Bearer ${accessToken}`);
+  return await next(req); // Pass the modified request to the next handler in the chain
+};
+
+const client = new OpenTDF({
+  platformClientInterceptors: [authInterceptor], // Attach the interceptor
+  platformUrl: '/api',
+});
+```
+
+### Key Notes
+
+- **Interceptor Structure**: An interceptor is a higher-order function that wraps the next handler in the chain. It receives the request object, modifies it as needed, and then passes it to the next handler.
+- **Chaining**: Multiple interceptors can be provided in the `platformClientInterceptors` array. They are executed in the order they are defined.
+- **Use Case**: Interceptors are particularly useful for scenarios where you need to dynamically modify requests, such as adding authentication tokens or logging request/response data.
+
+
 ## Build and Test
 
 ```shell
@@ -106,58 +163,3 @@ nvm use
 make test
 make start
 ```
-
-## Use the platform
-
-Version 2 of this library adds support for ABAC management tasks.
-This is provided with the [opentdf Platform](https://github.com/opentdf/platform).
-
-### Generate Typescript code from platform protobufs
-
-```sh
-scripts/platform.sh
-```
-
-This will clone the platform repo and generate Typescript code in `lib/src/platform`.
-
-### Import Typescript code
-
-```ts
-import { GetAttributeRequest } from './lib/src/platform/policy/attributes/attributes_pb';
-import { Attribute, AttributeRuleTypeEnum } from './lib/src/platform/policy/objects_pb';
-import {
-    createConnectTransport,
-} from '@connectrpc/connect-web'
-import {
-    createPromiseClient,
-} from '@connectrpc/connect'
-
-const attrData = {
-    name: "my-attr",
-    rule: AttributeRuleTypeEnum.ALL_OF,
-    namespace: {name: 'my-namespace'},
-    values: [{value: 'my-value'}],
-    active: true,
-    extraField: 'this will be ignored' // only proto defined fields and value types are respected
-}
-const attr = new Attribute(attrData);
-console.log(attr.toJson());
-
-// {
-//     namespace: { name: 'my-namespace' },
-//     name: 'my-attr',
-//     rule: 'ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF',
-//     values: [ { value: 'my-value' } ],
-//     active: true
-// }
-
-const req = new GetAttributeRequest({id: 'uuid-here'});
-const client = createPromiseClient(
-    AttributesService,
-    createConnectTransport({
-        baseUrl: 'localhost:8080',
-    })
-)
-```
-
-This is an example to instantiate an `Attribute` and create a `GetAttributeRequest`.
