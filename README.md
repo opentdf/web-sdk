@@ -85,24 +85,25 @@ The Platform Client provides an interface to interact with the OpenTDF platform'
 
 ### Usage Example
 
-Below is an example of how to use the `OpenTDF` client to interact with the platform's RPC services.
+Below is an example of how to use the `PlatformClient` to interact with the platform's RPC services.
 
 ```typescript
 import { AuthProvider, OpenTDF } from '@opentdf/sdk';
+import { PlatformClient } from '@opentdf/sdk/platform';
 
 const authProvider: AuthProvider = {/* configure your auth provider */};
-const client = new OpenTDF({
+const platform = new PlatformClient({
   authProvider,
   platformUrl: '/api',
 });
 
 async function exampleUsage() {
   // Fetch well-known configuration
-  const wellKnownResponse = await client.services.v1.wellknown.getWellKnownConfiguration({});
+  const wellKnownResponse = await platform.v1.wellknown.getWellKnownConfiguration({});
   console.log('Well-known configuration:', wellKnownResponse.configuration);
 
   // List policy attributes
-  const attributesResponse = await client.services.v1.attributes.listAttributes({});
+  const attributesResponse = await platform.v1.attributes.listAttributes({});
   console.log('Policy Attributes:', attributesResponse.attributes);
 }
 
@@ -111,29 +112,26 @@ exampleUsage();
 
 ### Using Interceptor
 
-The `OpenTDF` client supports the use of interceptors for customizing RPC calls. Interceptors allow you to modify requests or responses, such as adding custom headers or handling authentication, before or after the RPC call is executed.
+The `PlatformClient` client supports the use of interceptors for customizing RPC calls. Interceptors allow you to modify requests or responses, such as adding custom headers or handling authentication, before or after the RPC call is executed.
 
 Below is an example of using an interceptor to add an `Authorization` header to all outgoing requests:
 
 ```typescript
-import { platformConnect } from '@opentdf/sdk';
+import { platformConnect, PlatformClient } from '@opentdf/sdk/platform';
 
 const authInterceptor: platformConnect.Interceptor = (next) => async (req) => {
   req.header.set('Authorization', `Bearer ${accessToken}`);
   return await next(req); // Pass the modified request to the next handler in the chain
 };
 
-const client = new OpenTDF({
-  platformClientInterceptors: [authInterceptor], // Attach the interceptor
+const platform = new PlatformClient({
+  interceptors: [authInterceptor], // Attach the interceptor
   platformUrl: '/api',
 });
 ```
 
 ### Key Notes
-
-- **Interceptor Structure**: An interceptor is a higher-order function that wraps the next handler in the chain. It receives the request object, modifies it as needed, and then passes it to the next handler.
-- **Chaining**: Multiple interceptors can be provided in the `platformClientInterceptors` array. They are executed in the order they are defined.
-- **Use Case**: Interceptors are particularly useful for scenarios where you need to dynamically modify requests, such as adding authentication tokens or logging request/response data.
+Interceptors are particularly useful for scenarios where you need to dynamically modify requests, such as adding authentication tokens or logging request/response data.
 
 
 ## Build and Test

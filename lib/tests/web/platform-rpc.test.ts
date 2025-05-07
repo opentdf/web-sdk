@@ -1,6 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import { type AuthProvider, HttpRequest, withHeaders } from '../../src/auth/auth.js';
-import { OpenTDF } from '../../src/opentdf.js';
+import { PlatformClient } from '../../src/platform.js';
 
 const authProvider = <AuthProvider>{
   updateClientPublicKey: async () => {
@@ -17,13 +17,13 @@ const platformUrl = 'http://localhost:3000';
 
 describe('Local Platform Connect RPC Client Tests', () => {
   it(`wellknown configuration public rpc method`, async () => {
-    const client = new OpenTDF({
+    const platform = new PlatformClient({
       authProvider,
       platformUrl,
     });
 
     try {
-      const response = await client.services.v1.wellknown.getWellKnownConfiguration({});
+      const response = await platform.v1.wellknown.getWellKnownConfiguration({});
       expect(response.$typeName).to.equal(
         'wellknownconfiguration.GetWellKnownConfigurationResponse'
       );
@@ -33,13 +33,13 @@ describe('Local Platform Connect RPC Client Tests', () => {
   });
 
   it(`policy attribute method with Authorization headers`, async () => {
-    const client = new OpenTDF({
+    const platform = new PlatformClient({
       authProvider,
       platformUrl,
     });
 
     try {
-      const response = await client.services.v1.attributes.listAttributes({});
+      const response = await platform.v1.attributes.listAttributes({});
       expect(response.$typeName).to.equal('policy.attributes.ListAttributesResponse');
     } catch (e) {
       expect.fail('Test failed missing auth headers', e);

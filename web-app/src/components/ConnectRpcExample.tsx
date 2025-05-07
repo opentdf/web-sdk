@@ -1,4 +1,5 @@
-import { AuthProvider, OpenTDF } from '@opentdf/sdk';
+import { AuthProvider } from '@opentdf/sdk';
+import { PlatformClient } from '@opentdf/sdk/platform';
 import { useState } from 'react';
 
 interface ConnectRpcExampleProps {
@@ -8,23 +9,23 @@ interface ConnectRpcExampleProps {
 export function ConnectRpcExample({ authProvider }: ConnectRpcExampleProps) {
   const [result, setResult] = useState('');
 
-  const client = new OpenTDF({
+  const platform = new PlatformClient({
     authProvider,
     platformUrl: '/api',
   });
 
   const handleWellknown = async () => {
-    const response = await client.services.v1.wellknown.getWellKnownConfiguration({});
+    const response = await platform.v1.wellknown.getWellKnownConfiguration({});
     setResult(JSON.stringify(response.configuration));
   };
 
   const handleKas = async () => {
-    const response = await client.services.v1.access.publicKey({});
+    const response = await platform.v1.access.publicKey({});
     setResult(response.publicKey);
   };
 
   const handlePolicy = async () => {
-    const response = await client.services.v1.attributes.listAttributes({});
+    const response = await platform.v1.attributes.listAttributes({});
     setResult(response.attributes.map((s) => `${s}`).join(','));
   };
 

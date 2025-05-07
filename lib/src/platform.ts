@@ -36,54 +36,60 @@ import { SubjectMappingService } from './platform/policy/subjectmapping/subject_
 import { UnsafeService } from './platform/policy/unsafe/unsafe_pb.js';
 
 export interface PlatformServices {
-  v1: {
-    authorization: Client<typeof AuthorizationService>;
-    entityResolution: Client<typeof EntityResolutionService>;
-    access: Client<typeof AccessService>;
-    action: Client<typeof ActionService>;
-    attributes: Client<typeof AttributesService>;
-    keyAccessServerRegistry: Client<typeof KeyAccessServerRegistryService>;
-    namespace: Client<typeof NamespaceService>;
-    resourceMapping: Client<typeof ResourceMappingService>;
-    subjectMapping: Client<typeof SubjectMappingService>;
-    unsafe: Client<typeof UnsafeService>;
-    wellknown: Client<typeof WellKnownService>;
-  };
+  authorization: Client<typeof AuthorizationService>;
+  entityResolution: Client<typeof EntityResolutionService>;
+  access: Client<typeof AccessService>;
+  action: Client<typeof ActionService>;
+  attributes: Client<typeof AttributesService>;
+  keyAccessServerRegistry: Client<typeof KeyAccessServerRegistryService>;
+  namespace: Client<typeof NamespaceService>;
+  resourceMapping: Client<typeof ResourceMappingService>;
+  subjectMapping: Client<typeof SubjectMappingService>;
+  unsafe: Client<typeof UnsafeService>;
+  wellknown: Client<typeof WellKnownService>;
 }
 
 export interface PlatformClientOptions {
   // Optional authentication provider for generating auth interceptor.
   authProvider?: AuthProvider;
   // Array of custom interceptors to apply to rpc requests.
-  clientInterceptors?: Interceptor[];
+  interceptors?: Interceptor[];
   // Base URL of the platform API.
   platformUrl: string;
 }
 
-export function CreatePlatformClient(options: PlatformClientOptions): PlatformServices {
-  if (!options.authProvider && !options.clientInterceptors?.length) {
-    // TODO: define if this should throw
-    console.warn('authProvider or clientInterceptors is required');
-  }
+/**
+ * A client for interacting with the Platform using the Connect RPC framework.
+ *
+ * This client provides access to various services offered by the Platform, such as
+ * authorization, entity resolution, key access, policy management, and more. It uses
+ * the Connect RPC framework to communicate with the platform's API endpoints.
+ *
+ * This client supports authentication via an `AuthProvider` or custom interceptors, which can
+ * be used to add authentication headers or other custom logic to outgoing requests.
+ *
+ */
+export class PlatformClient {
+  readonly v1: PlatformServices;
 
-  const interceptors: Interceptor[] = [];
+  constructor(options: PlatformClientOptions) {
+    const interceptors: Interceptor[] = [];
 
-  if (options.authProvider) {
-    const authInterceptor = createAuthInterceptor(options.authProvider);
-    interceptors.push(authInterceptor);
-  }
+    if (options.authProvider) {
+      const authInterceptor = createAuthInterceptor(options.authProvider);
+      interceptors.push(authInterceptor);
+    }
 
-  if (options.clientInterceptors?.length) {
-    interceptors.push(...options.clientInterceptors);
-  }
+    if (options.interceptors?.length) {
+      interceptors.push(...options.interceptors);
+    }
 
-  const transport = createConnectTransport({
-    baseUrl: options.platformUrl,
-    interceptors,
-  });
+    const transport = createConnectTransport({
+      baseUrl: options.platformUrl,
+      interceptors,
+    });
 
-  return {
-    v1: {
+    this.v1 = {
       authorization: createClient(AuthorizationService, transport),
       entityResolution: createClient(EntityResolutionService, transport),
       access: createClient(AccessService, transport),
@@ -95,8 +101,8 @@ export function CreatePlatformClient(options: PlatformClientOptions): PlatformSe
       subjectMapping: createClient(SubjectMappingService, transport),
       unsafe: createClient(UnsafeService, transport),
       wellknown: createClient(WellKnownService, transport),
-    },
-  };
+    };
+  }
 }
 
 /**

@@ -36,8 +36,6 @@ import {
 import { base64 } from './encodings/index.js';
 import PolicyType from './nanotdf/enum/PolicyTypeEnum.js';
 import { Policy } from '../tdf3/src/models/policy.js';
-import { CreatePlatformClient, PlatformServices } from './platform.js';
-import { Interceptor } from '@connectrpc/connect';
 
 export {
   type Assertion,
@@ -189,9 +187,6 @@ export type OpenTDFOptions = {
 
   // Configuration options for the collection header cache.
   rewrapCacheOptions?: RewrapCacheOptions;
-
-  // Array of custom interceptors to apply to rpc requests.
-  platformClientInterceptors?: Interceptor[];
 };
 
 export type DecoratedStream = ReadableStream<Uint8Array> & {
@@ -313,7 +308,6 @@ export class OpenTDF {
   // Header cache for reading nanotdf collections
   private readonly rewrapCache: RewrapCache;
   readonly tdf3Client: TDF3Client;
-  readonly services: PlatformServices;
 
   constructor({
     authProvider,
@@ -324,7 +318,6 @@ export class OpenTDF {
     policyEndpoint,
     rewrapCacheOptions,
     platformUrl,
-    platformClientInterceptors,
   }: OpenTDFOptions) {
     this.authProvider = authProvider;
     this.defaultCreateOptions = defaultCreateOptions || {};
@@ -357,12 +350,6 @@ export class OpenTDF {
         true,
         ['sign', 'verify']
       );
-
-    this.services = CreatePlatformClient({
-      authProvider,
-      platformUrl: platformUrl || '',
-      clientInterceptors: platformClientInterceptors,
-    });
   }
 
   async createNanoTDF(opts: CreateNanoTDFOptions): Promise<DecoratedStream> {
