@@ -1,8 +1,8 @@
 import { validateAttribute, validateAttributeObject } from './validation.js';
-import { AttributeObject, KeyInfo, Policy } from '../models/index.js';
+import { AttributeObject, Policy } from '../models/index.js';
 import { type Metadata } from '../tdf.js';
 import { Binary } from '../binary.js';
-
+import { KeyInfo } from '../splits.js';
 import { ConfigurationError } from '../../../src/errors.js';
 import { PemKeyPair } from '../crypto/declarations.js';
 import { DecoratedReadableStream } from './DecoratedReadableStream.js';
