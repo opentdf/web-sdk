@@ -45,3 +45,6 @@ format license-check lint test: ci
 
 doc:
 	cd lib && npm ci && npm run doc
+
+generate-platform:
+	./scripts/platform.sh
