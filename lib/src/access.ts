@@ -1,3 +1,4 @@
+import { ConnectError } from '@connectrpc/connect';
 import { type AuthProvider } from './auth/auth.js';
 import {
   ConfigurationError,
@@ -7,13 +8,16 @@ import {
   ServiceError,
   UnauthenticatedError,
 } from './errors.js';
+import { PlatformClient } from './platform.js';
+import { RewrapResponse } from './platform/kas/kas_pb.js';
+import { ListKeyAccessServersResponse } from './platform/policy/kasregistry/key_access_server_registry_pb.js';
 import { pemToCryptoPublicKey, validateSecureUrl } from './utils.js';
 
 export type RewrapRequest = {
   signedRequestToken: string;
 };
 
-export type RewrapResponse = {
+type RewrapResponseLegacy = {
   metadata: Record<string, unknown>;
   entityWrappedKey: string;
   sessionPublicKey: string;
@@ -27,12 +31,12 @@ export type RewrapResponse = {
  * @param authProvider Authorization middleware
  * @param clientVersion
  */
-export async function fetchWrappedKey(
+export async function fetchWrappedKeyLegacy(
   url: string,
   requestBody: RewrapRequest,
   authProvider: AuthProvider,
   clientVersion: string
-): Promise<RewrapResponse> {
+): Promise<RewrapResponseLegacy> {
   const req = await authProvider.withCreds({
     url,
     method: 'POST',
@@ -82,6 +86,29 @@ export async function fetchWrappedKey(
   }
 
   return response.json();
+}
+
+/**
+ * Get a rewrapped access key to the document, if possible
+ * @param url Key access server rewrap endpoint
+ * @param requestBody a signed request with an encrypted document key
+ * @param authProvider Authorization middleware
+ * @param clientVersion
+ */
+export async function fetchWrappedKey(
+  url: string,
+  signedRequestToken: string,
+  authProvider: AuthProvider
+): Promise<RewrapResponse> {
+  const platformUrl = getHostFromEndpoint(url);
+  const platform = new PlatformClient({ authProvider, platformUrl });
+  try {
+    return await platform.v1.access.rewrap({
+      signedRequestToken,
+    });
+  } catch (e) {
+    throw createNetworkError(platformUrl, 'Rewrap', e);
+  }
 }
 
 export type KasPublicKeyAlgorithm = 'ec:secp256r1' | 'rsa:2048';
@@ -162,38 +189,22 @@ export async function fetchKeyAccessServers(
 ): Promise<OriginAllowList> {
   let nextOffset = 0;
   const allServers = [];
+  const platform = new PlatformClient({ authProvider, platformUrl });
+
   do {
-    const req = await authProvider.withCreds({
-      url: `${platformUrl}/key-access-servers?pagination.offset=${nextOffset}`,
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-    let response: Response;
+    let response: ListKeyAccessServersResponse;
     try {
-      response = await fetch(req.url, {
-        method: req.method,
-        headers: req.headers,
-        body: req.body as BodyInit,
-        mode: 'cors',
-        cache: 'no-cache',
-        credentials: 'same-origin',
-        redirect: 'follow',
-        referrerPolicy: 'no-referrer',
+      response = await platform.v1.keyAccessServerRegistry.listKeyAccessServers({
+        pagination: {
+          offset: nextOffset,
+        },
       });
     } catch (e) {
-      throw new NetworkError(`unable to fetch kas list from [${req.url}]`, e);
+      throw createNetworkError(platformUrl, 'ListKeyAccessServers', extractRpcErrorMessage(e));
     }
-    // if we get an error from the kas registry, throw an error
-    if (!response.ok) {
-      throw new ServiceError(
-        `unable to fetch kas list from [${req.url}], status: ${response.status}`
-      );
-    }
-    const { keyAccessServers = [], pagination = {} } = await response.json();
-    allServers.push(...keyAccessServers);
-    nextOffset = pagination.nextOffset || 0;
+
+    allServers.push(...response.keyAccessServers);
+    nextOffset = response?.pagination?.nextOffset || 0;
   } while (nextOffset > 0);
 
   const serverUrls = allServers.map((server) => server.uri);
@@ -223,58 +234,26 @@ export async function fetchKasPubKey(
   // Logs insecure KAS. Secure is enforced in constructor
   validateSecureUrl(kasEndpoint);
 
-  // Parse kasEndpoint to URL, then append to its path and update its query parameters
-  let pkUrlV2: URL;
+  const platformUrl = getHostFromEndpoint(kasEndpoint);
+  const platform = new PlatformClient({
+    platformUrl,
+  });
   try {
-    pkUrlV2 = new URL(kasEndpoint);
+    const { kid, publicKey } = await platform.v1.access.publicKey({
+      algorithm: algorithm || 'rsa:2048',
+      v: '2',
+    });
+    const result: KasPublicKeyInfo = {
+      key: noteInvalidPublicKey(new URL(platformUrl), pemToCryptoPublicKey(publicKey)),
+      publicKey,
+      url: kasEndpoint,
+      algorithm: algorithm || 'rsa:2048',
+      ...(kid && { kid }),
+    };
+    return result;
   } catch (e) {
-    throw new ConfigurationError(`KAS definition invalid: [${kasEndpoint}]`, e);
+    throw createNetworkError(platformUrl, 'PublicKey', extractRpcErrorMessage(e));
   }
-  if (!pkUrlV2.pathname.endsWith('kas_public_key')) {
-    if (!pkUrlV2.pathname.endsWith('/')) {
-      pkUrlV2.pathname += '/';
-    }
-    pkUrlV2.pathname += 'v2/kas_public_key';
-  }
-  pkUrlV2.searchParams.set('algorithm', algorithm || 'rsa:2048');
-  if (!pkUrlV2.searchParams.get('v')) {
-    pkUrlV2.searchParams.set('v', '2');
-  }
-
-  let kasPubKeyResponseV2: Response;
-  try {
-    kasPubKeyResponseV2 = await fetch(pkUrlV2);
-  } catch (e) {
-    throw new NetworkError(`unable to fetch public key from [${pkUrlV2}]`, e);
-  }
-  if (!kasPubKeyResponseV2.ok) {
-    switch (kasPubKeyResponseV2.status) {
-      case 404:
-        throw new ConfigurationError(`404 for [${pkUrlV2}]`);
-      case 401:
-        throw new UnauthenticatedError(`401 for [${pkUrlV2}]`);
-      case 403:
-        throw new PermissionDeniedError(`403 for [${pkUrlV2}]`);
-      default:
-        throw new NetworkError(
-          `${pkUrlV2} => ${kasPubKeyResponseV2.status} ${kasPubKeyResponseV2.statusText}`
-        );
-    }
-  }
-  const jsonContent = await kasPubKeyResponseV2.json();
-  const { publicKey, kid }: KasPublicKeyInfo = jsonContent;
-  if (!publicKey) {
-    throw new NetworkError(
-      `invalid response from public key endpoint [${JSON.stringify(jsonContent)}]`
-    );
-  }
-  return {
-    key: noteInvalidPublicKey(pkUrlV2, pemToCryptoPublicKey(publicKey)),
-    publicKey,
-    url: kasEndpoint,
-    algorithm: algorithm || 'rsa:2048',
-    ...(kid && { kid }),
-  };
 }
 
 const origin = (u: string): string => {
@@ -300,4 +279,34 @@ export class OriginAllowList {
     }
     return this.origins.includes(origin(url));
   }
+}
+
+/**
+ * Extracts the error message from an RPC catch error.
+ */
+function extractRpcErrorMessage(error: unknown): string {
+  if (error instanceof ConnectError || error instanceof Error) {
+    return error.message;
+  }
+  return 'Unknown network error occurred';
+}
+
+/**
+ * Creates a NetworkError with the given platform URL, method, and message.
+ */
+function createNetworkError(platformUrl: string, method: string, message: string): NetworkError {
+  return new NetworkError(`[${platformUrl}] [${method}] ${message}`);
+}
+
+/**
+ * Converts a KAS endpoint URL to a platform URL.
+ * If the KAS endpoint ends with '/kas', it returns the host url
+ * Otherwise, it returns the original KAS endpoint.
+ */
+function getHostFromEndpoint(endpoint: string): string {
+  // TODO RPC: find a better way to get the right url, otherwise just use the `origin` function
+  const kasUrl = new URL(endpoint);
+  const platformUrl = kasUrl.origin;
+  // TODO RPC: remove /api
+  return platformUrl + '/api';
 }

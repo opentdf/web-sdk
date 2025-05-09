@@ -259,22 +259,21 @@ export default class Client {
     });
 
     const jwtPayload = { requestBody: requestBodyStr };
-    const requestBody = {
-      signedRequestToken: await reqSignature(jwtPayload, requestSignerKeyPair.privateKey, {
+
+      const signedRequestToken =  await reqSignature(jwtPayload, requestSignerKeyPair.privateKey, {
         alg: toJWSAlg(requestSignerKeyPair.publicKey),
-      }),
-    };
+      });
+
 
     // Wrapped
     const wrappedKey = await fetchWrappedKey(
       kasRewrapUrl,
-      requestBody,
+      signedRequestToken,
       this.authProvider,
-      clientVersion
     );
 
     // Extract the iv and ciphertext
-    const entityWrappedKey = new Uint8Array(base64.decodeArrayBuffer(wrappedKey.entityWrappedKey));
+    const entityWrappedKey = wrappedKey.entityWrappedKey;
     const ivLength =
       clientVersion == Client.SDK_INITIAL_RELEASE ? Client.INITIAL_RELEASE_IV_SIZE : Client.IV_SIZE;
     const iv = entityWrappedKey.subarray(0, ivLength);
