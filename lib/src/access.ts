@@ -1,3 +1,4 @@
+import { ConnectError } from '@connectrpc/connect';
 import { type AuthProvider } from './auth/auth.js';
 import {
   ConfigurationError,
@@ -7,13 +8,16 @@ import {
   ServiceError,
   UnauthenticatedError,
 } from './errors.js';
+import { PlatformClient } from './platform.js';
+import { RewrapResponse } from './platform/kas/kas_pb.js';
+import { ListKeyAccessServersResponse } from './platform/policy/kasregistry/key_access_server_registry_pb.js';
 import { pemToCryptoPublicKey, validateSecureUrl } from './utils.js';
 
 export type RewrapRequest = {
   signedRequestToken: string;
 };
 
-export type RewrapResponse = {
+type RewrapResponseLegacy = {
   metadata: Record<string, unknown>;
   entityWrappedKey: string;
   sessionPublicKey: string;
@@ -27,12 +31,12 @@ export type RewrapResponse = {
  * @param authProvider Authorization middleware
  * @param clientVersion
  */
-export async function fetchWrappedKey(
+export async function fetchWrappedKeyLegacy(
   url: string,
   requestBody: RewrapRequest,
   authProvider: AuthProvider,
   clientVersion: string
-): Promise<RewrapResponse> {
+): Promise<RewrapResponseLegacy> {
   const req = await authProvider.withCreds({
     url,
     method: 'POST',
@@ -82,6 +86,39 @@ export async function fetchWrappedKey(
   }
 
   return response.json();
+}
+
+/**
+ * Get a rewrapped access key to the document, if possible
+ * @param url Key access server rewrap endpoint
+ * @param requestBody a signed request with an encrypted document key
+ * @param authProvider Authorization middleware
+ * @param clientVersion
+ */
+export async function fetchWrappedKey(
+  url: string,
+  signedRequestToken: string,
+  authProvider: AuthProvider
+): Promise<RewrapResponse> {
+  let platformUrl = url;
+  if (url.endsWith('/kas/v2/rewrap')) {
+    // TODO RPC: find a better way to get the right url, this one works only with proxy
+    // The issue I am
+   platformUrl = platformUrl.replace('/kas/v2/rewrap', '/api');
+  }
+
+  const platform = new PlatformClient({ authProvider, platformUrl });
+  try {
+    return await platform.v1.access.rewrap({
+      signedRequestToken
+    });
+  } catch (e) {
+    console.log(e);
+    if (e instanceof ConnectError) {
+      throw new NetworkError(`[${e.code}]:[${platformUrl}]: ${e.message}`, e)
+    }
+    throw new NetworkError(`[${platformUrl}]: Unknown network error on rewrap key`);
+  }
 }
 
 export type KasPublicKeyAlgorithm = 'ec:secp256r1' | 'rsa:2048';
@@ -162,38 +199,23 @@ export async function fetchKeyAccessServers(
 ): Promise<OriginAllowList> {
   let nextOffset = 0;
   const allServers = [];
+  const platform = new PlatformClient({ authProvider, platformUrl });
+
   do {
-    const req = await authProvider.withCreds({
-      url: `${platformUrl}/key-access-servers?pagination.offset=${nextOffset}`,
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-    let response: Response;
+    let response: ListKeyAccessServersResponse;
     try {
-      response = await fetch(req.url, {
-        method: req.method,
-        headers: req.headers,
-        body: req.body as BodyInit,
-        mode: 'cors',
-        cache: 'no-cache',
-        credentials: 'same-origin',
-        redirect: 'follow',
-        referrerPolicy: 'no-referrer',
+      response = await platform.v1.keyAccessServerRegistry.listKeyAccessServers({
+        pagination: {
+          offset: nextOffset,
+        },
       });
     } catch (e) {
-      throw new NetworkError(`unable to fetch kas list from [${req.url}]`, e);
+      // if we get an error from the kas registry, throw an error
+      throw new NetworkError(`unable to fetch kas list from [${platformUrl}]`, e);
     }
-    // if we get an error from the kas registry, throw an error
-    if (!response.ok) {
-      throw new ServiceError(
-        `unable to fetch kas list from [${req.url}], status: ${response.status}`
-      );
-    }
-    const { keyAccessServers = [], pagination = {} } = await response.json();
-    allServers.push(...keyAccessServers);
-    nextOffset = pagination.nextOffset || 0;
+
+    allServers.push(...response.keyAccessServers);
+    nextOffset = response?.pagination?.nextOffset || 0;
   } while (nextOffset > 0);
 
   const serverUrls = allServers.map((server) => server.uri);
