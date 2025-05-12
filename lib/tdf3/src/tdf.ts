@@ -767,7 +767,7 @@ async function unwrapKey({
     const { entityWrappedKey, metadata, sessionPublicKey } = await fetchWrappedKey(
       url,
       signedRequestToken,
-      authProvider,
+      authProvider
     );
 
     if (wrappingKeyAlgorithm === 'ec:secp256r1') {

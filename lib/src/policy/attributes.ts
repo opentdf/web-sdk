@@ -111,7 +111,3 @@ export type AttributeAndValue = {
   attribute: Attribute;
   value: Value;
 };
-
-export type GetAttributeValuesByFqnsResponse = {
-  fqnAttributeValues: Record<string, AttributeAndValue>;
-};

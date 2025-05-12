@@ -260,17 +260,12 @@ export default class Client {
 
     const jwtPayload = { requestBody: requestBodyStr };
 
-      const signedRequestToken =  await reqSignature(jwtPayload, requestSignerKeyPair.privateKey, {
-        alg: toJWSAlg(requestSignerKeyPair.publicKey),
-      });
-
+    const signedRequestToken = await reqSignature(jwtPayload, requestSignerKeyPair.privateKey, {
+      alg: toJWSAlg(requestSignerKeyPair.publicKey),
+    });
 
     // Wrapped
-    const wrappedKey = await fetchWrappedKey(
-      kasRewrapUrl,
-      signedRequestToken,
-      this.authProvider,
-    );
+    const wrappedKey = await fetchWrappedKey(kasRewrapUrl, signedRequestToken, this.authProvider);
 
     // Extract the iv and ciphertext
     const entityWrappedKey = wrappedKey.entityWrappedKey;

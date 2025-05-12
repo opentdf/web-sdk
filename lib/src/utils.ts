@@ -3,6 +3,7 @@ import { exportSPKI, importX509 } from 'jose';
 import { base64 } from './encodings/index.js';
 import { pemCertToCrypto, pemPublicToCrypto } from './nanotdf-crypto/pemPublicToCrypto.js';
 import { ConfigurationError } from './errors.js';
+import { ConnectError } from '@connectrpc/connect';
 
 /**
  * Check to see if the given URL is 'secure'. This assumes:
@@ -138,4 +139,14 @@ export async function extractPemFromKeyString(keyString: string): Promise<string
   }
 
   return pem;
+}
+
+/**
+ * Extracts the error message from an RPC catch error.
+ */
+export function extractRpcErrorMessage(error: unknown): string {
+  if (error instanceof ConnectError || error instanceof Error) {
+    return error.message;
+  }
+  return 'Unknown network error occurred';
 }

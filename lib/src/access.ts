@@ -1,92 +1,13 @@
-import { ConnectError } from '@connectrpc/connect';
 import { type AuthProvider } from './auth/auth.js';
-import {
-  ConfigurationError,
-  InvalidFileError,
-  NetworkError,
-  PermissionDeniedError,
-  ServiceError,
-  UnauthenticatedError,
-} from './errors.js';
+import { ConfigurationError, NetworkError, ServiceError } from './errors.js';
 import { PlatformClient } from './platform.js';
 import { RewrapResponse } from './platform/kas/kas_pb.js';
 import { ListKeyAccessServersResponse } from './platform/policy/kasregistry/key_access_server_registry_pb.js';
-import { pemToCryptoPublicKey, validateSecureUrl } from './utils.js';
+import { extractRpcErrorMessage, pemToCryptoPublicKey, validateSecureUrl } from './utils.js';
 
 export type RewrapRequest = {
   signedRequestToken: string;
 };
-
-type RewrapResponseLegacy = {
-  metadata: Record<string, unknown>;
-  entityWrappedKey: string;
-  sessionPublicKey: string;
-  schemaVersion: string;
-};
-
-/**
- * Get a rewrapped access key to the document, if possible
- * @param url Key access server rewrap endpoint
- * @param requestBody a signed request with an encrypted document key
- * @param authProvider Authorization middleware
- * @param clientVersion
- */
-export async function fetchWrappedKeyLegacy(
-  url: string,
-  requestBody: RewrapRequest,
-  authProvider: AuthProvider,
-  clientVersion: string
-): Promise<RewrapResponseLegacy> {
-  const req = await authProvider.withCreds({
-    url,
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(requestBody),
-  });
-
-  let response: Response;
-
-  try {
-    response = await fetch(req.url, {
-      method: req.method,
-      mode: 'cors', // no-cors, *cors, same-origin
-      cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-      credentials: 'same-origin', // include, *same-origin, omit
-      headers: req.headers,
-      redirect: 'follow', // manual, *follow, error
-      referrerPolicy: 'no-referrer', // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
-      body: req.body as BodyInit,
-    });
-  } catch (e) {
-    throw new NetworkError(`unable to fetch wrapped key from [${url}]`, e);
-  }
-
-  if (!response.ok) {
-    switch (response.status) {
-      case 400:
-        throw new InvalidFileError(
-          `400 for [${req.url}]: rewrap bad request [${await response.text()}]`
-        );
-      case 401:
-        throw new UnauthenticatedError(`401 for [${req.url}]; rewrap auth failure`);
-      case 403:
-        throw new PermissionDeniedError(`403 for [${req.url}]; rewrap permission denied`);
-      default:
-        if (response.status >= 500) {
-          throw new ServiceError(
-            `${response.status} for [${req.url}]: rewrap failure due to service error [${await response.text()}]`
-          );
-        }
-        throw new NetworkError(
-          `${req.method} ${req.url} => ${response.status} ${response.statusText}`
-        );
-    }
-  }
-
-  return response.json();
-}
 
 /**
  * Get a rewrapped access key to the document, if possible
@@ -107,7 +28,7 @@ export async function fetchWrappedKey(
       signedRequestToken,
     });
   } catch (e) {
-    throw createNetworkError(platformUrl, 'Rewrap', e);
+    throw new NetworkError(`[${platformUrl}] [rewrap] ${extractRpcErrorMessage(e)}`);
   }
 }
 
@@ -200,7 +121,9 @@ export async function fetchKeyAccessServers(
         },
       });
     } catch (e) {
-      throw createNetworkError(platformUrl, 'ListKeyAccessServers', extractRpcErrorMessage(e));
+      throw new NetworkError(
+        `[${platformUrl}] [ListKeyAccessServers] ${extractRpcErrorMessage(e)}`
+      );
     }
 
     allServers.push(...response.keyAccessServers);
@@ -252,7 +175,7 @@ export async function fetchKasPubKey(
     };
     return result;
   } catch (e) {
-    throw createNetworkError(platformUrl, 'PublicKey', extractRpcErrorMessage(e));
+    throw new NetworkError(`[${platformUrl}] [PublicKey] ${extractRpcErrorMessage(e)}`);
   }
 }
 
@@ -282,23 +205,6 @@ export class OriginAllowList {
 }
 
 /**
- * Extracts the error message from an RPC catch error.
- */
-function extractRpcErrorMessage(error: unknown): string {
-  if (error instanceof ConnectError || error instanceof Error) {
-    return error.message;
-  }
-  return 'Unknown network error occurred';
-}
-
-/**
- * Creates a NetworkError with the given platform URL, method, and message.
- */
-function createNetworkError(platformUrl: string, method: string, message: string): NetworkError {
-  return new NetworkError(`[${platformUrl}] [${method}] ${message}`);
-}
-
-/**
  * Converts a KAS endpoint URL to a platform URL.
  * If the KAS endpoint ends with '/kas', it returns the host url
  * Otherwise, it returns the original KAS endpoint.
@@ -307,6 +213,5 @@ function getHostFromEndpoint(endpoint: string): string {
   // TODO RPC: find a better way to get the right url, otherwise just use the `origin` function
   const kasUrl = new URL(endpoint);
   const platformUrl = kasUrl.origin;
-  // TODO RPC: remove /api
-  return platformUrl + '/api';
+  return platformUrl;
 }
