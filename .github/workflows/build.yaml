@@ -107,7 +107,7 @@ jobs:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: './cli/package-lock.json'
-      - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e #v4.2.1
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 #v4.3.0
         with:
           name: opentdf-sdk-lib
           path: lib/
@@ -140,7 +140,7 @@ jobs:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: './web-app/package-lock.json'
-      - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e #v4.2.1
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 #v4.3.0
         with:
           name: opentdf-sdk-lib
           path: lib/
@@ -185,11 +185,11 @@ jobs:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: './web-app/package-lock.json'
-      - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e #v4.2.1
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 #v4.3.0
         with:
           name: opentdf-sdk-lib
           path: lib/
-      - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e #v4.2.1
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 #v4.3.0
         with:
           name: opentdf-ctl
           path: cli/
