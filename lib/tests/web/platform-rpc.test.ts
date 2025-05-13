@@ -45,4 +45,18 @@ describe('Local Platform Connect RPC Client Tests', () => {
       expect.fail('Test failed missing auth headers', e);
     }
   });
+
+  it(`list key access servers with Authorization headers`, async () => {
+    const platform = new PlatformClient({
+      authProvider,
+      platformUrl,
+    });
+
+    try {
+      const response = await platform.v1.keyAccessServerRegistry.listKeyAccessServers({});
+      expect(response.$typeName).to.equal('policy.kasregistry.ListKeyAccessServersResponse');
+    } catch (e) {
+      expect.fail('Test failed missing auth headers', e);
+    }
+  });
 });

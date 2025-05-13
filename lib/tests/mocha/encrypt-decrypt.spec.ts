@@ -8,7 +8,7 @@ import { AesGcmCipher, KeyInfo, SplitKey, WebCryptoService } from '../../tdf3/in
 import { Client } from '../../tdf3/src/index.js';
 import { AssertionConfig, AssertionVerificationKeys } from '../../tdf3/src/assertions.js';
 import { Scope } from '../../tdf3/src/client/builders.js';
-import {  NetworkError } from '../../src/errors.js';
+import { NetworkError } from '../../src/errors.js';
 
 const Mocks = getMocks();
 
@@ -206,7 +206,7 @@ describe('rewrap error cases', function () {
     } catch (error) {
       const err = error.errors[0];
       assert.instanceOf(err, NetworkError);
-      assert.include(err.message, '[PublicKey] [unknown] fetch failed');
+      assert.include(err.message, '[PublicKey] [unknown]');
     }
   });
 

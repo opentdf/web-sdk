@@ -87,14 +87,18 @@ const kas: RequestListener = async (req, res) => {
       console.log('[DEBUG] CORS response 200');
       res.end();
     } else if (url.pathname === '/kas.AccessService/PublicKey') {
-      const algorithm = url.searchParams.get('algorithm') || 'rsa:2048';
+      const body = await getBody(req);
+      const bodyText = new TextDecoder().decode(body);
+      const params = JSON.parse(bodyText);
+      const algorithm = params.algorithm || 'rsa:2048';
+
       if (!['ec:secp256r1', 'rsa:2048'].includes(algorithm)) {
         console.log(`[DEBUG] invalid algorithm [${algorithm}]`);
-        res.writeHead(404);
+        res.writeHead(400);
         res.end(`{"error": "Invalid algorithm [${algorithm}]"}`);
         return;
       }
-      const fmt = url.searchParams.get('fmt') || 'pkcs8';
+      const fmt = params.fmt || 'pkcs8';
       if (!['jwks', 'pkcs8'].includes(fmt)) {
         console.log(`[DEBUG] invalid fmt [${fmt}]`);
         res.writeHead(400);
@@ -201,7 +205,8 @@ const kas: RequestListener = async (req, res) => {
             entityWrappedKey: base64.encodeArrayBuffer(cek.asArrayBuffer()),
             metadata: { hello: 'world' },
           };
-          res.writeHead(200);
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify(reply));
           return;
         }
@@ -226,7 +231,8 @@ const kas: RequestListener = async (req, res) => {
           entityWrappedKey: base64.encodeArrayBuffer(entityWrappedKey),
           metadata: { hello: 'world' },
         };
-        res.writeHead(200);
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify(reply));
         return;
       }
@@ -294,7 +300,8 @@ const kas: RequestListener = async (req, res) => {
         sessionPublicKey: Mocks.kasECCert,
         metadata: { hello: 'people of earth' },
       };
-      res.writeHead(200);
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json');
       res.end(JSON.stringify(reply));
       return;
     } else if (url.pathname === '/file') {
@@ -372,12 +379,12 @@ const kas: RequestListener = async (req, res) => {
       });
       res.statusCode = 200;
       res.end('Server stopped');
+      return;
     } else if (
-      url.pathname === '/policy.kasregistry.KeyAccessServerRegistryService/ListKeyAccessServers' ||
-      url.pathname === '/key-access-servers'
+      url.pathname === '/policy.kasregistry.KeyAccessServerRegistryService/ListKeyAccessServers'
     ) {
-      console.log('Listed Key Access Servers!');
-      res.writeHead(200);
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json');
       res.end(
         JSON.stringify({ keyAccessServers: [{ uri: 'http://localhost:3000' }], pagination: {} })
       );
