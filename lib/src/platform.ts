@@ -118,8 +118,12 @@ export class PlatformClient {
  */
 function createAuthInterceptor(authProvider: AuthProvider): Interceptor {
   const authInterceptor: Interceptor = (next) => async (req) => {
+    const url = new URL(req.url);
+    const pathOnly = url.pathname;
+    // TODO RCP: discuss in the PR if this is how we want to do it
+    // Signs only the path of the url in the request
     const token = await authProvider.withCreds({
-      url: req.url,
+      url: pathOnly,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
