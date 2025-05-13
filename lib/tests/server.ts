@@ -86,18 +86,7 @@ const kas: RequestListener = async (req, res) => {
       res.statusCode = 200;
       console.log('[DEBUG] CORS response 200');
       res.end();
-    } else if (url.pathname === '/kas_public_key' || url.pathname === '/v2/kas_public_key') {
-      const v =
-        url.pathname === '/v2/kas_public_key'
-          ? url.searchParams.get('v')
-            ? url.searchParams.get('v')
-            : '2'
-          : '1';
-      if (req.method !== 'GET') {
-        console.log('[DEBUG] invalid method');
-        res.statusCode = 405;
-        res.end(`{"error": "Invalid method [${req.method}]"}`);
-      }
+    } else if (url.pathname === '/kas.AccessService/PublicKey') {
       const algorithm = url.searchParams.get('algorithm') || 'rsa:2048';
       if (!['ec:secp256r1', 'rsa:2048'].includes(algorithm)) {
         console.log(`[DEBUG] invalid algorithm [${algorithm}]`);
@@ -116,8 +105,9 @@ const kas: RequestListener = async (req, res) => {
       res.statusCode = 200;
       const publicKey = 'ec:secp256r1' == algorithm ? Mocks.kasECCert : Mocks.kasPublicKey;
       const kid = 'ec:secp256r1' == algorithm ? 'e1' : 'r1';
-      res.end(JSON.stringify(v == '2' ? { kid, publicKey } : publicKey));
-    } else if (url.pathname === '/v2/rewrap') {
+      res.end(JSON.stringify({ kid, publicKey }));
+      return;
+    } else if (url.pathname === '/kas.AccessService/Rewrap') {
       // For testing error conditions x-test-response, immediate error returns, control by individual test
       if (req.headers['x-test-response']) {
         const statusCode = parseInt(req.headers['x-test-response'] as string);
@@ -148,7 +138,7 @@ const kas: RequestListener = async (req, res) => {
       // NOTE: Real KAS will validate authorization and dpop here. simple Invalid check
       if (req.headers['authorization'] == 'Invalid') {
         res.writeHead(401);
-        res.end(JSON.stringify({ error: 'Unauthorized' }));
+        res.end(JSON.stringify({ code: 'unauthenticated', message: 'unauthenticated' }));
         return;
       }
       const body = await getBody(req);

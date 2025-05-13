@@ -28,7 +28,7 @@ export async function fetchWrappedKey(
       signedRequestToken,
     });
   } catch (e) {
-    throw new NetworkError(`[${platformUrl}] [rewrap] ${extractRpcErrorMessage(e)}`);
+    throw new NetworkError(`[${platformUrl}] [Rewrap] ${extractRpcErrorMessage(e)}`);
   }
 }
 

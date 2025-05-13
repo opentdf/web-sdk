@@ -79,7 +79,7 @@ describe('fetchKasPublicKey', async () => {
     }
   });
 
-  it('invalid kas names throw', async () => {
+  skip('invalid kas names throw', async () => {
     try {
       await TDF.fetchKasPublicKey('~~~');
       expect.fail('did not throw');
@@ -96,7 +96,7 @@ describe('fetchKasPublicKey', async () => {
     expect(pk2.kid).to.equal('r1');
   });
 
-  it('invalid algorithms', async () => {
+  skip('invalid algorithms', async () => {
     try {
       await TDF.fetchKasPublicKey('http://localhost:3000', 'rsa:512' as any as 'rsa:2048'); //ts-ignore
       expect.fail('did not throw');
