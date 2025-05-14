@@ -11,12 +11,6 @@ export async function attributeFQNsAsValues(
   authProvider: AuthProvider,
   ...fqns: string[]
 ): Promise<Value[]> {
-  const avs = new URLSearchParams();
-  for (const fqn of fqns) {
-    avs.append('fqns', fqn);
-  }
-  avs.append('withValue.withKeyAccessGrants', 'true');
-  avs.append('withValue.withAttribute.withKeyAccessGrants', 'true');
   const uNoSlash = rstrip(platformUrl, '/');
   const uNoKas = uNoSlash.endsWith('/kas') ? uNoSlash.slice(0, -4) : uNoSlash;
 
@@ -49,17 +43,8 @@ export async function attributeFQNsAsValues(
     if (value && av.attribute && !value?.attribute) {
       value.attribute = av.attribute;
     }
-    // TODO: update the mapping
-    values.push({
-      id: value.id,
-      attribute: value.attribute as never,
-      value: value.value,
-      grants: value.grants as never,
-      fqn: value.fqn,
-      active: value.active,
-      subjectMappings: value.subjectMappings,
-      metadata: value.metadata as never,
-    });
+
+    values.push(value);
   }
   return values;
 }

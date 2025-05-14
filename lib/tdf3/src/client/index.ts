@@ -439,8 +439,9 @@ export class Client {
       const detailedPlan = plan(avs);
       splitPlan = detailedPlan.map((kat) => {
         const { kas, sid } = kat;
-        if (kas?.publicKey?.cached?.keys && !(kas.uri in this.kasKeys)) {
-          const keys = kas.publicKey.cached.keys;
+        const pubKey = kas.publicKey?.publicKey;
+        if (pubKey?.case === 'cached' && pubKey.value.keys && !(kas.uri in this.kasKeys)) {
+          const keys = pubKey.value.keys;
           if (keys?.length) {
             this.kasKeys[kas.uri] = keys.map((key) => resolveKasInfo(key.pem, kas.uri, key.kid));
           }
