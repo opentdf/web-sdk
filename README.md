@@ -134,11 +134,31 @@ const platform = new PlatformClient({
 Interceptors are particularly useful for scenarios where you need to dynamically modify requests, such as adding authentication tokens or logging request/response data.
 
 
-## Build and Test
+## Building and Testing
 
-```shell
-make
-```
+### Makefile Commands
+
+The project provides a `Makefile` to simplify common development tasks. Below are the available commands:
+
+| Command           | Description                                                                                  |
+|-------------------|----------------------------------------------------------------------------------------------|
+| `make`            | Builds and tests everything (default target).                                                |
+| `make start`      | Builds all packages and starts the web application in development mode.                      |
+| `make ci`         | Installs dependencies and links the SDK package for all subprojects.                         |
+| `make i`          | Installs dependencies and links the SDK package for all subprojects (without clean install). |
+| `make clean`      | Removes build artifacts, packed files, and `node_modules` directories.                       |
+| `make cli`        | Builds and packs the CLI tool.                                                               |
+| `make audit`      | Runs `npm audit` for all packages except dev dependencies.                                   |
+| `make format`     | Runs code formatting for all packages.                                                       |
+| `make lint`       | Runs linter for all packages.                                                                |
+| `make test`       | Runs tests for all packages.                                                                 |
+| `make license-check` | Checks license compliance for all packages.                                               |
+| `make doc`        | Generates documentation for the SDK.                                                         |
+| `make generate-platform` | Runs the platform code generation script.                                             |
+| `make dist`       | Copies the SDK package to the root directory.                                                |
+
+You can run any of these commands using `make <command>`.
+
 
 ## Contribute
 
