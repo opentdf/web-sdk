@@ -275,7 +275,6 @@ for (const fqn of [
     $typeName: 'policy.Value',
   };
 
-  attribute.values.push(val);
   values[fqn] = val;
 }
 

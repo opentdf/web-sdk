@@ -1,6 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import { type AuthProvider, HttpRequest, withHeaders } from '../../src/auth/auth.js';
 import { PlatformClient } from '../../src/platform.js';
+import { attributeFQNsAsValues } from '../../src/policy/api.js';
 
 const authProvider = <AuthProvider>{
   updateClientPublicKey: async () => {
@@ -32,7 +33,7 @@ describe('Local Platform Connect RPC Client Tests', () => {
     }
   });
 
-  it(`policy attribute method with Authorization headers`, async () => {
+  it(`policy attribute method with auth`, async () => {
     const platform = new PlatformClient({
       authProvider,
       platformUrl,
@@ -46,7 +47,7 @@ describe('Local Platform Connect RPC Client Tests', () => {
     }
   });
 
-  it(`list key access servers with Authorization headers`, async () => {
+  it(`list key access servers with auth`, async () => {
     const platform = new PlatformClient({
       authProvider,
       platformUrl,
@@ -55,6 +56,59 @@ describe('Local Platform Connect RPC Client Tests', () => {
     try {
       const response = await platform.v1.keyAccessServerRegistry.listKeyAccessServers({});
       expect(response.$typeName).to.equal('policy.kasregistry.ListKeyAccessServersResponse');
+    } catch (e) {
+      expect.fail('Test failed missing auth headers', e);
+    }
+  });
+
+  it(`list fqns by attribute value with auth`, async () => {
+    const platform = new PlatformClient({
+      authProvider,
+      platformUrl,
+    });
+
+    const fqns = ['https://granted.ns/attr/granted/value/granted'];
+
+    try {
+      const response = await platform.v1.attributes.getAttributeValuesByFqns({
+        fqns,
+        withValue: {
+          withKeyAccessGrants: true,
+          withAttribute: {
+            withKeyAccessGrants: true,
+          },
+        },
+      });
+      expect(response.$typeName).to.equal('policy.attributes.GetAttributeValuesByFqnsResponse');
+    } catch (e) {
+      expect.fail('Test failed missing auth headers', e);
+    }
+  });
+
+  it(`attributeFQNsAsValues value with auth from api`, async () => {
+    const fqns = ['https://granted.ns/attr/granted/value/granted'];
+
+    try {
+      const response = await attributeFQNsAsValues(platformUrl, authProvider, ...fqns);
+      expect(response[0].$typeName).to.equal('policy.Value');
+    } catch (e) {
+      expect.fail('Test failed missing auth headers', e);
+    }
+  });
+
+  it(`rewrap key with auth`, async () => {
+    const platform = new PlatformClient({
+      authProvider,
+      platformUrl,
+    });
+
+    try {
+      const response = await platform.v1.access.rewrap({
+        // {"requestBody": "mock-request-body"}
+        signedRequestToken:
+          'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJyZXF1ZXN0Qm9keSI6Im1vY2stcmVxdWVzdC1ib2R5In0.0O9eyg-zC5Ztf78mPaa61n6INtpTdJv6iQQ_3tg2TRlzA73Md-JDTedGKwQ_J6QQycR5AMY5UqrsQvkcK50jfQ',
+      });
+      expect(response.$typeName).to.equal('kas.RewrapResponse');
     } catch (e) {
       expect.fail('Test failed missing auth headers', e);
     }

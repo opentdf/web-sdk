@@ -49,7 +49,6 @@ describe('Local roundtrip Tests', () => {
     });
 
     const metadata = (await nanotdfParsed.metadata) as never;
-    // TODO RPC: verify why metadata has protobuf types in it
     expect(metadata['hello']['kind']['value']).to.equal('world');
 
     const actual = await new Response(nanotdfParsed).arrayBuffer();
@@ -81,7 +80,6 @@ describe('Local roundtrip Tests', () => {
     });
 
     const metadata = (await nanotdfParsed.metadata) as never;
-    // TODO RPC: verify why metadata has protobuf types in it
     expect(metadata['hello']['kind']['value']).to.equal('world');
 
     const actual = await new Response(nanotdfParsed).arrayBuffer();

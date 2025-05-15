@@ -150,6 +150,14 @@ const kas: RequestListener = async (req, res) => {
       const { signedRequestToken } = JSON.parse(bodyText);
       // NOTE: Real KAS will verify JWT here
       const { requestBody } = jose.decodeJwt(signedRequestToken);
+
+      if (requestBody === 'mock-request-body') {
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ status: 'ok' }));
+        return;
+      }
+
       const rewrap = JSON.parse(requestBody as string) as RewrapBody;
       console.log('[INFO]: rewrap request body: ', rewrap);
       const clientPublicKey = await pemPublicToCrypto(rewrap.clientPublicKey);
@@ -345,13 +353,22 @@ const kas: RequestListener = async (req, res) => {
         res.setHeader('Content-Type', 'application/octet-stream');
         res.end(fullRange);
       }
-    } else if (url.pathname === '/attributes/*/fqn') {
+    } else if (url.pathname === '/policy.attributes.AttributesService/GetAttributeValuesByFqns') {
+      res.setHeader('Content-Type', 'application/json');
+      const token = req.headers['authorization'] as string;
+      if (!token || !token.startsWith('Bearer dummy-auth-token')) {
+        res.statusCode = 401;
+        res.end(JSON.stringify({ code: 'unauthenticated', message: 'unauthenticated' }));
+        return;
+      }
+
+      const body = await getBody(req);
+      const bodyText = new TextDecoder().decode(body);
+      const params = JSON.parse(bodyText);
       const fqnAttributeValues: Record<string, AttributeAndValue> = {};
       let skipped = 0;
-      for (const [k, v] of url.searchParams.entries()) {
-        if (k !== 'fqns') {
-          continue;
-        }
+
+      for (const v of params.fqns) {
         const value = valueFor(v);
         if (!value) {
           console.error(`unable to find definition for value [${v}]`);
@@ -366,13 +383,17 @@ const kas: RequestListener = async (req, res) => {
         }
         fqnAttributeValues[v] = { attribute, value };
       }
+
+      res.setHeader('Content-Type', 'application/json');
       if (skipped) {
         res.statusCode = 404;
-        res.end('Not Found');
+        res.end(JSON.stringify({ code: 'error', message: 'not found' }));
         return;
       }
-      res.writeHead(200);
+
+      res.statusCode = 200;
       res.end(JSON.stringify({ fqnAttributeValues }));
+      return;
     } else if (url.pathname === '/stop' && req.method === 'GET') {
       server.close(() => {
         console.log('Server gracefully terminated.');
@@ -403,12 +424,11 @@ const kas: RequestListener = async (req, res) => {
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify({ status: 'error' }));
         return;
-      } else {
-        res.statusCode = 200;
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ status: 'ok' }));
-        return;
       }
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ status: 'ok' }));
+      return;
     } else {
       console.log(`[DEBUG] invalid path [${url.pathname}]`);
       res.statusCode = 404;
