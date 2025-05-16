@@ -739,7 +739,7 @@ async function unwrapKey({
   const splitPotentials = splitLookupTableFactory(keyAccess, allowedKases);
 
   async function tryKasRewrap(keySplitInfo: KeyAccessObject): Promise<RewrapResponseData> {
-    const url = `${keySplitInfo.url}/v2/rewrap`;
+    const url = `${keySplitInfo.url}`;
     let ephemeralEncryptionKeysRaw: AnyKeyPair;
     let ephemeralEncryptionKeys: PemKeyPair;
     if (wrappingKeyAlgorithm === 'ec:secp256r1') {

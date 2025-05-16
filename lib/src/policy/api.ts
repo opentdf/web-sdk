@@ -1,6 +1,6 @@
 import { NetworkError } from '../errors.js';
 import { AuthProvider } from '../auth/auth.js';
-import { extractRpcErrorMessage, rstrip } from '../utils.js';
+import { extractRpcErrorMessage, getPlatformUrlFromKasEndpoint } from '../utils.js';
 import { PlatformClient } from '../platform.js';
 import { Value } from './attributes.js';
 import { GetAttributeValuesByFqnsResponse } from '../platform/policy/attributes/attributes_pb.js';
@@ -11,10 +11,8 @@ export async function attributeFQNsAsValues(
   authProvider: AuthProvider,
   ...fqns: string[]
 ): Promise<Value[]> {
-  const uNoSlash = rstrip(platformUrl, '/');
-  const uNoKas = uNoSlash.endsWith('/kas') ? uNoSlash.slice(0, -4) : uNoSlash;
-
-  const platform = new PlatformClient({ authProvider, platformUrl: uNoKas });
+  platformUrl = getPlatformUrlFromKasEndpoint(platformUrl);
+  const platform = new PlatformClient({ authProvider, platformUrl });
 
   let response: GetAttributeValuesByFqnsResponse;
   try {

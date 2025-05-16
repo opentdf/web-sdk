@@ -19,7 +19,12 @@ import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-pr
 import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider.js';
 import { CryptoService } from '../crypto/declarations.js';
 import { type AuthProvider, HttpRequest, withHeaders } from '../../../src/auth/auth.js';
-import { pemToCryptoPublicKey, rstrip, validateSecureUrl } from '../../../src/utils.js';
+import {
+  getPlatformUrlFromKasEndpoint,
+  pemToCryptoPublicKey,
+  rstrip,
+  validateSecureUrl,
+} from '../../../src/utils.js';
 
 import {
   type EncryptParams,
@@ -299,14 +304,13 @@ export class Client {
     if (!validateSecureUrl(this.kasEndpoint)) {
       throw new ConfigurationError(`Invalid KAS endpoint [${this.kasEndpoint}]`);
     }
+
     if (config.platformUrl) {
       this.platformUrl = config.platformUrl;
     }
 
     if (clientConfig.policyEndpoint) {
-      this.policyEndpoint = rstrip(clientConfig.policyEndpoint, '/');
-    } else if (this.kasEndpoint.endsWith('/kas')) {
-      this.policyEndpoint = this.kasEndpoint.slice(0, -4);
+      this.policyEndpoint = getPlatformUrlFromKasEndpoint(clientConfig.policyEndpoint);
     }
 
     const kasOrigin = new URL(this.kasEndpoint).origin;

@@ -150,3 +150,19 @@ export function extractRpcErrorMessage(error: unknown): string {
   }
   return 'Unknown network error occurred';
 }
+
+/**
+ * Converts a KAS endpoint URL to a platform URL.
+ * If the KAS endpoint ends with '/kas', it returns the host url
+ * Otherwise, it returns the original KAS endpoint.
+ */
+export function getPlatformUrlFromKasEndpoint(endpoint: string): string {
+  let result = endpoint || '';
+  if (result.endsWith('/')) {
+    result = rstrip(result, '/');
+  }
+  if (result.endsWith('/kas')) {
+    result = result.slice(0, -4);
+  }
+  return result;
+}

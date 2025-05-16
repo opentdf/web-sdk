@@ -3,7 +3,12 @@ import { ConfigurationError, NetworkError, ServiceError } from './errors.js';
 import { PlatformClient } from './platform.js';
 import { RewrapResponse } from './platform/kas/kas_pb.js';
 import { ListKeyAccessServersResponse } from './platform/policy/kasregistry/key_access_server_registry_pb.js';
-import { extractRpcErrorMessage, pemToCryptoPublicKey, validateSecureUrl } from './utils.js';
+import {
+  extractRpcErrorMessage,
+  getPlatformUrlFromKasEndpoint,
+  pemToCryptoPublicKey,
+  validateSecureUrl,
+} from './utils.js';
 
 export type RewrapRequest = {
   signedRequestToken: string;
@@ -21,7 +26,7 @@ export async function fetchWrappedKey(
   signedRequestToken: string,
   authProvider: AuthProvider
 ): Promise<RewrapResponse> {
-  const platformUrl = getHostFromEndpoint(url);
+  const platformUrl = getPlatformUrlFromKasEndpoint(url);
   const platform = new PlatformClient({ authProvider, platformUrl });
   try {
     return await platform.v1.access.rewrap({
@@ -157,7 +162,7 @@ export async function fetchKasPubKey(
   // Logs insecure KAS. Secure is enforced in constructor
   validateSecureUrl(kasEndpoint);
 
-  const platformUrl = getHostFromEndpoint(kasEndpoint);
+  const platformUrl = getPlatformUrlFromKasEndpoint(kasEndpoint);
   const platform = new PlatformClient({
     platformUrl,
   });
@@ -202,16 +207,4 @@ export class OriginAllowList {
     }
     return this.origins.includes(origin(url));
   }
-}
-
-/**
- * Converts a KAS endpoint URL to a platform URL.
- * If the KAS endpoint ends with '/kas', it returns the host url
- * Otherwise, it returns the original KAS endpoint.
- */
-function getHostFromEndpoint(endpoint: string): string {
-  // TODO RPC: find a better way to get the right url, otherwise just use the `origin` function
-  const kasUrl = new URL(endpoint);
-  const platformUrl = kasUrl.origin;
-  return platformUrl;
 }
