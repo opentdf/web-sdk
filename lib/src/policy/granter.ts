@@ -36,17 +36,16 @@ type ComplexBooleanClause = {
 };
 
 export function booleanOperatorFor(rule?: AttributeRuleType): BooleanOperator {
-  if (!rule) {
-    return 'allOf';
-  }
   switch (rule) {
-    case 'ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED':
-    case 'ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF':
+    case AttributeRuleType.UNSPECIFIED:
+    case AttributeRuleType.ALL_OF:
       return 'allOf';
-    case 'ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF':
+    case AttributeRuleType.ANY_OF:
       return 'anyOf';
-    case 'ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY':
+    case AttributeRuleType.HIERARCHY:
       return 'hierarchy';
+    default:
+      return 'allOf';
   }
 }
 
@@ -114,7 +113,7 @@ export function plan(dataAttrs: Value[]): KeySplitStep[] {
         });
       }
     }
-    const op = booleanOperatorFor(attrClause.def.rule);
+    const op = booleanOperatorFor(attrClause.def?.rule);
     kcs.push({
       op,
       children: ccv,

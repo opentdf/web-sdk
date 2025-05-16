@@ -314,7 +314,7 @@ export default class Header {
    */
   getKasRewrapUrl(): string {
     try {
-      return `${rstrip(this.kas.url, '/')}/v2/rewrap`;
+      return `${rstrip(this.kas.url, '/')}`;
     } catch (e) {
       throw new ConfigurationError(`cannot construct KAS Rewrap URL: ${e.message}`);
     }
