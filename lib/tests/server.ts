@@ -73,6 +73,7 @@ const kas: RequestListener = async (req, res) => {
       'range',
       'x-test-response',
       'x-test-response-message',
+      'roundtrip-test-response',
       'connect-protocol-version',
       'connect-streaming-protocol-version',
     ].join(', ')
@@ -86,6 +87,11 @@ const kas: RequestListener = async (req, res) => {
       res.statusCode = 200;
       console.log('[DEBUG] CORS response 200');
       res.end();
+    } else if (req.headers['roundtrip-test-response']) {
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ status: 'ok' }));
+      return;
     } else if (url.pathname === '/kas.AccessService/PublicKey') {
       const body = await getBody(req);
       const bodyText = new TextDecoder().decode(body);
