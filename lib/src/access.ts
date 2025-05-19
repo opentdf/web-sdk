@@ -28,15 +28,15 @@ export async function fetchWrappedKey(
 ): Promise<RewrapResponse> {
   const platformUrl = getPlatformUrlFromKasEndpoint(url);
 
-  return await tryPromisesUntilFirstSuccess([
+  return await tryPromisesUntilFirstSuccess(
     () => fetchWrappedKeysRpc(platformUrl, signedRequestToken, authProvider),
     () =>
       fetchWrappedKeysLegacy(
         url,
         { signedRequestToken },
         authProvider
-      ) as unknown as Promise<RewrapResponse>,
-  ]);
+      ) as unknown as Promise<RewrapResponse>
+  );
 }
 
 export type KasPublicKeyAlgorithm = 'ec:secp256r1' | 'rsa:2048';
@@ -115,10 +115,10 @@ export async function fetchKeyAccessServers(
   platformUrl: string,
   authProvider: AuthProvider
 ): Promise<OriginAllowList> {
-  return await tryPromisesUntilFirstSuccess([
+  return await tryPromisesUntilFirstSuccess(
     () => fetchKeyAccessServersRpc(platformUrl, authProvider),
-    () => fetchKeyAccessServersLegacy(platformUrl, authProvider),
-  ]);
+    () => fetchKeyAccessServersLegacy(platformUrl, authProvider)
+  );
 }
 
 /**
@@ -133,10 +133,10 @@ export async function fetchKasPubKey(
   kasEndpoint: string,
   algorithm?: KasPublicKeyAlgorithm
 ): Promise<KasPublicKeyInfo> {
-  return await tryPromisesUntilFirstSuccess([
+  return await tryPromisesUntilFirstSuccess(
     () => fetchKasPubKeyRpc(kasEndpoint, algorithm),
-    () => fetchKasPubKeyLegacy(kasEndpoint, algorithm),
-  ]);
+    () => fetchKasPubKeyLegacy(kasEndpoint, algorithm)
+  );
 }
 
 const origin = (u: string): string => {
@@ -165,20 +165,22 @@ export class OriginAllowList {
 }
 
 /**
- * Tries a list of promise-returning functions in order and returns the first successful result.
- * If all fail, throws the error from the first.
- * @param promiseFns Array of functions returning promises to try in order.
+ * Tries two promise-returning functions in order and returns the first successful result.
+ * If both fail, throws the error from the second.
+ * @param first First function returning a promise to try.
+ * @param second Second function returning a promise to try if the first fails.
  */
-async function tryPromisesUntilFirstSuccess<T>(promiseFns: Array<() => Promise<T>>): Promise<T> {
-  let firstError: unknown = undefined;
-  for (let i = 0; i < promiseFns.length; i++) {
+async function tryPromisesUntilFirstSuccess<T>(
+  first: () => Promise<T>,
+  second: () => Promise<T>
+): Promise<T> {
+  try {
+    return await first();
+  } catch {
     try {
-      return await promiseFns[i]();
+      return await second();
     } catch (err) {
-      if (i === 0) {
-        firstError = err;
-      }
+      throw err;
     }
   }
-  throw firstError;
 }

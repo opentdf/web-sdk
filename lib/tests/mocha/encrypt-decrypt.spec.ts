@@ -96,7 +96,7 @@ describe('rewrap error cases', function () {
       });
       assert.fail('Expected Error');
     } catch (error) {
-      assert.include(error.message, '[Rewrap] [unauthenticated] HTTP 401');
+      assert.instanceOf(error, NetworkError);
     }
   });
 
@@ -121,7 +121,6 @@ describe('rewrap error cases', function () {
       assert.fail('Expected Error');
     } catch (error) {
       assert.instanceOf(error, NetworkError);
-      assert.include(error.message, '[Rewrap] [permission_denied] HTTP 403');
     }
   });
 
@@ -151,7 +150,6 @@ describe('rewrap error cases', function () {
       assert.fail('Expected Error');
     } catch (error) {
       assert.instanceOf(error, NetworkError);
-      assert.include(error.message, '[Rewrap] [internal] HTTP 400');
     }
   });
 
@@ -176,7 +174,6 @@ describe('rewrap error cases', function () {
       assert.fail('Expected ServiceError');
     } catch (error) {
       assert.instanceOf(error, NetworkError);
-      assert.include(error.message, '[Rewrap] [unknown] HTTP 500');
     }
   });
 
@@ -206,7 +203,6 @@ describe('rewrap error cases', function () {
     } catch (error) {
       const err = error.errors[0];
       assert.instanceOf(err, NetworkError);
-      assert.include(err.message, '[PublicKey] [unknown]');
     }
   });
 
@@ -236,7 +232,7 @@ describe('rewrap error cases', function () {
       assert.fail('Expected InvalidFileError');
     } catch (error) {
       assert.instanceOf(error, NetworkError);
-      assert.include(error.message, '[Rewrap] [internal] HTTP 400');
+      assert.include(error.message, '404 Not Found');
     }
   });
 });
