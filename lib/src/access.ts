@@ -1,14 +1,14 @@
 import { type AuthProvider } from './auth/auth.js';
-import { ConfigurationError, NetworkError, ServiceError } from './errors.js';
-import { PlatformClient } from './platform.js';
+import { ServiceError } from './errors.js';
 import { RewrapResponse } from './platform/kas/kas_pb.js';
-import { ListKeyAccessServersResponse } from './platform/policy/kasregistry/key_access_server_registry_pb.js';
-import {
-  extractRpcErrorMessage,
-  getPlatformUrlFromKasEndpoint,
-  pemToCryptoPublicKey,
-  validateSecureUrl,
-} from './utils.js';
+import { getPlatformUrlFromKasEndpoint, validateSecureUrl } from './utils.js';
+
+import { fetchKeyAccessServers as fetchKeyAccessServersRpc } from './access/access-rpc.js';
+import { fetchKeyAccessServers as fetchKeyAccessServersLegacy } from './access/access-fetch.js';
+import { fetchWrappedKey as fetchWrappedKeysRpc } from './access/access-rpc.js';
+import { fetchWrappedKey as fetchWrappedKeysLegacy } from './access/access-fetch.js';
+import { fetchKasPubKey as fetchKasPubKeyRpc } from './access/access-rpc.js';
+import { fetchKasPubKey as fetchKasPubKeyLegacy } from './access/access-fetch.js';
 
 export type RewrapRequest = {
   signedRequestToken: string;
@@ -27,14 +27,16 @@ export async function fetchWrappedKey(
   authProvider: AuthProvider
 ): Promise<RewrapResponse> {
   const platformUrl = getPlatformUrlFromKasEndpoint(url);
-  const platform = new PlatformClient({ authProvider, platformUrl });
-  try {
-    return await platform.v1.access.rewrap({
-      signedRequestToken,
-    });
-  } catch (e) {
-    throw new NetworkError(`[${platformUrl}] [Rewrap] ${extractRpcErrorMessage(e)}`);
-  }
+
+  return await tryPromisesUntilFirstSuccess([
+    () => fetchWrappedKeysRpc(platformUrl, signedRequestToken, authProvider),
+    () =>
+      fetchWrappedKeysLegacy(
+        url,
+        { signedRequestToken },
+        authProvider
+      ) as unknown as Promise<RewrapResponse>,
+  ]);
 }
 
 export type KasPublicKeyAlgorithm = 'ec:secp256r1' | 'rsa:2048';
@@ -98,7 +100,7 @@ export type KasPublicKeyInfo = {
   key: Promise<CryptoKey>;
 };
 
-async function noteInvalidPublicKey(url: URL, r: Promise<CryptoKey>): Promise<CryptoKey> {
+export async function noteInvalidPublicKey(url: URL, r: Promise<CryptoKey>): Promise<CryptoKey> {
   try {
     return await r;
   } catch (e) {
@@ -113,35 +115,10 @@ export async function fetchKeyAccessServers(
   platformUrl: string,
   authProvider: AuthProvider
 ): Promise<OriginAllowList> {
-  let nextOffset = 0;
-  const allServers = [];
-  const platform = new PlatformClient({ authProvider, platformUrl });
-
-  do {
-    let response: ListKeyAccessServersResponse;
-    try {
-      response = await platform.v1.keyAccessServerRegistry.listKeyAccessServers({
-        pagination: {
-          offset: nextOffset,
-        },
-      });
-    } catch (e) {
-      throw new NetworkError(
-        `[${platformUrl}] [ListKeyAccessServers] ${extractRpcErrorMessage(e)}`
-      );
-    }
-
-    allServers.push(...response.keyAccessServers);
-    nextOffset = response?.pagination?.nextOffset || 0;
-  } while (nextOffset > 0);
-
-  const serverUrls = allServers.map((server) => server.uri);
-  // add base platform kas
-  if (!serverUrls.includes(`${platformUrl}/kas`)) {
-    serverUrls.push(`${platformUrl}/kas`);
-  }
-
-  return new OriginAllowList(serverUrls, false);
+  return await tryPromisesUntilFirstSuccess([
+    () => fetchKeyAccessServersRpc(platformUrl, authProvider),
+    () => fetchKeyAccessServersLegacy(platformUrl, authProvider),
+  ]);
 }
 
 /**
@@ -156,32 +133,10 @@ export async function fetchKasPubKey(
   kasEndpoint: string,
   algorithm?: KasPublicKeyAlgorithm
 ): Promise<KasPublicKeyInfo> {
-  if (!kasEndpoint) {
-    throw new ConfigurationError('KAS definition not found');
-  }
-  // Logs insecure KAS. Secure is enforced in constructor
-  validateSecureUrl(kasEndpoint);
-
-  const platformUrl = getPlatformUrlFromKasEndpoint(kasEndpoint);
-  const platform = new PlatformClient({
-    platformUrl,
-  });
-  try {
-    const { kid, publicKey } = await platform.v1.access.publicKey({
-      algorithm: algorithm || 'rsa:2048',
-      v: '2',
-    });
-    const result: KasPublicKeyInfo = {
-      key: noteInvalidPublicKey(new URL(platformUrl), pemToCryptoPublicKey(publicKey)),
-      publicKey,
-      url: kasEndpoint,
-      algorithm: algorithm || 'rsa:2048',
-      ...(kid && { kid }),
-    };
-    return result;
-  } catch (e) {
-    throw new NetworkError(`[${platformUrl}] [PublicKey] ${extractRpcErrorMessage(e)}`);
-  }
+  return await tryPromisesUntilFirstSuccess([
+    () => fetchKasPubKeyRpc(kasEndpoint, algorithm),
+    () => fetchKasPubKeyLegacy(kasEndpoint, algorithm),
+  ]);
 }
 
 const origin = (u: string): string => {
@@ -207,4 +162,23 @@ export class OriginAllowList {
     }
     return this.origins.includes(origin(url));
   }
+}
+
+/**
+ * Tries a list of promise-returning functions in order and returns the first successful result.
+ * If all fail, throws the error from the first.
+ * @param promiseFns Array of functions returning promises to try in order.
+ */
+async function tryPromisesUntilFirstSuccess<T>(promiseFns: Array<() => Promise<T>>): Promise<T> {
+  let firstError: unknown = undefined;
+  for (let i = 0; i < promiseFns.length; i++) {
+    try {
+      return await promiseFns[i]();
+    } catch (err) {
+      if (i === 0) {
+        firstError = err;
+      }
+    }
+  }
+  throw firstError;
 }
