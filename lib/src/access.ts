@@ -176,7 +176,8 @@ async function tryPromisesUntilFirstSuccess<T>(
 ): Promise<T> {
   try {
     return await first();
-  } catch {
+  } catch (e1) {
+    console.info('v2 request error', e1);
     try {
       return await second();
     } catch (err) {
