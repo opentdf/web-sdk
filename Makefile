@@ -48,6 +48,3 @@ doc:
 
 generate-platform:
 	./scripts/platform.sh
-
-doit:
-	cd lib && npm run build && npm pack && cd .. && cd web-app && npm run start
