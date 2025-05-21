@@ -19,7 +19,12 @@ import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-pr
 import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider.js';
 import { CryptoService } from '../crypto/declarations.js';
 import { type AuthProvider, HttpRequest, withHeaders } from '../../../src/auth/auth.js';
-import { pemToCryptoPublicKey, rstrip, validateSecureUrl } from '../../../src/utils.js';
+import {
+  getPlatformUrlFromKasEndpoint,
+  pemToCryptoPublicKey,
+  rstrip,
+  validateSecureUrl,
+} from '../../../src/utils.js';
 
 import {
   type EncryptParams,
@@ -299,14 +304,13 @@ export class Client {
     if (!validateSecureUrl(this.kasEndpoint)) {
       throw new ConfigurationError(`Invalid KAS endpoint [${this.kasEndpoint}]`);
     }
+
     if (config.platformUrl) {
       this.platformUrl = config.platformUrl;
     }
 
     if (clientConfig.policyEndpoint) {
-      this.policyEndpoint = rstrip(clientConfig.policyEndpoint, '/');
-    } else if (this.kasEndpoint.endsWith('/kas')) {
-      this.policyEndpoint = this.kasEndpoint.slice(0, -4);
+      this.policyEndpoint = getPlatformUrlFromKasEndpoint(clientConfig.policyEndpoint);
     }
 
     const kasOrigin = new URL(this.kasEndpoint).origin;
@@ -439,8 +443,9 @@ export class Client {
       const detailedPlan = plan(avs);
       splitPlan = detailedPlan.map((kat) => {
         const { kas, sid } = kat;
-        if (kas?.publicKey?.cached?.keys && !(kas.uri in this.kasKeys)) {
-          const keys = kas.publicKey.cached.keys;
+        const pubKey = kas.publicKey?.publicKey;
+        if (pubKey?.case === 'cached' && pubKey.value.keys && !(kas.uri in this.kasKeys)) {
+          const keys = pubKey.value.keys;
           if (keys?.length) {
             this.kasKeys[kas.uri] = keys.map((key) => resolveKasInfo(key.pem, kas.uri, key.kid));
           }

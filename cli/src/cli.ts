@@ -367,6 +367,11 @@ export const handleArgs = (args: string[]) => {
         type: 'string',
         description: 'URL to non-default KAS instance (https://mykas.net)',
       })
+      .option('platformUrl', {
+        group: 'Server Endpoints:',
+        type: 'string',
+        description: 'Location of policy service and KAS (https://opentdf.demo)',
+      })
       .option('oidcEndpoint', {
         group: 'Server Endpoints:',
         type: 'string',
@@ -585,6 +590,7 @@ export const handleArgs = (args: string[]) => {
         async (argv) => {
           log('DEBUG', 'Running inspect command');
           const ct = new OpenTDF({
+            platformUrl: argv.platformUrl || guessPolicyUrl(argv),
             authProvider: new InvalidAuthProvider(),
           });
           try {
@@ -635,7 +641,7 @@ export const handleArgs = (args: string[]) => {
             },
             disableDPoP: !argv.dpop,
             policyEndpoint: guessedPolicyEndpoint,
-            platformUrl: guessedPolicyEndpoint,
+            platformUrl: argv.platformUrl || guessedPolicyEndpoint,
           });
           try {
             log('SILLY', `Initialized client`);
@@ -685,6 +691,7 @@ export const handleArgs = (args: string[]) => {
           log('DEBUG', 'Running encrypt command');
           const authProvider = await processAuth(argv);
           log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
+          const guessedPolicyEndpoint = guessPolicyUrl(argv);
 
           const client = new OpenTDF({
             authProvider,
@@ -692,7 +699,8 @@ export const handleArgs = (args: string[]) => {
               defaultKASEndpoint: argv.kasEndpoint,
             },
             disableDPoP: !argv.dpop,
-            policyEndpoint: guessPolicyUrl(argv),
+            policyEndpoint: guessedPolicyEndpoint,
+            platformUrl: argv.platformUrl || guessedPolicyEndpoint,
           });
           try {
             log('SILLY', `Initialized client`);

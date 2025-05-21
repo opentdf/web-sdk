@@ -73,6 +73,7 @@ const kas: RequestListener = async (req, res) => {
       'range',
       'x-test-response',
       'x-test-response-message',
+      'roundtrip-test-response',
       'connect-protocol-version',
       'connect-streaming-protocol-version',
     ].join(', ')
@@ -86,26 +87,24 @@ const kas: RequestListener = async (req, res) => {
       res.statusCode = 200;
       console.log('[DEBUG] CORS response 200');
       res.end();
-    } else if (url.pathname === '/kas_public_key' || url.pathname === '/v2/kas_public_key') {
-      const v =
-        url.pathname === '/v2/kas_public_key'
-          ? url.searchParams.get('v')
-            ? url.searchParams.get('v')
-            : '2'
-          : '1';
-      if (req.method !== 'GET') {
-        console.log('[DEBUG] invalid method');
-        res.statusCode = 405;
-        res.end(`{"error": "Invalid method [${req.method}]"}`);
-      }
-      const algorithm = url.searchParams.get('algorithm') || 'rsa:2048';
+    } else if (req.headers['roundtrip-test-response']) {
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ status: 'ok' }));
+      return;
+    } else if (url.pathname === '/kas.AccessService/PublicKey') {
+      const body = await getBody(req);
+      const bodyText = new TextDecoder().decode(body);
+      const params = JSON.parse(bodyText);
+      const algorithm = params.algorithm || 'rsa:2048';
+
       if (!['ec:secp256r1', 'rsa:2048'].includes(algorithm)) {
         console.log(`[DEBUG] invalid algorithm [${algorithm}]`);
-        res.writeHead(404);
+        res.writeHead(400);
         res.end(`{"error": "Invalid algorithm [${algorithm}]"}`);
         return;
       }
-      const fmt = url.searchParams.get('fmt') || 'pkcs8';
+      const fmt = params.fmt || 'pkcs8';
       if (!['jwks', 'pkcs8'].includes(fmt)) {
         console.log(`[DEBUG] invalid fmt [${fmt}]`);
         res.writeHead(400);
@@ -116,8 +115,9 @@ const kas: RequestListener = async (req, res) => {
       res.statusCode = 200;
       const publicKey = 'ec:secp256r1' == algorithm ? Mocks.kasECCert : Mocks.kasPublicKey;
       const kid = 'ec:secp256r1' == algorithm ? 'e1' : 'r1';
-      res.end(JSON.stringify(v == '2' ? { kid, publicKey } : publicKey));
-    } else if (url.pathname === '/v2/rewrap') {
+      res.end(JSON.stringify({ kid, publicKey }));
+      return;
+    } else if (url.pathname === '/kas.AccessService/Rewrap') {
       // For testing error conditions x-test-response, immediate error returns, control by individual test
       if (req.headers['x-test-response']) {
         const statusCode = parseInt(req.headers['x-test-response'] as string);
@@ -148,7 +148,7 @@ const kas: RequestListener = async (req, res) => {
       // NOTE: Real KAS will validate authorization and dpop here. simple Invalid check
       if (req.headers['authorization'] == 'Invalid') {
         res.writeHead(401);
-        res.end(JSON.stringify({ error: 'Unauthorized' }));
+        res.end(JSON.stringify({ code: 'unauthenticated', message: 'unauthenticated' }));
         return;
       }
       const body = await getBody(req);
@@ -156,6 +156,14 @@ const kas: RequestListener = async (req, res) => {
       const { signedRequestToken } = JSON.parse(bodyText);
       // NOTE: Real KAS will verify JWT here
       const { requestBody } = jose.decodeJwt(signedRequestToken);
+
+      if (requestBody === 'mock-request-body') {
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ status: 'ok' }));
+        return;
+      }
+
       const rewrap = JSON.parse(requestBody as string) as RewrapBody;
       console.log('[INFO]: rewrap request body: ', rewrap);
       const clientPublicKey = await pemPublicToCrypto(rewrap.clientPublicKey);
@@ -211,7 +219,8 @@ const kas: RequestListener = async (req, res) => {
             entityWrappedKey: base64.encodeArrayBuffer(cek.asArrayBuffer()),
             metadata: { hello: 'world' },
           };
-          res.writeHead(200);
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify(reply));
           return;
         }
@@ -236,7 +245,8 @@ const kas: RequestListener = async (req, res) => {
           entityWrappedKey: base64.encodeArrayBuffer(entityWrappedKey),
           metadata: { hello: 'world' },
         };
-        res.writeHead(200);
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify(reply));
         return;
       }
@@ -304,7 +314,8 @@ const kas: RequestListener = async (req, res) => {
         sessionPublicKey: Mocks.kasECCert,
         metadata: { hello: 'people of earth' },
       };
-      res.writeHead(200);
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json');
       res.end(JSON.stringify(reply));
       return;
     } else if (url.pathname === '/file') {
@@ -348,13 +359,22 @@ const kas: RequestListener = async (req, res) => {
         res.setHeader('Content-Type', 'application/octet-stream');
         res.end(fullRange);
       }
-    } else if (url.pathname === '/attributes/*/fqn') {
+    } else if (url.pathname === '/policy.attributes.AttributesService/GetAttributeValuesByFqns') {
+      res.setHeader('Content-Type', 'application/json');
+      const token = req.headers['authorization'] as string;
+      if (!token || !token.startsWith('Bearer dummy-auth-token')) {
+        res.statusCode = 401;
+        res.end(JSON.stringify({ code: 'unauthenticated', message: 'unauthenticated' }));
+        return;
+      }
+
+      const body = await getBody(req);
+      const bodyText = new TextDecoder().decode(body);
+      const params = JSON.parse(bodyText);
       const fqnAttributeValues: Record<string, AttributeAndValue> = {};
       let skipped = 0;
-      for (const [k, v] of url.searchParams.entries()) {
-        if (k !== 'fqns') {
-          continue;
-        }
+
+      for (const v of params.fqns) {
         const value = valueFor(v);
         if (!value) {
           console.error(`unable to find definition for value [${v}]`);
@@ -369,25 +389,29 @@ const kas: RequestListener = async (req, res) => {
         }
         fqnAttributeValues[v] = { attribute, value };
       }
+
+      res.setHeader('Content-Type', 'application/json');
       if (skipped) {
         res.statusCode = 404;
-        res.end('Not Found');
+        res.end(JSON.stringify({ code: 'error', message: 'not found' }));
         return;
       }
-      res.writeHead(200);
+
+      res.statusCode = 200;
       res.end(JSON.stringify({ fqnAttributeValues }));
+      return;
     } else if (url.pathname === '/stop' && req.method === 'GET') {
       server.close(() => {
         console.log('Server gracefully terminated.');
       });
       res.statusCode = 200;
       res.end('Server stopped');
+      return;
     } else if (
-      url.pathname === '/policy.kasregistry.KeyAccessServerRegistryService/ListKeyAccessServers' ||
-      url.pathname === '/key-access-servers'
+      url.pathname === '/policy.kasregistry.KeyAccessServerRegistryService/ListKeyAccessServers'
     ) {
-      console.log('Listed Key Access Servers!');
-      res.writeHead(200);
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json');
       res.end(
         JSON.stringify({ keyAccessServers: [{ uri: 'http://localhost:3000' }], pagination: {} })
       );
@@ -406,12 +430,11 @@ const kas: RequestListener = async (req, res) => {
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify({ status: 'error' }));
         return;
-      } else {
-        res.statusCode = 200;
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ status: 'ok' }));
-        return;
       }
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ status: 'ok' }));
+      return;
     } else {
       console.log(`[DEBUG] invalid path [${url.pathname}]`);
       res.statusCode = 404;

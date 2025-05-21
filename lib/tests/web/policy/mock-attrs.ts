@@ -1,4 +1,10 @@
-import { Attribute, KeyAccessServer, Namespace, Value } from '../../../src/policy/attributes.js';
+import {
+  Attribute,
+  KeyAccessServer,
+  Namespace,
+  Value,
+  AttributeRuleType,
+} from '../../../src/policy/attributes.js';
 import { kasECCert, kasPublicKey } from '../../mocks/pems.js';
 
 export const kasAu = 'https://kas.au/';
@@ -68,6 +74,7 @@ export const kases: Record<string, KeyAccessServer> = Object.fromEntries(
   ].map((k) => [
     k,
     {
+      $typeName: 'policy.KeyAccessServer',
       uri: k,
       publicKey: {
         cached: {
@@ -85,16 +92,20 @@ export const kases: Record<string, KeyAccessServer> = Object.fromEntries(
           ],
         },
       },
-    },
+    } as unknown as KeyAccessServer,
   ])
 );
 
 export const namespaces: Record<string, Namespace> = {};
 for (const ns of [nsStandard, nsGranted, nsUngranted]) {
   namespaces[ns] = {
+    $typeName: 'policy.Namespace',
     fqn: ns,
     name: ns.split('//')[1],
     active: true,
+    grants: [],
+    id: '',
+    kasKeys: [],
   };
   if (ns == nsGranted) {
     namespaces[ns].grants = [kases[lessSpecificKas]];
@@ -107,21 +118,36 @@ export const attributes: Record<string, Attribute> = {
     namespace: namespaces[nsStandard],
     active: true,
     name: 'Classification',
-    rule: 'ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED',
+    rule: AttributeRuleType.UNSPECIFIED,
+    $typeName: 'policy.Attribute',
+    grants: [],
+    id: '',
+    kasKeys: [],
+    values: [],
   },
   [attrN2K]: {
     fqn: attrN2K,
     namespace: namespaces[nsStandard],
     active: true,
     name: 'Need to Know',
-    rule: 'ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF',
+    rule: AttributeRuleType.ALL_OF,
+    $typeName: 'policy.Attribute',
+    grants: [],
+    id: '',
+    kasKeys: [],
+    values: [],
   },
   [attrREL]: {
     fqn: attrREL,
     namespace: namespaces[nsStandard],
     active: true,
     name: 'Releasable To',
-    rule: 'ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF',
+    rule: AttributeRuleType.ANY_OF,
+    $typeName: 'policy.Attribute',
+    grants: [],
+    id: '',
+    kasKeys: [],
+    values: [],
   },
 };
 for (const fqn of [attrGG, attrGU, attrUG, attrUU]) {
@@ -134,6 +160,12 @@ for (const fqn of [attrGG, attrGU, attrUG, attrUU]) {
     namespace: namespaces[groups.ns],
     active: true,
     name: groups.at,
+    $typeName: 'policy.Attribute',
+    grants: [],
+    id: '',
+    kasKeys: [],
+    values: [],
+    rule: AttributeRuleType.UNSPECIFIED,
   };
   if (groups.at == 'granted') {
     attributes[fqn].grants = [kases[specifiedKas]];
@@ -230,14 +262,19 @@ for (const fqn of [
       break;
   }
 
-  const val = {
+  const val: Value = {
     attribute,
     value,
     fqn,
     active: true,
+    id: '',
+    kasKeys: [],
+    subjectMappings: [],
+    grants: [],
     ...(grants && { grants: grants.map((g) => kases[g]) }),
+    $typeName: 'policy.Value',
   };
-  attribute.values.push(val);
+
   values[fqn] = val;
 }
 

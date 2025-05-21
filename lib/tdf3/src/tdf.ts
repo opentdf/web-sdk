@@ -766,9 +766,8 @@ async function unwrapKey({
 
     const { entityWrappedKey, metadata, sessionPublicKey } = await fetchWrappedKey(
       url,
-      { signedRequestToken },
-      authProvider,
-      '0.0.1'
+      signedRequestToken,
+      authProvider
     );
 
     if (wrappingKeyAlgorithm === 'ec:secp256r1') {
@@ -778,7 +777,7 @@ async function unwrapKey({
         hkdfSalt: await ztdfSalt,
         hkdfHash: 'SHA-256',
       });
-      const wrappedKeyAndNonce = base64.decodeArrayBuffer(entityWrappedKey);
+      const wrappedKeyAndNonce = entityWrappedKey;
       const iv = wrappedKeyAndNonce.slice(0, 12);
       const wrappedKey = wrappedKeyAndNonce.slice(12);
 
@@ -789,7 +788,7 @@ async function unwrapKey({
         metadata,
       };
     }
-    const key = Binary.fromString(base64.decode(entityWrappedKey));
+    const key = Binary.fromArrayBuffer(entityWrappedKey);
     const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(
       key,
       ephemeralEncryptionKeys.privateKey
@@ -991,13 +990,6 @@ export async function readStream(cfg: DecryptConfiguration) {
   return decryptStreamFrom(cfg, overview);
 }
 
-// TODO: potentially might need fixing here
-// By the time this function is called the allow list will be already set.
-// Verify that this function is not exported in the sdk and only exported for internal use
-// Verify this during tests and PR
-// Remove this comment before merging!
-// https://www.youtube.com/watch?v=NGrLb6W5YOM
-// Don't leave me here all by myself!
 export async function decryptStreamFrom(
   cfg: DecryptConfiguration,
   { manifest, zipReader, centralDirectory }: InspectedTDFOverview

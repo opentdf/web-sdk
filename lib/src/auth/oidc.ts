@@ -222,7 +222,7 @@ export class AccessToken {
         return this.data.access_token;
       } catch (e) {
         console.log('access_token fails on user_info endpoint; attempting to renew', e);
-        if (this.data.refresh_token) {
+        if (this.data?.refresh_token) {
           // Prefer the latest refresh_token if present over creds passed in
           // to constructor
           this.config = {

@@ -3,6 +3,7 @@ import { exportSPKI, importX509 } from 'jose';
 import { base64 } from './encodings/index.js';
 import { pemCertToCrypto, pemPublicToCrypto } from './nanotdf-crypto/pemPublicToCrypto.js';
 import { ConfigurationError } from './errors.js';
+import { ConnectError } from '@connectrpc/connect';
 
 /**
  * Check to see if the given URL is 'secure'. This assumes:
@@ -138,4 +139,33 @@ export async function extractPemFromKeyString(keyString: string): Promise<string
   }
 
   return pem;
+}
+
+/**
+ * Extracts the error message from an RPC catch error.
+ */
+export function extractRpcErrorMessage(error: unknown): string {
+  if (error instanceof ConnectError || error instanceof Error) {
+    return error.message;
+  }
+  return 'Unknown network error occurred';
+}
+
+/**
+ * Converts a KAS endpoint URL to a platform URL.
+ * If the KAS endpoint ends with '/kas', it returns the host url
+ * Otherwise, it returns the original KAS endpoint.
+ */
+export function getPlatformUrlFromKasEndpoint(endpoint: string): string {
+  let result = endpoint || '';
+  if (result.endsWith('/')) {
+    result = rstrip(result, '/');
+  }
+  if (result.endsWith('/v2/rewrap')) {
+    result = result.slice(0, -10);
+  }
+  if (result.endsWith('/kas')) {
+    result = result.slice(0, -4);
+  }
+  return result;
 }

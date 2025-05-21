@@ -47,7 +47,9 @@ describe('Local roundtrip Tests', () => {
     const nanotdfParsed = await client.read({
       source: { type: 'buffer', location: cipherTextArray },
     });
-    expect(await nanotdfParsed.metadata).to.contain({ hello: 'world' });
+
+    const metadata = (await nanotdfParsed.metadata) as never;
+    expect(metadata['hello']['kind']['value']).to.equal('world');
 
     const actual = await new Response(nanotdfParsed).arrayBuffer();
     expect(new TextDecoder().decode(actual)).to.be.equal('hello world');
@@ -76,10 +78,13 @@ describe('Local roundtrip Tests', () => {
     const nanotdfParsed = await client.read({
       source: { type: 'buffer', location: cipherTextArray },
     });
-    expect(await nanotdfParsed.metadata).to.contain({ hello: 'world' });
+
+    const metadata = (await nanotdfParsed.metadata) as never;
+    expect(metadata['hello']['kind']['value']).to.equal('world');
 
     const actual = await new Response(nanotdfParsed).arrayBuffer();
-    expect(new TextDecoder().decode(actual)).to.be.equal('hello world');
+    const decoded = new TextDecoder().decode(actual);
+    expect(decoded).to.be.equal('hello world');
   });
   it(`ztdf roundtrip string without platform url nor allowedList should fail`, async () => {
     const client = new OpenTDF({
