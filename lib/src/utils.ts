@@ -161,11 +161,11 @@ export function getPlatformUrlFromKasEndpoint(endpoint: string): string {
   if (result.endsWith('/')) {
     result = rstrip(result, '/');
   }
-  if (result.endsWith('/kas')) {
-    result = result.slice(0, -4);
-  }
   if (result.endsWith('/v2/rewrap')) {
     result = result.slice(0, -10);
+  }
+  if (result.endsWith('/kas')) {
+    result = result.slice(0, -4);
   }
   return result;
 }
