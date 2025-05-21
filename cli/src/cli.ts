@@ -370,7 +370,7 @@ export const handleArgs = (args: string[]) => {
       .option('platformUrl', {
         group: 'Server Endpoints:',
         type: 'string',
-        description: 'URL to the platform (https://myplatform.net)',
+        description: 'Location of policy service and KAS (https://opentdf.demo)',
       })
       .option('oidcEndpoint', {
         group: 'Server Endpoints:',
