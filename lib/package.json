@@ -57,6 +57,11 @@
       "types": "./dist/types/src/platform.d.ts",
       "require": "./dist/cjs/src/platform.js",
       "import": "./dist/web/src/platform.js"
+    },
+    "./platform/*": {
+      "types": "./dist/types/src/platform/*",
+      "require": "./dist/cjs/src/platform/*",
+      "import": "./dist/web/src/platform/*"
     }
   },
   "scripts": {
