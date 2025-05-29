@@ -1,5 +1,6 @@
 import { AuthProvider } from '@opentdf/sdk';
 import { PlatformClient } from '@opentdf/sdk/platform';
+import { ActiveStateEnum } from '@opentdf/sdk/platform/common/common_pb.js';
 import { useState } from 'react';
 
 interface ConnectRpcExampleProps {
@@ -25,7 +26,16 @@ export function ConnectRpcExample({ authProvider }: ConnectRpcExampleProps) {
   };
 
   const handlePolicy = async () => {
-    const response = await platform.v1.attributes.listAttributes({});
+    const request = {
+      namespace: 'default',
+      state: ActiveStateEnum.ACTIVE,
+      pagination: {
+        limit: 100,
+        offset: 0,
+      },
+    };
+
+    const response = await platform.v1.attributes.listAttributes(request);
     setResult(response.attributes.map((s) => `${s}`).join(','));
   };
 
