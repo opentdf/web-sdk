@@ -1,10 +1,4 @@
-name: Build, Test, and Deliver Client
-
-env:
-  do_sonarscan: >-
-    ${{ (github.event_name == 'push' ||
-      github.event.pull_request.head.repo.full_name == github.repository) &&
-      github.actor != 'dependabot[bot]' }}
+name: "Build and Test Client"
 
 on:
   pull_request:
@@ -230,94 +224,6 @@ jobs:
       focus-sdk: js
       js-ref: ${{ github.ref }} latest lts
       platform-ref: main lts
-
-  deliver-ghp:
-    needs:
-      - lib
-      - cli
-      - web-app
-      - scripts
-      - platform-xtest
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    # To publish from a release or feature branch, remove the ref == condition below
-    if: >-
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')) ||
-      (github.event_name == 'release' && startsWith(github.ref, 'refs/tags/'))
-    outputs:
-      FULL_VERSION: ${{ steps.guess-build-metadata.outputs.FULL_VERSION }}
-      DIST_TAG: ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
-      TARGET_VERSION: ${{ steps.check-version.outputs.TARGET_VERSION }}
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
-      - uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e #v4.3.0
-        with:
-          node-version: '22'
-          registry-url: https://npm.pkg.github.com
-      - name: Check version number is same between tag, library, and/or release
-        id: check-version
-        run: |-
-          if [[ ${{ github.ref }} = refs/heads/release/* ]]; then
-            scripts/check-version-is.sh "${GITHUB_REF##*release/}"
-          elif [[ ${{ github.ref }} = refs/tags/sdk/v* ]]; then
-            scripts/check-version-is.sh "${GITHUB_REF_NAME#sdk/v}"
-          else
-            scripts/check-version-is.sh
-          fi
-      - name: Check version number is same between tag, library, and/or release
-        id: guess-build-metadata
-        run: |-
-          echo "FULL_VERSION=$(.github/workflows/gh-semver.sh)" >> $GITHUB_OUTPUT
-          echo "DIST_TAG=$(.github/workflows/guess-dist-tag.sh)" >> $GITHUB_OUTPUT
-      - run: make doc
-      - run: >-
-          echo "::notice file=lib/package.json::Will be published to
-          [GitHub Packages](https://github.com/opentdf/web-sdk/pkgs/npm/client)
-          as ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
-          with version=[${{ steps.guess-build-metadata.outputs.FULL_VERSION }}]"
-      - run: >-
-          .github/workflows/publish-to.sh
-          "${{ steps.guess-build-metadata.outputs.FULL_VERSION }}"
-          "${{ steps.guess-build-metadata.outputs.DIST_TAG }}"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: echo "- [Client Library](https://github.com/opentdf/web-sdk/pkgs/npm/client)">>$GITHUB_STEP_SUMMARY
-      - run: echo "- [Command Line Tool](https://github.com/opentdf/web-sdk/pkgs/npm/cli)">>$GITHUB_STEP_SUMMARY
-      - name: Publish documentation to gh-pages
-        uses: JamesIves/github-pages-deploy-action@6c2d9db40f9296374acc17b90404b6e8864128c8 #v4.7.3
-        with:
-          branch: gh-pages
-          folder: lib/dist/docs
-
-  deliver-npmjs:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    environment: npmjs
-    needs: deliver-ghp
-    if: >-
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')) ||
-      (github.event_name == 'release' && startsWith(github.ref, 'refs/tags/sdk/v'))
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
-      - uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e #v4.3.0
-        with:
-          node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
-      - run: make all
-      - run: >-
-          .github/workflows/publish-to.sh
-          "${{ needs.deliver-ghp.outputs.FULL_VERSION }}"
-          "${{ needs.deliver-ghp.outputs.DIST_TAG }}"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - run: >-
-          echo "- [Client Library](https://www.npmjs.com/package/@opentdf/sdk/v/${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
-      - run: >-
-          echo "- [Command Line Tool](https://www.npmjs.com/package/@opentdf/ctl/v/${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
-      - run: >-
-          echo "- [unpkg](https://unpkg.com/browse/@opentdf/sdk@${{ needs.deliver-ghp.outputs.FULL_VERSION }})">>$GITHUB_STEP_SUMMARY
 
   ci:
     needs:
