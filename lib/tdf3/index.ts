@@ -20,11 +20,8 @@ import {
   type PemKeyPair,
 } from './src/crypto/declarations.js';
 import { Client, Errors, TDF3Client } from './src/index.js';
-import {
-  type KeyInfo,
-  SplitKey,
-  type EncryptionInformation,
-} from './src/models/encryption-information.js';
+import { type EncryptionInformation } from './src/models/encryption-information.js';
+import { type KeyInfo, SplitKey } from './src/splits.js';
 import { AuthProvider, type HttpMethod, HttpRequest, withHeaders } from '../src/auth/auth.js';
 import { AesGcmCipher } from './src/ciphers/aes-gcm-cipher.js';
 import {
