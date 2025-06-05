@@ -246,7 +246,7 @@ jobs:
           FAILURES: ${{ contains(needs.*.result, 'failure') }}
         run: |
           if [[ "$FAILURES" == "true" ]]; then
-            echo "Some jobs failed, exiting with error."
+            echo "One or more jobs failed, exiting with error."
             exit 1
           else
             echo "All jobs succeeded"
