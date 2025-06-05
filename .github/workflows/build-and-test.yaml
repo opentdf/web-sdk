@@ -241,13 +241,5 @@ jobs:
     runs-on: ubuntu-22.04
     if: ${{ !cancelled() }}
     steps:
-      - name: "Check for job failures"
-        env: 
-          FAILURES: ${{ contains(needs.*.result, 'failure') }}
-        run: |
-          if [[ "$FAILURES" == "true" ]]; then
-            echo "One or more jobs failed, exiting with error."
-            exit 1
-          else
-            echo "All jobs succeeded"
-          fi
+      - if: contains(needs.*.result, 'failure')
+        run: echo "Failed due to ${{ contains(needs.*.result, 'failure') }}" && exit 1
