@@ -10,6 +10,8 @@ export class OIDCRefreshTokenProvider implements AuthProvider {
     clientId,
     refreshToken,
     oidcOrigin,
+    oidcTokenEndpoint,
+    oidcUserInfoEndpoint,
   }: Partial<RefreshTokenCredentials> & Omit<RefreshTokenCredentials, 'exchange'>) {
     if (!clientId || !refreshToken) {
       throw new ConfigurationError('refresh token or client id missing');
@@ -18,8 +20,10 @@ export class OIDCRefreshTokenProvider implements AuthProvider {
     this.oidcAuth = new AccessToken({
       exchange: 'refresh',
       clientId,
-      refreshToken: refreshToken,
+      refreshToken,
       oidcOrigin,
+      oidcTokenEndpoint,
+      oidcUserInfoEndpoint,
     });
     this.refreshToken = refreshToken;
   }
