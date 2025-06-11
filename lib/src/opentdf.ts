@@ -190,9 +190,6 @@ export type OpenTDFOptions = {
 
   // Configuration options for the collection header cache.
   rewrapCacheOptions?: RewrapCacheOptions;
-
-  // If true, use the BaseKey public key from WellKnownConfiguration, instead of the KasPublicKey.
-  useBasePublicKey?: boolean;
 };
 
 export type DecoratedStream = ReadableStream<Uint8Array> & {
@@ -307,7 +304,6 @@ export class OpenTDF {
   readonly policyEndpoint: string;
   readonly authProvider: AuthProvider;
   readonly dpopEnabled: boolean;
-  readonly useBasePublicKey: boolean;
   defaultCreateOptions: Omit<CreateOptions, 'source'>;
   defaultReadOptions: Omit<ReadOptions, 'source'>;
   readonly dpopKeys: Promise<CryptoKeyPair>;
@@ -325,13 +321,11 @@ export class OpenTDF {
     policyEndpoint,
     rewrapCacheOptions,
     platformUrl,
-    useBasePublicKey,
   }: OpenTDFOptions) {
     this.authProvider = authProvider;
     this.defaultCreateOptions = defaultCreateOptions || {};
     this.defaultReadOptions = defaultReadOptions || {};
     this.dpopEnabled = !!disableDPoP;
-    this.useBasePublicKey = !!useBasePublicKey;
     if (platformUrl) {
       this.platformUrl = platformUrl;
     } else {
@@ -695,12 +689,18 @@ class Collection {
     if (opts.ecdsaBindingKeyID) {
       throw new ConfigurationError('custom binding key not implemented');
     }
+
+    this.encryptOptions = {
+      useBasePublicKey: !!opts.useBasePublicKey,
+      ecdsaBinding: undefined as never,
+    };
+
     switch (opts.bindingType) {
       case 'ecdsa':
-        this.encryptOptions = { ecdsaBinding: true };
+        this.encryptOptions.ecdsaBinding = true;
         break;
       case 'gmac':
-        this.encryptOptions = { ecdsaBinding: false };
+        this.encryptOptions.ecdsaBinding = false;
         break;
     }
 

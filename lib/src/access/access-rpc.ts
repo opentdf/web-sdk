@@ -117,11 +117,17 @@ export async function fetchKasPubKey(
   }
 }
 
+/**
+ * Fetch the base public key from WellKnownConfiguration of the platform.
+ * @param kasEndpoint The KAS endpoint URL.
+ * @throws {ConfigurationError} If the KAS endpoint is not defined.
+ * @throws {NetworkError} If there is an error fetching the public key from the KAS endpoint.
+ * @returns The base public key information for the KAS endpoint.
+ */
 export async function fetchKasBasePubKey(kasEndpoint: string): Promise<KasPublicKeyInfo> {
   if (!kasEndpoint) {
     throw new ConfigurationError('KAS definition not found');
   }
-  // Logs insecure KAS. Secure is enforced in constructor
   validateSecureUrl(kasEndpoint);
 
   const platformUrl = getPlatformUrlFromKasEndpoint(kasEndpoint);

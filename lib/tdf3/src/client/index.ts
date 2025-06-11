@@ -462,7 +462,6 @@ export class Client {
         ? maxByteLimit
         : opts.byteLimit;
     const encryptionInformation = new SplitKey(new AesGcmCipher(this.cryptoService));
-    // TODO KAS: check here
     const splits: SplitStep[] = splitPlan?.length
       ? splitPlan
       : [{ kas: opts.defaultKASEndpoint ?? this.kasEndpoint }];

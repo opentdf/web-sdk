@@ -1,5 +1,5 @@
 import { type AuthProvider } from './auth/auth.js';
-import { ServiceError } from './errors.js';
+import { ConfigurationError, ServiceError } from './errors.js';
 import { RewrapResponse } from './platform/kas/kas_pb.js';
 import { getPlatformUrlFromKasEndpoint, validateSecureUrl } from './utils.js';
 
@@ -147,8 +147,12 @@ export async function fetchKeyAccessServers(
 }
 
 /**
- * If we have KAS url but not public key we can fetch it from KAS, fetching
- * the value from `${kas}/kas_public_key`.
+ * Fetch the EC (secp256r1) public key for a KAS endpoint.
+ * If `useBasePublicKey` is true, fetches the base public key.
+ * If `useBasePublicKey` is false or omitted, fetches the public key with the 'ec:secp256r1' algorithm.
+ * @param kasEndpoint The KAS endpoint URL.
+ * @param useBasePublicKey Whether to use the base public key.
+ * @returns The public key information for the KAS endpoint.
  */
 export async function fetchECKasPubKey(
   kasEndpoint: string,
@@ -156,10 +160,21 @@ export async function fetchECKasPubKey(
 ): Promise<KasPublicKeyInfo> {
   return fetchKasPubKey(kasEndpoint, {
     useBasePublicKey: !!useBasePublicKey,
-    algorithm: 'ec:secp256r1',
+    algorithm: useBasePublicKey ? undefined : 'ec:secp256r1',
   });
 }
 
+/**
+ * Fetch the public key for a KAS endpoint.
+ * This function will try to fetch the public key using both the RPC and legacy fetch methods,
+ * returning the first successful result.
+ * If `useBasePublicKey` is true, it will fetch the base public key instead of the specific algorithm.
+ * If `algorithm` is specified, it will fetch the public key for that algorithm.
+ * If both `useBasePublicKey` and `algorithm` are specified, it will throw a ConfigurationError.
+ * @param kasEndpoint The KAS endpoint URL.
+ * @param options Optional parameters for the request.
+ * @returns The public key information.
+ */
 export async function fetchKasPubKey(
   kasEndpoint: string,
   options?: {
@@ -167,6 +182,9 @@ export async function fetchKasPubKey(
     algorithm?: KasPublicKeyAlgorithm;
   }
 ): Promise<KasPublicKeyInfo> {
+  if (options?.useBasePublicKey && options?.algorithm) {
+    throw new ConfigurationError('useBasePublicKey and algorithm cannot be used together');
+  }
   if (options?.useBasePublicKey) {
     return await fetchKasBasePubKey(kasEndpoint);
   }

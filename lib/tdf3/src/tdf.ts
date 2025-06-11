@@ -202,9 +202,15 @@ export async function fetchKasPublicKey(
     algorithm?: KasPublicKeyAlgorithm;
   }
 ): Promise<KasPublicKeyInfo> {
+  let algorithm = options?.algorithm;
+  // default to RSA 2048 if no algorithm is specified and useBasePublicKey is not set
+  if (!options?.useBasePublicKey && !algorithm) {
+    algorithm = 'rsa:2048';
+  }
+
   return fetchKasPubKeyV2(kas, {
     useBasePublicKey: !!options?.useBasePublicKey,
-    algorithm: options?.algorithm || 'rsa:2048',
+    algorithm: algorithm,
   });
 }
 
