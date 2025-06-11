@@ -1,4 +1,5 @@
 import {
+  isPublicKeyAlgorithm,
   KasPublicKeyAlgorithm,
   KasPublicKeyInfo,
   noteInvalidPublicKey,
@@ -74,6 +75,16 @@ export async function fetchKeyAccessServers(
   return new OriginAllowList(serverUrls, false);
 }
 
+interface PlatformBaseKey {
+  kas_id?: string;
+  kas_uri: string;
+  public_key: {
+    algorithm: KasPublicKeyAlgorithm;
+    kid: string;
+    pem: string;
+  };
+}
+
 export async function fetchKasPubKey(
   kasEndpoint: string,
   algorithm?: KasPublicKeyAlgorithm
@@ -99,6 +110,50 @@ export async function fetchKasPubKey(
       url: kasEndpoint,
       algorithm: algorithm || 'rsa:2048',
       ...(kid && { kid }),
+    };
+    return result;
+  } catch (e) {
+    throw new NetworkError(`[${platformUrl}] [PublicKey] ${extractRpcErrorMessage(e)}`);
+  }
+}
+
+export async function fetchKasBasePubKey(kasEndpoint: string): Promise<KasPublicKeyInfo> {
+  if (!kasEndpoint) {
+    throw new ConfigurationError('KAS definition not found');
+  }
+  // Logs insecure KAS. Secure is enforced in constructor
+  validateSecureUrl(kasEndpoint);
+
+  const platformUrl = getPlatformUrlFromKasEndpoint(kasEndpoint);
+  const platform = new PlatformClient({
+    platformUrl,
+  });
+  try {
+    const { configuration } = await platform.v1.wellknown.getWellKnownConfiguration({});
+    const baseKey = configuration?.base_key as unknown as PlatformBaseKey;
+    if (
+      !baseKey ||
+      !baseKey.kas_uri ||
+      typeof baseKey.public_key !== 'object' ||
+      baseKey.public_key === null ||
+      !baseKey.public_key.pem ||
+      !baseKey.public_key.algorithm ||
+      !isPublicKeyAlgorithm(baseKey.public_key.algorithm)
+    ) {
+      throw new NetworkError(
+        `Invalid Platform Configuration: [${kasEndpoint}] is missing BaseKey in WellKnownConfiguration`
+      );
+    }
+
+    const result: KasPublicKeyInfo = {
+      key: noteInvalidPublicKey(
+        new URL(baseKey.kas_uri),
+        pemToCryptoPublicKey(baseKey.public_key.pem)
+      ),
+      publicKey: baseKey.public_key.pem,
+      url: baseKey.kas_uri,
+      algorithm: baseKey.public_key.algorithm,
+      kid: baseKey.public_key.kid,
     };
     return result;
   } catch (e) {

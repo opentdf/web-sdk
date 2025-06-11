@@ -3,7 +3,10 @@ import { ServiceError } from './errors.js';
 import { RewrapResponse } from './platform/kas/kas_pb.js';
 import { getPlatformUrlFromKasEndpoint, validateSecureUrl } from './utils.js';
 
-import { fetchKeyAccessServers as fetchKeyAccessServersRpc } from './access/access-rpc.js';
+import {
+  fetchKasBasePubKey,
+  fetchKeyAccessServers as fetchKeyAccessServersRpc,
+} from './access/access-rpc.js';
 import { fetchKeyAccessServers as fetchKeyAccessServersLegacy } from './access/access-fetch.js';
 import { fetchWrappedKey as fetchWrappedKeysRpc } from './access/access-rpc.js';
 import { fetchWrappedKey as fetchWrappedKeysLegacy } from './access/access-fetch.js';
@@ -147,17 +150,29 @@ export async function fetchKeyAccessServers(
  * If we have KAS url but not public key we can fetch it from KAS, fetching
  * the value from `${kas}/kas_public_key`.
  */
-export async function fetchECKasPubKey(kasEndpoint: string): Promise<KasPublicKeyInfo> {
-  return fetchKasPubKey(kasEndpoint, 'ec:secp256r1');
+export async function fetchECKasPubKey(
+  kasEndpoint: string,
+  useBasePublicKey?: boolean
+): Promise<KasPublicKeyInfo> {
+  return fetchKasPubKey(kasEndpoint, {
+    useBasePublicKey: !!useBasePublicKey,
+    algorithm: 'ec:secp256r1',
+  });
 }
 
 export async function fetchKasPubKey(
   kasEndpoint: string,
-  algorithm?: KasPublicKeyAlgorithm
+  options?: {
+    useBasePublicKey?: boolean;
+    algorithm?: KasPublicKeyAlgorithm;
+  }
 ): Promise<KasPublicKeyInfo> {
+  if (options?.useBasePublicKey) {
+    return await fetchKasBasePubKey(kasEndpoint);
+  }
   return await tryPromisesUntilFirstSuccess(
-    () => fetchKasPubKeyRpc(kasEndpoint, algorithm),
-    () => fetchKasPubKeyLegacy(kasEndpoint, algorithm)
+    () => fetchKasPubKeyRpc(kasEndpoint, options?.algorithm),
+    () => fetchKasPubKeyLegacy(kasEndpoint, options?.algorithm)
   );
 }
 

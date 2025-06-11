@@ -398,7 +398,7 @@ export class Client {
       keyMiddleware = defaultKeyMiddleware,
       streamMiddleware = async (stream: DecoratedReadableStream) => stream,
       tdfSpecVersion,
-      wrappingKeyAlgorithm = 'rsa:2048',
+      wrappingKeyAlgorithm,
     } = opts;
     const scope = opts.scope ?? { attributes: [], dissem: [] };
 
@@ -469,7 +469,12 @@ export class Client {
     encryptionInformation.keyAccess = await Promise.all(
       splits.map(async ({ kas, sid }) => {
         if (!(kas in this.kasKeys)) {
-          this.kasKeys[kas] = [fetchKasPublicKey(kas, wrappingKeyAlgorithm)];
+          this.kasKeys[kas] = [
+            fetchKasPublicKey(kas, {
+              useBasePublicKey: !!opts.useBasePublicKey,
+              algorithm: wrappingKeyAlgorithm,
+            }),
+          ];
         }
         const kasPublicKey = await Promise.any(this.kasKeys[kas]);
         if (kasPublicKey.algorithm !== wrappingKeyAlgorithm) {

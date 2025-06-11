@@ -67,6 +67,7 @@ describe('TDF', () => {
   });
 });
 
+// TODO BASEKEY: ADD TESTS FOR BaseKey
 describe('fetchKasPublicKey', async () => {
   it('missing kas names throw', async () => {
     try {

@@ -20,6 +20,7 @@ const authProvider = <AuthProvider>{
 const kasEndpoint = 'http://localhost:3000';
 const platformUrl = 'http://localhost:3000';
 
+// TODO BASEKEY add useBasePublicKey tests
 describe('Local roundtrip Tests', () => {
   it(`ztdf roundtrip string`, async () => {
     const client = new OpenTDF({
