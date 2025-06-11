@@ -11,10 +11,7 @@ on:
   push:
     branches:
       - main
-      - release/[0-9]+.[0-9]+.[0-9]+
-  release:
-    types:
-      - created
+      - "release/**"
 jobs:
   ccc:
     runs-on: ubuntu-latest
@@ -241,13 +238,14 @@ jobs:
     runs-on: ubuntu-22.04
     if: ${{ !cancelled() }}
     steps:
-      - name: "Check for job failures"
-        env: 
-          FAILURES: ${{ contains(needs.*.result, 'failure') }}
+
+      - name: "All jobs succeeded"
+        id: success
+        if: ${{ contains(needs.*.result, 'success') }}
         run: |
-          if [[ "$FAILURES" == "true" ]]; then
-            echo "One or more jobs failed, exiting with error."
-            exit 1
-          else
-            echo "All jobs succeeded"
-          fi
+          :
+
+      - name: "One or more jobs failed"
+        if: ${{ contains(needs.*.result, 'failure') }}
+        run: |
+          exit 1
