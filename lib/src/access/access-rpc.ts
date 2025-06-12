@@ -85,6 +85,21 @@ interface PlatformBaseKey {
   };
 }
 
+function isBaseKey(baseKey?: unknown): baseKey is PlatformBaseKey {
+  if (!baseKey) {
+    return false;
+  }
+  const bk = baseKey as PlatformBaseKey;
+  return (
+    !!bk.kas_uri &&
+    !!bk.public_key &&
+    typeof bk.public_key === 'object' &&
+    !!bk.public_key.pem &&
+    !!bk.public_key.algorithm &&
+    isPublicKeyAlgorithm(bk.public_key.algorithm)
+  );
+}
+
 export async function fetchKasPubKey(
   kasEndpoint: string,
   algorithm?: KasPublicKeyAlgorithm
@@ -137,15 +152,7 @@ export async function fetchKasBasePubKey(kasEndpoint: string): Promise<KasPublic
   try {
     const { configuration } = await platform.v1.wellknown.getWellKnownConfiguration({});
     const baseKey = configuration?.base_key as unknown as PlatformBaseKey;
-    if (
-      !baseKey ||
-      !baseKey.kas_uri ||
-      typeof baseKey.public_key !== 'object' ||
-      baseKey.public_key === null ||
-      !baseKey.public_key.pem ||
-      !baseKey.public_key.algorithm ||
-      !isPublicKeyAlgorithm(baseKey.public_key.algorithm)
-    ) {
+    if (!isBaseKey(baseKey)) {
       throw new NetworkError(
         `Invalid Platform Configuration: [${kasEndpoint}] is missing BaseKey in WellKnownConfiguration`
       );
