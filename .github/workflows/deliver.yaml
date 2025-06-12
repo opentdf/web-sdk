@@ -19,9 +19,6 @@ jobs:
       packages: write
       pages: write
     runs-on: ubuntu-latest
-    outputs:
-      FULL_VERSION: ${{ steps.guess-build-metadata.outputs.FULL_VERSION }}
-      DIST_TAG: ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
 
     steps:
       - name: "Checkout repo"
