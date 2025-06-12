@@ -197,9 +197,21 @@ export type RewrapResponse = {
  */
 export async function fetchKasPublicKey(
   kas: string,
-  algorithm?: KasPublicKeyAlgorithm
+  options?: {
+    useBasePublicKey: boolean;
+    algorithm?: KasPublicKeyAlgorithm;
+  }
 ): Promise<KasPublicKeyInfo> {
-  return fetchKasPubKeyV2(kas, algorithm || 'rsa:2048');
+  let algorithm = options?.algorithm;
+  // default to RSA 2048 if no algorithm is specified and useBasePublicKey is not set
+  if (!options?.useBasePublicKey && !algorithm) {
+    algorithm = 'rsa:2048';
+  }
+
+  return fetchKasPubKeyV2(kas, {
+    useBasePublicKey: !!options?.useBasePublicKey,
+    algorithm: algorithm,
+  });
 }
 
 export async function extractPemFromKeyString(

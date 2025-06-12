@@ -115,40 +115,81 @@ describe('Local roundtrip Tests', () => {
       return;
     }
   });
+  it(`ztdf roundtrip string with useBasePublicKey`, async () => {
+    const client = new OpenTDF({
+      authProvider,
+      platformUrl,
+      defaultCreateOptions: {
+        useBasePublicKey: true,
+      },
+    });
+    const cipherTextStream = await client.createZTDF({
+      autoconfigure: false,
+      defaultKASEndpoint: kasEndpoint,
+      source: { type: 'chunker', location: fromString('hello world') },
+    });
+    const cipherManifest = await cipherTextStream.manifest;
+    const kao = cipherManifest?.encryptionInformation?.keyAccess[0];
+    expect(kao).to.contain({
+      url: kasEndpoint,
+      kid: 'e1',
+      type: 'ec-wrapped',
+      protocol: 'kas',
+      schemaVersion: '1.0',
+    });
+    const cipherTextArray = new Uint8Array(await new Response(cipherTextStream).arrayBuffer());
+
+    const nanotdfParsed = await client.read({
+      source: { type: 'buffer', location: cipherTextArray },
+    });
+
+    const metadata = (await nanotdfParsed.metadata) as never;
+    expect(metadata['hello']['kind']['value']).to.equal('world');
+
+    const actual = await new Response(nanotdfParsed).arrayBuffer();
+    const decoded = new TextDecoder().decode(actual);
+    expect(decoded).to.be.equal('hello world');
+  });
+
   for (const ecdsaBinding of [false, true]) {
-    const bindingType = ecdsaBinding ? 'ecdsa' : 'gmac';
-    it(`nano roundtrip string (${bindingType} policy binding)`, async () => {
-      const client = new OpenTDF({
-        authProvider,
-        defaultReadOptions: {
-          allowedKASEndpoints: [kasEndpoint],
-        },
-      });
-      const cipherText = await client.createNanoTDF({
-        bindingType,
-        defaultKASEndpoint: kasEndpoint,
-        source: { type: 'chunker', location: fromString('hello world') },
-      });
-      const nanotdfParsed = await client.read({
-        source: { type: 'stream', location: cipherText },
-      });
-      expect(nanotdfParsed.header?.kas?.url).to.equal(kasEndpoint);
-      expect(nanotdfParsed.header?.kas?.identifier).to.equal('e1');
+    for (const useBasePublicKey of [true, false]) {
+      const bindingType = ecdsaBinding ? 'ecdsa' : 'gmac';
+      it(`nano roundtrip string (${bindingType} policy binding)`, async () => {
+        const client = new OpenTDF({
+          authProvider,
+          defaultCreateOptions: {
+            useBasePublicKey,
+          },
+          defaultReadOptions: {
+            allowedKASEndpoints: [kasEndpoint],
+          },
+        });
+        const cipherText = await client.createNanoTDF({
+          bindingType,
+          defaultKASEndpoint: kasEndpoint,
+          source: { type: 'chunker', location: fromString('hello world') },
+        });
+        const nanotdfParsed = await client.read({
+          source: { type: 'stream', location: cipherText },
+        });
+        expect(nanotdfParsed.header?.kas?.url).to.equal(kasEndpoint);
+        expect(nanotdfParsed.header?.kas?.identifier).to.equal('e1');
 
-      const actual = await new Response(nanotdfParsed).arrayBuffer();
-      expect(new TextDecoder().decode(actual)).to.be.equal('hello world');
-    });
-    it(`roundtrip string (${bindingType} policy binding, deprecated API)`, async () => {
-      const client = new NanoTDFClient({ authProvider, kasEndpoint, platformUrl });
-      const cipherText = await client.encrypt('hello world', { ecdsaBinding });
-      const client2 = new NanoTDFClient({ authProvider, kasEndpoint, platformUrl });
-      const nanotdfParsed = NanoTDF.from(cipherText);
+        const actual = await new Response(nanotdfParsed).arrayBuffer();
+        expect(new TextDecoder().decode(actual)).to.be.equal('hello world');
+      });
+      it(`roundtrip string (${bindingType} policy binding, deprecated API)`, async () => {
+        const client = new NanoTDFClient({ authProvider, kasEndpoint, platformUrl });
+        const cipherText = await client.encrypt('hello world', { ecdsaBinding });
+        const client2 = new NanoTDFClient({ authProvider, kasEndpoint, platformUrl });
+        const nanotdfParsed = NanoTDF.from(cipherText);
 
-      expect(nanotdfParsed.header.kas.url).to.equal(kasEndpoint);
-      expect(nanotdfParsed.header.kas.identifier).to.equal('e1');
+        expect(nanotdfParsed.header.kas.url).to.equal(kasEndpoint);
+        expect(nanotdfParsed.header.kas.identifier).to.equal('e1');
 
-      const actual = await client2.decrypt(cipherText);
-      expect(new TextDecoder().decode(actual)).to.be.equal('hello world');
-    });
+        const actual = await client2.decrypt(cipherText);
+        expect(new TextDecoder().decode(actual)).to.be.equal('hello world');
+      });
+    }
   }
 });

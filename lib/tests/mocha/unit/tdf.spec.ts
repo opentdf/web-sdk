@@ -96,12 +96,35 @@ describe('fetchKasPublicKey', async () => {
 
   it('invalid algorithms', async () => {
     try {
-      const res = await TDF.fetchKasPublicKey('http://localhost:3000', 'rsa:512' as never); //ts-ignore
+      const res = await TDF.fetchKasPublicKey('http://localhost:3000', {
+        algorithm: 'rsa:512' as never,
+      } as never);
       console.log(res);
       expect.fail('did not throw');
     } catch (e) {
-      // TODO RPC: check why error thrown is failed to fetch
       expect(!!e).to.equal(true);
+    }
+  });
+
+  it('localhost BaseKey', async () => {
+    const pk2 = await TDF.fetchKasPublicKey('http://localhost:3000', {
+      useBasePublicKey: true,
+    });
+    expect(pk2.publicKey).to.include('BEGIN CERTIFICATE');
+    expect(pk2.kid).to.equal('e1');
+  });
+
+  it('using algorithms with useBasePublicKey', async () => {
+    try {
+      const res = await TDF.fetchKasPublicKey('http://localhost:3000', {
+        algorithm: 'rsa:512' as never,
+      } as never);
+      console.log(res);
+      expect.fail('did not throw');
+    } catch (e) {
+      expect(() => {
+        throw e;
+      }).to.throw(ConfigurationError);
     }
   });
 });

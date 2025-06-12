@@ -421,7 +421,21 @@ const kas: RequestListener = async (req, res) => {
     ) {
       res.statusCode = 200;
       res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ health: { endpoint: '/healthz' } }));
+      res.end(
+        JSON.stringify({
+          configuration: {
+            base_key: {
+              kas_id: '34f2acdc-3d9c-4e92-80b6-90fe4dc9afcb',
+              kas_uri: 'http://localhost:3000',
+              public_key: {
+                algorithm: 'ec:secp256r1',
+                kid: 'e1',
+                pem: Mocks.kasECCert,
+              },
+            },
+          },
+        })
+      );
       return;
     } else if (url.pathname === '/policy.attributes.AttributesService/ListAttributes') {
       const token = req.headers['authorization'] as string;

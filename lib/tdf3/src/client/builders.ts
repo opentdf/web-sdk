@@ -51,6 +51,7 @@ export type EncryptParams = {
   streamMiddleware?: EncryptStreamMiddleware;
   assertionConfigs?: AssertionConfig[];
   defaultKASEndpoint?: string;
+  useBasePublicKey?: boolean;
 
   // Preferred wrapping key algorithm. Used when KID resolution is not available.
   wrappingKeyAlgorithm?: KasPublicKeyAlgorithm;

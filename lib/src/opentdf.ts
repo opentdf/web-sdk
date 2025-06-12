@@ -75,6 +75,9 @@ export type CreateOptions = {
 
   // Source of plaintext data
   source: Source;
+
+  // If true, use the BaseKey public key from WellKnownConfiguration, instead of the KasPublicKey.
+  useBasePublicKey?: boolean;
 };
 
 export type CreateNanoTDFOptions = CreateOptions & {
@@ -335,7 +338,7 @@ export class OpenTDF {
     this.tdf3Client = new TDF3Client({
       authProvider,
       dpopKeys,
-      kasEndpoint: 'https://disallow.all.invalid',
+      kasEndpoint: this.platformUrl || 'https://disallow.all.invalid',
       policyEndpoint,
     });
     this.dpopKeys =
@@ -396,6 +399,7 @@ export class OpenTDF {
       windowSize: opts.windowSize,
       wrappingKeyAlgorithm: opts.wrappingKeyAlgorithm,
       tdfSpecVersion: opts.tdfSpecVersion,
+      useBasePublicKey: opts.useBasePublicKey,
     });
     const stream: DecoratedStream = oldStream.stream;
     stream.manifest = Promise.resolve(oldStream.manifest);
@@ -522,14 +526,17 @@ class NanoTDFReader {
       r.header = nanotdf.header;
       return r;
     }
+    const platformUrl = this.opts.platformUrl || this.outer.platformUrl;
+    const kasEndpoint =
+      this.opts.allowedKASEndpoints?.[0] || platformUrl || 'https://disallow.all.invalid';
     const nc = new Client({
       allowedKases: this.opts.allowedKASEndpoints,
       authProvider: this.outer.authProvider,
       ignoreAllowList: this.opts.ignoreAllowlist,
       dpopEnabled: this.outer.dpopEnabled,
       dpopKeys: this.outer.dpopKeys,
-      kasEndpoint: this.opts.allowedKASEndpoints?.[0] || 'https://disallow.all.invalid',
-      platformUrl: this.opts.platformUrl || this.outer.platformUrl,
+      kasEndpoint,
+      platformUrl,
     });
     // TODO: The version number should be fetched from the API
     const version = '0.0.1';
@@ -682,18 +689,27 @@ class Collection {
     if (opts.ecdsaBindingKeyID) {
       throw new ConfigurationError('custom binding key not implemented');
     }
+
+    this.encryptOptions = {
+      useBasePublicKey: !!opts.useBasePublicKey,
+      ecdsaBinding: undefined as never,
+    };
+
     switch (opts.bindingType) {
       case 'ecdsa':
-        this.encryptOptions = { ecdsaBinding: true };
+        this.encryptOptions.ecdsaBinding = true;
         break;
       case 'gmac':
-        this.encryptOptions = { ecdsaBinding: false };
+        this.encryptOptions.ecdsaBinding = false;
         break;
     }
 
+    const kasEndpoint =
+      opts.defaultKASEndpoint || opts.platformUrl || 'https://disallow.all.invalid';
+
     this.client = new NanoTDFDatasetClient({
       authProvider,
-      kasEndpoint: opts.defaultKASEndpoint ?? 'https://disallow.all.invalid',
+      kasEndpoint: kasEndpoint,
       maxKeyIterations: opts.maxKeyIterations,
       platformUrl: opts.platformUrl,
     });

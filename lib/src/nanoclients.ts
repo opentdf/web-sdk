@@ -18,6 +18,7 @@ import { type AttributeObject } from '../tdf3/src/models/attribute.js';
 // Define the EncryptOptions type
 export type EncryptOptions = {
   ecdsaBinding: boolean;
+  useBasePublicKey?: boolean;
 };
 
 // Define default options
@@ -108,7 +109,7 @@ export class NanoTDFClient extends Client {
     delete this.iv;
 
     if (!this.kasPubKey) {
-      this.kasPubKey = await fetchECKasPubKey(this.kasUrl);
+      this.kasPubKey = await fetchECKasPubKey(this.kasUrl, options?.useBasePublicKey);
     }
 
     // Create a policy for the tdf
@@ -243,7 +244,7 @@ export class NanoTDFDatasetClient extends Client {
       const ephemeralKeyPair = await this.ephemeralKeyPair;
 
       if (!this.kasPubKey) {
-        this.kasPubKey = await fetchECKasPubKey(this.kasUrl);
+        this.kasPubKey = await fetchECKasPubKey(this.kasUrl, options?.useBasePublicKey);
       }
 
       // Create a policy for the tdf
