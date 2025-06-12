@@ -36,6 +36,8 @@ export const clientSecretAuthProvider = async (
     clientId: clientConfig.clientId,
     clientSecret: clientConfig.clientSecret,
     oidcOrigin: clientConfig.oidcOrigin,
+    oidcTokenEndpoint: clientConfig.oidcTokenEndpoint,
+    oidcUserInfoEndpoint: clientConfig.oidcUserInfoEndpoint,
   });
 };
 
@@ -62,6 +64,8 @@ export const externalAuthProvider = async (
     clientId: clientConfig.clientId,
     externalJwt: clientConfig.externalJwt,
     oidcOrigin: clientConfig.oidcOrigin,
+    oidcTokenEndpoint: clientConfig.oidcTokenEndpoint,
+    oidcUserInfoEndpoint: clientConfig.oidcUserInfoEndpoint,
   });
 };
 
@@ -86,6 +90,8 @@ export const refreshAuthProvider = async (
     clientId: clientConfig.clientId,
     refreshToken: clientConfig.refreshToken,
     oidcOrigin: clientConfig.oidcOrigin,
+    oidcTokenEndpoint: clientConfig.oidcTokenEndpoint,
+    oidcUserInfoEndpoint: clientConfig.oidcUserInfoEndpoint,
   });
 };
 
