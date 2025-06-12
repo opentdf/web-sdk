@@ -79,7 +79,7 @@ export const resolveKasInfo = async (
   kid?: string
 ): Promise<KasPublicKeyInfo> => {
   const k: CryptoKey = await pemToCryptoPublicKey(pem);
-  const algorithm = keyAlgorithmToPublicKeyAlgorithm(k.algorithm);
+  const algorithm = keyAlgorithmToPublicKeyAlgorithm(k);
   return {
     key: Promise.resolve(k),
     publicKey: pem,
