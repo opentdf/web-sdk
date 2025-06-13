@@ -416,11 +416,11 @@ export class Client {
 
       if (!avs.length && fqns.length) {
         // Hydrate avs from policy endpoint givnen the fqns
-        if (!this.policyEndpoint) {
-          throw new ConfigurationError('policyEndpoint not set in TDF3 Client constructor');
+        if (!this.platformUrl) {
+          throw new ConfigurationError('platformUrl not set in TDF3 Client constructor');
         }
         avs = await attributeFQNsAsValues(
-          this.policyEndpoint,
+          this.platformUrl,
           this.authProvider as AuthProvider,
           ...fqns
         );

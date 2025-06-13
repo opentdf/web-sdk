@@ -336,6 +336,7 @@ export class OpenTDF {
       authProvider,
       dpopKeys,
       kasEndpoint: 'https://disallow.all.invalid',
+      platformUrl,
       policyEndpoint,
     });
     this.dpopKeys =
