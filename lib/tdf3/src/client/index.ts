@@ -480,8 +480,11 @@ export class Client {
         let type: KeyAccessType;
         switch (kasPublicKey.algorithm) {
           case 'rsa:2048':
+          case 'rsa:4096':
             type = 'wrapped';
             break;
+          case 'ec:secp384r1':
+          case 'ec:secp521r1':
           case 'ec:secp256r1':
             type = 'ec-wrapped';
             break;
