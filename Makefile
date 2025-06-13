@@ -1,5 +1,5 @@
 
-version=0.3.2
+version=0.9.0
 extras=cli web-app
 pkgs=lib $(extras)
 
