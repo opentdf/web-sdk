@@ -39,30 +39,44 @@ export async function fetchWrappedKey(
   );
 }
 
-export type KasPublicKeyAlgorithm = 'ec:secp256r1' | 'rsa:2048';
+export type KasPublicKeyAlgorithm =
+  | 'ec:secp256r1'
+  | 'ec:secp384r1'
+  | 'ec:secp521r1'
+  | 'rsa:2048'
+  | 'rsa:4096';
 
 export const isPublicKeyAlgorithm = (a: string): a is KasPublicKeyAlgorithm => {
   return a === 'ec:secp256r1' || a === 'rsa:2048';
 };
 
-export const keyAlgorithmToPublicKeyAlgorithm = (a: KeyAlgorithm): KasPublicKeyAlgorithm => {
+export const keyAlgorithmToPublicKeyAlgorithm = (k: CryptoKey): KasPublicKeyAlgorithm => {
+  const a = k.algorithm;
   if (a.name === 'ECDSA' || a.name === 'ECDH') {
     const eca = a as EcKeyAlgorithm;
-    if (eca.namedCurve === 'P-256') {
-      return 'ec:secp256r1';
+    switch (eca.namedCurve) {
+      case 'P-256':
+        return 'ec:secp256r1';
+      case 'P-384':
+        return 'ec:secp384r1';
+      case 'P-521':
+        return 'ec:secp521r1';
+      default:
+        throw new Error(`unsupported EC curve: ${eca.namedCurve}`);
     }
-    throw new Error(`unsupported EC curve: ${eca.namedCurve}`);
   }
-  if (a.name === 'RSA-OAEP') {
+  if (a.name === 'RSA-OAEP' || a.name === 'RSASSA-PKCS1-v1_5') {
     const rsaa = a as RsaHashedKeyAlgorithm;
-    if (rsaa.modulusLength === 2048) {
-      // if (rsaa.hash.name !== 'RSASSA-PKCS1-v1_5') {
-      //   throw new Error(`unsupported RSA hash: ${rsaa.hash.name}`);
-      // }
-      if (rsaa.publicExponent.toString() !== '1,0,1') {
-        throw new Error(`unsupported RSA public exponent: ${rsaa.publicExponent}`);
-      }
-      return 'rsa:2048';
+    if (rsaa.publicExponent.toString() !== '1,0,1') {
+      throw new Error(`unsupported RSA public exponent: ${rsaa.publicExponent}`);
+    }
+    switch (rsaa.modulusLength) {
+      case 2048:
+        return 'rsa:2048';
+      case 4096:
+        return 'rsa:4096';
+      default:
+        throw new Error(`unsupported RSA modulus length: ${rsaa.modulusLength}`);
     }
   }
   throw new Error(`unsupported key algorithm: ${a.name}`);
@@ -74,6 +88,14 @@ export const publicKeyAlgorithmToJwa = (a: KasPublicKeyAlgorithm): string => {
       return 'ES256';
     case 'rsa:2048':
       return 'RS256';
+    case 'rsa:4096':
+      return 'RS512';
+    case 'ec:secp384r1':
+      return 'ES384';
+    case 'ec:secp521r1':
+      return 'ES512';
+    default:
+      throw new Error(`unsupported public key algorithm: ${a}`);
   }
 };
 
