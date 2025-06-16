@@ -269,6 +269,7 @@ for (const fqn of [
     active: true,
     id: '',
     kasKeys: [],
+    resourceMappings: [],
     subjectMappings: [],
     grants: [],
     ...(grants && { grants: grants.map((g) => kases[g]) }),

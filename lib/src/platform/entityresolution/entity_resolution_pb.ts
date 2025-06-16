@@ -213,6 +213,8 @@ export const CreateEntityChainFromJwtResponseSchema: GenMessage<CreateEntityChai
  */
 export const EntityResolutionService: GenService<{
   /**
+   * Deprecated: use v2 ResolveEntities instead
+   *
    * @generated from rpc entityresolution.EntityResolutionService.ResolveEntities
    */
   resolveEntities: {
@@ -221,6 +223,8 @@ export const EntityResolutionService: GenService<{
     output: typeof ResolveEntitiesResponseSchema;
   },
   /**
+   * Deprecated: use v2 CreateEntityChainsFromTokens instead
+   *
    * @generated from rpc entityresolution.EntityResolutionService.CreateEntityChainFromJwt
    */
   createEntityChainFromJwt: {
