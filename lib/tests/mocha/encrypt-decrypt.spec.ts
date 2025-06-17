@@ -427,6 +427,16 @@ describe('encrypt decrypt test', async function () {
       expect(metadataValue).toHaveProperty('sdkVersion');
       expect(metadataValue).toHaveProperty('browserUserAgent');
       expect(metadataValue).toHaveProperty('platform');
+
+      // Compare Values
+      const systemMetadata = getSystemMetadataAssertionConfig();
+      expect(systemMetadata.id).toBe(systemAssertion.id);
+      expect(systemMetadata.type).toBe(systemAssertion.type);
+      expect(systemMetadata.scope).toBe(systemAssertion.scope);
+      expect(systemMetadata.statement.format).toBe(systemAssertion.statement.format);
+      expect(systemMetadata.statement.schema).toBe(systemAssertion.statement.schema);
+      expect(systemMetadata.statement.value).toBe(systemAssertion.statement.value);
+      expect(systemMetadata.appliesToState).toBe(systemAssertion.appliesToState);
     }
 
     const decryptStream = await client.decrypt({
