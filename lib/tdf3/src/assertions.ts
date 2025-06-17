@@ -232,12 +232,13 @@ export type AssertionVerificationKeys = {
  * Metadata structure for system information.
  */
 type SystemMetadata = {
-  tdfSpecVersion: string;
-  creationDate: string;
-  os?: string;
-  sdkVersion: string;
-  browserUserAgent?: string; // Equivalent for GoVersion/runtime information
-  platform?: string; // Equivalent for Architecture/runtime information
+  tdf_spec_version: string;
+  creation_date: string;
+  operating_system?: string;
+  sdk_version: string;
+  browser_user_agent?: string;
+  // platform is often the same as os in browser, but kept for consistency with original Go struct
+  platform?: string;
 };
 
 /**
@@ -254,11 +255,11 @@ export function getSystemMetadataAssertionConfig(): AssertionConfig {
   }
 
   const metadata: SystemMetadata = {
-    tdfSpecVersion: tdfSpecVersion,
-    creationDate: new Date().toISOString(),
-    os: platformIdentifier,
-    sdkVersion: `JS-${sdkVersion}`, // Prefixed to distinguish from Go SDK version
-    browserUserAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+    tdf_spec_version: tdfSpecVersion,
+    creation_date: new Date().toISOString(),
+    operating_system: platformIdentifier,
+    sdk_version: `JS-${sdkVersion}`, // Prefixed to distinguish from Go SDK version
+    browser_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
     platform: platformIdentifier,
   };
 

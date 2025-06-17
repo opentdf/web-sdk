@@ -405,6 +405,9 @@ describe('encrypt decrypt test', async function () {
       systemMetadataAssertion: true, // Enable the system metadata assertion
     });
 
+    // Consume the stream into a buffer. This also ensures manifest population is complete.
+    const encryptedTdfBuffer = await encryptedStream.toBuffer();
+
     // Verify the manifest for the system metadata assertion
     const manifest = encryptedStream.manifest;
     assert.isArray(manifest.assertions, 'Manifest assertions should be an array');
@@ -425,11 +428,11 @@ describe('encrypt decrypt test', async function () {
       );
 
       const metadataValue = JSON.parse(systemAssertion.statement.value);
-      assert.property(metadataValue, 'tdfSpecVersion', 'Metadata should have tdfSpecVersion');
-      assert.property(metadataValue, 'creationDate', 'Metadata should have creationDate');
-      assert.property(metadataValue, 'os', 'Metadata should have os');
-      assert.property(metadataValue, 'sdkVersion', 'Metadata should have sdkVersion');
-      assert.property(metadataValue, 'browserUserAgent', 'Metadata should have browserUserAgent');
+      assert.property(metadataValue, 'tdf_spec_version', 'Metadata should have tdfSpecVersion');
+      assert.property(metadataValue, 'creation_date', 'Metadata should have creationDate');
+      assert.property(metadataValue, 'operating_system', 'Metadata should have os');
+      assert.property(metadataValue, 'sdk_version', 'Metadata should have sdkVersion');
+      assert.property(metadataValue, 'browser_user_agent', 'Metadata should have browserUserAgent');
       assert.property(metadataValue, 'platform', 'Metadata should have platform');
 
       // Compare Values
@@ -448,19 +451,46 @@ describe('encrypt decrypt test', async function () {
         'Statement schema should match'
       );
       assert.equal(
-        systemMetadata.statement.value,
-        systemAssertion.statement.value,
-        'Statement value should match'
-      );
-      assert.equal(
         systemMetadata.appliesToState,
         systemAssertion.appliesToState,
         'AppliesToState should match'
       );
+
+      // Parse statement.value and compare individual fields, ignoring creationDate for direct equality
+      const expectedMetadataValue = JSON.parse(systemMetadata.statement.value);
+      const actualMetadataValue = JSON.parse(systemAssertion.statement.value);
+
+      assert.isString(actualMetadataValue.creation_date, 'creation_date should be a string');
+      assert.isNotEmpty(actualMetadataValue.creation_date, 'creation_date should not be empty');
+      assert.equal(
+        actualMetadataValue.tdf_spec_version,
+        expectedMetadataValue.tdf_spec_version,
+        'tdf_spec_version should match'
+      );
+      assert.equal(
+        actualMetadataValue.operating_system,
+        expectedMetadataValue.operating_system,
+        'operating_system should match'
+      );
+      assert.equal(
+        actualMetadataValue.sdk_version,
+        expectedMetadataValue.sdk_version,
+        'sdk_version should match'
+      );
+      assert.equal(
+        actualMetadataValue.browser_user_agent,
+        expectedMetadataValue.browser_user_agent,
+        'browser_user_agent should match'
+      );
+      assert.equal(
+        actualMetadataValue.platform,
+        expectedMetadataValue.platform,
+        'platform should match'
+      );
     }
 
     const decryptStream = await client.decrypt({
-      source: { type: 'stream', location: encryptedStream.stream },
+      source: { type: 'buffer', location: encryptedTdfBuffer },
     });
 
     const { value: decryptedText } = await decryptStream.stream.getReader().read();
