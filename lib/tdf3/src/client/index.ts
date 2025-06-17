@@ -33,7 +33,6 @@ import {
   type DecryptStreamMiddleware,
   type EncryptKeyMiddleware,
   type EncryptStreamMiddleware,
-  type SplitStep,
 } from './builders.js';
 import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 
@@ -71,6 +70,11 @@ const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
 const defaultClientConfig = { oidcOrigin: '', cryptoService: defaultCryptoService };
 
 const getFirstTwoBytes = async (chunker: Chunker) => new TextDecoder().decode(await chunker(0, 2));
+
+async function algorithmFromPEM(pem: string) {
+  const k: CryptoKey = await pemToCryptoPublicKey(pem);
+  return keyAlgorithmToPublicKeyAlgorithm(k);
+}
 
 // Convert a PEM string to a CryptoKey
 export const resolveKasInfo = async (
@@ -227,6 +231,18 @@ function asPolicy(scope: Scope): Policy {
   };
 }
 
+const fetchKasKeyWithCache = (
+  cache: Record<string, ReturnType<typeof fetchKasPublicKey>>,
+  ...params: Parameters<typeof fetchKasPublicKey>
+): ReturnType<typeof fetchKasPublicKey> => {
+  const cacheKey = JSON.stringify(params);
+  if (cacheKey in cache) {
+    return cache[cacheKey];
+  }
+  cache[cacheKey] = fetchKasPublicKey(...params);
+  return cache[cacheKey];
+};
+
 export class Client {
   readonly cryptoService: CryptoService;
 
@@ -252,7 +268,7 @@ export class Client {
    */
   readonly platformUrl?: string;
 
-  readonly kasKeys: Record<string, Promise<KasPublicKeyInfo>[]> = {};
+  readonly kasKeyInfoCache: Record<string, ReturnType<typeof fetchKasPublicKey>> = {};
 
   readonly easEndpoint?: string;
 
@@ -360,11 +376,6 @@ export class Client {
       cryptoService: this.cryptoService,
       dpopKeys: clientConfig.dpopKeys,
     });
-    if (clientConfig.kasPublicKey) {
-      this.kasKeys[this.kasEndpoint] = [
-        resolveKasInfo(clientConfig.kasPublicKey, this.kasEndpoint),
-      ];
-    }
   }
 
   /**
@@ -396,6 +407,7 @@ export class Client {
       mimeType = 'unknown',
       windowSize = DEFAULT_SEGMENT_SIZE,
       keyMiddleware = defaultKeyMiddleware,
+      splitPlan: preconfiguredSplitPlan,
       streamMiddleware = async (stream: DecoratedReadableStream) => stream,
       tdfSpecVersion,
       wrappingKeyAlgorithm = 'rsa:2048',
@@ -405,8 +417,27 @@ export class Client {
     const policyObject = asPolicy(scope);
     validatePolicyObject(policyObject);
 
-    let splitPlan = opts.splitPlan;
-    if (!splitPlan && autoconfigure) {
+    const splitPlan: {
+      kas: string;
+      kid?: string;
+      pem: string;
+      sid?: string;
+    }[] = [];
+    if (preconfiguredSplitPlan) {
+      for (const preconfiguredSplit of preconfiguredSplitPlan) {
+        const kasPublicKeyInfo = await fetchKasKeyWithCache(
+          this.kasKeyInfoCache,
+          preconfiguredSplit.kas,
+          wrappingKeyAlgorithm
+        );
+        splitPlan.push({
+          kas: kasPublicKeyInfo.url,
+          kid: kasPublicKeyInfo.kid,
+          pem: kasPublicKeyInfo.publicKey,
+          sid: preconfiguredSplit.sid,
+        });
+      }
+    } else if (autoconfigure) {
       let avs: Value[] = scope.attributeValues ?? [];
       const fqns: string[] = scope.attributes
         ? scope.attributes.map((attribute) =>
@@ -415,7 +446,7 @@ export class Client {
         : [];
 
       if (!avs.length && fqns.length) {
-        // Hydrate avs from policy endpoint givnen the fqns
+        // Hydrate avs from policy endpoint given the fqns
         if (!this.platformUrl) {
           throw new ConfigurationError('platformUrl not set in TDF3 Client constructor');
         }
@@ -441,17 +472,52 @@ export class Client {
         );
       }
       const detailedPlan = plan(avs);
-      splitPlan = detailedPlan.map((kat) => {
-        const { kas, sid } = kat;
-        const pubKey = kas.publicKey?.publicKey;
-        if (pubKey?.case === 'cached' && pubKey.value.keys && !(kas.uri in this.kasKeys)) {
-          const keys = pubKey.value.keys;
-          if (keys?.length) {
-            this.kasKeys[kas.uri] = keys.map((key) => resolveKasInfo(key.pem, kas.uri, key.kid));
-          }
+      for (const item of detailedPlan) {
+        if (!item.kas.publicKey) {
+          const kasPublicKeyInfo = await fetchKasKeyWithCache(
+            this.kasKeyInfoCache,
+            item.kas.uri,
+            wrappingKeyAlgorithm
+          );
+          splitPlan.push({
+            kas: kasPublicKeyInfo.url,
+            kid: kasPublicKeyInfo.kid,
+            pem: kasPublicKeyInfo.publicKey,
+            sid: item.sid,
+          });
+          continue;
         }
-        return { kas: kas.uri, sid };
-      });
+
+        switch (item.kas.publicKey.publicKey.case) {
+          case 'remote':
+            const kasPublicKeyInfo = await fetchKasKeyWithCache(
+              this.kasKeyInfoCache,
+              item.kas.publicKey.publicKey.value,
+              wrappingKeyAlgorithm
+            );
+            splitPlan.push({
+              kas: kasPublicKeyInfo.url,
+              kid: kasPublicKeyInfo.kid,
+              pem: kasPublicKeyInfo.publicKey,
+              sid: item.sid,
+            });
+            break;
+
+          case 'cached':
+            for (const cachedPublicKey of item.kas.publicKey.publicKey.value.keys) {
+              splitPlan.push({
+                kas: item.kas.uri,
+                kid: cachedPublicKey.kid,
+                pem: cachedPublicKey.pem,
+                sid: item.sid,
+              });
+            }
+            break;
+
+          default:
+            throw new Error(`Unknown public key type: ${item.kas.publicKey.publicKey.case}`);
+        }
+      }
     }
 
     // TODO: Refactor underlying builder to remove some of this unnecessary config.
@@ -463,22 +529,28 @@ export class Client {
         : opts.byteLimit;
     const encryptionInformation = new SplitKey(new AesGcmCipher(this.cryptoService));
     // TODO KAS: check here
-    const splits: SplitStep[] = splitPlan?.length
-      ? splitPlan
-      : [{ kas: opts.defaultKASEndpoint ?? this.kasEndpoint }];
+    if (splitPlan.length === 0) {
+      const kasPublicKeyInfo = await fetchKasKeyWithCache(
+        this.kasKeyInfoCache,
+        opts.defaultKASEndpoint ?? this.kasEndpoint,
+        wrappingKeyAlgorithm
+      );
+      splitPlan.push({
+        kas: kasPublicKeyInfo.url,
+        kid: kasPublicKeyInfo.kid,
+        pem: kasPublicKeyInfo.publicKey,
+      });
+    }
     encryptionInformation.keyAccess = await Promise.all(
-      splits.map(async ({ kas, sid }) => {
-        if (!(kas in this.kasKeys)) {
-          this.kasKeys[kas] = [fetchKasPublicKey(kas, wrappingKeyAlgorithm)];
-        }
-        const kasPublicKey = await Promise.any(this.kasKeys[kas]);
-        if (kasPublicKey.algorithm !== wrappingKeyAlgorithm) {
+      splitPlan.map(async ({ kas, kid, pem, sid }) => {
+        const algorithm = await algorithmFromPEM(pem);
+        if (algorithm !== wrappingKeyAlgorithm) {
           console.warn(
-            `Mismatched wrapping key algorithm: [${kasPublicKey.algorithm}] is not requested type, [${wrappingKeyAlgorithm}]`
+            `Mismatched wrapping key algorithm: [${algorithm}] is not requested type, [${wrappingKeyAlgorithm}]`
           );
         }
         let type: KeyAccessType;
-        switch (kasPublicKey.algorithm) {
+        switch (algorithm) {
           case 'rsa:2048':
           case 'rsa:4096':
             type = 'wrapped';
@@ -489,14 +561,14 @@ export class Client {
             type = 'ec-wrapped';
             break;
           default:
-            throw new ConfigurationError(`Unsupported algorithm ${kasPublicKey.algorithm}`);
+            throw new ConfigurationError(`Unsupported algorithm ${algorithm}`);
         }
         return buildKeyAccess({
-          alg: kasPublicKey.algorithm,
+          alg: algorithm,
           type,
-          url: kasPublicKey.url,
-          kid: kasPublicKey.kid,
-          publicKey: kasPublicKey.publicKey,
+          url: kas,
+          kid: kid,
+          publicKey: pem,
           metadata,
           sid,
         });

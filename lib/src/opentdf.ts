@@ -107,7 +107,6 @@ export type MimeType = `${string}/${string}`;
 export type SplitStep = {
   // Which KAS to use to rewrap this segment of the key
   kas: string;
-
   // An identifier for a key segment.
   // Leave empty to share the key.
   sid?: string;
