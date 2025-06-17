@@ -407,36 +407,56 @@ describe('encrypt decrypt test', async function () {
 
     // Verify the manifest for the system metadata assertion
     const manifest = encryptedStream.manifest;
-    expect(Array.isArray(manifest.assertions)).toBe(true);
-    expect(manifest.assertions).toHaveLength(1); // Assuming only system metadata assertion for this test
+    assert.isArray(manifest.assertions, 'Manifest assertions should be an array');
+    assert.lengthOf(manifest.assertions, 1, 'Should have one assertion for system metadata');
 
     const systemAssertion = manifest.assertions.find(
       (assertion: Assertion) => assertion.id === 'system-metadata'
     );
-    expect(systemAssertion).not.toBeUndefined();
+    assert.isDefined(systemAssertion, 'System metadata assertion should be found');
     if (systemAssertion) {
-      expect(systemAssertion.type).toBe('other');
-      expect(systemAssertion.scope).toBe('tdo');
-      expect(systemAssertion.statement.format).toBe('json');
-      expect(systemAssertion.statement.schema).toBe('system-metadata-v1');
+      assert.equal(systemAssertion.type, 'other', 'Assertion type should be "other"');
+      assert.equal(systemAssertion.scope, 'tdo', 'Assertion scope should be "tdo"');
+      assert.equal(systemAssertion.statement.format, 'json', 'Statement format should be "json"');
+      assert.equal(
+        systemAssertion.statement.schema,
+        'system-metadata-v1',
+        'Statement schema should be "system-metadata-v1"'
+      );
 
       const metadataValue = JSON.parse(systemAssertion.statement.value);
-      expect(metadataValue).toHaveProperty('tdfSpecVersion');
-      expect(metadataValue).toHaveProperty('creationDate');
-      expect(metadataValue).toHaveProperty('os');
-      expect(metadataValue).toHaveProperty('sdkVersion');
-      expect(metadataValue).toHaveProperty('browserUserAgent');
-      expect(metadataValue).toHaveProperty('platform');
+      assert.property(metadataValue, 'tdfSpecVersion', 'Metadata should have tdfSpecVersion');
+      assert.property(metadataValue, 'creationDate', 'Metadata should have creationDate');
+      assert.property(metadataValue, 'os', 'Metadata should have os');
+      assert.property(metadataValue, 'sdkVersion', 'Metadata should have sdkVersion');
+      assert.property(metadataValue, 'browserUserAgent', 'Metadata should have browserUserAgent');
+      assert.property(metadataValue, 'platform', 'Metadata should have platform');
 
       // Compare Values
       const systemMetadata = getSystemMetadataAssertionConfig();
-      expect(systemMetadata.id).toBe(systemAssertion.id);
-      expect(systemMetadata.type).toBe(systemAssertion.type);
-      expect(systemMetadata.scope).toBe(systemAssertion.scope);
-      expect(systemMetadata.statement.format).toBe(systemAssertion.statement.format);
-      expect(systemMetadata.statement.schema).toBe(systemAssertion.statement.schema);
-      expect(systemMetadata.statement.value).toBe(systemAssertion.statement.value);
-      expect(systemMetadata.appliesToState).toBe(systemAssertion.appliesToState);
+      assert.equal(systemMetadata.id, systemAssertion.id, 'ID should match');
+      assert.equal(systemMetadata.type, systemAssertion.type, 'Type should match');
+      assert.equal(systemMetadata.scope, systemAssertion.scope, 'Scope should match');
+      assert.equal(
+        systemMetadata.statement.format,
+        systemAssertion.statement.format,
+        'Statement format should match'
+      );
+      assert.equal(
+        systemMetadata.statement.schema,
+        systemAssertion.statement.schema,
+        'Statement schema should match'
+      );
+      assert.equal(
+        systemMetadata.statement.value,
+        systemAssertion.statement.value,
+        'Statement value should match'
+      );
+      assert.equal(
+        systemMetadata.appliesToState,
+        systemAssertion.appliesToState,
+        'AppliesToState should match'
+      );
     }
 
     const decryptStream = await client.decrypt({
