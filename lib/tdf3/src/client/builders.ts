@@ -50,6 +50,7 @@ export type EncryptParams = {
   splitPlan?: SplitStep[];
   streamMiddleware?: EncryptStreamMiddleware;
   assertionConfigs?: AssertionConfig[];
+  systemMetadataAssertion?: boolean;
   defaultKASEndpoint?: string;
 
   // Preferred wrapping key algorithm. Used when KID resolution is not available.
@@ -497,6 +498,19 @@ class EncryptParamsBuilder {
    */
   withAssertions(assertionConfigs: AssertionConfig[]): EncryptParamsBuilder {
     this._params.assertionConfigs = assertionConfigs;
+    return this;
+  }
+
+  /**
+   * Specifies whether a default system metadata assertion should be automatically
+   * included during the encryption process.
+   *
+   * @param {boolean} systemMetadataAssertion - True to include the system metadata assertion, false otherwise.
+   * @returns {EncryptParamsBuilder} The current instance of the EncryptParamsBuilder for method chaining.
+   * @see {@link getSystemMetadataAssertionConfig}
+   */
+  withSystemMetadataAssertion(systemMetadataAssertion: boolean): EncryptParamsBuilder {
+    this._params.systemMetadataAssertion = systemMetadataAssertion;
     return this;
   }
 }

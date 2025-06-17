@@ -6,7 +6,12 @@ import { KasPublicKeyAlgorithm } from '../../src/access.js';
 import { AuthProvider, HttpRequest } from '../../src/auth/auth.js';
 import { AesGcmCipher, KeyInfo, SplitKey, WebCryptoService } from '../../tdf3/index.js';
 import { Client } from '../../tdf3/src/index.js';
-import { AssertionConfig, AssertionVerificationKeys } from '../../tdf3/src/assertions.js';
+import {
+  AssertionConfig,
+  AssertionVerificationKeys,
+  getSystemMetadataAssertionConfig,
+  Assertion,
+} from '../../tdf3/src/assertions.js';
 import { Scope } from '../../tdf3/src/client/builders.js';
 import { NetworkError } from '../../src/errors.js';
 
@@ -365,4 +370,70 @@ describe('encrypt decrypt test', async function () {
       });
     }
   }
+
+  it('encrypt-decrypt with system metadata assertion', async function () {
+    const cipher = new AesGcmCipher(WebCryptoService);
+    const encryptionInformation = new SplitKey(cipher);
+    const key1 = await encryptionInformation.generateKey();
+    const keyMiddleware = async () => ({ keyForEncryption: key1, keyForManifest: key1 });
+
+    const client = new Client.Client({
+      kasEndpoint: kasUrl,
+      platformUrl: kasUrl,
+      dpopKeys: Mocks.entityKeyPair(),
+      clientId: 'id',
+      authProvider,
+    });
+
+    const scope: Scope = {
+      dissem: ['user@domain.com'],
+      attributes: [],
+    };
+
+    const encryptedStream = await client.encrypt({
+      metadata: Mocks.getMetadataObject(),
+      wrappingKeyAlgorithm: 'rsa:2048',
+      offline: true,
+      scope,
+      keyMiddleware,
+      source: new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode(expectedVal));
+          controller.close();
+        },
+      }),
+      systemMetadataAssertion: true, // Enable the system metadata assertion
+    });
+
+    // Verify the manifest for the system metadata assertion
+    const manifest = encryptedStream.manifest;
+    expect(Array.isArray(manifest.assertions)).toBe(true);
+    expect(manifest.assertions).toHaveLength(1); // Assuming only system metadata assertion for this test
+
+    const systemAssertion = manifest.assertions.find(
+      (assertion: Assertion) => assertion.id === 'system-metadata'
+    );
+    expect(systemAssertion).not.toBeUndefined();
+    if (systemAssertion) {
+      expect(systemAssertion.type).toBe('other');
+      expect(systemAssertion.scope).toBe('tdo');
+      expect(systemAssertion.statement.format).toBe('json');
+      expect(systemAssertion.statement.schema).toBe('system-metadata-v1');
+
+      const metadataValue = JSON.parse(systemAssertion.statement.value);
+      expect(metadataValue).toHaveProperty('tdfSpecVersion');
+      expect(metadataValue).toHaveProperty('creationDate');
+      expect(metadataValue).toHaveProperty('os');
+      expect(metadataValue).toHaveProperty('sdkVersion');
+      expect(metadataValue).toHaveProperty('browserUserAgent');
+      expect(metadataValue).toHaveProperty('platform');
+    }
+
+    const decryptStream = await client.decrypt({
+      source: { type: 'stream', location: encryptedStream.stream },
+    });
+
+    const { value: decryptedText } = await decryptStream.stream.getReader().read();
+    assert.equal(new TextDecoder().decode(decryptedText), expectedVal);
+  });
 });
