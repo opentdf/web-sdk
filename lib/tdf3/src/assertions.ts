@@ -2,7 +2,7 @@ import { canonicalizeEx } from 'json-canonicalize';
 import { SignJWT, jwtVerify } from 'jose';
 import { base64, hex } from '../../src/encodings/index.js';
 import { ConfigurationError, IntegrityError, InvalidFileError } from '../../src/errors.js';
-import { tdfSpecVersion, version as sdkVersion } from '../../../lib/src/version.js';
+import { tdfSpecVersion, version as sdkVersion } from '../../src/version.js';
 
 export type AssertionKeyAlg = 'ES256' | 'RS256' | 'HS256';
 export type AssertionType = 'handling' | 'other';
