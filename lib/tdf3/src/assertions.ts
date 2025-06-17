@@ -228,17 +228,6 @@ export type AssertionVerificationKeys = {
   Keys: Record<string, AssertionKey>;
 };
 
-// Helper function (already exists at the end of the file, shown here for context if it were missing)
-// function concatenateUint8Arrays(array1: Uint8Array, array2: Uint8Array): Uint8Array {
-//   const combinedLength = array1.length + array2.length;
-//   const combinedArray = new Uint8Array(combinedLength);
-//
-//   combinedArray.set(array1, 0);
-//   combinedArray.set(array2, array1.length);
-//
-//   return combinedArray;
-// }
-
 /**
  * Metadata structure for system information.
  */
