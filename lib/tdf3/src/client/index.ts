@@ -517,6 +517,7 @@ export class Client {
       keyForEncryption,
       keyForManifest,
       assertionConfigs: opts.assertionConfigs,
+      systemMetadataAssertion: opts.systemMetadataAssertion,
       tdfSpecVersion,
     };
 
