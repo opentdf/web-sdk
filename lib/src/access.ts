@@ -3,7 +3,10 @@ import { ServiceError } from './errors.js';
 import { RewrapResponse } from './platform/kas/kas_pb.js';
 import { getPlatformUrlFromKasEndpoint, validateSecureUrl } from './utils.js';
 
-import { fetchKeyAccessServers as fetchKeyAccessServersRpc } from './access/access-rpc.js';
+import {
+  fetchKasBasePubKey,
+  fetchKeyAccessServers as fetchKeyAccessServersRpc,
+} from './access/access-rpc.js';
 import { fetchKeyAccessServers as fetchKeyAccessServersLegacy } from './access/access-fetch.js';
 import { fetchWrappedKey as fetchWrappedKeysRpc } from './access/access-rpc.js';
 import { fetchWrappedKey as fetchWrappedKeysLegacy } from './access/access-fetch.js';
@@ -144,17 +147,34 @@ export async function fetchKeyAccessServers(
 }
 
 /**
- * If we have KAS url but not public key we can fetch it from KAS, fetching
- * the value from `${kas}/kas_public_key`.
+ * Fetch the EC (secp256r1) public key for a KAS endpoint.
+ * @param kasEndpoint The KAS endpoint URL.
+ * @returns The public key information for the KAS endpoint.
  */
 export async function fetchECKasPubKey(kasEndpoint: string): Promise<KasPublicKeyInfo> {
   return fetchKasPubKey(kasEndpoint, 'ec:secp256r1');
 }
 
+/**
+ * Fetch the public key for a KAS endpoint.
+ * This function will first try to fetch the base public key,
+ * then it will try to fetch the public key using the RPC method,
+ * and finally it will try to fetch the public key using the legacy method.
+ * If all attempts fail, it will return the error from RPC Public Key fetch.
+ * @param kasEndpoint The KAS endpoint URL.
+ * @param algorithm Optional algorithm to fetch the public key for.
+ * @returns The public key information.
+ */
 export async function fetchKasPubKey(
   kasEndpoint: string,
   algorithm?: KasPublicKeyAlgorithm
 ): Promise<KasPublicKeyInfo> {
+  try {
+    return await fetchKasBasePubKey(kasEndpoint);
+  } catch (e) {
+    console.log(e);
+  }
+
   return await tryPromisesUntilFirstSuccess(
     () => fetchKasPubKeyRpc(kasEndpoint, algorithm),
     () => fetchKasPubKeyLegacy(kasEndpoint, algorithm)

@@ -335,7 +335,7 @@ export class OpenTDF {
     this.tdf3Client = new TDF3Client({
       authProvider,
       dpopKeys,
-      kasEndpoint: 'https://disallow.all.invalid',
+      kasEndpoint: this.platformUrl || 'https://disallow.all.invalid',
       policyEndpoint,
     });
     this.dpopKeys =
@@ -522,14 +522,17 @@ class NanoTDFReader {
       r.header = nanotdf.header;
       return r;
     }
+    const platformUrl = this.opts.platformUrl || this.outer.platformUrl;
+    const kasEndpoint =
+      this.opts.allowedKASEndpoints?.[0] || platformUrl || 'https://disallow.all.invalid';
     const nc = new Client({
       allowedKases: this.opts.allowedKASEndpoints,
       authProvider: this.outer.authProvider,
       ignoreAllowList: this.opts.ignoreAllowlist,
       dpopEnabled: this.outer.dpopEnabled,
       dpopKeys: this.outer.dpopKeys,
-      kasEndpoint: this.opts.allowedKASEndpoints?.[0] || 'https://disallow.all.invalid',
-      platformUrl: this.opts.platformUrl || this.outer.platformUrl,
+      kasEndpoint,
+      platformUrl,
     });
     // TODO: The version number should be fetched from the API
     const version = '0.0.1';
@@ -691,9 +694,12 @@ class Collection {
         break;
     }
 
+    const kasEndpoint =
+      opts.defaultKASEndpoint || opts.platformUrl || 'https://disallow.all.invalid';
+
     this.client = new NanoTDFDatasetClient({
       authProvider,
-      kasEndpoint: opts.defaultKASEndpoint ?? 'https://disallow.all.invalid',
+      kasEndpoint: kasEndpoint,
       maxKeyIterations: opts.maxKeyIterations,
       platformUrl: opts.platformUrl,
     });

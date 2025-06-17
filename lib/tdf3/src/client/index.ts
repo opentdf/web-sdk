@@ -398,7 +398,7 @@ export class Client {
       keyMiddleware = defaultKeyMiddleware,
       streamMiddleware = async (stream: DecoratedReadableStream) => stream,
       tdfSpecVersion,
-      wrappingKeyAlgorithm = 'rsa:2048',
+      wrappingKeyAlgorithm,
     } = opts;
     const scope = opts.scope ?? { attributes: [], dissem: [] };
 
@@ -462,7 +462,6 @@ export class Client {
         ? maxByteLimit
         : opts.byteLimit;
     const encryptionInformation = new SplitKey(new AesGcmCipher(this.cryptoService));
-    // TODO KAS: check here
     const splits: SplitStep[] = splitPlan?.length
       ? splitPlan
       : [{ kas: opts.defaultKASEndpoint ?? this.kasEndpoint }];
