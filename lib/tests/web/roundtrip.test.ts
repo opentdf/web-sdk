@@ -37,8 +37,8 @@ describe('Local roundtrip Tests', () => {
     const kao = cipherManifest?.encryptionInformation?.keyAccess[0];
     expect(kao).to.contain({
       url: kasEndpoint,
-      kid: 'r1',
-      type: 'wrapped',
+      kid: 'e1',
+      type: 'ec-wrapped',
       protocol: 'kas',
       schemaVersion: '1.0',
     });
@@ -68,8 +68,8 @@ describe('Local roundtrip Tests', () => {
     const kao = cipherManifest?.encryptionInformation?.keyAccess[0];
     expect(kao).to.contain({
       url: kasEndpoint,
-      kid: 'r1',
-      type: 'wrapped',
+      kid: 'e1',
+      type: 'ec-wrapped',
       protocol: 'kas',
       schemaVersion: '1.0',
     });
@@ -99,8 +99,8 @@ describe('Local roundtrip Tests', () => {
     const kao = cipherManifest?.encryptionInformation?.keyAccess[0];
     expect(kao).to.contain({
       url: kasEndpoint,
-      kid: 'r1',
-      type: 'wrapped',
+      kid: 'e1',
+      type: 'ec-wrapped',
       protocol: 'kas',
       schemaVersion: '1.0',
     });
@@ -115,6 +115,39 @@ describe('Local roundtrip Tests', () => {
       return;
     }
   });
+  it(`ztdf roundtrip string with useBasePublicKey`, async () => {
+    const client = new OpenTDF({
+      authProvider,
+      platformUrl,
+    });
+    const cipherTextStream = await client.createZTDF({
+      autoconfigure: false,
+      defaultKASEndpoint: kasEndpoint,
+      source: { type: 'chunker', location: fromString('hello world') },
+    });
+    const cipherManifest = await cipherTextStream.manifest;
+    const kao = cipherManifest?.encryptionInformation?.keyAccess[0];
+    expect(kao).to.contain({
+      url: kasEndpoint,
+      kid: 'e1',
+      type: 'ec-wrapped',
+      protocol: 'kas',
+      schemaVersion: '1.0',
+    });
+    const cipherTextArray = new Uint8Array(await new Response(cipherTextStream).arrayBuffer());
+
+    const nanotdfParsed = await client.read({
+      source: { type: 'buffer', location: cipherTextArray },
+    });
+
+    const metadata = (await nanotdfParsed.metadata) as never;
+    expect(metadata['hello']['kind']['value']).to.equal('world');
+
+    const actual = await new Response(nanotdfParsed).arrayBuffer();
+    const decoded = new TextDecoder().decode(actual);
+    expect(decoded).to.be.equal('hello world');
+  });
+
   for (const ecdsaBinding of [false, true]) {
     const bindingType = ecdsaBinding ? 'ecdsa' : 'gmac';
     it(`nano roundtrip string (${bindingType} policy binding)`, async () => {
