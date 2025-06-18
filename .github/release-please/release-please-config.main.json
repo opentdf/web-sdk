@@ -8,7 +8,7 @@
             "extra-files": [
                 {
                     "type": "generic",
-                    "path": "Makefile"
+                    "path": "./Makefile"
                 }
             ]
         },
