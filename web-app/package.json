@@ -1,6 +1,6 @@
 {
   "name": "web-app",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "license": "BSD-3-Clause-Clear",
   "type": "module",
   "scripts": {
@@ -17,7 +17,7 @@
     "rebuild": "npm remove @opentdf/sdk && npm add file:../lib/opentdf-sdk-0.3.2.tgz && npm run dev"
   },
   "dependencies": {
-    "@opentdf/sdk": "file:../lib/opentdf-sdk-0.3.2.tgz",
+    "@opentdf/sdk": "file:../lib/opentdf-sdk-0.3.3.tgz",
     "clsx": "^2.1.1",
     "native-file-system-adapter": "^3.0.1",
     "react": "^19.0.0",
