@@ -5,77 +5,7 @@ import './App.css';
 import { type Chunker, type Source, OpenTDF } from '@opentdf/sdk';
 import { type SessionInformation, OidcClient } from './session.js';
 import { c } from './config.js';
-
-/**
- * Downloads a ReadableStream as a file by collecting its data and triggering a browser download.
- * Supports aborting via AbortSignal in options.
- *
- * @param stream - The ReadableStream of Uint8Array data to download as a file.
- * @param filename - The name for the downloaded file (default: 'download.tdf').
- * @param options - Optional StreamPipeOptions, supports AbortSignal for cancellation.
- * @returns Promise that resolves when the download is triggered or rejects if aborted.
- */
-export async function toFile(
-  stream: ReadableStream<Uint8Array>,
-  filename = 'download.tdf',
-  options?: StreamPipeOptions
-): Promise<void> {
-  // Get a reader for the stream
-  const reader = stream.getReader();
-  const chunks: Uint8Array[] = [];
-  let done = false;
-  let aborted = false;
-  const signal = options?.signal;
-  let abortHandler: (() => void) | undefined;
-
-  // Setup abort handling if a signal is provided
-  if (signal) {
-    if (signal.aborted) {
-      throw new DOMException('Aborted', 'AbortError');
-    }
-    abortHandler = () => {
-      aborted = true;
-      reader.cancel();
-    };
-    signal.addEventListener('abort', abortHandler);
-  }
-  try {
-    // Read the stream chunk by chunk
-    while (!done) {
-      if (aborted) {
-        throw new DOMException('Aborted', 'AbortError');
-      }
-      const { value, done: streamDone } = await reader.read();
-      if (value) {
-        chunks.push(value); // Collect each chunk
-      }
-      done = streamDone;
-    }
-  } finally {
-    // Clean up abort event listener
-    if (signal && abortHandler) {
-      signal.removeEventListener('abort', abortHandler);
-    }
-  }
-  if (aborted) {
-    throw new DOMException('Aborted', 'AbortError');
-  }
-  // Create a Blob from the collected chunks
-  const blob = new Blob(chunks);
-  // Create a temporary object URL for the Blob
-  const url = URL.createObjectURL(blob);
-  // Create an anchor element and trigger the download
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  // Clean up the anchor and object URL after download is triggered
-  setTimeout(() => {
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }, 0);
-}
+import { downloadReadableStream } from './utils/download-readable-stream';
 
 function decryptedFileName(encryptedFileName: string): string {
   // Groups: 1 file 'name' bit
@@ -450,7 +380,7 @@ function App() {
     try {
       switch (sinkType) {
         case 'file':
-          await toFile(cipherTextWithProgress, downloadName, { signal: sc.signal });
+          await downloadReadableStream(cipherTextWithProgress, downloadName, { signal: sc.signal });
           break;
         case 'fsapi':
           if (!f) {
@@ -525,7 +455,7 @@ function App() {
         .pipeThrough(progressTransformers.writer);
       switch (sinkType) {
         case 'file':
-          await toFile(plainTextStream, dfn, { signal: sc.signal });
+          await downloadReadableStream(plainTextStream, dfn, { signal: sc.signal });
           break;
         case 'fsapi':
           if (!f) {
