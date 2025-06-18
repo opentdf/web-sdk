@@ -9,31 +9,31 @@
     },
     "extra-files": [
         {
-            "path": "Makefile",
-            "type": "generic"
+            "type": "generic",
+            "path": "Makefile"
         },
         {
-            "path": "cli/package.json",
             "type": "json",
+            "path": "cli/package.json",
             "jsonpath": "$.version"
         },
         {
-            "path": "cli/package.json",
             "type": "json",
+            "path": "cli/package.json",
             "jsonpath": "$.dependencies['@opentdf/sdk']"
         },
         {
-            "path": "lib/src/version.ts",
-            "type": "generic"
+            "type": "generic",
+            "path": "lib/src/version.ts"
         },
         {
-            "path": "web-app/package.json",
             "type": "json",
+            "path": "web-app/package.json",
             "jsonpath": "$.version"
         },
         {
-            "path": "web-app/package.json",
             "type": "json",
+            "path": "web-app/package.json",
             "jsonpath": "$.dependencies['@opentdf/sdk']"
         }
     ]
