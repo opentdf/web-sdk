@@ -1,5 +1,5 @@
 
-version=0.3.2
+version=0.3.2 # x-release-please-version
 extras=cli web-app
 pkgs=lib $(extras)
 

@@ -6,5 +6,40 @@
     "group-pull-request-title-pattern": "chore(${branch}): release ${version}",
     "packages": {
         ".": {}
-    }
+    },
+    "extra-files": [
+        {
+            "path": "Makefile",
+            "type": "generic"
+        },
+        {
+            "path": "cli/package.json",
+            "type": "json",
+            "jsonpath": "$.version"
+        },
+        {
+            "path": "cli/package.json",
+            "type": "json",
+            "jsonpath": "$.dependencies['@opentdf/sdk']"
+        },
+        {
+            "path": "lib/package.json",
+            "type": "json",
+            "jsonpath": "$.version"
+        },
+        {
+            "path": "lib/src/version.ts",
+            "type": "generic"
+        },
+        {
+            "path": "web-app/package.json",
+            "type": "json",
+            "jsonpath": "$.version"
+        },
+        {
+            "path": "web-app/package.json",
+            "type": "json",
+            "jsonpath": "$.dependencies['@opentdf/sdk']"
+        }
+    ]
 }
