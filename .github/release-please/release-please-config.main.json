@@ -4,17 +4,16 @@
     "versioning": "always-bump-minor",
     "group-pull-request-title-pattern": "chore(${branch}): release ${version}",
     "packages": {
-        "lib": {
-            "extra-files": [
-                {
-                    "type": "generic",
-                    "path": "./Makefile"
-                }
-            ]
-        },
+        "lib": {},
         "cli": {},
         "web-app": {}
     },
+    "extra-files": [
+        {
+            "type": "generic",
+            "path": "Makefile"
+        }
+    ],
     "plugins": [
         {
             "type": "linked-versions",
