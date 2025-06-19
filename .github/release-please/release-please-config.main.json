@@ -17,7 +17,7 @@
     "extra-files": [
         {
             "type": "generic",
-            "path": "./Makefile"
+            "path": "Makefile2"
         }
     ],
     "plugins": [
