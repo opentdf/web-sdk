@@ -17,7 +17,7 @@
             "component": "cli"
         },
         "web-app": {
-            "web-app": "cli"
+            "component": "cli"
         }
     },
     "plugins": [
