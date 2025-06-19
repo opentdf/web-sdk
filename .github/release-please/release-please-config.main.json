@@ -5,7 +5,12 @@
     "group-pull-request-title-pattern": "chore(${branch}): release ${version}",
     "packages": {
         "lib": {
-            "component": "lib"
+            "extra-files": [
+                {
+                    "type": "generic",
+                    "path": "Makefile"
+                }
+            ]
         },
         "cli": {
             "component": "cli"
@@ -13,22 +18,5 @@
         "web-app": {
             "web-app": "cli"
         }
-    },
-    "extra-files": [
-        {
-            "type": "generic",
-            "path": "Makefile"
-        }
-    ],
-    "plugins": [
-        {
-            "type": "linked-versions",
-            "groupName": "sdk-group",
-            "components": [
-                "lib",
-                "cli",
-                "web-app"
-            ]
-        }
-    ]
+    }
 }
