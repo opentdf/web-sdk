@@ -4,9 +4,15 @@
     "versioning": "always-bump-minor",
     "group-pull-request-title-pattern": "chore(${branch}): release ${version}",
     "packages": {
-        "lib": {},
-        "cli": {},
-        "web-app": {}
+        "lib": {
+            "component": "lib"
+        },
+        "cli": {
+            "component": "cli"
+        },
+        "web-app": {
+            "web-app": "cli"
+        }
     },
     "extra-files": [
         {
