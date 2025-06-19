@@ -11,6 +11,26 @@
                 {
                     "type": "generic",
                     "path": "Makefile"
+                },
+                {
+                    "type": "json",
+                    "path": "cli/package.json",
+                    "jsonpath": "$.dependencies['@opentdf/sdk']"
+                },
+                {
+                    "type": "json",
+                    "path": "cli/package.json",
+                    "jsonpath": "$.version"
+                },
+                {
+                    "type": "json",
+                    "path": "web-app/package.json",
+                    "jsonpath": "$.dependencies['@opentdf/sdk']"
+                },
+                {
+                    "type": "json",
+                    "path": "web-app/package.json",
+                    "jsonpath": "$.version"
                 }
             ]
         },
@@ -23,39 +43,15 @@
                     "path": "src/version.ts"
                 }
             ]
-        },
-        "cli": {
-            "component": "cli",
-            "release-type": "node",
-            "extra-files": [
-                {
-                    "type": "json",
-                    "path": "package.json",
-                    "jsonpath": "$.dependencies['@opentdf/sdk']"
-                }
-            ]
-        },
-        "web-app": {
-            "component": "web-app",
-            "release-type": "node",
-            "extra-files": [
-                {
-                    "type": "json",
-                    "path": "package.json",
-                    "jsonpath": "$.dependencies['@opentdf/sdk']"
-                }
-            ]
         }
     },
     "plugins": [
         {
             "type": "linked-versions",
-            "groupName": "sdk",
+            "groupName": "sdk2",
             "components": [
                 "root",
-                "lib",
-                "cli",
-                "web-app"
+                "lib"
             ]
         }
     ]
