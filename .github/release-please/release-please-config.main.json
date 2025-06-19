@@ -4,14 +4,59 @@
     "versioning": "always-bump-minor",
     "group-pull-request-title-pattern": "chore(${branch}): release ${version}",
     "packages": {
-        "lib": {},
-        "cli": {},
-        "web-app": {}
+        ".": {
+            "component": "root",
+            "release-type": "simple",
+            "extra-files": [
+                {
+                    "type": "generic",
+                    "path": "Makefile"
+                }
+            ]
+        },
+        "lib": {
+            "component": "lib",
+            "release-type": "node",
+            "extra-files": [
+                {
+                    "type": "generic",
+                    "path": "src/version.ts"
+                }
+            ]
+        },
+        "cli": {
+            "component": "cli",
+            "release-type": "node",
+            "extra-files": [
+                {
+                    "type": "json",
+                    "path": "package.json",
+                    "jsonpath": "$.dependencies['@opentdf/sdk']"
+                }
+            ]
+        },
+        "web-app": {
+            "component": "web-app",
+            "release-type": "node",
+            "extra-files": [
+                {
+                    "type": "json",
+                    "path": "package.json",
+                    "jsonpath": "$.dependencies['@opentdf/sdk']"
+                }
+            ]
+        }
     },
-    "extra-files": [
+    "plugins": [
         {
-            "type": "generic",
-            "path": "Makefile"
+            "type": "linked-versions",
+            "groupName": "sdk",
+            "components": [
+                "root",
+                "lib",
+                "cli",
+                "web-app"
+            ]
         }
     ]
 }
