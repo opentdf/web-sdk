@@ -8,6 +8,7 @@
         "lib": {
             "extra-files": [
                 {
+                    "type": "generic",
                     "path": "Makefile"
                 },
                 {
