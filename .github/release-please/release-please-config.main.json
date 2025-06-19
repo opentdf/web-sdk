@@ -5,12 +5,8 @@
     "group-pull-request-title-pattern": "chore(${branch}): release ${version}",
     "packages": {
         "lib": {},
-        "cli": {
-            "component": "cli"
-        },
-        "web-app": {
-            "web-app": "cli"
-        }
+        "cli": {},
+        "web-app": {}
     },
     "extra-files": [
         {
