@@ -5,7 +5,9 @@
     "versioning": "always-bump-patch",
     "group-pull-request-title-pattern": "chore(${branch}): release ${version}",
     "packages": {
-        "lib": {}
+        ".": {
+            "component": "lib"
+        }
     },
     "extra-files": [
         {
