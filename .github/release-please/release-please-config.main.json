@@ -5,21 +5,21 @@
     "group-pull-request-title-pattern": "chore(${branch}): release ${version}",
     "packages": {
         "lib": {
-            "component": "lib",
-            "extra-files": [
-                {
-                    "type": "generic",
-                    "path": "Makefile"
-                }
-            ]
+            "component": "lib"
         },
         "cli": {
             "component": "cli"
         },
         "web-app": {
-            "component": "cli"
+            "web-app": "cli"
         }
     },
+    "extra-files": [
+        {
+            "type": "generic",
+            "path": "Makefile2"
+        }
+    ],
     "plugins": [
         {
             "type": "linked-versions",
