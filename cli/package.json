@@ -1,6 +1,6 @@
 {
   "name": "@opentdf/ctl",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "description": "Node based CLI for opentdf",
   "repository": {
     "type": "git",
