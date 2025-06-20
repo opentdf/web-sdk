@@ -1,11 +1,12 @@
 import {
   Attribute,
+  AttributeRuleType,
   KeyAccessServer,
   Namespace,
   Value,
-  AttributeRuleType,
 } from '../../../src/policy/attributes.js';
 import { kasECCert, kasPublicKey } from '../../mocks/pems.js';
+import { KasPublicKeyAlgEnum, SourceType } from '../../../src/platform/policy/objects_pb.js';
 
 export const kasAu = 'https://kas.au/';
 export const kasCa = 'https://kas.ca/';
@@ -75,24 +76,35 @@ export const kases: Record<string, KeyAccessServer> = Object.fromEntries(
     k,
     {
       $typeName: 'policy.KeyAccessServer',
+      id: k,
+      kasKeys: [],
       uri: k,
       publicKey: {
-        cached: {
-          keys: [
-            {
-              pem: kasECCert,
-              kid: 'e1',
-              alg: 'KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1',
-            },
-            {
-              pem: kasPublicKey,
-              kid: 'r1',
-              alg: 'KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048',
-            },
-          ],
+        $typeName: 'policy.PublicKey',
+        publicKey: {
+          case: 'cached',
+          value: {
+            $typeName: 'policy.KasPublicKeySet',
+            keys: [
+              {
+                $typeName: 'policy.KasPublicKey',
+                pem: kasECCert,
+                kid: 'e1',
+                alg: KasPublicKeyAlgEnum.EC_SECP256R1,
+              },
+              {
+                $typeName: 'policy.KasPublicKey',
+                pem: kasPublicKey,
+                kid: 'r1',
+                alg: KasPublicKeyAlgEnum.RSA_2048,
+              },
+            ],
+          },
         },
       },
-    } as unknown as KeyAccessServer,
+      sourceType: SourceType.INTERNAL,
+      name: k,
+    } as KeyAccessServer,
   ])
 );
 
@@ -283,7 +295,7 @@ export function valueFor(attr: string): Value {
   if (!(attr in values)) {
     throw new Error(`invalid FQN [${attr}]`);
   }
-  console.log('value for', attr, 'is', values[attr]);
+  // console.log('value for', attr, 'is', values[attr]);
   return values[attr];
 }
 
