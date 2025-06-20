@@ -12,6 +12,8 @@ set -euo pipefail
 increment_type="${1:-patch}"
 detail="${2:-autobump}"
 
+: "${BUMP_EXPECTED_BRANCH:=main}"
+
 
 
 packages=(lib cli web-app)
@@ -27,26 +29,6 @@ for x in "${packages[@]:1}"; do
   )
 done
 
-# multiplatform `sed -i`: https://unix.stackexchange.com/a/92907
-case $(sed --help 2>&1) in
-  *GNU*) sed_i() { sed -i "$@"; } ;;
-  *) sed_i() { sed -i '' "$@"; } ;;
-esac
-
-if ! sed_i "s/version=${old_version}/version=${new_version}/" "Makefile"; then
-  echo "Unable to change version in makefile"
-  exit 1
-fi
-
-if ! sed_i "s/export const version = '[^']\{1,\}';\$/export const version = \'${new_version}\';/" lib/src/version.ts; then
-  echo "Unable to change version in version files"
-  exit 1
-fi
-
-if ! scripts/check-version-is.sh "${new_version}"; then
-  echo "bump version script fail"
-  exit 1
-fi
 
 if ! make all; then
   echo "Unable to bump package locks"

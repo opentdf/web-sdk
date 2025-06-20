@@ -1,0 +1,51 @@
+{
+    "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+    "bump-minor-pre-major": true,
+    "versioning": "always-bump-minor",
+    "group-pull-request-title-pattern": "chore(${branch}): release ${version}",
+    "packages": {
+        "lib": {
+            "component": "lib",
+            "release-type": "node",
+            "extra-files": [
+                {
+                    "type": "generic",
+                    "path": "src/version.ts"
+                }
+            ]
+        },
+        "cli": {
+            "component": "cli",
+            "release-type": "node",
+            "extra-files": [
+                {
+                    "type": "json",
+                    "path": "package.json",
+                    "jsonpath": "$.dependencies['@opentdf/sdk']"
+                }
+            ]
+        },
+        "web-app": {
+            "component": "web-app",
+            "release-type": "node",
+            "extra-files": [
+                {
+                    "type": "json",
+                    "path": "package.json",
+                    "jsonpath": "$.dependencies['@opentdf/sdk']"
+                }
+            ]
+        }
+    },
+    "plugins": [
+        {
+            "type": "linked-versions",
+            "groupName": "all-packages",
+            "components": [
+                "lib",
+                "cli",
+                "web-app"
+            ]
+        }
+    ]
+}
