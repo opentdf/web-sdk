@@ -310,19 +310,56 @@ export type TDFReader = {
   attributes: () => Promise<string[]>;
 };
 
-/** SDK for dealing with OpenTDF data and policy services. */
+/**
+ * The main OpenTDF class that provides methods for creating and reading TDF files.
+ * It supports both NanoTDF and ZTDF formats.
+ * It can be used to create new TDF files and read existing ones.
+ * This class is the entry point for using the OpenTDF SDK.
+ * It requires an authentication provider to be passed in the constructor.
+ * It also requires a platform URL to be set, which is used to fetch key access servers and policies.
+ * @example
+ * ```
+ * import { type Chunker, OpenTDF } from '@opentdf/sdk';
+ *
+ * const oidcCredentials: RefreshTokenCredentials = {
+ *   clientId: keycloakClientId,
+ *   exchange: 'refresh',
+ *   refreshToken: refreshToken,
+ *   oidcOrigin: keycloakUrl,
+ * };
+ * const authProvider = await AuthProviders.refreshAuthProvider(oidcCredentials);
+ *
+ * const client = new OpenTDF({
+ *   authProvider,
+ *   platformUrl: 'https://platform.example.com',
+ * });
+ *
+ * const cipherText = await client.createZTDF({
+ *   source: { type: 'stream', location: source },
+ *   autoconfigure: false,
+ * });
+ *
+ * const clearText = await client.read({ type: 'stream', location: cipherText });
+ * ```
+ */
 export class OpenTDF {
-  // Configuration service and more is at this URL/connectRPC endpoint
+  /** The platform URL */
   readonly platformUrl: string;
+  /** The policy service endpoint */
   readonly policyEndpoint: string;
+  /** The auth provider for the OpenTDF instance. */
   readonly authProvider: AuthProvider;
+  /** If DPoP is enabled for this instance. */
   readonly dpopEnabled: boolean;
+  /** Default options for creating TDF objects. */
   defaultCreateOptions: Omit<CreateOptions, 'source'>;
+  /** Default options for reading TDF objects. */
   defaultReadOptions: Omit<ReadOptions, 'source'>;
+  /** The DPoP keys for this instance, if any. */
   readonly dpopKeys: Promise<CryptoKeyPair>;
-
-  // Header cache for reading nanotdf collections
+  /** Cache for rewrapped keys */
   private readonly rewrapCache: RewrapCache;
+  /** The TDF3 client for encrypting and decrypting ZTDF files. */
   readonly tdf3Client: TDF3Client;
 
   constructor({
@@ -420,10 +457,7 @@ export class OpenTDF {
     return stream;
   }
 
-  /**
-   * Opens a TDF file for inspection and decryption.
-   * @param opts The file to open, and any appropriate configuration options.
-   */
+  /** Opens a TDF file for inspection and decryption. */
   open(opts: ReadOptions): TDFReader {
     opts = { ...this.defaultReadOptions, ...opts };
     return new UnknownTypeReader(this, opts, this.rewrapCache);
@@ -453,6 +487,7 @@ class UnknownTypeReader {
     this.delegate = this.resolveType();
   }
 
+  /** Resolves the TDF type based on the file prefix. */
   async resolveType(): Promise<TDFReader> {
     if (this.state === 'done') {
       throw new ConfigurationError('reader is closed');
@@ -474,21 +509,25 @@ class UnknownTypeReader {
     throw new InvalidFileError(`unsupported format; prefix not recognized ${prefix}`);
   }
 
+  /** Decrypts the TDF file */
   async decrypt(): Promise<DecoratedStream> {
     const actual = await this.delegate;
     return actual.decrypt();
   }
 
+  /** Returns the attributes of the TDF file */
   async attributes(): Promise<string[]> {
     const actual = await this.delegate;
     return actual.attributes();
   }
 
+  /** Returns the manifest of the TDF file */
   async manifest(): Promise<Manifest> {
     const actual = await this.delegate;
     return actual.manifest();
   }
 
+  /** Closes the TDF reader */
   async close() {
     if (this.state === 'done') {
       return;
@@ -534,6 +573,7 @@ class NanoTDFReader {
     });
   }
 
+  /** Decrypts the NanoTDF file and returns a decorated stream. */
   async decrypt(): Promise<DecoratedStream> {
     const nanotdf = await this.container;
     const cachedDEK = this.rewrapCache.get(nanotdf.header.ephemeralPublicKey);
@@ -576,10 +616,12 @@ class NanoTDFReader {
 
   async close() {}
 
+  /** Returns blank manifest. NanoTDF has no manifest. */
   async manifest(): Promise<Manifest> {
     return {} as Manifest;
   }
 
+  /** Returns the attributes of the NanoTDF file. */
   async attributes(): Promise<string[]> {
     const nanotdf = await this.container;
     if (!nanotdf.header.policy?.content) {
@@ -695,12 +737,16 @@ async function streamify(ab: Promise<ArrayBuffer>): Promise<ReadableStream<Uint8
 
 /** A writer for NanoTDF collections. */
 export type NanoTDFCollectionWriter = {
+  /** The NanoTDF client used for encrypting data in this collection. */
   encrypt: (source: Source) => Promise<ReadableStream<Uint8Array>>;
+  /** Closes the collection and releases any resources. */
   close: () => Promise<void>;
 };
 
 class Collection {
+  /** The NanoTDF client used for encrypting data in this collection. */
   client?: NanoTDFDatasetClient;
+  /** Options for encrypting data in this collection. */
   encryptOptions?: NanoEncryptOptions;
 
   constructor(authProvider: AuthProvider, opts: CreateNanoTDFCollectionOptions) {
@@ -733,6 +779,7 @@ class Collection {
     });
   }
 
+  /** Encrypts a source into a NanoTDF stream. */
   async encrypt(source: Source): Promise<DecoratedStream> {
     if (!this.client) {
       throw new ConfigurationError('Collection is closed');
@@ -750,6 +797,7 @@ class Collection {
     return stream;
   }
 
+  /** Releases client resources. */
   async close() {
     delete this.client;
   }

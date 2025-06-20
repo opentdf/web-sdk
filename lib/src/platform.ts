@@ -50,8 +50,22 @@ export interface PlatformClientOptions {
  *
  * This client supports authentication via an `AuthProvider` or custom interceptors, which can
  * be used to add authentication headers or other custom logic to outgoing requests.
+ * @example
+ * ```
+ * import { AuthProviders, OpenTDF } from '@opentdf/sdk';
+ * import { PlatformClient } from '@opentdf/sdk/platform';
  *
+ * const authProvider: AuthProvider = await AuthProviders.refreshAuthProvider({...});
+ * const platform = new PlatformClient({
+ *   authProvider,
+ *   platformUrl: 'https://platform.example.com',
+ * });
+ *
+ * const wellKnownResponse = await platform.v1.wellknown.getWellKnownConfiguration({});
+ * console.log('Well-known configuration:', wellKnownResponse.configuration);
+ * ```
  */
+
 export class PlatformClient {
   readonly v1: PlatformServices;
 
