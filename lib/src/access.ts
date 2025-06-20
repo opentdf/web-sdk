@@ -136,6 +136,12 @@ export async function noteInvalidPublicKey(url: URL, r: Promise<CryptoKey>): Pro
   }
 }
 
+/**
+ * Fetches the key access servers for a given platform URL.
+ * @param platformUrl The platform URL to fetch key access servers for.
+ * @param authProvider The authentication provider to use for the request.
+ * @returns A promise that resolves to an OriginAllowList.
+ */
 export async function fetchKeyAccessServers(
   platformUrl: string,
   authProvider: AuthProvider
@@ -190,6 +196,15 @@ const origin = (u: string): string => {
   }
 };
 
+/**
+ * Manages a list of origins that are allowed to access the Key Access Server (KAS).
+ * @origins A list of origins that are allowed to access the KAS.
+ * @allowAll If true, all origins are allowed to access the KAS.
+ * If false, only the origins in the list are allowed to access the KAS.
+ * @description This class is used to manage a list of origins that are allowed to access the KAS.
+ * It validates the URLs and provides a method to check if a given URL is allowed.
+ * It is used to ensure that only authorized origins can access the KAS.
+ */
 export class OriginAllowList {
   origins: string[];
   allowAll: boolean;
