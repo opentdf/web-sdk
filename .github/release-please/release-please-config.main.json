@@ -4,48 +4,44 @@
     "versioning": "always-bump-minor",
     "group-pull-request-title-pattern": "chore(${branch}): release ${version}",
     "packages": {
-        "lib": {
-            "component": "lib",
-            "release-type": "node",
+        ".": {
+            "component": "root",
+            "release-type": "simple",
             "extra-files": [
                 {
                     "type": "generic",
-                    "path": "src/version.ts"
-                }
-            ]
-        },
-        "cli": {
-            "component": "cli",
-            "release-type": "node",
-            "extra-files": [
+                    "path": "Makefile"
+                },
                 {
                     "type": "json",
-                    "path": "package.json",
+                    "path": "cli/package.json",
                     "jsonpath": "$.dependencies['@opentdf/sdk']"
-                }
-            ]
-        },
-        "web-app": {
-            "component": "web-app",
-            "release-type": "node",
-            "extra-files": [
+                },
                 {
                     "type": "json",
-                    "path": "package.json",
+                    "path": "cli/package.json",
+                    "jsonpath": "$.version"
+                },
+                {
+                    "type": "json",
+                    "path": "web-app/package.json",
                     "jsonpath": "$.dependencies['@opentdf/sdk']"
+                },
+                {
+                    "type": "json",
+                    "path": "web-app/package.json",
+                    "jsonpath": "$.version"
+                },
+                {
+                    "type": "generic",
+                    "path": "lib/src/version.ts"
+                },
+                {
+                    "type": "json",
+                    "path": "lib/package.json",
+                    "jsonpath": "$.version"
                 }
             ]
         }
-    },
-    "plugins": [
-        {
-            "type": "linked-versions",
-            "groupName": "all-packages",
-            "components": [
-                "lib",
-                "cli",
-                "web-app"
-            ]
-        }
-    ]
+    }
 }
