@@ -4,13 +4,14 @@
     "versioning": "always-bump-patch",
     "group-pull-request-title-pattern": "chore(${branch}): release ${version}",
     "packages": {
-        "lib": {
-            "component": "lib",
+        "cli": {
+            "component": "cli",
             "release-type": "node",
             "extra-files": [
                 {
-                    "type": "generic",
-                    "path": "src/version.ts"
+                    "type": "json",
+                    "path": "package.json",
+                    "jsonpath": "$.dependencies['@opentdf/sdk']"
                 }
             ]
         }
