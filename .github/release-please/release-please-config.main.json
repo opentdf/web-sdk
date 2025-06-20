@@ -5,7 +5,6 @@
     "group-pull-request-title-pattern": "chore(${branch}): release ${version}",
     "packages": {
         ".": {
-            "component": "root",
             "release-type": "simple",
             "extra-files": [
                 {
