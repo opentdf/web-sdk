@@ -35,6 +35,12 @@ export function validateSecureUrl(url: string): boolean {
   return true;
 }
 
+/**
+ * Pads a URL with a trailing slash if it does not already have one.
+ * This is useful for ensuring that URLs are in a consistent format.
+ * @param u The URL to pad.
+ * @returns The padded URL.
+ */
 export function padSlashToUrl(u: string): string {
   if (u.endsWith('/')) {
     return u;
@@ -42,10 +48,21 @@ export function padSlashToUrl(u: string): string {
   return `${u}/`;
 }
 
+/**
+ * Checks if the current environment is a browser.
+ * This is useful for determining if certain APIs or features are available.
+ * @returns true if running in a browser, false otherwise.
+ */
 export function isBrowser() {
   return typeof window !== 'undefined'; // eslint-disable-line
 }
 
+/**
+ * Removes trailing characters from a string.
+ * @param str The string to trim.
+ * @param suffix The suffix to remove (default is a single space).
+ * @returns The trimmed string.
+ */
 export const rstrip = (str: string, suffix = ' '): string => {
   while (str && suffix && str.endsWith(suffix)) {
     str = str.slice(0, -suffix.length);
@@ -92,6 +109,15 @@ export const estimateSkewFromHeaders = (headers: AnyHeaders, dateNowBefore?: num
   return Math.round((deltaBefore + deltaAfter) / 2);
 };
 
+/**
+ * Adds new lines to a string every 64 characters.
+ * @param str A string to add new lines to.
+ * This function takes a string and adds new lines every 64 characters.
+ * If the string is empty or undefined, it returns the original string.
+ * This is useful for formatting long strings, such as public keys or certificates,
+ * to ensure they are properly formatted for PEM encoding.
+ * @returns The formatted string with new lines added.
+ */
 export function addNewLines(str: string): string {
   if (!str) {
     return str;
@@ -105,6 +131,11 @@ export function addNewLines(str: string): string {
   return finalString;
 }
 
+/**
+ * Creates a PEM-encoded string from a public key.
+ * @param publicKey The public key to convert.
+ * @returns A promise that resolves to a PEM-encoded string.
+ */
 export async function cryptoPublicToPem(publicKey: CryptoKey): Promise<string> {
   if (publicKey.type !== 'public') {
     throw new ConfigurationError('incorrect key type');
@@ -116,6 +147,11 @@ export async function cryptoPublicToPem(publicKey: CryptoKey): Promise<string> {
   return `-----BEGIN PUBLIC KEY-----\r\n${pem}-----END PUBLIC KEY-----`;
 }
 
+/**
+ * Converts a PEM-encoded public key to a CryptoKey.
+ * @param pem The PEM-encoded public key.
+ * @returns A promise that resolves to a CryptoKey.
+ */
 export async function pemToCryptoPublicKey(pem: string): Promise<CryptoKey> {
   if (/-----BEGIN PUBLIC KEY-----/.test(pem)) {
     return pemPublicToCrypto(pem);
@@ -128,6 +164,15 @@ export async function pemToCryptoPublicKey(pem: string): Promise<CryptoKey> {
   throw new TypeError(`unsupported pem type [${pem}]`);
 }
 
+/**
+ * Extracts the PEM-encoded public key from a key string.
+ * @param keyString A string containing a public key or certificate.
+ * This function extracts the PEM-encoded public key from a given key string.
+ * If the key string contains a certificate, it imports the certificate and exports
+ * the public key in PEM format. If the key string is already in PEM format, it returns
+ * the key string as is.
+ * @returns A promise that resolves to a PEM-encoded public key.
+ */
 export async function extractPemFromKeyString(keyString: string): Promise<string> {
   let pem: string = keyString;
 
@@ -143,6 +188,12 @@ export async function extractPemFromKeyString(keyString: string): Promise<string
 
 /**
  * Extracts the error message from an RPC catch error.
+ * @param error An error object, typically from a network request.
+ * This function extracts the error message from a ConnectError or a generic Error.
+ * If the error is a ConnectError or a standard Error, it returns the message.
+ * If the error is of an unknown type, it returns a default message indicating
+ * that an unknown network error occurred.
+ * @returns The extracted error message.
  */
 export function extractRpcErrorMessage(error: unknown): string {
   if (error instanceof ConnectError || error instanceof Error) {
@@ -153,8 +204,11 @@ export function extractRpcErrorMessage(error: unknown): string {
 
 /**
  * Converts a KAS endpoint URL to a platform URL.
- * If the KAS endpoint ends with '/kas', it returns the host url
- * Otherwise, it returns the original KAS endpoint.
+ * @param endpoint The KAS endpoint URL to extract the platform URL from.
+ * This function extracts the base URL from a KAS endpoint URL.
+ * It removes any trailing slashes and specific path segments related to rewrap or kas.
+ * This is useful for obtaining the base URL for further API requests.
+ * @returns The base URL of the platform.
  */
 export function getPlatformUrlFromKasEndpoint(endpoint: string): string {
   let result = endpoint || '';

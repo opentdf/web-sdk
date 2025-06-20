@@ -33,11 +33,11 @@ export interface PlatformServices {
 }
 
 export interface PlatformClientOptions {
-  // Optional authentication provider for generating auth interceptor.
+  /** Optional authentication provider for generating auth interceptor. */
   authProvider?: AuthProvider;
-  // Array of custom interceptors to apply to rpc requests.
+  /** Array of custom interceptors to apply to rpc requests. */
   interceptors?: Interceptor[];
-  // Base URL of the platform API.
+  /** Base URL of the platform API. */
   platformUrl: string;
 }
 
@@ -96,8 +96,6 @@ export class PlatformClient {
  * that returns an object containing authentication headers. These headers are then
  * added to the request before it is sent to the server.
  *
- * @param authProvider - An instance of `AuthProvider` used to generate authentication credentials.
- * @returns An `Interceptor` function that modifies requests to include authentication headers.
  */
 function createAuthInterceptor(authProvider: AuthProvider): Interceptor {
   const authInterceptor: Interceptor = (next) => async (req) => {
