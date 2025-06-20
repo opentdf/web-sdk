@@ -410,7 +410,7 @@ export class Client {
       splitPlan: preconfiguredSplitPlan,
       streamMiddleware = async (stream: DecoratedReadableStream) => stream,
       tdfSpecVersion,
-      wrappingKeyAlgorithm = 'rsa:2048',
+      wrappingKeyAlgorithm,
     } = opts;
     const scope = opts.scope ?? { attributes: [], dissem: [] };
 
