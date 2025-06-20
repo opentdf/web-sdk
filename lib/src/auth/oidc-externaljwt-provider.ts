@@ -10,6 +10,8 @@ export class OIDCExternalJwtProvider implements AuthProvider {
     clientId,
     externalJwt,
     oidcOrigin,
+    oidcTokenEndpoint,
+    oidcUserInfoEndpoint,
   }: Partial<ExternalJwtCredentials> & Omit<ExternalJwtCredentials, 'exchange'>) {
     if (!clientId || !externalJwt) {
       throw new ConfigurationError('external JWT exchange reequires client id and jwt');
@@ -18,8 +20,10 @@ export class OIDCExternalJwtProvider implements AuthProvider {
     this.oidcAuth = new AccessToken({
       exchange: 'external',
       clientId,
-      oidcOrigin,
       externalJwt,
+      oidcOrigin,
+      oidcTokenEndpoint,
+      oidcUserInfoEndpoint,
     });
 
     this.externalJwt = externalJwt;
