@@ -1,6 +1,6 @@
 {
   "name": "@opentdf/sdk",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "description": "OpenTDF for the Web",
   "homepage": "https://github.com/opentdf/web-sdk",
   "bugs": {
