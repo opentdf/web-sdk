@@ -17,3 +17,15 @@ jobs:
     secrets:
       APP_ID: ${{ secrets.APP_ID }}
       AUTOMATION_KEY: ${{ secrets.AUTOMATION_KEY }}
+  fix-versions:
+    if: ${{ needs.release-please.outputs.prs_created == 'true' }}
+    needs: release-please
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: "fasd"
+        run: |
+          echo "PRs created: ${{ needs.release-please.outputs.prs_created }}"
+
