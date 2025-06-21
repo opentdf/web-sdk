@@ -1,0 +1,137 @@
+name: "Deliver Client to npm registry"
+
+on:
+  push:
+    branches:
+      - main
+      - "release/**"
+  release:
+    types:
+      - created
+
+# Default empty permissions for all jobs
+permissions: {}
+
+jobs:
+  deliver-ghp:
+    permissions:
+      contents: read
+      packages: write
+      pages: write
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: "Checkout repo"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: "Setup node"
+        uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e # v4.3.0
+        with:
+          node-version: "22"
+          registry-url: https://npm.pkg.github.com
+
+      - name: "Check version number is same between tag, library, and/or release"
+        id: check-version
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          if [[ "$REF" = refs/heads/release/* ]]; then
+            scripts/check-version-is.sh "${GITHUB_REF##*release/}"
+          elif [[ "$REF" = refs/tags/sdk/v* ]]; then
+            scripts/check-version-is.sh "${GITHUB_REF_NAME#sdk/v}"
+          else
+            scripts/check-version-is.sh
+          fi
+
+      - name: "Output build metadata"
+        id: guess-build-metadata
+        run: |
+          FULL_VERSION=$(.github/workflows/gh-semver.sh)
+          DIST_TAG=$(.github/workflows/guess-dist-tag.sh)
+
+          echo "FULL_VERSION=$FULL_VERSION" >> "$GITHUB_OUTPUT"
+          echo "DIST_TAG=$DIST_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: "Run: make doc"
+        run: |
+          make doc
+
+      - name: "Echo info"
+        env:
+          DIST_TAG: ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
+          FULL_VERSION: ${{ steps.guess-build-metadata.outputs.FULL_VERSION }}
+        run: |
+          echo "::notice file=lib/package.json::Will be published to \
+          [GitHub Packages](https://github.com/opentdf/web-sdk/pkgs/npm/client) \
+          as $DIST_TAG \
+          with version=[$FULL_VERSION]"
+
+      - name: "Deliver to GitHub Packages"
+        env:
+          DIST_TAG: ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
+          FULL_VERSION: ${{ steps.guess-build-metadata.outputs.FULL_VERSION }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bash scripts/deliver-to-npm-registry.sh "$FULL_VERSION" "$DIST_TAG"
+
+      - name: "Echo info to Run Summary"
+        run: |
+          {
+          echo "- [Client Library](https://github.com/opentdf/web-sdk/pkgs/npm/client)"
+          echo "- [Command Line Tool](https://github.com/opentdf/web-sdk/pkgs/npm/cli)"
+          } >>"$GITHUB_STEP_SUMMARY"
+
+      - name: "Publish documentation to gh-pages"
+        uses: JamesIves/github-pages-deploy-action@6c2d9db40f9296374acc17b90404b6e8864128c8 # v4.7.3
+        with:
+          branch: gh-pages
+          folder: lib/dist/docs
+
+  deliver-npmjs:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout repo"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: "Setup node"
+        uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e # v4.3.0
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: "Run: make all"
+        run: |
+          make all
+
+      - name: "Output build metadata"
+        id: guess-build-metadata
+        run: |
+          FULL_VERSION=$(.github/workflows/gh-semver.sh)
+          DIST_TAG=$(.github/workflows/guess-dist-tag.sh)
+
+          echo "FULL_VERSION=$FULL_VERSION" >> "$GITHUB_OUTPUT"
+          echo "DIST_TAG=$DIST_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: "Deliver to npmjs"
+        env:
+          DIST_TAG: ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
+          FULL_VERSION: ${{ steps.guess-build-metadata.outputs.FULL_VERSION }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          bash scripts/deliver-to-npm-registry.sh "$FULL_VERSION" "$DIST_TAG"
+
+      - name: "Echo info to Run Summary"
+        env:
+          FULL_VERSION: ${{ steps.guess-build-metadata.outputs.FULL_VERSION }}
+        run: |
+          {
+          echo "- [Client Library](https://www.npmjs.com/package/@opentdf/sdk/v/$FULL_VERSION)"
+          echo "- [Command Line Tool](https://www.npmjs.com/package/@opentdf/ctl/v/$FULL_VERSION)"
+          echo "- [unpkg](https://unpkg.com/browse/@opentdf/sdk@$FULL_VERSION)"
+          } >>"$GITHUB_STEP_SUMMARY"
