@@ -12,6 +12,8 @@ export type CommonCredentials = {
   clientId: string;
   /** The endpoint of the OIDC IdP to authenticate against, ex. 'https://virtru.com/auth' */
   oidcOrigin: string;
+  oidcTokenEndpoint?: string;
+  oidcUserInfoEndpoint?: string;
   /** Whether or not DPoP is enabled. */
   dpopEnabled?: boolean;
 
@@ -89,6 +91,8 @@ export class AccessToken {
   data?: AccessTokenResponse;
 
   baseUrl: string;
+  tokenEndpoint: string;
+  userInfoEndpoint: string;
 
   signingKey?: CryptoKeyPair;
 
@@ -119,6 +123,9 @@ export class AccessToken {
     this.config = cfg;
     this.request = request;
     this.baseUrl = rstrip(cfg.oidcOrigin, '/');
+    this.tokenEndpoint = cfg.oidcTokenEndpoint || `${this.baseUrl}/protocol/openid-connect/token`;
+    this.userInfoEndpoint =
+      cfg.oidcUserInfoEndpoint || `${this.baseUrl}/protocol/openid-connect/userinfo`;
     this.signingKey = cfg.signingKey;
   }
 
@@ -128,21 +135,20 @@ export class AccessToken {
    * @returns
    */
   async info(accessToken: string): Promise<unknown> {
-    const url = `${this.baseUrl}/protocol/openid-connect/userinfo`;
     const headers = {
       ...this.extraHeaders,
       Authorization: `Bearer ${accessToken}`,
     } as Record<string, string>;
     if (this.config.dpopEnabled && this.signingKey) {
-      headers.DPoP = await dpopFn(this.signingKey, url, 'POST');
+      headers.DPoP = await dpopFn(this.signingKey, this.userInfoEndpoint, 'POST');
     }
-    const response = await (this.request || fetch)(url, {
+    const response = await (this.request || fetch)(this.userInfoEndpoint, {
       headers,
     });
     if (!response.ok) {
       console.error(await response.text());
       throw new TdfError(
-        `auth info fail: GET [${url}] => ${response.status} ${response.statusText}`
+        `auth info fail: GET [${this.userInfoEndpoint}] => ${response.status} ${response.statusText}`
       );
     }
 
@@ -171,7 +177,6 @@ export class AccessToken {
   }
 
   async accessTokenLookup(cfg: OIDCCredentials) {
-    const url = `${this.baseUrl}/protocol/openid-connect/token`;
     let body;
     switch (cfg.exchange) {
       case 'client':
@@ -198,11 +203,11 @@ export class AccessToken {
         };
         break;
     }
-    const response = await this.doPost(url, body);
+    const response = await this.doPost(this.tokenEndpoint, body);
     if (!response.ok) {
       console.error(await response.text());
       throw new TdfError(
-        `token/code exchange fail: POST [${url}] => ${response.status} ${response.statusText}`
+        `token/code exchange fail: POST [${this.tokenEndpoint}] => ${response.status} ${response.statusText}`
       );
     }
     return response.json();
