@@ -199,7 +199,7 @@ export async function fetchKasPublicKey(
   kas: string,
   algorithm?: KasPublicKeyAlgorithm
 ): Promise<KasPublicKeyInfo> {
-  return fetchKasPubKeyV2(kas, algorithm || 'rsa:2048');
+  return fetchKasPubKeyV2(kas, algorithm);
 }
 
 export async function extractPemFromKeyString(
