@@ -1,8 +1,11 @@
 import { ConfigurationError } from '../errors.js';
 import { Attribute, AttributeRuleType, KeyAccessServer, Value } from './attributes.js';
+import { SimpleKasPublicKey } from '../platform/policy/objects_pb.js';
+
+type KeyHolder = KeyAccessServer | (SimpleKasPublicKey & { kasUri: string });
 
 type KeySplitStep = {
-  kas: KeyAccessServer;
+  kas: KeyHolder;
   kid?: string;
   sid: string;
 };
@@ -14,17 +17,17 @@ type AttributeClause = {
 
 type AndClause = {
   op: 'allOf';
-  granters: KeyAccessServer[];
+  granters: KeyHolder[];
 };
 
 type HeirarchyClause = {
   op: 'hierarchy';
-  granters: KeyAccessServer[];
+  granters: KeyHolder[];
 };
 
 type OrClause = {
   op: 'anyOf';
-  granters: KeyAccessServer[];
+  granters: KeyHolder[];
 };
 
 type BooleanClause = AndClause | OrClause | HeirarchyClause;
@@ -53,11 +56,11 @@ export function booleanOperatorFor(rule?: AttributeRuleType): BooleanOperator {
 type ValueFQN = string;
 export function plan(dataAttrs: Value[]): KeySplitStep[] {
   // KASes by value
-  const granters: Record<ValueFQN, Set<KeyAccessServer>> = Object.create(null);
+  const granters: Record<ValueFQN, Set<KeyHolder>> = Object.create(null);
   // Values grouped by normalized attribute prefix
   const allClauses: Record<string, AttributeClause> = Object.create(null);
 
-  const addGrants = (valueFQN: string, gs?: KeyAccessServer[]): boolean => {
+  const addGrants = (valueFQN: string, gs?: KeyHolder[]): boolean => {
     if (!(valueFQN in granters)) {
       granters[valueFQN] = new Set();
     }
@@ -71,7 +74,7 @@ export function plan(dataAttrs: Value[]): KeySplitStep[] {
   };
 
   for (const v of dataAttrs) {
-    const { attribute, fqn } = v;
+    const { attribute, fqn, kasKeys } = v;
     if (!attribute) {
       throw new ConfigurationError(`attribute not defined for [${fqn}]`);
     }
@@ -84,7 +87,17 @@ export function plan(dataAttrs: Value[]): KeySplitStep[] {
       };
     }
     allClauses[attrFqn].values.push(valFqn);
-    if (!addGrants(valFqn, v.grants)) {
+    const validKasKeys = kasKeys
+      .map((kasKey) => {
+        if (!kasKey.publicKey) {
+          return null;
+        }
+        return Object.assign({ kasUri: kasKey.kasUri }, kasKey.publicKey);
+      })
+      .filter((kasKey) => kasKey !== null);
+    if (validKasKeys.length) {
+      addGrants(valFqn, validKasKeys);
+    } else if (!addGrants(valFqn, v.grants)) {
       if (!addGrants(valFqn, attribute.grants)) {
         addGrants(valFqn, attribute.namespace?.grants);
       }
@@ -114,13 +127,26 @@ export function plan(dataAttrs: Value[]): KeySplitStep[] {
 }
 
 function simplify(clauses: ComplexBooleanClause[]): KeySplitStep[] {
-  const conjunction: Record<string, KeyAccessServer[]> = {};
-  function keyFor(granters: KeyAccessServer[]): string {
+  const conjunction: Record<string, KeyHolder[]> = {};
+  function keyFor(granters: KeyHolder[]): string {
     const keyParts = granters
       .sort((a, b) => {
-        return a.id.localeCompare(b.id);
+        if ('kid' in a) {
+          if ('kid' in b) {
+            return a.kid.localeCompare(b.kid);
+          } else {
+            return -1;
+          }
+        } else if ('kid' in b) {
+          return 1;
+        } else {
+          return a.id.localeCompare(b.id);
+        }
       })
       .map((granter) => {
+        if ('kid' in granter) {
+          return granter.kid;
+        }
         if (!granter.publicKey) {
           return granter.id;
         }
@@ -146,7 +172,7 @@ function simplify(clauses: ComplexBooleanClause[]): KeySplitStep[] {
       continue;
     }
     if (op === 'anyOf') {
-      const granters: KeyAccessServer[] = [];
+      const granters: KeyHolder[] = [];
       for (const bc of children) {
         if (bc.op != 'anyOf') {
           throw new Error('internal: autoconfigure inversion in disjunction');
@@ -183,7 +209,9 @@ function simplify(clauses: ComplexBooleanClause[]): KeySplitStep[] {
     i += 1;
     const sid = '' + i;
     for (const kas of conjunction[k]) {
-      if (kas.publicKey && kas.publicKey.publicKey.case === 'cached') {
+      if ('kid' in kas) {
+        t.push({ sid, kas: kas, kid: kas.kid });
+      } else if (kas.publicKey && kas.publicKey.publicKey.case === 'cached') {
         kas.publicKey.publicKey.value.keys.forEach((key) => {
           t.push({ sid, kas: kas, kid: key.kid });
         });
