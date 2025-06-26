@@ -47,3 +47,10 @@ jobs:
           git add .
           git commit -m "Update dependencies"
           git push
+
+      - name: "Sign 'Update dependencies' commit"
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+          PULL_NUMBERS: ${{ fromJSON(needs.release-please.outputs.prs)[0].number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        uses: opentdf/platform/.github/actions/sign-backport-action-commits@main
