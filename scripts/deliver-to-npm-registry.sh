@@ -8,7 +8,7 @@ tag="${2}"
 
 cd lib
 file=src/version.ts
-if ! sed "s/export const version = \'[^']\{1,\}\';\$/export const version = \'${version}\';/" "${file}" >"${file}.tmp"; then
+if ! sed "s|export const version = \'[^']\{1,\}\'; // x-release-please-version\$|export const version = \'${version}\';|" "${file}" >"${file}.tmp"; then
 	echo "Failed to insert version [${version}] into file [$file]"
 	exit 1
 fi
