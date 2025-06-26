@@ -16,7 +16,7 @@ if ! grep --fixed-strings --line-regexp --quiet "version=${expected_version}" "M
   exit 1
 fi
 
-if ! grep --fixed-strings --line-regexp --quiet "export const version = '${expected_version}';" "lib/src/version.ts"; then
+if ! grep --fixed-strings --line-regexp --quiet "export const version = '${expected_version}'; // x-release-please-version" "lib/src/version.ts"; then
   if grep --quiet "^export const version" "lib/src/version.ts"; then
     echo "::error file=lib/src/version.ts,line=$(sed -n '/export const version/=' lib/src/version.ts)::Incorrect version line, should be setting it to [${expected_version}]"
   else
