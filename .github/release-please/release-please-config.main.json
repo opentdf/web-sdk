@@ -5,6 +5,7 @@
     "group-pull-request-title-pattern": "chore(${branch}): release ${version}",
     "packages": {
         ".": {
+            "component": "sdk",
             "release-type": "simple",
             "extra-files": [
                 {
