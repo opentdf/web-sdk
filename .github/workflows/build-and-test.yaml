@@ -8,7 +8,8 @@ on:
       - "release/**"
 
 # Default empty permissions for all jobs
-# fix later
+# fix later, need to add permissions for every job in reusable_build-and-test.yaml
+# then add corresponding permissions to the build-and-test job below
 #permissions: {}
 
 jobs:
