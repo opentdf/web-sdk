@@ -2,6 +2,9 @@ name: "Reusable worflow: Deliver Client to npm registry"
 
 on:
   workflow_call:
+    secrets:
+      NPM_TOKEN:
+        required: true
 
 # Default empty permissions for all jobs
 permissions: {}
