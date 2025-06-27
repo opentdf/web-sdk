@@ -14,5 +14,4 @@ jobs:
   build-and-test:
     uses: opentdf/web-sdk/.github/workflows/reusable_build-and-test.yaml@main
     secrets:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
