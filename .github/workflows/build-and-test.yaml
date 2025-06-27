@@ -8,7 +8,8 @@ on:
       - "release/**"
 
 # Default empty permissions for all jobs
-permissions: {}
+# fix later
+#permissions: {}
 
 jobs:
   build-and-test:
