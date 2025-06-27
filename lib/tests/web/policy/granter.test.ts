@@ -51,29 +51,76 @@ describe('policy/granter', () => {
   });
 
   describe('grant overloading', () => {
-    for (const { name, e } of [
-      { name: 'UUU', e: [] },
-      { name: 'UUG', e: [{ kas: matr.evenMoreSpecificKas, sid: '1' }] },
-      { name: 'UGU', e: [{ kas: matr.specifiedKas, sid: '1' }] },
-      { name: 'UGG', e: [{ kas: matr.evenMoreSpecificKas, sid: '1' }] },
-      { name: 'GUU', e: [{ kas: matr.lessSpecificKas, sid: '1' }] },
-      { name: 'GUG', e: [{ kas: matr.evenMoreSpecificKas, sid: '1' }] },
-      { name: 'GGU', e: [{ kas: matr.specifiedKas, sid: '1' }] },
-      { name: 'GGG', e: [{ kas: matr.evenMoreSpecificKas, sid: '1' }] },
-      { name: 'UUU+UUG', e: [{ kas: matr.evenMoreSpecificKas, sid: '1' }] },
+    for (const { attrs, expectedPlan } of [
+      {
+        attrs: [{ fqn: `${matr.nsUngranted}/attr/ungranted/value/ungranted` }],
+        expectedPlan: [],
+      },
+      {
+        attrs: [{ fqn: `${matr.nsUngranted}/attr/ungranted/value/granted` }],
+        expectedPlan: [
+          { kas: matr.kases[matr.evenMoreSpecificKas], sid: '1', kid: 'e1' },
+          { kas: matr.kases[matr.evenMoreSpecificKas], sid: '1', kid: 'r1' },
+        ],
+      },
+      {
+        attrs: [{ fqn: `${matr.nsUngranted}/attr/granted/value/ungranted` }],
+        expectedPlan: [
+          { kas: matr.kases[matr.specifiedKas], sid: '1', kid: 'e1' },
+          { kas: matr.kases[matr.specifiedKas], sid: '1', kid: 'r1' },
+        ],
+      },
+      {
+        attrs: [{ fqn: `${matr.nsUngranted}/attr/granted/value/granted` }],
+        expectedPlan: [
+          { kas: matr.kases[matr.evenMoreSpecificKas], sid: '1', kid: 'e1' },
+          { kas: matr.kases[matr.evenMoreSpecificKas], sid: '1', kid: 'r1' },
+        ],
+      },
+      {
+        attrs: [{ fqn: `${matr.nsGranted}/attr/ungranted/value/ungranted` }],
+        expectedPlan: [
+          { kas: matr.kases[matr.lessSpecificKas], sid: '1', kid: 'e1' },
+          { kas: matr.kases[matr.lessSpecificKas], sid: '1', kid: 'r1' },
+        ],
+      },
+      {
+        attrs: [{ fqn: `${matr.nsGranted}/attr/ungranted/value/granted` }],
+        expectedPlan: [
+          { kas: matr.kases[matr.evenMoreSpecificKas], sid: '1', kid: 'e1' },
+          { kas: matr.kases[matr.evenMoreSpecificKas], sid: '1', kid: 'r1' },
+        ],
+      },
+      {
+        attrs: [{ fqn: `${matr.nsGranted}/attr/granted/value/ungranted` }],
+        expectedPlan: [
+          { kas: matr.kases[matr.specifiedKas], sid: '1', kid: 'e1' },
+          { kas: matr.kases[matr.specifiedKas], sid: '1', kid: 'r1' },
+        ],
+      },
+      {
+        attrs: [{ fqn: `${matr.nsGranted}/attr/granted/value/granted` }],
+        expectedPlan: [
+          { kas: matr.kases[matr.evenMoreSpecificKas], sid: '1', kid: 'e1' },
+          { kas: matr.kases[matr.evenMoreSpecificKas], sid: '1', kid: 'r1' },
+        ],
+      },
+      {
+        attrs: [
+          { fqn: `${matr.nsUngranted}/attr/ungranted/value/ungranted` },
+          { fqn: `${matr.nsUngranted}/attr/ungranted/value/granted` },
+        ],
+        expectedPlan: [
+          { kas: matr.kases[matr.evenMoreSpecificKas], sid: '1', kid: 'e1' },
+          { kas: matr.kases[matr.evenMoreSpecificKas], sid: '1', kid: 'r1' },
+        ],
+      },
     ]) {
-      const attrs = matr.valuesFor(
-        name.split('+').map((s) => {
-          const [n, a, v] = s;
-          const ns = n == 'G' ? matr.nsGranted : matr.nsUngranted;
-          const attr = `${ns}/attr/${a == 'G' ? '' : 'un'}granted`;
-          return `${attr}/value/${v == 'G' ? '' : 'un'}granted`;
-        })
-      );
-      const expected = e.map(({ kas, sid }) => ({ kas: matr.kases[kas], sid }));
-      it(name, async () => {
-        const p = plan(attrs);
-        expect(p).to.deep.equal(expected);
+      const name = attrs.map((attr) => attr.fqn).join('+');
+      it.only(name, async () => {
+        const platformAttrs = attrs.map((attr) => matr.valueFor(attr.fqn));
+        const p = plan(platformAttrs);
+        expect(p).to.deep.equal(expectedPlan);
       });
     }
   });
