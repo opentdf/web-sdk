@@ -197,8 +197,15 @@ export type RewrapResponse = {
  */
 export async function fetchKasPublicKey(
   kas: string,
-  algorithm?: KasPublicKeyAlgorithm
+  algorithm?: KasPublicKeyAlgorithm,
+  kid?: string
 ): Promise<KasPublicKeyInfo> {
+  if (kid) {
+    // Some specific thing for fetching a key by kid?
+    // Currently this is just "using" `kid` so TypeScript doesn't complain and
+    // we can use the type for our cache parameters.
+    // So this empty `if` is actually doing something.
+  }
   return fetchKasPubKeyV2(kas, algorithm);
 }
 

@@ -31,6 +31,7 @@ export type EncryptStreamMiddleware = (
 
 export type SplitStep = {
   kas: string;
+  kid?: string;
   sid?: string;
 };
 

@@ -21,10 +21,10 @@ const IP_HOST_PORT = '([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}:[0-9]{1
 const HOST = `(${HOST_PORT}|${WWW_HOST}|${IP_HOST_PORT})`;
 
 // validate attr  name be like `/attr/<attr_name>`
-export const ATTR_NAME = `(/${ATTR_NAME_PROP_NAME}/[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]?)`;
+export const ATTR_NAME = `(/${ATTR_NAME_PROP_NAME}/(%[0-9a-fA-F][0-9a-fA-F]|[a-zA-Z0-9])+((%[0-9a-fA-F][0-9a-fA-F]|[a-zA-Z0-9-])+[a-zA-Z0-9])?)`;
 
 // validate value pattern
-export const ATTR_VALUE = `(/${ATTR_VALUE_PROP_NAME}/[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]?)`;
+export const ATTR_VALUE = `(/${ATTR_VALUE_PROP_NAME}/(%[0-9a-fA-F][0-9a-fA-F]|[a-zA-Z0-9])+((%[0-9a-fA-F][0-9a-fA-F]|[a-zA-Z0-9-])+[a-zA-Z0-9])?)`;
 
 // validate attribute authority  e.g. https://example.com
 const ATTR_AUTHORITY_PATTERN = `(${SCHEME}${HOST})`;
