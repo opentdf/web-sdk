@@ -33,12 +33,30 @@ export const fromBrowserFile = (fileRef: Blob): Chunker => {
   };
 };
 
+/**
+ * Creates a seekable object from a buffer.
+ * @param source A Uint8Array to read from.
+ * If byteStart and byteEnd are not provided, reads the entire array.
+ * If byteStart is provided, reads from that index to the end of the array.
+ * If byteEnd is provided, reads from byteStart to byteEnd (exclusive).
+ * If both byteStart and byteEnd are provided, reads from byteStart to byteEnd (exclusive).
+ * @returns A promise that resolves to a Uint8Array containing the requested data.
+ */
 export const fromBuffer = (source: Uint8Array): Chunker => {
   return (byteStart?: number, byteEnd?: number) => {
     return Promise.resolve(source.slice(byteStart, byteEnd));
   };
 };
 
+/**
+ * Creates a seekable object from a string.
+ * @param source A string to read from.
+ * If byteStart and byteEnd are not provided, reads the entire string.
+ * If byteStart is provided, reads from that index to the end of the string.
+ * If byteEnd is provided, reads from byteStart to byteEnd (exclusive).
+ * If both byteStart and byteEnd are provided, reads from byteStart to byteEnd (exclusive).
+ * @returns A promise that resolves to a Uint8Array containing the requested data.
+ */
 export const fromString = (source: string): Chunker => {
   return fromBuffer(new TextEncoder().encode(source));
 };
@@ -110,6 +128,12 @@ export const fromUrl = async (location: string): Promise<Chunker> => {
   };
 };
 
+/**
+ * Creates a seekable object from a source.
+ * @param source A Source object containing the type and location of the data.
+ * @returns A promise that resolves to a Chunker function.
+ * @throws ConfigurationError if the source type is not supported or the location is invalid.
+ */
 export const fromSource = async ({ type, location }: Source): Promise<Chunker> => {
   switch (type) {
     case 'buffer':
@@ -139,6 +163,13 @@ export const fromSource = async ({ type, location }: Source): Promise<Chunker> =
   }
 };
 
+/**
+ * Converts a Source object to a ReadableStream.
+ * @param source A Source object containing the type and location of the data.
+ * Converts the source to a ReadableStream of Uint8Array.
+ * This is useful for streaming data from various sources like files, remote URLs, or chunkers.
+ * @returns A ReadableStream of Uint8Array.
+ */
 export async function sourceToStream(source: Source): Promise<ReadableStream<Uint8Array>> {
   switch (source.type) {
     case 'stream':
