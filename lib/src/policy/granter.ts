@@ -159,13 +159,13 @@ function simplify(clauses: ComplexBooleanClause[]): KeySplitStep[] {
             return publicKey.value.keys
               .map((key) => key.kid)
               .sort()
-              .join('');
+              .join('/');
 
           default:
             throw new Error(`Unknown public key type: ${publicKey.case}`);
         }
       });
-    return keyParts.join('');
+    return keyParts.join(':');
   }
   for (const { op, children } of clauses) {
     if (!children) {
