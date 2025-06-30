@@ -12,9 +12,8 @@ permissions: {}
 jobs:
   deliver-ghp:
     permissions:
-      contents: read
+      contents: write
       packages: write
-      pages: write
     runs-on: ubuntu-latest
 
     steps:
