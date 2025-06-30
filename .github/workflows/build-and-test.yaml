@@ -1,0 +1,19 @@
+name: "Build and Test Client"
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - "release/**"
+
+# Default empty permissions for all jobs
+# fix later, need to add permissions for every job in reusable_build-and-test.yaml
+# then add corresponding permissions to the build-and-test job below
+#permissions: {}
+
+jobs:
+  build-and-test:
+    uses: opentdf/web-sdk/.github/workflows/reusable_build-and-test.yaml@main
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
