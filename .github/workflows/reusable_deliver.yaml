@@ -30,16 +30,8 @@ jobs:
 
       - name: "Check version number is same between tag, library, and/or release"
         id: check-version
-        env:
-          REF: ${{ github.ref }}
         run: |
-          if [[ "$REF" = refs/heads/release/* ]]; then
-            scripts/check-version-is.sh "${GITHUB_REF##*release/}"
-          elif [[ "$REF" = refs/tags/sdk/v* ]]; then
-            scripts/check-version-is.sh "${GITHUB_REF_NAME#sdk/v}"
-          else
-            scripts/check-version-is.sh
-          fi
+          scripts/check-version-is.sh "${GITHUB_REF}"
 
       - name: "Output build metadata"
         id: guess-build-metadata
