@@ -130,40 +130,22 @@ function simplify(clauses: ComplexBooleanClause[]): KeySplitStep[] {
   const conjunction: Record<string, KeyHolder[]> = {};
   function keyFor(granters: KeyHolder[]): string {
     const keyParts = granters
-      .sort((a, b) => {
-        if ('kid' in a) {
-          if ('kid' in b) {
-            return a.kid.localeCompare(b.kid);
-          } else {
-            return -1;
-          }
-        } else if ('kid' in b) {
-          return 1;
+      .map((keyHolder) => {
+        const keyParts: string[] = [];
+        if ('kid' in keyHolder) {
+          keyParts.push(keyHolder.kasUri);
+          keyParts.push(keyHolder.kid);
         } else {
-          return a.id.localeCompare(b.id);
+          keyParts.push(keyHolder.uri);
+          keyParts.push('');
         }
+        return [keyHolder, keyParts.join('/')] as [KeyHolder, string];
       })
-      .map((granter) => {
-        if ('kid' in granter) {
-          return granter.kid;
-        }
-        if (!granter.publicKey) {
-          return granter.id;
-        }
-        const publicKey = granter.publicKey.publicKey;
-        switch (publicKey.case) {
-          case 'remote':
-            return publicKey.value;
-
-          case 'cached':
-            return publicKey.value.keys
-              .map((key) => key.kid)
-              .sort()
-              .join('/');
-
-          default:
-            throw new Error(`Unknown public key type: ${publicKey.case}`);
-        }
+      .sort(([, sortKeyA], [, sortKeyB]) => {
+        return sortKeyA.localeCompare(sortKeyB);
+      })
+      .map(([, sortKey]) => {
+        return sortKey;
       });
     return keyParts.join(':');
   }
