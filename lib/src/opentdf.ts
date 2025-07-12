@@ -777,6 +777,7 @@ class Collection {
       maxKeyIterations: opts.maxKeyIterations,
       platformUrl: opts.platformUrl,
     });
+    this.client.dataAttributes = opts.attributes || [];
   }
 
   /** Encrypts a source into a NanoTDF stream. */
