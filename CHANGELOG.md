@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/opentdf/web-sdk/compare/sdk/v0.4.0...sdk-v0.5.0) (2025-07-14)
+
+
+### Bug Fixes
+
+* **sdk:** Fix new API not setting nano attributes ([#679](https://github.com/opentdf/web-sdk/issues/679)) ([f0d9719](https://github.com/opentdf/web-sdk/commit/f0d97196ab258122fe9a07b7d7895017299a46c2))
+
 ## [0.4.0](https://github.com/opentdf/web-sdk/compare/v0.3.2...v0.4.0) (2025-06-26)
 
 
