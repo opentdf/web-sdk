@@ -703,6 +703,7 @@ class Collection {
       maxKeyIterations: opts.maxKeyIterations,
       platformUrl: opts.platformUrl,
     });
+    this.client.dataAttributes = opts.attributes || [];
   }
 
   async encrypt(source: Source): Promise<DecoratedStream> {
