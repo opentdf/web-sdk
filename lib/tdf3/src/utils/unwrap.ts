@@ -3,7 +3,7 @@ import { InvalidFileError } from '../../../src/errors.js';
 
 export function unwrapHtml(htmlPayload: Uint8Array): Uint8Array {
   const html = new TextDecoder().decode(htmlPayload);
-  const payloadRe = /<input id=['"]?data-input['"]?[^>]*?value=['"]?([a-zA-Z0-9+/=]+?)['"]?/;
+  const payloadRe = /<input id=['"]?data-input['"]?[^>]*?value=['"]?([a-zA-Z0-9+/=\-_]+?)['"]?/;
   const reResult = payloadRe.exec(html);
   if (!reResult) {
     throw new InvalidFileError('Payload is missing');
