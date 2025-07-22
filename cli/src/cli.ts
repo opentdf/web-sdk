@@ -318,7 +318,14 @@ async function parseCreateNanoTDFOptions(argv: Partial<mainArgs>): Promise<Creat
   }
 
   if (argv.policyType) {
-    c.policyType = PolicyType[argv.policyType as keyof typeof PolicyType];
+    switch (argv.policyType) {
+      case 'EmbeddedEncrypted':
+        c.policyType = PolicyType.EmbeddedEncrypted;
+        break;
+      case 'EmbeddedText':
+        c.policyType = PolicyType.EmbeddedText;
+        break;
+    }
   }
   // NOTE autoconfigure is not yet supported in nanotdf
   delete c.autoconfigure;
