@@ -23,6 +23,7 @@ import { webcrypto } from 'crypto';
 import * as assertions from '@opentdf/sdk/assertions';
 import { attributeFQNsAsValues } from '@opentdf/sdk/nano';
 import { base64 } from '@opentdf/sdk/encodings';
+import { PolicyType} from '@opentdf/sdk';
 import { type CryptoKey, importPKCS8, importSPKI } from 'jose'; // for RS256
 
 type AuthToProcess = {
@@ -309,11 +310,15 @@ async function parseCreateZTDFOptions(argv: Partial<mainArgs>): Promise<CreateZT
   return c;
 }
 
-async function parseCreateNanoTDFOptions(argv: Partial<mainArgs>): Promise<CreateZTDFOptions> {
+async function parseCreateNanoTDFOptions(argv: Partial<mainArgs>): Promise<CreateNanoTDFOptions> {
   const c: CreateNanoTDFOptions = await parseCreateOptions(argv);
   const ecdsaBinding = argv.policyBinding?.toLowerCase() == 'ecdsa';
   if (ecdsaBinding) {
     c.bindingType = 'ecdsa';
+  }
+
+  if (argv.policyType) {
+    c.policyType = PolicyType[argv.policyType as keyof typeof PolicyType]
   }
   // NOTE autoconfigure is not yet supported in nanotdf
   delete c.autoconfigure;
@@ -520,6 +525,13 @@ export const handleArgs = (args: string[]) => {
           type: 'string',
           description: 'TDF spec version for file creation',
           default: tdfSpecVersion,
+        },
+        policyType: {
+          group: 'Encrypt Options:',
+          desc: 'Policy type for NanoTDF: EmbeddedEncrypted or EmbeddedText',
+          type: 'string',
+          choices: ['EmbeddedEncrypted', 'EmbeddedText'],
+          default: 'EmbeddedEncrypted',
         },
       })
 

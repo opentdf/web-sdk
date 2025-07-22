@@ -92,6 +92,9 @@ export type CreateNanoTDFOptions = CreateOptions & {
    * to generate a signature for each element. When absent, the nanotdf is unsigned.
    */
   signingKeyID?: string;
+
+  /** The type of policy to embed in the NanoTDF. */
+  policyType?: PolicyType;
 };
 
 /** Options for creating a NanoTDF collection. */
@@ -759,14 +762,12 @@ class Collection {
     if (opts.ecdsaBindingKeyID) {
       throw new ConfigurationError('custom binding key not implemented');
     }
-    switch (opts.bindingType) {
-      case 'ecdsa':
-        this.encryptOptions = { ecdsaBinding: true };
-        break;
-      case 'gmac':
-        this.encryptOptions = { ecdsaBinding: false };
-        break;
-    }
+    
+    // Initialize encryptOptions with policyType if provided
+    this.encryptOptions = { 
+      ecdsaBinding: opts.bindingType === 'ecdsa',
+      policyType: opts.policyType
+    };
 
     const kasEndpoint =
       opts.defaultKASEndpoint || opts.platformUrl || 'https://disallow.all.invalid';

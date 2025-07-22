@@ -18,6 +18,7 @@ import {
 import { KasPublicKeyInfo } from '../access.js';
 import { computeECDSASig, extractRSValuesFromSignature } from '../nanotdf-crypto/ecdsaSignature.js';
 import { ConfigurationError } from '../errors.js';
+import PolicyType from './enum/PolicyTypeEnum.js';
 
 /**
  * Encrypt the plain data into nanotdf buffer
@@ -28,6 +29,7 @@ import { ConfigurationError } from '../errors.js';
  * @param iv
  * @param data The data to be encrypted
  * @param ecdsaBinding Flag to enable ECDSA binding
+ * @param policyType Policy type to use for the nanotdf
  */
 export default async function encrypt(
   policy: string,
@@ -35,7 +37,8 @@ export default async function encrypt(
   ephemeralKeyPair: CryptoKeyPair,
   iv: Uint8Array,
   data: string | ArrayBufferLike,
-  ecdsaBinding: boolean = DefaultParams.ecdsaBinding
+  ecdsaBinding: boolean = DefaultParams.ecdsaBinding,
+  policyType?: PolicyType
 ): Promise<ArrayBuffer> {
   // Generate a symmetric key.
   if (!ephemeralKeyPair.privateKey) {
@@ -54,15 +57,24 @@ export default async function encrypt(
   // Auth tag length for policy and payload
   const authTagLengthInBytes = authTagLengthForCipher(DefaultParams.symmetricCipher) / 8;
 
-  // Encrypt the policy
-  const policyIV = new Uint8Array(iv.length).fill(0);
-  const policyAsBuffer = new TextEncoder().encode(policy);
-  const encryptedPolicy = await cryptoEncrypt(
-    symmetricKey,
-    policyAsBuffer,
-    policyIV,
-    authTagLengthInBytes * 8
-  );
+  let policyContent: Uint8Array;
+  if (policyType === PolicyType.EmbeddedText) {
+    // Store policy as plain text
+    policyContent = new TextEncoder().encode(policy);
+  } else {
+    // Encrypt the policy
+    const policyIV = new Uint8Array(iv.length).fill(0);
+    const policyAsBuffer = new TextEncoder().encode(policy);
+    policyContent = new Uint8Array(
+      await cryptoEncrypt(
+        symmetricKey,
+        policyAsBuffer,
+        policyIV,
+        authTagLengthInBytes * 8
+      )
+    );
+  }
+
 
   let policyBinding: Uint8Array;
 
@@ -70,7 +82,7 @@ export default async function encrypt(
   if (ecdsaBinding) {
     const curveName = await getCurveNameFromPrivateKey(ephemeralKeyPair.privateKey);
     const ecdsaPrivateKey = await convertECDHToECDSA(ephemeralKeyPair.privateKey, curveName);
-    const ecdsaSignature = await computeECDSASig(ecdsaPrivateKey, new Uint8Array(encryptedPolicy));
+    const ecdsaSignature = await computeECDSASig(ecdsaPrivateKey, policyContent);
     const { r, s } = extractRSValuesFromSignature(new Uint8Array(ecdsaSignature));
 
     const rLength = r.length;
@@ -84,15 +96,15 @@ export default async function encrypt(
     policyBinding[1 + rLength] = sLength;
     policyBinding.set(s, 1 + rLength + 1);
   } else {
-    const signature = await digest('SHA-256', new Uint8Array(encryptedPolicy));
+    const signature = await digest('SHA-256', policyContent);
     policyBinding = new Uint8Array(signature.slice(-GMAC_BINDING_LEN));
   }
 
   // Create embedded policy
   const embeddedPolicy = new EmbeddedPolicy(
-    DefaultParams.policyType,
+    policyType ?? PolicyType.EmbeddedEncrypted,
     policyBinding,
-    new Uint8Array(encryptedPolicy)
+    policyContent
   );
 
   if (!ephemeralKeyPair.publicKey) {

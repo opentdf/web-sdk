@@ -6,3 +6,4 @@ export { PlatformClient, type PlatformClientOptions, type PlatformServices } fro
 export * from './opentdf.js';
 export * from './seekable.js';
 export * from '../tdf3/src/models/index.js';
+export { default as PolicyType } from './nanotdf/enum/PolicyTypeEnum.js';

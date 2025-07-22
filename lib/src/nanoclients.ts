@@ -14,15 +14,18 @@ import { fetchECKasPubKey } from './access.js';
 import { type ClientConfig } from './nanotdf/Client.js';
 import { ConfigurationError } from './errors.js';
 import { type AttributeObject } from '../tdf3/src/models/attribute.js';
+import PolicyType from './nanotdf/enum/PolicyTypeEnum.js';
 
 // Define the EncryptOptions type
 export type EncryptOptions = {
   ecdsaBinding: boolean;
+  policyType?: PolicyType;
 };
 
 // Define default options
 const defaultOptions: EncryptOptions = {
   ecdsaBinding: false,
+  policyType: PolicyType.EmbeddedEncrypted,
 };
 
 /**
@@ -100,6 +103,14 @@ export class NanoTDFClient extends Client {
     const ephemeralKeyPair = await this.ephemeralKeyPair;
     const initializationVector = this.iv;
 
+    const mergedOptions: EncryptOptions = { ...defaultOptions, ...options };
+    if (
+      mergedOptions.policyType !== PolicyType.EmbeddedEncrypted &&
+      mergedOptions.policyType !== PolicyType.EmbeddedText
+    ) {
+      throw new ConfigurationError('Invalid policy type');
+    }
+
     if (typeof initializationVector !== 'number') {
       throw new ConfigurationError(
         'NanoTDF clients are single use. Please generate a new client and keypair.'
@@ -146,14 +157,14 @@ export class NanoTDFClient extends Client {
     payloadIV[10] = lengthAsUint24[1];
     payloadIV[11] = lengthAsUint24[0];
 
-    const mergedOptions: EncryptOptions = { ...defaultOptions, ...options };
     return encrypt(
       policyObjectAsStr,
       this.kasPubKey,
       ephemeralKeyPair,
       payloadIV,
       data,
-      mergedOptions.ecdsaBinding
+      mergedOptions.ecdsaBinding,
+      mergedOptions.policyType
     );
   }
 }
@@ -283,7 +294,8 @@ export class NanoTDFDatasetClient extends Client {
         ephemeralKeyPair,
         ivVector,
         data,
-        this.ecdsaBinding
+        this.ecdsaBinding,
+        mergedOptions.policyType,
       );
 
       // Cache the header and increment the key iteration
