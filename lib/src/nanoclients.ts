@@ -295,7 +295,7 @@ export class NanoTDFDatasetClient extends Client {
         ivVector,
         data,
         this.ecdsaBinding,
-        mergedOptions.policyType,
+        mergedOptions.policyType
       );
 
       // Cache the header and increment the key iteration

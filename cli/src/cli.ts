@@ -23,7 +23,7 @@ import { webcrypto } from 'crypto';
 import * as assertions from '@opentdf/sdk/assertions';
 import { attributeFQNsAsValues } from '@opentdf/sdk/nano';
 import { base64 } from '@opentdf/sdk/encodings';
-import { PolicyType} from '@opentdf/sdk';
+import { PolicyType } from '@opentdf/sdk';
 import { type CryptoKey, importPKCS8, importSPKI } from 'jose'; // for RS256
 
 type AuthToProcess = {
@@ -318,7 +318,7 @@ async function parseCreateNanoTDFOptions(argv: Partial<mainArgs>): Promise<Creat
   }
 
   if (argv.policyType) {
-    c.policyType = PolicyType[argv.policyType as keyof typeof PolicyType]
+    c.policyType = PolicyType[argv.policyType as keyof typeof PolicyType];
   }
   // NOTE autoconfigure is not yet supported in nanotdf
   delete c.autoconfigure;

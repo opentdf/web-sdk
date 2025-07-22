@@ -762,11 +762,11 @@ class Collection {
     if (opts.ecdsaBindingKeyID) {
       throw new ConfigurationError('custom binding key not implemented');
     }
-    
+
     // Initialize encryptOptions with policyType if provided
-    this.encryptOptions = { 
+    this.encryptOptions = {
       ecdsaBinding: opts.bindingType === 'ecdsa',
-      policyType: opts.policyType
+      policyType: opts.policyType,
     };
 
     const kasEndpoint =

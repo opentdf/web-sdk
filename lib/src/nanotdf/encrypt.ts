@@ -66,15 +66,9 @@ export default async function encrypt(
     const policyIV = new Uint8Array(iv.length).fill(0);
     const policyAsBuffer = new TextEncoder().encode(policy);
     policyContent = new Uint8Array(
-      await cryptoEncrypt(
-        symmetricKey,
-        policyAsBuffer,
-        policyIV,
-        authTagLengthInBytes * 8
-      )
+      await cryptoEncrypt(symmetricKey, policyAsBuffer, policyIV, authTagLengthInBytes * 8)
     );
   }
-
 
   let policyBinding: Uint8Array;
 
