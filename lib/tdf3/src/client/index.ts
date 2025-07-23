@@ -1,8 +1,8 @@
 import { v4 } from 'uuid';
 import {
-  ZipReader,
-  streamToBuffer,
   keyMiddleware as defaultKeyMiddleware,
+  streamToBuffer,
+  ZipReader,
 } from '../utils/index.js';
 import { base64 } from '../../../src/encodings/index.js';
 import {
@@ -10,8 +10,8 @@ import {
   type EncryptConfiguration,
   fetchKasPublicKey,
   loadTDFStream,
-  validatePolicyObject,
   readStream,
+  validatePolicyObject,
   writeStream,
 } from '../tdf.js';
 import { unwrapHtml } from '../utils/unwrap.js';
@@ -27,22 +27,18 @@ import {
 } from '../../../src/utils.js';
 
 import {
-  type EncryptParams,
   type DecryptParams,
-  type Scope,
-  type DecryptStreamMiddleware,
-  type EncryptKeyMiddleware,
-  type EncryptStreamMiddleware,
-  type SplitStep,
-} from './builders.js';
-import { DecoratedReadableStream } from './DecoratedReadableStream.js';
-
-import {
-  DEFAULT_SEGMENT_SIZE,
   DecryptParamsBuilder,
   type DecryptSource,
+  type DecryptStreamMiddleware,
+  DEFAULT_SEGMENT_SIZE,
+  type EncryptKeyMiddleware,
+  type EncryptParams,
   EncryptParamsBuilder,
+  type EncryptStreamMiddleware,
+  type Scope,
 } from './builders.js';
+import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 import {
   fetchKeyAccessServers,
   type KasPublicKeyInfo,
@@ -62,8 +58,8 @@ import {
 } from '../models/index.js';
 import { plan } from '../../../src/policy/granter.js';
 import { attributeFQNsAsValues } from '../../../src/policy/api.js';
-import { type Value } from '../../../src/policy/attributes.js';
 import { type Chunker, fromBuffer, fromSource } from '../../../src/seekable.js';
+import { Algorithm, SimpleKasKey } from '../../../src/platform/policy/objects_pb.js';
 
 const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
 
@@ -71,6 +67,11 @@ const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
 const defaultClientConfig = { oidcOrigin: '', cryptoService: defaultCryptoService };
 
 const getFirstTwoBytes = async (chunker: Chunker) => new TextDecoder().decode(await chunker(0, 2));
+
+async function algorithmFromPEM(pem: string) {
+  const k: CryptoKey = await pemToCryptoPublicKey(pem);
+  return keyAlgorithmToPublicKeyAlgorithm(k);
+}
 
 // Convert a PEM string to a CryptoKey
 export const resolveKasInfo = async (
@@ -227,6 +228,95 @@ function asPolicy(scope: Scope): Policy {
   };
 }
 
+type KasKeyInfoCache = [
+  ...Parameters<typeof fetchKasPublicKey>,
+  keyInfoPromise: ReturnType<typeof fetchKasPublicKey>,
+][];
+
+export function findEntryInCache(
+  cache: KasKeyInfoCache,
+  ...params: Parameters<typeof fetchKasPublicKey>
+) {
+  const [wantedKas, wantedAlgorithm, wantedKid] = params;
+  for (const item of cache) {
+    const [itemKas, itemAlgorithm, itemKid, itemKeyInfoPromise] = item;
+    if (itemKas !== wantedKas) {
+      continue;
+    }
+    // This makes undefined only match with undefined (base key).
+    // We could potentially consider any key a match if undefined algorithm?
+    if (itemAlgorithm !== wantedAlgorithm) {
+      continue;
+    }
+    if (wantedKid && itemKid !== wantedKid) {
+      continue;
+    }
+    return itemKeyInfoPromise;
+  }
+  return null;
+}
+
+const fetchKasKeyWithCache = (
+  cache: KasKeyInfoCache,
+  ...params: Parameters<typeof fetchKasPublicKey>
+): ReturnType<typeof fetchKasPublicKey> => {
+  const cachedEntry = findEntryInCache(cache, ...params);
+  if (cachedEntry !== null) {
+    return cachedEntry;
+  }
+  const keyInfoPromise = fetchKasPublicKey(...params);
+  cache.push([...params, keyInfoPromise]);
+  return keyInfoPromise;
+};
+
+function algorithmEnumValueToString(algorithmEnumValue: Algorithm) {
+  switch (algorithmEnumValue) {
+    case Algorithm.RSA_2048:
+      return 'rsa:2048';
+    case Algorithm.RSA_4096:
+      return 'rsa:4096';
+    case Algorithm.EC_P256:
+      return 'ec:secp256r1';
+    case Algorithm.EC_P384:
+      return 'ec:secp384r1';
+    case Algorithm.EC_P521:
+      return 'ec:secp521r1';
+    case Algorithm.UNSPECIFIED:
+      // Not entirely sure undefined is correct here, but since we need to generate a key for our cache
+      // synchonously, it seems to be the best approach for now.
+      return undefined;
+    default:
+      return undefined;
+  }
+}
+
+const putKasKeyIntoCache = (
+  cache: KasKeyInfoCache,
+  kasKey: Omit<SimpleKasKey, 'publicKey'> & {
+    publicKey: Exclude<SimpleKasKey['publicKey'], undefined>;
+  }
+): ReturnType<typeof fetchKasPublicKey> => {
+  const algorithmString = algorithmEnumValueToString(kasKey.publicKey.algorithm);
+  const cachedEntry = findEntryInCache(cache, kasKey.kasUri, algorithmString, kasKey.publicKey.kid);
+  if (cachedEntry) {
+    return cachedEntry;
+  }
+  const keyInfoPromise = (async function () {
+    const keyPromise = pemToCryptoPublicKey(kasKey.publicKey.pem);
+    const key = await keyPromise;
+    const algorithm = keyAlgorithmToPublicKeyAlgorithm(key);
+    return {
+      algorithm: algorithm,
+      key: keyPromise,
+      kid: kasKey.publicKey.kid,
+      publicKey: kasKey.publicKey.pem,
+      url: kasKey.kasUri,
+    };
+  })();
+  cache.push([kasKey.kasUri, algorithmString, kasKey.publicKey.kid, keyInfoPromise]);
+  return keyInfoPromise;
+};
+
 export class Client {
   readonly cryptoService: CryptoService;
 
@@ -252,7 +342,7 @@ export class Client {
    */
   readonly platformUrl?: string;
 
-  readonly kasKeys: Record<string, Promise<KasPublicKeyInfo>[]> = {};
+  readonly kasKeyInfoCache: KasKeyInfoCache = [];
 
   readonly easEndpoint?: string;
 
@@ -360,11 +450,13 @@ export class Client {
       cryptoService: this.cryptoService,
       dpopKeys: clientConfig.dpopKeys,
     });
-    if (clientConfig.kasPublicKey) {
-      this.kasKeys[this.kasEndpoint] = [
-        resolveKasInfo(clientConfig.kasPublicKey, this.kasEndpoint),
-      ];
-    }
+  }
+
+  /** Necessary only for testing. A dependency-injection approach should be preferred, but that is difficult currently */
+  _doFetchKasKeyWithCache(
+    ...params: Parameters<typeof fetchKasKeyWithCache>
+  ): ReturnType<typeof fetchKasKeyWithCache> {
+    return fetchKasKeyWithCache(...params);
   }
 
   /**
@@ -396,62 +488,165 @@ export class Client {
       mimeType = 'unknown',
       windowSize = DEFAULT_SEGMENT_SIZE,
       keyMiddleware = defaultKeyMiddleware,
+      splitPlan: preconfiguredSplitPlan,
       streamMiddleware = async (stream: DecoratedReadableStream) => stream,
       tdfSpecVersion,
-      wrappingKeyAlgorithm = 'rsa:2048',
+      wrappingKeyAlgorithm,
     } = opts;
     const scope = opts.scope ?? { attributes: [], dissem: [] };
+
+    for (const attributeValue of scope.attributeValues || []) {
+      for (const kasKey of attributeValue.kasKeys) {
+        if (kasKey.publicKey !== undefined) {
+          await putKasKeyIntoCache(this.kasKeyInfoCache, {
+            // TypeScript is silly and cannot infer that publicKey is not undefined, without re-referencing it like this, even though we checked already.
+            ...kasKey,
+            publicKey: kasKey.publicKey,
+          });
+        }
+      }
+    }
 
     const policyObject = asPolicy(scope);
     validatePolicyObject(policyObject);
 
-    let splitPlan = opts.splitPlan;
-    if (!splitPlan && autoconfigure) {
-      let avs: Value[] = scope.attributeValues ?? [];
-      const fqns: string[] = scope.attributes
-        ? scope.attributes.map((attribute) =>
-            typeof attribute === 'string' ? attribute : attribute.attribute
-          )
-        : [];
-
-      if (!avs.length && fqns.length) {
-        // Hydrate avs from policy endpoint givnen the fqns
-        if (!this.policyEndpoint) {
-          throw new ConfigurationError('policyEndpoint not set in TDF3 Client constructor');
-        }
-        avs = await attributeFQNsAsValues(
-          this.policyEndpoint,
-          this.authProvider as AuthProvider,
-          ...fqns
+    const splitPlan: {
+      kas: string;
+      kid?: string;
+      pem: string;
+      sid?: string;
+    }[] = [];
+    if (preconfiguredSplitPlan) {
+      for (const preconfiguredSplit of preconfiguredSplitPlan) {
+        const kasPublicKeyInfo = await this._doFetchKasKeyWithCache(
+          this.kasKeyInfoCache,
+          preconfiguredSplit.kas,
+          wrappingKeyAlgorithm,
+          preconfiguredSplit.kid
         );
-      } else if (scope.attributeValues) {
-        avs = scope.attributeValues;
-        if (!scope.attributes) {
-          scope.attributes = avs.map(({ fqn }) => fqn);
-        }
+        splitPlan.push({
+          kas: kasPublicKeyInfo.url,
+          kid: kasPublicKeyInfo.kid,
+          pem: kasPublicKeyInfo.publicKey,
+          sid: preconfiguredSplit.sid,
+        });
       }
-      if (
-        avs.length != (scope.attributes?.length || 0) ||
-        !avs.map(({ fqn }) => fqn).every((a) => fqns.indexOf(a) >= 0)
-      ) {
+    } else if (autoconfigure) {
+      const attributeValues = scope.attributeValues ?? [];
+      if (!scope.attributes) {
+        scope.attributes = attributeValues.map(({ fqn }) => fqn);
+      }
+      const attributeFQNs = (scope.attributes ?? []).map((attribute) =>
+        typeof attribute === 'string' ? attribute : attribute.attribute
+      );
+      const fqnsWithoutValues = attributeFQNs.filter((fqn) =>
+        attributeValues.every((av) => av.fqn !== fqn)
+      );
+
+      if (fqnsWithoutValues.length) {
+        // Hydrate missing avs from policy endpoint given the fqns
+        if (!this.platformUrl) {
+          throw new ConfigurationError('platformUrl not set in TDF3 Client constructor');
+        }
+        const fetchedFQNValues = await attributeFQNsAsValues(
+          this.platformUrl,
+          this.authProvider as AuthProvider,
+          ...fqnsWithoutValues
+        );
+        fetchedFQNValues.forEach((fetchedValue) => {
+          attributeValues.push(fetchedValue);
+        });
+      }
+
+      const hasAllFQNs = attributeFQNs.every((fqn) =>
+        attributeValues.some((attributeValue) => attributeValue.fqn === fqn)
+      );
+      if (attributeFQNs.length != attributeValues.length || !hasAllFQNs) {
         throw new ConfigurationError(
-          `Attribute mismatch between [${fqns}] and explicit values ${JSON.stringify(
-            avs.map(({ fqn }) => fqn)
+          `Attribute mismatch between [${attributeFQNs}] and explicit values ${JSON.stringify(
+            attributeValues.map(({ fqn }) => fqn)
           )}`
         );
       }
-      const detailedPlan = plan(avs);
-      splitPlan = detailedPlan.map((kat) => {
-        const { kas, sid } = kat;
-        const pubKey = kas.publicKey?.publicKey;
-        if (pubKey?.case === 'cached' && pubKey.value.keys && !(kas.uri in this.kasKeys)) {
-          const keys = pubKey.value.keys;
-          if (keys?.length) {
-            this.kasKeys[kas.uri] = keys.map((key) => resolveKasInfo(key.pem, kas.uri, key.kid));
+
+      for (const attributeValue of attributeValues) {
+        for (const kasKey of attributeValue.kasKeys) {
+          if (kasKey.publicKey !== undefined) {
+            await putKasKeyIntoCache(this.kasKeyInfoCache, {
+              // TypeScript is silly and cannot infer that publicKey is not undefined, without re-referencing it like this, even though we checked already.
+              ...kasKey,
+              publicKey: kasKey.publicKey,
+            });
           }
         }
-        return { kas: kas.uri, sid };
-      });
+      }
+
+      const detailedPlan = plan(attributeValues);
+      for (const item of detailedPlan) {
+        if ('kid' in item.kas) {
+          const pemAlgorithm = await algorithmFromPEM(item.kas.pem);
+          const kasPublicKeyInfo = await this._doFetchKasKeyWithCache(
+            this.kasKeyInfoCache,
+            item.kas.kasUri,
+            pemAlgorithm,
+            item.kas.kid
+          );
+          splitPlan.push({
+            kas: kasPublicKeyInfo.url,
+            kid: kasPublicKeyInfo.kid,
+            pem: kasPublicKeyInfo.publicKey,
+            sid: item.sid,
+          });
+          continue;
+        }
+
+        if (!item.kas.publicKey) {
+          const kasPublicKeyInfo = await this._doFetchKasKeyWithCache(
+            this.kasKeyInfoCache,
+            item.kas.uri,
+            wrappingKeyAlgorithm,
+            undefined
+          );
+          splitPlan.push({
+            kas: kasPublicKeyInfo.url,
+            kid: kasPublicKeyInfo.kid,
+            pem: kasPublicKeyInfo.publicKey,
+            sid: item.sid,
+          });
+          continue;
+        }
+
+        switch (item.kas.publicKey.publicKey.case) {
+          case 'remote':
+            const kasPublicKeyInfo = await this._doFetchKasKeyWithCache(
+              this.kasKeyInfoCache,
+              item.kas.publicKey.publicKey.value,
+              wrappingKeyAlgorithm,
+              undefined
+            );
+            splitPlan.push({
+              kas: kasPublicKeyInfo.url,
+              kid: kasPublicKeyInfo.kid,
+              pem: kasPublicKeyInfo.publicKey,
+              sid: item.sid,
+            });
+            break;
+
+          case 'cached':
+            for (const cachedPublicKey of item.kas.publicKey.publicKey.value.keys) {
+              splitPlan.push({
+                kas: item.kas.uri,
+                kid: cachedPublicKey.kid,
+                pem: cachedPublicKey.pem,
+                sid: item.sid,
+              });
+            }
+            break;
+
+          default:
+            throw new Error(`Unknown public key type: ${item.kas.publicKey.publicKey.case}`);
+        }
+      }
     }
 
     // TODO: Refactor underlying builder to remove some of this unnecessary config.
@@ -462,38 +657,47 @@ export class Client {
         ? maxByteLimit
         : opts.byteLimit;
     const encryptionInformation = new SplitKey(new AesGcmCipher(this.cryptoService));
-    // TODO KAS: check here
-    const splits: SplitStep[] = splitPlan?.length
-      ? splitPlan
-      : [{ kas: opts.defaultKASEndpoint ?? this.kasEndpoint }];
+    if (splitPlan.length === 0) {
+      const kasPublicKeyInfo = await this._doFetchKasKeyWithCache(
+        this.kasKeyInfoCache,
+        opts.defaultKASEndpoint ?? this.kasEndpoint,
+        wrappingKeyAlgorithm,
+        undefined
+      );
+      splitPlan.push({
+        kas: kasPublicKeyInfo.url,
+        kid: kasPublicKeyInfo.kid,
+        pem: kasPublicKeyInfo.publicKey,
+      });
+    }
     encryptionInformation.keyAccess = await Promise.all(
-      splits.map(async ({ kas, sid }) => {
-        if (!(kas in this.kasKeys)) {
-          this.kasKeys[kas] = [fetchKasPublicKey(kas, wrappingKeyAlgorithm)];
-        }
-        const kasPublicKey = await Promise.any(this.kasKeys[kas]);
-        if (kasPublicKey.algorithm !== wrappingKeyAlgorithm) {
+      splitPlan.map(async ({ kas, kid, pem, sid }) => {
+        const algorithm = await algorithmFromPEM(pem);
+        if (algorithm !== wrappingKeyAlgorithm) {
           console.warn(
-            `Mismatched wrapping key algorithm: [${kasPublicKey.algorithm}] is not requested type, [${wrappingKeyAlgorithm}]`
+            `Mismatched wrapping key algorithm: [${algorithm}] is not requested type, [${wrappingKeyAlgorithm}]`
           );
         }
         let type: KeyAccessType;
-        switch (kasPublicKey.algorithm) {
+        switch (algorithm) {
           case 'rsa:2048':
+          case 'rsa:4096':
             type = 'wrapped';
             break;
+          case 'ec:secp384r1':
+          case 'ec:secp521r1':
           case 'ec:secp256r1':
             type = 'ec-wrapped';
             break;
           default:
-            throw new ConfigurationError(`Unsupported algorithm ${kasPublicKey.algorithm}`);
+            throw new ConfigurationError(`Unsupported algorithm ${algorithm}`);
         }
         return buildKeyAccess({
-          alg: kasPublicKey.algorithm,
+          alg: algorithm,
           type,
-          url: kasPublicKey.url,
-          kid: kasPublicKey.kid,
-          publicKey: kasPublicKey.publicKey,
+          url: kas,
+          kid: kid,
+          publicKey: pem,
           metadata,
           sid,
         });

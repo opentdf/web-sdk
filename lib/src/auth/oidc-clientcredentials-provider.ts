@@ -9,6 +9,8 @@ export class OIDCClientCredentialsProvider implements AuthProvider {
     clientId,
     clientSecret,
     oidcOrigin,
+    oidcTokenEndpoint,
+    oidcUserInfoEndpoint,
   }: Partial<ClientSecretCredentials> & Omit<ClientSecretCredentials, 'exchange'>) {
     if (!clientId || !clientSecret) {
       throw new ConfigurationError('clientId & clientSecret required for client credentials flow');
@@ -19,6 +21,8 @@ export class OIDCClientCredentialsProvider implements AuthProvider {
       clientId,
       clientSecret,
       oidcOrigin,
+      oidcTokenEndpoint,
+      oidcUserInfoEndpoint,
     });
   }
 

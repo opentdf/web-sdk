@@ -206,8 +206,7 @@ describe('rewrap error cases', function () {
       });
       assert.fail('Expected NetworkError');
     } catch (error) {
-      const err = error.errors[0];
-      assert.instanceOf(err, NetworkError);
+      assert.instanceOf(error, NetworkError);
     }
   });
 

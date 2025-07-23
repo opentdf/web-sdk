@@ -2,6 +2,20 @@ import { ConfigurationError } from '../errors.js';
 import { type AuthProvider, type HttpRequest } from './auth.js';
 import { AccessToken, type RefreshTokenCredentials } from './oidc.js';
 
+/**
+ * An AuthProvider that uses an OIDC refresh token to obtain an access token.
+ * It exchanges the refresh token for an access token and uses that to augment HTTP requests with credentials.
+ *  @example
+ * ```ts
+ * import { OIDCRefreshTokenProvider } from '@opentdf/sdk';
+ * await AuthProviders.refreshAuthProvider({
+    clientId: 'my-client-id',
+    exchange: 'refresh',
+    refreshToken: 'refresh-token-from-oidc-provider',
+    oidcOrigin: 'https://example.oidc.provider.com',
+  });
+  ```
+ */
 export class OIDCRefreshTokenProvider implements AuthProvider {
   oidcAuth: AccessToken;
   refreshToken?: string;
@@ -10,6 +24,8 @@ export class OIDCRefreshTokenProvider implements AuthProvider {
     clientId,
     refreshToken,
     oidcOrigin,
+    oidcTokenEndpoint,
+    oidcUserInfoEndpoint,
   }: Partial<RefreshTokenCredentials> & Omit<RefreshTokenCredentials, 'exchange'>) {
     if (!clientId || !refreshToken) {
       throw new ConfigurationError('refresh token or client id missing');
@@ -18,8 +34,10 @@ export class OIDCRefreshTokenProvider implements AuthProvider {
     this.oidcAuth = new AccessToken({
       exchange: 'refresh',
       clientId,
-      refreshToken: refreshToken,
+      refreshToken,
       oidcOrigin,
+      oidcTokenEndpoint,
+      oidcUserInfoEndpoint,
     });
     this.refreshToken = refreshToken;
   }

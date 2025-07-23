@@ -44,7 +44,9 @@ export type AssertionPayload = {
  * @returns the hexadecimal string representation of the hash
  */
 export async function hash(a: Assertion): Promise<string> {
-  const result = canonicalizeEx(a, { exclude: ['binding', 'hash', 'sign', 'verify'] });
+  const result = canonicalizeEx(a, {
+    exclude: ['binding', 'hash', 'sign', 'verify', 'signingKey'],
+  });
 
   const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(result));
   return hex.encodeArrayBuffer(hash);
