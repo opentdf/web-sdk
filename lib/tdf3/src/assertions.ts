@@ -236,7 +236,6 @@ export type AssertionVerificationKeys = {
 type SystemMetadata = {
   tdf_spec_version: string;
   creation_date: string;
-  operating_system?: string;
   sdk_version: string;
   browser_user_agent?: string;
   // platform is often the same as os in browser, but kept for consistency with original Go struct
@@ -259,7 +258,6 @@ export function getSystemMetadataAssertionConfig(): AssertionConfig {
   const metadata: SystemMetadata = {
     tdf_spec_version: tdfSpecVersion,
     creation_date: new Date().toISOString(),
-    operating_system: platformIdentifier,
     sdk_version: `JS-${sdkVersion}`, // Prefixed to distinguish from Go SDK version
     browser_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
     platform: platformIdentifier,
