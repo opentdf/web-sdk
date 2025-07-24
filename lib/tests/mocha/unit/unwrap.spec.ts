@@ -25,4 +25,46 @@ describe('unwrapHtml', () => {
       'There was a problem extracting the TDF3 payload'
     );
   });
+
+  describe('regex pattern variations', () => {
+    it('should handle double quotes', () => {
+      const htmlPayload = new TextEncoder().encode(
+        '<input id="data-input" type="hidden" value="SGVsbG8gV29ybGQ=">'
+      );
+      const result = unwrapHtml(htmlPayload);
+      expect(new TextDecoder().decode(result)).to.equal('Hello World');
+    });
+
+    it('should handle single quotes', () => {
+      const htmlPayload = new TextEncoder().encode(
+        "<input id='data-input' type='hidden' value='SGVsbG8gV29ybGQ='>"
+      );
+      const result = unwrapHtml(htmlPayload);
+      expect(new TextDecoder().decode(result)).to.equal('Hello World');
+    });
+
+    it('should handle no quotes', () => {
+      const htmlPayload = new TextEncoder().encode(
+        '<input id=data-input type=hidden value=SGVsbG8gV29ybGQ=>'
+      );
+      const result = unwrapHtml(htmlPayload);
+      expect(new TextDecoder().decode(result)).to.equal('Hello World');
+    });
+
+    it('should handle URL-safe base64 characters', () => {
+      const htmlPayload = new TextEncoder().encode(
+        '<input id="data-input" type="hidden" value="SGVsbG8tV29ybGQ_">'
+      );
+      const result = unwrapHtml(htmlPayload);
+      expect(new TextDecoder().decode(result)).to.equal('Hello-World?');
+    });
+
+    it('should handle additional attributes', () => {
+      const htmlPayload = new TextEncoder().encode(
+        '<input class="hidden" id="data-input" data-test="value" type="hidden" value="SGVsbG8gV29ybGQ=">'
+      );
+      const result = unwrapHtml(htmlPayload);
+      expect(new TextDecoder().decode(result)).to.equal('Hello World');
+    });
+  });
 });
