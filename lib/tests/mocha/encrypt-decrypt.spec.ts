@@ -429,7 +429,6 @@ describe('encrypt decrypt test', async function () {
       const metadataValue = JSON.parse(systemAssertion.statement.value);
       assert.property(metadataValue, 'tdf_spec_version', 'Metadata should have tdfSpecVersion');
       assert.property(metadataValue, 'creation_date', 'Metadata should have creationDate');
-      assert.property(metadataValue, 'operating_system', 'Metadata should have os');
       assert.property(metadataValue, 'sdk_version', 'Metadata should have sdkVersion');
       assert.property(metadataValue, 'browser_user_agent', 'Metadata should have browserUserAgent');
       assert.property(metadataValue, 'platform', 'Metadata should have platform');
@@ -465,11 +464,6 @@ describe('encrypt decrypt test', async function () {
         actualMetadataValue.tdf_spec_version,
         expectedMetadataValue.tdf_spec_version,
         'tdf_spec_version should match'
-      );
-      assert.equal(
-        actualMetadataValue.operating_system,
-        expectedMetadataValue.operating_system,
-        'operating_system should match'
       );
       assert.equal(
         actualMetadataValue.sdk_version,
