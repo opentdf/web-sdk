@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.5.0](https://github.com/opentdf/web-sdk/compare/sdk/v0.4.0...sdk-v0.5.0) (2025-07-24)
+
+
+### Features
+
+* add system metadata assertion ([#630](https://github.com/opentdf/web-sdk/issues/630)) ([922965c](https://github.com/opentdf/web-sdk/commit/922965c25c0a63b616dc833275152c4c55148ac3))
+
+
+### Bug Fixes
+
+* `signingKey` should not be part of the computed hash ([#696](https://github.com/opentdf/web-sdk/issues/696)) ([b763278](https://github.com/opentdf/web-sdk/commit/b7632783b17413393db3ff2ac49a2ad9201ed8ef))
+* **sdk:** Fix new API not setting nano attributes ([#679](https://github.com/opentdf/web-sdk/issues/679)) ([f0d9719](https://github.com/opentdf/web-sdk/commit/f0d97196ab258122fe9a07b7d7895017299a46c2))
+
 ## [0.4.0](https://github.com/opentdf/web-sdk/compare/v0.3.2...v0.4.0) (2025-06-26)
 
 
