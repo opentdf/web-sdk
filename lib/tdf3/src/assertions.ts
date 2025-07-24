@@ -2,6 +2,7 @@ import { canonicalizeEx } from 'json-canonicalize';
 import { SignJWT, jwtVerify } from 'jose';
 import { base64, hex } from '../../src/encodings/index.js';
 import { ConfigurationError, IntegrityError, InvalidFileError } from '../../src/errors.js';
+import { tdfSpecVersion, version as sdkVersion } from '../../src/version.js';
 
 export type AssertionKeyAlg = 'ES256' | 'RS256' | 'HS256';
 export type AssertionType = 'handling' | 'other';
@@ -228,6 +229,54 @@ export type AssertionVerificationKeys = {
   DefaultKey?: AssertionKey;
   Keys: Record<string, AssertionKey>;
 };
+
+/**
+ * Metadata structure for system information.
+ */
+type SystemMetadata = {
+  tdf_spec_version: string;
+  creation_date: string;
+  sdk_version: string;
+  browser_user_agent?: string;
+  // platform is often the same as os in browser, but kept for consistency with original Go struct
+  platform?: string;
+};
+
+/**
+ * Returns a default assertion configuration populated with system metadata.
+ */
+export function getSystemMetadataAssertionConfig(): AssertionConfig {
+  let platformIdentifier = 'unknown';
+  if (typeof navigator !== 'undefined') {
+    if (typeof navigator.userAgent === 'string') {
+      platformIdentifier = navigator.userAgent;
+    } else if (typeof navigator.platform === 'string') {
+      platformIdentifier = navigator.platform; // Deprecated, but used as a fallback
+    }
+  }
+
+  const metadata: SystemMetadata = {
+    tdf_spec_version: tdfSpecVersion,
+    creation_date: new Date().toISOString(),
+    sdk_version: `JS-${sdkVersion}`, // Prefixed to distinguish from Go SDK version
+    browser_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+    platform: platformIdentifier,
+  };
+
+  const metadataJSON = JSON.stringify(metadata);
+
+  return {
+    id: 'system-metadata', // Consistent ID for this type of assertion
+    type: 'other', // General type for metadata assertions
+    scope: 'tdo', // Metadata typically applies to the TDF Data Object as a whole
+    appliesToState: 'unencrypted', // Metadata itself is not encrypted by this assertion's scope
+    statement: {
+      format: 'json',
+      schema: 'system-metadata-v1', // A schema name for this metadata
+      value: metadataJSON,
+    },
+  };
+}
 
 function concatenateUint8Arrays(array1: Uint8Array, array2: Uint8Array): Uint8Array {
   const combinedLength = array1.length + array2.length;
