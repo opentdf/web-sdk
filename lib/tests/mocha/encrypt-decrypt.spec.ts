@@ -6,7 +6,12 @@ import { KasPublicKeyAlgorithm } from '../../src/access.js';
 import { AuthProvider, HttpRequest } from '../../src/auth/auth.js';
 import { AesGcmCipher, KeyInfo, SplitKey, WebCryptoService } from '../../tdf3/index.js';
 import { Client } from '../../tdf3/src/index.js';
-import { AssertionConfig, AssertionVerificationKeys } from '../../tdf3/src/assertions.js';
+import {
+  AssertionConfig,
+  AssertionVerificationKeys,
+  getSystemMetadataAssertionConfig,
+  Assertion,
+} from '../../tdf3/src/assertions.js';
 import { Scope } from '../../tdf3/src/client/builders.js';
 import { NetworkError } from '../../src/errors.js';
 
@@ -364,4 +369,124 @@ describe('encrypt decrypt test', async function () {
       });
     }
   }
+
+  it('encrypt-decrypt with system metadata assertion', async function () {
+    const cipher = new AesGcmCipher(WebCryptoService);
+    const encryptionInformation = new SplitKey(cipher);
+    const key1 = await encryptionInformation.generateKey();
+    const keyMiddleware = async () => ({ keyForEncryption: key1, keyForManifest: key1 });
+
+    const client = new Client.Client({
+      kasEndpoint: kasUrl,
+      platformUrl: kasUrl,
+      dpopKeys: Mocks.entityKeyPair(),
+      clientId: 'id',
+      authProvider,
+    });
+
+    const scope: Scope = {
+      dissem: ['user@domain.com'],
+      attributes: [],
+    };
+
+    const encryptedStream = await client.encrypt({
+      metadata: Mocks.getMetadataObject(),
+      wrappingKeyAlgorithm: 'rsa:2048',
+      offline: true,
+      scope,
+      keyMiddleware,
+      source: new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode(expectedVal));
+          controller.close();
+        },
+      }),
+      systemMetadataAssertion: true, // Enable the system metadata assertion
+    });
+
+    // Consume the stream into a buffer. This also ensures manifest population is complete.
+    const encryptedTdfBuffer = await encryptedStream.toBuffer();
+
+    // Verify the manifest for the system metadata assertion
+    const manifest = encryptedStream.manifest;
+    assert.isArray(manifest.assertions, 'Manifest assertions should be an array');
+    assert.lengthOf(manifest.assertions, 1, 'Should have one assertion for system metadata');
+
+    const systemAssertion = manifest.assertions.find(
+      (assertion: Assertion) => assertion.id === 'system-metadata'
+    );
+    assert.isDefined(systemAssertion, 'System metadata assertion should be found');
+    if (systemAssertion) {
+      assert.equal(systemAssertion.type, 'other', 'Assertion type should be "other"');
+      assert.equal(systemAssertion.scope, 'tdo', 'Assertion scope should be "tdo"');
+      assert.equal(systemAssertion.statement.format, 'json', 'Statement format should be "json"');
+      assert.equal(
+        systemAssertion.statement.schema,
+        'system-metadata-v1',
+        'Statement schema should be "system-metadata-v1"'
+      );
+
+      const metadataValue = JSON.parse(systemAssertion.statement.value);
+      assert.property(metadataValue, 'tdf_spec_version', 'Metadata should have tdfSpecVersion');
+      assert.property(metadataValue, 'creation_date', 'Metadata should have creationDate');
+      assert.property(metadataValue, 'sdk_version', 'Metadata should have sdkVersion');
+      assert.property(metadataValue, 'browser_user_agent', 'Metadata should have browserUserAgent');
+      assert.property(metadataValue, 'platform', 'Metadata should have platform');
+
+      // Compare Values
+      const systemMetadata = getSystemMetadataAssertionConfig();
+      assert.equal(systemMetadata.id, systemAssertion.id, 'ID should match');
+      assert.equal(systemMetadata.type, systemAssertion.type, 'Type should match');
+      assert.equal(systemMetadata.scope, systemAssertion.scope, 'Scope should match');
+      assert.equal(
+        systemMetadata.statement.format,
+        systemAssertion.statement.format,
+        'Statement format should match'
+      );
+      assert.equal(
+        systemMetadata.statement.schema,
+        systemAssertion.statement.schema,
+        'Statement schema should match'
+      );
+      assert.equal(
+        systemMetadata.appliesToState,
+        systemAssertion.appliesToState,
+        'AppliesToState should match'
+      );
+
+      // Parse statement.value and compare individual fields, ignoring creationDate for direct equality
+      const expectedMetadataValue = JSON.parse(systemMetadata.statement.value);
+      const actualMetadataValue = JSON.parse(systemAssertion.statement.value);
+
+      assert.isString(actualMetadataValue.creation_date, 'creation_date should be a string');
+      assert.isNotEmpty(actualMetadataValue.creation_date, 'creation_date should not be empty');
+      assert.equal(
+        actualMetadataValue.tdf_spec_version,
+        expectedMetadataValue.tdf_spec_version,
+        'tdf_spec_version should match'
+      );
+      assert.equal(
+        actualMetadataValue.sdk_version,
+        expectedMetadataValue.sdk_version,
+        'sdk_version should match'
+      );
+      assert.equal(
+        actualMetadataValue.browser_user_agent,
+        expectedMetadataValue.browser_user_agent,
+        'browser_user_agent should match'
+      );
+      assert.equal(
+        actualMetadataValue.platform,
+        expectedMetadataValue.platform,
+        'platform should match'
+      );
+    }
+
+    const decryptStream = await client.decrypt({
+      source: { type: 'buffer', location: encryptedTdfBuffer },
+    });
+
+    const { value: decryptedText } = await decryptStream.stream.getReader().read();
+    assert.equal(new TextDecoder().decode(decryptedText), expectedVal);
+  });
 });
