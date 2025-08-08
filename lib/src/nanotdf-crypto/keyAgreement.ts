@@ -71,7 +71,7 @@ export async function keyAgreement(
   }
 ): Promise<CryptoKey> {
   for (const k of [privateKey, publicKey]) {
-    const mechanism = keyAlgorithmToPublicKeyAlgorithm(k.algorithm);
+    const mechanism = keyAlgorithmToPublicKeyAlgorithm(k);
     if (mechanism !== 'ec:secp256r1') {
       throw new ConfigurationError(
         `${k.type} CryptoKey is expected to be of type ECDSA or ECDH, not [${k.algorithm?.name}]`

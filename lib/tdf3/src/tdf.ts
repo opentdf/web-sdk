@@ -147,6 +147,7 @@ export type EncryptConfiguration = {
   keyForEncryption: KeyInfo;
   keyForManifest: KeyInfo;
   assertionConfigs?: AssertionConfig[];
+  systemMetadataAssertion?: boolean;
   tdfSpecVersion?: string;
 };
 
@@ -197,9 +198,16 @@ export type RewrapResponse = {
  */
 export async function fetchKasPublicKey(
   kas: string,
-  algorithm?: KasPublicKeyAlgorithm
+  algorithm?: KasPublicKeyAlgorithm,
+  kid?: string
 ): Promise<KasPublicKeyInfo> {
-  return fetchKasPubKeyV2(kas, algorithm || 'rsa:2048');
+  if (kid) {
+    // Some specific thing for fetching a key by kid?
+    // Currently this is just "using" `kid` so TypeScript doesn't complain and
+    // we can use the type for our cache parameters.
+    // So this empty `if` is actually doing something.
+  }
+  return fetchKasPubKeyV2(kas, algorithm);
 }
 
 export async function extractPemFromKeyString(
@@ -527,8 +535,24 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
         manifest.encryptionInformation.integrityInformation.segments = segmentInfos;
 
         manifest.encryptionInformation.method.isStreamable = true;
-
         const signedAssertions: assertions.Assertion[] = [];
+        if (cfg.systemMetadataAssertion) {
+          const systemMetadataConfigBase = assertions.getSystemMetadataAssertionConfig();
+          const signingKeyForSystemMetadata: AssertionKey = {
+            alg: 'HS256', // Default algorithm, can be configured if needed
+            key: new Uint8Array(cfg.keyForEncryption.unwrappedKeyBinary.asArrayBuffer()),
+          };
+          signedAssertions.push(
+            await assertions.CreateAssertion(
+              aggregateHash,
+              {
+                ...systemMetadataConfigBase, // Spread the properties from the base config
+                signingKey: signingKeyForSystemMetadata, // Add the signing key
+              },
+              cfg.tdfSpecVersion // Pass the TDF spec version
+            )
+          );
+        }
         if (cfg.assertionConfigs && cfg.assertionConfigs.length > 0) {
           await Promise.all(
             cfg.assertionConfigs.map(async (assertionConfig) => {

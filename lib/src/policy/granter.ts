@@ -1,9 +1,13 @@
 import { ConfigurationError } from '../errors.js';
 import { Attribute, AttributeRuleType, KeyAccessServer, Value } from './attributes.js';
+import { SimpleKasPublicKey } from '../platform/policy/objects_pb.js';
 
-export type KeySplitStep = {
-  kas: KeyAccessServer;
-  sid?: string;
+type KeyHolder = KeyAccessServer | (SimpleKasPublicKey & { kasUri: string });
+
+type KeySplitStep = {
+  kas: KeyHolder;
+  kid?: string;
+  sid: string;
 };
 
 type AttributeClause = {
@@ -13,17 +17,17 @@ type AttributeClause = {
 
 type AndClause = {
   op: 'allOf';
-  kases: string[];
+  granters: KeyHolder[];
 };
 
 type HeirarchyClause = {
   op: 'hierarchy';
-  kases: string[];
+  granters: KeyHolder[];
 };
 
 type OrClause = {
   op: 'anyOf';
-  kases: string[];
+  granters: KeyHolder[];
 };
 
 type BooleanClause = AndClause | OrClause | HeirarchyClause;
@@ -49,53 +53,51 @@ export function booleanOperatorFor(rule?: AttributeRuleType): BooleanOperator {
   }
 }
 
+type ValueFQN = string;
 export function plan(dataAttrs: Value[]): KeySplitStep[] {
   // KASes by value
-  const grants: Record<string, Set<string>> = {};
-  // KAS detail by KAS url
-  const kasInfo: Record<string, KeyAccessServer> = {};
-  // Attribute definitions in use
-  const prefixes: Set<string> = new Set();
+  const granters: Record<ValueFQN, Set<KeyHolder>> = Object.create(null);
   // Values grouped by normalized attribute prefix
-  const allClauses: Record<string, AttributeClause> = {};
-  // Values by normalized FQN
-  const allValues: Record<string, Value> = {};
+  const allClauses: Record<string, AttributeClause> = Object.create(null);
 
-  const addGrants = (val: string, gs?: KeyAccessServer[]): boolean => {
+  const addGrants = (valueFQN: string, gs?: KeyHolder[]): boolean => {
+    if (!(valueFQN in granters)) {
+      granters[valueFQN] = new Set();
+    }
     if (!gs?.length) {
-      if (!(val in grants)) {
-        grants[val] = new Set();
-      }
       return false;
     }
     for (const g of gs) {
-      if (val in grants) {
-        grants[val].add(g.uri);
-      } else {
-        grants[val] = new Set([g.uri]);
-      }
-      kasInfo[g.uri] = g;
+      granters[valueFQN].add(g);
     }
     return true;
   };
 
   for (const v of dataAttrs) {
-    const { attribute, fqn } = v;
+    const { attribute, fqn, kasKeys } = v;
     if (!attribute) {
       throw new ConfigurationError(`attribute not defined for [${fqn}]`);
     }
     const valFqn = fqn.toLowerCase();
     const attrFqn = attribute.fqn.toLowerCase();
-    if (!prefixes.has(attrFqn)) {
-      prefixes.add(attrFqn);
+    if (!(attrFqn in allClauses)) {
       allClauses[attrFqn] = {
         def: attribute,
         values: [],
       };
     }
     allClauses[attrFqn].values.push(valFqn);
-    allValues[valFqn] = v;
-    if (!addGrants(valFqn, v.grants)) {
+    const validKasKeys = kasKeys
+      .map((kasKey) => {
+        if (!kasKey.publicKey) {
+          return null;
+        }
+        return Object.assign({ kasUri: kasKey.kasUri }, kasKey.publicKey);
+      })
+      .filter((kasKey) => kasKey !== null);
+    if (validKasKeys.length) {
+      addGrants(valFqn, validKasKeys);
+    } else if (!addGrants(valFqn, v.grants)) {
       if (!addGrants(valFqn, attribute.grants)) {
         addGrants(valFqn, attribute.namespace?.grants);
       }
@@ -103,64 +105,80 @@ export function plan(dataAttrs: Value[]): KeySplitStep[] {
   }
   const kcs: ComplexBooleanClause[] = [];
   for (const attrClause of Object.values(allClauses)) {
-    const ccv: BooleanClause[] = [];
-    for (const term of attrClause.values) {
-      const grantsForTerm = Array.from(grants[term] || []);
-      if (grantsForTerm?.length) {
-        ccv.push({
+    // Create wrapper clauses for each value, [(ANY_OF Value-1), (ANY_OF Value-2)]
+    const individualValueClauses: BooleanClause[] = [];
+    for (const attrValue of attrClause.values) {
+      const grantersForAttr = granters[attrValue] || new Set();
+      if (grantersForAttr.size) {
+        individualValueClauses.push({
           op: 'anyOf',
-          kases: grantsForTerm,
+          granters: Array.from(grantersForAttr.values()),
         });
       }
     }
+    // Use proper boolean operation with wrapped values.
     const op = booleanOperatorFor(attrClause.def?.rule);
     kcs.push({
       op,
-      children: ccv,
+      children: individualValueClauses,
     });
   }
-  return simplify(kcs, kasInfo);
+  return simplify(kcs);
 }
 
-function simplify(
-  clauses: ComplexBooleanClause[],
-  kasInfo: Record<string, KeyAccessServer>
-): KeySplitStep[] {
-  const conjunction: Record<string, string[]> = {};
-  function keyFor(kases: string[]): string {
-    const k = Array.from(new Set([kases])).sort();
-    return k.join('|');
+function simplify(clauses: ComplexBooleanClause[]): KeySplitStep[] {
+  const conjunction: Record<string, KeyHolder[]> = {};
+  function keyFor(granters: KeyHolder[]): string {
+    const keyParts = granters
+      .map((keyHolder) => {
+        const keyParts: string[] = [];
+        if ('kid' in keyHolder) {
+          keyParts.push(keyHolder.kasUri);
+          keyParts.push(keyHolder.kid);
+        } else {
+          keyParts.push(keyHolder.uri);
+          keyParts.push('');
+        }
+        return [keyHolder, keyParts.join('/')] as [KeyHolder, string];
+      })
+      .sort(([, sortKeyA], [, sortKeyB]) => {
+        return sortKeyA.localeCompare(sortKeyB);
+      })
+      .map(([, sortKey]) => {
+        return sortKey;
+      });
+    return keyParts.join(':');
   }
   for (const { op, children } of clauses) {
     if (!children) {
       continue;
     }
     if (op === 'anyOf') {
-      const anyKids = [];
+      const granters: KeyHolder[] = [];
       for (const bc of children) {
         if (bc.op != 'anyOf') {
           throw new Error('internal: autoconfigure inversion in disjunction');
         }
-        if (!bc.kases?.length) {
+        if (!bc.granters.length) {
           continue;
         }
-        anyKids.push(...bc.kases);
+        granters.push(...bc.granters);
       }
-      if (!anyKids?.length) {
+      if (!granters.length) {
         continue;
       }
-      const k = keyFor(anyKids);
-      conjunction[k] = anyKids;
+      const k = keyFor(granters);
+      conjunction[k] = granters;
     } else {
       for (const bc of children) {
         if (bc.op != 'anyOf') {
-          throw new Error('insternal: autoconfigure inversion in conjunction');
+          throw new Error('internal: autoconfigure inversion in conjunction');
         }
-        if (!bc.kases?.length) {
+        if (!bc.granters.length) {
           continue;
         }
-        const k = keyFor(bc.kases);
-        conjunction[k] = bc.kases;
+        const k = keyFor(bc.granters);
+        conjunction[k] = bc.granters;
       }
     }
   }
@@ -173,7 +191,15 @@ function simplify(
     i += 1;
     const sid = '' + i;
     for (const kas of conjunction[k]) {
-      t.push({ sid, kas: kasInfo[kas] });
+      if ('kid' in kas) {
+        t.push({ sid, kas: kas, kid: kas.kid });
+      } else if (kas.publicKey && kas.publicKey.publicKey.case === 'cached') {
+        kas.publicKey.publicKey.value.keys.forEach((key) => {
+          t.push({ sid, kas: kas, kid: key.kid });
+        });
+      } else {
+        t.push({ sid, kas: kas });
+      }
     }
   }
   return t;
