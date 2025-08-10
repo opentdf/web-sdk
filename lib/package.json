@@ -48,6 +48,13 @@
         "import": "./dist/web/src/encodings/index.js"
       }
     },
+    "./nanotdf-crypto": {
+      "default": {
+        "types": "./dist/types/src/nanotdf-crypto/index.d.ts",
+        "require": "./dist/cjs/src/nanotdf-crypto/index.js",
+        "import": "./dist/web/src/nanotdf-crypto/index.js"
+      }
+    },
     "./nano": {
       "types": "./dist/types/src/nanoindex.d.ts",
       "require": "./dist/cjs/src/nanoindex.js",
