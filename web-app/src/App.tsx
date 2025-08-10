@@ -1,24 +1,11 @@
 import { clsx } from 'clsx';
 import { useState, useEffect, type ChangeEvent } from 'react';
-import streamsaver from 'streamsaver';
 import { showSaveFilePicker } from 'native-file-system-adapter';
 import './App.css';
 import { type Chunker, type Source, OpenTDF } from '@opentdf/sdk';
 import { type SessionInformation, OidcClient } from './session.js';
 import { c } from './config.js';
-
-async function toFile(
-  stream: ReadableStream<Uint8Array>,
-  filepath = 'download.tdf',
-  options?: StreamPipeOptions
-): Promise<void> {
-  const fileStream = streamsaver.createWriteStream(filepath, {
-    writableStrategy: { highWaterMark: 1 },
-    readableStrategy: { highWaterMark: 1 },
-  });
-
-  return stream.pipeTo(fileStream, options);
-}
+import { downloadReadableStream } from './utils/download-readable-stream';
 
 function decryptedFileName(encryptedFileName: string): string {
   // Groups: 1 file 'name' bit
@@ -393,7 +380,7 @@ function App() {
     try {
       switch (sinkType) {
         case 'file':
-          await toFile(cipherTextWithProgress, downloadName, { signal: sc.signal });
+          await downloadReadableStream(cipherTextWithProgress, downloadName, { signal: sc.signal });
           break;
         case 'fsapi':
           if (!f) {
@@ -468,7 +455,7 @@ function App() {
         .pipeThrough(progressTransformers.writer);
       switch (sinkType) {
         case 'file':
-          await toFile(plainTextStream, dfn, { signal: sc.signal });
+          await downloadReadableStream(plainTextStream, dfn, { signal: sc.signal });
           break;
         case 'fsapi':
           if (!f) {
