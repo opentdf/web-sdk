@@ -100,6 +100,8 @@ export type CreateNanoTDFCollectionOptions = CreateNanoTDFOptions & {
   platformUrl: string;
   /** The maximum number of key iterations to use for a single DEK. */
   maxKeyIterations?: number;
+  /** Optional source. TODO: check if it can be removed from create options  */
+  source?: Source;
 };
 
 /** Metadata for a TDF object. */
