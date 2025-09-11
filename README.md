@@ -4,6 +4,8 @@ This project is focused on providing web client support for the OpenTDF platform
 This includes encrypting and decrypting TDF content,
 and some management tasks for ABAC.
 
+**[OpenTDF Web Documentation](https://opentdf.github.io/web-sdk/)**
+
 ## Usage (NanoTDF)
 
 ```typescript
