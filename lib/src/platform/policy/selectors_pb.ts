@@ -34,6 +34,8 @@ export const AttributeNamespaceSelectorSchema: GenMessage<AttributeNamespaceSele
  */
 export type AttributeNamespaceSelector_AttributeSelector = Message<"policy.AttributeNamespaceSelector.AttributeSelector"> & {
   /**
+   * Deprecated
+   *
    * @generated from field: bool with_key_access_grants = 1;
    */
   withKeyAccessGrants: boolean;
@@ -56,6 +58,8 @@ export const AttributeNamespaceSelector_AttributeSelectorSchema: GenMessage<Attr
  */
 export type AttributeNamespaceSelector_AttributeSelector_ValueSelector = Message<"policy.AttributeNamespaceSelector.AttributeSelector.ValueSelector"> & {
   /**
+   * Deprecated
+   *
    * @generated from field: bool with_key_access_grants = 1;
    */
   withKeyAccessGrants: boolean;
@@ -83,6 +87,8 @@ export const AttributeNamespaceSelector_AttributeSelector_ValueSelectorSchema: G
  */
 export type AttributeDefinitionSelector = Message<"policy.AttributeDefinitionSelector"> & {
   /**
+   * Deprecated
+   *
    * @generated from field: bool with_key_access_grants = 1;
    */
   withKeyAccessGrants: boolean;
@@ -123,6 +129,8 @@ export const AttributeDefinitionSelector_NamespaceSelectorSchema: GenMessage<Att
  */
 export type AttributeDefinitionSelector_ValueSelector = Message<"policy.AttributeDefinitionSelector.ValueSelector"> & {
   /**
+   * Deprecated
+   *
    * @generated from field: bool with_key_access_grants = 1;
    */
   withKeyAccessGrants: boolean;
@@ -150,6 +158,8 @@ export const AttributeDefinitionSelector_ValueSelectorSchema: GenMessage<Attribu
  */
 export type AttributeValueSelector = Message<"policy.AttributeValueSelector"> & {
   /**
+   * Deprecated
+   *
    * @generated from field: bool with_key_access_grants = 1;
    */
   withKeyAccessGrants: boolean;
@@ -182,6 +192,8 @@ export const AttributeValueSelectorSchema: GenMessage<AttributeValueSelector> = 
  */
 export type AttributeValueSelector_AttributeSelector = Message<"policy.AttributeValueSelector.AttributeSelector"> & {
   /**
+   * Deprecated
+   *
    * @generated from field: bool with_key_access_grants = 1;
    */
   withKeyAccessGrants: boolean;
