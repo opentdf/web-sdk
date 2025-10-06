@@ -39,11 +39,11 @@ export async function fetchWrappedKey(
   const options: CallOptions = {};
   if (rewrapAdditionalContextHeader) {
     options.headers = {
-      [X_REWRAP_ADDITIONAL_CONTEXT]:rewrapAdditionalContextHeader,
-    }
+      [X_REWRAP_ADDITIONAL_CONTEXT]: rewrapAdditionalContextHeader,
+    };
   }
   try {
-    return await platform.v1.access.rewrap({ signedRequestToken}, options);
+    return await platform.v1.access.rewrap({ signedRequestToken }, options);
   } catch (e) {
     throw new NetworkError(`[${platformUrl}] [Rewrap] ${extractRpcErrorMessage(e)}`);
   }

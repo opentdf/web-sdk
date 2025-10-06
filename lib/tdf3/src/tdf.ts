@@ -796,7 +796,7 @@ async function unwrapKey({
       url,
       signedRequestToken,
       authProvider,
-      rewrapAdditionalContextHeader(fulfillableObligations),
+      rewrapAdditionalContextHeader(fulfillableObligations)
     );
 
     if (wrappingKeyAlgorithm === 'ec:secp256r1') {
