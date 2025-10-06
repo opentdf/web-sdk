@@ -7,6 +7,7 @@ import {
   fetchKasPubKey as fetchKasPubKeyV2,
   fetchWrappedKey,
   publicKeyAlgorithmToJwa,
+  rewrapAdditionalContextHeader,
 } from '../../src/access.js';
 import { type AuthProvider, reqSignature } from '../../src/auth/auth.js';
 import { allPool, anyPool } from '../../src/concurrency.js';
@@ -152,6 +153,7 @@ export type EncryptConfiguration = {
 };
 
 export type DecryptConfiguration = {
+  fulfillableObligations?: string[];
   allowedKases?: string[];
   allowList?: OriginAllowList;
   authProvider: AuthProvider;
@@ -745,6 +747,7 @@ async function unwrapKey({
   concurrencyLimit,
   cryptoService,
   wrappingKeyAlgorithm,
+  fulfillableObligations,
 }: {
   manifest: Manifest;
   allowedKases: OriginAllowList;
@@ -753,6 +756,7 @@ async function unwrapKey({
   dpopKeys: CryptoKeyPair;
   cryptoService: CryptoService;
   wrappingKeyAlgorithm?: KasPublicKeyAlgorithm;
+  fulfillableObligations?: string[];
 }) {
   if (authProvider === undefined) {
     throw new ConfigurationError(
@@ -791,7 +795,8 @@ async function unwrapKey({
     const { entityWrappedKey, metadata, sessionPublicKey } = await fetchWrappedKey(
       url,
       signedRequestToken,
-      authProvider
+      authProvider,
+      rewrapAdditionalContextHeader(fulfillableObligations),
     );
 
     if (wrappingKeyAlgorithm === 'ec:secp256r1') {
@@ -1040,6 +1045,7 @@ export async function decryptStreamFrom(
     segments,
   } = manifest.encryptionInformation.integrityInformation;
   const { metadata, reconstructedKeyBinary } = await unwrapKey({
+    fulfillableObligations: cfg.fulfillableObligations,
     manifest,
     authProvider: cfg.authProvider,
     allowedKases: allowList,

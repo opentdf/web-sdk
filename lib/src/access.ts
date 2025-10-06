@@ -2,6 +2,7 @@ import { type AuthProvider } from './auth/auth.js';
 import { ServiceError } from './errors.js';
 import { RewrapResponse } from './platform/kas/kas_pb.js';
 import { getPlatformUrlFromKasEndpoint, validateSecureUrl } from './utils.js';
+import { base64 } from './encodings/index.js';
 
 import {
   fetchKasBasePubKey,
@@ -13,6 +14,15 @@ import { fetchWrappedKey as fetchWrappedKeysLegacy } from './access/access-fetch
 import { fetchKasPubKey as fetchKasPubKeyRpc } from './access/access-rpc.js';
 import { fetchKasPubKey as fetchKasPubKeyLegacy } from './access/access-fetch.js';
 
+/**
+ * Header value structure for 'X-Rewrap-Additional-Context`
+*/
+export type RewrapAdditionalContext = {
+  obligations: {
+    fqns: string[];
+  }
+}
+
 export type RewrapRequest = {
   signedRequestToken: string;
 };
@@ -22,17 +32,19 @@ export type RewrapRequest = {
  * @param url Key access server rewrap endpoint
  * @param requestBody a signed request with an encrypted document key
  * @param authProvider Authorization middleware
+ * @param rewrapAdditionalContextHeader optional value for 'X-Rewrap-Additional-Context'
  * @param clientVersion
  */
 export async function fetchWrappedKey(
   url: string,
   signedRequestToken: string,
-  authProvider: AuthProvider
+  authProvider: AuthProvider,
+  rewrapAdditionalContextHeader?: string
 ): Promise<RewrapResponse> {
   const platformUrl = getPlatformUrlFromKasEndpoint(url);
 
   return await tryPromisesUntilFirstSuccess(
-    () => fetchWrappedKeysRpc(platformUrl, signedRequestToken, authProvider),
+    () => fetchWrappedKeysRpc(platformUrl, signedRequestToken, authProvider, rewrapAdditionalContextHeader),
     () =>
       fetchWrappedKeysLegacy(
         url,
@@ -40,6 +52,21 @@ export async function fetchWrappedKey(
         authProvider
       ) as unknown as Promise<RewrapResponse>
   );
+}
+
+/**
+ * Transform fulfillable, fully-qualified obligations into the expected KAS Rewrap 'X-Rewrap-Additional-Context' header value.
+ * @param fulfillableObligationValueFQNs 
+ */
+export const rewrapAdditionalContextHeader = (fulfillableObligationValueFQNs?: string[]): string | undefined => {
+  if (!fulfillableObligationValueFQNs) return;
+
+  const context: RewrapAdditionalContext = {
+    obligations: {
+      fqns: fulfillableObligationValueFQNs,
+    }
+  };
+  return base64.encode(JSON.stringify(context));
 }
 
 export type KasPublicKeyAlgorithm =
