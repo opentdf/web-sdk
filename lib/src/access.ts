@@ -19,9 +19,9 @@ import { fetchKasPubKey as fetchKasPubKeyLegacy } from './access/access-fetch.js
  */
 export type RewrapAdditionalContext = {
   obligations: {
-    fqns: string[];
-  };
-};
+    fulfillableFQNs: string[];
+  }
+}
 
 export type RewrapRequest = {
   signedRequestToken: string;
@@ -32,25 +32,24 @@ export type RewrapRequest = {
  * @param url Key access server rewrap endpoint
  * @param requestBody a signed request with an encrypted document key
  * @param authProvider Authorization middleware
- * @param rewrapAdditionalContextHeader optional value for 'X-Rewrap-Additional-Context'
+ * @param fulfillableObligationFQNs client-configured list of obligation value FQNs that can be fulfilled in this PEP
  * @param clientVersion
  */
 export async function fetchWrappedKey(
   url: string,
   signedRequestToken: string,
   authProvider: AuthProvider,
-  rewrapAdditionalContextHeader?: string
+  fulfillableObligationFQNs: string[]
 ): Promise<RewrapResponse> {
   const platformUrl = getPlatformUrlFromKasEndpoint(url);
 
   return await tryPromisesUntilFirstSuccess(
-    () =>
-      fetchWrappedKeysRpc(
-        platformUrl,
-        signedRequestToken,
-        authProvider,
-        rewrapAdditionalContextHeader
-      ),
+    () => fetchWrappedKeysRpc(
+      platformUrl,
+      signedRequestToken,
+      authProvider,
+      rewrapAdditionalContextHeader(fulfillableObligationFQNs)
+    ),
     () =>
       fetchWrappedKeysLegacy(
         url,
@@ -64,15 +63,13 @@ export async function fetchWrappedKey(
  * Transform fulfillable, fully-qualified obligations into the expected KAS Rewrap 'X-Rewrap-Additional-Context' header value.
  * @param fulfillableObligationValueFQNs
  */
-export const rewrapAdditionalContextHeader = (
-  fulfillableObligationValueFQNs?: string[]
-): string | undefined => {
-  if (!fulfillableObligationValueFQNs) return;
+export const rewrapAdditionalContextHeader = (fulfillableObligationValueFQNs: string[]): string | undefined => {
+  if (!fulfillableObligationValueFQNs.length) return;
 
   const context: RewrapAdditionalContext = {
     obligations: {
-      fqns: fulfillableObligationValueFQNs,
-    },
+      fulfillableFQNs: fulfillableObligationValueFQNs.map((fqn) => fqn.toLowerCase()),
+    }
   };
   return base64.encode(JSON.stringify(context));
 };

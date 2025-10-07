@@ -153,7 +153,7 @@ export type EncryptConfiguration = {
 };
 
 export type DecryptConfiguration = {
-  fulfillableObligations?: string[];
+  fulfillableObligations: string[];
   allowedKases?: string[];
   allowList?: OriginAllowList;
   authProvider: AuthProvider;
@@ -756,7 +756,7 @@ async function unwrapKey({
   dpopKeys: CryptoKeyPair;
   cryptoService: CryptoService;
   wrappingKeyAlgorithm?: KasPublicKeyAlgorithm;
-  fulfillableObligations?: string[];
+  fulfillableObligations: string[];
 }) {
   if (authProvider === undefined) {
     throw new ConfigurationError(
@@ -796,7 +796,7 @@ async function unwrapKey({
       url,
       signedRequestToken,
       authProvider,
-      rewrapAdditionalContextHeader(fulfillableObligations)
+      fulfillableObligations,
     );
 
     if (wrappingKeyAlgorithm === 'ec:secp256r1') {
