@@ -44,8 +44,7 @@ describe('nanotdf client', () => {
       const config = {
         ...defaultConfig,
         fulfillableObligationFQNs: fqns,
-        
-      }
+      };
 
       const client = new Client(config);
       expect(client.fulfillableObligationFQNs).to.deep.equal(fqns);
@@ -56,8 +55,7 @@ describe('nanotdf client', () => {
       const config = {
         ...defaultConfig,
         fulfillableObligationFQNs: fqns,
-        
-      }
+      };
 
       const client = new Client(config);
       expect(client.fulfillableObligationFQNs).to.be.an('array');

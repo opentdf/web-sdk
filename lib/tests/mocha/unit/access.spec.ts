@@ -1,5 +1,8 @@
 import { expect } from 'chai';
-import { rewrapAdditionalContextHeader, type RewrapAdditionalContext } from '../../../src/access.js';
+import {
+  rewrapAdditionalContextHeader,
+  type RewrapAdditionalContext,
+} from '../../../src/access.js';
 import { base64 } from '../../../src/encodings/index.js';
 
 describe('rewrapAdditionalContextHeader', () => {
