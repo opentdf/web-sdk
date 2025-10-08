@@ -430,7 +430,9 @@ export class Client {
       }
     }
 
-    this.fulfillableObligationFQNs = config.fulfillableObligationFQNs?.length ? config.fulfillableObligationFQNs : [];
+    this.fulfillableObligationFQNs = config.fulfillableObligationFQNs?.length
+      ? config.fulfillableObligationFQNs
+      : [];
 
     if (clientConfig.easEndpoint) {
       this.easEndpoint = clientConfig.easEndpoint;
@@ -784,7 +786,7 @@ export class Client {
     }
 
     // Override the Client's obligations with those provided to decrypt directly
-    if (!fulfillableObligationFQNs.length && this.fulfillableObligationFQNs.length){
+    if (!fulfillableObligationFQNs.length && this.fulfillableObligationFQNs.length) {
       fulfillableObligationFQNs = this.fulfillableObligationFQNs;
     }
 

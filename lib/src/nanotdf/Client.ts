@@ -187,7 +187,9 @@ export default class Client {
       if (allowedKases?.length || ignoreAllowList) {
         this.allowedKases = new OriginAllowList(allowedKases || [], ignoreAllowList);
       }
-      this.fulfillableObligationFQNs = fulfillableObligationFQNs?.length ? fulfillableObligationFQNs : [];
+      this.fulfillableObligationFQNs = fulfillableObligationFQNs?.length
+        ? fulfillableObligationFQNs
+        : [];
       this.dpopEnabled = !!dpopEnabled;
       if (dpopKeys) {
         this.requestSignerKeyPair = dpopKeys;
@@ -269,7 +271,12 @@ export default class Client {
     });
 
     // Wrapped
-    const wrappedKey = await fetchWrappedKey(kasRewrapUrl, signedRequestToken, this.authProvider, this.fulfillableObligationFQNs);
+    const wrappedKey = await fetchWrappedKey(
+      kasRewrapUrl,
+      signedRequestToken,
+      this.authProvider,
+      this.fulfillableObligationFQNs
+    );
 
     // Extract the iv and ciphertext
     const entityWrappedKey = wrappedKey.entityWrappedKey;

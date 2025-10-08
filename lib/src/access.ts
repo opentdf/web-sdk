@@ -20,8 +20,8 @@ import { fetchKasPubKey as fetchKasPubKeyLegacy } from './access/access-fetch.js
 export type RewrapAdditionalContext = {
   obligations: {
     fulfillableFQNs: string[];
-  }
-}
+  };
+};
 
 export type RewrapRequest = {
   signedRequestToken: string;
@@ -44,12 +44,13 @@ export async function fetchWrappedKey(
   const platformUrl = getPlatformUrlFromKasEndpoint(url);
 
   return await tryPromisesUntilFirstSuccess(
-    () => fetchWrappedKeysRpc(
-      platformUrl,
-      signedRequestToken,
-      authProvider,
-      rewrapAdditionalContextHeader(fulfillableObligationFQNs)
-    ),
+    () =>
+      fetchWrappedKeysRpc(
+        platformUrl,
+        signedRequestToken,
+        authProvider,
+        rewrapAdditionalContextHeader(fulfillableObligationFQNs)
+      ),
     () =>
       fetchWrappedKeysLegacy(
         url,
@@ -63,13 +64,15 @@ export async function fetchWrappedKey(
  * Transform fulfillable, fully-qualified obligations into the expected KAS Rewrap 'X-Rewrap-Additional-Context' header value.
  * @param fulfillableObligationValueFQNs
  */
-export const rewrapAdditionalContextHeader = (fulfillableObligationValueFQNs: string[]): string | undefined => {
+export const rewrapAdditionalContextHeader = (
+  fulfillableObligationValueFQNs: string[]
+): string | undefined => {
   if (!fulfillableObligationValueFQNs.length) return;
 
   const context: RewrapAdditionalContext = {
     obligations: {
       fulfillableFQNs: fulfillableObligationValueFQNs.map((fqn) => fqn.toLowerCase()),
-    }
+    },
   };
   return base64.encode(JSON.stringify(context));
 };
