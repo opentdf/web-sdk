@@ -7,7 +7,6 @@ import {
   fetchKasPubKey as fetchKasPubKeyV2,
   fetchWrappedKey,
   publicKeyAlgorithmToJwa,
-  rewrapAdditionalContextHeader,
 } from '../../src/access.js';
 import { type AuthProvider, reqSignature } from '../../src/auth/auth.js';
 import { allPool, anyPool } from '../../src/concurrency.js';
