@@ -156,6 +156,8 @@ export type ReadOptions = {
   allowedKASEndpoints?: string[];
   /** Optionally disable checking the allowlist. */
   ignoreAllowlist?: boolean;
+  /** Optionally override client fulfillableObligationFQNs. */
+  fulfillableObligationFQNs?: string[];
   /** Public (or shared) keys for verifying assertions. */
   assertionVerificationKeys?: AssertionVerificationKeys;
   /** Optionally disable assertion verification. */
@@ -587,6 +589,7 @@ class NanoTDFReader {
       this.opts.allowedKASEndpoints?.[0] || platformUrl || 'https://disallow.all.invalid';
     const nc = new Client({
       allowedKases: this.opts.allowedKASEndpoints,
+      fulfillableObligationFQNs: this.opts.fulfillableObligationFQNs,
       authProvider: this.outer.authProvider,
       ignoreAllowList: this.opts.ignoreAllowlist,
       dpopEnabled: this.outer.dpopEnabled,
@@ -695,6 +698,7 @@ class ZTDFReader {
         assertionVerificationKeys,
         noVerifyAssertions,
         wrappingKeyAlgorithm,
+        fulfillableObligations: this.opts.fulfillableObligationFQNs || [],
       },
       overview
     );

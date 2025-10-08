@@ -430,10 +430,7 @@ export class Client {
       }
     }
 
-    this.fulfillableObligationFQNs = [];
-    if (config.fulfillableObligationFQNs){
-      this.fulfillableObligationFQNs = config.fulfillableObligationFQNs;
-    }
+    this.fulfillableObligationFQNs = config.fulfillableObligationFQNs?.length ? config.fulfillableObligationFQNs : [];
 
     if (clientConfig.easEndpoint) {
       this.easEndpoint = clientConfig.easEndpoint;

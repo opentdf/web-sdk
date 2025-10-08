@@ -14,6 +14,7 @@ import { cryptoPublicToPem, pemToCryptoPublicKey, validateSecureUrl } from '../u
 
 export interface ClientConfig {
   allowedKases?: string[];
+  fulfillableObligationFQNs?: string[];
   ignoreAllowList?: boolean;
   authProvider: AuthProvider;
   dpopEnabled?: boolean;
@@ -106,6 +107,7 @@ export default class Client {
   static readonly IV_SIZE = 12;
 
   allowedKases?: OriginAllowList;
+  readonly fulfillableObligationFQNs: string[];
   /*
     These variables are expected to be either assigned during initialization or within the methods.
     This is needed as the flow is very specific. Errors should be thrown if the necessary step is not completed.
@@ -168,6 +170,7 @@ export default class Client {
     } else {
       const {
         allowedKases,
+        fulfillableObligationFQNs,
         ignoreAllowList,
         authProvider,
         dpopEnabled,
@@ -184,6 +187,7 @@ export default class Client {
       if (allowedKases?.length || ignoreAllowList) {
         this.allowedKases = new OriginAllowList(allowedKases || [], ignoreAllowList);
       }
+      this.fulfillableObligationFQNs = fulfillableObligationFQNs?.length ? fulfillableObligationFQNs : [];
       this.dpopEnabled = !!dpopEnabled;
       if (dpopKeys) {
         this.requestSignerKeyPair = dpopKeys;
@@ -265,7 +269,7 @@ export default class Client {
     });
 
     // Wrapped
-    const wrappedKey = await fetchWrappedKey(kasRewrapUrl, signedRequestToken, this.authProvider);
+    const wrappedKey = await fetchWrappedKey(kasRewrapUrl, signedRequestToken, this.authProvider, this.fulfillableObligationFQNs);
 
     // Extract the iv and ciphertext
     const entityWrappedKey = wrappedKey.entityWrappedKey;
