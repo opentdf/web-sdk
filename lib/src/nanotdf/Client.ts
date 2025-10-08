@@ -170,7 +170,7 @@ export default class Client {
     } else {
       const {
         allowedKases,
-        fulfillableObligationFQNs,
+        fulfillableObligationFQNs = [],
         ignoreAllowList,
         authProvider,
         dpopEnabled,
@@ -187,9 +187,7 @@ export default class Client {
       if (allowedKases?.length || ignoreAllowList) {
         this.allowedKases = new OriginAllowList(allowedKases || [], ignoreAllowList);
       }
-      this.fulfillableObligationFQNs = fulfillableObligationFQNs?.length
-        ? fulfillableObligationFQNs
-        : [];
+      this.fulfillableObligationFQNs = fulfillableObligationFQNs;
       this.dpopEnabled = !!dpopEnabled;
       if (dpopKeys) {
         this.requestSignerKeyPair = dpopKeys;
