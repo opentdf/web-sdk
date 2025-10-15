@@ -18,6 +18,7 @@ import {
   OriginAllowList,
   fetchKeyAccessServers,
   isPublicKeyAlgorithm,
+  fetchDecisionRequiredObligations,
 } from './access.js';
 import { type Manifest } from '../tdf3/src/models/manifest.js';
 import { type Payload } from '../tdf3/src/models/payload.js';
@@ -628,6 +629,7 @@ class NanoTDFReader {
     this.rewrapCache.set(nanotdf.header.ephemeralPublicKey, dek);
     const r: DecoratedStream = await streamify(decryptNanoTDF(dek, nanotdf));
     // TODO figure out how to attach policy and metadata to the stream
+    // TODO: pull out the obligations from the rewrap response and set to reader
     r.header = nanotdf.header;
     return r;
   }
@@ -661,8 +663,17 @@ class NanoTDFReader {
     if (this.requiredObligations){
       return this.requiredObligations
     }
-    return [];
-    // TODO: make direct GetDecision call here
+    const policyDataAttributeFQNs = await this.attributes()
+    // TODO: bail early as obligations are tied to attributes?
+    const platformUrl = this.opts.platformUrl || this.outer.platformUrl;
+    const authProvider = this.outer.authProvider;
+    const fulfillableObligationFQNs = this.opts.fulfillableObligationFQNs || [];
+    return await fetchDecisionRequiredObligations({
+        authProvider,
+        platformUrl,
+        fulfillableObligationFQNs,
+        policyDataAttributeFQNs
+    })
   }
 }
 
@@ -760,8 +771,23 @@ class ZTDFReader {
     if (this.requiredObligations){
       return this.requiredObligations
     }
-    return [];
-    // TODO: make direct GetDecision call here
+    const policyDataAttributeFQNs = await this.attributes()
+    // TODO: bail early as obligations are tied to attributes?
+    const { authProvider } = this.client;
+    if (!authProvider) {
+      throw new ConfigurationError('authProvider is required');
+    }
+    const platformUrl = this.opts.platformUrl || this.client.platformUrl;
+    if (!platformUrl){
+      throw new ConfigurationError('platformUrl is required');
+    }
+    const fulfillableObligationFQNs = this.opts.fulfillableObligationFQNs || this.client.fulfillableObligationFQNs;
+    return await fetchDecisionRequiredObligations({
+        authProvider,
+        platformUrl,
+        policyDataAttributeFQNs,
+        fulfillableObligationFQNs
+    })
   }
 }
 
