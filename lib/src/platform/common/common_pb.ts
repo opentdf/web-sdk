@@ -6,13 +6,58 @@ import type { GenEnum, GenFile, GenMessage } from "@bufbuild/protobuf/codegenv1"
 import { enumDesc, fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv1";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
+import { file_buf_validate_validate } from "../buf/validate/validate_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file common/common.proto.
  */
 export const file_common_common: GenFile = /*@__PURE__*/
-  fileDesc("ChNjb21tb24vY29tbW9uLnByb3RvEgZjb21tb24ixwEKCE1ldGFkYXRhEi4KCmNyZWF0ZWRfYXQYASABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEiwKBmxhYmVscxgDIAMoCzIcLmNvbW1vbi5NZXRhZGF0YS5MYWJlbHNFbnRyeRotCgtMYWJlbHNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBInUKD01ldGFkYXRhTXV0YWJsZRIzCgZsYWJlbHMYAyADKAsyIy5jb21tb24uTWV0YWRhdGFNdXRhYmxlLkxhYmVsc0VudHJ5Gi0KC0xhYmVsc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEqfQoSTWV0YWRhdGFVcGRhdGVFbnVtEiQKIE1FVEFEQVRBX1VQREFURV9FTlVNX1VOU1BFQ0lGSUVEEAASHwobTUVUQURBVEFfVVBEQVRFX0VOVU1fRVhURU5EEAESIAocTUVUQURBVEFfVVBEQVRFX0VOVU1fUkVQTEFDRRACKo0BCg9BY3RpdmVTdGF0ZUVudW0SIQodQUNUSVZFX1NUQVRFX0VOVU1fVU5TUEVDSUZJRUQQABIcChhBQ1RJVkVfU1RBVEVfRU5VTV9BQ1RJVkUQARIeChpBQ1RJVkVfU1RBVEVfRU5VTV9JTkFDVElWRRACEhkKFUFDVElWRV9TVEFURV9FTlVNX0FOWRADYgZwcm90bzM", [file_google_protobuf_timestamp]);
+  fileDesc("ChNjb21tb24vY29tbW9uLnByb3RvEgZjb21tb24iyAIKEElkTmFtZUlkZW50aWZpZXISFAoCaWQYASABKAlCCLpIBXIDsAEBEooCCgRuYW1lGAIgASgJQvsBukj3AboB7AEKC25hbWVfZm9ybWF0Ep8BTmFtZSBtdXN0IGJlIGFuIGFscGhhbnVtZXJpYyBzdHJpbmcsIGFsbG93aW5nIGh5cGhlbnMgYW5kIHVuZGVyc2NvcmVzIGJ1dCBub3QgYXMgdGhlIGZpcnN0IG9yIGxhc3QgY2hhcmFjdGVyLiBUaGUgc3RvcmVkIG5hbWUgd2lsbCBiZSBub3JtYWxpemVkIHRvIGxvd2VyIGNhc2UuGjt0aGlzLm1hdGNoZXMoJ15bYS16QS1aMC05XSg/OlthLXpBLVowLTlfLV0qW2EtekEtWjAtOV0pPyQnKXIFEAEY/QE6EbpIDiIMCgJpZAoEbmFtZRABIlIKD0lkRnFuSWRlbnRpZmllchIUCgJpZBgBIAEoCUIIukgFcgOwAQESFwoDZnFuGAIgASgJQgq6SAdyBRABiAEBOhC6SA0iCwoCaWQKA2ZxbhABIscBCghNZXRhZGF0YRIuCgpjcmVhdGVkX2F0GAEgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgp1cGRhdGVkX2F0GAIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIsCgZsYWJlbHMYAyADKAsyHC5jb21tb24uTWV0YWRhdGEuTGFiZWxzRW50cnkaLQoLTGFiZWxzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASJ1Cg9NZXRhZGF0YU11dGFibGUSMwoGbGFiZWxzGAMgAygLMiMuY29tbW9uLk1ldGFkYXRhTXV0YWJsZS5MYWJlbHNFbnRyeRotCgtMYWJlbHNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBKn0KEk1ldGFkYXRhVXBkYXRlRW51bRIkCiBNRVRBREFUQV9VUERBVEVfRU5VTV9VTlNQRUNJRklFRBAAEh8KG01FVEFEQVRBX1VQREFURV9FTlVNX0VYVEVORBABEiAKHE1FVEFEQVRBX1VQREFURV9FTlVNX1JFUExBQ0UQAiqNAQoPQWN0aXZlU3RhdGVFbnVtEiEKHUFDVElWRV9TVEFURV9FTlVNX1VOU1BFQ0lGSUVEEAASHAoYQUNUSVZFX1NUQVRFX0VOVU1fQUNUSVZFEAESHgoaQUNUSVZFX1NUQVRFX0VOVU1fSU5BQ1RJVkUQAhIZChVBQ1RJVkVfU1RBVEVfRU5VTV9BTlkQA2IGcHJvdG8z", [file_google_protobuf_timestamp, file_buf_validate_validate]);
+
+/**
+ * @generated from message common.IdNameIdentifier
+ */
+export type IdNameIdentifier = Message<"common.IdNameIdentifier"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+};
+
+/**
+ * Describes the message common.IdNameIdentifier.
+ * Use `create(IdNameIdentifierSchema)` to create a new message.
+ */
+export const IdNameIdentifierSchema: GenMessage<IdNameIdentifier> = /*@__PURE__*/
+  messageDesc(file_common_common, 0);
+
+/**
+ * @generated from message common.IdFqnIdentifier
+ */
+export type IdFqnIdentifier = Message<"common.IdFqnIdentifier"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string fqn = 2;
+   */
+  fqn: string;
+};
+
+/**
+ * Describes the message common.IdFqnIdentifier.
+ * Use `create(IdFqnIdentifierSchema)` to create a new message.
+ */
+export const IdFqnIdentifierSchema: GenMessage<IdFqnIdentifier> = /*@__PURE__*/
+  messageDesc(file_common_common, 1);
 
 /**
  * Struct to uniquely identify a resource with optional additional metadata
@@ -47,7 +92,7 @@ export type Metadata = Message<"common.Metadata"> & {
  * Use `create(MetadataSchema)` to create a new message.
  */
 export const MetadataSchema: GenMessage<Metadata> = /*@__PURE__*/
-  messageDesc(file_common_common, 0);
+  messageDesc(file_common_common, 2);
 
 /**
  * @generated from message common.MetadataMutable
@@ -66,7 +111,7 @@ export type MetadataMutable = Message<"common.MetadataMutable"> & {
  * Use `create(MetadataMutableSchema)` to create a new message.
  */
 export const MetadataMutableSchema: GenMessage<MetadataMutable> = /*@__PURE__*/
-  messageDesc(file_common_common, 1);
+  messageDesc(file_common_common, 3);
 
 /**
  * @generated from enum common.MetadataUpdateEnum
