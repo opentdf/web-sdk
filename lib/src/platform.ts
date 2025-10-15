@@ -119,7 +119,9 @@ function createAuthInterceptor(authProvider: AuthProvider): Interceptor {
     const token = await authProvider.withCreds({
       url: pathOnly,
       method: 'POST',
+      // Start with any headers Connect already has
       headers: {
+        ...Object.fromEntries(req.header.entries()),
         'Content-Type': 'application/json',
       },
     });
