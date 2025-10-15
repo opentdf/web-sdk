@@ -60,13 +60,17 @@ type FetchDecisionRequiredObligationParams = {
   fulfillableObligationFQNs: string[];
 };
 
-// Make a GetDecision request to Auth Service to check for any required obligations
+// If any data attributes provided, makes a GetDecision request to Auth Service to check for any required obligations
 export async function fetchDecisionRequiredObligations({
   platformUrl,
   authProvider,
   policyDataAttributeFQNs,
   fulfillableObligationFQNs,
 }: FetchDecisionRequiredObligationParams): Promise<string[]> {
+  // Avoid bad request error from Auth Service when decisioning on an 'empty' resource with no attributes
+  if (!policyDataAttributeFQNs.length){
+    return [];
+  }
   const platform = new PlatformClient({ authProvider, platformUrl });
   let decisionResponse: GetDecisionResponse;
   try {
