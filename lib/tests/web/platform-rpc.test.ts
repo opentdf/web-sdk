@@ -72,12 +72,6 @@ describe('Local Platform Connect RPC Client Tests', () => {
     try {
       const response = await platform.v1.attributes.getAttributeValuesByFqns({
         fqns,
-        withValue: {
-          withKeyAccessGrants: true,
-          withAttribute: {
-            withKeyAccessGrants: true,
-          },
-        },
       });
       expect(response.$typeName).to.equal('policy.attributes.GetAttributeValuesByFqnsResponse');
     } catch (e) {

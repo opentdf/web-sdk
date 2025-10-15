@@ -18,12 +18,6 @@ export async function attributeFQNsAsValues(
   try {
     response = await platform.v1.attributes.getAttributeValuesByFqns({
       fqns,
-      withValue: {
-        withKeyAccessGrants: true,
-        withAttribute: {
-          withKeyAccessGrants: true,
-        },
-      },
     });
   } catch (e) {
     throw new NetworkError(

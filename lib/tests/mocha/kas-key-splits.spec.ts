@@ -79,6 +79,7 @@ describe('Client Caching Behavior', () => {
           grants: [],
           id: 'ns-one.example',
           kasKeys: [],
+          rootCerts: [],
         };
 
         const kasOne: KeyAccessServer = {
@@ -156,6 +157,7 @@ describe('Client Caching Behavior', () => {
           active: true,
           subjectMappings: [],
           resourceMappings: [],
+          obligations: [],
         };
         const attrOneValueTwo: Value = {
           $typeName: 'policy.Value',
@@ -180,6 +182,7 @@ describe('Client Caching Behavior', () => {
           active: true,
           subjectMappings: [],
           resourceMappings: [],
+          obligations: [],
         };
 
         const attrValueByFqnResponse: GetAttributeValuesByFqnsResponse = {
@@ -226,6 +229,7 @@ describe('Client Caching Behavior', () => {
         grants: [],
         id: 'ns-one.example',
         kasKeys: [],
+        rootCerts: [],
       };
 
       const kasOne: KeyAccessServer = {
@@ -303,6 +307,7 @@ describe('Client Caching Behavior', () => {
         active: true,
         subjectMappings: [],
         resourceMappings: [],
+        obligations: [],
       };
       const attrOneValueTwo: Value = {
         $typeName: 'policy.Value',
@@ -327,6 +332,7 @@ describe('Client Caching Behavior', () => {
         active: true,
         subjectMappings: [],
         resourceMappings: [],
+        obligations: [],
       };
 
       const attrValueByFqnResponse: GetAttributeValuesByFqnsResponse = {
@@ -374,6 +380,7 @@ describe('Client Caching Behavior', () => {
         grants: [],
         id: 'ns-one.example',
         kasKeys: [],
+        rootCerts: [],
       };
 
       const kasOne: KeyAccessServer = {
@@ -424,6 +431,7 @@ describe('Client Caching Behavior', () => {
         active: true,
         subjectMappings: [],
         resourceMappings: [],
+        obligations: [],
       };
       const attrOneValueTwo: Value = {
         $typeName: 'policy.Value',
@@ -436,6 +444,7 @@ describe('Client Caching Behavior', () => {
         active: true,
         subjectMappings: [],
         resourceMappings: [],
+        obligations: [],
       };
 
       const attrValueByFqnResponse: GetAttributeValuesByFqnsResponse = {
