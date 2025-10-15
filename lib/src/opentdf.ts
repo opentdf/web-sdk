@@ -655,25 +655,25 @@ class NanoTDFReader {
     return policy?.body?.dataAttributes.map((a) => a.attribute) || [];
   }
 
-  /** 
+  /**
    * Returns obligations populated from the decrypt flow, or makes a direct GetDecision call with NanoTDF policy.
    * Note: obligations can only be returned on-demand from Auth Service if policy mode is plaintext.
    */
   async obligations(): Promise<string[]> {
-    if (this.requiredObligations){
-      return this.requiredObligations
+    if (this.requiredObligations) {
+      return this.requiredObligations;
     }
-    const policyDataAttributeFQNs = await this.attributes()
+    const policyDataAttributeFQNs = await this.attributes();
     // TODO: bail early as obligations are tied to attributes?
     const platformUrl = this.opts.platformUrl || this.outer.platformUrl;
     const authProvider = this.outer.authProvider;
     const fulfillableObligationFQNs = this.opts.fulfillableObligationFQNs || [];
     return await fetchDecisionRequiredObligations({
-        authProvider,
-        platformUrl,
-        fulfillableObligationFQNs,
-        policyDataAttributeFQNs
-    })
+      authProvider,
+      platformUrl,
+      fulfillableObligationFQNs,
+      policyDataAttributeFQNs,
+    });
   }
 }
 
@@ -742,7 +742,7 @@ class ZTDFReader {
       },
       overview
     );
-    this.requiredObligations = oldStream.requiredObligations()
+    this.requiredObligations = oldStream.requiredObligations();
     const stream: DecoratedStream = oldStream.stream;
     stream.manifest = Promise.resolve(overview.manifest);
     stream.metadata = Promise.resolve(oldStream.metadata);
@@ -768,26 +768,27 @@ class ZTDFReader {
   }
 
   async obligations(): Promise<string[]> {
-    if (this.requiredObligations){
-      return this.requiredObligations
+    if (this.requiredObligations) {
+      return this.requiredObligations;
     }
-    const policyDataAttributeFQNs = await this.attributes()
+    const policyDataAttributeFQNs = await this.attributes();
     // TODO: bail early as obligations are tied to attributes?
     const { authProvider } = this.client;
     if (!authProvider) {
       throw new ConfigurationError('authProvider is required');
     }
     const platformUrl = this.opts.platformUrl || this.client.platformUrl;
-    if (!platformUrl){
+    if (!platformUrl) {
       throw new ConfigurationError('platformUrl is required');
     }
-    const fulfillableObligationFQNs = this.opts.fulfillableObligationFQNs || this.client.fulfillableObligationFQNs;
+    const fulfillableObligationFQNs =
+      this.opts.fulfillableObligationFQNs || this.client.fulfillableObligationFQNs;
     return await fetchDecisionRequiredObligations({
-        authProvider,
-        platformUrl,
-        policyDataAttributeFQNs,
-        fulfillableObligationFQNs
-    })
+      authProvider,
+      platformUrl,
+      policyDataAttributeFQNs,
+      fulfillableObligationFQNs,
+    });
   }
 }
 

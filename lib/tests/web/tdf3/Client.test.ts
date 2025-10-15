@@ -3,7 +3,7 @@ import { clientAuthProvider } from '../../../src/auth/providers.js';
 import { Client as TDF3Client, type ClientConfig } from '../../../tdf3/src/client/index.js';
 
 describe('tdf3 client', () => {
- describe('fulfillableObligationFQNs', async () => {
+  describe('fulfillableObligationFQNs', async () => {
     const authProvider = await clientAuthProvider({
       clientId: 'string',
       oidcOrigin: 'string',

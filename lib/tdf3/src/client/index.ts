@@ -785,7 +785,8 @@ export class Client {
       throw new ConfigurationError('platformUrl is required when allowedKases is empty');
     }
 
-    const hasEmptyDecryptParamObligationsButGlobal = !fulfillableObligationFQNs.length && this.fulfillableObligationFQNs.length
+    const hasEmptyDecryptParamObligationsButGlobal =
+      !fulfillableObligationFQNs.length && this.fulfillableObligationFQNs.length;
     if (hasEmptyDecryptParamObligationsButGlobal) {
       fulfillableObligationFQNs = this.fulfillableObligationFQNs;
     }

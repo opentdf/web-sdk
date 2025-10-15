@@ -42,8 +42,11 @@ export class DecoratedReadableStream {
 
   requiredObligations() {
     const metadata = this.metadata as Record<string, unknown>;
-    const hasNoMetadataOrNoObligations = !metadata || !Object.keys(metadata).length || !metadata.hasOwnProperty(REQUIRED_OBLIGATIONS_METADATA_KEY);
-    if (hasNoMetadataOrNoObligations){
+    const hasNoMetadataOrNoObligations =
+      !metadata ||
+      !Object.keys(metadata).length ||
+      !metadata.hasOwnProperty(REQUIRED_OBLIGATIONS_METADATA_KEY);
+    if (hasNoMetadataOrNoObligations) {
       return [];
     }
     return metadata[REQUIRED_OBLIGATIONS_METADATA_KEY] as string[];

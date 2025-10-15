@@ -58,7 +58,7 @@ type FetchDecisionRequiredObligationParams = {
   policyDataAttributeFQNs: string[];
   /** Obligation value FQNs that are able to be fulfilled by caller PEP */
   fulfillableObligationFQNs: string[];
-}
+};
 
 // Make a GetDecision request to Auth Service to check for any required obligations
 export async function fetchDecisionRequiredObligations({
@@ -73,7 +73,7 @@ export async function fetchDecisionRequiredObligations({
     decisionResponse = await platform.v2.authorization.getDecision({
       entityIdentifier: {
         identifier: {
-          case: "withRequestToken",
+          case: 'withRequestToken',
           value: {
             value: true,
           },
@@ -83,30 +83,29 @@ export async function fetchDecisionRequiredObligations({
         name: DECISION_ACTION_READ,
       },
       resource: {
-        resource:{
-          case: "attributeValues",
+        resource: {
+          case: 'attributeValues',
           value: {
             fqns: policyDataAttributeFQNs,
-          }
-        }
+          },
+        },
       },
       fulfillableObligationFqns: fulfillableObligationFQNs,
-    })
-  } catch(e){
+    });
+  } catch (e) {
     throw new NetworkError(`[${platformUrl}] [GetDecision] ${extractRpcErrorMessage(e)}`);
   }
   const { decision } = decisionResponse;
-  if (!decision){
+  if (!decision) {
     // TODO: named errors
-    throw new Error('empty decision within auth service GetDecision response')
+    throw new Error('empty decision within auth service GetDecision response');
   }
-  if (decision.decision === Decision.DENY && decision.requiredObligations.length == 0){
+  if (decision.decision === Decision.DENY && decision.requiredObligations.length == 0) {
     // TODO: named errors
-    throw new Error('denied with no obligations - unentitled')
+    throw new Error('denied with no obligations - unentitled');
   }
   return decision.requiredObligations;
 }
-
 
 export async function fetchKeyAccessServers(
   platformUrl: string,
