@@ -8,5 +8,8 @@ git clone https://github.com/opentdf/platform.git
 
 # Generate Typescript code
 cd lib
-npx buf generate ../platform/service
+# version
+PATH="$PWD/node_modules/.bin:$PATH" buf --version
+# Ensure we use the local protoc-gen-es from node_modules
+PATH="$PWD/node_modules/.bin:$PATH" buf generate ../platform/service
 echo "Generated Typescript code from Protobuf files (src: platform/service, dst: lib/src/platform)"
