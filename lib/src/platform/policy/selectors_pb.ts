@@ -13,6 +13,8 @@ export const file_policy_selectors: GenFile = /*@__PURE__*/
   fileDesc("ChZwb2xpY3kvc2VsZWN0b3JzLnByb3RvEgZwb2xpY3ki4gIKGkF0dHJpYnV0ZU5hbWVzcGFjZVNlbGVjdG9yEk0KD3dpdGhfYXR0cmlidXRlcxgKIAEoCzI0LnBvbGljeS5BdHRyaWJ1dGVOYW1lc3BhY2VTZWxlY3Rvci5BdHRyaWJ1dGVTZWxlY3Rvchr0AQoRQXR0cmlidXRlU2VsZWN0b3ISHgoWd2l0aF9rZXlfYWNjZXNzX2dyYW50cxgBIAEoCBJXCgt3aXRoX3ZhbHVlcxgKIAEoCzJCLnBvbGljeS5BdHRyaWJ1dGVOYW1lc3BhY2VTZWxlY3Rvci5BdHRyaWJ1dGVTZWxlY3Rvci5WYWx1ZVNlbGVjdG9yGmYKDVZhbHVlU2VsZWN0b3ISHgoWd2l0aF9rZXlfYWNjZXNzX2dyYW50cxgBIAEoCBIZChF3aXRoX3N1YmplY3RfbWFwcxgCIAEoCBIaChJ3aXRoX3Jlc291cmNlX21hcHMYAyABKAgi0QIKG0F0dHJpYnV0ZURlZmluaXRpb25TZWxlY3RvchIeChZ3aXRoX2tleV9hY2Nlc3NfZ3JhbnRzGAEgASgIEk0KDndpdGhfbmFtZXNwYWNlGAogASgLMjUucG9saWN5LkF0dHJpYnV0ZURlZmluaXRpb25TZWxlY3Rvci5OYW1lc3BhY2VTZWxlY3RvchJGCgt3aXRoX3ZhbHVlcxgLIAEoCzIxLnBvbGljeS5BdHRyaWJ1dGVEZWZpbml0aW9uU2VsZWN0b3IuVmFsdWVTZWxlY3RvchoTChFOYW1lc3BhY2VTZWxlY3RvchpmCg1WYWx1ZVNlbGVjdG9yEh4KFndpdGhfa2V5X2FjY2Vzc19ncmFudHMYASABKAgSGQoRd2l0aF9zdWJqZWN0X21hcHMYAiABKAgSGgoSd2l0aF9yZXNvdXJjZV9tYXBzGAMgASgIIuACChZBdHRyaWJ1dGVWYWx1ZVNlbGVjdG9yEh4KFndpdGhfa2V5X2FjY2Vzc19ncmFudHMYASABKAgSGQoRd2l0aF9zdWJqZWN0X21hcHMYAiABKAgSGgoSd2l0aF9yZXNvdXJjZV9tYXBzGAMgASgIEkgKDndpdGhfYXR0cmlidXRlGAogASgLMjAucG9saWN5LkF0dHJpYnV0ZVZhbHVlU2VsZWN0b3IuQXR0cmlidXRlU2VsZWN0b3IapAEKEUF0dHJpYnV0ZVNlbGVjdG9yEh4KFndpdGhfa2V5X2FjY2Vzc19ncmFudHMYASABKAgSWgoOd2l0aF9uYW1lc3BhY2UYCiABKAsyQi5wb2xpY3kuQXR0cmlidXRlVmFsdWVTZWxlY3Rvci5BdHRyaWJ1dGVTZWxlY3Rvci5OYW1lc3BhY2VTZWxlY3RvchoTChFOYW1lc3BhY2VTZWxlY3RvciIsCgtQYWdlUmVxdWVzdBINCgVsaW1pdBgBIAEoBRIOCgZvZmZzZXQYAiABKAUiSgoMUGFnZVJlc3BvbnNlEhYKDmN1cnJlbnRfb2Zmc2V0GAEgASgFEhMKC25leHRfb2Zmc2V0GAIgASgFEg0KBXRvdGFsGAMgASgFYgZwcm90bzM");
 
 /**
+ * Deprecated: never utilized
+ *
  * @generated from message policy.AttributeNamespaceSelector
  */
 export type AttributeNamespaceSelector = Message<"policy.AttributeNamespaceSelector"> & {
@@ -30,6 +32,8 @@ export const AttributeNamespaceSelectorSchema: GenMessage<AttributeNamespaceSele
   messageDesc(file_policy_selectors, 0);
 
 /**
+ * Deprecated
+ *
  * @generated from message policy.AttributeNamespaceSelector.AttributeSelector
  */
 export type AttributeNamespaceSelector_AttributeSelector = Message<"policy.AttributeNamespaceSelector.AttributeSelector"> & {
@@ -56,6 +60,8 @@ export const AttributeNamespaceSelector_AttributeSelectorSchema: GenMessage<Attr
  */
 export type AttributeNamespaceSelector_AttributeSelector_ValueSelector = Message<"policy.AttributeNamespaceSelector.AttributeSelector.ValueSelector"> & {
   /**
+   * Deprecated
+   *
    * @generated from field: bool with_key_access_grants = 1;
    */
   withKeyAccessGrants: boolean;
@@ -79,10 +85,14 @@ export const AttributeNamespaceSelector_AttributeSelector_ValueSelectorSchema: G
   messageDesc(file_policy_selectors, 0, 0, 0);
 
 /**
+ * Deprecated: never utilized
+ *
  * @generated from message policy.AttributeDefinitionSelector
  */
 export type AttributeDefinitionSelector = Message<"policy.AttributeDefinitionSelector"> & {
   /**
+   * Deprecated
+   *
    * @generated from field: bool with_key_access_grants = 1;
    */
   withKeyAccessGrants: boolean;
@@ -123,6 +133,8 @@ export const AttributeDefinitionSelector_NamespaceSelectorSchema: GenMessage<Att
  */
 export type AttributeDefinitionSelector_ValueSelector = Message<"policy.AttributeDefinitionSelector.ValueSelector"> & {
   /**
+   * Deprecated
+   *
    * @generated from field: bool with_key_access_grants = 1;
    */
   withKeyAccessGrants: boolean;
@@ -146,10 +158,14 @@ export const AttributeDefinitionSelector_ValueSelectorSchema: GenMessage<Attribu
   messageDesc(file_policy_selectors, 1, 1);
 
 /**
+ * Deprecated: never utilized
+ *
  * @generated from message policy.AttributeValueSelector
  */
 export type AttributeValueSelector = Message<"policy.AttributeValueSelector"> & {
   /**
+   * Deprecated
+   *
    * @generated from field: bool with_key_access_grants = 1;
    */
   withKeyAccessGrants: boolean;
@@ -182,6 +198,8 @@ export const AttributeValueSelectorSchema: GenMessage<AttributeValueSelector> = 
  */
 export type AttributeValueSelector_AttributeSelector = Message<"policy.AttributeValueSelector.AttributeSelector"> & {
   /**
+   * Deprecated
+   *
    * @generated from field: bool with_key_access_grants = 1;
    */
   withKeyAccessGrants: boolean;

@@ -215,6 +215,7 @@ describe('Client Caching Behavior', () => {
         active: true,
         subjectMappings: [],
         resourceMappings: [],
+        obligations: [],
       };
       const fetchedAttributeValue: Value = valueFor(valClassA);
       fetchedAttributeValue.grants.push({
@@ -325,6 +326,7 @@ describe('Client Caching Behavior', () => {
         active: true,
         subjectMappings: [],
         resourceMappings: [],
+        obligations: [],
       };
 
       fetchStub.returns(createFakeResponse({ error: 'Not Found' }, false, 404));
@@ -400,6 +402,7 @@ describe('Client Caching Behavior', () => {
         active: true,
         subjectMappings: [],
         resourceMappings: [],
+        obligations: [],
       };
 
       // 2. Define the second attributeValue with a different EC key for the same KAS.
@@ -427,6 +430,7 @@ describe('Client Caching Behavior', () => {
         active: true,
         subjectMappings: [],
         resourceMappings: [],
+        obligations: [],
       };
 
       // Set up the fetch stub to always fail.
