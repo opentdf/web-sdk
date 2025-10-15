@@ -17,8 +17,10 @@ import {
   pemToCryptoPublicKey,
   validateSecureUrl,
 } from '../utils.js';
+import { Decision, GetDecisionResponse } from 'src/platform/authorization/v2/authorization_pb.js';
 
 const X_REWRAP_ADDITIONAL_CONTEXT = 'X-Rewrap-Additional-Context';
+const DECISION_ACTION_READ = 'read';
 
 /**
  * Get a rewrapped access key to the document, if possible
@@ -48,6 +50,63 @@ export async function fetchWrappedKey(
     throw new NetworkError(`[${platformUrl}] [Rewrap] ${extractRpcErrorMessage(e)}`);
   }
 }
+
+type FetchDecisionRequiredObligationParams = {
+  platformUrl: string;
+  authProvider: AuthProvider;
+  /** Attribute value FQNs pulled from manifest policy */
+  policyDataAttributeFQNs: string[];
+  /** Obligation value FQNs that are able to be fulfilled by caller PEP */
+  fulfillableObligationFQNs: string[];
+}
+
+// Make a GetDecision request to Auth Service to check for any required obligations
+export async function fetchDecisionRequiredObligations({
+  platformUrl,
+  authProvider,
+  policyDataAttributeFQNs,
+  fulfillableObligationFQNs,
+}: FetchDecisionRequiredObligationParams): Promise<string[]> {
+  const platform = new PlatformClient({ authProvider, platformUrl });
+  let decisionResponse: GetDecisionResponse;
+  try {
+    decisionResponse = await platform.v2.authorization.getDecision({
+      entityIdentifier: {
+        identifier: {
+          case: "withRequestToken",
+          value: {
+            value: true,
+          },
+        },
+      },
+      action: {
+        name: DECISION_ACTION_READ,
+      },
+      resource: {
+        resource:{
+          case: "attributeValues",
+          value: {
+            fqns: policyDataAttributeFQNs,
+          }
+        }
+      },
+      fulfillableObligationFqns: fulfillableObligationFQNs,
+    })
+  } catch(e){
+    throw new NetworkError(`[${platformUrl}] [GetDecision] ${extractRpcErrorMessage(e)}`);
+  }
+  const { decision } = decisionResponse;
+  if (!decision){
+    // TODO: named errors
+    throw new Error('empty decision within auth service GetDecision response')
+  }
+  if (decision.decision === Decision.DENY && decision.requiredObligations.length == 0){
+    // TODO: named errors
+    throw new Error('denied with no obligations - unentitled')
+  }
+  return decision.requiredObligations;
+}
+
 
 export async function fetchKeyAccessServers(
   platformUrl: string,
