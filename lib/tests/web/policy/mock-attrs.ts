@@ -118,9 +118,10 @@ for (const ns of [nsStandard, nsGranted, nsUngranted]) {
     grants: [],
     id: '',
     kasKeys: [],
+    rootCerts: [],
   };
   if (ns == nsGranted) {
-    namespaces[ns].grants = [kases[lessSpecificKas]];
+    namespaces[ns]!.grants = [kases[lessSpecificKas]];
   }
 }
 
@@ -284,6 +285,7 @@ for (const fqn of [
     resourceMappings: [],
     subjectMappings: [],
     grants: [],
+    obligations: [],
     ...(grants && { grants: grants.map((g) => kases[g]) }),
     $typeName: 'policy.Value',
   };
