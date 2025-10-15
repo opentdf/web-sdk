@@ -51,6 +51,12 @@ export async function getRootCertsFromNamespace(
   fqn?: string
 ): Promise<Certificate[]> {
   platformUrl = getPlatformUrlFromKasEndpoint(platformUrl);
+
+  // Ensure at least one identifier is provided to avoid guaranteed API failure
+  if (!namespaceId && !fqn) {
+    throw new Error('Either namespaceId or fqn must be provided');
+  }
+
   const platform = new PlatformClient({ authProvider, platformUrl });
 
   let response: GetNamespaceResponse;
@@ -59,9 +65,7 @@ export async function getRootCertsFromNamespace(
       id: '', // deprecated field, but required
       identifier: namespaceId
         ? { case: 'namespaceId', value: namespaceId }
-        : fqn
-          ? { case: 'fqn', value: fqn }
-          : { case: undefined, value: undefined },
+        : { case: 'fqn', value: fqn! },
     });
   } catch (e) {
     throw new NetworkError(`[${platformUrl}] [GetNamespace] ${extractRpcErrorMessage(e)}`);
