@@ -269,7 +269,7 @@ export default class Client {
     });
 
     // Wrapped
-    const wrappedKey = await fetchWrappedKey(
+    const rewrapResp = await fetchWrappedKey(
       kasRewrapUrl,
       signedRequestToken,
       this.authProvider,
@@ -277,7 +277,7 @@ export default class Client {
     );
 
     // Extract the iv and ciphertext
-    const entityWrappedKey = wrappedKey.entityWrappedKey;
+    const entityWrappedKey = rewrapResp.entityWrappedKey;
     const ivLength =
       clientVersion == Client.SDK_INITIAL_RELEASE ? Client.INITIAL_RELEASE_IV_SIZE : Client.IV_SIZE;
     const iv = entityWrappedKey.subarray(0, ivLength);
@@ -286,7 +286,7 @@ export default class Client {
     let kasPublicKey;
     try {
       // Let us import public key as a cert or public key
-      kasPublicKey = await pemToCryptoPublicKey(wrappedKey.sessionPublicKey);
+      kasPublicKey = await pemToCryptoPublicKey(rewrapResp.sessionPublicKey);
     } catch (cause) {
       throw new ConfigurationError(
         `internal: [${kasRewrapUrl}] PEM Public Key to crypto public key failed. Is PEM formatted correctly?`,
