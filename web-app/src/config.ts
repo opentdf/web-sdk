@@ -25,4 +25,4 @@ function cfg(): TDFConfig {
   return JSON.parse(VITE_TDF_CFG);
 }
 
-export const c = cfg();
+export const config = cfg();

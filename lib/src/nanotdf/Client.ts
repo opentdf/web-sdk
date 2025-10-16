@@ -10,7 +10,7 @@ import {
 } from '../access.js';
 import { AuthProvider, isAuthProvider, reqSignature } from '../auth/providers.js';
 import { ConfigurationError, DecryptError, TdfError, UnsafeUrlError } from '../errors.js';
-import { cryptoPublicToPem, pemToCryptoPublicKey, validateSecureUrl } from '../utils.js';
+import { cryptoPublicToPem, getRequiredObligationFQNs, pemToCryptoPublicKey, validateSecureUrl } from '../utils.js';
 
 export interface ClientConfig {
   allowedKases?: string[];
@@ -22,6 +22,11 @@ export interface ClientConfig {
   ephemeralKeyPair?: Promise<CryptoKeyPair>;
   kasEndpoint: string;
   platformUrl: string;
+}
+
+type RewrapKeyResult = {
+  unwrappedKey: CryptoKey;
+  requiredObligations: string[];
 }
 
 function toJWSAlg(c: CryptoKey): string {
@@ -227,7 +232,7 @@ export default class Client {
     kasRewrapUrl: string,
     magicNumberVersion: ArrayBufferLike,
     clientVersion: string
-  ): Promise<CryptoKey> {
+  ): Promise<RewrapKeyResult> {
     let allowedKases = this.allowedKases;
 
     if (!allowedKases) {
@@ -355,6 +360,9 @@ export default class Client {
       throw new DecryptError('Unable to import raw key.', cause);
     }
 
-    return unwrappedKey;
+    return {
+      requiredObligations: getRequiredObligationFQNs(rewrapResp),
+      unwrappedKey: unwrappedKey,
+    };
   }
 }

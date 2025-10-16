@@ -14,9 +14,6 @@ import { fetchWrappedKey as fetchWrappedKeysLegacy } from './access/access-fetch
 import { fetchKasPubKey as fetchKasPubKeyRpc } from './access/access-rpc.js';
 import { fetchKasPubKey as fetchKasPubKeyLegacy } from './access/access-fetch.js';
 
-// re-export this function but do not wrap in an abstraction as it is only exposed via RPC
-export { fetchDecisionRequiredObligations } from './access/access-rpc.js';
-
 /**
  * Header value structure for 'X-Rewrap-Additional-Context`
  */

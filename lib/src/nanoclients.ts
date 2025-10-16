@@ -46,7 +46,7 @@ export class NanoTDFClient extends Client {
     const kasUrl = nanotdf.header.getKasRewrapUrl();
 
     // Rewrap key on every request
-    const ukey = await this.rewrapKey(
+    const { unwrappedKey: ukey } = await this.rewrapKey(
       nanotdf.header.toBuffer(),
       kasUrl,
       nanotdf.header.magicNumberVersion,
@@ -73,7 +73,7 @@ export class NanoTDFClient extends Client {
 
     const legacyVersion = '0.0.0';
     // Rewrap key on every request
-    const key = await this.rewrapKey(
+    const { unwrappedKey: key } = await this.rewrapKey(
       nanotdf.header.toBuffer(),
       nanotdf.header.getKasRewrapUrl(),
       nanotdf.header.magicNumberVersion,
@@ -351,7 +351,7 @@ export class NanoTDFDatasetClient extends Client {
     // TODO: The version number should be fetched from the API
     const version = '0.0.1';
     // Rewrap key on every request
-    const ukey = await this.rewrapKey(
+    const { unwrappedKey: ukey } = await this.rewrapKey(
       nanotdf.header.toBuffer(),
       nanotdf.header.getKasRewrapUrl(),
       nanotdf.header.magicNumberVersion,

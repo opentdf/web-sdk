@@ -1,6 +1,5 @@
 import { type Metadata } from '../tdf.js';
 import { type Manifest } from '../models/index.js';
-import { REQUIRED_OBLIGATIONS_METADATA_KEY } from '../../../src/opentdf.js';
 
 export async function streamToBuffer(stream: ReadableStream<Uint8Array>): Promise<Uint8Array> {
   const accumulator = await new Response(stream).arrayBuffer();
@@ -38,18 +37,6 @@ export class DecoratedReadableStream {
 
   async getMetadata() {
     return this.metadata;
-  }
-
-  requiredObligations() {
-    const metadata = this.metadata as Record<string, unknown>;
-    const hasNoMetadataOrNoObligations =
-      !metadata ||
-      !Object.keys(metadata).length ||
-      !metadata.hasOwnProperty(REQUIRED_OBLIGATIONS_METADATA_KEY);
-    if (hasNoMetadataOrNoObligations) {
-      return [];
-    }
-    return metadata[REQUIRED_OBLIGATIONS_METADATA_KEY] as string[];
   }
 
   /**

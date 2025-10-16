@@ -18,7 +18,6 @@ import {
   OriginAllowList,
   fetchKeyAccessServers,
   isPublicKeyAlgorithm,
-  fetchDecisionRequiredObligations,
 } from './access.js';
 import { type Manifest } from '../tdf3/src/models/manifest.js';
 import { type Payload } from '../tdf3/src/models/payload.js';
@@ -202,7 +201,6 @@ export type OpenTDFOptions = {
   rewrapCacheOptions?: RewrapCacheOptions;
 };
 
-export const REQUIRED_OBLIGATIONS_METADATA_KEY = 'X-Required-Obligations';
 
 /** A decorated readable stream. */
 export type DecoratedStream = ReadableStream<Uint8Array> & {
@@ -591,7 +589,10 @@ class NanoTDFReader {
     });
   }
 
-  /** Decrypts the NanoTDF file and returns a decorated stream. */
+  /** 
+   * Decrypts the NanoTDF file and returns a decorated stream. 
+   * Sets required obligations on the reader when retrieved from KAS rewrap response.
+  */
   async decrypt(): Promise<DecoratedStream> {
     const nanotdf = await this.container;
     const cachedDEK = this.rewrapCache.get(nanotdf.header.ephemeralPublicKey);
@@ -616,7 +617,7 @@ class NanoTDFReader {
     // TODO: The version number should be fetched from the API
     const version = '0.0.1';
     // Rewrap key on every request
-    const dek = await nc.rewrapKey(
+    const { unwrappedKey: dek, requiredObligations } = await nc.rewrapKey(
       nanotdf.header.toBuffer(),
       nanotdf.header.getKasRewrapUrl(),
       nanotdf.header.magicNumberVersion,
@@ -626,10 +627,10 @@ class NanoTDFReader {
       // These should have thrown already.
       throw new Error('internal: key rewrap failure');
     }
+    this.requiredObligations = requiredObligations;
     this.rewrapCache.set(nanotdf.header.ephemeralPublicKey, dek);
     const r: DecoratedStream = await streamify(decryptNanoTDF(dek, nanotdf));
     // TODO figure out how to attach policy and metadata to the stream
-    // TODO: pull out the obligations from the rewrap response and set to reader
     r.header = nanotdf.header;
     return r;
   }
@@ -656,24 +657,15 @@ class NanoTDFReader {
   }
 
   /**
-   * Returns obligations populated from the decrypt flow, or makes a direct GetDecision call with NanoTDF policy.
-   * Note: obligations can only be returned on-demand from Auth Service if policy mode is plaintext.
+   * Returns obligations populated from the decrypt flow.
+   * If a decrypt has not occurred, attempts one to retrieve obligations.
    */
   async obligations(): Promise<string[]> {
     if (this.requiredObligations) {
       return this.requiredObligations;
     }
-    const policyDataAttributeFQNs = await this.attributes();
-    // TODO: bail early as obligations are tied to attributes?
-    const platformUrl = this.opts.platformUrl || this.outer.platformUrl;
-    const authProvider = this.outer.authProvider;
-    const fulfillableObligationFQNs = this.opts.fulfillableObligationFQNs || [];
-    return await fetchDecisionRequiredObligations({
-      authProvider,
-      platformUrl,
-      fulfillableObligationFQNs,
-      policyDataAttributeFQNs,
-    });
+    await this.decrypt();
+    return this.requiredObligations || [];
   }
 }
 
@@ -693,6 +685,7 @@ class ZTDFReader {
   /**
    * Decrypts the TDF file and returns a decorated stream.
    * The stream will have a manifest and metadata attached if available.
+   * Sets required obligations on the reader when retrieved from KAS rewrap response.
    */
   async decrypt(): Promise<DecoratedStream> {
     const {
@@ -742,7 +735,7 @@ class ZTDFReader {
       },
       overview
     );
-    this.requiredObligations = oldStream.requiredObligations();
+    this.requiredObligations = oldStream.obligations();
     const stream: DecoratedStream = oldStream.stream;
     stream.manifest = Promise.resolve(overview.manifest);
     stream.metadata = Promise.resolve(oldStream.metadata);
@@ -767,28 +760,16 @@ class ZTDFReader {
     return policy?.body?.dataAttributes.map((a) => a.attribute) || [];
   }
 
+  /**
+   * Returns obligations populated from the decrypt flow.
+   * If a decrypt has not occurred, attempts one to retrieve obligations.
+   */
   async obligations(): Promise<string[]> {
     if (this.requiredObligations) {
       return this.requiredObligations;
     }
-    const policyDataAttributeFQNs = await this.attributes();
-    // TODO: bail early as obligations are tied to attributes?
-    const { authProvider } = this.client;
-    if (!authProvider) {
-      throw new ConfigurationError('authProvider is required');
-    }
-    const platformUrl = this.opts.platformUrl || this.client.platformUrl;
-    if (!platformUrl) {
-      throw new ConfigurationError('platformUrl is required');
-    }
-    const fulfillableObligationFQNs =
-      this.opts.fulfillableObligationFQNs || this.client.fulfillableObligationFQNs;
-    return await fetchDecisionRequiredObligations({
-      authProvider,
-      platformUrl,
-      policyDataAttributeFQNs,
-      fulfillableObligationFQNs,
-    });
+    await this.decrypt();
+    return this.requiredObligations || [];
   }
 }
 
