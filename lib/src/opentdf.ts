@@ -561,7 +561,7 @@ class UnknownTypeReader {
 /** A TDF reader for NanoTDF files. */
 class NanoTDFReader {
   container: Promise<NanoTDF>;
-  // Required obligation FQNs that must be fulfilled, provided either from a direct GetDecision call or from the decrypt flow.
+  // Required obligation FQNs that must be fulfilled, provided via the decrypt flow.
   private requiredObligations?: string[];
   constructor(
     readonly outer: OpenTDF,
@@ -671,7 +671,7 @@ class NanoTDFReader {
 /** A reader for TDF files. */
 class ZTDFReader {
   overview: Promise<InspectedTDFOverview>;
-  // Required obligation FQNs that must be fulfilled, provided either from a direct GetDecision call or from the decrypt flow.
+  // Required obligation FQNs that must be fulfilled, provided via the decrypt flow.
   private requiredObligations?: string[];
   constructor(
     readonly client: TDF3Client,
