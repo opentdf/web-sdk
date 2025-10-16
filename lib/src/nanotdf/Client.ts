@@ -10,7 +10,12 @@ import {
 } from '../access.js';
 import { AuthProvider, isAuthProvider, reqSignature } from '../auth/providers.js';
 import { ConfigurationError, DecryptError, TdfError, UnsafeUrlError } from '../errors.js';
-import { cryptoPublicToPem, getRequiredObligationFQNs, pemToCryptoPublicKey, validateSecureUrl } from '../utils.js';
+import {
+  cryptoPublicToPem,
+  getRequiredObligationFQNs,
+  pemToCryptoPublicKey,
+  validateSecureUrl,
+} from '../utils.js';
 
 export interface ClientConfig {
   allowedKases?: string[];
@@ -27,7 +32,7 @@ export interface ClientConfig {
 type RewrapKeyResult = {
   unwrappedKey: CryptoKey;
   requiredObligations: string[];
-}
+};
 
 function toJWSAlg(c: CryptoKey): string {
   const { algorithm } = c;

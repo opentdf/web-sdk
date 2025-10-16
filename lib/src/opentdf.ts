@@ -201,7 +201,6 @@ export type OpenTDFOptions = {
   rewrapCacheOptions?: RewrapCacheOptions;
 };
 
-
 /** A decorated readable stream. */
 export type DecoratedStream = ReadableStream<Uint8Array> & {
   /** If the source is a TDF3/ZTDF, and includes metadata, and it has been read. */
@@ -589,10 +588,10 @@ class NanoTDFReader {
     });
   }
 
-  /** 
-   * Decrypts the NanoTDF file and returns a decorated stream. 
+  /**
+   * Decrypts the NanoTDF file and returns a decorated stream.
    * Sets required obligations on the reader when retrieved from KAS rewrap response.
-  */
+   */
   async decrypt(): Promise<DecoratedStream> {
     const nanotdf = await this.container;
     const cachedDEK = this.rewrapCache.get(nanotdf.header.ephemeralPublicKey);

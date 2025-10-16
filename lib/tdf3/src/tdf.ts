@@ -800,7 +800,7 @@ async function unwrapKey({
       fulfillableObligations
     );
     const { entityWrappedKey, metadata, sessionPublicKey } = rewrapResp;
-    const requiredObligations = getRequiredObligationFQNs(rewrapResp)
+    const requiredObligations = getRequiredObligationFQNs(rewrapResp);
 
     if (wrappingKeyAlgorithm === 'ec:secp256r1') {
       const serverEphemeralKey: CryptoKey = await pemPublicToCrypto(sessionPublicKey);
@@ -865,7 +865,7 @@ async function unwrapKey({
     const requiredObligations = new Set<string>();
     for (const resp of rewrapResponseData) {
       splitKeys.push(resp.key);
-      for (const requiredObligation of resp.requiredObligations){
+      for (const requiredObligation of resp.requiredObligations) {
         requiredObligations.add(requiredObligation);
       }
     }

@@ -230,19 +230,19 @@ export function getPlatformUrlFromKasEndpoint(endpoint: string): string {
 /**
  * Retrieves the fully qualified Obligations (values) that must be fulfilled from a rewrap response.
  */
-export function getRequiredObligationFQNs(response: RewrapResponse){
-  const requiredObligations = new Set<string>()
+export function getRequiredObligationFQNs(response: RewrapResponse) {
+  const requiredObligations = new Set<string>();
 
   // Loop through response key access object results, checking proto values/types for a metadata key
   // that matches the expected KAS-provided fulfillable obligations list.
-  for (const resp of response.responses){
-    for (const result of resp.results){
+  for (const resp of response.responses) {
+    for (const result of resp.results) {
       if (!result.metadata.hasOwnProperty(REQUIRED_OBLIGATIONS_METADATA_KEY)) {
-        continue
+        continue;
       }
       const value = result.metadata[REQUIRED_OBLIGATIONS_METADATA_KEY];
       if (value?.kind.case !== 'listValue') {
-        continue
+        continue;
       }
       const obligations = value.kind.value.values;
       for (const obligation of obligations) {
@@ -253,5 +253,5 @@ export function getRequiredObligationFQNs(response: RewrapResponse){
     }
   }
 
-  return [...requiredObligations.values()]
+  return [...requiredObligations.values()];
 }
