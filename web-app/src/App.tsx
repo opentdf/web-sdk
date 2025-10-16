@@ -321,9 +321,6 @@ function App() {
     const inputFileName = fileNameFor(inputSource);
     console.log(`Encrypting [${inputFileName}] as ${encryptContainerType} to ${sinkType}`);
 
-    // TODO: remove
-    const attributes = ['https://demo.com/attr/classification/value/secret'];
-
     const sc = new AbortController();
     setStreamController(sc);
     let source: ReadableStream<Uint8Array>, size: number;
@@ -372,14 +369,12 @@ function App() {
     switch (encryptContainerType) {
       case 'nano':
         cipherText = await client.createNanoTDF({
-          attributes,
           source: { type: 'stream', location: source },
         });
         break;
       case 'tdf':
         try {
           cipherText = await client.createZTDF({
-            attributes,
             autoconfigure: false,
             source: { type: 'stream', location: source.pipeThrough(progressTransformers.reader) },
           });
