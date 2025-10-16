@@ -21,6 +21,7 @@ export class DecoratedReadableStream {
   metadata?: Metadata;
   manifest: Manifest;
   fileStreamServiceWorker?: string;
+  requiredObligations?: string[];
 
   constructor(
     underlyingSource: UnderlyingSource & {
@@ -59,6 +60,10 @@ export class DecoratedReadableStream {
    */
   async toString(): Promise<string> {
     return new Response(this.stream).text();
+  }
+
+  obligations(): string[] {
+    return this.requiredObligations || [];
   }
 }
 
