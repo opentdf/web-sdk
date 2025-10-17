@@ -51,12 +51,13 @@ export async function fetchWrappedKey(
         authProvider,
         rewrapAdditionalContextHeader(fulfillableObligationFQNs)
       ),
+    // We intentionally do not provide the rewrap additional context to legacy requests destined for older platforms.
+    // Platforms new enough to have knowledge of obligations will be handling RPC requests successfully.
     () =>
       fetchWrappedKeysLegacy(
         url,
         { signedRequestToken },
-        authProvider,
-        rewrapAdditionalContextHeader(fulfillableObligationFQNs)
+        authProvider
       ) as unknown as Promise<RewrapResponse>
   );
 }
