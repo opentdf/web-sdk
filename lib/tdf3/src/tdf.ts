@@ -792,7 +792,9 @@ async function unwrapKey({
       keyType: keySplitInfo.type || '',
       kasUrl: keySplitInfo.url || '',
       protocol: keySplitInfo.protocol || '',
-      wrappedKey: keySplitInfo.wrappedKey ? new Uint8Array(base64.decodeArrayBuffer(keySplitInfo.wrappedKey)) : new Uint8Array(),
+      wrappedKey: keySplitInfo.wrappedKey
+        ? new Uint8Array(base64.decodeArrayBuffer(keySplitInfo.wrappedKey))
+        : new Uint8Array(),
       policyBinding: keySplitInfo.policyBinding,
       kid: keySplitInfo.kid || '',
       splitId: keySplitInfo.sid || '',
