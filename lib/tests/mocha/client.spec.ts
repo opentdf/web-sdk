@@ -163,10 +163,10 @@ describe('tdf stream tests', function () {
         controller.close();
       },
     });
-    assert.isEmpty(stream.obligations())
-    const obligations = ['https://example.com/obl/example/value/obligated_behavior']
+    assert.isEmpty(stream.obligations());
+    const obligations = ['https://example.com/obl/example/value/obligated_behavior'];
     // replicate an assignment during the decrypt flow
     stream.requiredObligations = obligations;
-    assert.deepEqual(stream.obligations(), obligations)
+    assert.deepEqual(stream.obligations(), obligations);
   });
 });
