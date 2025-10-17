@@ -18,7 +18,7 @@ import {
   pemToCryptoPublicKey,
   validateSecureUrl,
 } from '../utils.js';
-import {  X_REWRAP_ADDITIONAL_CONTEXT } from './constants.js';
+import { X_REWRAP_ADDITIONAL_CONTEXT } from './constants.js';
 
 /**
  * Get a rewrapped access key to the document, if possible
