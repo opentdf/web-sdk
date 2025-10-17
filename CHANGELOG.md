@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.5.0](https://github.com/opentdf/web-sdk/compare/sdk/v0.4.0...sdk-v0.5.0) (2025-10-17)
+
+
+### Features
+
+* add system metadata assertion ([#630](https://github.com/opentdf/web-sdk/issues/630)) ([922965c](https://github.com/opentdf/web-sdk/commit/922965c25c0a63b616dc833275152c4c55148ac3))
+* Certificates & Obligations ([#755](https://github.com/opentdf/web-sdk/issues/755)) ([688c304](https://github.com/opentdf/web-sdk/commit/688c30490e21d6c2080c187f8915c3eece41251d))
+* Get Namespace ([#756](https://github.com/opentdf/web-sdk/issues/756)) ([5b8ef25](https://github.com/opentdf/web-sdk/commit/5b8ef2518f16fbb69cb1d7b5e0297eb87f8e076c))
+* **sdk:** initial obligations support in rewrap flow ([#748](https://github.com/opentdf/web-sdk/issues/748)) ([0361361](https://github.com/opentdf/web-sdk/commit/03613617974982fe39cc7ac1362a17f843a40e63))
+
+
+### Bug Fixes
+
+* `signingKey` should not be part of the computed hash ([#696](https://github.com/opentdf/web-sdk/issues/696)) ([b763278](https://github.com/opentdf/web-sdk/commit/b7632783b17413393db3ff2ac49a2ad9201ed8ef))
+* **sdk:** Fix new API not setting nano attributes ([#679](https://github.com/opentdf/web-sdk/issues/679)) ([f0d9719](https://github.com/opentdf/web-sdk/commit/f0d97196ab258122fe9a07b7d7895017299a46c2))
+* SEC-4653 prevent ReDoS vulnerability in HTML payload unwrapping regex ([#686](https://github.com/opentdf/web-sdk/issues/686)) ([09d0360](https://github.com/opentdf/web-sdk/commit/09d036055a4eea621d182f04b706fae6dc78c195))
+
 ## [0.4.0](https://github.com/opentdf/web-sdk/compare/v0.3.2...v0.4.0) (2025-06-26)
 
 
