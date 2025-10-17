@@ -6,6 +6,7 @@ import {
   noteInvalidPublicKey,
   OriginAllowList,
 } from '../access.js';
+
 import { type AuthProvider } from '../auth/auth.js';
 import { ConfigurationError, NetworkError } from '../errors.js';
 import { PlatformClient } from '../platform.js';
@@ -17,8 +18,7 @@ import {
   pemToCryptoPublicKey,
   validateSecureUrl,
 } from '../utils.js';
-
-const X_REWRAP_ADDITIONAL_CONTEXT = 'X-Rewrap-Additional-Context';
+import {  X_REWRAP_ADDITIONAL_CONTEXT } from './constants.js';
 
 /**
  * Get a rewrapped access key to the document, if possible

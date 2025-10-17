@@ -14,6 +14,7 @@ import {
   UnauthenticatedError,
 } from '../errors.js';
 import { pemToCryptoPublicKey, validateSecureUrl } from '../utils.js';
+import {  X_REWRAP_ADDITIONAL_CONTEXT } from './constants.js';
 
 export type RewrapRequest = {
   signedRequestToken: string;
@@ -31,11 +32,13 @@ export type RewrapResponseLegacy = {
  * @param url Key access server rewrap endpoint
  * @param requestBody a signed request with an encrypted document key
  * @param authProvider Authorization middleware
+ * @param rewrapAdditionalContextHeader optional value for 'X-Rewrap-Additional-Context'
  */
 export async function fetchWrappedKey(
   url: string,
   requestBody: RewrapRequest,
-  authProvider: AuthProvider
+  authProvider: AuthProvider,
+  rewrapAdditionalContextHeader?: string
 ): Promise<RewrapResponseLegacy> {
   const req = await authProvider.withCreds({
     url,
@@ -45,6 +48,10 @@ export async function fetchWrappedKey(
     },
     body: JSON.stringify(requestBody),
   });
+
+  if (rewrapAdditionalContextHeader) {
+    req.headers[X_REWRAP_ADDITIONAL_CONTEXT] = rewrapAdditionalContextHeader;
+  }
 
   let response: Response;
 

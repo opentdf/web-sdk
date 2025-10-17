@@ -51,11 +51,12 @@ export async function fetchWrappedKey(
         authProvider,
         rewrapAdditionalContextHeader(fulfillableObligationFQNs)
       ),
-    () =>
-      fetchWrappedKeysLegacy(
-        url,
-        { signedRequestToken },
-        authProvider
+      () =>
+        fetchWrappedKeysLegacy(
+          url,
+          { signedRequestToken },
+          authProvider,
+          rewrapAdditionalContextHeader(fulfillableObligationFQNs)
       ) as unknown as Promise<RewrapResponse>
   );
 }
