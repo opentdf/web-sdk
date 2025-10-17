@@ -63,7 +63,7 @@ export class DecoratedReadableStream {
   }
 
   obligations(): string[] {
-    return this.requiredObligations || [];
+    return this.requiredObligations ?? [];
   }
 }
 

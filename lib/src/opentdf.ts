@@ -664,7 +664,7 @@ class NanoTDFReader {
       return this.requiredObligations;
     }
     await this.decrypt();
-    return this.requiredObligations || [];
+    return this.requiredObligations ?? [];
   }
 }
 
@@ -768,7 +768,7 @@ class ZTDFReader {
       return this.requiredObligations;
     }
     await this.decrypt();
-    return this.requiredObligations || [];
+    return this.requiredObligations ?? [];
   }
 }
 
