@@ -483,7 +483,9 @@ function App() {
           break;
       }
       const requiredObligations = await reader.obligations();
-      console.log(`Required obligations: ${requiredObligations}`);
+      console.log(
+        `Found required obligations count: ${requiredObligations.length}. ${requiredObligations.length ?? JSON.stringify(requiredObligations)}`
+      );
     } catch (e) {
       console.error('Decrypt Failed', e);
       setDownloadState(`Decrypt Failed: ${e}`);
