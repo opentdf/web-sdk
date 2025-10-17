@@ -1,4 +1,5 @@
-import * as base64 from '../encodings/base64.js';
+import { create, toJsonString } from '@bufbuild/protobuf';
+import { UnsignedRewrapRequest_WithPolicyRequestSchema, UnsignedRewrapRequestSchema } from '../platform/kas/kas_pb.js';
 import { generateKeyPair, keyAgreement } from '../nanotdf-crypto/index.js';
 import getHkdfSalt from './helpers/getHkdfSalt.js';
 import DefaultParams from './models/DefaultParams.js';
@@ -246,17 +247,28 @@ export default class Client {
       throw new ConfigurationError('Signer key has not been set or generated');
     }
 
-    const requestBodyStr = JSON.stringify({
-      algorithm: DefaultParams.defaultECAlgorithm,
-      // nano keyAccess minimum, header is used for nano
-      keyAccess: {
-        type: Client.KEY_ACCESS_REMOTE,
-        url: '',
-        protocol: Client.KAS_PROTOCOL,
-        header: base64.encodeArrayBuffer(nanoTdfHeader),
-      },
+    const unsignedRequest = create(UnsignedRewrapRequestSchema, {
       clientPublicKey: await cryptoPublicToPem(ephemeralKeyPair.publicKey),
+      requests: [
+        create(UnsignedRewrapRequest_WithPolicyRequestSchema, {
+          keyAccessObjects: [
+            {
+              keyAccessObjectId: 'kao-0',
+              keyAccessObject: {
+                header: new Uint8Array(nanoTdfHeader),
+                kasUrl: '',
+                protocol: Client.KAS_PROTOCOL,
+                // type: Client.KEY_ACCESS_REMOTE,
+              },
+            },
+          ],
+          algorithm: DefaultParams.defaultECAlgorithm,
+          // policy in nano is present within the header?
+        }),
+      ],
     });
+
+    const requestBodyStr = toJsonString(UnsignedRewrapRequestSchema, unsignedRequest);
 
     const jwtPayload = { requestBody: requestBodyStr };
 

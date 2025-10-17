@@ -353,6 +353,7 @@ function App() {
     const client = new OpenTDF({
       authProvider: oidcClient,
       defaultCreateOptions: {
+        attributes: ['https://demo.com/attr/classification/value/secret'],
         defaultKASEndpoint: c.kas,
       },
       dpopKeys: oidcClient.getSigningKey(),
@@ -432,6 +433,7 @@ function App() {
     const client = new OpenTDF({
       authProvider: oidcClient,
       defaultReadOptions: {
+        // fulfillableObligationFQNs: ['https://demo.com/obl/drm/value/watermark'],
         allowedKASEndpoints: [c.kas],
       },
       dpopKeys: oidcClient.getSigningKey(),
