@@ -3,7 +3,10 @@ import { exportSPKI, importX509 } from 'jose';
 import { base64 } from './encodings/index.js';
 import { pemCertToCrypto, pemPublicToCrypto } from './nanotdf-crypto/pemPublicToCrypto.js';
 import { ConfigurationError } from './errors.js';
+import { RewrapResponse } from './platform/kas/kas_pb.js';
 import { ConnectError } from '@connectrpc/connect';
+
+const REQUIRED_OBLIGATIONS_METADATA_KEY = 'X-Required-Obligations';
 
 /**
  * Check to see if the given URL is 'secure'. This assumes:
@@ -222,4 +225,33 @@ export function getPlatformUrlFromKasEndpoint(endpoint: string): string {
     result = result.slice(0, -4);
   }
   return result;
+}
+
+/**
+ * Retrieves the fully qualified Obligations (values) that must be fulfilled from a rewrap response.
+ */
+export function getRequiredObligationFQNs(response: RewrapResponse) {
+  const requiredObligations = new Set<string>();
+
+  // Loop through response key access object results, checking proto values/types for a metadata key
+  // that matches the expected KAS-provided fulfillable obligations list.
+  for (const resp of response.responses) {
+    for (const result of resp.results) {
+      if (!result.metadata.hasOwnProperty(REQUIRED_OBLIGATIONS_METADATA_KEY)) {
+        continue;
+      }
+      const value = result.metadata[REQUIRED_OBLIGATIONS_METADATA_KEY];
+      if (value?.kind.case !== 'listValue') {
+        continue;
+      }
+      const obligations = value.kind.value.values;
+      for (const obligation of obligations) {
+        if (obligation.kind.case === 'stringValue') {
+          requiredObligations.add(obligation.kind.value.toLowerCase());
+        }
+      }
+    }
+  }
+
+  return [...requiredObligations.values()];
 }

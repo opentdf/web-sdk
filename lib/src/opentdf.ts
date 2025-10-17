@@ -55,6 +55,12 @@ export type Keys = {
   [keyID: string]: CryptoKey | CryptoKeyPair;
 };
 
+/** The fully qualified obligations that the caller is required to fulfill. */
+export type RequiredObligations = {
+  /** List of obligations values' fully qualified names. */
+  fqns: string[];
+};
+
 /** Options for creating a new TDF object, shared between all container types. */
 export type CreateOptions = {
   /** If the policy service should be used to control creation options. */
@@ -156,6 +162,8 @@ export type ReadOptions = {
   allowedKASEndpoints?: string[];
   /** Optionally disable checking the allowlist. */
   ignoreAllowlist?: boolean;
+  /** Optionally override client fulfillableObligationFQNs. */
+  fulfillableObligationFQNs?: string[];
   /** Public (or shared) keys for verifying assertions. */
   assertionVerificationKeys?: AssertionVerificationKeys;
   /** Optionally disable assertion verification. */
@@ -307,6 +315,11 @@ export type TDFReader = {
    * @returns Any data attributes found in the policy. Currently only works for plain text, embedded policies (not remote or encrypted policies)
    */
   attributes: () => Promise<string[]>;
+
+  /**
+   * @returns Any obligation value FQNs that are required to be fulfilled on the TDF, populated during the decrypt flow.
+   */
+  obligations: () => Promise<RequiredObligations>;
 };
 
 /**
@@ -543,11 +556,18 @@ class UnknownTypeReader {
       this.state = 'done';
     });
   }
+
+  async obligations() {
+    const actual = await this.delegate;
+    return actual.obligations();
+  }
 }
 
 /** A TDF reader for NanoTDF files. */
 class NanoTDFReader {
   container: Promise<NanoTDF>;
+  // Required obligation FQNs that must be fulfilled, provided via the decrypt flow.
+  private requiredObligations?: RequiredObligations;
   constructor(
     readonly outer: OpenTDF,
     readonly opts: ReadOptions,
@@ -573,7 +593,10 @@ class NanoTDFReader {
     });
   }
 
-  /** Decrypts the NanoTDF file and returns a decorated stream. */
+  /**
+   * Decrypts the NanoTDF file and returns a decorated stream.
+   * Sets required obligations on the reader when retrieved from KAS rewrap response.
+   */
   async decrypt(): Promise<DecoratedStream> {
     const nanotdf = await this.container;
     const cachedDEK = this.rewrapCache.get(nanotdf.header.ephemeralPublicKey);
@@ -587,6 +610,7 @@ class NanoTDFReader {
       this.opts.allowedKASEndpoints?.[0] || platformUrl || 'https://disallow.all.invalid';
     const nc = new Client({
       allowedKases: this.opts.allowedKASEndpoints,
+      fulfillableObligationFQNs: this.opts.fulfillableObligationFQNs,
       authProvider: this.outer.authProvider,
       ignoreAllowList: this.opts.ignoreAllowlist,
       dpopEnabled: this.outer.dpopEnabled,
@@ -597,7 +621,7 @@ class NanoTDFReader {
     // TODO: The version number should be fetched from the API
     const version = '0.0.1';
     // Rewrap key on every request
-    const dek = await nc.rewrapKey(
+    const { unwrappedKey: dek, requiredObligations } = await nc.rewrapKey(
       nanotdf.header.toBuffer(),
       nanotdf.header.getKasRewrapUrl(),
       nanotdf.header.magicNumberVersion,
@@ -607,6 +631,7 @@ class NanoTDFReader {
       // These should have thrown already.
       throw new Error('internal: key rewrap failure');
     }
+    this.requiredObligations = { fqns: requiredObligations };
     this.rewrapCache.set(nanotdf.header.ephemeralPublicKey, dek);
     const r: DecoratedStream = await streamify(decryptNanoTDF(dek, nanotdf));
     // TODO figure out how to attach policy and metadata to the stream
@@ -634,11 +659,25 @@ class NanoTDFReader {
     const policy = JSON.parse(policyString) as Policy;
     return policy?.body?.dataAttributes.map((a) => a.attribute) || [];
   }
+
+  /**
+   * Returns obligations populated from the decrypt flow.
+   * If a decrypt has not occurred, attempts one to retrieve obligations.
+   */
+  async obligations(): Promise<RequiredObligations> {
+    if (this.requiredObligations) {
+      return this.requiredObligations;
+    }
+    await this.decrypt();
+    return this.requiredObligations ?? { fqns: [] };
+  }
 }
 
 /** A reader for TDF files. */
 class ZTDFReader {
   overview: Promise<InspectedTDFOverview>;
+  // Required obligation FQNs that must be fulfilled, provided via the decrypt flow.
+  private requiredObligations?: RequiredObligations;
   constructor(
     readonly client: TDF3Client,
     readonly opts: ReadOptions,
@@ -650,6 +689,7 @@ class ZTDFReader {
   /**
    * Decrypts the TDF file and returns a decorated stream.
    * The stream will have a manifest and metadata attached if available.
+   * Sets required obligations on the reader when retrieved from KAS rewrap response.
    */
   async decrypt(): Promise<DecoratedStream> {
     const {
@@ -695,9 +735,13 @@ class ZTDFReader {
         assertionVerificationKeys,
         noVerifyAssertions,
         wrappingKeyAlgorithm,
+        fulfillableObligations: this.opts.fulfillableObligationFQNs || [],
       },
       overview
     );
+    this.requiredObligations = {
+      fqns: oldStream.obligations(),
+    };
     const stream: DecoratedStream = oldStream.stream;
     stream.manifest = Promise.resolve(overview.manifest);
     stream.metadata = Promise.resolve(oldStream.metadata);
@@ -720,6 +764,18 @@ class ZTDFReader {
     const policyJSON = base64.decode(manifest.encryptionInformation.policy);
     const policy = JSON.parse(policyJSON) as Policy;
     return policy?.body?.dataAttributes.map((a) => a.attribute) || [];
+  }
+
+  /**
+   * Returns obligations populated from the decrypt flow.
+   * If a decrypt has not occurred, attempts one to retrieve obligations.
+   */
+  async obligations(): Promise<RequiredObligations> {
+    if (this.requiredObligations) {
+      return this.requiredObligations;
+    }
+    await this.decrypt();
+    return this.requiredObligations ?? { fqns: [] };
   }
 }
 

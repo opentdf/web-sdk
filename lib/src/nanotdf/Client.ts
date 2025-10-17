@@ -11,10 +11,16 @@ import {
 } from '../access.js';
 import { AuthProvider, isAuthProvider, reqSignature } from '../auth/providers.js';
 import { ConfigurationError, DecryptError, TdfError, UnsafeUrlError } from '../errors.js';
-import { cryptoPublicToPem, pemToCryptoPublicKey, validateSecureUrl } from '../utils.js';
+import {
+  cryptoPublicToPem,
+  getRequiredObligationFQNs,
+  pemToCryptoPublicKey,
+  validateSecureUrl,
+} from '../utils.js';
 
 export interface ClientConfig {
   allowedKases?: string[];
+  fulfillableObligationFQNs?: string[];
   ignoreAllowList?: boolean;
   authProvider: AuthProvider;
   dpopEnabled?: boolean;
@@ -23,6 +29,11 @@ export interface ClientConfig {
   kasEndpoint: string;
   platformUrl: string;
 }
+
+type RewrapKeyResult = {
+  unwrappedKey: CryptoKey;
+  requiredObligations: string[];
+};
 
 function toJWSAlg(c: CryptoKey): string {
   const { algorithm } = c;
@@ -107,6 +118,7 @@ export default class Client {
   static readonly IV_SIZE = 12;
 
   allowedKases?: OriginAllowList;
+  readonly fulfillableObligationFQNs: string[];
   /*
     These variables are expected to be either assigned during initialization or within the methods.
     This is needed as the flow is very specific. Errors should be thrown if the necessary step is not completed.
@@ -169,6 +181,7 @@ export default class Client {
     } else {
       const {
         allowedKases,
+        fulfillableObligationFQNs = [],
         ignoreAllowList,
         authProvider,
         dpopEnabled,
@@ -185,6 +198,7 @@ export default class Client {
       if (allowedKases?.length || ignoreAllowList) {
         this.allowedKases = new OriginAllowList(allowedKases || [], ignoreAllowList);
       }
+      this.fulfillableObligationFQNs = fulfillableObligationFQNs;
       this.dpopEnabled = !!dpopEnabled;
       if (dpopKeys) {
         this.requestSignerKeyPair = dpopKeys;
@@ -224,7 +238,7 @@ export default class Client {
     kasRewrapUrl: string,
     magicNumberVersion: ArrayBufferLike,
     clientVersion: string
-  ): Promise<CryptoKey> {
+  ): Promise<RewrapKeyResult> {
     let allowedKases = this.allowedKases;
 
     if (!allowedKases) {
@@ -276,10 +290,15 @@ export default class Client {
     });
 
     // Wrapped
-    const wrappedKey = await fetchWrappedKey(kasRewrapUrl, signedRequestToken, this.authProvider);
+    const rewrapResp = await fetchWrappedKey(
+      kasRewrapUrl,
+      signedRequestToken,
+      this.authProvider,
+      this.fulfillableObligationFQNs
+    );
 
     // Extract the iv and ciphertext
-    const entityWrappedKey = wrappedKey.entityWrappedKey;
+    const entityWrappedKey = rewrapResp.entityWrappedKey;
     const ivLength =
       clientVersion == Client.SDK_INITIAL_RELEASE ? Client.INITIAL_RELEASE_IV_SIZE : Client.IV_SIZE;
     const iv = entityWrappedKey.subarray(0, ivLength);
@@ -288,7 +307,7 @@ export default class Client {
     let kasPublicKey;
     try {
       // Let us import public key as a cert or public key
-      kasPublicKey = await pemToCryptoPublicKey(wrappedKey.sessionPublicKey);
+      kasPublicKey = await pemToCryptoPublicKey(rewrapResp.sessionPublicKey);
     } catch (cause) {
       throw new ConfigurationError(
         `internal: [${kasRewrapUrl}] PEM Public Key to crypto public key failed. Is PEM formatted correctly?`,
@@ -357,6 +376,9 @@ export default class Client {
       throw new DecryptError('Unable to import raw key.', cause);
     }
 
-    return unwrappedKey;
+    return {
+      requiredObligations: getRequiredObligationFQNs(rewrapResp),
+      unwrappedKey: unwrappedKey,
+    };
   }
 }

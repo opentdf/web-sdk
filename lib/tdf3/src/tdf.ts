@@ -63,6 +63,7 @@ import { ZipReader, ZipWriter, keyMerge, concatUint8, buffToString } from './uti
 import { CentralDirectory } from './utils/zip-reader.js';
 import { ztdfSalt } from './crypto/salt.js';
 import { Payload } from './models/payload.js';
+import { getRequiredObligationFQNs } from '../../src/utils.js';
 
 // TODO: input validation on manifest JSON
 const DEFAULT_SEGMENT_SIZE = 1024 * 1024;
@@ -160,6 +161,7 @@ export type EncryptConfiguration = {
 };
 
 export type DecryptConfiguration = {
+  fulfillableObligations: string[];
   allowedKases?: string[];
   allowList?: OriginAllowList;
   authProvider: AuthProvider;
@@ -743,6 +745,7 @@ export function splitLookupTableFactory(
 type RewrapResponseData = {
   key: Uint8Array;
   metadata: Record<string, unknown>;
+  requiredObligations: string[];
 };
 
 async function unwrapKey({
@@ -753,6 +756,7 @@ async function unwrapKey({
   concurrencyLimit,
   cryptoService,
   wrappingKeyAlgorithm,
+  fulfillableObligations,
 }: {
   manifest: Manifest;
   allowedKases: OriginAllowList;
@@ -761,6 +765,7 @@ async function unwrapKey({
   dpopKeys: CryptoKeyPair;
   cryptoService: CryptoService;
   wrappingKeyAlgorithm?: KasPublicKeyAlgorithm;
+  fulfillableObligations: string[];
 }) {
   if (authProvider === undefined) {
     throw new ConfigurationError(
@@ -836,11 +841,14 @@ async function unwrapKey({
     const jwtPayload = { requestBody: requestBodyStr };
     const signedRequestToken = await reqSignature(jwtPayload, dpopKeys.privateKey);
 
-    const { entityWrappedKey, metadata, sessionPublicKey } = await fetchWrappedKey(
+    const rewrapResp = await fetchWrappedKey(
       url,
       signedRequestToken,
-      authProvider
+      authProvider,
+      fulfillableObligations
     );
+    const { entityWrappedKey, metadata, sessionPublicKey } = rewrapResp;
+    const requiredObligations = getRequiredObligationFQNs(rewrapResp);
 
     if (wrappingKeyAlgorithm === 'ec:secp256r1') {
       const serverEphemeralKey: CryptoKey = await pemPublicToCrypto(sessionPublicKey);
@@ -858,6 +866,7 @@ async function unwrapKey({
       return {
         key: new Uint8Array(dek),
         metadata,
+        requiredObligations,
       };
     }
     const key = Binary.fromArrayBuffer(entityWrappedKey);
@@ -869,6 +878,7 @@ async function unwrapKey({
     return {
       key: new Uint8Array(decryptedKeyBinary.asByteArray()),
       metadata,
+      requiredObligations,
     };
   }
 
@@ -898,12 +908,20 @@ async function unwrapKey({
     splitPromises[splitId] = () => anyPool(poolSize, anyPromises);
   }
   try {
-    const splitResults = await allPool(poolSize, splitPromises);
-    // Merge all the split keys
-    const reconstructedKey = keyMerge(splitResults.map((r) => r.key));
+    const rewrapResponseData = await allPool(poolSize, splitPromises);
+    const splitKeys = [];
+    const requiredObligations = new Set<string>();
+    for (const resp of rewrapResponseData) {
+      splitKeys.push(resp.key);
+      for (const requiredObligation of resp.requiredObligations) {
+        requiredObligations.add(requiredObligation.toLowerCase());
+      }
+    }
+    const reconstructedKey = keyMerge(splitKeys);
     return {
       reconstructedKeyBinary: Binary.fromArrayBuffer(reconstructedKey),
-      metadata: splitResults[0].metadata, // Use metadata from first split
+      metadata: rewrapResponseData[0].metadata, // Use metadata from first split
+      requiredObligations: [...requiredObligations],
     };
   } catch (e) {
     if (e instanceof AggregateError) {
@@ -1087,7 +1105,8 @@ export async function decryptStreamFrom(
     segmentSizeDefault,
     segments,
   } = manifest.encryptionInformation.integrityInformation;
-  const { metadata, reconstructedKeyBinary } = await unwrapKey({
+  const { metadata, reconstructedKeyBinary, requiredObligations } = await unwrapKey({
+    fulfillableObligations: cfg.fulfillableObligations,
     manifest,
     authProvider: cfg.authProvider,
     allowedKases: allowList,
@@ -1210,6 +1229,7 @@ export async function decryptStreamFrom(
 
   const outputStream = new DecoratedReadableStream(underlyingSource);
 
+  outputStream.requiredObligations = requiredObligations;
   outputStream.manifest = manifest;
   outputStream.metadata = metadata;
   return outputStream;

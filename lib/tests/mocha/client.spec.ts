@@ -155,4 +155,18 @@ describe('tdf stream tests', function () {
     });
     assert.equal('hello world', new TextDecoder().decode(await stream.toBuffer()));
   });
+  it('always returns a list of obligations', async function () {
+    const pt = new TextEncoder().encode('hello world');
+    const stream = new DecoratedReadableStream({
+      start(controller) {
+        controller.enqueue(pt);
+        controller.close();
+      },
+    });
+    assert.isEmpty(stream.obligations());
+    const obligations = ['https://example.com/obl/example/value/obligated_behavior'];
+    // replicate an assignment during the decrypt flow
+    stream.requiredObligations = obligations;
+    assert.deepEqual(stream.obligations(), obligations);
+  });
 });

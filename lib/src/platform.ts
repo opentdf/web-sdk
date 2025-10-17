@@ -8,6 +8,7 @@ import { AuthProvider } from '../tdf3/index.js';
 import { Client, createClient, Interceptor } from '@connectrpc/connect';
 import { WellKnownService } from './platform/wellknownconfiguration/wellknown_configuration_pb.js';
 import { AuthorizationService } from './platform/authorization/authorization_pb.js';
+import { AuthorizationService as AuthorizationServiceV2 } from './platform/authorization/v2/authorization_pb.js';
 import { EntityResolutionService } from './platform/entityresolution/entity_resolution_pb.js';
 import { AccessService } from './platform/kas/kas_pb.js';
 import { ActionService } from './platform/policy/actions/actions_pb.js';
@@ -30,6 +31,10 @@ export interface PlatformServices {
   subjectMapping: Client<typeof SubjectMappingService>;
   unsafe: Client<typeof UnsafeService>;
   wellknown: Client<typeof WellKnownService>;
+}
+
+export interface PlatformServicesV2 {
+  authorization: Client<typeof AuthorizationServiceV2>;
 }
 
 export interface PlatformClientOptions {
@@ -68,6 +73,7 @@ export interface PlatformClientOptions {
 
 export class PlatformClient {
   readonly v1: PlatformServices;
+  readonly v2: PlatformServicesV2;
 
   constructor(options: PlatformClientOptions) {
     const interceptors: Interceptor[] = [];
@@ -98,6 +104,10 @@ export class PlatformClient {
       subjectMapping: createClient(SubjectMappingService, transport),
       unsafe: createClient(UnsafeService, transport),
       wellknown: createClient(WellKnownService, transport),
+    };
+
+    this.v2 = {
+      authorization: createClient(AuthorizationServiceV2, transport),
     };
   }
 }

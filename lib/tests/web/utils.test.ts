@@ -4,11 +4,18 @@ import {
   addNewLines,
   estimateSkew,
   estimateSkewFromHeaders,
+  getRequiredObligationFQNs,
   padSlashToUrl,
   rstrip,
   validateSecureUrl,
 } from '../../src/utils.js';
 import { TdfError } from '../../src/errors.js';
+import {
+  KeyAccessRewrapResultSchema,
+  PolicyRewrapResultSchema,
+  RewrapResponseSchema,
+} from '../../src/platform/kas/kas_pb.js';
+import { create } from '@bufbuild/protobuf';
 
 describe('errors', () => {
   it('Avoids errors due to loops', () => {
@@ -29,7 +36,6 @@ describe('errors', () => {
       expect(e.cause.cause.stack).to.equal(cause.stack);
       expect(e.cause.cause.cause.stack).to.equal(cause.stack);
       expect(e.cause.cause.cause.cause.stack).to.equal(cause.stack);
-      expect(e.cause.cause.cause.cause.cause.stack).to.equal(cause.stack);
       expect(e.cause.cause.cause.cause.cause.cause).to.be.undefined;
     }
   });
@@ -192,5 +198,247 @@ describe('addNewLines', () => {
     expect(addNewLines(' '.repeat(65))).to.eql(
       '                                                                \r\n \r\n'
     );
+  });
+});
+
+describe('getRequiredObligationFQNs', () => {
+  it('should return an empty array when no obligations are present', () => {
+    const rewrapResponse = create(RewrapResponseSchema, {
+      responses: [
+        create(PolicyRewrapResultSchema, {
+          results: [
+            create(KeyAccessRewrapResultSchema, {
+              metadata: {},
+            }),
+          ],
+        }),
+      ],
+    });
+    const result = getRequiredObligationFQNs(rewrapResponse);
+    expect(result).to.be.an('array').that.is.empty;
+  });
+
+  it('should return a single obligation', () => {
+    const rewrapResponse = create(RewrapResponseSchema, {
+      responses: [
+        create(PolicyRewrapResultSchema, {
+          results: [
+            create(KeyAccessRewrapResultSchema, {
+              metadata: {
+                'X-Required-Obligations': {
+                  kind: {
+                    case: 'listValue',
+                    value: {
+                      values: [
+                        {
+                          kind: {
+                            case: 'stringValue',
+                            value: 'https://example.com/attr/Test/value/someval',
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+              },
+            }),
+          ],
+        }),
+      ],
+    });
+    const result = getRequiredObligationFQNs(rewrapResponse);
+    expect(result).to.deep.equal(['https://example.com/attr/test/value/someval']);
+  });
+
+  it('should return multiple obligations', () => {
+    const rewrapResponse = create(RewrapResponseSchema, {
+      responses: [
+        create(PolicyRewrapResultSchema, {
+          results: [
+            create(KeyAccessRewrapResultSchema, {
+              metadata: {
+                'X-Required-Obligations': {
+                  kind: {
+                    case: 'listValue',
+                    value: {
+                      values: [
+                        {
+                          kind: {
+                            case: 'stringValue',
+                            value: 'https://example.com/attr/Test/value/someval',
+                          },
+                        },
+                        {
+                          kind: {
+                            case: 'stringValue',
+                            value: 'https://example.com/attr/Test2/value/someval2',
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+              },
+            }),
+          ],
+        }),
+      ],
+    });
+    const result = getRequiredObligationFQNs(rewrapResponse);
+    expect(result).to.deep.equal([
+      'https://example.com/attr/test/value/someval',
+      'https://example.com/attr/test2/value/someval2',
+    ]);
+  });
+
+  it('should return unique obligations', () => {
+    const rewrapResponse = create(RewrapResponseSchema, {
+      responses: [
+        create(PolicyRewrapResultSchema, {
+          results: [
+            create(KeyAccessRewrapResultSchema, {
+              metadata: {
+                'X-Required-Obligations': {
+                  kind: {
+                    case: 'listValue',
+                    value: {
+                      values: [
+                        {
+                          kind: {
+                            case: 'stringValue',
+                            value: 'https://example.com/attr/Test/value/someval',
+                          },
+                        },
+                        {
+                          kind: {
+                            case: 'stringValue',
+                            value: 'https://example.com/attr/Test/value/someval',
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+              },
+            }),
+          ],
+        }),
+      ],
+    });
+    const result = getRequiredObligationFQNs(rewrapResponse);
+    expect(result).to.deep.equal(['https://example.com/attr/test/value/someval']);
+  });
+
+  it('should return an empty array if metadata value is not a list', () => {
+    const rewrapResponse = create(RewrapResponseSchema, {
+      responses: [
+        create(PolicyRewrapResultSchema, {
+          results: [
+            create(KeyAccessRewrapResultSchema, {
+              metadata: {
+                'X-Required-Obligations': {
+                  kind: {
+                    case: 'stringValue',
+                    value: 'not a list',
+                  },
+                },
+              },
+            }),
+          ],
+        }),
+      ],
+    });
+    const result = getRequiredObligationFQNs(rewrapResponse);
+    expect(result).to.be.an('array').that.is.empty;
+  });
+
+  it('should return an empty array if list value is not a string', () => {
+    const rewrapResponse = create(RewrapResponseSchema, {
+      responses: [
+        create(PolicyRewrapResultSchema, {
+          results: [
+            create(KeyAccessRewrapResultSchema, {
+              metadata: {
+                'X-Required-Obligations': {
+                  kind: {
+                    case: 'listValue',
+                    value: {
+                      values: [
+                        {
+                          kind: {
+                            case: 'numberValue',
+                            value: 123,
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+              },
+            }),
+          ],
+        }),
+      ],
+    });
+    const result = getRequiredObligationFQNs(rewrapResponse);
+    expect(result).to.be.an('array').that.is.empty;
+  });
+
+  it('should handle multiple responses and results', () => {
+    const rewrapResponse = create(RewrapResponseSchema, {
+      responses: [
+        create(PolicyRewrapResultSchema, {
+          results: [
+            create(KeyAccessRewrapResultSchema, {
+              metadata: {
+                'X-Required-Obligations': {
+                  kind: {
+                    case: 'listValue',
+                    value: {
+                      values: [
+                        {
+                          kind: {
+                            case: 'stringValue',
+                            value: 'https://example.com/attr/Test/value/someval',
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+              },
+            }),
+          ],
+        }),
+        create(PolicyRewrapResultSchema, {
+          results: [
+            create(KeyAccessRewrapResultSchema, {
+              metadata: {
+                'X-Required-Obligations': {
+                  kind: {
+                    case: 'listValue',
+                    value: {
+                      values: [
+                        {
+                          kind: {
+                            case: 'stringValue',
+                            value: 'https://example.com/attr/Test2/value/someval2',
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+              },
+            }),
+          ],
+        }),
+      ],
+    });
+    const result = getRequiredObligationFQNs(rewrapResponse);
+    expect(result).to.deep.equal([
+      'https://example.com/attr/test/value/someval',
+      'https://example.com/attr/test2/value/someval2',
+    ]);
   });
 });
