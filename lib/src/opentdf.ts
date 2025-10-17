@@ -59,7 +59,7 @@ export type Keys = {
 export type RequiredObligations = {
   /** List of obligations values' fully qualified names. */
   fqns: string[];
-}
+};
 
 /** Options for creating a new TDF object, shared between all container types. */
 export type CreateOptions = {
