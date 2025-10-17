@@ -14,7 +14,7 @@
     "preview": "vite preview",
     "test": "vite build && vitest",
     "test:ui": "vite build && vitest --ui",
-    "rebuild": "npm remove @opentdf/sdk && npm add file:../lib && npm run dev"
+    "rebuild": "npm remove @opentdf/sdk && npm add file:../lib/opentdf-sdk-0.4.0.tgz && npm run dev"
   },
   "dependencies": {
     "@opentdf/sdk": "file:../lib/opentdf-sdk-0.4.0.tgz",
