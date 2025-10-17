@@ -1,21 +1,8 @@
 import { expect } from '@esm-bundle/chai';
 import { clientAuthProvider } from '../../../src/auth/providers.js';
-import Client, { ClientConfig } from '../../../src/nanotdf/Client.js';
+import { Client as TDF3Client, type ClientConfig } from '../../../tdf3/src/client/index.js';
 
-describe('nanotdf client', () => {
-  it('Can create a client with a mock EAS', async () => {
-    const kasEndpoint = 'https://etheria.local/kas';
-    const platformUrl = 'https://etheria.local';
-    const authProvider = await clientAuthProvider({
-      clientId: 'string',
-      oidcOrigin: 'string',
-      exchange: 'client',
-      clientSecret: 'password',
-    });
-    const client = new Client({ authProvider, kasEndpoint, platformUrl });
-    expect(client.authProvider).to.be.ok;
-  });
-
+describe('tdf3 client', () => {
   describe('fulfillableObligationFQNs', async () => {
     const authProvider = await clientAuthProvider({
       clientId: 'string',
@@ -30,7 +17,7 @@ describe('nanotdf client', () => {
     };
 
     it('should default to empty array when not provided', async () => {
-      const client = new Client(defaultConfig);
+      const client = new TDF3Client(defaultConfig);
 
       expect(client.fulfillableObligationFQNs).to.be.an('array');
       expect(client.fulfillableObligationFQNs).to.have.lengthOf(0);
@@ -46,7 +33,7 @@ describe('nanotdf client', () => {
         fulfillableObligationFQNs: fqns,
       };
 
-      const client = new Client(config);
+      const client = new TDF3Client(config);
       expect(client.fulfillableObligationFQNs).to.deep.equal(fqns);
     });
 
@@ -57,7 +44,7 @@ describe('nanotdf client', () => {
         fulfillableObligationFQNs: fqns,
       };
 
-      const client = new Client(config);
+      const client = new TDF3Client(config);
       expect(client.fulfillableObligationFQNs).to.be.an('array');
       expect(client.fulfillableObligationFQNs).to.have.lengthOf(0);
     });

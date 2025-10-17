@@ -1,3 +1,4 @@
+import { CallOptions } from '@connectrpc/connect';
 import {
   isPublicKeyAlgorithm,
   KasPublicKeyAlgorithm,
@@ -5,6 +6,7 @@ import {
   noteInvalidPublicKey,
   OriginAllowList,
 } from '../access.js';
+
 import { type AuthProvider } from '../auth/auth.js';
 import { ConfigurationError, NetworkError } from '../errors.js';
 import { PlatformClient } from '../platform.js';
@@ -16,25 +18,32 @@ import {
   pemToCryptoPublicKey,
   validateSecureUrl,
 } from '../utils.js';
+import { X_REWRAP_ADDITIONAL_CONTEXT } from './constants.js';
 
 /**
  * Get a rewrapped access key to the document, if possible
  * @param url Key access server rewrap endpoint
  * @param requestBody a signed request with an encrypted document key
  * @param authProvider Authorization middleware
+ * @param rewrapAdditionalContextHeader optional value for 'X-Rewrap-Additional-Context'
  * @param clientVersion
  */
 export async function fetchWrappedKey(
   url: string,
   signedRequestToken: string,
-  authProvider: AuthProvider
+  authProvider: AuthProvider,
+  rewrapAdditionalContextHeader?: string
 ): Promise<RewrapResponse> {
   const platformUrl = getPlatformUrlFromKasEndpoint(url);
   const platform = new PlatformClient({ authProvider, platformUrl });
+  const options: CallOptions = {};
+  if (rewrapAdditionalContextHeader) {
+    options.headers = {
+      [X_REWRAP_ADDITIONAL_CONTEXT]: rewrapAdditionalContextHeader,
+    };
+  }
   try {
-    return await platform.v1.access.rewrap({
-      signedRequestToken,
-    });
+    return await platform.v1.access.rewrap({ signedRequestToken }, options);
   } catch (e) {
     throw new NetworkError(`[${platformUrl}] [Rewrap] ${extractRpcErrorMessage(e)}`);
   }

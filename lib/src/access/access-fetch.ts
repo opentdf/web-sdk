@@ -31,6 +31,7 @@ export type RewrapResponseLegacy = {
  * @param url Key access server rewrap endpoint
  * @param requestBody a signed request with an encrypted document key
  * @param authProvider Authorization middleware
+ * @param rewrapAdditionalContextHeader optional value for 'X-Rewrap-Additional-Context'
  */
 export async function fetchWrappedKey(
   url: string,

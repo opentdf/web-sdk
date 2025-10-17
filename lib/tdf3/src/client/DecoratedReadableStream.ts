@@ -21,6 +21,7 @@ export class DecoratedReadableStream {
   metadata?: Metadata;
   manifest: Manifest;
   fileStreamServiceWorker?: string;
+  requiredObligations?: string[];
 
   constructor(
     underlyingSource: UnderlyingSource & {
@@ -59,6 +60,14 @@ export class DecoratedReadableStream {
    */
   async toString(): Promise<string> {
     return new Response(this.stream).text();
+  }
+
+  /**
+   * The fully qualified obligations required to be fulfilled on stream contents
+   * are set as decoration during the decrypt flow.
+   */
+  obligations(): string[] {
+    return this.requiredObligations ?? [];
   }
 }
 

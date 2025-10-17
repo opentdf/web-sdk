@@ -5,7 +5,7 @@ import { showSaveFilePicker } from 'native-file-system-adapter';
 import './App.css';
 import { type Chunker, type Source, OpenTDF } from '@opentdf/sdk';
 import { type SessionInformation, OidcClient } from './session.js';
-import { c } from './config.js';
+import { config } from './config.js';
 
 async function toFile(
   stream: ReadableStream<Uint8Array>,
@@ -44,7 +44,7 @@ function decryptedFileExtension(encryptedFileName: string): string {
   return m[2];
 }
 
-const oidcClient = new OidcClient(c.oidc.host, c.oidc.clientId, 'otdf-sample-web-app');
+const oidcClient = new OidcClient(config.oidc.host, config.oidc.clientId, 'otdf-sample-web-app');
 
 async function getNewFileHandle(
   extension: string,
@@ -353,7 +353,7 @@ function App() {
     const client = new OpenTDF({
       authProvider: oidcClient,
       defaultCreateOptions: {
-        defaultKASEndpoint: c.kas,
+        defaultKASEndpoint: config.kas,
       },
       dpopKeys: oidcClient.getSigningKey(),
     });
@@ -432,7 +432,7 @@ function App() {
     const client = new OpenTDF({
       authProvider: oidcClient,
       defaultReadOptions: {
-        allowedKASEndpoints: [c.kas],
+        allowedKASEndpoints: [config.kas],
       },
       dpopKeys: oidcClient.getSigningKey(),
     });
@@ -462,7 +462,8 @@ function App() {
     // so we kinda fake it with percentages by tracking output, which should
     // strictly be smaller than the input file.
     try {
-      const plainText = await client.read({ source });
+      const reader = client.open({ source });
+      const plainText = await reader.decrypt();
       const plainTextStream = plainText
         .pipeThrough(progressTransformers.reader)
         .pipeThrough(progressTransformers.writer);
@@ -481,6 +482,10 @@ function App() {
           await plainTextStream.pipeTo(drain(), { signal: sc.signal });
           break;
       }
+      const { fqns: requiredObligations } = await reader.obligations();
+      console.log(
+        `Found required obligations count: ${requiredObligations.length}. ${requiredObligations.length ?? JSON.stringify(requiredObligations)}`
+      );
     } catch (e) {
       console.error('Decrypt Failed', e);
       setDownloadState(`Decrypt Failed: ${e}`);

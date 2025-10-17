@@ -2,6 +2,7 @@ import { type AuthProvider } from './auth/auth.js';
 import { ServiceError } from './errors.js';
 import { RewrapResponse } from './platform/kas/kas_pb.js';
 import { getPlatformUrlFromKasEndpoint, validateSecureUrl } from './utils.js';
+import { base64 } from './encodings/index.js';
 
 import {
   fetchKasBasePubKey,
@@ -13,6 +14,15 @@ import { fetchWrappedKey as fetchWrappedKeysLegacy } from './access/access-fetch
 import { fetchKasPubKey as fetchKasPubKeyRpc } from './access/access-rpc.js';
 import { fetchKasPubKey as fetchKasPubKeyLegacy } from './access/access-fetch.js';
 
+/**
+ * Header value structure for 'X-Rewrap-Additional-Context`
+ */
+export type RewrapAdditionalContext = {
+  obligations: {
+    fulfillableFQNs: string[];
+  };
+};
+
 export type RewrapRequest = {
   signedRequestToken: string;
 };
@@ -22,17 +32,27 @@ export type RewrapRequest = {
  * @param url Key access server rewrap endpoint
  * @param requestBody a signed request with an encrypted document key
  * @param authProvider Authorization middleware
+ * @param fulfillableObligationFQNs client-configured list of obligation value FQNs that can be fulfilled in this PEP
  * @param clientVersion
  */
 export async function fetchWrappedKey(
   url: string,
   signedRequestToken: string,
-  authProvider: AuthProvider
+  authProvider: AuthProvider,
+  fulfillableObligationFQNs: string[]
 ): Promise<RewrapResponse> {
   const platformUrl = getPlatformUrlFromKasEndpoint(url);
 
   return await tryPromisesUntilFirstSuccess(
-    () => fetchWrappedKeysRpc(platformUrl, signedRequestToken, authProvider),
+    () =>
+      fetchWrappedKeysRpc(
+        platformUrl,
+        signedRequestToken,
+        authProvider,
+        rewrapAdditionalContextHeader(fulfillableObligationFQNs)
+      ),
+    // We intentionally do not provide the rewrap additional context to legacy requests destined for older platforms.
+    // Platforms new enough to have knowledge of obligations will be handling RPC requests successfully.
     () =>
       fetchWrappedKeysLegacy(
         url,
@@ -41,6 +61,23 @@ export async function fetchWrappedKey(
       ) as unknown as Promise<RewrapResponse>
   );
 }
+
+/**
+ * Transform fulfillable, fully-qualified obligations into the expected KAS Rewrap 'X-Rewrap-Additional-Context' header value.
+ * @param fulfillableObligationValueFQNs
+ */
+export const rewrapAdditionalContextHeader = (
+  fulfillableObligationValueFQNs: string[]
+): string | undefined => {
+  if (!fulfillableObligationValueFQNs.length) return;
+
+  const context: RewrapAdditionalContext = {
+    obligations: {
+      fulfillableFQNs: fulfillableObligationValueFQNs.map((fqn) => fqn.toLowerCase()),
+    },
+  };
+  return base64.encode(JSON.stringify(context));
+};
 
 export type KasPublicKeyAlgorithm =
   | 'ec:secp256r1'

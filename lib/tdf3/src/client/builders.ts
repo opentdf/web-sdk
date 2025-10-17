@@ -538,6 +538,7 @@ export type DecryptParams = {
   concurrencyLimit?: number;
   noVerifyAssertions?: boolean;
   wrappingKeyAlgorithm?: KasPublicKeyAlgorithm;
+  fulfillableObligationFQNs?: string[];
 };
 
 /**
