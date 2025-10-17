@@ -482,7 +482,7 @@ function App() {
           await plainTextStream.pipeTo(drain(), { signal: sc.signal });
           break;
       }
-      const requiredObligations = await reader.obligations();
+      const { fqns: requiredObligations } = await reader.obligations();
       console.log(
         `Found required obligations count: ${requiredObligations.length}. ${requiredObligations.length ?? JSON.stringify(requiredObligations)}`
       );

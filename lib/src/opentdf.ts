@@ -55,6 +55,12 @@ export type Keys = {
   [keyID: string]: CryptoKey | CryptoKeyPair;
 };
 
+/** The fully qualified obligations that the caller is required to fulfill. */
+export type RequiredObligations = {
+  /** List of obligations values' fully qualified names. */
+  fqns: string[];
+}
+
 /** Options for creating a new TDF object, shared between all container types. */
 export type CreateOptions = {
   /** If the policy service should be used to control creation options. */
@@ -311,10 +317,9 @@ export type TDFReader = {
   attributes: () => Promise<string[]>;
 
   /**
-   * @returns Any obligation value FQNs that are required to be fulfilled on the TDF. They will be populated either during a decrypt flow,
-   * or on-demand with a GetDecision Auth Service call if called pre-decrypt. Currently only works for plain text, embedded policies.
+   * @returns Any obligation value FQNs that are required to be fulfilled on the TDF, populated during the decrypt flow.
    */
-  obligations: () => Promise<string[]>;
+  obligations: () => Promise<RequiredObligations>;
 };
 
 /**
@@ -562,7 +567,7 @@ class UnknownTypeReader {
 class NanoTDFReader {
   container: Promise<NanoTDF>;
   // Required obligation FQNs that must be fulfilled, provided via the decrypt flow.
-  private requiredObligations?: string[];
+  private requiredObligations?: RequiredObligations;
   constructor(
     readonly outer: OpenTDF,
     readonly opts: ReadOptions,
@@ -626,7 +631,7 @@ class NanoTDFReader {
       // These should have thrown already.
       throw new Error('internal: key rewrap failure');
     }
-    this.requiredObligations = requiredObligations;
+    this.requiredObligations = { fqns: requiredObligations };
     this.rewrapCache.set(nanotdf.header.ephemeralPublicKey, dek);
     const r: DecoratedStream = await streamify(decryptNanoTDF(dek, nanotdf));
     // TODO figure out how to attach policy and metadata to the stream
@@ -659,12 +664,12 @@ class NanoTDFReader {
    * Returns obligations populated from the decrypt flow.
    * If a decrypt has not occurred, attempts one to retrieve obligations.
    */
-  async obligations(): Promise<string[]> {
+  async obligations(): Promise<RequiredObligations> {
     if (this.requiredObligations) {
       return this.requiredObligations;
     }
     await this.decrypt();
-    return this.requiredObligations ?? [];
+    return this.requiredObligations ?? { fqns: [] };
   }
 }
 
@@ -672,7 +677,7 @@ class NanoTDFReader {
 class ZTDFReader {
   overview: Promise<InspectedTDFOverview>;
   // Required obligation FQNs that must be fulfilled, provided via the decrypt flow.
-  private requiredObligations?: string[];
+  private requiredObligations?: RequiredObligations;
   constructor(
     readonly client: TDF3Client,
     readonly opts: ReadOptions,
@@ -734,7 +739,9 @@ class ZTDFReader {
       },
       overview
     );
-    this.requiredObligations = oldStream.obligations();
+    this.requiredObligations = {
+      fqns: oldStream.obligations(),
+    };
     const stream: DecoratedStream = oldStream.stream;
     stream.manifest = Promise.resolve(overview.manifest);
     stream.metadata = Promise.resolve(oldStream.metadata);
@@ -763,12 +770,12 @@ class ZTDFReader {
    * Returns obligations populated from the decrypt flow.
    * If a decrypt has not occurred, attempts one to retrieve obligations.
    */
-  async obligations(): Promise<string[]> {
+  async obligations(): Promise<RequiredObligations> {
     if (this.requiredObligations) {
       return this.requiredObligations;
     }
     await this.decrypt();
-    return this.requiredObligations ?? [];
+    return this.requiredObligations ?? { fqns: [] };
   }
 }
 

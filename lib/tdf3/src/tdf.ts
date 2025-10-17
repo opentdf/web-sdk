@@ -866,7 +866,7 @@ async function unwrapKey({
     for (const resp of rewrapResponseData) {
       splitKeys.push(resp.key);
       for (const requiredObligation of resp.requiredObligations) {
-        requiredObligations.add(requiredObligation);
+        requiredObligations.add(requiredObligation.toLowerCase());
       }
     }
     const reconstructedKey = keyMerge(splitKeys);
