@@ -8,6 +8,14 @@ import {
   fetchWrappedKey,
   publicKeyAlgorithmToJwa,
 } from '../../src/access.js';
+import { create, toJsonString } from '@bufbuild/protobuf';
+import {
+  KeyAccessSchema,
+  UnsignedRewrapRequestSchema,
+  UnsignedRewrapRequest_WithPolicyRequestSchema,
+  UnsignedRewrapRequest_WithPolicySchema,
+  UnsignedRewrapRequest_WithKeyAccessObjectSchema,
+} from '../../src/platform/kas/kas_pb.js';
 import { type AuthProvider, reqSignature } from '../../src/auth/auth.js';
 import { allPool, anyPool } from '../../src/concurrency.js';
 import { base64, hex } from '../../src/encodings/index.js';
@@ -778,12 +786,40 @@ async function unwrapKey({
 
     const clientPublicKey = ephemeralEncryptionKeys.publicKey;
 
-    const requestBodyStr = JSON.stringify({
-      algorithm: 'RS256',
-      keyAccess: keySplitInfo,
-      policy: manifest.encryptionInformation.policy,
-      clientPublicKey,
+    // TODO: how to handle defaults here?
+    // Convert keySplitInfo to protobuf KeyAccess
+    const keyAccessProto = create(KeyAccessSchema, {
+      keyType: keySplitInfo.type || '',
+      kasUrl: keySplitInfo.url || '',
+      protocol: keySplitInfo.protocol || '',
+      wrappedKey: keySplitInfo.wrappedKey ? new Uint8Array(base64.decodeArrayBuffer(keySplitInfo.wrappedKey)) : new Uint8Array(),
+      policyBinding: keySplitInfo.policyBinding,
+      kid: keySplitInfo.kid || '',
+      splitId: keySplitInfo.sid || '',
+      encryptedMetadata: keySplitInfo.encryptedMetadata || '',
     });
+
+    // Create the protobuf request
+    const unsignedRequest = create(UnsignedRewrapRequestSchema, {
+      clientPublicKey,
+      requests: [
+        create(UnsignedRewrapRequest_WithPolicyRequestSchema, {
+          keyAccessObjects: [
+            create(UnsignedRewrapRequest_WithKeyAccessObjectSchema, {
+              keyAccessObjectId: 'kao-0',
+              keyAccessObject: keyAccessProto,
+            }),
+          ],
+          policy: create(UnsignedRewrapRequest_WithPolicySchema, {
+            id: 'policy-0',
+            body: manifest.encryptionInformation.policy,
+          }),
+          algorithm: 'RS256',
+        }),
+      ],
+    });
+
+    const requestBodyStr = toJsonString(UnsignedRewrapRequestSchema, unsignedRequest);
 
     const jwtPayload = { requestBody: requestBodyStr };
     const signedRequestToken = await reqSignature(jwtPayload, dpopKeys.privateKey);
