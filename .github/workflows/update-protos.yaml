@@ -127,22 +127,38 @@ jobs:
         working-directory: ./web-sdk
         if: steps.check-pr.outputs.EXISTING_PR == '' && steps.update-platform-protos.outputs.changes == 'true'
         run: |
-          git checkout -b update-platform-protos
-          git add .
-          git commit -m "fix(sdk): Updates to proto version $LATEST_TAG"
-          git push origin update-platform-protos
+          git checkout -b $BRANCH_NAME
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH_NAME: update-platform-protos
 
-      - name: Update existing PR
+      - name: Update files
         working-directory: ./web-sdk
-        if: steps.check-pr.outputs.EXISTING_PR != '' && steps.update-platform-protos.outputs.changes == 'true'
+        if: steps.update-platform-protos.outputs.changes == 'true'
         run: |
-          git add .
-          git commit --amend --no-edit
-          git push origin update-platform-protos --force
+          echo "Committing changes..."
+          FILES_CHANGED=$(git status --porcelain | awk '{print $2}')
+          for file in $FILES_CHANGED; do
+            echo "Committing file: $file"
+
+            CONTENT=$(base64 -i $file)
+            MESSAGE="Update $file to match platform tag $LATEST_TAG"
+
+            SHA=$( git rev-parse $BRANCH_NAME:$file )
+            if [[ "$SHA" == *"fatal"* ]]; then
+              SHA=""
+            fi
+
+            gh api --method PUT /repos/opentdf/web-sdk/contents/$file \
+              --field message="$MESSAGE" \
+              --field content="$CONTENT" \
+              --field encoding="base64" \
+              --field branch="$BRANCH_NAME" \
+              --field sha="$SHA"
+          done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH_NAME: update-platform-protos
 
       - name: Create New PR
         working-directory: ./web-sdk
