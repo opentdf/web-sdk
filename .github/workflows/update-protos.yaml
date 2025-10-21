@@ -14,6 +14,7 @@ on:
         description: "The new tag for targeting the RPC protocol buffers."
         required: true
         default: "protocol/go/v0.13.0"
+  pull_request:
 
 jobs:
   update-platform-protos:
@@ -130,6 +131,8 @@ jobs:
           git add .
           git commit -m "fix(sdk): Updates to proto version $LATEST_TAG"
           git push origin update-platform-protos
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update existing PR
         working-directory: ./web-sdk
@@ -138,6 +141,8 @@ jobs:
           git add .
           git commit --amend --no-edit
           git push origin update-platform-protos --force
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create New PR
         working-directory: ./web-sdk
