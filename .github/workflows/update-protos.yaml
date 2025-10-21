@@ -112,13 +112,14 @@ jobs:
           if [ -z "$(git status --porcelain)" ]; then
             echo "No changes detected after regeneration."
           else
-            echo "Changes detected after regeneration, updating lib/platform-proto-version.json"
+            echo "Changes detected after regeneration"
           fi
           TAG_COMMIT=$(gh api repos/opentdf/platform/git/ref/tags/$LATEST_TAG --jq '.object.sha')
           jq --arg tag "$LATEST_TAG" '.["tag"] = $tag' lib/platform-proto-version.json > lib/platform-proto-version.tmp.json
           jq --arg commit "$TAG_COMMIT" '.["commit"] = $commit' lib/platform-proto-version.tmp.json > lib/platform-proto-version.json
         env:
           PLATFORM_SRC: ../platform/service
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}          
 
       - name: Create new branch
         working-directory: ./web-sdk
