@@ -11,9 +11,10 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "The new tag or branch to update the platform.branch property to use for targeting the RPC protocol buffers."
+        description: "The new tag for targeting the RPC protocol buffers."
         required: true
         default: "protocol/go/v0.11.0"
+  pull_request:
 
 jobs:
   update-platform-protos:
