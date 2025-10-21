@@ -13,7 +13,7 @@ on:
       tag:
         description: "The new tag for targeting the RPC protocol buffers."
         required: true
-        default: "protocol/go/v0.11.0"
+        default: "protocol/go/v0.13.0"
   pull_request:
 
 jobs:
@@ -117,6 +117,7 @@ jobs:
           TAG_COMMIT=$(gh api repos/opentdf/platform/git/ref/tags/$LATEST_TAG --jq '.object.sha')
           jq --arg tag "$LATEST_TAG" '.["tag"] = $tag' lib/platform-proto-version.json > lib/platform-proto-version.tmp.json
           jq --arg commit "$TAG_COMMIT" '.["commit"] = $commit' lib/platform-proto-version.tmp.json > lib/platform-proto-version.json
+          rm lib/platform-proto-version.tmp.json
         env:
           PLATFORM_SRC: ../platform/service
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}          
