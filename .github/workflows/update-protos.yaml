@@ -2,7 +2,8 @@ name: "Update protos"
 
 on:
   schedule:
-    - cron: "0 0 * * *" # Runs daily at midnight UTC
+    - cron: "17 0 * * *" # Runs daily at 00:17 UTC
+
   workflow_call:
     inputs:
       tag:
