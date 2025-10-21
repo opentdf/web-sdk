@@ -84,7 +84,7 @@ jobs:
           git fetch origin update-platform-protos:update-platform-protos
           git checkout update-platform-protos
 
-      - name: Clone platform repo at latest protocol/go tag
+      - name: Clone platform repo at protocol/go tag
         if: steps.check-update.outputs.no_updates != 'true'
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 #v5
         with:

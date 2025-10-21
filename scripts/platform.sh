@@ -19,5 +19,5 @@ cd lib
 # version
 PATH="$PWD/node_modules/.bin:$PATH" buf --version
 # Ensure we use the local protoc-gen-es from node_modules
-PATH="$PWD/node_modules/.bin:$PATH" buf generate "$PLATFORM_SRC"
+PATH="$PWD/node_modules/.bin:$PATH" buf generate "../$PLATFORM_SRC"
 echo "Generated Typescript code from Protobuf files (src: $PLATFORM_SRC, dst: lib/src/platform)"
