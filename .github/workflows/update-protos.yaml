@@ -128,6 +128,7 @@ jobs:
         if: steps.check-pr.outputs.EXISTING_PR == '' && steps.update-platform-protos.outputs.changes == 'true'
         run: |
           git checkout -b $BRANCH_NAME
+          git push origin $BRANCH_NAME
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BRANCH_NAME: update-platform-protos
