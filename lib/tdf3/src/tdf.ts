@@ -197,11 +197,6 @@ export type RewrapRequest = {
 
 export type KasPublicKeyFormat = 'pkcs8' | 'jwks';
 
-export type RewrapResponse = {
-  entityWrappedKey: string;
-  sessionPublicKey: string;
-};
-
 /**
  * If we have KAS url but not public key we can fetch it from KAS, fetching
  * the value from `${kas}/kas_public_key`.
@@ -791,19 +786,7 @@ async function unwrapKey({
 
     const clientPublicKey = ephemeralEncryptionKeys.publicKey;
 
-    // TODO: how to handle defaults here?
     // Convert keySplitInfo to protobuf KeyAccess
-    // const keyAccessProto = create(KeyAccessSchema, {
-    //   keyType: keySplitInfo.type || '',
-    //   kasUrl: keySplitInfo.url || '',
-    //   protocol: keySplitInfo.protocol || '',
-    //   wrappedKey: keySplitInfo.wrappedKey ? new Uint8Array(base64.decodeArrayBuffer(keySplitInfo.wrappedKey)) : new Uint8Array(),
-    //   policyBinding: keySplitInfo.policyBinding,
-    //   kid: keySplitInfo.kid || '',
-    //   splitId: keySplitInfo.sid || '',
-    //   encryptedMetadata: keySplitInfo.encryptedMetadata || '',
-    // });
-
     const keyAccessProto = create(KeyAccessSchema, {
       ...(keySplitInfo.type && { keyType: keySplitInfo.type }),
       ...(keySplitInfo.url && { kasUrl: keySplitInfo.url }),
@@ -847,39 +830,57 @@ async function unwrapKey({
       authProvider,
       fulfillableObligations
     );
-    const { entityWrappedKey, metadata, sessionPublicKey } = rewrapResp;
+    const { sessionPublicKey } = rewrapResp;
     const requiredObligations = getRequiredObligationFQNs(rewrapResp);
+    // Assume only one response and one result for now (V1 style)
+    const result = rewrapResp.responses[0].results[0];
+    const metadata = result.metadata;
+    // Handle the different cases of result.result
+    switch (result.result.case) {
+      case "kasWrappedKey": {
+        const entityWrappedKey = result.result.value;
+        
+        if (wrappingKeyAlgorithm === 'ec:secp256r1') {
+          const serverEphemeralKey: CryptoKey = await pemPublicToCrypto(sessionPublicKey);
+          const ekr = ephemeralEncryptionKeysRaw as CryptoKeyPair;
+          const kek = await keyAgreement(ekr.privateKey, serverEphemeralKey, {
+            hkdfSalt: await ztdfSalt,
+            hkdfHash: 'SHA-256',
+          });
+          const wrappedKeyAndNonce = entityWrappedKey;
+          const iv = wrappedKeyAndNonce.slice(0, 12);
+          const wrappedKey = wrappedKeyAndNonce.slice(12);
 
-    if (wrappingKeyAlgorithm === 'ec:secp256r1') {
-      const serverEphemeralKey: CryptoKey = await pemPublicToCrypto(sessionPublicKey);
-      const ekr = ephemeralEncryptionKeysRaw as CryptoKeyPair;
-      const kek = await keyAgreement(ekr.privateKey, serverEphemeralKey, {
-        hkdfSalt: await ztdfSalt,
-        hkdfHash: 'SHA-256',
-      });
-      const wrappedKeyAndNonce = entityWrappedKey;
-      const iv = wrappedKeyAndNonce.slice(0, 12);
-      const wrappedKey = wrappedKeyAndNonce.slice(12);
+          const dek = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, kek, wrappedKey);
 
-      const dek = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, kek, wrappedKey);
+          return {
+            key: new Uint8Array(dek),
+            metadata,
+            requiredObligations,
+          };
+        }
+          const key = Binary.fromArrayBuffer(entityWrappedKey);
+          const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(
+            key,
+            ephemeralEncryptionKeys.privateKey
+          );
 
-      return {
-        key: new Uint8Array(dek),
-        metadata,
-        requiredObligations,
-      };
+          return {
+            key: new Uint8Array(decryptedKeyBinary.asByteArray()),
+            metadata,
+            requiredObligations,
+          };
+      }
+      
+      case "error": {
+        const errorMessage = result.result.value;
+        throw new DecryptError(`KAS rewrap failed: ${errorMessage}`);
+      }
+      
+      default: {
+        throw new DecryptError('KAS rewrap response missing wrapped key');
+      }
     }
-    const key = Binary.fromArrayBuffer(entityWrappedKey);
-    const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(
-      key,
-      ephemeralEncryptionKeys.privateKey
-    );
-
-    return {
-      key: new Uint8Array(decryptedKeyBinary.asByteArray()),
-      metadata,
-      requiredObligations,
-    };
   }
 
   let poolSize = 1;

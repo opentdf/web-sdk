@@ -1,6 +1,6 @@
 name: '🤖 🎨'
-on:
-  pull_request:
+# on:
+  # pull_request:
 jobs:
   format:
     runs-on: ubuntu-latest

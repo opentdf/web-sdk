@@ -300,8 +300,24 @@ export default class Client {
       this.fulfillableObligationFQNs
     );
 
+    // Assume only one response and one result for now (V1 style)
+    const result = rewrapResp.responses[0].results[0];
+    let entityWrappedKey: Uint8Array<ArrayBufferLike>;
+    switch (result.result.case) {
+      case 'kasWrappedKey': {
+        entityWrappedKey = result.result.value;
+        break;
+      }
+      case 'error': {
+          const errorMessage = result.result.value;
+        throw new DecryptError(`KAS rewrap failed: ${errorMessage}`);
+      }
+      default: {
+        throw new DecryptError('KAS rewrap response missing wrapped key');
+      } 
+    }
+
     // Extract the iv and ciphertext
-    const entityWrappedKey = rewrapResp.entityWrappedKey;
     const ivLength =
       clientVersion == Client.SDK_INITIAL_RELEASE ? Client.INITIAL_RELEASE_IV_SIZE : Client.IV_SIZE;
     const iv = entityWrappedKey.subarray(0, ivLength);
