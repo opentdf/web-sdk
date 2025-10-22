@@ -808,8 +808,8 @@ async function unwrapKey({
       ...(keySplitInfo.type && { keyType: keySplitInfo.type }),
       ...(keySplitInfo.url && { kasUrl: keySplitInfo.url }),
       ...(keySplitInfo.protocol && { protocol: keySplitInfo.protocol }),
-      ...(keySplitInfo.wrappedKey && { 
-        wrappedKey: new Uint8Array(base64.decodeArrayBuffer(keySplitInfo.wrappedKey)) 
+      ...(keySplitInfo.wrappedKey && {
+        wrappedKey: new Uint8Array(base64.decodeArrayBuffer(keySplitInfo.wrappedKey)),
       }),
       ...(keySplitInfo.policyBinding && { policyBinding: keySplitInfo.policyBinding }),
       ...(keySplitInfo.kid && { kid: keySplitInfo.kid }),

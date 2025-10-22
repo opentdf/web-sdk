@@ -1,5 +1,8 @@
 import { create, toJsonString } from '@bufbuild/protobuf';
-import { UnsignedRewrapRequest_WithPolicyRequestSchema, UnsignedRewrapRequestSchema } from '../platform/kas/kas_pb.js';
+import {
+  UnsignedRewrapRequest_WithPolicyRequestSchema,
+  UnsignedRewrapRequestSchema,
+} from '../platform/kas/kas_pb.js';
 import { generateKeyPair, keyAgreement } from '../nanotdf-crypto/index.js';
 import getHkdfSalt from './helpers/getHkdfSalt.js';
 import DefaultParams from './models/DefaultParams.js';
