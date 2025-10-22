@@ -837,9 +837,9 @@ async function unwrapKey({
     const metadata = result.metadata;
     // Handle the different cases of result.result
     switch (result.result.case) {
-      case "kasWrappedKey": {
+      case 'kasWrappedKey': {
         const entityWrappedKey = result.result.value;
-        
+
         if (wrappingKeyAlgorithm === 'ec:secp256r1') {
           const serverEphemeralKey: CryptoKey = await pemPublicToCrypto(sessionPublicKey);
           const ekr = ephemeralEncryptionKeysRaw as CryptoKeyPair;
@@ -859,24 +859,24 @@ async function unwrapKey({
             requiredObligations,
           };
         }
-          const key = Binary.fromArrayBuffer(entityWrappedKey);
-          const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(
-            key,
-            ephemeralEncryptionKeys.privateKey
-          );
+        const key = Binary.fromArrayBuffer(entityWrappedKey);
+        const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(
+          key,
+          ephemeralEncryptionKeys.privateKey
+        );
 
-          return {
-            key: new Uint8Array(decryptedKeyBinary.asByteArray()),
-            metadata,
-            requiredObligations,
-          };
+        return {
+          key: new Uint8Array(decryptedKeyBinary.asByteArray()),
+          metadata,
+          requiredObligations,
+        };
       }
-      
-      case "error": {
+
+      case 'error': {
         const errorMessage = result.result.value;
         throw new DecryptError(`KAS rewrap failed: ${errorMessage}`);
       }
-      
+
       default: {
         throw new DecryptError('KAS rewrap response missing wrapped key');
       }

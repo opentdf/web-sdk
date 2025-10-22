@@ -309,12 +309,12 @@ export default class Client {
         break;
       }
       case 'error': {
-          const errorMessage = result.result.value;
+        const errorMessage = result.result.value;
         throw new DecryptError(`KAS rewrap failed: ${errorMessage}`);
       }
       default: {
         throw new DecryptError('KAS rewrap response missing wrapped key');
-      } 
+      }
     }
 
     // Extract the iv and ciphertext
