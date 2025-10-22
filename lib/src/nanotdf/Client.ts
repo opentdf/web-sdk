@@ -258,12 +258,11 @@ export default class Client {
                 header: new Uint8Array(nanoTdfHeader),
                 kasUrl: '',
                 protocol: Client.KAS_PROTOCOL,
-                // type: Client.KEY_ACCESS_REMOTE,
+                keyType: Client.KEY_ACCESS_REMOTE,
               },
             },
           ],
           algorithm: DefaultParams.defaultECAlgorithm,
-          // policy in nano is present within the header?
         }),
       ],
     });

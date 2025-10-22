@@ -788,15 +788,28 @@ async function unwrapKey({
 
     // TODO: how to handle defaults here?
     // Convert keySplitInfo to protobuf KeyAccess
+    // const keyAccessProto = create(KeyAccessSchema, {
+    //   keyType: keySplitInfo.type || '',
+    //   kasUrl: keySplitInfo.url || '',
+    //   protocol: keySplitInfo.protocol || '',
+    //   wrappedKey: keySplitInfo.wrappedKey ? new Uint8Array(base64.decodeArrayBuffer(keySplitInfo.wrappedKey)) : new Uint8Array(),
+    //   policyBinding: keySplitInfo.policyBinding,
+    //   kid: keySplitInfo.kid || '',
+    //   splitId: keySplitInfo.sid || '',
+    //   encryptedMetadata: keySplitInfo.encryptedMetadata || '',
+    // });
+
     const keyAccessProto = create(KeyAccessSchema, {
-      keyType: keySplitInfo.type || '',
-      kasUrl: keySplitInfo.url || '',
-      protocol: keySplitInfo.protocol || '',
-      wrappedKey: keySplitInfo.wrappedKey ? new Uint8Array(base64.decodeArrayBuffer(keySplitInfo.wrappedKey)) : new Uint8Array(),
-      policyBinding: keySplitInfo.policyBinding,
-      kid: keySplitInfo.kid || '',
-      splitId: keySplitInfo.sid || '',
-      encryptedMetadata: keySplitInfo.encryptedMetadata || '',
+      ...(keySplitInfo.type && { keyType: keySplitInfo.type }),
+      ...(keySplitInfo.url && { kasUrl: keySplitInfo.url }),
+      ...(keySplitInfo.protocol && { protocol: keySplitInfo.protocol }),
+      ...(keySplitInfo.wrappedKey && { 
+        wrappedKey: new Uint8Array(base64.decodeArrayBuffer(keySplitInfo.wrappedKey)) 
+      }),
+      ...(keySplitInfo.policyBinding && { policyBinding: keySplitInfo.policyBinding }),
+      ...(keySplitInfo.kid && { kid: keySplitInfo.kid }),
+      ...(keySplitInfo.sid && { splitId: keySplitInfo.sid }),
+      ...(keySplitInfo.encryptedMetadata && { encryptedMetadata: keySplitInfo.encryptedMetadata }),
     });
 
     // Create the protobuf request
@@ -811,10 +824,9 @@ async function unwrapKey({
             }),
           ],
           policy: create(UnsignedRewrapRequest_WithPolicySchema, {
-            id: 'policy-0',
+            id: 'policy',
             body: manifest.encryptionInformation.policy,
           }),
-          algorithm: 'RS256',
         }),
       ],
     });
