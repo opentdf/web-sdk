@@ -798,7 +798,9 @@ async function unwrapKey({
       ...(keySplitInfo.kid && { kid: keySplitInfo.kid }),
       ...(keySplitInfo.sid && { splitId: keySplitInfo.sid }),
       ...(keySplitInfo.encryptedMetadata && { encryptedMetadata: keySplitInfo.encryptedMetadata }),
-      ...(keySplitInfo.ephemeralPublicKey && { ephemeralPublicKey: keySplitInfo.ephemeralPublicKey }),
+      ...(keySplitInfo.ephemeralPublicKey && {
+        ephemeralPublicKey: keySplitInfo.ephemeralPublicKey,
+      }),
     });
 
     // Create the protobuf request

@@ -14,12 +14,12 @@ import { AttributeAndValue } from '../src/policy/attributes.js';
 import { ztdfSalt } from '../tdf3/src/crypto/salt.js';
 
 import { create, toJsonString, fromJson } from '@bufbuild/protobuf';
-import { ValueSchema } from "@bufbuild/protobuf/wkt";
+import { ValueSchema } from '@bufbuild/protobuf/wkt';
 import {
   PolicyRewrapResultSchema,
   KeyAccessRewrapResultSchema,
   RewrapResponseSchema,
-  UnsignedRewrapRequestSchema
+  UnsignedRewrapRequestSchema,
 } from '../src/platform/kas/kas_pb.js';
 
 const Mocks = getMocks();
@@ -177,7 +177,8 @@ const kas: RequestListener = async (req, res) => {
           res.end('{"error": "Invalid wrapped key"}');
           return;
         }
-        const isECWrapped = rewrap.requests?.[0]?.keyAccessObjects?.[0]?.keyAccessObject?.kid == 'e1';
+        const isECWrapped =
+          rewrap.requests?.[0]?.keyAccessObjects?.[0]?.keyAccessObject?.kid == 'e1';
         // Decrypt the wrapped key from TDF3
         let dek: Binary;
         if (isECWrapped) {
@@ -217,19 +218,22 @@ const kas: RequestListener = async (req, res) => {
               create(PolicyRewrapResultSchema, {
                 results: [
                   create(KeyAccessRewrapResultSchema, {
-                    metadata: {"hello": create(ValueSchema, {
-                      kind: { case: "stringValue", value: "world" } 
-                    })},
+                    metadata: {
+                      hello: create(ValueSchema, {
+                        kind: { case: 'stringValue', value: 'world' },
+                      }),
+                    },
                     result: {
-                      case: "kasWrappedKey",
+                      case: 'kasWrappedKey',
                       value: new Uint8Array(cek.asArrayBuffer()),
                     },
-                    keyAccessObjectId: rewrap.requests?.[0]?.keyAccessObjects?.[0]?.keyAccessObjectId || '',
+                    keyAccessObjectId:
+                      rewrap.requests?.[0]?.keyAccessObjects?.[0]?.keyAccessObjectId || '',
                   }),
                 ],
               }),
             ],
-          })
+          });
           res.statusCode = 200;
           res.setHeader('Content-Type', 'application/json');
           res.end(toJsonString(RewrapResponseSchema, reply));
@@ -257,19 +261,22 @@ const kas: RequestListener = async (req, res) => {
             create(PolicyRewrapResultSchema, {
               results: [
                 create(KeyAccessRewrapResultSchema, {
-                  metadata: {"hello": create(ValueSchema, {
-                    kind: { case: "stringValue", value: "world" } 
-                  })},
+                  metadata: {
+                    hello: create(ValueSchema, {
+                      kind: { case: 'stringValue', value: 'world' },
+                    }),
+                  },
                   result: {
-                    case: "kasWrappedKey",
+                    case: 'kasWrappedKey',
                     value: entityWrappedKey,
                   },
-                  keyAccessObjectId: rewrap.requests?.[0]?.keyAccessObjects?.[0]?.keyAccessObjectId || '',
+                  keyAccessObjectId:
+                    rewrap.requests?.[0]?.keyAccessObjects?.[0]?.keyAccessObjectId || '',
                 }),
               ],
             }),
           ],
-        })
+        });
 
         res.statusCode = 200;
         res.setHeader('Content-Type', 'application/json');
@@ -278,9 +285,7 @@ const kas: RequestListener = async (req, res) => {
       }
       // nanotdf
       console.log('[INFO] nano rewrap request body: ', rewrap);
-      const { header } = Header.parse(
-        kaoheader || new Uint8Array(base64.decodeArrayBuffer('')),
-      );
+      const { header } = Header.parse(kaoheader || new Uint8Array(base64.decodeArrayBuffer('')));
       // TODO convert header.ephemeralCurveName to namedCurve
       const nanoPublicKey = await crypto.subtle.importKey(
         'raw',
@@ -341,14 +346,17 @@ const kas: RequestListener = async (req, res) => {
           create(PolicyRewrapResultSchema, {
             results: [
               create(KeyAccessRewrapResultSchema, {
-                metadata: {"hello": create(ValueSchema, {
-                    kind: { case: "stringValue", value: "people of earth" } 
-                  })},
+                metadata: {
+                  hello: create(ValueSchema, {
+                    kind: { case: 'stringValue', value: 'people of earth' },
+                  }),
+                },
                 result: {
-                  case: "kasWrappedKey",
+                  case: 'kasWrappedKey',
                   value: entityWrappedKey,
                 },
-                keyAccessObjectId: rewrap.requests?.[0]?.keyAccessObjects?.[0]?.keyAccessObjectId || '',
+                keyAccessObjectId:
+                  rewrap.requests?.[0]?.keyAccessObjects?.[0]?.keyAccessObjectId || '',
               }),
             ],
           }),
