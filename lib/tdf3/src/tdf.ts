@@ -798,6 +798,7 @@ async function unwrapKey({
       ...(keySplitInfo.kid && { kid: keySplitInfo.kid }),
       ...(keySplitInfo.sid && { splitId: keySplitInfo.sid }),
       ...(keySplitInfo.encryptedMetadata && { encryptedMetadata: keySplitInfo.encryptedMetadata }),
+      ...(keySplitInfo.ephemeralPublicKey && { ephemeralPublicKey: keySplitInfo.ephemeralPublicKey }),
     });
 
     // Create the protobuf request
@@ -811,9 +812,11 @@ async function unwrapKey({
               keyAccessObject: keyAccessProto,
             }),
           ],
-          policy: create(UnsignedRewrapRequest_WithPolicySchema, {
-            id: 'policy',
-            body: manifest.encryptionInformation.policy,
+          ...(manifest.encryptionInformation.policy && {
+            policy: create(UnsignedRewrapRequest_WithPolicySchema, {
+              id: 'policy',
+              body: manifest.encryptionInformation.policy,
+            }),
           }),
         }),
       ],
