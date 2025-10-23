@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.5.0...sdk-v0.6.0) (2025-10-23)
+
+
+### Features
+
+* **ci:** Add a workflow to update the generated code for new protocol/go versions ([#767](https://github.com/opentdf/web-sdk/issues/767)) ([c9d5f21](https://github.com/opentdf/web-sdk/commit/c9d5f21f89c7a523a524b8da3345c9b0c69743dc))
+
 ## [0.5.0](https://github.com/opentdf/web-sdk/compare/sdk/v0.4.0...sdk-v0.5.0) (2025-10-17)
 
 
