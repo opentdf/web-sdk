@@ -63,7 +63,7 @@ import { ZipReader, ZipWriter, keyMerge, concatUint8, buffToString } from './uti
 import { CentralDirectory } from './utils/zip-reader.js';
 import { ztdfSalt } from './crypto/salt.js';
 import { Payload } from './models/payload.js';
-import { getRequiredObligationFQNs } from '../../src/utils.js';
+import { getRequiredObligationFQNs, upgradeRewrapResponseV1 } from '../../src/utils.js';
 
 // TODO: input validation on manifest JSON
 const DEFAULT_SEGMENT_SIZE = 1024 * 1024;
@@ -822,6 +822,10 @@ async function unwrapKey({
           }),
         }),
       ],
+      // include deprecated fields for backward compatibility
+      algorithm: 'RS256',
+      keyAccess: keyAccessProto,
+      policy: manifest.encryptionInformation.policy,
     });
 
     const requestBodyStr = toJsonString(UnsignedRewrapRequestSchema, unsignedRequest);
@@ -835,6 +839,7 @@ async function unwrapKey({
       authProvider,
       fulfillableObligations
     );
+    upgradeRewrapResponseV1(rewrapResp);
     const { sessionPublicKey } = rewrapResp;
     const requiredObligations = getRequiredObligationFQNs(rewrapResp);
     // Assume only one response and one result for now (V1 style)

@@ -18,6 +18,7 @@ import {
   cryptoPublicToPem,
   getRequiredObligationFQNs,
   pemToCryptoPublicKey,
+  upgradeRewrapResponseV1,
   validateSecureUrl,
 } from '../utils.js';
 
@@ -282,6 +283,13 @@ export default class Client {
           algorithm: DefaultParams.defaultECAlgorithm,
         }),
       ],
+      keyAccess: {
+        header: new Uint8Array(nanoTdfHeader),
+        kasUrl: '',
+        protocol: Client.KAS_PROTOCOL,
+        keyType: Client.KEY_ACCESS_REMOTE,
+      },
+      algorithm: DefaultParams.defaultECAlgorithm,
     });
 
     const requestBodyStr = toJsonString(UnsignedRewrapRequestSchema, unsignedRequest);
@@ -299,6 +307,7 @@ export default class Client {
       this.authProvider,
       this.fulfillableObligationFQNs
     );
+    upgradeRewrapResponseV1(rewrapResp);
 
     // Assume only one response and one result for now (V1 style)
     const result = rewrapResp.responses[0].results[0];
