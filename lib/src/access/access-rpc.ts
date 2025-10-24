@@ -58,10 +58,6 @@ export async function fetchWrappedKey(
   return response;
 }
 
-function codeName(code: Code): string {
-  return Code[code];
-}
-
 export function handleRpcRewrapError(e: unknown, platformUrl: string): never {
   if (e instanceof ConnectError) {
     console.log('Error is a ConnectError with code:', e.code);
@@ -72,12 +68,12 @@ export function handleRpcRewrapError(e: unknown, platformUrl: string): never {
         throw new PermissionDeniedError(`403 for [${platformUrl}]; rewrap permission denied`);
       case Code.Unauthenticated: // 401 Unauthorized
         throw new UnauthenticatedError(`401 for [${platformUrl}]; rewrap auth failure`);
-      case Code.Internal ||
-        Code.Unimplemented ||
-        Code.DataLoss ||
-        Code.Unknown ||
-        Code.DeadlineExceeded ||
-        Code.Unavailable: // >=500 Server Error
+      case Code.Internal:
+      case Code.Unimplemented:
+      case Code.DataLoss:
+      case Code.Unknown:
+      case Code.DeadlineExceeded:
+      case Code.Unavailable: // >=500 Server Error
         throw new ServiceError(
           `${e.code} for [${platformUrl}]: rewrap failure due to service error [${e.message}]`
         );
@@ -89,25 +85,25 @@ export function handleRpcRewrapError(e: unknown, platformUrl: string): never {
 }
 
 export function handleRpcRewrapErrorString(e: string, platformUrl: string): never {
-  if (e.includes(codeName(Code.InvalidArgument))) {
+  if (e.includes(Code[Code.InvalidArgument])) {
     // 400 Bad Request
     throw new InvalidFileError(`400 for [${platformUrl}]: rewrap bad request [${e}]`);
   }
-  if (e.includes(codeName(Code.PermissionDenied))) {
+  if (e.includes(Code[Code.PermissionDenied])) {
     // 403 Forbidden
     throw new PermissionDeniedError(`403 for [${platformUrl}]; rewrap permission denied`);
   }
-  if (e.includes(codeName(Code.Unauthenticated))) {
+  if (e.includes(Code[Code.Unauthenticated])) {
     // 401 Unauthorized
     throw new UnauthenticatedError(`401 for [${platformUrl}]; rewrap auth failure`);
   }
   if (
-    e.includes(codeName(Code.Internal)) ||
-    e.includes(codeName(Code.Unimplemented)) ||
-    e.includes(codeName(Code.DataLoss)) ||
-    e.includes(codeName(Code.Unknown)) ||
-    e.includes(codeName(Code.DeadlineExceeded)) ||
-    e.includes(codeName(Code.Unavailable))
+    e.includes(Code[Code.Internal]) ||
+    e.includes(Code[Code.Unimplemented]) ||
+    e.includes(Code[Code.DataLoss]) ||
+    e.includes(Code[Code.Unknown]) ||
+    e.includes(Code[Code.DeadlineExceeded]) ||
+    e.includes(Code[Code.Unavailable])
   ) {
     // >=500
     throw new ServiceError(`500+ [${platformUrl}]: rewrap failure due to service error [${e}]`);

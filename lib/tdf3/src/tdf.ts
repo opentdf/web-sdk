@@ -888,8 +888,7 @@ async function unwrapKey({
       }
 
       case 'error': {
-        const errorMessage = result.result.value;
-        handleRpcRewrapErrorString(errorMessage, getPlatformUrlFromKasEndpoint(url));
+        handleRpcRewrapErrorString(result.result.value, getPlatformUrlFromKasEndpoint(url));
       }
 
       default: {

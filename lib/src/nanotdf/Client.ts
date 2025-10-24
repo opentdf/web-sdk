@@ -12,6 +12,7 @@ import {
   KasPublicKeyInfo,
   OriginAllowList,
 } from '../access.js';
+import { handleRpcRewrapErrorString } from '../../src/access/access-rpc.js';
 import { AuthProvider, isAuthProvider, reqSignature } from '../auth/providers.js';
 import { ConfigurationError, DecryptError, TdfError, UnsafeUrlError } from '../errors.js';
 import {
@@ -20,6 +21,7 @@ import {
   pemToCryptoPublicKey,
   upgradeRewrapResponseV1,
   validateSecureUrl,
+  getPlatformUrlFromKasEndpoint,
 } from '../utils.js';
 
 export interface ClientConfig {
@@ -318,8 +320,10 @@ export default class Client {
         break;
       }
       case 'error': {
-        const errorMessage = result.result.value;
-        throw new DecryptError(`KAS rewrap failed: ${errorMessage}`);
+        handleRpcRewrapErrorString(
+          result.result.value,
+          getPlatformUrlFromKasEndpoint(kasRewrapUrl)
+        );
       }
       default: {
         throw new DecryptError('KAS rewrap response missing wrapped key');
