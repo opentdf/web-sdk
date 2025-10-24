@@ -17,6 +17,7 @@ import {
   UnsignedRewrapRequest_WithKeyAccessObjectSchema,
 } from '../../src/platform/kas/kas_pb.js';
 import { type AuthProvider, reqSignature } from '../../src/auth/auth.js';
+import { handleRpcRewrapErrorString } from '../../src/access/access-rpc.js';
 import { allPool, anyPool } from '../../src/concurrency.js';
 import { base64, hex } from '../../src/encodings/index.js';
 import {
@@ -63,7 +64,11 @@ import { ZipReader, ZipWriter, keyMerge, concatUint8, buffToString } from './uti
 import { CentralDirectory } from './utils/zip-reader.js';
 import { ztdfSalt } from './crypto/salt.js';
 import { Payload } from './models/payload.js';
-import { getRequiredObligationFQNs, upgradeRewrapResponseV1 } from '../../src/utils.js';
+import {
+  getRequiredObligationFQNs,
+  upgradeRewrapResponseV1,
+  getPlatformUrlFromKasEndpoint,
+} from '../../src/utils.js';
 
 // TODO: input validation on manifest JSON
 const DEFAULT_SEGMENT_SIZE = 1024 * 1024;
@@ -884,7 +889,7 @@ async function unwrapKey({
 
       case 'error': {
         const errorMessage = result.result.value;
-        throw new DecryptError(`KAS rewrap failed: ${errorMessage}`);
+        handleRpcRewrapErrorString(errorMessage, getPlatformUrlFromKasEndpoint(url));
       }
 
       default: {

@@ -6,9 +6,15 @@ import {
   noteInvalidPublicKey,
   OriginAllowList,
 } from '../access.js';
-
 import { type AuthProvider } from '../auth/auth.js';
-import { ConfigurationError, NetworkError } from '../errors.js';
+import {
+  ConfigurationError,
+  InvalidFileError,
+  NetworkError,
+  PermissionDeniedError,
+  ServiceError,
+  UnauthenticatedError,
+} from '../errors.js';
 import { PlatformClient } from '../platform.js';
 import { RewrapResponse } from '../platform/kas/kas_pb.js';
 import { ListKeyAccessServersResponse } from '../platform/policy/kasregistry/key_access_server_registry_pb.js';
@@ -19,6 +25,7 @@ import {
   validateSecureUrl,
 } from '../utils.js';
 import { X_REWRAP_ADDITIONAL_CONTEXT } from './constants.js';
+import { ConnectError, Code } from '@connectrpc/connect';
 
 /**
  * Get a rewrapped access key to the document, if possible
@@ -42,11 +49,70 @@ export async function fetchWrappedKey(
       [X_REWRAP_ADDITIONAL_CONTEXT]: rewrapAdditionalContextHeader,
     };
   }
+  let response: RewrapResponse;
   try {
-    return await platform.v1.access.rewrap({ signedRequestToken }, options);
+    response = await platform.v1.access.rewrap({ signedRequestToken }, options);
   } catch (e) {
-    throw new NetworkError(`[${platformUrl}] [Rewrap] ${extractRpcErrorMessage(e)}`);
+    handleRpcRewrapError(e, platformUrl);
   }
+  return response;
+}
+
+function codeName(code: Code): string {
+  return Code[code];
+}
+
+export function handleRpcRewrapError(e: unknown, platformUrl: string): never {
+  if (e instanceof ConnectError) {
+    console.log('Error is a ConnectError with code:', e.code);
+    switch (e.code) {
+      case Code.InvalidArgument: // 400 Bad Request
+        throw new InvalidFileError(`400 for [${platformUrl}]: rewrap bad request [${e.message}]`);
+      case Code.PermissionDenied: // 403 Forbidden
+        throw new PermissionDeniedError(`403 for [${platformUrl}]; rewrap permission denied`);
+      case Code.Unauthenticated: // 401 Unauthorized
+        throw new UnauthenticatedError(`401 for [${platformUrl}]; rewrap auth failure`);
+      case Code.Internal ||
+        Code.Unimplemented ||
+        Code.DataLoss ||
+        Code.Unknown ||
+        Code.DeadlineExceeded ||
+        Code.Unavailable: // >=500 Server Error
+        throw new ServiceError(
+          `${e.code} for [${platformUrl}]: rewrap failure due to service error [${e.message}]`
+        );
+      default:
+        throw new NetworkError(`[${platformUrl}] [Rewrap] ${e.message}`);
+    }
+  }
+  throw new NetworkError(`[${platformUrl}] [Rewrap] ${extractRpcErrorMessage(e)}`);
+}
+
+export function handleRpcRewrapErrorString(e: string, platformUrl: string): never {
+  if (e.includes(codeName(Code.InvalidArgument))) {
+    // 400 Bad Request
+    throw new InvalidFileError(`400 for [${platformUrl}]: rewrap bad request [${e}]`);
+  }
+  if (e.includes(codeName(Code.PermissionDenied))) {
+    // 403 Forbidden
+    throw new PermissionDeniedError(`403 for [${platformUrl}]; rewrap permission denied`);
+  }
+  if (e.includes(codeName(Code.Unauthenticated))) {
+    // 401 Unauthorized
+    throw new UnauthenticatedError(`401 for [${platformUrl}]; rewrap auth failure`);
+  }
+  if (
+    e.includes(codeName(Code.Internal)) ||
+    e.includes(codeName(Code.Unimplemented)) ||
+    e.includes(codeName(Code.DataLoss)) ||
+    e.includes(codeName(Code.Unknown)) ||
+    e.includes(codeName(Code.DeadlineExceeded)) ||
+    e.includes(codeName(Code.Unavailable))
+  ) {
+    // >=500
+    throw new ServiceError(`500+ [${platformUrl}]: rewrap failure due to service error [${e}]`);
+  }
+  throw new NetworkError(`[${platformUrl}] [Rewrap] ${e}}`);
 }
 
 export async function fetchKeyAccessServers(
