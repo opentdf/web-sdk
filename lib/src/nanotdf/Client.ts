@@ -1,4 +1,8 @@
-import * as base64 from '../encodings/base64.js';
+import { create, toJsonString } from '@bufbuild/protobuf';
+import {
+  UnsignedRewrapRequest_WithPolicyRequestSchema,
+  UnsignedRewrapRequestSchema,
+} from '../platform/kas/kas_pb.js';
 import { generateKeyPair, keyAgreement } from '../nanotdf-crypto/index.js';
 import getHkdfSalt from './helpers/getHkdfSalt.js';
 import DefaultParams from './models/DefaultParams.js';
@@ -8,13 +12,16 @@ import {
   KasPublicKeyInfo,
   OriginAllowList,
 } from '../access.js';
+import { handleRpcRewrapErrorString } from '../../src/access/access-rpc.js';
 import { AuthProvider, isAuthProvider, reqSignature } from '../auth/providers.js';
 import { ConfigurationError, DecryptError, TdfError, UnsafeUrlError } from '../errors.js';
 import {
   cryptoPublicToPem,
   getRequiredObligationFQNs,
   pemToCryptoPublicKey,
+  upgradeRewrapResponseV1,
   validateSecureUrl,
+  getPlatformUrlFromKasEndpoint,
 } from '../utils.js';
 
 export interface ClientConfig {
@@ -260,17 +267,34 @@ export default class Client {
       throw new ConfigurationError('Signer key has not been set or generated');
     }
 
-    const requestBodyStr = JSON.stringify({
-      algorithm: DefaultParams.defaultECAlgorithm,
-      // nano keyAccess minimum, header is used for nano
-      keyAccess: {
-        type: Client.KEY_ACCESS_REMOTE,
-        url: '',
-        protocol: Client.KAS_PROTOCOL,
-        header: base64.encodeArrayBuffer(nanoTdfHeader),
-      },
+    const unsignedRequest = create(UnsignedRewrapRequestSchema, {
       clientPublicKey: await cryptoPublicToPem(ephemeralKeyPair.publicKey),
+      requests: [
+        create(UnsignedRewrapRequest_WithPolicyRequestSchema, {
+          keyAccessObjects: [
+            {
+              keyAccessObjectId: 'kao-0',
+              keyAccessObject: {
+                header: new Uint8Array(nanoTdfHeader),
+                kasUrl: '',
+                protocol: Client.KAS_PROTOCOL,
+                keyType: Client.KEY_ACCESS_REMOTE,
+              },
+            },
+          ],
+          algorithm: DefaultParams.defaultECAlgorithm,
+        }),
+      ],
+      keyAccess: {
+        header: new Uint8Array(nanoTdfHeader),
+        kasUrl: '',
+        protocol: Client.KAS_PROTOCOL,
+        keyType: Client.KEY_ACCESS_REMOTE,
+      },
+      algorithm: DefaultParams.defaultECAlgorithm,
     });
+
+    const requestBodyStr = toJsonString(UnsignedRewrapRequestSchema, unsignedRequest);
 
     const jwtPayload = { requestBody: requestBodyStr };
 
@@ -285,9 +309,28 @@ export default class Client {
       this.authProvider,
       this.fulfillableObligationFQNs
     );
+    upgradeRewrapResponseV1(rewrapResp);
+
+    // Assume only one response and one result for now (V1 style)
+    const result = rewrapResp.responses[0].results[0];
+    let entityWrappedKey: Uint8Array<ArrayBufferLike>;
+    switch (result.result.case) {
+      case 'kasWrappedKey': {
+        entityWrappedKey = result.result.value;
+        break;
+      }
+      case 'error': {
+        handleRpcRewrapErrorString(
+          result.result.value,
+          getPlatformUrlFromKasEndpoint(kasRewrapUrl)
+        );
+      }
+      default: {
+        throw new DecryptError('KAS rewrap response missing wrapped key');
+      }
+    }
 
     // Extract the iv and ciphertext
-    const entityWrappedKey = rewrapResp.entityWrappedKey;
     const ivLength =
       clientVersion == Client.SDK_INITIAL_RELEASE ? Client.INITIAL_RELEASE_IV_SIZE : Client.IV_SIZE;
     const iv = entityWrappedKey.subarray(0, ivLength);
