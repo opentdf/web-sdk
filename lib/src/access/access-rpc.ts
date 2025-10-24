@@ -6,6 +6,7 @@ import {
   noteInvalidPublicKey,
   OriginAllowList,
 } from '../access.js';
+
 import { type AuthProvider } from '../auth/auth.js';
 import {
   ConfigurationError,
