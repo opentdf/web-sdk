@@ -109,7 +109,7 @@ export function handleRpcRewrapErrorString(e: string, platformUrl: string): neve
     // >=500
     throw new ServiceError(`500+ [${platformUrl}]: rewrap failure due to service error [${e}]`);
   }
-  throw new NetworkError(`[${platformUrl}] [Rewrap] ${e}}`);
+  throw new NetworkError(`[${platformUrl}] [Rewrap] ${e}`);
 }
 
 export async function fetchKeyAccessServers(
