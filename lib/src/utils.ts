@@ -3,7 +3,12 @@ import { exportSPKI, importX509 } from 'jose';
 import { base64 } from './encodings/index.js';
 import { pemCertToCrypto, pemPublicToCrypto } from './nanotdf-crypto/pemPublicToCrypto.js';
 import { ConfigurationError } from './errors.js';
-import { RewrapResponse } from './platform/kas/kas_pb.js';
+import {
+  RewrapResponse,
+  PolicyRewrapResultSchema,
+  KeyAccessRewrapResultSchema,
+} from './platform/kas/kas_pb.js';
+import { create } from '@bufbuild/protobuf';
 import { ConnectError } from '@connectrpc/connect';
 
 const REQUIRED_OBLIGATIONS_METADATA_KEY = 'X-Required-Obligations';
@@ -254,4 +259,32 @@ export function getRequiredObligationFQNs(response: RewrapResponse) {
   }
 
   return [...requiredObligations.values()];
+}
+
+/**
+ * Upgrades a RewrapResponse from v1 format to v2.
+ */
+export function upgradeRewrapResponseV1(response: RewrapResponse) {
+  if (response.responses.length > 0) {
+    return;
+  }
+  if (response.entityWrappedKey.length === 0) {
+    return;
+  }
+
+  response.responses = [
+    create(PolicyRewrapResultSchema, {
+      policyId: 'policy',
+      results: [
+        create(KeyAccessRewrapResultSchema, {
+          keyAccessObjectId: 'kao-0',
+          status: 'permit',
+          result: {
+            case: 'kasWrappedKey',
+            value: response.entityWrappedKey,
+          },
+        }),
+      ],
+    }),
+  ];
 }

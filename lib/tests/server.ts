@@ -9,10 +9,18 @@ import { keyAgreement, pemPublicToCrypto } from '../src/nanotdf-crypto/index.js'
 import { generateRandomNumber } from '../src/nanotdf-crypto/generateRandomNumber.js';
 import { removePemFormatting } from '../tdf3/src/crypto/crypto-utils.js';
 import { Binary } from '../tdf3/index.js';
-import { type KeyAccessObject } from '../tdf3/src/models/index.js';
 import { valueFor } from './web/policy/mock-attrs.js';
 import { AttributeAndValue } from '../src/policy/attributes.js';
 import { ztdfSalt } from '../tdf3/src/crypto/salt.js';
+
+import { create, toJsonString, fromJson } from '@bufbuild/protobuf';
+import { ValueSchema } from '@bufbuild/protobuf/wkt';
+import {
+  PolicyRewrapResultSchema,
+  KeyAccessRewrapResultSchema,
+  RewrapResponseSchema,
+  UnsignedRewrapRequestSchema,
+} from '../src/platform/kas/kas_pb.js';
 
 const Mocks = getMocks();
 
@@ -23,18 +31,6 @@ function range(start: number, end: number): Uint8Array {
   }
   return new Uint8Array(result);
 }
-
-type RewrapBody = {
-  algorithm: 'RS256' | 'ec:secp256r1';
-  keyAccess: KeyAccessObject & {
-    header?: string;
-  };
-  policy: string;
-  clientPublicKey: string;
-  // testing only
-  invalidKey: string;
-  invalidField: string;
-};
 
 function concat(b: ArrayBufferView[]) {
   const length = b.reduce((lk, ak) => lk + ak.byteLength, 0);
@@ -164,7 +160,7 @@ const kas: RequestListener = async (req, res) => {
         return;
       }
 
-      const rewrap = JSON.parse(requestBody as string) as RewrapBody;
+      const rewrap = fromJson(UnsignedRewrapRequestSchema, JSON.parse(requestBody as string));
       console.log('[INFO]: rewrap request body: ', rewrap);
       const clientPublicKey = await pemPublicToCrypto(rewrap.clientPublicKey);
       if (!clientPublicKey || clientPublicKey.type !== 'public') {
@@ -172,25 +168,27 @@ const kas: RequestListener = async (req, res) => {
         res.end('{"error": "Invalid client public key"}');
         return;
       }
-      const isZTDF = !rewrap.keyAccess.header;
+      const kaoheader = rewrap.requests?.[0]?.keyAccessObjects?.[0]?.keyAccessObject?.header;
+      const isZTDF = !kaoheader || kaoheader.length === 0;
       if (isZTDF) {
-        if (!rewrap.keyAccess.wrappedKey) {
+        const wk = rewrap.requests?.[0]?.keyAccessObjects?.[0]?.keyAccessObject?.wrappedKey;
+        if (!wk || wk.length === 0) {
           res.writeHead(400);
           res.end('{"error": "Invalid wrapped key"}');
           return;
         }
-        const wk = base64.decodeArrayBuffer(rewrap.keyAccess.wrappedKey);
-        const isECWrapped = rewrap.keyAccess.kid == 'e1';
+        const isECWrapped =
+          rewrap.requests?.[0]?.keyAccessObjects?.[0]?.keyAccessObject?.kid == 'e1';
         // Decrypt the wrapped key from TDF3
         let dek: Binary;
         if (isECWrapped) {
-          if (!rewrap.keyAccess.ephemeralPublicKey) {
+          if (!rewrap.requests?.[0]?.keyAccessObjects?.[0]?.keyAccessObject?.ephemeralPublicKey) {
             res.writeHead(400);
             res.end('{"error": "Nil ephemeral public key"}');
             return;
           }
           const ephemeralKey: CryptoKey = await pemPublicToCrypto(
-            rewrap.keyAccess.ephemeralPublicKey
+            rewrap.requests?.[0]?.keyAccessObjects?.[0]?.keyAccessObject?.ephemeralPublicKey
           );
           const kasPrivateKeyBytes = base64.decodeArrayBuffer(
             removePemFormatting(Mocks.kasECPrivateKey)
@@ -215,13 +213,30 @@ const kas: RequestListener = async (req, res) => {
         }
         if (clientPublicKey.algorithm.name == 'RSA-OAEP') {
           const cek = await encryptWithPublicKey(dek, rewrap.clientPublicKey);
-          const reply = {
-            entityWrappedKey: base64.encodeArrayBuffer(cek.asArrayBuffer()),
-            metadata: { hello: 'world' },
-          };
+          const reply = create(RewrapResponseSchema, {
+            responses: [
+              create(PolicyRewrapResultSchema, {
+                results: [
+                  create(KeyAccessRewrapResultSchema, {
+                    metadata: {
+                      hello: create(ValueSchema, {
+                        kind: { case: 'stringValue', value: 'world' },
+                      }),
+                    },
+                    result: {
+                      case: 'kasWrappedKey',
+                      value: new Uint8Array(cek.asArrayBuffer()),
+                    },
+                    keyAccessObjectId:
+                      rewrap.requests?.[0]?.keyAccessObjects?.[0]?.keyAccessObjectId || '',
+                  }),
+                ],
+              }),
+            ],
+          });
           res.statusCode = 200;
           res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify(reply));
+          res.end(toJsonString(RewrapResponseSchema, reply));
           return;
         }
         const sessionKeyPair = await crypto.subtle.generateKey(
@@ -241,20 +256,36 @@ const kas: RequestListener = async (req, res) => {
         const entityWrappedKey = new Uint8Array(iv.length + cek.byteLength);
         entityWrappedKey.set(iv);
         entityWrappedKey.set(new Uint8Array(cek), iv.length);
-        const reply = {
-          entityWrappedKey: base64.encodeArrayBuffer(entityWrappedKey),
-          metadata: { hello: 'world' },
-        };
+        const reply = create(RewrapResponseSchema, {
+          responses: [
+            create(PolicyRewrapResultSchema, {
+              results: [
+                create(KeyAccessRewrapResultSchema, {
+                  metadata: {
+                    hello: create(ValueSchema, {
+                      kind: { case: 'stringValue', value: 'world' },
+                    }),
+                  },
+                  result: {
+                    case: 'kasWrappedKey',
+                    value: entityWrappedKey,
+                  },
+                  keyAccessObjectId:
+                    rewrap.requests?.[0]?.keyAccessObjects?.[0]?.keyAccessObjectId || '',
+                }),
+              ],
+            }),
+          ],
+        });
+
         res.statusCode = 200;
         res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify(reply));
+        res.end(toJsonString(RewrapResponseSchema, reply));
         return;
       }
       // nanotdf
       console.log('[INFO] nano rewrap request body: ', rewrap);
-      const { header } = Header.parse(
-        new Uint8Array(base64.decodeArrayBuffer(rewrap?.keyAccess?.header || ''))
-      );
+      const { header } = Header.parse(kaoheader || new Uint8Array(base64.decodeArrayBuffer('')));
       // TODO convert header.ephemeralCurveName to namedCurve
       const nanoPublicKey = await crypto.subtle.importKey(
         'raw',
@@ -309,14 +340,32 @@ const kas: RequestListener = async (req, res) => {
       const entityWrappedKey = new Uint8Array(iv.length + cekBytes.length);
       entityWrappedKey.set(iv);
       entityWrappedKey.set(cekBytes, iv.length);
-      const reply = {
-        entityWrappedKey: base64.encodeArrayBuffer(entityWrappedKey),
+      const reply = create(RewrapResponseSchema, {
         sessionPublicKey: Mocks.kasECCert,
-        metadata: { hello: 'people of earth' },
-      };
+        responses: [
+          create(PolicyRewrapResultSchema, {
+            results: [
+              create(KeyAccessRewrapResultSchema, {
+                metadata: {
+                  hello: create(ValueSchema, {
+                    kind: { case: 'stringValue', value: 'people of earth' },
+                  }),
+                },
+                result: {
+                  case: 'kasWrappedKey',
+                  value: entityWrappedKey,
+                },
+                keyAccessObjectId:
+                  rewrap.requests?.[0]?.keyAccessObjects?.[0]?.keyAccessObjectId || '',
+              }),
+            ],
+          }),
+        ],
+      });
+
       res.statusCode = 200;
       res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify(reply));
+      res.end(toJsonString(RewrapResponseSchema, reply));
       return;
     } else if (url.pathname === '/file') {
       if (req.method !== 'GET') {
