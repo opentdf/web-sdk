@@ -8,7 +8,16 @@ import {
   fetchWrappedKey,
   publicKeyAlgorithmToJwa,
 } from '../../src/access.js';
+import { create, toJsonString } from '@bufbuild/protobuf';
+import {
+  KeyAccessSchema,
+  UnsignedRewrapRequestSchema,
+  UnsignedRewrapRequest_WithPolicyRequestSchema,
+  UnsignedRewrapRequest_WithPolicySchema,
+  UnsignedRewrapRequest_WithKeyAccessObjectSchema,
+} from '../../src/platform/kas/kas_pb.js';
 import { type AuthProvider, reqSignature } from '../../src/auth/auth.js';
+import { handleRpcRewrapErrorString } from '../../src/access/access-rpc.js';
 import { allPool, anyPool } from '../../src/concurrency.js';
 import { base64, hex } from '../../src/encodings/index.js';
 import {
@@ -55,7 +64,11 @@ import { ZipReader, ZipWriter, keyMerge, concatUint8, buffToString } from './uti
 import { CentralDirectory } from './utils/zip-reader.js';
 import { ztdfSalt } from './crypto/salt.js';
 import { Payload } from './models/payload.js';
-import { getRequiredObligationFQNs } from '../../src/utils.js';
+import {
+  getRequiredObligationFQNs,
+  upgradeRewrapResponseV1,
+  getPlatformUrlFromKasEndpoint,
+} from '../../src/utils.js';
 
 // TODO: input validation on manifest JSON
 const DEFAULT_SEGMENT_SIZE = 1024 * 1024;
@@ -188,11 +201,6 @@ export type RewrapRequest = {
 };
 
 export type KasPublicKeyFormat = 'pkcs8' | 'jwks';
-
-export type RewrapResponse = {
-  entityWrappedKey: string;
-  sessionPublicKey: string;
-};
 
 /**
  * If we have KAS url but not public key we can fetch it from KAS, fetching
@@ -783,12 +791,49 @@ async function unwrapKey({
 
     const clientPublicKey = ephemeralEncryptionKeys.publicKey;
 
-    const requestBodyStr = JSON.stringify({
-      algorithm: 'RS256',
-      keyAccess: keySplitInfo,
-      policy: manifest.encryptionInformation.policy,
-      clientPublicKey,
+    // Convert keySplitInfo to protobuf KeyAccess
+    const keyAccessProto = create(KeyAccessSchema, {
+      ...(keySplitInfo.type && { keyType: keySplitInfo.type }),
+      ...(keySplitInfo.url && { kasUrl: keySplitInfo.url }),
+      ...(keySplitInfo.protocol && { protocol: keySplitInfo.protocol }),
+      ...(keySplitInfo.wrappedKey && {
+        wrappedKey: new Uint8Array(base64.decodeArrayBuffer(keySplitInfo.wrappedKey)),
+      }),
+      ...(keySplitInfo.policyBinding && { policyBinding: keySplitInfo.policyBinding }),
+      ...(keySplitInfo.kid && { kid: keySplitInfo.kid }),
+      ...(keySplitInfo.sid && { splitId: keySplitInfo.sid }),
+      ...(keySplitInfo.encryptedMetadata && { encryptedMetadata: keySplitInfo.encryptedMetadata }),
+      ...(keySplitInfo.ephemeralPublicKey && {
+        ephemeralPublicKey: keySplitInfo.ephemeralPublicKey,
+      }),
     });
+
+    // Create the protobuf request
+    const unsignedRequest = create(UnsignedRewrapRequestSchema, {
+      clientPublicKey,
+      requests: [
+        create(UnsignedRewrapRequest_WithPolicyRequestSchema, {
+          keyAccessObjects: [
+            create(UnsignedRewrapRequest_WithKeyAccessObjectSchema, {
+              keyAccessObjectId: 'kao-0',
+              keyAccessObject: keyAccessProto,
+            }),
+          ],
+          ...(manifest.encryptionInformation.policy && {
+            policy: create(UnsignedRewrapRequest_WithPolicySchema, {
+              id: 'policy',
+              body: manifest.encryptionInformation.policy,
+            }),
+          }),
+        }),
+      ],
+      // include deprecated fields for backward compatibility
+      algorithm: 'RS256',
+      keyAccess: keyAccessProto,
+      policy: manifest.encryptionInformation.policy,
+    });
+
+    const requestBodyStr = toJsonString(UnsignedRewrapRequestSchema, unsignedRequest);
 
     const jwtPayload = { requestBody: requestBodyStr };
     const signedRequestToken = await reqSignature(jwtPayload, dpopKeys.privateKey);
@@ -799,39 +844,57 @@ async function unwrapKey({
       authProvider,
       fulfillableObligations
     );
-    const { entityWrappedKey, metadata, sessionPublicKey } = rewrapResp;
+    upgradeRewrapResponseV1(rewrapResp);
+    const { sessionPublicKey } = rewrapResp;
     const requiredObligations = getRequiredObligationFQNs(rewrapResp);
+    // Assume only one response and one result for now (V1 style)
+    const result = rewrapResp.responses[0].results[0];
+    const metadata = result.metadata;
+    // Handle the different cases of result.result
+    switch (result.result.case) {
+      case 'kasWrappedKey': {
+        const entityWrappedKey = result.result.value;
 
-    if (wrappingKeyAlgorithm === 'ec:secp256r1') {
-      const serverEphemeralKey: CryptoKey = await pemPublicToCrypto(sessionPublicKey);
-      const ekr = ephemeralEncryptionKeysRaw as CryptoKeyPair;
-      const kek = await keyAgreement(ekr.privateKey, serverEphemeralKey, {
-        hkdfSalt: await ztdfSalt,
-        hkdfHash: 'SHA-256',
-      });
-      const wrappedKeyAndNonce = entityWrappedKey;
-      const iv = wrappedKeyAndNonce.slice(0, 12);
-      const wrappedKey = wrappedKeyAndNonce.slice(12);
+        if (wrappingKeyAlgorithm === 'ec:secp256r1') {
+          const serverEphemeralKey: CryptoKey = await pemPublicToCrypto(sessionPublicKey);
+          const ekr = ephemeralEncryptionKeysRaw as CryptoKeyPair;
+          const kek = await keyAgreement(ekr.privateKey, serverEphemeralKey, {
+            hkdfSalt: await ztdfSalt,
+            hkdfHash: 'SHA-256',
+          });
+          const wrappedKeyAndNonce = entityWrappedKey;
+          const iv = wrappedKeyAndNonce.slice(0, 12);
+          const wrappedKey = wrappedKeyAndNonce.slice(12);
 
-      const dek = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, kek, wrappedKey);
+          const dek = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, kek, wrappedKey);
 
-      return {
-        key: new Uint8Array(dek),
-        metadata,
-        requiredObligations,
-      };
+          return {
+            key: new Uint8Array(dek),
+            metadata,
+            requiredObligations,
+          };
+        }
+        const key = Binary.fromArrayBuffer(entityWrappedKey);
+        const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(
+          key,
+          ephemeralEncryptionKeys.privateKey
+        );
+
+        return {
+          key: new Uint8Array(decryptedKeyBinary.asByteArray()),
+          metadata,
+          requiredObligations,
+        };
+      }
+
+      case 'error': {
+        handleRpcRewrapErrorString(result.result.value, getPlatformUrlFromKasEndpoint(url));
+      }
+
+      default: {
+        throw new DecryptError('KAS rewrap response missing wrapped key');
+      }
     }
-    const key = Binary.fromArrayBuffer(entityWrappedKey);
-    const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(
-      key,
-      ephemeralEncryptionKeys.privateKey
-    );
-
-    return {
-      key: new Uint8Array(decryptedKeyBinary.asByteArray()),
-      metadata,
-      requiredObligations,
-    };
   }
 
   let poolSize = 1;
