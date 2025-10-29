@@ -418,7 +418,7 @@ export default class Client {
     }
 
     return {
-      requiredObligations: requiredObligations,
+      requiredObligations,
       unwrappedKey: unwrappedKey,
     };
   }
