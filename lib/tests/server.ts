@@ -178,8 +178,7 @@ const kas: RequestListener = async (req, res) => {
           res.end('{"error": "Invalid wrapped key"}');
           return;
         }
-        const isECWrapped =
-          keyAccessObject?.kid == 'e1';
+        const isECWrapped = keyAccessObject?.kid == 'e1';
         // Decrypt the wrapped key from TDF3
         let dek: Binary;
         if (isECWrapped) {

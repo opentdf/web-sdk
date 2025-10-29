@@ -309,7 +309,7 @@ export default class Client {
       this.authProvider,
       this.fulfillableObligationFQNs
     );
-    
+
     // Upgrade any V1 responses to V2
     upgradeRewrapResponseV1(rewrapResp);
 
