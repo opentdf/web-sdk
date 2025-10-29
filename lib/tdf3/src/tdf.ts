@@ -844,11 +844,17 @@ async function unwrapKey({
       authProvider,
       fulfillableObligations
     );
+    // Upgrade V1 response to V2 format if needed
     upgradeRewrapResponseV1(rewrapResp);
     const { sessionPublicKey } = rewrapResp;
     const requiredObligations = getRequiredObligationFQNs(rewrapResp);
     // Assume only one response and one result for now (V1 style)
-    const result = rewrapResp.responses[0].results[0];
+    const result = rewrapResp.responses?.[0]?.results?.[0];
+    if (!result) {
+      // This should not happen - KAS should always return at least one response and one result
+      // or the upgradeRewrapResponseV1 should have created them
+      throw new DecryptError('KAS rewrap response missing expected response or result');
+    }
     const metadata = result.metadata;
     // Handle the different cases of result.result
     switch (result.result.case) {

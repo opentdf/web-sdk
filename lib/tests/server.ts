@@ -168,27 +168,27 @@ const kas: RequestListener = async (req, res) => {
         res.end('{"error": "Invalid client public key"}');
         return;
       }
-      const kaoheader = rewrap.requests?.[0]?.keyAccessObjects?.[0]?.keyAccessObject?.header;
+      const keyAccessObject = rewrap.requests?.[0]?.keyAccessObjects?.[0]?.keyAccessObject;
+      const kaoheader = keyAccessObject?.header;
       const isZTDF = !kaoheader || kaoheader.length === 0;
       if (isZTDF) {
-        const wk = rewrap.requests?.[0]?.keyAccessObjects?.[0]?.keyAccessObject?.wrappedKey;
+        const wk = keyAccessObject?.wrappedKey;
         if (!wk || wk.length === 0) {
           res.writeHead(400);
           res.end('{"error": "Invalid wrapped key"}');
           return;
         }
-        const isECWrapped =
-          rewrap.requests?.[0]?.keyAccessObjects?.[0]?.keyAccessObject?.kid == 'e1';
+        const isECWrapped = keyAccessObject?.kid == 'e1';
         // Decrypt the wrapped key from TDF3
         let dek: Binary;
         if (isECWrapped) {
-          if (!rewrap.requests?.[0]?.keyAccessObjects?.[0]?.keyAccessObject?.ephemeralPublicKey) {
+          if (!keyAccessObject?.ephemeralPublicKey) {
             res.writeHead(400);
             res.end('{"error": "Nil ephemeral public key"}');
             return;
           }
           const ephemeralKey: CryptoKey = await pemPublicToCrypto(
-            rewrap.requests?.[0]?.keyAccessObjects?.[0]?.keyAccessObject?.ephemeralPublicKey
+            keyAccessObject?.ephemeralPublicKey
           );
           const kasPrivateKeyBytes = base64.decodeArrayBuffer(
             removePemFormatting(Mocks.kasECPrivateKey)
