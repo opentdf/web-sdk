@@ -273,7 +273,7 @@ export default class Client {
         create(UnsignedRewrapRequest_WithPolicyRequestSchema, {
           keyAccessObjects: [
             {
-              keyAccessObjectId: 'kao-0',
+              keyAccessObjectId: 'kao-0', // only one kao, no bulk
               keyAccessObject: {
                 header: new Uint8Array(nanoTdfHeader),
                 kasUrl: '',
@@ -309,10 +309,17 @@ export default class Client {
       this.authProvider,
       this.fulfillableObligationFQNs
     );
+    
+    // Upgrade any V1 responses to V2
     upgradeRewrapResponseV1(rewrapResp);
 
-    // Assume only one response and one result for now (V1 style)
-    const result = rewrapResp.responses[0].results[0];
+    const result = rewrapResp.responses?.[0]?.results?.[0];
+    if (!result) {
+      // This should not happen - KAS should always return at least one response and one result
+      // or the upgradeRewrapResponseV1 should have created them
+      throw new DecryptError('KAS rewrap response missing expected response or result');
+    }
+
     let entityWrappedKey: Uint8Array<ArrayBufferLike>;
     switch (result.result.case) {
       case 'kasWrappedKey': {

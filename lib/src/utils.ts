@@ -263,6 +263,7 @@ export function getRequiredObligationFQNs(response: RewrapResponse) {
 
 /**
  * Upgrades a RewrapResponse from v1 format to v2.
+ * Note: This mutates the response in place.
  */
 export function upgradeRewrapResponseV1(response: RewrapResponse) {
   if (response.responses.length > 0) {
