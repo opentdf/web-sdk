@@ -222,7 +222,7 @@ jobs:
     needs:
       - cli
       - lib
-    uses: opentdf/tests/.github/workflows/xtest.yml@main
+    uses: opentdf/tests/.github/workflows/xtest.yml@dspx-1854-js-obligations
     with:
       focus-sdk: js
       js-ref: ${{ github.ref }} latest lts
