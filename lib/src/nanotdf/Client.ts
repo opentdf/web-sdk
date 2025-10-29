@@ -309,6 +309,26 @@ export default class Client {
       this.authProvider,
       this.fulfillableObligationFQNs
     );
+    upgradeRewrapResponseV1(rewrapResp);
+
+    // Assume only one response and one result for now (V1 style)
+    const result = rewrapResp.responses[0].results[0];
+    let entityWrappedKey: Uint8Array<ArrayBufferLike>;
+    switch (result.result.case) {
+      case 'kasWrappedKey': {
+        entityWrappedKey = result.result.value;
+        break;
+      }
+      case 'error': {
+        handleRpcRewrapErrorString(
+          result.result.value,
+          getPlatformUrlFromKasEndpoint(kasRewrapUrl)
+        );
+      }
+      default: {
+        throw new DecryptError('KAS rewrap response missing wrapped key');
+      }
+    }
 
     // Upgrade any V1 responses to V2
     upgradeRewrapResponseV1(rewrapResp);
