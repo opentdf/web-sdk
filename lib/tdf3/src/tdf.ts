@@ -894,7 +894,11 @@ async function unwrapKey({
       }
 
       case 'error': {
-        handleRpcRewrapErrorString(result.result.value, getPlatformUrlFromKasEndpoint(url));
+        handleRpcRewrapErrorString(
+          result.result.value,
+          getPlatformUrlFromKasEndpoint(url),
+          requiredObligations
+        );
       }
 
       default: {

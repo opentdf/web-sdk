@@ -319,6 +319,8 @@ export default class Client {
       throw new DecryptError('KAS rewrap response missing expected response or result');
     }
 
+    const requiredObligations = getRequiredObligationFQNs(rewrapResp);
+
     let entityWrappedKey: Uint8Array<ArrayBufferLike>;
     switch (result.result.case) {
       case 'kasWrappedKey': {
@@ -328,7 +330,8 @@ export default class Client {
       case 'error': {
         handleRpcRewrapErrorString(
           result.result.value,
-          getPlatformUrlFromKasEndpoint(kasRewrapUrl)
+          getPlatformUrlFromKasEndpoint(kasRewrapUrl),
+          requiredObligations
         );
       }
       default: {
@@ -415,7 +418,7 @@ export default class Client {
     }
 
     return {
-      requiredObligations: getRequiredObligationFQNs(rewrapResp),
+      requiredObligations: requiredObligations,
       unwrappedKey: unwrappedKey,
     };
   }

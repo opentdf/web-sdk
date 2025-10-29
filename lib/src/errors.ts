@@ -103,6 +103,14 @@ export class UnauthenticatedError extends TdfError {
 /** Authorization failure (403) */
 export class PermissionDeniedError extends TdfError {
   override name = 'PermissionDeniedError';
+  readonly requiredObligations?: string[];
+
+  constructor(message: string, obligations?: string[], cause?: Error) {
+    super(message, cause);
+    if (obligations && obligations.length > 0) {
+      this.requiredObligations = obligations;
+    }
+  }
 }
 
 /**
