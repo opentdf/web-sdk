@@ -13,18 +13,18 @@ Sample round trip execution:
 ```sh
 echo hello-world >sample.txt
 bin/opentdf.mjs encrypt \
-  --kasEndpoint http://localhost:65432/api/kas \
-  --oidcEndpoint http://localhost:65432/auth/realms/opentdf \
-  --auth tdf-client:123-456 \
+  --kasEndpoint http://localhost:8080/kas \
+  --oidcEndpoint http://localhost:8888/auth/realms/opentdf \
+  --auth opentdf:secret \
   --containerType tdf3 \
   --output sample.tdf \
   sample.txt
 bin/opentdf.mjs \
-  --kasEndpoint http://localhost:65432/api/kas \
-  --oidcEndpoint http://localhost:65432/auth/realms/opentdf \
-  --auth tdf-client:123-456 \
+  --kasEndpoint http://localhost:8080/kas \
+  --oidcEndpoint http://localhost:8888/auth/realms/opentdf \
+  --auth opentdf:secret \
   --containerType tdf3 \
-  --userId alice@somewhere.there \
+  --ignoreAllowList \
   decrypt sample.tdf
 ```
 
