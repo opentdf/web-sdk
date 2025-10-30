@@ -1,5 +1,10 @@
 import { type AuthProvider } from './auth/providers.js';
-import { ConfigurationError, InvalidFileError } from './errors.js';
+import {
+  ConfigurationError,
+  InvalidFileError,
+  PermissionDeniedError,
+  PermissionDeniedObligationsError,
+} from './errors.js';
 import { type EncryptOptions as NanoEncryptOptions, NanoTDFDatasetClient } from './nanoclients.js';
 export { Client as TDF3Client } from '../tdf3/src/client/index.js';
 import NanoTDF from './nanotdf/NanoTDF.js';
@@ -621,22 +626,32 @@ class NanoTDFReader {
     // TODO: The version number should be fetched from the API
     const version = '0.0.1';
     // Rewrap key on every request
-    const { unwrappedKey: dek, requiredObligations } = await nc.rewrapKey(
-      nanotdf.header.toBuffer(),
-      nanotdf.header.getKasRewrapUrl(),
-      nanotdf.header.magicNumberVersion,
-      version
-    );
-    if (!dek) {
-      // These should have thrown already.
-      throw new Error('internal: key rewrap failure');
+    try {
+      const { unwrappedKey: dek, requiredObligations } = await nc.rewrapKey(
+        nanotdf.header.toBuffer(),
+        nanotdf.header.getKasRewrapUrl(),
+        nanotdf.header.magicNumberVersion,
+        version
+      );
+      if (!dek) {
+        // These should have thrown already.
+        throw new Error('internal: key rewrap failure');
+      }
+      this.requiredObligations = { fqns: requiredObligations };
+      this.rewrapCache.set(nanotdf.header.ephemeralPublicKey, dek);
+      const r: DecoratedStream = await streamify(decryptNanoTDF(dek, nanotdf));
+      // TODO figure out how to attach policy and metadata to the stream
+      r.header = nanotdf.header;
+      return r;
+    } catch (error) {
+      if (error instanceof PermissionDeniedObligationsError) {
+        if (error.requiredObligations && error.requiredObligations.length > 0) {
+          this.requiredObligations = { fqns: error.requiredObligations };
+        }
+        throw new PermissionDeniedError(error.message, error.cause as Error);
+      }
+      throw error;
     }
-    this.requiredObligations = { fqns: requiredObligations };
-    this.rewrapCache.set(nanotdf.header.ephemeralPublicKey, dek);
-    const r: DecoratedStream = await streamify(decryptNanoTDF(dek, nanotdf));
-    // TODO figure out how to attach policy and metadata to the stream
-    r.header = nanotdf.header;
-    return r;
   }
 
   async close() {}
@@ -721,31 +736,41 @@ class ZTDFReader {
     }
 
     const overview = await this.overview;
-    const oldStream = await decryptStreamFrom(
-      {
-        allowList,
-        authProvider,
-        chunker: this.source,
-        concurrencyLimit: 1,
-        cryptoService,
-        dpopKeys,
-        fileStreamServiceWorker: this.client.clientConfig.fileStreamServiceWorker,
-        keyMiddleware: async (k) => k,
-        progressHandler: this.client.clientConfig.progressHandler,
-        assertionVerificationKeys,
-        noVerifyAssertions,
-        wrappingKeyAlgorithm,
-        fulfillableObligations: this.opts.fulfillableObligationFQNs || [],
-      },
-      overview
-    );
-    this.requiredObligations = {
-      fqns: oldStream.obligations(),
-    };
-    const stream: DecoratedStream = oldStream.stream;
-    stream.manifest = Promise.resolve(overview.manifest);
-    stream.metadata = Promise.resolve(oldStream.metadata);
-    return stream;
+    try {
+      const oldStream = await decryptStreamFrom(
+        {
+          allowList,
+          authProvider,
+          chunker: this.source,
+          concurrencyLimit: 1,
+          cryptoService,
+          dpopKeys,
+          fileStreamServiceWorker: this.client.clientConfig.fileStreamServiceWorker,
+          keyMiddleware: async (k) => k,
+          progressHandler: this.client.clientConfig.progressHandler,
+          assertionVerificationKeys,
+          noVerifyAssertions,
+          wrappingKeyAlgorithm,
+          fulfillableObligations: this.opts.fulfillableObligationFQNs || [],
+        },
+        overview
+      );
+      this.requiredObligations = {
+        fqns: oldStream.obligations(),
+      };
+      const stream: DecoratedStream = oldStream.stream;
+      stream.manifest = Promise.resolve(overview.manifest);
+      stream.metadata = Promise.resolve(oldStream.metadata);
+      return stream;
+    } catch (error) {
+      if (error instanceof PermissionDeniedObligationsError) {
+        if (error.requiredObligations && error.requiredObligations.length > 0) {
+          this.requiredObligations = { fqns: error.requiredObligations };
+        }
+        throw new PermissionDeniedError(error.message, error.cause as Error);
+      }
+      throw error;
+    }
   }
 
   async close() {

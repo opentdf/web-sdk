@@ -103,6 +103,13 @@ export class UnauthenticatedError extends TdfError {
 /** Authorization failure (403) */
 export class PermissionDeniedError extends TdfError {
   override name = 'PermissionDeniedError';
+}
+
+/** Authorization failure (403) with required obligations
+ * FOR INTERNAL USE ONLY -- All instances should be caught and rethrown as PermissionDeniedError
+ */
+export class PermissionDeniedObligationsError extends PermissionDeniedError {
+  override name = 'PermissionDeniedObligationsError';
   readonly requiredObligations?: string[];
 
   constructor(message: string, obligations?: string[], cause?: Error) {

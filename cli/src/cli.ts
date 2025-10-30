@@ -17,6 +17,7 @@ import {
   OpenTDF,
   DecoratedStream,
   isPublicKeyAlgorithm,
+  TDFReader,
 } from '@opentdf/sdk';
 import { CLIError, Level, log } from './logger.js';
 import { webcrypto } from 'crypto';
@@ -643,10 +644,12 @@ export const handleArgs = (args: string[]) => {
             policyEndpoint: guessedPolicyEndpoint,
             platformUrl: argv.platformUrl || guessedPolicyEndpoint,
           });
+          let reader: TDFReader | undefined = undefined;
           try {
             log('SILLY', `Initialized client`);
             log('DEBUG', `About to TDF3 decrypt [${argv.file}]`);
-            const ct = await client.read(await parseReadOptions(argv));
+            reader = client.open(await parseReadOptions(argv));
+            const ct = await reader.decrypt();
             const destination = argv.output ? createWriteStream(argv.output) : process.stdout;
             await ct.pipeTo(Writable.toWeb(destination));
 
@@ -673,6 +676,15 @@ export const handleArgs = (args: string[]) => {
             }
             console.assert(accessToken, 'No access_token found');
             console.assert(!argv.dpop || dpopToken, 'DPoP requested but absent');
+          } catch (error) {
+            if (error.name === 'PermissionDeniedError') {
+              if (reader) {
+                const obligations = await reader.obligations();
+                error.message += `; required obligations: ${JSON.stringify(obligations.fqns)}`;
+              }
+            }
+            // Optionally rethrow other errors
+            throw error;
           } finally {
             client.close();
           }

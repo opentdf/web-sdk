@@ -13,6 +13,7 @@ import {
   InvalidFileError,
   NetworkError,
   PermissionDeniedError,
+  PermissionDeniedObligationsError,
   ServiceError,
   UnauthenticatedError,
 } from '../errors.js';
@@ -96,7 +97,7 @@ export function handleRpcRewrapErrorString(
   }
   if (e.includes(Code[Code.PermissionDenied])) {
     if (requiredObligations && requiredObligations.length > 0) {
-      throw new PermissionDeniedError(
+      throw new PermissionDeniedObligationsError(
         `403 for [${platformUrl}]; rewrap permission denied`,
         requiredObligations
       );
