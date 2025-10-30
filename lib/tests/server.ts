@@ -69,6 +69,7 @@ const kas: RequestListener = async (req, res) => {
       'range',
       'x-test-response',
       'x-test-response-message',
+      'x-test-required-obligations',
       'roundtrip-test-response',
       'connect-protocol-version',
       'connect-streaming-protocol-version',
@@ -127,6 +128,52 @@ const kas: RequestListener = async (req, res) => {
             res.end(JSON.stringify({ error: 'Unauthorized' }));
             return;
           case 403:
+            if (req.headers['x-test-required-obligations']) {
+              console.log(
+                '[DEBUG] required obligations header found ',
+                req.headers['x-test-required-obligations'] as string
+              );
+              const obligations: string[] = JSON.parse(
+                req.headers['x-test-required-obligations'] as string
+              );
+              console.log('[DEBUG] required obligations: ', obligations);
+              const reply = create(RewrapResponseSchema, {
+                responses: [
+                  create(PolicyRewrapResultSchema, {
+                    results: [
+                      create(KeyAccessRewrapResultSchema, {
+                        metadata: {
+                          'X-Required-Obligations': {
+                            kind: {
+                              case: 'listValue',
+                              value: {
+                                values: obligations.map((obligation) =>
+                                  create(ValueSchema, {
+                                    kind: {
+                                      case: 'stringValue',
+                                      value: obligation,
+                                    },
+                                  })
+                                ),
+                              },
+                            },
+                          },
+                        },
+                        result: {
+                          case: 'error',
+                          value: 'Permission denied',
+                        },
+                      }),
+                    ],
+                  }),
+                ],
+              });
+
+              res.statusCode = 200;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(toJsonString(RewrapResponseSchema, reply));
+              return;
+            }
             res.end(JSON.stringify({ error: 'Forbidden' }));
             return;
           case 500:

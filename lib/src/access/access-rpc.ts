@@ -85,13 +85,22 @@ export function handleRpcRewrapError(e: unknown, platformUrl: string): never {
   throw new NetworkError(`[${platformUrl}] [Rewrap] ${extractRpcErrorMessage(e)}`);
 }
 
-export function handleRpcRewrapErrorString(e: string, platformUrl: string): never {
+export function handleRpcRewrapErrorString(
+  e: string,
+  platformUrl: string,
+  requiredObligations?: string[]
+): never {
   if (e.includes(Code[Code.InvalidArgument])) {
     // 400 Bad Request
     throw new InvalidFileError(`400 for [${platformUrl}]: rewrap bad request [${e}]`);
   }
   if (e.includes(Code[Code.PermissionDenied])) {
-    // 403 Forbidden
+    if (requiredObligations && requiredObligations.length > 0) {
+      throw new PermissionDeniedError(
+        `403 for [${platformUrl}]; rewrap permission denied`,
+        requiredObligations
+      );
+    }
     throw new PermissionDeniedError(`403 for [${platformUrl}]; rewrap permission denied`);
   }
   if (e.includes(Code[Code.Unauthenticated])) {
