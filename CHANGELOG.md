@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.6.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.5.0...sdk-v0.6.0) (2025-10-30)
+
+
+### Features
+
+* **ci:** Add a workflow to update the generated code for new protocol/go versions ([#767](https://github.com/opentdf/web-sdk/issues/767)) ([c9d5f21](https://github.com/opentdf/web-sdk/commit/c9d5f21f89c7a523a524b8da3345c9b0c69743dc))
+* **sdk:** Add requiredObligations to the PermissionDeniedError ([#781](https://github.com/opentdf/web-sdk/issues/781)) ([9cd7b44](https://github.com/opentdf/web-sdk/commit/9cd7b44b406e96d00c8bb17d3783bc0652b7fe2f))
+* **sdk:** Move to rewrap v2 request/response format ([#774](https://github.com/opentdf/web-sdk/issues/774)) ([e7718d5](https://github.com/opentdf/web-sdk/commit/e7718d583d2cd1b770afd4bb0b3159d5a05ba21c))
+
+
+### Bug Fixes
+
+* **sdk:** Additional comments and cleanup of Rewrap V2 code ([#780](https://github.com/opentdf/web-sdk/issues/780)) ([bb29962](https://github.com/opentdf/web-sdk/commit/bb299623d82572509b6a59557a97e5cca5ad6740))
+
 ## [0.5.0](https://github.com/opentdf/web-sdk/compare/sdk/v0.4.0...sdk-v0.5.0) (2025-10-17)
 
 
