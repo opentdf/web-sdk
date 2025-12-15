@@ -8,3 +8,4 @@ export { default as encrypt } from './encrypt.js';
 export { default as encryptDataset } from './encrypt-dataset.js';
 export { default as getHkdfSalt } from './helpers/getHkdfSalt.js';
 export { default as DefaultParams } from './models/DefaultParams.js';
+export { default as PolicyType } from './enum/PolicyTypeEnum.js';
