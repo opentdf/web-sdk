@@ -1,5 +1,5 @@
 import { canonicalizeEx } from 'json-canonicalize';
-import { SignJWT, jwtVerify } from 'jose';
+import { SignJWT, jwtVerify, importJWK, importX509 } from 'jose';
 import { base64, hex } from '../../src/encodings/index.js';
 import { ConfigurationError, IntegrityError, InvalidFileError } from '../../src/errors.js';
 import { tdfSpecVersion, version as sdkVersion } from '../../src/version.js';
@@ -119,8 +119,15 @@ export async function verify(
 ): Promise<void> {
   let payload: AssertionPayload;
   try {
-    const uj = await jwtVerify(thiz.binding.signature, key.key, {
-      algorithms: [key.alg],
+    const uj = await jwtVerify(thiz.binding.signature, async (header) => {
+      if (header.jwk) {
+        return await importJWK(header.jwk, header.alg);
+      }
+      if (header.x5c && header.x5c.length > 0) {
+        const cert = `-----BEGIN CERTIFICATE-----\n${header.x5c[0]}\n-----END CERTIFICATE-----`;
+        return await importX509(cert, header.alg);
+      }
+      return key.key;
     });
     payload = uj.payload as AssertionPayload;
   } catch (error) {
