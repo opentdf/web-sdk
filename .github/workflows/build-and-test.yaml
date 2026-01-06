@@ -14,6 +14,6 @@ on:
 
 jobs:
   build-and-test:
-    uses: opentdf/web-sdk/.github/workflows/reusable_build-and-test.yaml@main
+    uses: opentdf/web-sdk/.github/workflows/reusable_build-and-test.yaml@feature/js-keymanagement-skip
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
