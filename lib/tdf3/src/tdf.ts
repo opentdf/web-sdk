@@ -29,9 +29,9 @@ import {
   UnsafeUrlError,
   UnsupportedFeatureError as UnsupportedError,
 } from '../../src/errors.js';
-import { generateKeyPair } from '../../src/nanotdf-crypto/generateKeyPair.js';
-import { keyAgreement } from '../../src/nanotdf-crypto/keyAgreement.js';
-import { pemPublicToCrypto } from '../../src/nanotdf-crypto/pemPublicToCrypto.js';
+import { generateKeyPair } from '../../src/crypto/generateKeyPair.js';
+import { keyAgreement } from '../../src/crypto/keyAgreement.js';
+import { pemPublicToCrypto } from '../../src/crypto/pemPublicToCrypto.js';
 import { type Chunker } from '../../src/seekable.js';
 import { tdfSpecVersion } from '../../src/version.js';
 import { AssertionConfig, AssertionKey, AssertionVerificationKeys } from './assertions.js';

@@ -23,49 +23,41 @@ test('login', async ({ page }) => {
   await expect(page.locator('#user_token')).toHaveText(/accessToken/);
 });
 
-const scenarios = {
-  nano: { encryptSelector: '#nanoEncrypt' },
-  tdf: { encryptSelector: '#zipEncrypt' },
-};
+test('roundtrip ztdf', async ({ page }) => {
+  page.on('download', (download) =>
+    download.path().then((r) => console.log(`Saves ${download.suggestedFilename()} as ${r}`))
+  );
 
-for (const [name, { encryptSelector }] of Object.entries(scenarios)) {
-  test(`roundtrip ${name}`, async ({ page }) => {
-    page.on('download', (download) =>
-      download.path().then((r) => console.log(`Saves ${download.suggestedFilename()} as ${r}`))
-    );
+  await authorize(page);
+  await loadFile(page, 'README.md');
+  const downloadPromise = page.waitForEvent('download');
+  await page.locator('#fileSink').click();
+  await page.locator('#encryptButton').click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toContain('README.md.');
+  const cipherTextPath = await download.path();
+  expect(cipherTextPath).toBeTruthy();
+  if (!cipherTextPath) {
+    throw new Error();
+  }
 
-    await authorize(page);
-    await loadFile(page, 'README.md');
-    const downloadPromise = page.waitForEvent('download');
-    await page.locator(encryptSelector).click();
-    await page.locator('#fileSink').click();
-    await page.locator('#encryptButton').click();
-    const download = await downloadPromise;
-    expect(download.suggestedFilename()).toContain('README.md.');
-    const cipherTextPath = await download.path();
-    expect(cipherTextPath).toBeTruthy();
-    if (!cipherTextPath) {
-      throw new Error();
-    }
-
-    // Clear file selector and upload againg
-    await page.locator('#clearFile').click();
-    await loadFile(page, cipherTextPath);
-    const plainDownloadPromise = page.waitForEvent('download');
-    await page.locator('#fileSink').click();
-    await page.locator('#decryptButton').click();
-    const download2 = await plainDownloadPromise;
-    expect(download2.suggestedFilename()).toContain('.decrypted');
-    const plainTextPath = await download2.path();
-    if (!plainTextPath) {
-      throw new Error();
-    }
-    const text = await readFile(plainTextPath, 'utf8');
-    expect(text, `Looking for clone command in ${plainTextPath}`).toContain(
-      'try encrypting some of your own files'
-    );
-  });
-}
+  // Clear file selector and upload again
+  await page.locator('#clearFile').click();
+  await loadFile(page, cipherTextPath);
+  const plainDownloadPromise = page.waitForEvent('download');
+  await page.locator('#fileSink').click();
+  await page.locator('#decryptButton').click();
+  const download2 = await plainDownloadPromise;
+  expect(download2.suggestedFilename()).toContain('.decrypted');
+  const plainTextPath = await download2.path();
+  if (!plainTextPath) {
+    throw new Error();
+  }
+  const text = await readFile(plainTextPath, 'utf8');
+  expect(text, `Looking for clone command in ${plainTextPath}`).toContain(
+    'try encrypting some of your own files'
+  );
+});
 
 test('Remote Source Streaming', async ({ page }) => {
   const server = await serve('.', 8086);
@@ -75,7 +67,6 @@ test('Remote Source Streaming', async ({ page }) => {
     await page.locator('#urlSelector').fill('http://localhost:8086/README.md');
 
     const downloadPromise = page.waitForEvent('download');
-    await page.locator('#zipEncrypt').click();
     await page.locator('#fileSink').click();
     await page.locator('#encryptButton').click();
 
@@ -92,7 +83,7 @@ test('Remote Source Streaming', async ({ page }) => {
     console.log(`cp ${cipherTextPath} ${targetPath}`);
     fs.copyFileSync(cipherTextPath, targetPath);
 
-    // Clear file selector and upload againg
+    // Clear file selector and upload again
     await page.locator('#urlSelector').fill('http://localhost:8086/README.md.tdf');
     const plainDownloadPromise = page.waitForEvent('download');
     await page.locator('#fileSink').click();

@@ -3,7 +3,7 @@ import {
   computeECDSASig,
   verifyECDSASignature,
   extractRSValuesFromSignature,
-} from '../../../src/nanotdf-crypto/ecdsaSignature.js';
+} from '../../../src/crypto/ecdsaSignature.js';
 
 describe('ECDSA Signature Functions', () => {
   let privateKey: CryptoKey;

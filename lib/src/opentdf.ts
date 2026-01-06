@@ -1,11 +1,6 @@
 import { type AuthProvider } from './auth/providers.js';
 import { ConfigurationError, InvalidFileError } from './errors.js';
-import { type EncryptOptions as NanoEncryptOptions, NanoTDFDatasetClient } from './nanoclients.js';
 export { Client as TDF3Client } from '../tdf3/src/client/index.js';
-import NanoTDF from './nanotdf/NanoTDF.js';
-import decryptNanoTDF from './nanotdf/decrypt.js';
-import Client from './nanotdf/Client.js';
-import Header from './nanotdf/models/Header.js';
 import { Chunker, fromSource, sourceToStream, type Source } from './seekable.js';
 import { Client as TDF3Client } from '../tdf3/src/client/index.js';
 import {
@@ -34,7 +29,6 @@ import {
   type IntegrityAlgorithm,
 } from '../tdf3/src/tdf.js';
 import { base64 } from './encodings/index.js';
-import PolicyType from './nanotdf/enum/PolicyTypeEnum.js';
 import { Policy } from '../tdf3/src/models/policy.js';
 
 export {
@@ -83,29 +77,6 @@ export type CreateOptions = {
 
   /** Source of plaintext data. */
   source: Source;
-};
-
-/** Options for creating a NanoTDF. */
-export type CreateNanoTDFOptions = CreateOptions & {
-  /** The type of binding to use for the NanoTDF. */
-  bindingType?: 'ecdsa' | 'gmac';
-
-  /** When creating a new collection, use ECDSA binding with this key id from the signers, instead of the DEK. */
-  ecdsaBindingKeyID?: string;
-
-  /**
-   * When creating a new collection, use the key in the `signers` list with this id
-   * to generate a signature for each element. When absent, the nanotdf is unsigned.
-   */
-  signingKeyID?: string;
-};
-
-/** Options for creating a NanoTDF collection. */
-export type CreateNanoTDFCollectionOptions = CreateNanoTDFOptions & {
-  /** The platform URL. */
-  platformUrl: string;
-  /** The maximum number of key iterations to use for a single DEK. */
-  maxKeyIterations?: number;
 };
 
 /** Metadata for a TDF object. */
@@ -202,9 +173,6 @@ export type OpenTDFOptions = {
    * which is out of the scope of this library.
    */
   dpopKeys?: Promise<CryptoKeyPair>;
-
-  /** Configuration options for the collection header cache. */
-  rewrapCacheOptions?: RewrapCacheOptions;
 };
 
 /** A decorated readable stream. */
@@ -213,85 +181,7 @@ export type DecoratedStream = ReadableStream<Uint8Array> & {
   metadata?: Promise<unknown>;
   /** The TDF manifest. */
   manifest?: Promise<Manifest>;
-  /** If the source is a NanoTDF, this will be set. */
-  header?: Header;
 };
-
-/** Configuration options for the collection header cache. */
-export type RewrapCacheOptions = {
-  /** If we should disable (bypass) the cache. */
-  bypass?: boolean;
-
-  /** Evict keys after this many milliseconds. */
-  maxAge?: number;
-
-  /** Check for expired keys once every this many milliseconds. */
-  pollInterval?: number;
-};
-
-const defaultRewrapCacheOptions: Required<RewrapCacheOptions> = {
-  bypass: false,
-  maxAge: 300000,
-  pollInterval: 500,
-};
-
-/**
- * Cache for headers of nanotdf collections, to quickly open multiple entries of the same collection.
- * It has a demon that removes all keys that have not been accessed in the last 5 minutes.
- * To cancel the demon, and clear the cache, call `close()`.
- * */
-export class RewrapCache {
-  private cache?: Map<Uint8Array, { lastAccessTime: number; value: CryptoKey }>;
-  private closer?: ReturnType<typeof setInterval>;
-  constructor(opts?: RewrapCacheOptions) {
-    const { bypass, maxAge, pollInterval } = { ...defaultRewrapCacheOptions, ...opts };
-    if (bypass) {
-      return;
-    }
-    this.cache = new Map();
-    this.closer = setInterval(() => {
-      const now = Date.now();
-      const c = this.cache;
-      if (!c) {
-        return;
-      }
-      for (const [key, value] of c.entries()) {
-        if (now - value.lastAccessTime > maxAge) {
-          c.delete(key);
-        }
-      }
-    }, pollInterval);
-  }
-
-  get(key: Uint8Array): CryptoKey | undefined {
-    if (!this.cache) {
-      return undefined;
-    }
-    const entry = this.cache.get(key);
-    if (entry) {
-      entry.lastAccessTime = Date.now();
-      return entry.value;
-    }
-    return undefined;
-  }
-
-  /** Set a key in the cache. */
-  set(key: Uint8Array, value: CryptoKey) {
-    if (!this.cache) {
-      return;
-    }
-    this.cache.set(key, { lastAccessTime: Date.now(), value });
-  }
-
-  /** Close the cache and release any resources. */
-  close() {
-    if (this.closer !== undefined) {
-      clearInterval(this.closer);
-      delete this.closer;
-      delete this.cache;
-    }
-  }
-}
 
 /**
  * A TDF reader that can decrypt and inspect a TDF file.
@@ -324,7 +214,6 @@ export type TDFReader = {
 
 /**
  * The main OpenTDF class that provides methods for creating and reading TDF files.
- * It supports both NanoTDF and ZTDF formats.
  * It can be used to create new TDF files and read existing ones.
  * This class is the entry point for using the OpenTDF SDK.
  * It requires an authentication provider to be passed in the constructor.
@@ -369,8 +258,6 @@ export class OpenTDF {
   defaultReadOptions: Omit<ReadOptions, 'source'>;
   /** The DPoP keys for this instance, if any. */
   readonly dpopKeys: Promise<CryptoKeyPair>;
-  /** Cache for rewrapped keys */
-  private readonly rewrapCache: RewrapCache;
   /** The TDF3 client for encrypting and decrypting ZTDF files. */
   readonly tdf3Client: TDF3Client;
 
@@ -381,7 +268,6 @@ export class OpenTDF {
     defaultReadOptions,
     disableDPoP,
     policyEndpoint,
-    rewrapCacheOptions,
     platformUrl,
   }: OpenTDFOptions) {
     this.authProvider = authProvider;
@@ -396,7 +282,6 @@ export class OpenTDF {
       );
     }
     this.policyEndpoint = policyEndpoint || '';
-    this.rewrapCache = new RewrapCache(rewrapCacheOptions);
     this.tdf3Client = new TDF3Client({
       authProvider,
       dpopKeys,
@@ -416,33 +301,6 @@ export class OpenTDF {
         true,
         ['sign', 'verify']
       );
-  }
-
-  /** Creates a new NanoTDF stream. */
-  async createNanoTDF(opts: CreateNanoTDFOptions): Promise<DecoratedStream> {
-    opts = {
-      ...this.defaultCreateOptions,
-      ...opts,
-    };
-    const collection = await this.createNanoTDFCollection({
-      ...opts,
-      platformUrl: this.platformUrl,
-    });
-    try {
-      return await collection.encrypt(opts.source);
-    } finally {
-      await collection.close();
-    }
-  }
-
-  /**
-   * Creates a new collection object, which can be used to encrypt a series of data with the same policy.
-   */
-  async createNanoTDFCollection(
-    opts: CreateNanoTDFCollectionOptions
-  ): Promise<NanoTDFCollectionWriter> {
-    opts = { ...this.defaultCreateOptions, ...opts };
-    return new Collection(this.authProvider, opts);
   }
 
   /** Creates a new ZTDF stream. */
@@ -473,7 +331,7 @@ export class OpenTDF {
   /** Opens a TDF file for inspection and decryption. */
   open(opts: ReadOptions): TDFReader {
     opts = { ...this.defaultReadOptions, ...opts };
-    return new UnknownTypeReader(this, opts, this.rewrapCache);
+    return new ZTDFReaderWrapper(this, opts);
   }
 
   /** Decrypts a TDF file. */
@@ -484,18 +342,17 @@ export class OpenTDF {
 
   /** Closes the OpenTDF instance and releases any resources. */
   close() {
-    this.rewrapCache.close();
+    // No-op for now, but kept for API compatibility
   }
 }
 
-/** A TDF reader that can automatically detect the TDF type. */
-class UnknownTypeReader {
+/** A TDF reader wrapper that handles ZTDF files. */
+class ZTDFReaderWrapper {
   delegate: Promise<TDFReader>;
   state: 'init' | 'resolving' | 'loaded' | 'decrypting' | 'closing' | 'done' | 'error' = 'init';
   constructor(
     readonly outer: OpenTDF,
-    readonly opts: ReadOptions,
-    private readonly rewrapCache: RewrapCache
+    readonly opts: ReadOptions
   ) {
     this.delegate = this.resolveType();
   }
@@ -514,9 +371,6 @@ class UnknownTypeReader {
     if (prefix[0] === 0x50 && prefix[1] === 0x4b) {
       this.state = 'loaded';
       return new ZTDFReader(this.outer.tdf3Client, this.opts, chunker);
-    } else if (prefix[0] === 0x4c && prefix[1] === 0x31 && prefix[2] === 0x4c) {
-      this.state = 'loaded';
-      return new NanoTDFReader(this.outer, this.opts, chunker, this.rewrapCache);
     }
     this.state = 'done';
     throw new InvalidFileError(`unsupported format; prefix not recognized ${prefix}`);
@@ -563,117 +417,7 @@ class UnknownTypeReader {
   }
 }
 
-/** A TDF reader for NanoTDF files. */
-class NanoTDFReader {
-  container: Promise<NanoTDF>;
-  // Required obligation FQNs that must be fulfilled, provided via the decrypt flow.
-  private requiredObligations?: RequiredObligations;
-  constructor(
-    readonly outer: OpenTDF,
-    readonly opts: ReadOptions,
-    readonly chunker: Chunker,
-    private readonly rewrapCache: RewrapCache
-  ) {
-    if (
-      !this.opts.ignoreAllowlist &&
-      !this.opts.platformUrl &&
-      !this.opts.allowedKASEndpoints?.length
-    ) {
-      throw new ConfigurationError('platformUrl is required when allowedKasEndpoints is empty');
-    }
-    // lazily load the container
-    this.container = new Promise(async (resolve, reject) => {
-      try {
-        const ciphertext = await chunker();
-        const nanotdf = NanoTDF.from(ciphertext);
-        resolve(nanotdf);
-      } catch (e) {
-        reject(e);
-      }
-    });
-  }
-
-  /**
-   * Decrypts the NanoTDF file and returns a decorated stream.
-   * Sets required obligations on the reader when retrieved from KAS rewrap response.
-   */
-  async decrypt(): Promise<DecoratedStream> {
-    const nanotdf = await this.container;
-    const cachedDEK = this.rewrapCache.get(nanotdf.header.ephemeralPublicKey);
-    if (cachedDEK) {
-      const r: DecoratedStream = await streamify(decryptNanoTDF(cachedDEK, nanotdf));
-      r.header = nanotdf.header;
-      return r;
-    }
-    const platformUrl = this.opts.platformUrl || this.outer.platformUrl;
-    const kasEndpoint =
-      this.opts.allowedKASEndpoints?.[0] || platformUrl || 'https://disallow.all.invalid';
-    const nc = new Client({
-      allowedKases: this.opts.allowedKASEndpoints,
-      fulfillableObligationFQNs: this.opts.fulfillableObligationFQNs,
-      authProvider: this.outer.authProvider,
-      ignoreAllowList: this.opts.ignoreAllowlist,
-      dpopEnabled: this.outer.dpopEnabled,
-      dpopKeys: this.outer.dpopKeys,
-      kasEndpoint,
-      platformUrl,
-    });
-    // TODO: The version number should be fetched from the API
-    const version = '0.0.1';
-    // Rewrap key on every request
-    const { unwrappedKey: dek, requiredObligations } = await nc.rewrapKey(
-      nanotdf.header.toBuffer(),
-      nanotdf.header.getKasRewrapUrl(),
-      nanotdf.header.magicNumberVersion,
-      version
-    );
-    if (!dek) {
-      // These should have thrown already.
-      throw new Error('internal: key rewrap failure');
-    }
-    this.requiredObligations = { fqns: requiredObligations };
-    this.rewrapCache.set(nanotdf.header.ephemeralPublicKey, dek);
-    const r: DecoratedStream = await streamify(decryptNanoTDF(dek, nanotdf));
-    // TODO figure out how to attach policy and metadata to the stream
-    r.header = nanotdf.header;
-    return r;
-  }
-
-  async close() {}
-
-  /** Returns blank manifest. NanoTDF has no manifest. */
-  async manifest(): Promise<Manifest> {
-    return {} as Manifest;
-  }
-
-  /** Returns the attributes of the NanoTDF file. */
-  async attributes(): Promise<string[]> {
-    const nanotdf = await this.container;
-    if (!nanotdf.header.policy?.content) {
-      return [];
-    }
-    if (nanotdf.header.policy.type !== PolicyType.EmbeddedText) {
-      throw new Error('unsupported policy type');
-    }
-    const policyString = new TextDecoder().decode(nanotdf.header.policy.content);
-    const policy = JSON.parse(policyString) as Policy;
-    return policy?.body?.dataAttributes.map((a) => a.attribute) || [];
-  }
-
-  /**
-   * Returns obligations populated from the decrypt flow.
-   * If a decrypt has not occurred, attempts one to retrieve obligations.
-   */
-  async obligations(): Promise<RequiredObligations> {
-    if (this.requiredObligations) {
-      return this.requiredObligations;
-    }
-    await this.decrypt();
-    return this.requiredObligations ?? { fqns: [] };
-  }
-}
-
-/** A reader for TDF files. */
+/** A reader for ZTDF files. */
 class ZTDFReader {
   overview: Promise<InspectedTDFOverview>;
   // Required obligation FQNs that must be fulfilled, provided via the decrypt flow.
@@ -776,86 +520,5 @@ class ZTDFReader {
     }
     await this.decrypt();
     return this.requiredObligations ?? { fqns: [] };
-  }
-}
-
-async function streamify(ab: Promise<ArrayBuffer>): Promise<ReadableStream<Uint8Array>> {
-  const stream = new ReadableStream<Uint8Array>({
-    start(controller) {
-      ab.then((arrayBuffer) => {
-        controller.enqueue(new Uint8Array(arrayBuffer));
-        controller.close();
-      });
-    },
-  });
-  return stream;
-}
-
-/** A writer for NanoTDF collections. */
-export type NanoTDFCollectionWriter = {
-  /** The NanoTDF client used for encrypting data in this collection. */
-  encrypt: (source: Source) => Promise<ReadableStream<Uint8Array>>;
-  /** Closes the collection and releases any resources. */
-  close: () => Promise<void>;
-};
-
-class Collection {
-  /** The NanoTDF client used for encrypting data in this collection. */
-  client?: NanoTDFDatasetClient;
-  /** Options for encrypting data in this collection. */
-  encryptOptions?: NanoEncryptOptions;
-
-  constructor(authProvider: AuthProvider, opts: CreateNanoTDFCollectionOptions) {
-    if (opts.signers || opts.signingKeyID) {
-      throw new ConfigurationError('ntdf signing not implemented');
-    }
-    if (opts.autoconfigure) {
-      throw new ConfigurationError('autoconfigure not implemented');
-    }
-    if (opts.ecdsaBindingKeyID) {
-      throw new ConfigurationError('custom binding key not implemented');
-    }
-    switch (opts.bindingType) {
-      case 'ecdsa':
-        this.encryptOptions = { ecdsaBinding: true };
-        break;
-      case 'gmac':
-        this.encryptOptions = { ecdsaBinding: false };
-        break;
-    }
-
-    const kasEndpoint =
-      opts.defaultKASEndpoint || opts.platformUrl || 'https://disallow.all.invalid';
-
-    this.client = new NanoTDFDatasetClient({
-      authProvider,
-      kasEndpoint: kasEndpoint,
-      maxKeyIterations: opts.maxKeyIterations,
-      platformUrl: opts.platformUrl,
-    });
-    this.client.dataAttributes = opts.attributes || [];
-  }
-
-  /** Encrypts a source into a NanoTDF stream. */
-  async encrypt(source: Source): Promise<DecoratedStream> {
-    if (!this.client) {
-      throw new ConfigurationError('Collection is closed');
-    }
-    const chunker = await fromSource(source);
-    const cipherChunk = await this.client.encrypt(await chunker(), this.encryptOptions);
-    const stream: DecoratedStream = new ReadableStream<Uint8Array>({
-      start(controller) {
-        controller.enqueue(new Uint8Array(cipherChunk));
-        controller.close();
-      },
-    });
-    // TODO: client's header object is private
-    // stream.header = this.client.header;
-    return stream;
-  }
-
-  /** Releases client resources. */
-  async close() {
-    delete this.client;
   }
 }

@@ -1,5 +1,5 @@
 import { ConfigurationError } from '../errors.js';
-import { AlgorithmName } from './../nanotdf-crypto/enums.js';
+import { AlgorithmName } from './enums.js';
 
 /**
  * Computes an ECDSA signature for the given data using the provided private key.

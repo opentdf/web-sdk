@@ -17,7 +17,6 @@ test('Large File', async ({ page }) => {
   await page.locator('#randomSelector').fill(threeGigs.toString());
 
   const downloadPromise = page.waitForEvent('download');
-  await page.locator('#zipEncrypt').click();
   await page.locator('#fileSink').click();
   await page.locator('#encryptButton').click();
 
@@ -33,7 +32,6 @@ test('Large File', async ({ page }) => {
     await page.locator('#randomSelector').clear();
     await loadFile(page, cipherTextPath);
     const plainDownloadPromise = await page.waitForEvent('download', { timeout: 60000 });
-    await page.locator('#tdfDecrypt').click();
     await page.locator('#fileSink').click();
     await page.locator('#decryptButton').click();
     const download2 = await plainDownloadPromise;
