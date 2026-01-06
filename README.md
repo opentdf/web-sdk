@@ -6,10 +6,10 @@ and some management tasks for ABAC.
 
 **[OpenTDF Web Documentation](https://opentdf.github.io/web-sdk/)**
 
-## Usage (NanoTDF)
+## Usage (ZTDF)
 
 ```typescript
-import { AuthProviders, NanoTDFClient } from '@opentdf/sdk';
+import { AuthProviders, OpenTDF } from '@opentdf/sdk';
 
 // Configuration Options
 const kasEndpoint = "http://localhost:65432/kas";
@@ -28,13 +28,23 @@ const authProvider = await AuthProviders.refreshAuthProvider({
   oidcOrigin,
 });
 
-const client = new NanoTDFClient({
+const client = new OpenTDF({
   authProvider,
-  kasEndpoint,
+  defaultCreateOptions: {
+    defaultKASEndpoint: kasEndpoint,
+  },
+  dpopKeys: authProvider.getSigningKey(),
 });
-client.dataAttributes = ["http://opentdf.io/attr/class/value/secret"]
-const cipherText = await client.encrypt(plainText);
-const clearText = await client.decrypt(cipherText);
+
+// Encrypt
+const cipherText = await client.createZTDF({
+  source: { type: 'stream', location: plainTextStream },
+  autoconfigure: false,
+});
+
+// Decrypt
+const reader = client.open({ source: { type: 'stream', location: cipherText } });
+const clearText = await reader.decrypt();
 ```
 
 ### Authorization Middleware Options
@@ -65,7 +75,7 @@ const authProvider = await AuthProviders.clientSecretAuthProvider({
 The `refreshAuthProvider` and `externalAuthProvder` allow the application developer to use existing tokens.
 
 ```typescript
-import { AuthProviders, NanoTDFClient } from '@opentdf/sdk';
+import { AuthProviders, OpenTDF } from '@opentdf/sdk';
 
 const oidcCredentials: RefreshTokenCredentials = {
   clientId: keycloakClientId,

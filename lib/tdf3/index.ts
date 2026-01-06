@@ -27,13 +27,8 @@ import {
 } from './src/models/encryption-information.js';
 import { AuthProvider, type HttpMethod, HttpRequest, withHeaders } from '../src/auth/auth.js';
 import { AesGcmCipher } from './src/ciphers/aes-gcm-cipher.js';
-import {
-  NanoTDFClient,
-  NanoTDFDatasetClient,
-  AuthProviders,
-  version,
-  clientType,
-} from '../src/nanoindex.js';
+import * as AuthProviders from '../src/auth/providers.js';
+import { version, clientType } from '../src/version.js';
 import { Algorithms, type AlgorithmName, type AlgorithmUrn } from './src/ciphers/algorithms.js';
 import { type Chunker } from '../src/seekable.js';
 
@@ -71,8 +66,6 @@ export {
   Errors,
   HttpRequest,
   KeyInfo,
-  NanoTDFClient,
-  NanoTDFDatasetClient,
   SplitKey,
   TDF3Client,
   clientType,
@@ -83,14 +76,11 @@ export {
 
 export * as WebCryptoService from './src/crypto/index.js';
 export {
-  type CreateNanoTDFCollectionOptions,
-  type CreateNanoTDFOptions,
   type CreateOptions,
   type CreateZTDFOptions,
   type DecoratedStream,
   type Keys,
   type OpenTDFOptions,
-  type NanoTDFCollectionWriter,
   type ReadOptions,
   type TDFReader,
   OpenTDF,

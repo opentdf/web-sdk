@@ -1,12 +1,12 @@
 import { expect } from '@esm-bundle/chai';
 
-import { decrypt, encrypt, pemCertToCrypto } from '../../../src/nanotdf-crypto/index.js';
+import { decrypt, encrypt, pemCertToCrypto } from '../../../src/crypto/index.js';
 
 /**
  * Alice will act as data creator
  * Bob will act as data recipient
  */
-describe('NanoTDF Crypto', () => {
+describe('Crypto Primitives', () => {
   const plainTextExpected = 'Lorem Ipsum';
   const txtEnc = new TextEncoder();
   const txtDec = new TextDecoder();

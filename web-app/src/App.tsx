@@ -26,7 +26,7 @@ function decryptedFileName(encryptedFileName: string): string {
   // [non-capture group] - match how safari and chrome insert counters before extension.
   //    I'm guessing this has some fascinating internationalizations but for now WFM is enough.
   // 3: TDF container type extension
-  const m = encryptedFileName.match(/^(.+)\.(\w+)(?:-\d+| \(\d+\))?\.(ntdf|tdf|ztdf)$/);
+  const m = encryptedFileName.match(/^(.+)\.(\w+)(?:-\d+| \(\d+\))?\.(tdf|ztdf)$/);
   console.log(encryptedFileName, m);
   if (!m) {
     console.warn(`Unable to extract raw file name from ${encryptedFileName}`);
@@ -36,7 +36,7 @@ function decryptedFileName(encryptedFileName: string): string {
 }
 
 function decryptedFileExtension(encryptedFileName: string): string {
-  const m = encryptedFileName.match(/^(.+)\.(\w+)\.(ntdf|tdf|ztdf)$/);
+  const m = encryptedFileName.match(/^(.+)\.(\w+)\.(tdf|ztdf)$/);
   if (!m) {
     console.warn(`Unable to extract raw file name from ${encryptedFileName}`);
     return `${encryptedFileName}.decrypted`;
@@ -65,7 +65,6 @@ async function getNewFileHandle(
   return showSaveFilePicker(options);
 }
 
-type Containers = 'tdf' | 'nano';
 type CurrentDataController = AbortController | undefined;
 type FileInputSource = {
   type: 'file';
@@ -196,15 +195,9 @@ function humanReadableDurationEstimate(ms: number) {
 function App() {
   const [authState, setAuthState] = useState<SessionInformation>({ sessionState: 'start' });
   const [downloadState, setDownloadState] = useState<string | undefined>();
-  const [encryptContainerType, setEncryptContainerType] = useState<Containers>('tdf');
   const [inputSource, setInputSource] = useState<InputSource | undefined>();
   const [sinkType, setSinkType] = useState<SinkType>('file');
   const [streamController, setStreamController] = useState<CurrentDataController>();
-
-  const handleContainerFormatRadioChange =
-    (handler: typeof setEncryptContainerType) => (e: ChangeEvent<HTMLInputElement>) => {
-      handler(e.target.value as Containers);
-    };
 
   useEffect(() => {
     oidcClient
@@ -319,7 +312,7 @@ function App() {
       return false;
     }
     const inputFileName = fileNameFor(inputSource);
-    console.log(`Encrypting [${inputFileName}] as ${encryptContainerType} to ${sinkType}`);
+    console.log(`Encrypting [${inputFileName}] as ZTDF to ${sinkType}`);
 
     const sc = new AbortController();
     setStreamController(sc);
@@ -366,28 +359,15 @@ function App() {
     const progressTransformers = makeProgressPair(size, 'Encrypt');
 
     let cipherText: ReadableStream<Uint8Array>;
-    switch (encryptContainerType) {
-      case 'nano':
-        cipherText = await client.createNanoTDF({
-          source: { type: 'stream', location: source },
-        });
-        break;
-      case 'tdf':
-        try {
-          cipherText = await client.createZTDF({
-            autoconfigure: false,
-            source: { type: 'stream', location: source.pipeThrough(progressTransformers.reader) },
-          });
-        } catch (e) {
-          setDownloadState(`Encrypt Failed: ${e}`);
-          console.error('Encrypt Failed', e);
-          return;
-        }
-        break;
-      default:
-        setDownloadState(`Unsupported type`);
-        console.error('Encrypt Failed');
-        return;
+    try {
+      cipherText = await client.createZTDF({
+        autoconfigure: false,
+        source: { type: 'stream', location: source.pipeThrough(progressTransformers.reader) },
+      });
+    } catch (e) {
+      setDownloadState(`Encrypt Failed: ${e}`);
+      console.error('Encrypt Failed', e);
+      return;
     }
     const cipherTextWithProgress = cipherText.pipeThrough(progressTransformers.writer);
     try {
@@ -638,27 +618,6 @@ function App() {
             <form className="column">
               <h2>Encrypt</h2>
               <div className="card horizontal-flow">
-                <div>
-                  <input
-                    type="radio"
-                    id="zipEncrypt"
-                    name="container"
-                    value="tdf"
-                    onChange={handleContainerFormatRadioChange(setEncryptContainerType)}
-                    checked={encryptContainerType === 'tdf'}
-                  />{' '}
-                  <label htmlFor="zipEncrypt">TDF</label>
-                  <br />
-                  <input
-                    type="radio"
-                    id="nanoEncrypt"
-                    name="container"
-                    value="nano"
-                    onChange={handleContainerFormatRadioChange(setEncryptContainerType)}
-                    checked={encryptContainerType === 'nano'}
-                  />{' '}
-                  <label htmlFor="nanoEncrypt">nano</label>
-                </div>
                 <button id="encryptButton" onClick={() => handleEncrypt()} type="button">
                   Encrypt
                 </button>
