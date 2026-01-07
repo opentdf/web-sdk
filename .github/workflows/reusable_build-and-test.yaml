@@ -222,7 +222,7 @@ jobs:
     needs:
       - cli
       - lib
-    uses: opentdf/tests/.github/workflows/xtest.yml@feature/js-keymanagement-skip
+    uses: opentdf/tests/.github/workflows/xtest.yml@main
     with:
       focus-sdk: js
       js-ref: ${{ github.ref }} latest lts
