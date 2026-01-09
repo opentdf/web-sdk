@@ -1,6 +1,6 @@
 {
   "name": "web-app",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "license": "BSD-3-Clause-Clear",
   "type": "module",
   "scripts": {
@@ -14,10 +14,10 @@
     "preview": "vite preview",
     "test": "vite build && vitest",
     "test:ui": "vite build && vitest --ui",
-    "rebuild": "npm remove @opentdf/sdk && npm add file:../lib/opentdf-sdk-0.6.0.tgz && npm run dev"
+    "rebuild": "npm remove @opentdf/sdk && npm add file:../lib/opentdf-sdk-0.7.0.tgz && npm run dev"
   },
   "dependencies": {
-    "@opentdf/sdk": "file:../lib/opentdf-sdk-0.6.0.tgz",
+    "@opentdf/sdk": "file:../lib/opentdf-sdk-0.7.0.tgz",
     "clsx": "^2.1.1",
     "native-file-system-adapter": "^3.0.1",
     "react": "^19.0.0",

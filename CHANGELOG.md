@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.7.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.6.0...sdk-v0.7.0) (2026-01-09)
+
+
+### Features
+
+* Assertion verification JWK and X.509 ([#790](https://github.com/opentdf/web-sdk/issues/790)) ([f5a8f5e](https://github.com/opentdf/web-sdk/commit/f5a8f5e5d6bc5794955451a50bdb4ec2755dee97))
+
+
+### Bug Fixes
+
+* **sdk:** bump glob in /lib ([#785](https://github.com/opentdf/web-sdk/issues/785)) ([aadafd4](https://github.com/opentdf/web-sdk/commit/aadafd47b7a430ca886e21d00f0735299c05a46a))
+
 ## [0.6.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.5.0...sdk-v0.6.0) (2025-10-30)
 
 
