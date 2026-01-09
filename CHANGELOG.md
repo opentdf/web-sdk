@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.7.0...sdk-v0.8.0) (2026-01-09)
+
+
+### Bug Fixes
+
+* **cli:** bump glob from 10.4.5 to 10.5.0 in /cli ([#787](https://github.com/opentdf/web-sdk/issues/787)) ([e00a909](https://github.com/opentdf/web-sdk/commit/e00a90999afda524529d2f0d01d039f2e8029ef0))
+* **sdk:** bump qs and body-parser in /lib ([#789](https://github.com/opentdf/web-sdk/issues/789)) ([8e342f9](https://github.com/opentdf/web-sdk/commit/8e342f961eb7056db04aa7d976322a2fc55395e2))
+
 ## [0.7.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.6.0...sdk-v0.7.0) (2026-01-09)
 
 
