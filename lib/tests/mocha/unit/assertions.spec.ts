@@ -1,8 +1,10 @@
 // tests for assertions.ts
 
 import { expect } from 'chai';
+import { generateKeyPair, SignJWT, exportJWK } from 'jose';
 
 import * as assertions from '../../../tdf3/src/assertions.js';
+import { hex, base64 } from '../../../src/encodings/index.js';
 
 describe('assertions', () => {
   describe('isAssertionConfig', () => {
@@ -49,6 +51,97 @@ describe('assertions', () => {
       let h2 = await assertions.hash(assertion);
 
       expect(h1).to.equal(h2);
+    });
+  });
+
+  describe('verify', () => {
+    const aggregateHash = new Uint8Array([1, 2, 3]);
+    const isLegacyTDF = false;
+
+    it('should verify assertion using jwk from header', async () => {
+      const { publicKey, privateKey } = await generateKeyPair('ES256');
+      const jwk = await exportJWK(publicKey);
+
+      const assertion: assertions.Assertion = {
+        id: 'test-assertion',
+        type: 'handling',
+        scope: 'tdo',
+        appliesToState: 'unencrypted',
+        statement: {
+          format: 'json',
+          schema: 'test-schema',
+          value: '{"foo":"bar"}',
+        },
+        binding: {
+          method: 'jws',
+          signature: '',
+        },
+      };
+
+      const assertionHash = await assertions.hash(assertion);
+      const combinedHash = new Uint8Array(aggregateHash.length + 32);
+      combinedHash.set(aggregateHash, 0);
+      combinedHash.set(new Uint8Array(hex.decodeArrayBuffer(assertionHash)), aggregateHash.length);
+      const encodedHash = base64.encodeArrayBuffer(combinedHash);
+
+      const payload: assertions.AssertionPayload = {
+        assertionHash,
+        assertionSig: encodedHash,
+      };
+
+      const token = await new SignJWT(payload)
+        .setProtectedHeader({ alg: 'ES256', jwk })
+        .sign(privateKey);
+
+      assertion.binding.signature = token;
+
+      // This should now pass because we implemented the fix
+      const dummyKey: assertions.AssertionKey = {
+        alg: 'HS256',
+        key: new Uint8Array(32),
+      };
+
+      await assertions.verify(assertion, aggregateHash, dummyKey, isLegacyTDF);
+    });
+
+    it('should fallback to provided key if no key in header', async () => {
+      const key: assertions.AssertionKey = {
+        alg: 'HS256',
+        key: new Uint8Array(32).fill(1),
+      };
+
+      const assertion: assertions.Assertion = {
+        id: 'test-assertion-fallback',
+        type: 'handling',
+        scope: 'tdo',
+        appliesToState: 'unencrypted',
+        statement: {
+          format: 'json',
+          schema: 'test-schema',
+          value: '{"foo":"bar"}',
+        },
+        binding: {
+          method: 'jws',
+          signature: '',
+        },
+      };
+
+      const assertionHash = await assertions.hash(assertion);
+      const combinedHash = new Uint8Array(aggregateHash.length + 32);
+      combinedHash.set(aggregateHash, 0);
+      combinedHash.set(new Uint8Array(hex.decodeArrayBuffer(assertionHash)), aggregateHash.length);
+      const encodedHash = base64.encodeArrayBuffer(combinedHash);
+
+      const payload: assertions.AssertionPayload = {
+        assertionHash,
+        assertionSig: encodedHash,
+      };
+
+      const token = await new SignJWT(payload).setProtectedHeader({ alg: 'HS256' }).sign(key.key);
+
+      assertion.binding.signature = token;
+
+      await assertions.verify(assertion, aggregateHash, key, isLegacyTDF);
     });
   });
 });
