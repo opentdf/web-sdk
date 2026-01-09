@@ -4,9 +4,8 @@ import { createServer, IncomingMessage, RequestListener } from 'node:http';
 import { base64 } from '../src/encodings/index.js';
 import { decryptWithPrivateKey, encryptWithPublicKey } from '../tdf3/src/crypto/index.js';
 import { getMocks } from './mocks/index.js';
-import { getHkdfSalt, Header } from '../src/nanotdf/index.js';
-import { keyAgreement, pemPublicToCrypto } from '../src/nanotdf-crypto/index.js';
-import { generateRandomNumber } from '../src/nanotdf-crypto/generateRandomNumber.js';
+import { keyAgreement, pemPublicToCrypto } from '../src/crypto/index.js';
+import { generateRandomNumber } from '../src/crypto/generateRandomNumber.js';
 import { removePemFormatting } from '../tdf3/src/crypto/crypto-utils.js';
 import { Binary } from '../tdf3/index.js';
 import { valueFor } from './web/policy/mock-attrs.js';
@@ -330,89 +329,9 @@ const kas: RequestListener = async (req, res) => {
         res.end(toJsonString(RewrapResponseSchema, reply));
         return;
       }
-      // nanotdf
-      console.log('[INFO] nano rewrap request body: ', rewrap);
-      const { header } = Header.parse(kaoheader || new Uint8Array(base64.decodeArrayBuffer('')));
-      // TODO convert header.ephemeralCurveName to namedCurve
-      const nanoPublicKey = await crypto.subtle.importKey(
-        'raw',
-        header.ephemeralPublicKey,
-        {
-          name: 'ECDH',
-          namedCurve: 'P-256',
-        },
-        true,
-        []
-      );
-
-      const kasPrivateKeyBytes = base64.decodeArrayBuffer(
-        removePemFormatting(Mocks.kasECPrivateKey)
-      );
-      const kasPrivateKey = await crypto.subtle.importKey(
-        'pkcs8',
-        kasPrivateKeyBytes,
-        { name: 'ECDH', namedCurve: 'P-256' },
-        false,
-        ['deriveBits', 'deriveKey']
-      );
-      console.log('Imported kas private key!');
-      const hkdfSalt = await getHkdfSalt(header.magicNumberVersion);
-      const dek = await keyAgreement(kasPrivateKey, nanoPublicKey, hkdfSalt);
-      const kek = await keyAgreement(kasPrivateKey, clientPublicKey, hkdfSalt);
-      const dekBits = await crypto.subtle.exportKey('raw', dek);
-      console.log(
-        `agreeeed! dek = [${new Uint8Array(dekBits)}], kek = [${new Uint8Array(
-          await crypto.subtle.exportKey('raw', kek)
-        )}], byteLength = [${dekBits.byteLength}]`
-      );
-      const iv = generateRandomNumber(12);
-      const cek = await crypto.subtle.encrypt(
-        {
-          name: 'AES-GCM',
-          iv,
-          tagLength: 128,
-        },
-        kek,
-        dekBits
-      );
-      const cekBytes = new Uint8Array(cek);
-      console.log(`responding! cek = [${cekBytes}], iv = [${iv}], tagLength = [${128}]`);
-      // const doublecheck = await crypto.subtle.decrypt(
-      //   { name: 'AES-GCM', iv, tagLength: 128 },
-      //   kek,
-      //   cek
-      // );
-      // console.log(`doublecheck success! dek = [${new Uint8Array(doublecheck)}]`);
-
-      const entityWrappedKey = new Uint8Array(iv.length + cekBytes.length);
-      entityWrappedKey.set(iv);
-      entityWrappedKey.set(cekBytes, iv.length);
-      const reply = create(RewrapResponseSchema, {
-        sessionPublicKey: Mocks.kasECCert,
-        responses: [
-          create(PolicyRewrapResultSchema, {
-            results: [
-              create(KeyAccessRewrapResultSchema, {
-                metadata: {
-                  hello: create(ValueSchema, {
-                    kind: { case: 'stringValue', value: 'people of earth' },
-                  }),
-                },
-                result: {
-                  case: 'kasWrappedKey',
-                  value: entityWrappedKey,
-                },
-                keyAccessObjectId:
-                  rewrap.requests?.[0]?.keyAccessObjects?.[0]?.keyAccessObjectId || '',
-              }),
-            ],
-          }),
-        ],
-      });
-
-      res.statusCode = 200;
-      res.setHeader('Content-Type', 'application/json');
-      res.end(toJsonString(RewrapResponseSchema, reply));
+      // Unsupported format (non-ZTDF)
+      res.writeHead(400);
+      res.end('{"error": "Unsupported TDF format"}');
       return;
     } else if (url.pathname === '/file') {
       if (req.method !== 'GET') {

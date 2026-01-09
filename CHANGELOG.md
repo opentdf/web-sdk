@@ -1,5 +1,18 @@
 # Changelog
 
+## [Unreleased]
+
+### Removed
+
+- **BREAKING**: Removed NanoTDF support. The NanoTDF format and all related APIs
+  (`NanoTDFClient`, `NanoTDFDatasetClient`, `createNanoTDF()`, `createNanoTDFCollection()`,
+  `NanoTDFReader`, `@opentdf/sdk/nano` export) have been removed.
+  Use ZTDF format via `createZTDF()` instead.
+
+### Changed
+
+- Renamed `nanotdf-crypto/` to `crypto/` - internal cryptographic primitives directory.
+
 ## [0.6.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.5.0...sdk-v0.6.0) (2025-10-30)
 
 
