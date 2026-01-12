@@ -14,7 +14,10 @@ import { AccessService } from './platform/kas/kas_pb.js';
 import { ActionService } from './platform/policy/actions/actions_pb.js';
 import { AttributesService } from './platform/policy/attributes/attributes_pb.js';
 import { KeyAccessServerRegistryService } from './platform/policy/kasregistry/key_access_server_registry_pb.js';
+import { KeyManagementService } from './platform/policy/keymanagement/key_management_pb.js';
+import { Service as ObligationService } from './platform/policy/obligations/obligations_pb.js';
 import { NamespaceService } from './platform/policy/namespaces/namespaces_pb.js';
+import { RegisteredResourcesService } from './platform/policy/registeredresources/registered_resources_pb.js';
 import { ResourceMappingService } from './platform/policy/resourcemapping/resource_mapping_pb.js';
 import { SubjectMappingService } from './platform/policy/subjectmapping/subject_mapping_pb.js';
 import { UnsafeService } from './platform/policy/unsafe/unsafe_pb.js';
@@ -26,7 +29,10 @@ export interface PlatformServices {
   action: Client<typeof ActionService>;
   attributes: Client<typeof AttributesService>;
   keyAccessServerRegistry: Client<typeof KeyAccessServerRegistryService>;
+  keyManagement: Client<typeof KeyManagementService>;
   namespace: Client<typeof NamespaceService>;
+  obligation: Client<typeof ObligationService>;
+  registeredResources: Client<typeof RegisteredResourcesService>;
   resourceMapping: Client<typeof ResourceMappingService>;
   subjectMapping: Client<typeof SubjectMappingService>;
   unsafe: Client<typeof UnsafeService>;
@@ -99,7 +105,10 @@ export class PlatformClient {
       action: createClient(ActionService, transport),
       attributes: createClient(AttributesService, transport),
       keyAccessServerRegistry: createClient(KeyAccessServerRegistryService, transport),
+      keyManagement: createClient(KeyManagementService, transport),
       namespace: createClient(NamespaceService, transport),
+      obligation: createClient(ObligationService, transport),
+      registeredResources: createClient(RegisteredResourcesService, transport),
       resourceMapping: createClient(ResourceMappingService, transport),
       subjectMapping: createClient(SubjectMappingService, transport),
       unsafe: createClient(UnsafeService, transport),
