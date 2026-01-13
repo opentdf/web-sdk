@@ -108,6 +108,7 @@ jobs:
         env:
           DIST_TAG: ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
           FULL_VERSION: ${{ steps.guess-build-metadata.outputs.FULL_VERSION }}
+          NPM_PROVENANCE: "true"
         run: |
           bash scripts/deliver-to-npm-registry.sh "$FULL_VERSION" "$DIST_TAG"
 
