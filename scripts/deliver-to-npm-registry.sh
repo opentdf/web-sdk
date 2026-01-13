@@ -15,7 +15,7 @@ fi
 mv "${file}.tmp" "${file}"
 
 npm version --no-git-tag-version --allow-same-version "$version"
-npm publish --access public --tag "$tag"
+npm publish --provenance --access public --tag "$tag"
 
 # Wait for npm publish to go through...
 sleep 5
@@ -24,7 +24,7 @@ cd "../cli"
 npm version --no-git-tag-version --allow-same-version "$version"
 npm uninstall "@opentdf/sdk"
 npm install "@opentdf/sdk@$version"
-npm publish --access public --tag "$tag"
+npm publish --provenance --access public --tag "$tag"
 
 if [[ "$GITHUB_STEP_SUMMARY" ]]; then
 	echo "### Published ${version} (${tag})" >>"$GITHUB_STEP_SUMMARY"
