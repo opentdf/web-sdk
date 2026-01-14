@@ -8,8 +8,10 @@ tag="${2}"
 
 # Build provenance flag if NPM_PROVENANCE is set to "true"
 provenance_flag=""
+use_oidc=0
 if [[ "${NPM_PROVENANCE:-}" == "true" ]]; then
   provenance_flag="--provenance"
+  unset NODE_AUTH_TOKEN # This is needed to force OIDC, as the setup-node action sets NODE_AUTH_TOKEN https://github.com/actions/setup-node/issues/1440
 fi
 
 cd lib
