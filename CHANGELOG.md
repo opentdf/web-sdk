@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.8.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.7.0...sdk-v0.8.0) (2026-01-14)
+
+
+### Features
+
+* **ci:** add npm provenance support for package publishing ([#797](https://github.com/opentdf/web-sdk/issues/797)) ([4d342ce](https://github.com/opentdf/web-sdk/commit/4d342ce714759a62cd6a51f341adf1bbae72b5c4))
+* DSPX-2234-key-management-and-obligation-client-stub ([#793](https://github.com/opentdf/web-sdk/issues/793)) ([e7d56b3](https://github.com/opentdf/web-sdk/commit/e7d56b3407ddbfa5d1e2a19dd8609beb8d757b0e))
+
+
+### Bug Fixes
+
+* **cli:** bump glob from 10.4.5 to 10.5.0 in /cli ([#787](https://github.com/opentdf/web-sdk/issues/787)) ([e00a909](https://github.com/opentdf/web-sdk/commit/e00a90999afda524529d2f0d01d039f2e8029ef0))
+* **sdk:** bump qs and body-parser in /lib ([#789](https://github.com/opentdf/web-sdk/issues/789)) ([8e342f9](https://github.com/opentdf/web-sdk/commit/8e342f961eb7056db04aa7d976322a2fc55395e2))
+
 ## [0.7.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.6.0...sdk-v0.7.0) (2026-01-09)
 
 
