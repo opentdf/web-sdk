@@ -2,7 +2,10 @@ name: "Reusable worflow: Deliver Client to npm registry"
 
 on:
   workflow_call:
-    #
+    secrets:
+      NPM_TOKEN:
+        required: true
+
 # Default empty permissions for all jobs
 permissions: {}
 
@@ -77,7 +80,6 @@ jobs:
   deliver-npmjs:
     permissions:
       contents: read
-      id-token: write # needed for OIDC access
     runs-on: ubuntu-latest
     steps:
       - name: "Checkout repo"
@@ -108,7 +110,7 @@ jobs:
         env:
           DIST_TAG: ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
           FULL_VERSION: ${{ steps.guess-build-metadata.outputs.FULL_VERSION }}
-          NPM_PROVENANCE: "true"
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           bash scripts/deliver-to-npm-registry.sh "$FULL_VERSION" "$DIST_TAG"
 
