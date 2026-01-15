@@ -93,6 +93,9 @@ jobs:
           node-version: "22"
           registry-url: "https://registry.npmjs.org"
 
+      - name: Update NPM # Need >11.5.1 for OIDC support
+        run: npm i -g npm@11.7.0
+
       - name: "Run: make all"
         run: |
           make all
@@ -110,8 +113,8 @@ jobs:
         env:
           DIST_TAG: ${{ steps.guess-build-metadata.outputs.DIST_TAG }}
           FULL_VERSION: ${{ steps.guess-build-metadata.outputs.FULL_VERSION }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
+          unset NODE_AUTH_TOKEN # Remove this to make sure we use OIDC authencation
           bash scripts/deliver-to-npm-registry.sh "$FULL_VERSION" "$DIST_TAG"
 
       - name: "Echo info to Run Summary"
