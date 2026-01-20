@@ -111,7 +111,11 @@ export type CryptoService = {
    * @param privateKeyPem - PEM-encoded RSA private key (PKCS#8 format)
    * @param algorithm - RS256 (RSASSA-PKCS1-v1_5 with SHA-256)
    */
-  sign: (data: Uint8Array, privateKeyPem: string, algorithm: SigningAlgorithm) => Promise<Uint8Array>;
+  sign: (
+    data: Uint8Array,
+    privateKeyPem: string,
+    algorithm: SigningAlgorithm
+  ) => Promise<Uint8Array>;
 
   /**
    * Verify signature with an RSA public key.
@@ -120,7 +124,12 @@ export type CryptoService = {
    * @param publicKeyPem - PEM-encoded RSA public key (SPKI format)
    * @param algorithm - Must match algorithm used for signing
    */
-  verify: (data: Uint8Array, signature: Uint8Array, publicKeyPem: string, algorithm: SigningAlgorithm) => Promise<boolean>;
+  verify: (
+    data: Uint8Array,
+    signature: Uint8Array,
+    publicKeyPem: string,
+    algorithm: SigningAlgorithm
+  ) => Promise<boolean>;
 
   /**
    * Compute hash digest.
