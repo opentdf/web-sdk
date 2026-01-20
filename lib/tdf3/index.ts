@@ -17,7 +17,9 @@ import {
   type CryptoService,
   type DecryptResult,
   type EncryptResult,
+  type HashAlgorithm,
   type PemKeyPair,
+  type SigningAlgorithm,
 } from './src/crypto/declarations.js';
 import { Client, Errors, TDF3Client } from './src/index.js';
 import {
@@ -43,14 +45,16 @@ export type {
   AuthProvider,
   Chunker,
   CryptoService,
+  DecryptKeyMiddleware,
   DecryptResult,
+  DecryptStreamMiddleware,
+  EncryptKeyMiddleware,
   EncryptResult,
+  EncryptStreamMiddleware,
+  HashAlgorithm,
   HttpMethod,
   PemKeyPair,
-  EncryptKeyMiddleware,
-  EncryptStreamMiddleware,
-  DecryptKeyMiddleware,
-  DecryptStreamMiddleware,
+  SigningAlgorithm,
   SplitStep,
 };
 
