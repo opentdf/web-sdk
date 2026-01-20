@@ -95,8 +95,8 @@ export type CryptoService = {
    * @param content - Hex-encoded content bytes to authenticate
    * @returns Hex-encoded HMAC result
    *
-   * IMPORTANT: Both input and output use lowercase hex encoding.
-   * Implementations MUST follow this contract exactly.
+   * Note: Callers should treat inputs and outputs as hex-encoded byte strings.
+   * Implementations may normalize case, but callers MUST NOT rely on a specific case.
    */
   hmac: (key: string, content: string) => Promise<string>;
 

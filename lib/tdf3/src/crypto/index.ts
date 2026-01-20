@@ -460,6 +460,10 @@ export async function digest(algorithm: HashAlgorithm, data: Uint8Array): Promis
 
 /**
  * Extract PEM public key from X.509 certificate or return PEM key as-is.
+ *
+ * Note: Currently only RS256 (RSA with SHA-256) X.509 certificates are supported,
+ * because the underlying `jose.importX509` API requires an explicit algorithm
+ * and this function passes `'RS256'` as that parameter.
  */
 export async function extractPublicKeyPem(certOrPem: string): Promise<string> {
   // If it's a certificate, extract the public key
