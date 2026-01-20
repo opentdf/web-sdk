@@ -3,6 +3,7 @@ import * as DefaultCryptoService from '../../../tdf3/src/crypto/index.js';
 import {
   signJwt,
   verifyJwt,
+  base64urlEncode,
   type JwtHeader,
   type JwtPayload,
 } from '../../../tdf3/src/crypto/jwt.js';
@@ -84,8 +85,8 @@ describe('JWT Utilities', () => {
   describe('verifyJwt() security validations', () => {
     it('should reject JWT with alg "none"', async () => {
       // Manually craft a JWT with alg: "none"
-      const header = Buffer.from(JSON.stringify({ alg: 'none' })).toString('base64url');
-      const payload = Buffer.from(JSON.stringify({ sub: 'user' })).toString('base64url');
+      const header = base64urlEncode(JSON.stringify({ alg: 'none' }));
+      const payload = base64urlEncode(JSON.stringify({ sub: 'user' }));
       const token = `${header}.${payload}.`;
 
       try {
@@ -118,9 +119,7 @@ describe('JWT Utilities', () => {
 
       // Tamper with payload
       const parts = token.split('.');
-      const tamperedPayload = Buffer.from(
-        JSON.stringify({ sub: 'user123', role: 'admin' })
-      ).toString('base64url');
+      const tamperedPayload = base64urlEncode(JSON.stringify({ sub: 'user123', role: 'admin' }));
       const tamperedToken = `${parts[0]}.${tamperedPayload}.${parts[2]}`;
 
       try {

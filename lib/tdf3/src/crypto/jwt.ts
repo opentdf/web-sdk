@@ -83,8 +83,9 @@ export interface VerifyJwtOptions {
 /**
  * Base64url encode data per RFC 4648 Section 5.
  * Uses URL-safe alphabet (- and _ instead of + and /) with no padding.
+ * Exported for testing purposes.
  */
-function base64urlEncode(data: string | Uint8Array): string {
+export function base64urlEncode(data: string | Uint8Array): string {
   if (typeof data === 'string') {
     // Encode string to base64url
     const bytes = new TextEncoder().encode(data);
@@ -96,9 +97,9 @@ function base64urlEncode(data: string | Uint8Array): string {
 }
 
 /**
- * Base64url decode to string per RFC 4648 Section 5.
+ * Helper to convert base64url to standard base64 with padding.
  */
-function base64urlDecode(str: string): string {
+function base64urlToBase64(str: string): string {
   // Convert base64url to base64: replace - with +, _ with /
   let b64 = str.replace(/-/g, '+').replace(/_/g, '/');
 
@@ -106,7 +107,14 @@ function base64urlDecode(str: string): string {
   const padding = (4 - (b64.length % 4)) % 4;
   b64 += '='.repeat(padding);
 
-  // Decode base64 to bytes then to string
+  return b64;
+}
+
+/**
+ * Base64url decode to string per RFC 4648 Section 5.
+ */
+function base64urlDecode(str: string): string {
+  const b64 = base64urlToBase64(str);
   const bytes = base64.decodeArrayBuffer(b64);
   return new TextDecoder().decode(bytes);
 }
@@ -115,14 +123,7 @@ function base64urlDecode(str: string): string {
  * Base64url decode to Uint8Array per RFC 4648 Section 5.
  */
 function base64urlDecodeBytes(str: string): Uint8Array {
-  // Convert base64url to base64: replace - with +, _ with /
-  let b64 = str.replace(/-/g, '+').replace(/_/g, '/');
-
-  // Add padding if needed
-  const padding = (4 - (b64.length % 4)) % 4;
-  b64 += '='.repeat(padding);
-
-  // Decode base64 to bytes
+  const b64 = base64urlToBase64(str);
   return new Uint8Array(base64.decodeArrayBuffer(b64));
 }
 
@@ -318,7 +319,9 @@ function validateJwtClaims(payload: JwtPayload, options?: VerifyJwtOptions): voi
         : [payload.aud]
       : [];
 
-    const hasMatch = expectedAudiences.some((expected) => actualAudiences.includes(expected));
+    // Validate that all audience values are strings
+    const validAudiences = actualAudiences.filter((aud) => typeof aud === 'string') as string[];
+    const hasMatch = expectedAudiences.some((expected) => validAudiences.includes(expected));
     if (!hasMatch) {
       throw new Error(`Invalid JWT: unexpected "aud" claim value`);
     }
@@ -327,14 +330,14 @@ function validateJwtClaims(payload: JwtPayload, options?: VerifyJwtOptions): voi
   // Validate issuer
   if (options.issuer !== undefined) {
     const expectedIssuers = Array.isArray(options.issuer) ? options.issuer : [options.issuer];
-    if (!payload.iss || !expectedIssuers.includes(payload.iss as string)) {
+    if (typeof payload.iss !== 'string' || !expectedIssuers.includes(payload.iss)) {
       throw new Error(`Invalid JWT: unexpected "iss" claim value`);
     }
   }
 
   // Validate subject
   if (options.subject !== undefined) {
-    if (payload.sub !== options.subject) {
+    if (typeof payload.sub !== 'string' || payload.sub !== options.subject) {
       throw new Error(`Invalid JWT: unexpected "sub" claim value`);
     }
   }
