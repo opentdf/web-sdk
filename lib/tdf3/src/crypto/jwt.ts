@@ -167,11 +167,7 @@ export async function signJwt(
   const signingInputBytes = new TextEncoder().encode(signingInput);
 
   // Sign via CryptoService
-  const signature = await cryptoService.sign(
-    signingInputBytes,
-    privateKeyPem,
-    header.alg
-  );
+  const signature = await cryptoService.sign(signingInputBytes, privateKeyPem, header.alg);
 
   // Return compact JWT
   return `${signingInput}.${base64urlEncode(signature)}`;
@@ -208,7 +204,10 @@ export async function verifyJwt(
   const [headerB64, payloadB64, signatureB64] = parts;
 
   // Decode and validate header
-  const headerRaw = JSON.parse(base64urlDecode(headerB64)) as { alg: string; [key: string]: unknown };
+  const headerRaw = JSON.parse(base64urlDecode(headerB64)) as {
+    alg: string;
+    [key: string]: unknown;
+  };
 
   // Check for 'none' algorithm (security: prevent unsigned JWTs)
   if (headerRaw.alg === 'none') {
@@ -242,12 +241,7 @@ export async function verifyJwt(
   const signingInputBytes = new TextEncoder().encode(signingInput);
   const signature = base64urlDecodeBytes(signatureB64);
 
-  const valid = await cryptoService.verify(
-    signingInputBytes,
-    signature,
-    publicKeyPem,
-    header.alg
-  );
+  const valid = await cryptoService.verify(signingInputBytes, signature, publicKeyPem, header.alg);
   if (!valid) {
     throw new Error('Invalid JWT: signature verification failed');
   }
@@ -299,7 +293,9 @@ function validateJwtClaims(payload: JwtPayload, options?: VerifyJwtOptions): voi
     return;
   }
 
-  const now = options.currentDate ? Math.floor(options.currentDate.getTime() / 1000) : Math.floor(Date.now() / 1000);
+  const now = options.currentDate
+    ? Math.floor(options.currentDate.getTime() / 1000)
+    : Math.floor(Date.now() / 1000);
   const tolerance = options.clockTolerance ? parseDuration(options.clockTolerance) : 0;
 
   // Validate required claims
@@ -313,7 +309,9 @@ function validateJwtClaims(payload: JwtPayload, options?: VerifyJwtOptions): voi
 
   // Validate audience
   if (options.audience !== undefined) {
-    const expectedAudiences = Array.isArray(options.audience) ? options.audience : [options.audience];
+    const expectedAudiences = Array.isArray(options.audience)
+      ? options.audience
+      : [options.audience];
     const actualAudiences = payload.aud
       ? Array.isArray(payload.aud)
         ? payload.aud
