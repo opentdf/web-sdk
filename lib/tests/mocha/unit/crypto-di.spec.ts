@@ -5,7 +5,9 @@ import {
   type CryptoService,
   type DecryptResult,
   type EncryptResult,
+  type HashAlgorithm,
   type PemKeyPair,
+  type SigningAlgorithm,
 } from '../../../tdf3/index.js';
 import { Client } from '../../../tdf3/src/client/index.js';
 
@@ -62,6 +64,27 @@ describe('CryptoService DI', () => {
         throw new Error('Function not implemented.');
       },
       sha256: function (content: string): Promise<string> {
+        throw new Error('Function not implemented.');
+      },
+      sign: function (
+        data: Uint8Array,
+        privateKeyPem: string,
+        algorithm: SigningAlgorithm
+      ): Promise<Uint8Array> {
+        throw new Error('Function not implemented.');
+      },
+      verify: function (
+        data: Uint8Array,
+        signature: Uint8Array,
+        publicKeyPem: string,
+        algorithm: SigningAlgorithm
+      ): Promise<boolean> {
+        throw new Error('Function not implemented.');
+      },
+      digest: function (algorithm: HashAlgorithm, data: Uint8Array): Promise<Uint8Array> {
+        throw new Error('Function not implemented.');
+      },
+      extractPublicKeyPem: function (certOrPem: string): Promise<string> {
         throw new Error('Function not implemented.');
       },
     };

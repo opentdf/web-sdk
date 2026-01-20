@@ -10,14 +10,17 @@ import {
   CryptoService,
   DecryptResult,
   EncryptResult,
+  HashAlgorithm,
   MIN_ASYMMETRIC_KEY_SIZE_BITS,
   PemKeyPair,
+  SigningAlgorithm,
 } from './declarations.js';
 import { ConfigurationError, DecryptError } from '../../../src/errors.js';
 import { formatAsPem, removePemFormatting } from './crypto-utils.js';
 import { encodeArrayBuffer as hexEncode } from '../../../src/encodings/hex.js';
 import { decodeArrayBuffer as base64Decode } from '../../../src/encodings/base64.js';
 import { AlgorithmUrn } from '../ciphers/algorithms.js';
+import { exportSPKI, importX509 } from 'jose';
 
 // Used to pass into native crypto functions
 const METHODS: KeyUsage[] = ['encrypt', 'decrypt'];
@@ -376,14 +379,113 @@ export function hex2Ab(hex: string): ArrayBuffer {
   return buffer;
 }
 
+/**
+ * Sign data with an RSA private key using RSASSA-PKCS1-v1_5.
+ */
+export async function sign(
+  data: Uint8Array,
+  privateKeyPem: string,
+  algorithm: SigningAlgorithm
+): Promise<Uint8Array> {
+  if (algorithm !== 'RS256') {
+    throw new ConfigurationError(`Unsupported signing algorithm: ${algorithm}`);
+  }
+
+  // Remove PEM formatting and decode
+  const keyData = removePemFormatting(privateKeyPem);
+  const keyBuffer = base64Decode(keyData);
+
+  // Import private key
+  const key = await crypto.subtle.importKey(
+    'pkcs8',
+    keyBuffer,
+    {
+      name: 'RSASSA-PKCS1-v1_5',
+      hash: 'SHA-256',
+    },
+    false,
+    ['sign']
+  );
+
+  // Sign the data
+  const signature = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, data);
+
+  return new Uint8Array(signature);
+}
+
+/**
+ * Verify signature with an RSA public key using RSASSA-PKCS1-v1_5.
+ */
+export async function verify(
+  data: Uint8Array,
+  signature: Uint8Array,
+  publicKeyPem: string,
+  algorithm: SigningAlgorithm
+): Promise<boolean> {
+  if (algorithm !== 'RS256') {
+    throw new ConfigurationError(`Unsupported signing algorithm: ${algorithm}`);
+  }
+
+  // Remove PEM formatting and decode
+  const keyData = removePemFormatting(publicKeyPem);
+  const keyBuffer = base64Decode(keyData);
+
+  // Import public key
+  const key = await crypto.subtle.importKey(
+    'spki',
+    keyBuffer,
+    {
+      name: 'RSASSA-PKCS1-v1_5',
+      hash: 'SHA-256',
+    },
+    false,
+    ['verify']
+  );
+
+  // Verify the signature
+  return crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, signature, data);
+}
+
+/**
+ * Compute hash digest.
+ */
+export async function digest(algorithm: HashAlgorithm, data: Uint8Array): Promise<Uint8Array> {
+  if (algorithm !== 'SHA-256') {
+    throw new ConfigurationError(`Unsupported hash algorithm: ${algorithm}`);
+  }
+
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return new Uint8Array(hashBuffer);
+}
+
+/**
+ * Extract PEM public key from X.509 certificate or return PEM key as-is.
+ */
+export async function extractPublicKeyPem(certOrPem: string): Promise<string> {
+  // If it's a certificate, extract the public key
+  if (certOrPem.includes('-----BEGIN CERTIFICATE-----')) {
+    const cert = await importX509(certOrPem, 'RS256', { extractable: true });
+    return exportSPKI(cert);
+  }
+
+  // If it's already a PEM public key, return as-is
+  if (certOrPem.includes('-----BEGIN PUBLIC KEY-----')) {
+    return certOrPem;
+  }
+
+  throw new ConfigurationError('Input must be a PEM-encoded certificate or public key');
+}
+
 export const DefaultCryptoService: CryptoService = {
   name,
   method,
   cryptoToPemPair,
   decrypt,
   decryptWithPrivateKey,
+  digest,
   encrypt,
   encryptWithPublicKey,
+  extractPublicKeyPem,
   generateInitializationVector,
   generateKey,
   generateKeyPair,
@@ -391,4 +493,6 @@ export const DefaultCryptoService: CryptoService = {
   hmac,
   randomBytes,
   sha256,
+  sign,
+  verify,
 };
