@@ -1,7 +1,7 @@
 import { base64, hex } from '../../../src/encodings/index.js';
-import { generateRandomNumber } from '../../../src/nanotdf-crypto/generateRandomNumber.js';
-import { keyAgreement } from '../../../src/nanotdf-crypto/keyAgreement.js';
-import { pemPublicToCrypto } from '../../../src/nanotdf-crypto/pemPublicToCrypto.js';
+import { generateRandomNumber } from '../../../src/crypto/generateRandomNumber.js';
+import { keyAgreement } from '../../../src/crypto/keyAgreement.js';
+import { pemPublicToCrypto } from '../../../src/crypto/pemPublicToCrypto.js';
 import { cryptoPublicToPem } from '../../../src/utils.js';
 import { Binary } from '../binary.js';
 import * as cryptoService from '../crypto/index.js';

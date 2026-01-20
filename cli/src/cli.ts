@@ -6,7 +6,6 @@ import { hideBin } from 'yargs/helpers';
 import {
   type AuthProvider,
   type CreateOptions,
-  type CreateNanoTDFOptions,
   type CreateZTDFOptions,
   type HttpRequest,
   type ReadOptions,
@@ -21,7 +20,6 @@ import {
 import { CLIError, Level, log } from './logger.js';
 import { webcrypto } from 'crypto';
 import * as assertions from '@opentdf/sdk/assertions';
-import { attributeFQNsAsValues } from '@opentdf/sdk/nano';
 import { base64 } from '@opentdf/sdk/encodings';
 import { type CryptoKey, importPKCS8, importSPKI } from 'jose'; // for RS256
 
@@ -45,9 +43,7 @@ class InvalidAuthProvider {
   }
 }
 
-const bindingTypes = ['ecdsa', 'gmac'];
-
-const containerTypes = ['tdf3', 'nano', 'dataset', 'ztdf'];
+const containerTypes = ['tdf3', 'ztdf'];
 
 const parseJwt = (jwt: string, field = 1) => {
   return JSON.parse(base64.decode(jwt.split('.')[field]));
@@ -309,18 +305,6 @@ async function parseCreateZTDFOptions(argv: Partial<mainArgs>): Promise<CreateZT
   return c;
 }
 
-async function parseCreateNanoTDFOptions(argv: Partial<mainArgs>): Promise<CreateZTDFOptions> {
-  const c: CreateNanoTDFOptions = await parseCreateOptions(argv);
-  const ecdsaBinding = argv.policyBinding?.toLowerCase() == 'ecdsa';
-  if (ecdsaBinding) {
-    c.bindingType = 'ecdsa';
-  }
-  // NOTE autoconfigure is not yet supported in nanotdf
-  delete c.autoconfigure;
-  log('DEBUG', `CreateNanoTDFOptions: ${JSON.stringify(c)}`);
-  return c;
-}
-
 async function fileAsSource(file: string): Promise<Source> {
   if (!file) {
     throw new CLIError('CRITICAL', 'Must specify file or pipe');
@@ -482,7 +466,7 @@ export const handleArgs = (args: string[]) => {
           alias: 't',
           choices: containerTypes,
           description: 'Container format',
-          default: 'nano',
+          default: 'ztdf',
         },
         encapKeyType: {
           alias: 'encapsulation-algorithm',
@@ -491,15 +475,9 @@ export const handleArgs = (args: string[]) => {
           type: 'string',
           default: 'rsa:2048',
         },
-        policyBinding: {
-          group: 'Encrypt Options:',
-          choices: bindingTypes,
-          description: 'Policy Binding Type (nano only)',
-          default: 'gmac',
-        },
         mimeType: {
           group: 'Encrypt Options:',
-          desc: 'Mime type for the plain text file (only supported for ztdf)',
+          desc: 'Mime type for the plain text file',
           type: 'string',
           default: '',
         },
@@ -544,43 +522,8 @@ export const handleArgs = (args: string[]) => {
       })
 
       .command(
-        'attrs',
-        'Look up definitions of attributes',
-        (yargs) => {
-          yargs.strict();
-        },
-        async (argv) => {
-          log('DEBUG', 'attribute value lookup');
-          const authProvider = await processAuth(argv);
-          const signingKey = await crypto.subtle.generateKey(
-            {
-              name: 'RSASSA-PKCS1-v1_5',
-              hash: 'SHA-256',
-              modulusLength: 2048,
-              publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
-            },
-            true,
-            ['sign', 'verify']
-          );
-          authProvider.updateClientPublicKey(signingKey);
-          log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
-
-          const policyUrl = guessPolicyUrl(argv);
-          if (!policyUrl) {
-            throw new CLIError('CRITICAL', 'policyEndpoint must be specified');
-          }
-          const defs = await attributeFQNsAsValues(
-            policyUrl,
-            authProvider,
-            ...(argv.attributes as string).split(',')
-          );
-          console.log(JSON.stringify(defs, null, 2));
-        }
-      )
-
-      .command(
         'inspect [file]',
-        'Inspect TDF or nanoTDF and extract header information, without decrypting',
+        'Inspect TDF and extract header information, without decrypting',
         (yargs) => {
           yargs.strict().positional('file', {
             describe: 'path to encrypted file',
@@ -704,15 +647,8 @@ export const handleArgs = (args: string[]) => {
           });
           try {
             log('SILLY', `Initialized client`);
-
-            let ct: DecoratedStream;
-            if ('tdf3' === argv.containerType || 'ztdf' === argv.containerType) {
-              log('DEBUG', `TDF3 Create`);
-              ct = await client.createZTDF(await parseCreateZTDFOptions(argv));
-            } else {
-              log('DEBUG', `Nano Create`);
-              ct = await client.createNanoTDF(await parseCreateNanoTDFOptions(argv));
-            }
+            log('DEBUG', `ZTDF Create`);
+            const ct: DecoratedStream = await client.createZTDF(await parseCreateZTDFOptions(argv));
             if (!ct) {
               throw new CLIError('CRITICAL', 'Encrypt configuration error: No output?');
             }
