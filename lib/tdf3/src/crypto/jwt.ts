@@ -48,7 +48,7 @@ export interface VerifyJwtOptions {
 
   /**
    * Expected clock tolerance for time-based validations.
-   * Can be a number (seconds) or a string like "5m", "1h".
+   * Can be a number (seconds) or a string with units: "30s", "5m", "1h", "1d".
    */
   clockTolerance?: string | number;
 
@@ -58,7 +58,7 @@ export interface VerifyJwtOptions {
   issuer?: string | string[];
 
   /**
-   * Maximum age of the token. Can be a number (seconds) or string like "5m", "1h".
+   * Maximum age of the token. Can be a number (seconds) or a string with units: "30s", "5m", "1h", "1d".
    */
   maxTokenAge?: string | number;
 
