@@ -261,17 +261,11 @@ describe('encrypt decrypt test', async function () {
           authProvider,
         });
 
-        const assertionKeys = await crypto.subtle.generateKey(
-          {
-            name: 'RSASSA-PKCS1-v1_5',
-            modulusLength: 2048,
-            publicExponent: new Uint8Array([1, 0, 1]),
-            hash: { name: 'SHA-256' },
-          },
-          true,
-          ['sign', 'verify']
-        );
+        // Generate RSA key pair for RS256 assertions as PEM strings
+        const assertionKeyPair = await client.cryptoService.generateSigningKeyPair();
+        const assertionKeys = await client.cryptoService.cryptoToPemPair(assertionKeyPair);
         const assertionPublicKey = assertionKeys.publicKey;
+        const assertionPrivateKey = assertionKeys.privateKey;
         const scope: Scope = {
           dissem: ['user@domain.com'],
           attributes: [],
@@ -323,7 +317,7 @@ describe('encrypt decrypt test', async function () {
               appliesToState: 'encrypted',
               signingKey: {
                 alg: 'RS256',
-                key: assertionKeys.privateKey,
+                key: assertionPrivateKey,
               },
             },
             {
