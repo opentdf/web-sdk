@@ -3,7 +3,7 @@ import { base64, hex } from '../../src/encodings/index.js';
 import { ConfigurationError, IntegrityError, InvalidFileError } from '../../src/errors.js';
 import { tdfSpecVersion, version as sdkVersion } from '../../src/version.js';
 import { type CryptoService } from './crypto/declarations.js';
-import { signJwt, verifyJwt, type JwtHeader } from './crypto/jwt.js';
+import { decodeProtectedHeader, signJwt, verifyJwt, type JwtHeader } from './crypto/jwt.js';
 
 export type AssertionKeyAlg = 'ES256' | 'RS256' | 'HS256';
 export type AssertionType = 'handling' | 'other';
@@ -133,26 +133,15 @@ export async function verify(
   let payload: AssertionPayload;
   try {
     // Parse JWT header to check for embedded keys (jwk or x5c)
-    const parts = thiz.binding.signature.split('.');
-    if (parts.length !== 3) {
-      throw new Error('Invalid JWT format');
-    }
-    const headerJson = new TextDecoder().decode(
-      base64.decodeArrayBuffer(parts[0].replace(/-/g, '+').replace(/_/g, '/'))
-    );
-    const header = JSON.parse(headerJson) as {
-      alg?: string;
-      jwk?: JsonWebKey;
-      x5c?: string[];
-    };
+    const header = decodeProtectedHeader(thiz.binding.signature);
 
     // Determine the verification key
     let verificationKey: string | Uint8Array = key.key;
 
     if (header.jwk) {
       // Convert embedded JWK to PEM
-      verificationKey = await cryptoService.jwkToPem(header.jwk);
-    } else if (header.x5c && header.x5c.length > 0) {
+      verificationKey = await cryptoService.jwkToPem(header.jwk as JsonWebKey);
+    } else if (header.x5c && Array.isArray(header.x5c) && header.x5c.length > 0) {
       // Extract public key from X.509 certificate
       const cert = `-----BEGIN CERTIFICATE-----\n${header.x5c[0]}\n-----END CERTIFICATE-----`;
       verificationKey = await cryptoService.extractPublicKeyPem(cert);
@@ -251,9 +240,13 @@ export async function CreateAssertion(
   return await sign(a, assertionHash, encodedHash, assertionConfig.signingKey, cryptoService);
 }
 
+/**
+ * Key used for signing or verifying assertions.
+ * For asymmetric algorithms (RS256, ES256), key should be a PEM string.
+ * For symmetric algorithms (HS256), key should be a Uint8Array.
+ */
 export type AssertionKey = {
   alg: AssertionKeyAlg;
-  /** PEM string for asymmetric keys (RS256, ES256), Uint8Array for symmetric keys (HS256) */
   key: string | Uint8Array;
 };
 

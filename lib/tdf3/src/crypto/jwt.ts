@@ -132,6 +132,29 @@ function base64urlDecodeBytes(str: string): Uint8Array {
 }
 
 /**
+ * Decode the protected header from a JWT without verifying the signature.
+ * Useful for inspecting the header to determine key type before verification.
+ *
+ * @param token - The JWT string
+ * @returns The decoded header
+ * @throws Error if the token is malformed or uses alg "none"
+ */
+export function decodeProtectedHeader(token: string): JwtHeader {
+  const parts = token.split('.');
+  if (parts.length !== 3) {
+    throw new Error('Invalid JWT: expected 3 parts');
+  }
+  const header = JSON.parse(base64urlDecode(parts[0])) as { alg: string; [key: string]: unknown };
+
+  // Security: reject unsigned JWTs
+  if (header.alg === 'none') {
+    throw new Error('Invalid JWT: alg "none" not allowed');
+  }
+
+  return header as JwtHeader;
+}
+
+/**
  * Sign a JWT using CryptoService. Replaces jose SignJWT.
  *
  * Implementation:
@@ -218,28 +241,17 @@ export async function verifyJwt(
   key: string | Uint8Array,
   options?: VerifyJwtOptions
 ): Promise<{ header: JwtHeader; payload: JwtPayload }> {
-  // Split token
-  const parts = token.split('.');
-  if (parts.length !== 3) {
-    throw new Error('Invalid JWT: expected 3 parts');
-  }
-  const [headerB64, payloadB64, signatureB64] = parts;
-
-  // Decode and validate header
-  const headerRaw = JSON.parse(base64urlDecode(headerB64)) as {
-    alg: string;
-    [key: string]: unknown;
-  };
-
-  // Check for 'none' algorithm (security: prevent unsigned JWTs)
-  if (headerRaw.alg === 'none') {
-    throw new Error('Invalid JWT: alg "none" not allowed');
-  }
+  // Decode and validate header (also rejects alg "none")
+  const headerRaw = decodeProtectedHeader(token);
 
   // Validate algorithm is in allowlist if provided
   if (options?.algorithms && !options.algorithms.includes(headerRaw.alg as SigningAlgorithm)) {
     throw new Error(`Invalid JWT: algorithm "${headerRaw.alg}" not in allowlist`);
   }
+
+  // Split token for signature verification
+  const parts = token.split('.');
+  const [headerB64, payloadB64, signatureB64] = parts;
 
   // Validate typ header if expected
   if (options?.typ && headerRaw.typ !== options.typ) {
