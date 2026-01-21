@@ -357,4 +357,146 @@ describe('JWT Utilities', () => {
       expect(result.payload.sub).to.equal('user123');
     });
   });
+
+  describe('HS256 (symmetric) signing', () => {
+    let symmetricKey: Uint8Array;
+
+    before(async () => {
+      // Generate a 256-bit symmetric key
+      symmetricKey = await cryptoService.randomBytes(32);
+    });
+
+    it('should sign and verify JWT with HS256', async () => {
+      const header: JwtHeader = { alg: 'HS256' };
+      const payload: JwtPayload = {
+        sub: 'user123',
+        name: 'Test User',
+      };
+
+      const token = await signJwt(cryptoService, payload, symmetricKey, header);
+
+      expect(token).to.be.a('string');
+      expect(token.split('.')).to.have.lengthOf(3);
+
+      const result = await verifyJwt(cryptoService, token, symmetricKey, {
+        algorithms: ['HS256'],
+      });
+
+      expect(result.header.alg).to.equal('HS256');
+      expect(result.payload.sub).to.equal('user123');
+      expect(result.payload.name).to.equal('Test User');
+    });
+
+    it('should sign and verify HS256 JWT with standard claims', async () => {
+      const header: JwtHeader = { alg: 'HS256' };
+      const now = Math.floor(Date.now() / 1000);
+      const payload: JwtPayload = {
+        iss: 'https://issuer.example.com',
+        sub: 'user123',
+        aud: 'https://app.example.com',
+        exp: now + 3600,
+        nbf: now - 60,
+        iat: now,
+      };
+
+      const token = await signJwt(cryptoService, payload, symmetricKey, header);
+      const result = await verifyJwt(cryptoService, token, symmetricKey, {
+        algorithms: ['HS256'],
+        issuer: 'https://issuer.example.com',
+        audience: 'https://app.example.com',
+        subject: 'user123',
+      });
+
+      expect(result.payload.iss).to.equal('https://issuer.example.com');
+    });
+
+    it('should reject HS256 JWT with tampered payload', async () => {
+      const header: JwtHeader = { alg: 'HS256' };
+      const payload: JwtPayload = { sub: 'user123', role: 'user' };
+      const token = await signJwt(cryptoService, payload, symmetricKey, header);
+
+      // Tamper with payload
+      const parts = token.split('.');
+      const tamperedPayload = base64urlEncode(JSON.stringify({ sub: 'user123', role: 'admin' }));
+      const tamperedToken = `${parts[0]}.${tamperedPayload}.${parts[2]}`;
+
+      try {
+        await verifyJwt(cryptoService, tamperedToken, symmetricKey, { algorithms: ['HS256'] });
+        expect.fail('Should have thrown');
+      } catch (error) {
+        expect(error).to.be.instanceOf(Error);
+        expect((error as Error).message).to.include('signature verification failed');
+      }
+    });
+
+    it('should reject HS256 JWT with wrong key', async () => {
+      const header: JwtHeader = { alg: 'HS256' };
+      const payload: JwtPayload = { sub: 'user123' };
+      const token = await signJwt(cryptoService, payload, symmetricKey, header);
+
+      const wrongKey = await cryptoService.randomBytes(32);
+
+      try {
+        await verifyJwt(cryptoService, token, wrongKey, { algorithms: ['HS256'] });
+        expect.fail('Should have thrown');
+      } catch (error) {
+        expect(error).to.be.instanceOf(Error);
+        expect((error as Error).message).to.include('signature verification failed');
+      }
+    });
+
+    it('should throw error when using PEM string for HS256 signing', async () => {
+      const header: JwtHeader = { alg: 'HS256' };
+      const payload: JwtPayload = { sub: 'user123' };
+
+      try {
+        await signJwt(cryptoService, payload, privateKeyPem, header);
+        expect.fail('Should have thrown');
+      } catch (error) {
+        expect(error).to.be.instanceOf(Error);
+        expect((error as Error).message).to.include('HS256 requires a Uint8Array key');
+      }
+    });
+
+    it('should throw error when using PEM string for HS256 verification', async () => {
+      const header: JwtHeader = { alg: 'HS256' };
+      const payload: JwtPayload = { sub: 'user123' };
+      const token = await signJwt(cryptoService, payload, symmetricKey, header);
+
+      try {
+        await verifyJwt(cryptoService, token, publicKeyPem, { algorithms: ['HS256'] });
+        expect.fail('Should have thrown');
+      } catch (error) {
+        expect(error).to.be.instanceOf(Error);
+        expect((error as Error).message).to.include('HS256 requires a Uint8Array key');
+      }
+    });
+
+    it('should throw error when using Uint8Array for RS256 signing', async () => {
+      const header: JwtHeader = { alg: 'RS256' };
+      const payload: JwtPayload = { sub: 'user123' };
+
+      try {
+        await signJwt(cryptoService, payload, symmetricKey, header);
+        expect.fail('Should have thrown');
+      } catch (error) {
+        expect(error).to.be.instanceOf(Error);
+        expect((error as Error).message).to.include('RS256 requires a PEM string key');
+      }
+    });
+
+    it('should throw error when using Uint8Array for RS256 verification', async () => {
+      const header: JwtHeader = { alg: 'RS256' };
+      const payload: JwtPayload = { sub: 'user123' };
+      const token = await signJwt(cryptoService, payload, privateKeyPem, header);
+
+      try {
+        await verifyJwt(cryptoService, token, symmetricKey, { algorithms: ['RS256'] });
+        expect.fail('Should have thrown');
+      } catch (error) {
+        expect(error).to.be.instanceOf(Error);
+        expect((error as Error).message).to.include('RS256 requires a PEM string key');
+      }
+    });
+  });
 });
