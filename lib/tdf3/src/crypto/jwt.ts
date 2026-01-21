@@ -1,4 +1,8 @@
-import { type CryptoService, type SigningAlgorithm } from './declarations.js';
+import {
+  type AsymmetricSigningAlgorithm,
+  type CryptoService,
+  type SigningAlgorithm,
+} from './declarations.js';
 import { base64 } from '../../../src/encodings/index.js';
 
 export type JwtHeader = { alg: SigningAlgorithm; typ?: 'JWT'; [key: string]: unknown };
@@ -133,12 +137,12 @@ function base64urlDecodeBytes(str: string): Uint8Array {
  * Implementation:
  * 1. Base64url encode header and payload as JSON
  * 2. Create signing input: `${headerB64}.${payloadB64}`
- * 3. Sign via cryptoService.sign()
+ * 3. Sign via cryptoService.sign() (asymmetric) or signSymmetric() (HS256)
  * 4. Return compact JWT: `${headerB64}.${payloadB64}.${signatureB64}`
  *
  * @param cryptoService - Crypto implementation to use
  * @param payload - JWT payload (claims)
- * @param privateKeyPem - PEM-encoded RSA private key for signing
+ * @param key - PEM-encoded private key for asymmetric algorithms, or raw key bytes for HS256
  * @param header - JWT header (must include alg)
  * @param options - Optional signing options (e.g., crit header handling)
  * @returns Compact JWT string
@@ -146,7 +150,7 @@ function base64urlDecodeBytes(str: string): Uint8Array {
 export async function signJwt(
   cryptoService: CryptoService,
   payload: JwtPayload,
-  privateKeyPem: string,
+  key: string | Uint8Array,
   header: JwtHeader,
   options?: SignJwtOptions
 ): Promise<string> {
@@ -167,8 +171,25 @@ export async function signJwt(
   const signingInput = `${headerB64}.${payloadB64}`;
   const signingInputBytes = new TextEncoder().encode(signingInput);
 
-  // Sign via CryptoService
-  const signature = await cryptoService.sign(signingInputBytes, privateKeyPem, header.alg);
+  // Sign via CryptoService - route based on algorithm
+  let signature: Uint8Array;
+  if (header.alg === 'HS256') {
+    // Symmetric signing requires Uint8Array key
+    if (typeof key === 'string') {
+      throw new Error('HS256 requires a Uint8Array key, not a PEM string');
+    }
+    signature = await cryptoService.signSymmetric(signingInputBytes, key);
+  } else {
+    // Asymmetric signing requires PEM string
+    if (typeof key !== 'string') {
+      throw new Error(`${header.alg} requires a PEM string key, not Uint8Array`);
+    }
+    signature = await cryptoService.sign(
+      signingInputBytes,
+      key,
+      header.alg as AsymmetricSigningAlgorithm
+    );
+  }
 
   // Return compact JWT
   return `${signingInput}.${base64urlEncode(signature)}`;
@@ -180,13 +201,13 @@ export async function signJwt(
  * Implementation:
  * 1. Split token into header.payload.signature
  * 2. Decode header, validate algorithm against allowlist
- * 3. Verify signature via cryptoService.verify()
+ * 3. Verify signature via cryptoService.verify() (asymmetric) or verifySymmetric() (HS256)
  * 4. Validate JWT claims (aud, iss, exp, nbf, etc.)
  * 5. Return decoded header and payload
  *
  * @param cryptoService - Crypto implementation to use
  * @param token - The JWT string to verify
- * @param publicKeyPem - PEM-encoded public key for verification
+ * @param key - PEM-encoded public key for asymmetric algorithms, or raw key bytes for HS256
  * @param options - Verification options including algorithm allowlist and claim validations
  * @throws Error if signature invalid, algorithm not in allowlist, claims invalid, or token malformed
  * @returns Decoded header and payload
@@ -194,7 +215,7 @@ export async function signJwt(
 export async function verifyJwt(
   cryptoService: CryptoService,
   token: string,
-  publicKeyPem: string,
+  key: string | Uint8Array,
   options?: VerifyJwtOptions
 ): Promise<{ header: JwtHeader; payload: JwtPayload }> {
   // Split token
@@ -237,12 +258,31 @@ export async function verifyJwt(
   // Now we know it's a valid algorithm
   const header = headerRaw as JwtHeader;
 
-  // Verify signature via CryptoService
+  // Verify signature via CryptoService - route based on algorithm
   const signingInput = `${headerB64}.${payloadB64}`;
   const signingInputBytes = new TextEncoder().encode(signingInput);
   const signature = base64urlDecodeBytes(signatureB64);
 
-  const valid = await cryptoService.verify(signingInputBytes, signature, publicKeyPem, header.alg);
+  let valid: boolean;
+  if (header.alg === 'HS256') {
+    // Symmetric verification requires Uint8Array key
+    if (typeof key === 'string') {
+      throw new Error('HS256 requires a Uint8Array key, not a PEM string');
+    }
+    valid = await cryptoService.verifySymmetric(signingInputBytes, signature, key);
+  } else {
+    // Asymmetric verification requires PEM string
+    if (typeof key !== 'string') {
+      throw new Error(`${header.alg} requires a PEM string key, not Uint8Array`);
+    }
+    valid = await cryptoService.verify(
+      signingInputBytes,
+      signature,
+      key,
+      header.alg as AsymmetricSigningAlgorithm
+    );
+  }
+
   if (!valid) {
     throw new Error('Invalid JWT: signature verification failed');
   }
