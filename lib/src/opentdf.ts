@@ -3,6 +3,8 @@ import { ConfigurationError, InvalidFileError } from './errors.js';
 export { Client as TDF3Client } from '../tdf3/src/client/index.js';
 import { Chunker, fromSource, sourceToStream, type Source } from './seekable.js';
 import { Client as TDF3Client } from '../tdf3/src/client/index.js';
+import { type CryptoService } from '../tdf3/src/crypto/declarations.js';
+import * as DefaultCryptoService from '../tdf3/src/crypto/index.js';
 import {
   type Assertion,
   AssertionConfig,
@@ -33,6 +35,7 @@ import { Policy } from '../tdf3/src/models/policy.js';
 
 export {
   type Assertion,
+  type CryptoService,
   type EncryptionInformation,
   type IntegrityAlgorithm,
   type KasPublicKeyAlgorithm,
@@ -173,6 +176,13 @@ export type OpenTDFOptions = {
    * which is out of the scope of this library.
    */
   dpopKeys?: Promise<CryptoKeyPair>;
+
+  /**
+   * Optional custom CryptoService implementation.
+   * If not provided, defaults to the browser's native Web Crypto API.
+   * This allows injecting FIPS-compliant crypto implementations.
+   */
+  cryptoService?: CryptoService;
 };
 
 /** A decorated readable stream. */
@@ -258,6 +268,8 @@ export class OpenTDF {
   defaultReadOptions: Omit<ReadOptions, 'source'>;
   /** The DPoP keys for this instance, if any. */
   readonly dpopKeys: Promise<CryptoKeyPair>;
+  /** The CryptoService implementation for this instance. */
+  readonly cryptoService: CryptoService;
   /** The TDF3 client for encrypting and decrypting ZTDF files. */
   readonly tdf3Client: TDF3Client;
 
@@ -269,6 +281,7 @@ export class OpenTDF {
     disableDPoP,
     policyEndpoint,
     platformUrl,
+    cryptoService,
   }: OpenTDFOptions) {
     this.authProvider = authProvider;
     this.defaultCreateOptions = defaultCreateOptions || {};
@@ -282,12 +295,14 @@ export class OpenTDF {
       );
     }
     this.policyEndpoint = policyEndpoint || '';
+    this.cryptoService = cryptoService ?? DefaultCryptoService;
     this.tdf3Client = new TDF3Client({
       authProvider,
       dpopKeys,
       kasEndpoint: this.platformUrl || 'https://disallow.all.invalid',
       platformUrl,
       policyEndpoint,
+      cryptoService: this.cryptoService,
     });
     this.dpopKeys =
       dpopKeys ??
