@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - "release/**"
+      - "feat/pluggable-crypto-service"
 
 # Default empty permissions for all jobs
 # fix later, need to add permissions for every job in reusable_build-and-test.yaml
