@@ -656,6 +656,63 @@ export async function generateECKeyPair(curve: ECCurve = 'P-256'): Promise<PemKe
 }
 
 /**
+ * Known EC curve OIDs mapped to their names.
+ * - P-256 (secp256r1): 1.2.840.10045.3.1.7
+ * - P-384 (secp384r1): 1.3.132.0.34
+ * - P-521 (secp521r1): 1.3.132.0.35
+ */
+const EC_CURVE_OIDS: { oid: number[]; curve: 'P-256' | 'P-384' | 'P-521' }[] = [
+  { oid: [0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07], curve: 'P-256' }, // 1.2.840.10045.3.1.7
+  { oid: [0x2b, 0x81, 0x04, 0x00, 0x22], curve: 'P-384' }, // 1.3.132.0.34
+  { oid: [0x2b, 0x81, 0x04, 0x00, 0x23], curve: 'P-521' }, // 1.3.132.0.35
+];
+
+/**
+ * Extract EC curve name from SPKI or PKCS#8 DER-encoded key.
+ *
+ * SPKI structure for EC:
+ * SEQUENCE {
+ *   SEQUENCE {
+ *     OBJECT IDENTIFIER id-ecPublicKey (1.2.840.10045.2.1)
+ *     OBJECT IDENTIFIER namedCurve
+ *   }
+ *   BIT STRING (public key point)
+ * }
+ *
+ * PKCS#8 structure for EC:
+ * SEQUENCE {
+ *   INTEGER version
+ *   SEQUENCE {
+ *     OBJECT IDENTIFIER id-ecPublicKey (1.2.840.10045.2.1)
+ *     OBJECT IDENTIFIER namedCurve
+ *   }
+ *   OCTET STRING (private key)
+ * }
+ */
+function extractEcCurveFromKey(keyData: Uint8Array): 'P-256' | 'P-384' | 'P-521' {
+  // Search for curve OID in the key data
+  // The curve OID follows the ecPublicKey OID (1.2.840.10045.2.1)
+  for (const { oid, curve } of EC_CURVE_OIDS) {
+    // Search for this OID pattern in the key data
+    const oidWithTag = [0x06, oid.length, ...oid]; // OBJECT IDENTIFIER tag + length + oid
+    for (let i = 0; i < keyData.length - oidWithTag.length; i++) {
+      let match = true;
+      for (let j = 0; j < oidWithTag.length; j++) {
+        if (keyData[i + j] !== oidWithTag[j]) {
+          match = false;
+          break;
+        }
+      }
+      if (match) {
+        return curve;
+      }
+    }
+  }
+
+  throw new ConfigurationError('Unable to determine EC curve from key - unsupported curve');
+}
+
+/**
  * Perform ECDH key agreement followed by HKDF key derivation.
  */
 export async function deriveKeyFromECDH(
@@ -663,43 +720,27 @@ export async function deriveKeyFromECDH(
   publicKeyPem: string,
   hkdfParams: HkdfParams
 ): Promise<Uint8Array> {
-  // Determine curve from the public key (try importing with each curve)
   const privateKeyData = base64Decode(removePemFormatting(privateKeyPem));
   const publicKeyData = base64Decode(removePemFormatting(publicKeyPem));
 
-  // Try to import keys - we'll try P-256 first since it's most common
-  let privateKey: CryptoKey | null = null;
-  let publicKey: CryptoKey | null = null;
-  let detectedCurve: string | null = null;
+  // Extract curve from the public key's ASN.1 structure
+  const detectedCurve = extractEcCurveFromKey(new Uint8Array(publicKeyData));
 
-  for (const namedCurve of ['P-256', 'P-384', 'P-521']) {
-    try {
-      privateKey = await crypto.subtle.importKey(
-        'pkcs8',
-        privateKeyData,
-        { name: 'ECDH', namedCurve },
-        false,
-        ['deriveBits']
-      );
-      publicKey = await crypto.subtle.importKey(
-        'spki',
-        publicKeyData,
-        { name: 'ECDH', namedCurve },
-        false,
-        []
-      );
-      detectedCurve = namedCurve;
-      break;
-    } catch {
-      // Try next curve
-    }
-  }
-
-  if (!privateKey || !publicKey) {
-    throw new ConfigurationError(
-      'Failed to import EC keys - unsupported curve or invalid key format'
-    );
-  }
+  // Import keys with the detected curve
+  const privateKey = await crypto.subtle.importKey(
+    'pkcs8',
+    privateKeyData,
+    { name: 'ECDH', namedCurve: detectedCurve },
+    false,
+    ['deriveBits']
+  );
+  const publicKey = await crypto.subtle.importKey(
+    'spki',
+    publicKeyData,
+    { name: 'ECDH', namedCurve: detectedCurve },
+    false,
+    []
+  );
 
   // Determine bits based on curve
   let bits: number;
@@ -713,8 +754,6 @@ export async function deriveKeyFromECDH(
     case 'P-521':
       bits = 528; // P-521 derives 528 bits (66 bytes)
       break;
-    default:
-      throw new ConfigurationError(`Unsupported curve: ${detectedCurve}`);
   }
 
   // Perform ECDH to get shared secret
@@ -783,6 +822,95 @@ export async function verifySymmetric(
 }
 
 /**
+ * Parse ASN.1 DER length field.
+ * Returns [length, bytesConsumed].
+ */
+function parseAsn1Length(data: Uint8Array, offset: number): [number, number] {
+  const firstByte = data[offset];
+  if (firstByte < 0x80) {
+    // Short form: length is directly encoded
+    return [firstByte, 1];
+  }
+  // Long form: first byte indicates number of length bytes
+  const numLengthBytes = firstByte & 0x7f;
+  let length = 0;
+  for (let i = 0; i < numLengthBytes; i++) {
+    length = (length << 8) | data[offset + 1 + i];
+  }
+  return [length, 1 + numLengthBytes];
+}
+
+/**
+ * Extract RSA modulus bit length from SPKI DER-encoded public key.
+ *
+ * SPKI structure for RSA:
+ * SEQUENCE {
+ *   SEQUENCE { OBJECT IDENTIFIER rsaEncryption, NULL }
+ *   BIT STRING {
+ *     SEQUENCE {
+ *       INTEGER modulus (n)
+ *       INTEGER publicExponent (e)
+ *     }
+ *   }
+ * }
+ */
+function extractRsaModulusBitLength(spkiData: Uint8Array): number {
+  let offset = 0;
+
+  // Outer SEQUENCE
+  if (spkiData[offset] !== 0x30) {
+    throw new ConfigurationError('Invalid SPKI: expected SEQUENCE');
+  }
+  offset++;
+  const [, outerLenBytes] = parseAsn1Length(spkiData, offset);
+  offset += outerLenBytes;
+
+  // Algorithm SEQUENCE
+  if (spkiData[offset] !== 0x30) {
+    throw new ConfigurationError('Invalid SPKI: expected algorithm SEQUENCE');
+  }
+  offset++;
+  const [algLen, algLenBytes] = parseAsn1Length(spkiData, offset);
+  offset += algLenBytes + algLen; // Skip entire algorithm sequence
+
+  // BIT STRING containing the public key
+  if (spkiData[offset] !== 0x03) {
+    throw new ConfigurationError('Invalid SPKI: expected BIT STRING');
+  }
+  offset++;
+  const [, bitStringLenBytes] = parseAsn1Length(spkiData, offset);
+  offset += bitStringLenBytes;
+
+  // Skip unused bits byte (should be 0 for RSA keys)
+  offset++;
+
+  // Inner SEQUENCE containing modulus and exponent
+  if (spkiData[offset] !== 0x30) {
+    throw new ConfigurationError('Invalid SPKI: expected inner SEQUENCE');
+  }
+  offset++;
+  const [, innerLenBytes] = parseAsn1Length(spkiData, offset);
+  offset += innerLenBytes;
+
+  // INTEGER (modulus)
+  if (spkiData[offset] !== 0x02) {
+    throw new ConfigurationError('Invalid SPKI: expected INTEGER for modulus');
+  }
+  offset++;
+  const [modulusLen] = parseAsn1Length(spkiData, offset);
+
+  // The modulus length in bytes, accounting for possible leading zero padding
+  // (ASN.1 integers are signed, so a leading 0x00 is added if high bit is set)
+  let effectiveLen = modulusLen;
+  const modulusOffset = offset + parseAsn1Length(spkiData, offset)[1];
+  if (spkiData[modulusOffset] === 0x00) {
+    effectiveLen--;
+  }
+
+  return effectiveLen * 8;
+}
+
+/**
  * Import and validate a PEM public key, returning algorithm info.
  */
 export async function importPublicKeyPem(pem: string): Promise<PublicKeyInfo> {
@@ -803,27 +931,38 @@ export async function importPublicKeyPem(pem: string): Promise<PublicKeyInfo> {
     await crypto.subtle.importKey('spki', keyData, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, [
       'encrypt',
     ]);
-    // If successful, determine the key size by parsing the key
-    // RSA keys with 2048-bit modulus have ~270 bytes DER, 4096 has ~550 bytes
-    const algorithm = keyData.byteLength > 400 ? 'rsa:4096' : 'rsa:2048';
-    return { algorithm: algorithm as PublicKeyInfo['algorithm'], pem: publicKeyPem };
-  } catch {
+    // Parse ASN.1 to get the actual modulus bit length
+    const modulusBits = extractRsaModulusBitLength(new Uint8Array(keyData));
+    let algorithm: PublicKeyInfo['algorithm'];
+    if (modulusBits <= 2048) {
+      algorithm = 'rsa:2048';
+    } else if (modulusBits <= 4096) {
+      algorithm = 'rsa:4096';
+    } else {
+      throw new ConfigurationError(`Unsupported RSA key size: ${modulusBits} bits`);
+    }
+    return { algorithm, pem: publicKeyPem };
+  } catch (e) {
+    // If it's our own error about key size, rethrow
+    if (e instanceof ConfigurationError && e.message.includes('RSA key size')) {
+      throw e;
+    }
     // Not an RSA key, try EC curves next
   }
 
-  // Try EC curves
-  for (const namedCurve of ['P-256', 'P-384', 'P-521'] as const) {
-    try {
-      await crypto.subtle.importKey('spki', keyData, { name: 'ECDH', namedCurve }, false, []);
-      const curveMap = {
-        'P-256': 'ec:secp256r1',
-        'P-384': 'ec:secp384r1',
-        'P-521': 'ec:secp521r1',
-      } as const;
-      return { algorithm: curveMap[namedCurve], pem: publicKeyPem };
-    } catch {
-      // Not this curve, continue
-    }
+  // Try EC - extract curve from ASN.1 structure
+  try {
+    const detectedCurve = extractEcCurveFromKey(new Uint8Array(keyData));
+    // Validate by attempting import with the detected curve
+    await crypto.subtle.importKey('spki', keyData, { name: 'ECDH', namedCurve: detectedCurve }, false, []);
+    const curveMap = {
+      'P-256': 'ec:secp256r1',
+      'P-384': 'ec:secp384r1',
+      'P-521': 'ec:secp521r1',
+    } as const;
+    return { algorithm: curveMap[detectedCurve], pem: publicKeyPem };
+  } catch {
+    // Not a valid EC key
   }
 
   throw new ConfigurationError('Unable to determine public key algorithm - unsupported key type');
