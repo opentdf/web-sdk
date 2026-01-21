@@ -1,5 +1,3 @@
-import { exportSPKI, importX509 } from 'jose';
-
 import {
   KasPublicKeyAlgorithm,
   KasPublicKeyInfo,
@@ -99,6 +97,7 @@ export type BuildKeyAccess = {
   publicKey: string;
   metadata?: Metadata;
   sid?: string;
+  cryptoService: CryptoService;
 };
 
 type Segment = {
@@ -222,19 +221,13 @@ export async function fetchKasPublicKey(
 
 export async function extractPemFromKeyString(
   keyString: string,
-  alg: KasPublicKeyAlgorithm
+  alg: KasPublicKeyAlgorithm,
+  cryptoService: CryptoService,
 ): Promise<string> {
-  let pem: string = keyString;
-
-  // Skip the public key extraction if we find that the KAS url provides a
-  // PEM-encoded key instead of certificate
-  if (keyString.includes('CERTIFICATE')) {
-    const a = publicKeyAlgorithmToJwa(alg);
-    const cert = await importX509(keyString, a, { extractable: true });
-    pem = await exportSPKI(cert);
-  }
-
-  return pem;
+  // Convert KAS algorithm to JWA algorithm if provided
+  const jwaAlgorithm = publicKeyAlgorithmToJwa(alg);
+  // extractPublicKeyPem handles both X.509 certificates and raw PEM keys
+  return cryptoService.extractPublicKeyPem(keyString, jwaAlgorithm);
 }
 
 /**
@@ -258,6 +251,7 @@ export async function buildKeyAccess({
   metadata,
   sid = '',
   alg = 'rsa:2048',
+  cryptoService,
 }: BuildKeyAccess): Promise<KeyAccess> {
   // if url and pulicKey are specified load the key access object with them
   if (!url && !publicKey) {
@@ -270,7 +264,7 @@ export async function buildKeyAccess({
 
   let pubKey: string;
   try {
-    pubKey = await extractPemFromKeyString(publicKey, alg);
+    pubKey = await extractPemFromKeyString(publicKey, alg, cryptoService);
   } catch (e) {
     throw new ConfigurationError(
       `TDF.buildKeyAccess: Invalid public key [${publicKey}], caused by [${e}]`,
@@ -338,26 +332,16 @@ async function _generateManifest(
 async function getSignature(
   unwrappedKey: Uint8Array,
   content: Uint8Array,
-  algorithmType: IntegrityAlgorithm
+  algorithmType: IntegrityAlgorithm,
+  cryptoService: CryptoService
 ): Promise<Uint8Array> {
   switch (algorithmType.toUpperCase()) {
     case 'GMAC':
       // use the auth tag baked into the encrypted payload
       return content.slice(-16);
     case 'HS256': {
-      // simple hmac is the default
-      const cryptoKey = await crypto.subtle.importKey(
-        'raw',
-        unwrappedKey,
-        {
-          name: 'HMAC',
-          hash: { name: 'SHA-256' },
-        },
-        true,
-        ['sign', 'verify']
-      );
-      const signature = await crypto.subtle.sign('HMAC', cryptoKey, content);
-      return new Uint8Array(signature);
+      // Use CryptoService for HMAC-SHA256 signing
+      return cryptoService.signSymmetric(content, unwrappedKey);
     }
     default:
       throw new ConfigurationError(`Unsupported signature alg [${algorithmType}]`);
@@ -528,7 +512,8 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
           const payloadSig = await getSignature(
             new Uint8Array(cfg.keyForEncryption.unwrappedKeyBinary.asArrayBuffer()),
             aggregateHash,
-            cfg.integrityAlgorithm
+            cfg.integrityAlgorithm,
+            cfg.cryptoService
           );
 
           const rootSig = base64.encodeArrayBuffer(payloadSig);
@@ -676,7 +661,8 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
       const payloadSig = await getSignature(
         new Uint8Array(cfg.keyForEncryption.unwrappedKeyBinary.asArrayBuffer()),
         new Uint8Array(encryptedResult.payload.asArrayBuffer()),
-        cfg.segmentIntegrityAlgorithm
+        cfg.segmentIntegrityAlgorithm,
+        cfg.cryptoService
       );
 
       segmentHashList.push(new Uint8Array(payloadSig));
@@ -974,7 +960,8 @@ async function decryptChunk(
   hash: string,
   cipher: SymmetricCipher,
   segmentIntegrityAlgorithm: IntegrityAlgorithm,
-  specVersion: string
+  specVersion: string,
+  cryptoService: CryptoService
 ): Promise<DecryptResult> {
   if (segmentIntegrityAlgorithm !== 'GMAC' && segmentIntegrityAlgorithm !== 'HS256') {
     throw new UnsupportedError(`Unsupported integrity alg [${segmentIntegrityAlgorithm}]`);
@@ -982,7 +969,8 @@ async function decryptChunk(
   const segmentSig = await getSignature(
     new Uint8Array(reconstructedKeyBinary.asArrayBuffer()),
     encryptedChunk,
-    segmentIntegrityAlgorithm
+    segmentIntegrityAlgorithm,
+    cryptoService
   );
 
   const segmentHash = isTargetSpecLegacyTDF(specVersion)
@@ -1057,6 +1045,7 @@ export async function sliceAndDecrypt({
   reconstructedKeyBinary,
   slice,
   cipher,
+  cryptoService,
   segmentIntegrityAlgorithm,
   specVersion,
 }: {
@@ -1088,7 +1077,8 @@ export async function sliceAndDecrypt({
         slice[index]['hash'],
         cipher,
         segmentIntegrityAlgorithm,
-        specVersion
+        specVersion,
+        cryptoService
       );
       if (plainSegmentSize && result.payload.length() !== plainSegmentSize) {
         throw new DecryptError(
@@ -1164,7 +1154,8 @@ export async function decryptStreamFrom(
   const payloadSig = await getSignature(
     new Uint8Array(keyForDecryption.asArrayBuffer()),
     aggregateHash,
-    integrityAlgorithm
+    integrityAlgorithm,
+    cfg.cryptoService
   );
 
   if (!cfg.noVerifyAssertions) {

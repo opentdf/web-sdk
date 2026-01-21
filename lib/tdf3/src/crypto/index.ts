@@ -597,14 +597,22 @@ export async function digest(algorithm: HashAlgorithm, data: Uint8Array): Promis
 /**
  * Extract PEM public key from X.509 certificate or return PEM key as-is.
  *
- * Note: Currently only RS256 (RSA with SHA-256) X.509 certificates are supported,
- * because the underlying `jose.importX509` API requires an explicit algorithm
- * and this function passes `'RS256'` as that parameter.
+ * @param certOrPem - A PEM-encoded X.509 certificate or public key
+ * @param jwaAlgorithm - JWA algorithm hint for certificate parsing (RS256, RS512, ES256, ES384, ES512).
+ *                       Required when certOrPem is a certificate. Ignored for raw public keys.
  */
-export async function extractPublicKeyPem(certOrPem: string): Promise<string> {
+export async function extractPublicKeyPem(
+  certOrPem: string,
+  jwaAlgorithm?: string
+): Promise<string> {
   // If it's a certificate, extract the public key
   if (certOrPem.includes('-----BEGIN CERTIFICATE-----')) {
-    const cert = await importX509(certOrPem, 'RS256', { extractable: true });
+    if (!jwaAlgorithm) {
+      throw new ConfigurationError(
+        'jwaAlgorithm is required when extracting public key from X.509 certificate'
+      );
+    }
+    const cert = await importX509(certOrPem, jwaAlgorithm, { extractable: true });
     return exportSPKI(cert);
   }
 

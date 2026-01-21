@@ -721,6 +721,7 @@ export class Client {
           publicKey: pem,
           metadata,
           sid,
+          cryptoService: this.cryptoService,
         });
       })
     );
