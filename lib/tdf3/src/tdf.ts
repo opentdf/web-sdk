@@ -222,7 +222,7 @@ export async function fetchKasPublicKey(
 export async function extractPemFromKeyString(
   keyString: string,
   alg: KasPublicKeyAlgorithm,
-  cryptoService: CryptoService,
+  cryptoService: CryptoService
 ): Promise<string> {
   // Convert KAS algorithm to JWA algorithm if provided
   const jwaAlgorithm = publicKeyAlgorithmToJwa(alg);
