@@ -639,11 +639,9 @@ export async function generateECKeyPair(curve: ECCurve = 'P-256'): Promise<PemKe
   const namedCurve = curveToNamedCurve(curve);
 
   // Generate key pair using ECDH (can be used for both ECDH and ECDSA)
-  const keyPair = await crypto.subtle.generateKey(
-    { name: 'ECDH', namedCurve },
-    true,
-    ['deriveBits']
-  );
+  const keyPair = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve }, true, [
+    'deriveBits',
+  ]);
 
   // Export to PEM format
   const [publicKeyBuffer, privateKeyBuffer] = await Promise.all([
@@ -698,7 +696,9 @@ export async function deriveKeyFromECDH(
   }
 
   if (!privateKey || !publicKey) {
-    throw new ConfigurationError('Failed to import EC keys - unsupported curve or invalid key format');
+    throw new ConfigurationError(
+      'Failed to import EC keys - unsupported curve or invalid key format'
+    );
   }
 
   // Determine bits based on curve
@@ -800,13 +800,9 @@ export async function importPublicKeyPem(pem: string): Promise<PublicKeyInfo> {
 
   // Try RSA first
   try {
-    await crypto.subtle.importKey(
-      'spki',
-      keyData,
-      { name: 'RSA-OAEP', hash: 'SHA-256' },
-      false,
-      ['encrypt']
-    );
+    await crypto.subtle.importKey('spki', keyData, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, [
+      'encrypt',
+    ]);
     // If successful, determine the key size by parsing the key
     // RSA keys with 2048-bit modulus have ~270 bytes DER, 4096 has ~550 bytes
     const algorithm = keyData.byteLength > 400 ? 'rsa:4096' : 'rsa:2048';
@@ -841,13 +837,9 @@ export async function jwkToPem(jwk: JsonWebKey): Promise<string> {
 
   if (jwk.kty === 'RSA') {
     // RSA key
-    key = await crypto.subtle.importKey(
-      'jwk',
-      jwk,
-      { name: 'RSA-OAEP', hash: 'SHA-256' },
-      true,
-      ['encrypt']
-    );
+    key = await crypto.subtle.importKey('jwk', jwk, { name: 'RSA-OAEP', hash: 'SHA-256' }, true, [
+      'encrypt',
+    ]);
   } else if (jwk.kty === 'EC') {
     // EC key
     const crv = jwk.crv;
