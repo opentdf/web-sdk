@@ -954,7 +954,13 @@ export async function importPublicKeyPem(pem: string): Promise<PublicKeyInfo> {
   try {
     const detectedCurve = extractEcCurveFromKey(new Uint8Array(keyData));
     // Validate by attempting import with the detected curve
-    await crypto.subtle.importKey('spki', keyData, { name: 'ECDH', namedCurve: detectedCurve }, false, []);
+    await crypto.subtle.importKey(
+      'spki',
+      keyData,
+      { name: 'ECDH', namedCurve: detectedCurve },
+      false,
+      []
+    );
     const curveMap = {
       'P-256': 'ec:secp256r1',
       'P-384': 'ec:secp384r1',
