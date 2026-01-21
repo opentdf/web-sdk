@@ -6,6 +6,8 @@ import { Value } from './attributes.js';
 import { GetAttributeValuesByFqnsResponse } from '../platform/policy/attributes/attributes_pb.js';
 import { GetNamespaceResponse } from '../platform/policy/namespaces/namespaces_pb.js';
 import { Certificate } from '../platform/policy/objects_pb.js';
+import { create } from '@bufbuild/protobuf';
+import { ValueSchema } from '../platform/policy/objects_pb.js';
 
 // TODO KAS: go over web-sdk and remove policyEndpoint that is only defined to be used here
 export async function attributeFQNsAsValues(
@@ -29,12 +31,18 @@ export async function attributeFQNsAsValues(
 
   const values: Value[] = [];
   for (const [fqn, av] of Object.entries(response.fqnAttributeValues)) {
-    const value = av.value;
+    let value = av.value;
     if (!value) {
-      console.log(`Missing value definition for [${fqn}]; is this a valid attribute?`);
-      continue;
-    }
-    if (value && av.attribute && !value?.attribute) {
+      if (!av.attribute) {
+        console.warn(`Missing value definition for [${fqn}]; is this a valid attribute?`);
+        continue;
+      }
+      console.warn(
+        `Missing value definition for [${fqn}]; using attribute definition only.`
+      );
+
+      value = create(ValueSchema, { attribute: av.attribute, fqn });
+    } else if (value && av.attribute && !value?.attribute) {
       value.attribute = av.attribute;
     }
 

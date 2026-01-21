@@ -590,8 +590,8 @@ export class Client {
         );
       }
 
-      for (const attributeValue of attributeValues) {
-        for (const kasKey of attributeValue.kasKeys) {
+      const cacheKasKeys = async (kasKeys: SimpleKasKey[]) => {
+        for (const kasKey of kasKeys) {
           if (kasKey.publicKey !== undefined) {
             await putKasKeyIntoCache(this.kasKeyInfoCache, {
               // TypeScript is silly and cannot infer that publicKey is not undefined, without re-referencing it like this, even though we checked already.
@@ -600,6 +600,17 @@ export class Client {
             });
           }
         }
+      };
+
+      for (const attributeValue of attributeValues) {
+        let effectiveKasKeys = attributeValue.kasKeys;
+        if (!effectiveKasKeys.length) {
+          effectiveKasKeys = attributeValue.attribute?.kasKeys ?? [];
+        }
+        if (!effectiveKasKeys.length) {
+          effectiveKasKeys = attributeValue.attribute?.namespace?.kasKeys ?? [];
+        }
+        await cacheKasKeys(effectiveKasKeys);
       }
 
       const detailedPlan = plan(attributeValues);

@@ -60,6 +60,20 @@ export function plan(dataAttrs: Value[]): KeySplitStep[] {
   // Values grouped by normalized attribute prefix
   const allClauses: Record<string, AttributeClause> = Object.create(null);
 
+  const toKeyHolders = (keys?: Value['kasKeys']): KeyHolder[] => {
+    if (!keys?.length) {
+      return [];
+    }
+    return keys
+      .map((kasKey) => {
+        if (!kasKey.publicKey) {
+          return null;
+        }
+        return Object.assign({ kasUri: kasKey.kasUri }, kasKey.publicKey);
+      })
+      .filter((kasKey) => kasKey !== null);
+  };
+
   const addGrants = (valueFQN: string, gs?: KeyHolder[]): boolean => {
     if (!(valueFQN in granters)) {
       granters[valueFQN] = new Set();
@@ -87,16 +101,16 @@ export function plan(dataAttrs: Value[]): KeySplitStep[] {
       };
     }
     allClauses[attrFqn].values.push(valFqn);
-    const validKasKeys = kasKeys
-      .map((kasKey) => {
-        if (!kasKey.publicKey) {
-          return null;
-        }
-        return Object.assign({ kasUri: kasKey.kasUri }, kasKey.publicKey);
-      })
-      .filter((kasKey) => kasKey !== null);
-    if (validKasKeys.length) {
-      addGrants(valFqn, validKasKeys);
+    // Prioritize key mappings over grants
+    let effectiveKasKeys = toKeyHolders(kasKeys);
+    if (!effectiveKasKeys.length) {
+      effectiveKasKeys = toKeyHolders(attribute.kasKeys);
+    }
+    if (!effectiveKasKeys.length) {
+      effectiveKasKeys = toKeyHolders(attribute.namespace?.kasKeys);
+    }
+    if (effectiveKasKeys.length) {
+      addGrants(valFqn, effectiveKasKeys);
     } else if (!addGrants(valFqn, v.grants)) {
       if (!addGrants(valFqn, attribute.grants)) {
         addGrants(valFqn, attribute.namespace?.grants);
