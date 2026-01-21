@@ -1,13 +1,16 @@
 import { expect } from 'chai';
 import {
   type AlgorithmUrn,
+  type AsymmetricSigningAlgorithm,
   type Binary,
   type CryptoService,
   type DecryptResult,
+  type ECCurve,
   type EncryptResult,
   type HashAlgorithm,
+  type HkdfParams,
   type PemKeyPair,
-  type SigningAlgorithm,
+  type PublicKeyInfo,
 } from '../../../tdf3/index.js';
 import { Client } from '../../../tdf3/src/client/index.js';
 
@@ -69,7 +72,7 @@ describe('CryptoService DI', () => {
       sign: function (
         data: Uint8Array,
         privateKeyPem: string,
-        algorithm: SigningAlgorithm
+        algorithm: AsymmetricSigningAlgorithm
       ): Promise<Uint8Array> {
         throw new Error('Function not implemented.');
       },
@@ -77,7 +80,17 @@ describe('CryptoService DI', () => {
         data: Uint8Array,
         signature: Uint8Array,
         publicKeyPem: string,
-        algorithm: SigningAlgorithm
+        algorithm: AsymmetricSigningAlgorithm
+      ): Promise<boolean> {
+        throw new Error('Function not implemented.');
+      },
+      signSymmetric: function (data: Uint8Array, key: Uint8Array): Promise<Uint8Array> {
+        throw new Error('Function not implemented.');
+      },
+      verifySymmetric: function (
+        data: Uint8Array,
+        signature: Uint8Array,
+        key: Uint8Array
       ): Promise<boolean> {
         throw new Error('Function not implemented.');
       },
@@ -85,6 +98,22 @@ describe('CryptoService DI', () => {
         throw new Error('Function not implemented.');
       },
       extractPublicKeyPem: function (certOrPem: string): Promise<string> {
+        throw new Error('Function not implemented.');
+      },
+      generateECKeyPair: function (curve?: ECCurve): Promise<PemKeyPair> {
+        throw new Error('Function not implemented.');
+      },
+      deriveKeyFromECDH: function (
+        privateKeyPem: string,
+        publicKeyPem: string,
+        hkdfParams: HkdfParams
+      ): Promise<Uint8Array> {
+        throw new Error('Function not implemented.');
+      },
+      importPublicKeyPem: function (pem: string): Promise<PublicKeyInfo> {
+        throw new Error('Function not implemented.');
+      },
+      jwkToPem: function (jwk: JsonWebKey): Promise<string> {
         throw new Error('Function not implemented.');
       },
     };
