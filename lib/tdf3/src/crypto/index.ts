@@ -7,13 +7,16 @@
 import { Algorithms } from '../ciphers/index.js';
 import { Binary } from '../binary.js';
 import {
-  CryptoService,
-  DecryptResult,
-  EncryptResult,
-  HashAlgorithm,
+  type AsymmetricSigningAlgorithm,
+  type CryptoService,
+  type DecryptResult,
+  type ECCurve,
+  type EncryptResult,
+  type HashAlgorithm,
+  type HkdfParams,
   MIN_ASYMMETRIC_KEY_SIZE_BITS,
-  PemKeyPair,
-  SigningAlgorithm,
+  type PemKeyPair,
+  type PublicKeyInfo,
 } from './declarations.js';
 import { ConfigurationError, DecryptError } from '../../../src/errors.js';
 import { formatAsPem, removePemFormatting } from './crypto-utils.js';
@@ -380,81 +383,214 @@ export function hex2Ab(hex: string): ArrayBuffer {
 }
 
 /**
- * Sign data with an RSA private key using RSASSA-PKCS1-v1_5.
+ * Get the Web Crypto algorithm parameters for a signing algorithm.
+ */
+function getSigningAlgorithmParams(algorithm: AsymmetricSigningAlgorithm): {
+  importParams: RsaHashedImportParams | EcKeyImportParams;
+  signParams: AlgorithmIdentifier | EcdsaParams;
+} {
+  switch (algorithm) {
+    case 'RS256':
+      return {
+        importParams: { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+        signParams: 'RSASSA-PKCS1-v1_5',
+      };
+    case 'ES256':
+      return {
+        importParams: { name: 'ECDSA', namedCurve: 'P-256' },
+        signParams: { name: 'ECDSA', hash: 'SHA-256' } as EcdsaParams,
+      };
+    case 'ES384':
+      return {
+        importParams: { name: 'ECDSA', namedCurve: 'P-384' },
+        signParams: { name: 'ECDSA', hash: 'SHA-384' } as EcdsaParams,
+      };
+    case 'ES512':
+      return {
+        importParams: { name: 'ECDSA', namedCurve: 'P-521' },
+        signParams: { name: 'ECDSA', hash: 'SHA-512' } as EcdsaParams,
+      };
+    default:
+      throw new ConfigurationError(`Unsupported signing algorithm: ${algorithm}`);
+  }
+}
+
+/**
+ * Convert IEEE P1363 signature format (used by WebCrypto ECDSA) to DER format (used by JWT).
+ * RS256 signatures don't need conversion.
+ */
+function ieeeP1363ToDer(signature: Uint8Array, algorithm: AsymmetricSigningAlgorithm): Uint8Array {
+  if (algorithm === 'RS256') {
+    return signature;
+  }
+
+  // IEEE P1363: r || s where each is padded to key size
+  const halfLen = signature.length / 2;
+  const r = signature.slice(0, halfLen);
+  const s = signature.slice(halfLen);
+
+  // Remove leading zeros but keep one if the high bit is set
+  const trimLeadingZeros = (arr: Uint8Array): Uint8Array => {
+    let i = 0;
+    while (i < arr.length - 1 && arr[i] === 0) i++;
+    return arr.slice(i);
+  };
+
+  let rTrimmed = trimLeadingZeros(r);
+  let sTrimmed = trimLeadingZeros(s);
+
+  // Add leading zero if high bit is set (to keep positive in DER)
+  if (rTrimmed[0] & 0x80) {
+    const padded = new Uint8Array(rTrimmed.length + 1);
+    padded.set(rTrimmed, 1);
+    rTrimmed = padded;
+  }
+  if (sTrimmed[0] & 0x80) {
+    const padded = new Uint8Array(sTrimmed.length + 1);
+    padded.set(sTrimmed, 1);
+    sTrimmed = padded;
+  }
+
+  // DER SEQUENCE: 0x30 [length] [r INTEGER] [s INTEGER]
+  // INTEGER: 0x02 [length] [value]
+  const rDer = new Uint8Array([0x02, rTrimmed.length, ...rTrimmed]);
+  const sDer = new Uint8Array([0x02, sTrimmed.length, ...sTrimmed]);
+
+  const seqLen = rDer.length + sDer.length;
+  const result = new Uint8Array(2 + seqLen);
+  result[0] = 0x30;
+  result[1] = seqLen;
+  result.set(rDer, 2);
+  result.set(sDer, 2 + rDer.length);
+
+  return result;
+}
+
+/**
+ * Convert DER signature format (used by JWT) to IEEE P1363 format (used by WebCrypto ECDSA).
+ * RS256 signatures don't need conversion.
+ */
+function derToIeeeP1363(signature: Uint8Array, algorithm: AsymmetricSigningAlgorithm): Uint8Array {
+  if (algorithm === 'RS256') {
+    return signature;
+  }
+
+  // Determine the expected component length based on algorithm
+  let componentLen: number;
+  switch (algorithm) {
+    case 'ES256':
+      componentLen = 32;
+      break;
+    case 'ES384':
+      componentLen = 48;
+      break;
+    case 'ES512':
+      componentLen = 66;
+      break;
+    default:
+      throw new ConfigurationError(`Unsupported algorithm for DER conversion: ${algorithm}`);
+  }
+
+  // Parse DER: SEQUENCE { INTEGER r, INTEGER s }
+  if (signature[0] !== 0x30) {
+    throw new ConfigurationError('Invalid DER signature: expected SEQUENCE');
+  }
+
+  let offset = 2; // Skip SEQUENCE tag and length
+
+  // Parse r INTEGER
+  if (signature[offset] !== 0x02) {
+    throw new ConfigurationError('Invalid DER signature: expected INTEGER for r');
+  }
+  const rLen = signature[offset + 1];
+  offset += 2;
+  let r = signature.slice(offset, offset + rLen);
+  offset += rLen;
+
+  // Parse s INTEGER
+  if (signature[offset] !== 0x02) {
+    throw new ConfigurationError('Invalid DER signature: expected INTEGER for s');
+  }
+  const sLen = signature[offset + 1];
+  offset += 2;
+  let s = signature.slice(offset, offset + sLen);
+
+  // Remove leading zero padding if present
+  if (r[0] === 0 && r.length > componentLen) {
+    r = r.slice(1);
+  }
+  if (s[0] === 0 && s.length > componentLen) {
+    s = s.slice(1);
+  }
+
+  // Pad to component length
+  const result = new Uint8Array(componentLen * 2);
+  result.set(r, componentLen - r.length);
+  result.set(s, componentLen * 2 - s.length);
+
+  return result;
+}
+
+/**
+ * Sign data with an asymmetric private key.
  */
 export async function sign(
   data: Uint8Array,
   privateKeyPem: string,
-  algorithm: SigningAlgorithm
+  algorithm: AsymmetricSigningAlgorithm
 ): Promise<Uint8Array> {
-  if (algorithm !== 'RS256') {
-    throw new ConfigurationError(`Unsupported signing algorithm: ${algorithm}`);
-  }
+  const { importParams, signParams } = getSigningAlgorithmParams(algorithm);
 
   // Remove PEM formatting and decode
   const keyData = removePemFormatting(privateKeyPem);
   const keyBuffer = base64Decode(keyData);
 
   // Import private key
-  const key = await crypto.subtle.importKey(
-    'pkcs8',
-    keyBuffer,
-    {
-      name: 'RSASSA-PKCS1-v1_5',
-      hash: 'SHA-256',
-    },
-    false,
-    ['sign']
-  );
+  const key = await crypto.subtle.importKey('pkcs8', keyBuffer, importParams, false, ['sign']);
 
   // Sign the data
-  const signature = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, data);
+  const signature = await crypto.subtle.sign(signParams, key, data);
 
-  return new Uint8Array(signature);
+  // Convert from IEEE P1363 to DER for EC algorithms
+  return ieeeP1363ToDer(new Uint8Array(signature), algorithm);
 }
 
 /**
- * Verify signature with an RSA public key using RSASSA-PKCS1-v1_5.
+ * Verify signature with an asymmetric public key.
  */
 export async function verify(
   data: Uint8Array,
   signature: Uint8Array,
   publicKeyPem: string,
-  algorithm: SigningAlgorithm
+  algorithm: AsymmetricSigningAlgorithm
 ): Promise<boolean> {
-  if (algorithm !== 'RS256') {
-    throw new ConfigurationError(`Unsupported signing algorithm: ${algorithm}`);
-  }
+  const { importParams, signParams } = getSigningAlgorithmParams(algorithm);
 
   // Remove PEM formatting and decode
   const keyData = removePemFormatting(publicKeyPem);
   const keyBuffer = base64Decode(keyData);
 
   // Import public key
-  const key = await crypto.subtle.importKey(
-    'spki',
-    keyBuffer,
-    {
-      name: 'RSASSA-PKCS1-v1_5',
-      hash: 'SHA-256',
-    },
-    false,
-    ['verify']
-  );
+  const key = await crypto.subtle.importKey('spki', keyBuffer, importParams, false, ['verify']);
+
+  // Convert from DER to IEEE P1363 for EC algorithms
+  const ieeeSignature = derToIeeeP1363(signature, algorithm);
 
   // Verify the signature
-  return crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, signature, data);
+  return crypto.subtle.verify(signParams, key, ieeeSignature, data);
 }
 
 /**
  * Compute hash digest.
  */
 export async function digest(algorithm: HashAlgorithm, data: Uint8Array): Promise<Uint8Array> {
-  if (algorithm !== 'SHA-256') {
+  // Validate algorithm and map to Web Crypto name
+  const validAlgorithms: HashAlgorithm[] = ['SHA-256', 'SHA-384', 'SHA-512'];
+  if (!validAlgorithms.includes(algorithm)) {
     throw new ConfigurationError(`Unsupported hash algorithm: ${algorithm}`);
   }
 
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashBuffer = await crypto.subtle.digest(algorithm, data);
   return new Uint8Array(hashBuffer);
 }
 
@@ -480,23 +616,276 @@ export async function extractPublicKeyPem(certOrPem: string): Promise<string> {
   throw new ConfigurationError('Input must be a PEM-encoded certificate or public key');
 }
 
+/**
+ * Map ECCurve to Web Crypto named curve.
+ */
+function curveToNamedCurve(curve: ECCurve): string {
+  switch (curve) {
+    case 'P-256':
+      return 'P-256';
+    case 'P-384':
+      return 'P-384';
+    case 'P-521':
+      return 'P-521';
+    default:
+      throw new ConfigurationError(`Unsupported curve: ${curve}`);
+  }
+}
+
+/**
+ * Generate an EC key pair for ECDH key agreement or ECDSA signing.
+ */
+export async function generateECKeyPair(curve: ECCurve = 'P-256'): Promise<PemKeyPair> {
+  const namedCurve = curveToNamedCurve(curve);
+
+  // Generate key pair using ECDH (can be used for both ECDH and ECDSA)
+  const keyPair = await crypto.subtle.generateKey(
+    { name: 'ECDH', namedCurve },
+    true,
+    ['deriveBits']
+  );
+
+  // Export to PEM format
+  const [publicKeyBuffer, privateKeyBuffer] = await Promise.all([
+    crypto.subtle.exportKey('spki', keyPair.publicKey),
+    crypto.subtle.exportKey('pkcs8', keyPair.privateKey),
+  ]);
+
+  return {
+    publicKey: formatAsPem(publicKeyBuffer, 'PUBLIC KEY'),
+    privateKey: formatAsPem(privateKeyBuffer, 'PRIVATE KEY'),
+  };
+}
+
+/**
+ * Perform ECDH key agreement followed by HKDF key derivation.
+ */
+export async function deriveKeyFromECDH(
+  privateKeyPem: string,
+  publicKeyPem: string,
+  hkdfParams: HkdfParams
+): Promise<Uint8Array> {
+  // Determine curve from the public key (try importing with each curve)
+  const privateKeyData = base64Decode(removePemFormatting(privateKeyPem));
+  const publicKeyData = base64Decode(removePemFormatting(publicKeyPem));
+
+  // Try to import keys - we'll try P-256 first since it's most common
+  let privateKey: CryptoKey | null = null;
+  let publicKey: CryptoKey | null = null;
+  let detectedCurve: string | null = null;
+
+  for (const namedCurve of ['P-256', 'P-384', 'P-521']) {
+    try {
+      privateKey = await crypto.subtle.importKey(
+        'pkcs8',
+        privateKeyData,
+        { name: 'ECDH', namedCurve },
+        false,
+        ['deriveBits']
+      );
+      publicKey = await crypto.subtle.importKey(
+        'spki',
+        publicKeyData,
+        { name: 'ECDH', namedCurve },
+        false,
+        []
+      );
+      detectedCurve = namedCurve;
+      break;
+    } catch {
+      // Try next curve
+    }
+  }
+
+  if (!privateKey || !publicKey) {
+    throw new ConfigurationError('Failed to import EC keys - unsupported curve or invalid key format');
+  }
+
+  // Determine bits based on curve
+  let bits: number;
+  switch (detectedCurve) {
+    case 'P-256':
+      bits = 256;
+      break;
+    case 'P-384':
+      bits = 384;
+      break;
+    case 'P-521':
+      bits = 528; // P-521 derives 528 bits (66 bytes)
+      break;
+    default:
+      throw new ConfigurationError(`Unsupported curve: ${detectedCurve}`);
+  }
+
+  // Perform ECDH to get shared secret
+  const sharedSecret = await crypto.subtle.deriveBits(
+    { name: 'ECDH', public: publicKey },
+    privateKey,
+    bits
+  );
+
+  // Import shared secret as HKDF key material
+  const hkdfKey = await crypto.subtle.importKey('raw', sharedSecret, 'HKDF', false, ['deriveKey']);
+
+  // Derive the final key using HKDF
+  const keyLength = hkdfParams.keyLength ?? 256;
+  const derivedKey = await crypto.subtle.deriveKey(
+    {
+      name: 'HKDF',
+      hash: hkdfParams.hash,
+      salt: hkdfParams.salt,
+      info: hkdfParams.info ?? new Uint8Array(0),
+    },
+    hkdfKey,
+    { name: 'AES-GCM', length: keyLength },
+    true,
+    ['encrypt', 'decrypt']
+  );
+
+  // Export the derived key as raw bytes
+  const keyBytes = await crypto.subtle.exportKey('raw', derivedKey);
+  return new Uint8Array(keyBytes);
+}
+
+/**
+ * Sign data with a symmetric key (HMAC-SHA256).
+ */
+export async function signSymmetric(data: Uint8Array, key: Uint8Array): Promise<Uint8Array> {
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    key,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+
+  const signature = await crypto.subtle.sign('HMAC', cryptoKey, data);
+  return new Uint8Array(signature);
+}
+
+/**
+ * Verify symmetric signature (HMAC-SHA256).
+ */
+export async function verifySymmetric(
+  data: Uint8Array,
+  signature: Uint8Array,
+  key: Uint8Array
+): Promise<boolean> {
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    key,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['verify']
+  );
+
+  return crypto.subtle.verify('HMAC', cryptoKey, signature, data);
+}
+
+/**
+ * Import and validate a PEM public key, returning algorithm info.
+ */
+export async function importPublicKeyPem(pem: string): Promise<PublicKeyInfo> {
+  // First extract public key if it's a certificate
+  let publicKeyPem = pem;
+  if (pem.includes('-----BEGIN CERTIFICATE-----')) {
+    publicKeyPem = await extractPublicKeyPem(pem);
+  }
+
+  if (!publicKeyPem.includes('-----BEGIN PUBLIC KEY-----')) {
+    throw new ConfigurationError('Input must be a PEM-encoded public key or certificate');
+  }
+
+  const keyData = base64Decode(removePemFormatting(publicKeyPem));
+
+  // Try RSA first
+  try {
+    await crypto.subtle.importKey(
+      'spki',
+      keyData,
+      { name: 'RSA-OAEP', hash: 'SHA-256' },
+      false,
+      ['encrypt']
+    );
+    // If successful, determine the key size by parsing the key
+    // RSA keys with 2048-bit modulus have ~270 bytes DER, 4096 has ~550 bytes
+    const algorithm = keyData.byteLength > 400 ? 'rsa:4096' : 'rsa:2048';
+    return { algorithm: algorithm as PublicKeyInfo['algorithm'], pem: publicKeyPem };
+  } catch {
+    // Not an RSA key, try EC curves next
+  }
+
+  // Try EC curves
+  for (const namedCurve of ['P-256', 'P-384', 'P-521'] as const) {
+    try {
+      await crypto.subtle.importKey('spki', keyData, { name: 'ECDH', namedCurve }, false, []);
+      const curveMap = {
+        'P-256': 'ec:secp256r1',
+        'P-384': 'ec:secp384r1',
+        'P-521': 'ec:secp521r1',
+      } as const;
+      return { algorithm: curveMap[namedCurve], pem: publicKeyPem };
+    } catch {
+      // Not this curve, continue
+    }
+  }
+
+  throw new ConfigurationError('Unable to determine public key algorithm - unsupported key type');
+}
+
+/**
+ * Convert a JWK (JSON Web Key) to PEM format.
+ */
+export async function jwkToPem(jwk: JsonWebKey): Promise<string> {
+  let key: CryptoKey;
+
+  if (jwk.kty === 'RSA') {
+    // RSA key
+    key = await crypto.subtle.importKey(
+      'jwk',
+      jwk,
+      { name: 'RSA-OAEP', hash: 'SHA-256' },
+      true,
+      ['encrypt']
+    );
+  } else if (jwk.kty === 'EC') {
+    // EC key
+    const crv = jwk.crv;
+    if (!crv || !['P-256', 'P-384', 'P-521'].includes(crv)) {
+      throw new ConfigurationError(`Unsupported EC curve: ${crv}`);
+    }
+    key = await crypto.subtle.importKey('jwk', jwk, { name: 'ECDH', namedCurve: crv }, true, []);
+  } else {
+    throw new ConfigurationError(`Unsupported JWK key type: ${jwk.kty}`);
+  }
+
+  const spkiBuffer = await crypto.subtle.exportKey('spki', key);
+  return formatAsPem(spkiBuffer, 'PUBLIC KEY');
+}
+
 export const DefaultCryptoService: CryptoService = {
   name,
   method,
   cryptoToPemPair,
   decrypt,
   decryptWithPrivateKey,
+  deriveKeyFromECDH,
   digest,
   encrypt,
   encryptWithPublicKey,
   extractPublicKeyPem,
+  generateECKeyPair,
   generateInitializationVector,
   generateKey,
   generateKeyPair,
   generateSigningKeyPair,
   hmac,
+  importPublicKeyPem,
+  jwkToPem,
   randomBytes,
   sha256,
   sign,
+  signSymmetric,
   verify,
+  verifySymmetric,
 };

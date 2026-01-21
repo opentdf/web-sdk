@@ -26,16 +26,53 @@ export type PemKeyPair = {
 export const MIN_ASYMMETRIC_KEY_SIZE_BITS = 2048;
 
 /**
- * Supported asymmetric signing algorithm.
- * Currently limited to RS256 (RSASSA-PKCS1-v1_5 with SHA-256).
+ * Elliptic curves supported for ECDH/ECDSA operations.
  */
-export type SigningAlgorithm = 'RS256';
+export type ECCurve = 'P-256' | 'P-384' | 'P-521';
 
 /**
- * Supported hash algorithm.
- * Currently limited to SHA-256.
+ * Asymmetric signing algorithms (require PEM keys).
  */
-export type HashAlgorithm = 'SHA-256';
+export type AsymmetricSigningAlgorithm = 'RS256' | 'ES256' | 'ES384' | 'ES512';
+
+/**
+ * Symmetric signing algorithm (requires raw key bytes).
+ */
+export type SymmetricSigningAlgorithm = 'HS256';
+
+/**
+ * All supported signing algorithms.
+ */
+export type SigningAlgorithm = AsymmetricSigningAlgorithm | SymmetricSigningAlgorithm;
+
+/**
+ * Supported hash algorithms.
+ */
+export type HashAlgorithm = 'SHA-256' | 'SHA-384' | 'SHA-512';
+
+/**
+ * Parameters for HKDF key derivation.
+ */
+export type HkdfParams = {
+  /** Hash algorithm to use for HKDF. */
+  hash: HashAlgorithm;
+  /** Salt for HKDF (can be empty Uint8Array). */
+  salt: Uint8Array;
+  /** Optional info/context for HKDF. */
+  info?: Uint8Array;
+  /** Desired key length in bits. Defaults to 256. */
+  keyLength?: number;
+};
+
+/**
+ * Public key information returned from importPublicKeyPem.
+ */
+export type PublicKeyInfo = {
+  /** Detected algorithm of the key. */
+  algorithm: 'rsa:2048' | 'rsa:4096' | 'ec:secp256r1' | 'ec:secp384r1' | 'ec:secp521r1';
+  /** Normalized PEM string. */
+  pem: string;
+};
 
 export type AnyKeyPair = PemKeyPair | CryptoKeyPair;
 
@@ -106,34 +143,53 @@ export type CryptoService = {
   sha256: (content: string) => Promise<string>;
 
   /**
-   * Sign data with an RSA private key.
+   * Sign data with an asymmetric private key.
    * @param data - Data to sign
-   * @param privateKeyPem - PEM-encoded RSA private key (PKCS#8 format)
-   * @param algorithm - RS256 (RSASSA-PKCS1-v1_5 with SHA-256)
+   * @param privateKeyPem - PEM-encoded private key (PKCS#8 format)
+   * @param algorithm - Signing algorithm (RS256, ES256, ES384, ES512)
    */
   sign: (
     data: Uint8Array,
     privateKeyPem: string,
-    algorithm: SigningAlgorithm
+    algorithm: AsymmetricSigningAlgorithm
   ) => Promise<Uint8Array>;
 
   /**
-   * Verify signature with an RSA public key.
+   * Verify signature with an asymmetric public key.
    * @param data - Original data that was signed
    * @param signature - Signature to verify
-   * @param publicKeyPem - PEM-encoded RSA public key (SPKI format)
+   * @param publicKeyPem - PEM-encoded public key (SPKI format)
    * @param algorithm - Must match algorithm used for signing
    */
   verify: (
     data: Uint8Array,
     signature: Uint8Array,
     publicKeyPem: string,
-    algorithm: SigningAlgorithm
+    algorithm: AsymmetricSigningAlgorithm
   ) => Promise<boolean>;
 
   /**
+   * Sign data with a symmetric key (HMAC-SHA256).
+   * @param data - Data to sign
+   * @param key - Raw key bytes (NOT hex-encoded like hmac())
+   * @returns Signature bytes
+   *
+   * Note: Different from hmac() which uses hex encoding for TDF3 policy binding.
+   * This method is for JWT HS256 signing with raw byte keys.
+   */
+  signSymmetric: (data: Uint8Array, key: Uint8Array) => Promise<Uint8Array>;
+
+  /**
+   * Verify symmetric signature (HMAC-SHA256).
+   * @param data - Original data that was signed
+   * @param signature - Signature to verify
+   * @param key - Raw key bytes
+   */
+  verifySymmetric: (data: Uint8Array, signature: Uint8Array, key: Uint8Array) => Promise<boolean>;
+
+  /**
    * Compute hash digest.
-   * @param algorithm - Hash algorithm to use
+   * @param algorithm - Hash algorithm to use (SHA-256, SHA-384, SHA-512)
    * @param data - Data to hash
    */
   digest: (algorithm: HashAlgorithm, data: Uint8Array) => Promise<Uint8Array>;
@@ -153,4 +209,46 @@ export type CryptoService = {
    * @throws Error if input is not valid PEM or certificate
    */
   extractPublicKeyPem: (certOrPem: string) => Promise<string>;
+
+  /**
+   * Generate an EC key pair for ECDH key agreement or ECDSA signing.
+   * @param curve - Elliptic curve to use (defaults to P-256)
+   * @throws ConfigurationError if EC operations not supported
+   */
+  generateECKeyPair: (curve?: ECCurve) => Promise<PemKeyPair>;
+
+  /**
+   * Perform ECDH key agreement followed by HKDF key derivation.
+   * Returns raw derived key bytes suitable for symmetric encryption.
+   *
+   * @param privateKeyPem - PEM-encoded EC private key
+   * @param publicKeyPem - PEM-encoded EC public key of other party
+   * @param hkdfParams - Parameters for HKDF derivation
+   * @returns Raw derived key bytes
+   * @throws ConfigurationError if EC operations not supported
+   */
+  deriveKeyFromECDH: (
+    privateKeyPem: string,
+    publicKeyPem: string,
+    hkdfParams: HkdfParams
+  ) => Promise<Uint8Array>;
+
+  /**
+   * Import and validate a PEM public key, returning algorithm info.
+   *
+   * @param pem - PEM-encoded public key or X.509 certificate
+   * @returns Validated PEM and detected algorithm
+   * @throws ConfigurationError if key format invalid or algorithm not supported
+   */
+  importPublicKeyPem: (pem: string) => Promise<PublicKeyInfo>;
+
+  /**
+   * Convert a JWK (JSON Web Key) to PEM format.
+   * Supports both RSA and EC keys.
+   *
+   * @param jwk - JSON Web Key object
+   * @returns PEM-encoded public key
+   * @throws ConfigurationError if JWK format invalid
+   */
+  jwkToPem: (jwk: JsonWebKey) => Promise<string>;
 };
