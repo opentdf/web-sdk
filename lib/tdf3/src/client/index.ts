@@ -21,7 +21,6 @@ import { CryptoService } from '../crypto/declarations.js';
 import { type AuthProvider, HttpRequest, withHeaders } from '../../../src/auth/auth.js';
 import {
   getPlatformUrlFromKasEndpoint,
-  pemToCryptoPublicKey,
   rstrip,
   validateSecureUrl,
 } from '../../../src/utils.js';
@@ -42,7 +41,6 @@ import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 import {
   fetchKeyAccessServers,
   type KasPublicKeyInfo,
-  keyAlgorithmToPublicKeyAlgorithm,
   OriginAllowList,
 } from '../../../src/access.js';
 import { ConfigurationError } from '../../../src/errors.js';
@@ -68,24 +66,23 @@ const defaultClientConfig = { oidcOrigin: '', cryptoService: defaultCryptoServic
 
 const getFirstTwoBytes = async (chunker: Chunker) => new TextDecoder().decode(await chunker(0, 2));
 
-async function algorithmFromPEM(pem: string) {
-  const k: CryptoKey = await pemToCryptoPublicKey(pem);
-  return keyAlgorithmToPublicKeyAlgorithm(k);
+async function algorithmFromPEM(pem: string, cryptoService: CryptoService) {
+  const keyInfo = await cryptoService.importPublicKeyPem(pem);
+  return keyInfo.algorithm;
 }
 
-// Convert a PEM string to a CryptoKey
+// Convert a PEM string to KasPublicKeyInfo
 export const resolveKasInfo = async (
   pem: string,
   uri: string,
+  cryptoService: CryptoService,
   kid?: string
 ): Promise<KasPublicKeyInfo> => {
-  const k: CryptoKey = await pemToCryptoPublicKey(pem);
-  const algorithm = keyAlgorithmToPublicKeyAlgorithm(k);
+  const keyInfo = await cryptoService.importPublicKeyPem(pem);
   return {
-    key: Promise.resolve(k),
     publicKey: pem,
     url: uri,
-    algorithm,
+    algorithm: keyInfo.algorithm,
     kid: kid,
   };
 };
@@ -300,7 +297,8 @@ const putKasKeyIntoCache = (
   cache: KasKeyInfoCache,
   kasKey: Omit<SimpleKasKey, 'publicKey'> & {
     publicKey: Exclude<SimpleKasKey['publicKey'], undefined>;
-  }
+  },
+  cryptoService: CryptoService
 ): ReturnType<typeof fetchKasPublicKey> => {
   const algorithmString = algorithmEnumValueToString(kasKey.publicKey.algorithm);
   const cachedEntry = findEntryInCache(cache, kasKey.kasUri, algorithmString, kasKey.publicKey.kid);
@@ -308,12 +306,9 @@ const putKasKeyIntoCache = (
     return cachedEntry;
   }
   const keyInfoPromise = (async function () {
-    const keyPromise = pemToCryptoPublicKey(kasKey.publicKey.pem);
-    const key = await keyPromise;
-    const algorithm = keyAlgorithmToPublicKeyAlgorithm(key);
+    const keyInfo = await cryptoService.importPublicKeyPem(kasKey.publicKey.pem);
     return {
-      algorithm: algorithm,
-      key: keyPromise,
+      algorithm: keyInfo.algorithm,
       kid: kasKey.publicKey.kid,
       publicKey: kasKey.publicKey.pem,
       url: kasKey.kasUri,
@@ -519,11 +514,15 @@ export class Client {
     for (const attributeValue of scope.attributeValues || []) {
       for (const kasKey of attributeValue.kasKeys) {
         if (kasKey.publicKey !== undefined) {
-          await putKasKeyIntoCache(this.kasKeyInfoCache, {
-            // TypeScript is silly and cannot infer that publicKey is not undefined, without re-referencing it like this, even though we checked already.
-            ...kasKey,
-            publicKey: kasKey.publicKey,
-          });
+          await putKasKeyIntoCache(
+            this.kasKeyInfoCache,
+            {
+              // TypeScript is silly and cannot infer that publicKey is not undefined, without re-referencing it like this, even though we checked already.
+              ...kasKey,
+              publicKey: kasKey.publicKey,
+            },
+            this.cryptoService
+          );
         }
       }
     }
@@ -593,11 +592,15 @@ export class Client {
       for (const attributeValue of attributeValues) {
         for (const kasKey of attributeValue.kasKeys) {
           if (kasKey.publicKey !== undefined) {
-            await putKasKeyIntoCache(this.kasKeyInfoCache, {
-              // TypeScript is silly and cannot infer that publicKey is not undefined, without re-referencing it like this, even though we checked already.
-              ...kasKey,
-              publicKey: kasKey.publicKey,
-            });
+            await putKasKeyIntoCache(
+              this.kasKeyInfoCache,
+              {
+                // TypeScript is silly and cannot infer that publicKey is not undefined, without re-referencing it like this, even though we checked already.
+                ...kasKey,
+                publicKey: kasKey.publicKey,
+              },
+              this.cryptoService
+            );
           }
         }
       }
@@ -605,7 +608,7 @@ export class Client {
       const detailedPlan = plan(attributeValues);
       for (const item of detailedPlan) {
         if ('kid' in item.kas) {
-          const pemAlgorithm = await algorithmFromPEM(item.kas.pem);
+          const pemAlgorithm = await algorithmFromPEM(item.kas.pem, this.cryptoService);
           const kasPublicKeyInfo = await this._doFetchKasKeyWithCache(
             this.kasKeyInfoCache,
             item.kas.kasUri,
@@ -693,7 +696,7 @@ export class Client {
     }
     encryptionInformation.keyAccess = await Promise.all(
       splitPlan.map(async ({ kas, kid, pem, sid }) => {
-        const algorithm = await algorithmFromPEM(pem);
+        const algorithm = await algorithmFromPEM(pem, this.cryptoService);
         if (algorithm !== wrappingKeyAlgorithm) {
           console.warn(
             `Mismatched wrapping key algorithm: [${algorithm}] is not requested type, [${wrappingKeyAlgorithm}]`

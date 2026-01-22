@@ -1,20 +1,19 @@
 import { base64, hex } from '../../../src/encodings/index.js';
-import { generateRandomNumber } from '../../../src/crypto/generateRandomNumber.js';
-import { keyAgreement } from '../../../src/crypto/keyAgreement.js';
-import { pemPublicToCrypto } from '../../../src/crypto/pemPublicToCrypto.js';
-import { cryptoPublicToPem } from '../../../src/utils.js';
 import { Binary } from '../binary.js';
-import * as cryptoService from '../crypto/index.js';
+import type { CryptoService } from '../crypto/declarations.js';
 import { ztdfSalt } from '../crypto/salt.js';
+import { Algorithms } from '../ciphers/index.js';
 import { Policy } from './policy.js';
 
 export type KeyAccessType = 'remote' | 'wrapped' | 'ec-wrapped';
 
 export const schemaVersion = '1.0';
 
+import type { PemKeyPair } from '../crypto/declarations.js';
+
 export class ECWrapped {
   readonly type = 'ec-wrapped';
-  readonly ephemeralKeyPair: Promise<CryptoKeyPair>;
+  readonly ephemeralKeyPair: Promise<PemKeyPair>;
   keyAccessObject?: KeyAccessObject;
 
   constructor(
@@ -22,16 +21,13 @@ export class ECWrapped {
     public readonly kid: string | undefined,
     public readonly publicKey: string,
     public readonly metadata: unknown,
+    public readonly cryptoService: CryptoService,
     public readonly sid?: string
   ) {
-    this.ephemeralKeyPair = crypto.subtle.generateKey(
-      {
-        name: 'ECDH',
-        namedCurve: 'P-256',
-      },
-      false,
-      ['deriveBits', 'deriveKey']
-    );
+    // Generate EC key pair using CryptoService - returns PEM keys
+    // Note: Original used crypto.subtle with ['deriveBits', 'deriveKey'] usages,
+    // but with PEM export/import, the usages are set when re-importing in deriveKeyFromECDH
+    this.ephemeralKeyPair = this.cryptoService.generateECKeyPair('P-256');
   }
 
   async write(
@@ -40,26 +36,44 @@ export class ECWrapped {
     encryptedMetadataStr: string
   ): Promise<KeyAccessObject> {
     const policyStr = JSON.stringify(policy);
-    const [ek, clientPublicKey] = await Promise.all([
-      this.ephemeralKeyPair,
-      pemPublicToCrypto(this.publicKey),
-    ]);
-    const kek = await keyAgreement(ek.privateKey, clientPublicKey, {
-      hkdfSalt: await ztdfSalt,
-      hkdfHash: 'SHA-256',
-    });
-    const iv = generateRandomNumber(12);
-    const cek = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, tagLength: 128 }, kek, dek);
-    const entityWrappedKey = new Uint8Array(iv.length + cek.byteLength);
-    entityWrappedKey.set(iv);
-    entityWrappedKey.set(new Uint8Array(cek), iv.length);
+    const ek = await this.ephemeralKeyPair;
 
-    const policyBinding = await cryptoService.hmac(
+    // Derive encryption key using ECDH + HKDF via CryptoService
+    const derivedKeyBytes = await this.cryptoService.deriveKeyFromECDH(
+      ek.privateKey,
+      this.publicKey,
+      {
+        hash: 'SHA-256',
+        salt: await ztdfSalt,
+      }
+    );
+
+    // Generate random IV
+    const iv = await this.cryptoService.randomBytes(12);
+
+    // Encrypt DEK using derived key with AES-GCM
+    const encryptResult = await this.cryptoService.encrypt(
+      Binary.fromArrayBuffer(dek.buffer),
+      Binary.fromArrayBuffer(derivedKeyBytes.buffer),
+      Binary.fromArrayBuffer(iv.buffer),
+      Algorithms.AES_256_GCM
+    );
+
+    // Combine IV + ciphertext + authTag (crypto.subtle.encrypt includes authTag in ciphertext)
+    const ciphertext = new Uint8Array(encryptResult.payload.asArrayBuffer());
+    const authTag = encryptResult.authTag
+      ? new Uint8Array(encryptResult.authTag.asArrayBuffer())
+      : new Uint8Array(0);
+    const entityWrappedKey = new Uint8Array(iv.length + ciphertext.length + authTag.length);
+    entityWrappedKey.set(iv);
+    entityWrappedKey.set(ciphertext, iv.length);
+    entityWrappedKey.set(authTag, iv.length + ciphertext.length);
+
+    const policyBinding = await this.cryptoService.hmac(
       hex.encodeArrayBuffer(dek),
       base64.encode(policyStr)
     );
 
-    const ephemeralPublicKeyPEM = await cryptoPublicToPem(ek.publicKey);
     const kao: KeyAccessObject = {
       type: 'ec-wrapped',
       url: this.url,
@@ -71,7 +85,7 @@ export class ECWrapped {
         hash: base64.encode(policyBinding),
       },
       schemaVersion,
-      ephemeralPublicKey: ephemeralPublicKeyPEM,
+      ephemeralPublicKey: ek.publicKey,
     };
     if (this.kid) {
       kao.kid = this.kid;
@@ -93,6 +107,7 @@ export class Wrapped {
     public readonly kid: string | undefined,
     public readonly publicKey: string,
     public readonly metadata: unknown,
+    public readonly cryptoService: CryptoService,
     public readonly sid?: string
   ) {}
 
@@ -103,12 +118,12 @@ export class Wrapped {
   ): Promise<KeyAccessObject> {
     const policyStr = JSON.stringify(policy);
     const unwrappedKeyBinary = Binary.fromArrayBuffer(keyBuffer.buffer);
-    const wrappedKeyBinary = await cryptoService.encryptWithPublicKey(
+    const wrappedKeyBinary = await this.cryptoService.encryptWithPublicKey(
       unwrappedKeyBinary,
       this.publicKey
     );
 
-    const policyBinding = await cryptoService.hmac(
+    const policyBinding = await this.cryptoService.hmac(
       hex.encodeArrayBuffer(keyBuffer),
       base64.encode(policyStr)
     );

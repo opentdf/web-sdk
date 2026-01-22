@@ -27,9 +27,6 @@ import {
   UnsafeUrlError,
   UnsupportedFeatureError as UnsupportedError,
 } from '../../src/errors.js';
-import { generateKeyPair } from '../../src/crypto/generateKeyPair.js';
-import { keyAgreement } from '../../src/crypto/keyAgreement.js';
-import { pemPublicToCrypto } from '../../src/crypto/pemPublicToCrypto.js';
 import { type Chunker } from '../../src/seekable.js';
 import { tdfSpecVersion } from '../../src/version.js';
 import { AssertionConfig, AssertionKey, AssertionVerificationKeys } from './assertions.js';
@@ -40,11 +37,11 @@ import { SymmetricCipher } from './ciphers/symmetric-cipher-base.js';
 import { DecryptParams } from './client/builders.js';
 import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
 import {
-  AnyKeyPair,
   PemKeyPair,
   type CryptoService,
   type DecryptResult,
 } from './crypto/declarations.js';
+import { Algorithms } from './ciphers/index.js';
 import {
   ECWrapped,
   KeyAccessType,
@@ -273,9 +270,9 @@ export async function buildKeyAccess({
   }
   switch (type) {
     case 'wrapped':
-      return new Wrapped(url, kid, pubKey, metadata, sid);
+      return new Wrapped(url, kid, pubKey, metadata, cryptoService, sid);
     case 'ec-wrapped':
-      return new ECWrapped(url, kid, pubKey, metadata, sid);
+      return new ECWrapped(url, kid, pubKey, metadata, cryptoService, sid);
     default:
       throw new ConfigurationError(`buildKeyAccess: Key access type [${type}] is unsupported`);
   }
@@ -765,14 +762,13 @@ async function unwrapKey({
 
   async function tryKasRewrap(keySplitInfo: KeyAccessObject): Promise<RewrapResponseData> {
     const url = `${keySplitInfo.url}/v2/rewrap`;
-    let ephemeralEncryptionKeysRaw: AnyKeyPair;
     let ephemeralEncryptionKeys: PemKeyPair;
     if (wrappingKeyAlgorithm === 'ec:secp256r1') {
-      ephemeralEncryptionKeysRaw = await generateKeyPair();
-      ephemeralEncryptionKeys = await cryptoService.cryptoToPemPair(ephemeralEncryptionKeysRaw);
+      // Generate EC key pair directly as PEM via CryptoService
+      ephemeralEncryptionKeys = await cryptoService.generateECKeyPair('P-256');
     } else if (wrappingKeyAlgorithm === 'rsa:2048' || !wrappingKeyAlgorithm) {
-      ephemeralEncryptionKeysRaw = await cryptoService.generateKeyPair();
-      ephemeralEncryptionKeys = await cryptoService.cryptoToPemPair(ephemeralEncryptionKeysRaw);
+      const keys = await cryptoService.generateKeyPair();
+      ephemeralEncryptionKeys = await cryptoService.cryptoToPemPair(keys);
     } else {
       throw new ConfigurationError(`Unsupported wrapping key algorithm [${wrappingKeyAlgorithm}]`);
     }
@@ -850,20 +846,30 @@ async function unwrapKey({
         const entityWrappedKey = result.result.value;
 
         if (wrappingKeyAlgorithm === 'ec:secp256r1') {
-          const serverEphemeralKey: CryptoKey = await pemPublicToCrypto(sessionPublicKey);
-          const ekr = ephemeralEncryptionKeysRaw as CryptoKeyPair;
-          const kek = await keyAgreement(ekr.privateKey, serverEphemeralKey, {
-            hkdfSalt: await ztdfSalt,
-            hkdfHash: 'SHA-256',
-          });
+          // Derive decryption key using ECDH + HKDF via CryptoService
+          const derivedKeyBytes = await cryptoService.deriveKeyFromECDH(
+            ephemeralEncryptionKeys.privateKey,
+            sessionPublicKey,
+            {
+              hash: 'SHA-256',
+              salt: await ztdfSalt,
+            }
+          );
+
           const wrappedKeyAndNonce = entityWrappedKey;
           const iv = wrappedKeyAndNonce.slice(0, 12);
           const wrappedKey = wrappedKeyAndNonce.slice(12);
 
-          const dek = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, kek, wrappedKey);
+          // Decrypt using CryptoService
+          const decryptResult = await cryptoService.decrypt(
+            Binary.fromArrayBuffer(wrappedKey.buffer),
+            Binary.fromArrayBuffer(derivedKeyBytes.buffer),
+            Binary.fromArrayBuffer(iv.buffer),
+            Algorithms.AES_256_GCM
+          );
 
           return {
-            key: new Uint8Array(dek),
+            key: new Uint8Array(decryptResult.payload.asArrayBuffer()),
             metadata,
             requiredObligations,
           };

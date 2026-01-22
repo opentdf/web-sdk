@@ -24,6 +24,7 @@ import { encodeArrayBuffer as hexEncode } from '../../../src/encodings/hex.js';
 import { decodeArrayBuffer as base64Decode } from '../../../src/encodings/base64.js';
 import { AlgorithmUrn } from '../ciphers/algorithms.js';
 import { exportSPKI, importX509 } from 'jose';
+import { toJwsAlg } from '../../../src/crypto/pemPublicToCrypto.js';
 
 // Used to pass into native crypto functions
 const METHODS: KeyUsage[] = ['encrypt', 'decrypt'];
@@ -599,7 +600,7 @@ export async function digest(algorithm: HashAlgorithm, data: Uint8Array): Promis
  *
  * @param certOrPem - A PEM-encoded X.509 certificate or public key
  * @param jwaAlgorithm - JWA algorithm hint for certificate parsing (RS256, RS512, ES256, ES384, ES512).
- *                       Required when certOrPem is a certificate. Ignored for raw public keys.
+ *                       If not provided for a certificate, will attempt to auto-detect from OIDs.
  */
 export async function extractPublicKeyPem(
   certOrPem: string,
@@ -607,12 +608,18 @@ export async function extractPublicKeyPem(
 ): Promise<string> {
   // If it's a certificate, extract the public key
   if (certOrPem.includes('-----BEGIN CERTIFICATE-----')) {
-    if (!jwaAlgorithm) {
-      throw new ConfigurationError(
-        'jwaAlgorithm is required when extracting public key from X.509 certificate'
-      );
+    let alg = jwaAlgorithm;
+    if (!alg) {
+      // Auto-detect algorithm from certificate OIDs
+      const certBody = certOrPem
+        .replace('-----BEGIN CERTIFICATE-----', '')
+        .replace('-----END CERTIFICATE-----', '')
+        .replace(/\s/g, '');
+      const certBytes = base64Decode(certBody);
+      const hex = hexEncode(certBytes);
+      alg = toJwsAlg(hex);
     }
-    const cert = await importX509(certOrPem, jwaAlgorithm, { extractable: true });
+    const cert = await importX509(certOrPem, alg, { extractable: true });
     return exportSPKI(cert);
   }
 

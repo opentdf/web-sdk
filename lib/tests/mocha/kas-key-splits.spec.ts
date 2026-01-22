@@ -13,7 +13,6 @@ import {
 } from '../../src/policy/attributes.js';
 import { SourceType } from '../../src/platform/policy/objects_pb.js';
 import { KasPublicKeyInfo } from '../../src/access.js';
-import { pemToCryptoPublicKey } from '../../src/utils.js';
 
 const Mocks = getMocks();
 const kasUrl = 'http://localhost:3000/kas';
@@ -121,14 +120,12 @@ describe('Client Caching Behavior', () => {
 
         const attrOneValueOneKey = {
           algorithm: 'ec:secp256r1',
-          key: pemToCryptoPublicKey(Mocks.entityECPublicKey),
           kid: 'same-kid-as-other-keys',
           publicKey: Mocks.entityECPublicKey,
           url: kasOne.uri,
         } satisfies KasPublicKeyInfo;
         const attrOneValueTwoKey = {
           algorithm: 'ec:secp256r1',
-          key: pemToCryptoPublicKey(Mocks.extraECPublicKey),
           kid: 'same-kid-as-other-keys',
           publicKey: Mocks.extraECPublicKey,
           url: kasTwo.uri,
@@ -271,14 +268,12 @@ describe('Client Caching Behavior', () => {
 
       const attrOneValueOneKey = {
         algorithm: 'ec:secp256r1',
-        key: pemToCryptoPublicKey(Mocks.entityECPublicKey),
         kid: 'attr-one-value-one-key',
         publicKey: Mocks.entityECPublicKey,
         url: kasOne.uri,
       } satisfies KasPublicKeyInfo;
       const attrOneValueTwoKey = {
         algorithm: 'ec:secp256r1',
-        key: pemToCryptoPublicKey(Mocks.extraECPublicKey),
         kid: 'attr-one-value-two-key',
         publicKey: Mocks.extraECPublicKey,
         url: kasTwo.uri,
@@ -465,14 +460,12 @@ describe('Client Caching Behavior', () => {
 
       const attrOneValueOneKey: KasPublicKeyInfo = {
         algorithm: 'ec:secp256r1',
-        key: pemToCryptoPublicKey(Mocks.entityECPublicKey),
         kid: 'attr-one-value-one-key',
         publicKey: Mocks.entityECPublicKey,
         url: kasOne.uri,
       };
       const attrOneValueTwoKey: KasPublicKeyInfo = {
         algorithm: 'ec:secp256r1',
-        key: pemToCryptoPublicKey(Mocks.extraECPublicKey),
         kid: 'attr-one-value-two-key',
         publicKey: Mocks.extraECPublicKey,
         url: kasTwo.uri,

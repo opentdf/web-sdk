@@ -1,7 +1,6 @@
 import {
   KasPublicKeyAlgorithm,
   KasPublicKeyInfo,
-  noteInvalidPublicKey,
   OriginAllowList,
 } from '../access.js';
 import { type AuthProvider } from '../auth/auth.js';
@@ -13,7 +12,7 @@ import {
   ServiceError,
   UnauthenticatedError,
 } from '../errors.js';
-import { pemToCryptoPublicKey, validateSecureUrl } from '../utils.js';
+import { validateSecureUrl } from '../utils.js';
 
 export type RewrapRequest = {
   signedRequestToken: string;
@@ -194,7 +193,6 @@ export async function fetchKasPubKey(
     );
   }
   return {
-    key: noteInvalidPublicKey(pkUrlV2, pemToCryptoPublicKey(publicKey)),
     publicKey,
     url: kasEndpoint,
     algorithm: algorithm || 'rsa:2048',
