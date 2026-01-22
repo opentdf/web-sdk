@@ -74,7 +74,10 @@ describe('ECWrapped', () => {
         expect(keyAccessObject).to.have.property('schemaVersion', '1.0');
         // Only ECWrapped has ephemeralPublicKey
         if (typeName === 'ECWrapped') {
-          expect(keyAccessObject).to.have.property('ephemeralPublicKey', 'ephemeral-public-key-pem');
+          expect(keyAccessObject).to.have.property(
+            'ephemeralPublicKey',
+            'ephemeral-public-key-pem'
+          );
         }
         expect(keyAccessObject).to.have.property('kid', kid);
         expect(keyAccessObject).to.have.property('sid', sid);

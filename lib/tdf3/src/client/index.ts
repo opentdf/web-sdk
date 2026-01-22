@@ -19,11 +19,7 @@ import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-pr
 import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider.js';
 import { CryptoService } from '../crypto/declarations.js';
 import { type AuthProvider, HttpRequest, withHeaders } from '../../../src/auth/auth.js';
-import {
-  getPlatformUrlFromKasEndpoint,
-  rstrip,
-  validateSecureUrl,
-} from '../../../src/utils.js';
+import { getPlatformUrlFromKasEndpoint, rstrip, validateSecureUrl } from '../../../src/utils.js';
 
 import {
   type DecryptParams,

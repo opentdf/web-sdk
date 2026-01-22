@@ -36,11 +36,7 @@ import { AesGcmCipher } from './ciphers/aes-gcm-cipher.js';
 import { SymmetricCipher } from './ciphers/symmetric-cipher-base.js';
 import { DecryptParams } from './client/builders.js';
 import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
-import {
-  PemKeyPair,
-  type CryptoService,
-  type DecryptResult,
-} from './crypto/declarations.js';
+import { PemKeyPair, type CryptoService, type DecryptResult } from './crypto/declarations.js';
 import { Algorithms } from './ciphers/index.js';
 import {
   ECWrapped,

@@ -1,8 +1,4 @@
-import {
-  KasPublicKeyAlgorithm,
-  KasPublicKeyInfo,
-  OriginAllowList,
-} from '../access.js';
+import { KasPublicKeyAlgorithm, KasPublicKeyInfo, OriginAllowList } from '../access.js';
 import { type AuthProvider } from '../auth/auth.js';
 import {
   ConfigurationError,
