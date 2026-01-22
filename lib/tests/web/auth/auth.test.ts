@@ -1,7 +1,8 @@
 import { assert, expect } from '@esm-bundle/chai';
 import { fake } from 'sinon';
 import { AccessToken, type AccessTokenResponse } from '../../../src/auth/oidc.js';
-import * as DefaultCryptoService from '../../../tdf3/src/crypto/index.js';
+import { DefaultCryptoService } from '../../../tdf3/src/crypto/index.js';
+import * as CryptoFunctions from '../../../tdf3/src/crypto/index.js';
 import type { PemKeyPair } from '../../../tdf3/src/crypto/declarations.js';
 
 // // const qsparse = (s: string) => Object.fromEntries(new URLSearchParams(s));
@@ -32,7 +33,7 @@ function mockFetch(
 
 // Helper to generate PEM signing keys for tests
 async function generateTestSigningKey(): Promise<PemKeyPair> {
-  return DefaultCryptoService.generateSigningKeyPair();
+  return CryptoFunctions.generateSigningKeyPair();
 }
 
 // Due to Jest mocks not working with ESModules currently,
@@ -48,6 +49,7 @@ describe('AccessToken', () => {
           exchange: 'refresh',
           refreshToken: 'ignored',
         },
+        DefaultCryptoService,
         mf
       );
       const res = await accessToken.info('fakeToken');
@@ -69,6 +71,7 @@ describe('AccessToken', () => {
           clientId: 'yoo',
           clientSecret: 'asdfa',
         },
+        DefaultCryptoService,
         mf
       );
       try {
@@ -94,6 +97,7 @@ describe('AccessToken', () => {
             signingKey,
             dpopEnabled: true,
           },
+          DefaultCryptoService,
           mf
         );
         const res = await accessToken.get();
@@ -122,6 +126,7 @@ describe('AccessToken', () => {
             signingKey,
             dpopEnabled: false,
           },
+          DefaultCryptoService,
           mf
         );
         const res = await accessToken.get();
@@ -151,6 +156,7 @@ describe('AccessToken', () => {
             refreshToken: 'fakeRefreshToken',
             signingKey,
           },
+          DefaultCryptoService,
           mf
         );
         const res = await accessToken.get();
@@ -179,6 +185,7 @@ describe('AccessToken', () => {
             externalJwt: 'subject.token',
             signingKey,
           },
+          DefaultCryptoService,
           mf
         );
         const res = await accessToken.get();
@@ -207,6 +214,7 @@ describe('AccessToken', () => {
             externalJwt: 'fdfsdffsdf',
             signingKey,
           },
+          DefaultCryptoService,
           mf
         );
 
@@ -238,6 +246,7 @@ describe('AccessToken', () => {
             exchange: 'client',
             signingKey,
           },
+          DefaultCryptoService,
           mf
         );
         // Do a refresh to cache tokenset
@@ -260,6 +269,7 @@ describe('AccessToken', () => {
               clientId: '',
               clientSecret: undefined as unknown as string,
             },
+            DefaultCryptoService,
             mf
           );
 
@@ -283,6 +293,7 @@ describe('AccessToken', () => {
           exchange: 'client',
           signingKey,
         },
+        DefaultCryptoService,
         mf
       );
       accessTokenClient.data = {
@@ -315,6 +326,7 @@ describe('AccessToken', () => {
           exchange: 'client',
           signingKey,
         },
+        DefaultCryptoService,
         mf
       );
       accessTokenClient.data = {

@@ -253,4 +253,15 @@ export type CryptoService = {
    * @throws ConfigurationError if JWK format invalid
    */
   jwkToPem: (jwk: JsonWebKey) => Promise<string>;
+
+  /**
+   * Convert a PEM public key to JWK format.
+   * Used for DPoP JWT header which requires JWK representation.
+   * Supports both RSA and EC keys.
+   *
+   * @param publicKeyPem - PEM-encoded public key (SPKI format)
+   * @returns JWK object with only public key components (kty, e, n for RSA; kty, crv, x, y for EC)
+   * @throws ConfigurationError if PEM format invalid
+   */
+  pemToJwk: (publicKeyPem: string) => Promise<JsonWebKey>;
 };
