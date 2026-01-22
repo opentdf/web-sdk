@@ -50,7 +50,7 @@ function encodeBase64Url(input: Uint8Array | ArrayBuffer) {
 
   const arr = [];
   for (let i = 0; i < input.byteLength; i += CHUNK_SIZE) {
-    // @ts-expect-error
+    // @ts-expect-error - Uint8Array is compatible with number[] for fromCharCode.apply
     arr.push(String.fromCharCode.apply(null, input.subarray(i, i + CHUNK_SIZE)));
   }
   return btoa(arr.join('')).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
@@ -112,7 +112,6 @@ class UnsupportedOperationError extends Error {
   constructor(message?: string) {
     super(message ?? 'operation not supported');
     this.name = this.constructor.name;
-    // @ts-ignore
     Error.captureStackTrace?.(this, this.constructor);
   }
 }
