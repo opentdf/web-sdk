@@ -36,7 +36,7 @@ const buildValue = ({
   valueKasKeys?: ReturnType<typeof makeSimpleKasKey>[];
   attributeKasKeys?: ReturnType<typeof makeSimpleKasKey>[];
   namespaceKasKeys?: ReturnType<typeof makeSimpleKasKey>[];
-  grants?: typeof matr.kases[keyof typeof matr.kases][];
+  grants?: (typeof matr.kases)[keyof typeof matr.kases][];
   namespaceFqn?: string;
   attributeName?: string;
   valueName?: string;
