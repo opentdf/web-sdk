@@ -1,6 +1,7 @@
 import { ConfigurationError } from '../errors.js';
 import { Attribute, AttributeRuleType, KeyAccessServer, Value } from './attributes.js';
 import { SimpleKasPublicKey } from '../platform/policy/objects_pb.js';
+import { effectiveKasKeys } from './kas-keys.js';
 
 type KeyHolder = KeyAccessServer | (SimpleKasPublicKey & { kasUri: string });
 
@@ -88,7 +89,7 @@ export function plan(dataAttrs: Value[]): KeySplitStep[] {
   };
 
   for (const v of dataAttrs) {
-    const { attribute, fqn, kasKeys } = v;
+    const { attribute, fqn } = v;
     if (!attribute) {
       throw new ConfigurationError(`attribute not defined for [${fqn}]`);
     }
@@ -102,15 +103,9 @@ export function plan(dataAttrs: Value[]): KeySplitStep[] {
     }
     allClauses[attrFqn].values.push(valFqn);
     // Prioritize key mappings over grants
-    let effectiveKasKeys = toKeyHolders(kasKeys);
-    if (!effectiveKasKeys.length) {
-      effectiveKasKeys = toKeyHolders(attribute.kasKeys);
-    }
-    if (!effectiveKasKeys.length) {
-      effectiveKasKeys = toKeyHolders(attribute.namespace?.kasKeys);
-    }
-    if (effectiveKasKeys.length) {
-      addGrants(valFqn, effectiveKasKeys);
+    const kasKeyHolders = toKeyHolders(effectiveKasKeys(v));
+    if (kasKeyHolders.length) {
+      addGrants(valFqn, kasKeyHolders);
     } else if (!addGrants(valFqn, v.grants)) {
       if (!addGrants(valFqn, attribute.grants)) {
         addGrants(valFqn, attribute.namespace?.grants);
