@@ -44,14 +44,13 @@ async function jwt(
 
 const CHUNK_SIZE = 0x8000;
 function encodeBase64Url(input: Uint8Array | ArrayBuffer) {
-  if (input instanceof ArrayBuffer) {
-    input = new Uint8Array(input);
-  }
+  const bytes = input instanceof ArrayBuffer ? new Uint8Array(input) : input;
 
   const arr = [];
-  for (let i = 0; i < input.byteLength; i += CHUNK_SIZE) {
-    // @ts-expect-error - Uint8Array is compatible with number[] for fromCharCode.apply
-    arr.push(String.fromCharCode.apply(null, input.subarray(i, i + CHUNK_SIZE)));
+  for (let i = 0; i < bytes.byteLength; i += CHUNK_SIZE) {
+    arr.push(
+      String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK_SIZE) as unknown as number[])
+    );
   }
   return btoa(arr.join('')).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
 }
@@ -106,7 +105,7 @@ async function randomBytes(cryptoService: CryptoService) {
  * }
  * ```
  */
-export type JWSAlgorithm = 'PS256' | 'ES256' | 'RS256' | 'EdDSA';
+export type JWSAlgorithm = 'PS256' | 'ES256' | 'ES384' | 'ES512' | 'RS256' | 'EdDSA';
 
 class UnsupportedOperationError extends Error {
   constructor(message?: string) {
@@ -122,10 +121,17 @@ class UnsupportedOperationError extends Error {
 function determineJWSAlgorithmFromKeyInfo(algorithm: string): JWSAlgorithm {
   if (algorithm.startsWith('rsa:')) {
     return 'RS256';
-  } else if (algorithm === 'ec:secp256r1') {
-    return 'ES256';
   }
-  throw new UnsupportedOperationError(`unsupported key algorithm: ${algorithm}`);
+  switch (algorithm) {
+    case 'ec:secp256r1':
+      return 'ES256';
+    case 'ec:secp384r1':
+      return 'ES384';
+    case 'ec:secp521r1':
+      return 'ES512';
+    default:
+      throw new UnsupportedOperationError(`unsupported key algorithm: ${algorithm}`);
+  }
 }
 
 function isPemString(key: unknown): key is string {

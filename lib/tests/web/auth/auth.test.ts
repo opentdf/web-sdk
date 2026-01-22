@@ -1,8 +1,7 @@
 import { assert, expect } from '@esm-bundle/chai';
 import { fake } from 'sinon';
 import { AccessToken, type AccessTokenResponse } from '../../../src/auth/oidc.js';
-import { DefaultCryptoService } from '../../../tdf3/src/crypto/index.js';
-import * as CryptoFunctions from '../../../tdf3/src/crypto/index.js';
+import { DefaultCryptoService, generateSigningKeyPair } from '../../../tdf3/src/crypto/index.js';
 import type { PemKeyPair } from '../../../tdf3/src/crypto/declarations.js';
 
 // // const qsparse = (s: string) => Object.fromEntries(new URLSearchParams(s));
@@ -33,7 +32,7 @@ function mockFetch(
 
 // Helper to generate PEM signing keys for tests
 async function generateTestSigningKey(): Promise<PemKeyPair> {
-  return CryptoFunctions.generateSigningKeyPair();
+  return generateSigningKeyPair();
 }
 
 // Due to Jest mocks not working with ESModules currently,
