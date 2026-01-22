@@ -4,7 +4,6 @@ import { Client, findEntryInCache, HttpRequest } from '../../tdf3/src/client/ind
 import { getMocks } from '../mocks/index.js';
 import { EncryptParams, EncryptParamsBuilder } from '../../tdf3/src/client/builders.js';
 import { KasPublicKeyInfo } from '../../src/access.js';
-import { pemToCryptoPublicKey } from '../../src/utils.js';
 import { valClassA, valueFor } from '../web/policy/mock-attrs.js';
 import { KeyAccessServer } from '../../src/policy/attributes.js';
 import { SourceType, Value } from '../../src/platform/policy/objects_pb.js';
@@ -55,7 +54,6 @@ describe('Client Caching Behavior', () => {
     it('should not fetch KAS public key if it is already in the cache', async () => {
       const mockPublicKeyResponse: KasPublicKeyInfo = {
         algorithm: 'rsa:2048',
-        key: pemToCryptoPublicKey(Mocks.kasPublicKey),
         kid: 'kas-ca-kid-rsa',
         publicKey: Mocks.kasPublicKey,
         url: 'https://kas.ca/kas',
@@ -104,21 +102,18 @@ describe('Client Caching Behavior', () => {
 
       const mockKasAuKeyResponse: KasPublicKeyInfo = {
         algorithm: 'ec:secp256r1',
-        key: pemToCryptoPublicKey(Mocks.entityECPublicKey),
         kid: 'kas-au-kid-ec',
         publicKey: Mocks.entityECPublicKey,
         url: 'https://kas.au/kas',
       };
       const mockKasCaKeyResponse: KasPublicKeyInfo = {
         algorithm: 'rsa:2048',
-        key: pemToCryptoPublicKey(Mocks.kasPublicKey),
         kid: 'kas-ca-kid-rsa',
         publicKey: Mocks.kasPublicKey,
         url: 'https://kas.ca/kas',
       };
       const mockKasUsKeyResponse: KasPublicKeyInfo = {
         algorithm: 'ec:secp256r1',
-        key: pemToCryptoPublicKey(Mocks.extraECPublicKey),
         kid: 'kas-us-kid-ec',
         publicKey: Mocks.extraECPublicKey,
         url: 'https://kas.us/kas',
@@ -237,7 +232,6 @@ describe('Client Caching Behavior', () => {
       // 2. Define the key that we expect the client to fetch over the network.
       const mockKasFetchedKeyResponse: KasPublicKeyInfo = {
         algorithm: 'ec:secp256r1',
-        key: pemToCryptoPublicKey(Mocks.entityECPublicKey),
         kid: 'fetched-kid',
         publicKey: Mocks.entityECPublicKey,
         url: kasFetchedUri,

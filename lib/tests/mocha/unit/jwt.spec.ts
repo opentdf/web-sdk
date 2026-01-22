@@ -15,9 +15,8 @@ describe('JWT Utilities', () => {
   const cryptoService: CryptoService = DefaultCryptoService;
 
   before(async () => {
-    // Generate a test key pair
-    const keyPair = await cryptoService.generateSigningKeyPair();
-    const pemPair = await cryptoService.cryptoToPemPair(keyPair);
+    // Generate a test key pair (now returns PemKeyPair directly)
+    const pemPair = await cryptoService.generateSigningKeyPair();
     privateKeyPem = pemPair.privateKey;
     publicKeyPem = pemPair.publicKey;
   });

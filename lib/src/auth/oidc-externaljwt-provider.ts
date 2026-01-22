@@ -1,6 +1,7 @@
 import { ConfigurationError } from '../errors.js';
 import { type AuthProvider, type HttpRequest } from './auth.js';
 import { AccessToken, type ExternalJwtCredentials } from './oidc.js';
+import { type PemKeyPair } from '../../tdf3/src/crypto/declarations.js';
 
 export class OIDCExternalJwtProvider implements AuthProvider {
   oidcAuth: AccessToken;
@@ -29,7 +30,7 @@ export class OIDCExternalJwtProvider implements AuthProvider {
     this.externalJwt = externalJwt;
   }
 
-  async updateClientPublicKey(signingKey: CryptoKeyPair): Promise<void> {
+  async updateClientPublicKey(signingKey: PemKeyPair): Promise<void> {
     this.oidcAuth.refreshTokenClaimsWithClientPubkeyIfNeeded(signingKey);
   }
 

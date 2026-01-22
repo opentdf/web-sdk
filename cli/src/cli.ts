@@ -18,9 +18,9 @@ import {
   isPublicKeyAlgorithm,
 } from '@opentdf/sdk';
 import { CLIError, Level, log } from './logger.js';
-import { webcrypto } from 'crypto';
 import * as assertions from '@opentdf/sdk/assertions';
 import { base64 } from '@opentdf/sdk/encodings';
+import { type PemKeyPair } from '@opentdf/sdk/singlecontainer';
 
 type AuthToProcess = {
   auth?: string;
@@ -90,7 +90,7 @@ async function processAuth({
   const requestLog: AuthProviders.HttpRequest[] = [];
   return {
     requestLog,
-    updateClientPublicKey: async (signingKey: webcrypto.CryptoKeyPair) => {
+    updateClientPublicKey: async (signingKey: PemKeyPair) => {
       actual.updateClientPublicKey(signingKey);
       log('DEBUG', `updateClientPublicKey: [${signingKey?.publicKey}]`);
     },

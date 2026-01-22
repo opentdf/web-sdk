@@ -2,7 +2,9 @@ import { default as dpopFn } from 'dpop';
 import { HttpRequest, withHeaders } from './auth.js';
 import { base64 } from '../encodings/index.js';
 import { ConfigurationError, TdfError } from '../errors.js';
-import { cryptoPublicToPem, rstrip } from '../utils.js';
+import { rstrip } from '../utils.js';
+import { type PemKeyPair } from '../../tdf3/src/crypto/declarations.js';
+import { toCryptoKeyPair } from '../../tdf3/src/crypto/crypto-utils.js';
 
 /**
  * Common fields used by all OIDC credentialing flows.
@@ -18,7 +20,7 @@ export type CommonCredentials = {
   dpopEnabled?: boolean;
 
   /** the client's public key, base64 encoded. Will be bound to the OIDC token. Deprecated. If not set in the constructor, */
-  signingKey?: CryptoKeyPair;
+  signingKey?: PemKeyPair;
 };
 
 /**
@@ -94,7 +96,7 @@ export class AccessToken {
   tokenEndpoint: string;
   userInfoEndpoint: string;
 
-  signingKey?: CryptoKeyPair;
+  signingKey?: PemKeyPair;
 
   extraHeaders: Record<string, string> = {};
 
@@ -140,7 +142,9 @@ export class AccessToken {
       Authorization: `Bearer ${accessToken}`,
     } as Record<string, string>;
     if (this.config.dpopEnabled && this.signingKey) {
-      headers.DPoP = await dpopFn(this.signingKey, this.userInfoEndpoint, 'POST');
+      // Convert PEM to CryptoKeyPair for dpop library (dpop requires Web Crypto keys)
+      const cryptoKeyPair = await toCryptoKeyPair(this.signingKey);
+      headers.DPoP = await dpopFn(cryptoKeyPair, this.userInfoEndpoint, 'POST');
     }
     const response = await (this.request || fetch)(this.userInfoEndpoint, {
       headers,
@@ -165,9 +169,11 @@ export class AccessToken {
       if (!this.signingKey) {
         throw new ConfigurationError('No signature configured');
       }
-      const clientPubKey = await cryptoPublicToPem(this.signingKey.publicKey);
-      headers['X-VirtruPubKey'] = base64.encode(clientPubKey);
-      headers.DPoP = await dpopFn(this.signingKey, url, 'POST');
+      // signingKey.publicKey is already PEM format
+      headers['X-VirtruPubKey'] = base64.encode(this.signingKey.publicKey);
+      // Convert PEM to CryptoKeyPair for dpop library (dpop requires Web Crypto keys)
+      const cryptoKeyPair = await toCryptoKeyPair(this.signingKey);
+      headers.DPoP = await dpopFn(cryptoKeyPair, url, 'POST');
     }
     return (this.request || fetch)(url, {
       method: 'POST',
@@ -251,7 +257,7 @@ export class AccessToken {
    *
    * Calling this function will trigger a forcible token refresh using the cached refresh token, and contact the auth server.
    */
-  async refreshTokenClaimsWithClientPubkeyIfNeeded(signingKey: CryptoKeyPair): Promise<void> {
+  async refreshTokenClaimsWithClientPubkeyIfNeeded(signingKey: PemKeyPair): Promise<void> {
     // If we already have a token, and the pubkey changes,
     // we need to force a refresh now - otherwise
     // we can wait until we create the token for the first time
@@ -297,8 +303,10 @@ export class AccessToken {
     }
     const accessToken = (this.currentAccessToken ??= await this.get());
     if (this.config.dpopEnabled && this.signingKey) {
+      // Convert PEM to CryptoKeyPair for dpop library (dpop requires Web Crypto keys)
+      const cryptoKeyPair = await toCryptoKeyPair(this.signingKey);
       const dpopToken = await dpopFn(
-        this.signingKey,
+        cryptoKeyPair,
         httpReq.url,
         httpReq.method,
         /* nonce */ undefined,

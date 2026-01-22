@@ -1,5 +1,3 @@
-import { exportSPKI, importX509 } from 'jose';
-
 import {
   KasPublicKeyAlgorithm,
   KasPublicKeyInfo,
@@ -29,9 +27,6 @@ import {
   UnsafeUrlError,
   UnsupportedFeatureError as UnsupportedError,
 } from '../../src/errors.js';
-import { generateKeyPair } from '../../src/crypto/generateKeyPair.js';
-import { keyAgreement } from '../../src/crypto/keyAgreement.js';
-import { pemPublicToCrypto } from '../../src/crypto/pemPublicToCrypto.js';
 import { type Chunker } from '../../src/seekable.js';
 import { tdfSpecVersion } from '../../src/version.js';
 import { AssertionConfig, AssertionKey, AssertionVerificationKeys } from './assertions.js';
@@ -41,12 +36,8 @@ import { AesGcmCipher } from './ciphers/aes-gcm-cipher.js';
 import { SymmetricCipher } from './ciphers/symmetric-cipher-base.js';
 import { DecryptParams } from './client/builders.js';
 import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
-import {
-  AnyKeyPair,
-  PemKeyPair,
-  type CryptoService,
-  type DecryptResult,
-} from './crypto/declarations.js';
+import { PemKeyPair, type CryptoService, type DecryptResult } from './crypto/declarations.js';
+import { Algorithms } from './ciphers/index.js';
 import {
   ECWrapped,
   KeyAccessType,
@@ -62,7 +53,7 @@ import {
 import { unsigned } from './utils/buffer-crc32.js';
 import { ZipReader, ZipWriter, keyMerge, concatUint8, buffToString } from './utils/index.js';
 import { CentralDirectory } from './utils/zip-reader.js';
-import { ztdfSalt } from './crypto/salt.js';
+import { getZtdfSalt } from './crypto/salt.js';
 import { Payload } from './models/payload.js';
 import {
   getRequiredObligationFQNs,
@@ -99,6 +90,7 @@ export type BuildKeyAccess = {
   publicKey: string;
   metadata?: Metadata;
   sid?: string;
+  cryptoService: CryptoService;
 };
 
 type Segment = {
@@ -147,7 +139,7 @@ export type IntegrityAlgorithm = 'GMAC' | 'HS256';
 export type EncryptConfiguration = {
   allowList?: OriginAllowList;
   cryptoService: CryptoService;
-  dpopKeys: CryptoKeyPair;
+  dpopKeys: PemKeyPair;
   encryptionInformation: SplitKey;
   segmentSizeDefault: number;
   integrityAlgorithm: IntegrityAlgorithm;
@@ -172,7 +164,7 @@ export type DecryptConfiguration = {
   authProvider: AuthProvider;
   cryptoService: CryptoService;
 
-  dpopKeys: CryptoKeyPair;
+  dpopKeys: PemKeyPair;
 
   chunker: Chunker;
   keyMiddleware: KeyMiddleware;
@@ -222,19 +214,13 @@ export async function fetchKasPublicKey(
 
 export async function extractPemFromKeyString(
   keyString: string,
-  alg: KasPublicKeyAlgorithm
+  alg: KasPublicKeyAlgorithm,
+  cryptoService: CryptoService
 ): Promise<string> {
-  let pem: string = keyString;
-
-  // Skip the public key extraction if we find that the KAS url provides a
-  // PEM-encoded key instead of certificate
-  if (keyString.includes('CERTIFICATE')) {
-    const a = publicKeyAlgorithmToJwa(alg);
-    const cert = await importX509(keyString, a, { extractable: true });
-    pem = await exportSPKI(cert);
-  }
-
-  return pem;
+  // Convert KAS algorithm to JWA algorithm if provided
+  const jwaAlgorithm = publicKeyAlgorithmToJwa(alg);
+  // extractPublicKeyPem handles both X.509 certificates and raw PEM keys
+  return cryptoService.extractPublicKeyPem(keyString, jwaAlgorithm);
 }
 
 /**
@@ -258,6 +244,7 @@ export async function buildKeyAccess({
   metadata,
   sid = '',
   alg = 'rsa:2048',
+  cryptoService,
 }: BuildKeyAccess): Promise<KeyAccess> {
   // if url and pulicKey are specified load the key access object with them
   if (!url && !publicKey) {
@@ -270,7 +257,7 @@ export async function buildKeyAccess({
 
   let pubKey: string;
   try {
-    pubKey = await extractPemFromKeyString(publicKey, alg);
+    pubKey = await extractPemFromKeyString(publicKey, alg, cryptoService);
   } catch (e) {
     throw new ConfigurationError(
       `TDF.buildKeyAccess: Invalid public key [${publicKey}], caused by [${e}]`,
@@ -279,9 +266,9 @@ export async function buildKeyAccess({
   }
   switch (type) {
     case 'wrapped':
-      return new Wrapped(url, kid, pubKey, metadata, sid);
+      return new Wrapped(url, kid, pubKey, metadata, cryptoService, sid);
     case 'ec-wrapped':
-      return new ECWrapped(url, kid, pubKey, metadata, sid);
+      return new ECWrapped(url, kid, pubKey, metadata, cryptoService, sid);
     default:
       throw new ConfigurationError(`buildKeyAccess: Key access type [${type}] is unsupported`);
   }
@@ -338,26 +325,16 @@ async function _generateManifest(
 async function getSignature(
   unwrappedKey: Uint8Array,
   content: Uint8Array,
-  algorithmType: IntegrityAlgorithm
+  algorithmType: IntegrityAlgorithm,
+  cryptoService: CryptoService
 ): Promise<Uint8Array> {
   switch (algorithmType.toUpperCase()) {
     case 'GMAC':
       // use the auth tag baked into the encrypted payload
       return content.slice(-16);
     case 'HS256': {
-      // simple hmac is the default
-      const cryptoKey = await crypto.subtle.importKey(
-        'raw',
-        unwrappedKey,
-        {
-          name: 'HMAC',
-          hash: { name: 'SHA-256' },
-        },
-        true,
-        ['sign', 'verify']
-      );
-      const signature = await crypto.subtle.sign('HMAC', cryptoKey, content);
-      return new Uint8Array(signature);
+      // Use CryptoService for HMAC-SHA256 signing
+      return cryptoService.signSymmetric(content, unwrappedKey);
     }
     default:
       throw new ConfigurationError(`Unsupported signature alg [${algorithmType}]`);
@@ -528,7 +505,8 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
           const payloadSig = await getSignature(
             new Uint8Array(cfg.keyForEncryption.unwrappedKeyBinary.asArrayBuffer()),
             aggregateHash,
-            cfg.integrityAlgorithm
+            cfg.integrityAlgorithm,
+            cfg.cryptoService
           );
 
           const rootSig = base64.encodeArrayBuffer(payloadSig);
@@ -676,7 +654,8 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
       const payloadSig = await getSignature(
         new Uint8Array(cfg.keyForEncryption.unwrappedKeyBinary.asArrayBuffer()),
         new Uint8Array(encryptedResult.payload.asArrayBuffer()),
-        cfg.segmentIntegrityAlgorithm
+        cfg.segmentIntegrityAlgorithm,
+        cfg.cryptoService
       );
 
       segmentHashList.push(new Uint8Array(payloadSig));
@@ -764,7 +743,7 @@ async function unwrapKey({
   allowedKases: OriginAllowList;
   authProvider: AuthProvider;
   concurrencyLimit?: number;
-  dpopKeys: CryptoKeyPair;
+  dpopKeys: PemKeyPair;
   cryptoService: CryptoService;
   wrappingKeyAlgorithm?: KasPublicKeyAlgorithm;
   fulfillableObligations: string[];
@@ -779,14 +758,13 @@ async function unwrapKey({
 
   async function tryKasRewrap(keySplitInfo: KeyAccessObject): Promise<RewrapResponseData> {
     const url = `${keySplitInfo.url}/v2/rewrap`;
-    let ephemeralEncryptionKeysRaw: AnyKeyPair;
     let ephemeralEncryptionKeys: PemKeyPair;
     if (wrappingKeyAlgorithm === 'ec:secp256r1') {
-      ephemeralEncryptionKeysRaw = await generateKeyPair();
-      ephemeralEncryptionKeys = await cryptoService.cryptoToPemPair(ephemeralEncryptionKeysRaw);
+      // Generate EC key pair directly as PEM via CryptoService
+      ephemeralEncryptionKeys = await cryptoService.generateECKeyPair('P-256');
     } else if (wrappingKeyAlgorithm === 'rsa:2048' || !wrappingKeyAlgorithm) {
-      ephemeralEncryptionKeysRaw = await cryptoService.generateKeyPair();
-      ephemeralEncryptionKeys = await cryptoService.cryptoToPemPair(ephemeralEncryptionKeysRaw);
+      // generateKeyPair() now returns PemKeyPair directly
+      ephemeralEncryptionKeys = await cryptoService.generateKeyPair();
     } else {
       throw new ConfigurationError(`Unsupported wrapping key algorithm [${wrappingKeyAlgorithm}]`);
     }
@@ -838,7 +816,7 @@ async function unwrapKey({
     const requestBodyStr = toJsonString(UnsignedRewrapRequestSchema, unsignedRequest);
 
     const jwtPayload = { requestBody: requestBodyStr };
-    const signedRequestToken = await reqSignature(jwtPayload, dpopKeys.privateKey);
+    const signedRequestToken = await reqSignature(jwtPayload, dpopKeys.privateKey, cryptoService);
 
     const rewrapResp = await fetchWrappedKey(
       url,
@@ -864,20 +842,30 @@ async function unwrapKey({
         const entityWrappedKey = result.result.value;
 
         if (wrappingKeyAlgorithm === 'ec:secp256r1') {
-          const serverEphemeralKey: CryptoKey = await pemPublicToCrypto(sessionPublicKey);
-          const ekr = ephemeralEncryptionKeysRaw as CryptoKeyPair;
-          const kek = await keyAgreement(ekr.privateKey, serverEphemeralKey, {
-            hkdfSalt: await ztdfSalt,
-            hkdfHash: 'SHA-256',
-          });
+          // Derive decryption key using ECDH + HKDF via CryptoService
+          const derivedKeyBytes = await cryptoService.deriveKeyFromECDH(
+            ephemeralEncryptionKeys.privateKey,
+            sessionPublicKey,
+            {
+              hash: 'SHA-256',
+              salt: await getZtdfSalt(cryptoService),
+            }
+          );
+
           const wrappedKeyAndNonce = entityWrappedKey;
           const iv = wrappedKeyAndNonce.slice(0, 12);
           const wrappedKey = wrappedKeyAndNonce.slice(12);
 
-          const dek = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, kek, wrappedKey);
+          // Decrypt using CryptoService
+          const decryptResult = await cryptoService.decrypt(
+            Binary.fromArrayBuffer(wrappedKey.buffer),
+            Binary.fromArrayBuffer(derivedKeyBytes.buffer),
+            Binary.fromArrayBuffer(iv.buffer),
+            Algorithms.AES_256_GCM
+          );
 
           return {
-            key: new Uint8Array(dek),
+            key: new Uint8Array(decryptResult.payload.asArrayBuffer()),
             metadata,
             requiredObligations,
           };
@@ -974,7 +962,8 @@ async function decryptChunk(
   hash: string,
   cipher: SymmetricCipher,
   segmentIntegrityAlgorithm: IntegrityAlgorithm,
-  specVersion: string
+  specVersion: string,
+  cryptoService: CryptoService
 ): Promise<DecryptResult> {
   if (segmentIntegrityAlgorithm !== 'GMAC' && segmentIntegrityAlgorithm !== 'HS256') {
     throw new UnsupportedError(`Unsupported integrity alg [${segmentIntegrityAlgorithm}]`);
@@ -982,7 +971,8 @@ async function decryptChunk(
   const segmentSig = await getSignature(
     new Uint8Array(reconstructedKeyBinary.asArrayBuffer()),
     encryptedChunk,
-    segmentIntegrityAlgorithm
+    segmentIntegrityAlgorithm,
+    cryptoService
   );
 
   const segmentHash = isTargetSpecLegacyTDF(specVersion)
@@ -1057,6 +1047,7 @@ export async function sliceAndDecrypt({
   reconstructedKeyBinary,
   slice,
   cipher,
+  cryptoService,
   segmentIntegrityAlgorithm,
   specVersion,
 }: {
@@ -1088,7 +1079,8 @@ export async function sliceAndDecrypt({
         slice[index]['hash'],
         cipher,
         segmentIntegrityAlgorithm,
-        specVersion
+        specVersion,
+        cryptoService
       );
       if (plainSegmentSize && result.payload.length() !== plainSegmentSize) {
         throw new DecryptError(
@@ -1164,7 +1156,8 @@ export async function decryptStreamFrom(
   const payloadSig = await getSignature(
     new Uint8Array(keyForDecryption.asArrayBuffer()),
     aggregateHash,
-    integrityAlgorithm
+    integrityAlgorithm,
+    cfg.cryptoService
   );
 
   if (!cfg.noVerifyAssertions) {

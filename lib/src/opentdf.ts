@@ -3,7 +3,7 @@ import { ConfigurationError, InvalidFileError } from './errors.js';
 export { Client as TDF3Client } from '../tdf3/src/client/index.js';
 import { Chunker, fromSource, sourceToStream, type Source } from './seekable.js';
 import { Client as TDF3Client } from '../tdf3/src/client/index.js';
-import { type CryptoService } from '../tdf3/src/crypto/declarations.js';
+import { type CryptoService, type PemKeyPair } from '../tdf3/src/crypto/declarations.js';
 import * as DefaultCryptoService from '../tdf3/src/crypto/index.js';
 import {
   type Assertion,
@@ -175,7 +175,7 @@ export type OpenTDFOptions = {
    * These often must be registered via a DPoP flow with the IdP
    * which is out of the scope of this library.
    */
-  dpopKeys?: Promise<CryptoKeyPair>;
+  dpopKeys?: Promise<PemKeyPair>;
 
   /**
    * Optional custom CryptoService implementation.
@@ -267,7 +267,7 @@ export class OpenTDF {
   /** Default options for reading TDF objects. */
   defaultReadOptions: Omit<ReadOptions, 'source'>;
   /** The DPoP keys for this instance, if any. */
-  readonly dpopKeys: Promise<CryptoKeyPair>;
+  readonly dpopKeys: Promise<PemKeyPair>;
   /** The CryptoService implementation for this instance. */
   readonly cryptoService: CryptoService;
   /** The TDF3 client for encrypting and decrypting ZTDF files. */
@@ -304,18 +304,8 @@ export class OpenTDF {
       policyEndpoint,
       cryptoService: this.cryptoService,
     });
-    this.dpopKeys =
-      dpopKeys ??
-      crypto.subtle.generateKey(
-        {
-          name: 'RSASSA-PKCS1-v1_5',
-          hash: 'SHA-256',
-          modulusLength: 2048,
-          publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
-        },
-        true,
-        ['sign', 'verify']
-      );
+    // Use CryptoService for key generation (returns PemKeyPair)
+    this.dpopKeys = dpopKeys ?? this.cryptoService.generateSigningKeyPair();
   }
 
   /** Creates a new ZTDF stream. */
