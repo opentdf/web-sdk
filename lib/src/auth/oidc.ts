@@ -1,10 +1,9 @@
-import { default as dpopFn } from 'dpop';
+import { default as dpopFn } from './dpop.js';
 import { HttpRequest, withHeaders } from './auth.js';
 import { base64 } from '../encodings/index.js';
 import { ConfigurationError, TdfError } from '../errors.js';
 import { rstrip } from '../utils.js';
-import { type PemKeyPair } from '../../tdf3/src/crypto/declarations.js';
-import { toCryptoKeyPair } from '../../tdf3/src/crypto/crypto-utils.js';
+import { type CryptoService, type PemKeyPair } from '../../tdf3/src/crypto/declarations.js';
 
 /**
  * Common fields used by all OIDC credentialing flows.
@@ -102,7 +101,9 @@ export class AccessToken {
 
   currentAccessToken?: string;
 
-  constructor(cfg: OIDCCredentials, request?: typeof fetch) {
+  cryptoService: CryptoService;
+
+  constructor(cfg: OIDCCredentials, cryptoService: CryptoService, request?: typeof fetch) {
     if (!cfg.clientId) {
       throw new ConfigurationError(
         'A Keycloak client identifier is currently required for all auth mechanisms'
@@ -123,6 +124,7 @@ export class AccessToken {
       throw new ConfigurationError('Invalid oidc configuration');
     }
     this.config = cfg;
+    this.cryptoService = cryptoService;
     this.request = request;
     this.baseUrl = rstrip(cfg.oidcOrigin, '/');
     this.tokenEndpoint = cfg.oidcTokenEndpoint || `${this.baseUrl}/protocol/openid-connect/token`;
@@ -142,9 +144,12 @@ export class AccessToken {
       Authorization: `Bearer ${accessToken}`,
     } as Record<string, string>;
     if (this.config.dpopEnabled && this.signingKey) {
-      // Convert PEM to CryptoKeyPair for dpop library (dpop requires Web Crypto keys)
-      const cryptoKeyPair = await toCryptoKeyPair(this.signingKey);
-      headers.DPoP = await dpopFn(cryptoKeyPair, this.userInfoEndpoint, 'POST');
+      headers.DPoP = await dpopFn(
+        this.signingKey,
+        this.cryptoService,
+        this.userInfoEndpoint,
+        'POST'
+      );
     }
     const response = await (this.request || fetch)(this.userInfoEndpoint, {
       headers,
@@ -171,9 +176,7 @@ export class AccessToken {
       }
       // signingKey.publicKey is already PEM format
       headers['X-VirtruPubKey'] = base64.encode(this.signingKey.publicKey);
-      // Convert PEM to CryptoKeyPair for dpop library (dpop requires Web Crypto keys)
-      const cryptoKeyPair = await toCryptoKeyPair(this.signingKey);
-      headers.DPoP = await dpopFn(cryptoKeyPair, url, 'POST');
+      headers.DPoP = await dpopFn(this.signingKey, this.cryptoService, url, 'POST');
     }
     return (this.request || fetch)(url, {
       method: 'POST',
@@ -303,10 +306,9 @@ export class AccessToken {
     }
     const accessToken = (this.currentAccessToken ??= await this.get());
     if (this.config.dpopEnabled && this.signingKey) {
-      // Convert PEM to CryptoKeyPair for dpop library (dpop requires Web Crypto keys)
-      const cryptoKeyPair = await toCryptoKeyPair(this.signingKey);
       const dpopToken = await dpopFn(
-        cryptoKeyPair,
+        this.signingKey,
+        this.cryptoService,
         httpReq.url,
         httpReq.method,
         /* nonce */ undefined,

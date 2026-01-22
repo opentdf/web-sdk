@@ -19,6 +19,7 @@
   "dependencies": {
     "@opentdf/sdk": "file:../lib/opentdf-sdk-0.8.0.tgz",
     "clsx": "^2.1.1",
+    "dpop": "^1.4.1",
     "native-file-system-adapter": "^3.0.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
