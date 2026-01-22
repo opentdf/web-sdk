@@ -1,6 +1,14 @@
 import { assert, expect } from 'chai';
+import sinon from 'sinon';
 import { Client as TDF } from '../../tdf3/src/index.js';
 import { DecoratedReadableStream } from '../../tdf3/src/client/DecoratedReadableStream.js';
+import { findEntryInCache } from '../../tdf3/src/client/index.js';
+import { getMocks } from '../mocks/index.js';
+import { Algorithm, Value } from '../../src/platform/policy/objects_pb.js';
+import { create } from '@bufbuild/protobuf';
+import { GetAttributeValuesByFqnsResponseSchema } from '../../src/platform/policy/attributes/attributes_pb.js';
+import { base64 } from '../../src/encodings/index.js';
+import { Attribute } from 'src/policy/attributes.js';
 
 describe('client wrapper tests', function () {
   it('client params safe from updating', function () {
@@ -130,6 +138,178 @@ describe('client wrapper tests', function () {
       assert.fail('did not throw');
     } catch (expected) {
       assert.ok(expected);
+    }
+  });
+
+  it('encrypt autoconfigure hydrates fqns via getAttributeValuesByFqns', async function () {
+    const Mocks = getMocks();
+    const authProvider = {
+      updateClientPublicKey: async () => {},
+      withCreds: async (httpReq: TDF.HttpRequest) => ({
+        ...httpReq,
+        headers: { ...httpReq.headers, Authorization: 'Bearer dummy-auth-token' },
+      }),
+    };
+
+    const kasValueUri = 'https://kas.value.example/kas';
+    const kasAttributeUri = 'https://kas.attribute.example/kas';
+
+    const attributeValueFqn = 'http://example.com/attr/value-keys/value/one';
+    const attributeOnlyFqn = 'http://example.com/attr/attr-keys/value/two';
+
+    const valueWithAttribute: Value = {
+      $typeName: 'policy.Value',
+      fqn: attributeValueFqn,
+      kasKeys: [
+        {
+          $typeName: 'policy.SimpleKasKey',
+          kasId: 'kas-value-1',
+          kasUri: kasValueUri,
+          publicKey: {
+            $typeName: 'policy.SimpleKasPublicKey',
+            pem: Mocks.kasPublicKey,
+            kid: 'value-kid-1',
+            algorithm: Algorithm.RSA_2048,
+          },
+        },
+      ],
+      id: 'value-id-1',
+      attribute: {
+        $typeName: 'policy.Attribute',
+        id: 'attr-id-value',
+        name: 'value-keys',
+        fqn: 'http://example.com/attr/value-keys',
+        rule: 0,
+        values: [],
+        grants: [],
+        kasKeys: [],
+        namespace: {
+          $typeName: 'policy.Namespace',
+          id: 'ns-id-value',
+          name: 'example.com',
+          fqn: 'http://example.com',
+          grants: [],
+          kasKeys: [],
+          rootCerts: [],
+        },
+      },
+      value: 'one',
+      grants: [],
+      active: true,
+      subjectMappings: [],
+      resourceMappings: [],
+      obligations: [],
+    };
+
+    const attributeOnly: Attribute = {
+      $typeName: 'policy.Attribute',
+      id: 'attr-id-attr',
+      name: 'attr-keys',
+      fqn: 'http://example.com/attr/attr-keys',
+      rule: 0,
+      values: [],
+      grants: [],
+      kasKeys: [
+        {
+          $typeName: 'policy.SimpleKasKey',
+          kasId: 'kas-attr-1',
+          kasUri: kasAttributeUri,
+          publicKey: {
+            $typeName: 'policy.SimpleKasPublicKey',
+            pem: Mocks.kasPublicKey,
+            kid: 'attr-kid-1',
+            algorithm: Algorithm.RSA_2048,
+          },
+        },
+      ],
+      namespace: {
+        $typeName: 'policy.Namespace',
+        id: 'ns-id-attr',
+        name: 'example.com',
+        fqn: 'http://example.com',
+        grants: [],
+        kasKeys: [],
+        rootCerts: [],
+      },
+    };
+
+    const getAttributeValuesByFqnsResponse = create(GetAttributeValuesByFqnsResponseSchema, {
+      fqnAttributeValues: {
+        [attributeValueFqn]: {
+          value: valueWithAttribute,
+          attribute: valueWithAttribute.attribute,
+        },
+        [attributeOnlyFqn]: {
+          attribute: attributeOnly,
+        },
+      },
+    });
+
+    const fetchStub = sinon.stub(globalThis, 'fetch').callsFake(async (input) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.includes('GetAttributeValuesByFqns')) {
+        return new Response(JSON.stringify(getAttributeValuesByFqnsResponse), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+
+    const client = new TDF.Client({
+      kasEndpoint: 'https://kas.default.example/kas',
+      clientId: 'id',
+      dpopKeys: Mocks.entityKeyPair(),
+      authProvider,
+      platformUrl: 'http://example.com',
+    });
+
+    const encryptParams = {
+      ...new TDF.EncryptParamsBuilder().withStringSource('hello world').withAutoconfigure().build(),
+      scope: {
+        attributes: [attributeValueFqn, attributeOnlyFqn],
+      },
+    };
+
+    try {
+      const stream = await client.encrypt(encryptParams);
+      assert.ok(stream);
+      assert.equal(fetchStub.callCount, 1, 'fetch should only be called for FQN hydration');
+
+      const cachedValueKey = findEntryInCache(
+        client.kasKeyInfoCache,
+        kasValueUri,
+        'rsa:2048',
+        'value-kid-1'
+      );
+      const cachedAttributeKey = findEntryInCache(
+        client.kasKeyInfoCache,
+        kasAttributeUri,
+        'rsa:2048',
+        'attr-kid-1'
+      );
+      assert(cachedValueKey !== null, 'value-level key should be cached');
+      assert(cachedAttributeKey !== null, 'attribute-level key should be cached');
+      const policy = JSON.parse(base64.decode(stream.manifest.encryptionInformation.policy));
+      const dataAttributes = policy?.body?.dataAttributes ?? [];
+      assert.deepEqual(
+        dataAttributes.map((attr: { attribute: string }) => attr.attribute).sort(),
+        [attributeValueFqn, attributeOnlyFqn].sort(),
+        'policy should include both attributes'
+      );
+
+      const keyAccess = stream.manifest.encryptionInformation.keyAccess;
+      assert.equal(keyAccess.length, 2, 'manifest should include both key access objects');
+      assert.deepInclude(
+        keyAccess.map((kao) => ({ url: kao.url, kid: kao.kid })),
+        { url: kasValueUri, kid: 'value-kid-1' }
+      );
+      assert.deepInclude(
+        keyAccess.map((kao) => ({ url: kao.url, kid: kao.kid })),
+        { url: kasAttributeUri, kid: 'attr-kid-1' }
+      );
+    } finally {
+      fetchStub.restore();
     }
   });
 });

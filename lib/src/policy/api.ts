@@ -34,12 +34,10 @@ export async function attributeFQNsAsValues(
     let value = av.value;
     if (!value) {
       if (!av.attribute) {
-        console.warn(`Missing value definition for [${fqn}]; is this a valid attribute?`);
+        console.warn(`Missing attribute definition for [${fqn}]; is this a valid attribute?`);
         continue;
       }
-      console.warn(
-        `Missing value definition for [${fqn}]; using attribute definition only.`
-      );
+      console.warn(`Missing value definition for [${fqn}]; using attribute definition only.`);
 
       value = create(ValueSchema, { attribute: av.attribute, fqn });
     } else if (value && av.attribute && !value?.attribute) {
