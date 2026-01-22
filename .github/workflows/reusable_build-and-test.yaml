@@ -121,6 +121,7 @@ jobs:
         with:
           name: opentdf-ctl
           path: ./cli/opentdf-ctl-*.tgz
+          retention-days: 14
 
   web-app:
     needs:
@@ -225,7 +226,7 @@ jobs:
     uses: opentdf/tests/.github/workflows/xtest.yml@main
     with:
       focus-sdk: js
-      js-ref: ${{ github.ref }} latest lts
+      js-ref: ${{ github.ref }} main latest
       platform-ref: main lts
 
   ci:
