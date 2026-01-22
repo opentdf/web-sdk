@@ -611,10 +611,7 @@ export async function extractPublicKeyPem(
     let alg = jwaAlgorithm;
     if (!alg) {
       // Auto-detect algorithm from certificate OIDs
-      const certBody = certOrPem
-        .replace('-----BEGIN CERTIFICATE-----', '')
-        .replace('-----END CERTIFICATE-----', '')
-        .replace(/\s/g, '');
+      const certBody = certOrPem.replace(/-----(BEGIN|END) CERTIFICATE-----|\s/g, '');
       const certBytes = base64Decode(certBody);
       const hex = hexEncode(certBytes);
       alg = toJwsAlg(hex);

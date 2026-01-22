@@ -59,7 +59,7 @@ export class ECWrapped {
       Algorithms.AES_256_GCM
     );
 
-    // Combine IV + ciphertext + authTag (crypto.subtle.encrypt includes authTag in ciphertext)
+    // Combine IV, ciphertext, and authTag to form the wrapped key.
     const ciphertext = new Uint8Array(encryptResult.payload.asArrayBuffer());
     const authTag = encryptResult.authTag
       ? new Uint8Array(encryptResult.authTag.asArrayBuffer())
