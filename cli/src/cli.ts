@@ -20,7 +20,7 @@ import {
 import { CLIError, Level, log } from './logger.js';
 import * as assertions from '@opentdf/sdk/assertions';
 import { base64 } from '@opentdf/sdk/encodings';
-import { type PemKeyPair } from '@opentdf/sdk/singlecontainer';
+import { type PemKeyPair, WebCryptoService } from '@opentdf/sdk/singlecontainer';
 
 type AuthToProcess = {
   auth?: string;
@@ -78,12 +78,15 @@ async function processAuth({
       'Auth expects clientId and clientSecret, or combined auth param'
     );
   }
-  const actual = await AuthProviders.clientSecretAuthProvider({
-    clientId,
-    oidcOrigin: oidcEndpoint,
-    exchange: 'client',
-    clientSecret,
-  });
+  const actual = await AuthProviders.clientSecretAuthProvider(
+    {
+      clientId,
+      oidcOrigin: oidcEndpoint,
+      exchange: 'client',
+      clientSecret,
+    },
+    WebCryptoService
+  );
   if (concurrencyLimit !== 1) {
     await actual.oidcAuth.get();
   }
