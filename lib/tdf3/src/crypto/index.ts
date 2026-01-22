@@ -82,17 +82,28 @@ export async function generateKey(length?: number): Promise<string> {
  * @see    {@link https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/generateKey}
  * @param  size in bits
  */
-export async function generateKeyPair(size?: number): Promise<CryptoKeyPair> {
+export async function generateKeyPair(size?: number): Promise<PemKeyPair> {
   const algoDomString = rsaOaepSha1(size || MIN_ASYMMETRIC_KEY_SIZE_BITS);
-  return crypto.subtle.generateKey(algoDomString, true, METHODS);
+  const keyPair = await crypto.subtle.generateKey(algoDomString, true, METHODS);
+
+  // Export to PEM format
+  const [publicKeyBuffer, privateKeyBuffer] = await Promise.all([
+    crypto.subtle.exportKey('spki', keyPair.publicKey),
+    crypto.subtle.exportKey('pkcs8', keyPair.privateKey),
+  ]);
+
+  return {
+    publicKey: formatAsPem(publicKeyBuffer, 'PUBLIC KEY'),
+    privateKey: formatAsPem(privateKeyBuffer, 'PRIVATE KEY'),
+  };
 }
 
 /**
  * Generate an RSA key pair suitable for signatures
  * @see    {@link https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/generateKey}
  */
-export async function generateSigningKeyPair(): Promise<CryptoKeyPair> {
-  return crypto.subtle.generateKey(
+export async function generateSigningKeyPair(): Promise<PemKeyPair> {
+  const keyPair = await crypto.subtle.generateKey(
     {
       name: 'RSASSA-PKCS1-v1_5',
       hash: 'SHA-256',
@@ -102,22 +113,16 @@ export async function generateSigningKeyPair(): Promise<CryptoKeyPair> {
     true,
     ['sign', 'verify']
   );
-}
 
-export async function cryptoToPemPair(keysMaybe: unknown): Promise<PemKeyPair> {
-  const keys = keysMaybe as CryptoKeyPair;
-  if (!keys.privateKey || !keys.publicKey) {
-    // These are only ever generated here, so this should not happen
-    throw new Error('internal: invalid keys');
-  }
-
-  const [exPublic, exPrivate] = await Promise.all([
-    crypto.subtle.exportKey('spki', keys.publicKey),
-    crypto.subtle.exportKey('pkcs8', keys.privateKey),
+  // Export to PEM format
+  const [publicKeyBuffer, privateKeyBuffer] = await Promise.all([
+    crypto.subtle.exportKey('spki', keyPair.publicKey),
+    crypto.subtle.exportKey('pkcs8', keyPair.privateKey),
   ]);
+
   return {
-    publicKey: formatAsPem(exPublic, 'PUBLIC KEY'),
-    privateKey: formatAsPem(exPrivate, 'PRIVATE KEY'),
+    publicKey: formatAsPem(publicKeyBuffer, 'PUBLIC KEY'),
+    privateKey: formatAsPem(privateKeyBuffer, 'PRIVATE KEY'),
   };
 }
 
@@ -941,7 +946,6 @@ export async function jwkToPem(jwk: JsonWebKey): Promise<string> {
 export const DefaultCryptoService: CryptoService = {
   name,
   method,
-  cryptoToPemPair,
   decrypt,
   decryptWithPrivateKey,
   deriveKeyFromECDH,

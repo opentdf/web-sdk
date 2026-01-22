@@ -1,7 +1,7 @@
 import { SignJWT, importPKCS8, JWTPayload } from 'jose';
 import { v4 } from 'uuid';
 
-import { toCryptoKeyPair } from '../../tdf3/src/crypto/crypto-utils.js';
+import { PemKeyPair } from '../../tdf3/src/crypto/declarations.js';
 import {
   entityECPrivateKey,
   entityECPublicKey,
@@ -107,25 +107,25 @@ tN5S0umLPkMUJ6zBIxh1RQK1ZYjfuKij+EEimbqtte9rYyQr3Q==
     kasECCert,
     kasECPrivateKey,
 
-    async entityKeyPair(): Promise<CryptoKeyPair> {
-      return toCryptoKeyPair({
+    async entityKeyPair(): Promise<PemKeyPair> {
+      return {
         privateKey: entityPrivateKey,
         publicKey: entityPublicKey,
-      });
+      };
     },
 
-    async entityECKeyPair(): Promise<CryptoKeyPair> {
-      return toCryptoKeyPair({
+    async entityECKeyPair(): Promise<PemKeyPair> {
+      return {
         privateKey: entityECPrivateKey,
         publicKey: entityECPublicKey,
-      });
+      };
     },
 
-    async extraECKeyPair(): Promise<CryptoKeyPair> {
-      return toCryptoKeyPair({
+    async extraECKeyPair(): Promise<PemKeyPair> {
+      return {
         privateKey: extraECPrivateKey,
         publicKey: extraECPublicKey,
-      });
+      };
     },
 
     createAttribute({

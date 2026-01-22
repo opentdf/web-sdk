@@ -139,7 +139,7 @@ export type IntegrityAlgorithm = 'GMAC' | 'HS256';
 export type EncryptConfiguration = {
   allowList?: OriginAllowList;
   cryptoService: CryptoService;
-  dpopKeys: CryptoKeyPair;
+  dpopKeys: PemKeyPair;
   encryptionInformation: SplitKey;
   segmentSizeDefault: number;
   integrityAlgorithm: IntegrityAlgorithm;
@@ -164,7 +164,7 @@ export type DecryptConfiguration = {
   authProvider: AuthProvider;
   cryptoService: CryptoService;
 
-  dpopKeys: CryptoKeyPair;
+  dpopKeys: PemKeyPair;
 
   chunker: Chunker;
   keyMiddleware: KeyMiddleware;
@@ -743,7 +743,7 @@ async function unwrapKey({
   allowedKases: OriginAllowList;
   authProvider: AuthProvider;
   concurrencyLimit?: number;
-  dpopKeys: CryptoKeyPair;
+  dpopKeys: PemKeyPair;
   cryptoService: CryptoService;
   wrappingKeyAlgorithm?: KasPublicKeyAlgorithm;
   fulfillableObligations: string[];
@@ -763,8 +763,8 @@ async function unwrapKey({
       // Generate EC key pair directly as PEM via CryptoService
       ephemeralEncryptionKeys = await cryptoService.generateECKeyPair('P-256');
     } else if (wrappingKeyAlgorithm === 'rsa:2048' || !wrappingKeyAlgorithm) {
-      const keys = await cryptoService.generateKeyPair();
-      ephemeralEncryptionKeys = await cryptoService.cryptoToPemPair(keys);
+      // generateKeyPair() now returns PemKeyPair directly
+      ephemeralEncryptionKeys = await cryptoService.generateKeyPair();
     } else {
       throw new ConfigurationError(`Unsupported wrapping key algorithm [${wrappingKeyAlgorithm}]`);
     }
@@ -816,7 +816,7 @@ async function unwrapKey({
     const requestBodyStr = toJsonString(UnsignedRewrapRequestSchema, unsignedRequest);
 
     const jwtPayload = { requestBody: requestBodyStr };
-    const signedRequestToken = await reqSignature(jwtPayload, dpopKeys.privateKey);
+    const signedRequestToken = await reqSignature(jwtPayload, dpopKeys.privateKey, cryptoService);
 
     const rewrapResp = await fetchWrappedKey(
       url,

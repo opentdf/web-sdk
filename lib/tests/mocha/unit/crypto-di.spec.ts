@@ -22,9 +22,6 @@ describe('CryptoService DI', () => {
     const cryptoService: CryptoService = {
       name: 'mock',
       method: 'http://www.w3.org/2001/04/xmlenc#aes256-cbc',
-      cryptoToPemPair: function (keys: unknown): Promise<PemKeyPair> {
-        throw new Error('Function not implemented.');
-      },
       decrypt: function (
         payload: Binary,
         key: Binary,
@@ -57,10 +54,10 @@ describe('CryptoService DI', () => {
       generateKey: function (length?: number): Promise<string> {
         throw new Error('Function not implemented.');
       },
-      generateKeyPair: function (size?: number | undefined): Promise<CryptoKeyPair> {
+      generateKeyPair: function (size?: number | undefined): Promise<PemKeyPair> {
         throw new Error('Function not implemented.');
       },
-      generateSigningKeyPair: function (): Promise<CryptoKeyPair> {
+      generateSigningKeyPair: function (): Promise<PemKeyPair> {
         throw new Error('Function not implemented.');
       },
       hmac: function (key: string, content: string): Promise<string> {
@@ -146,9 +143,6 @@ describe('CryptoService DI', () => {
     const mockCryptoService: CryptoService = {
       name: 'CustomCryptoService',
       method: 'http://www.w3.org/2009/xmlenc11#aes256-gcm',
-      cryptoToPemPair: function (keys: unknown): Promise<PemKeyPair> {
-        throw new Error('Function not implemented.');
-      },
       decrypt: function (
         payload: Binary,
         key: Binary,
@@ -181,10 +175,10 @@ describe('CryptoService DI', () => {
       generateKey: function (length?: number): Promise<string> {
         throw new Error('Function not implemented.');
       },
-      generateKeyPair: function (size?: number | undefined): Promise<CryptoKeyPair> {
+      generateKeyPair: function (size?: number | undefined): Promise<PemKeyPair> {
         throw new Error('Function not implemented.');
       },
-      generateSigningKeyPair: function (): Promise<CryptoKeyPair> {
+      generateSigningKeyPair: function (): Promise<PemKeyPair> {
         throw new Error('Function not implemented.');
       },
       hmac: function (key: string, content: string): Promise<string> {

@@ -42,7 +42,7 @@ import {
 import { ConfigurationError } from '../../../src/errors.js';
 import { Binary } from '../binary.js';
 import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
-import { toCryptoKeyPair } from '../crypto/crypto-utils.js';
+import { type PemKeyPair } from '../crypto/declarations.js';
 import * as defaultCryptoService from '../crypto/index.js';
 import {
   type AttributeObject,
@@ -124,7 +124,7 @@ export interface ClientConfig {
   /// oauth client id; used to generate oauth authProvider
   clientId?: string;
   dpopEnabled?: boolean;
-  dpopKeys?: Promise<CryptoKeyPair>;
+  dpopKeys?: Promise<PemKeyPair>;
   kasEndpoint: string;
   /**
    * Service to use to look up ABAC. Used during autoconfigure. Defaults to
@@ -169,21 +169,19 @@ export interface ClientConfig {
  */
 export async function createSessionKeys({
   authProvider,
-  // FIXME use cryptoservice to generate keys again
   cryptoService,
   dpopKeys,
 }: {
   authProvider?: AuthProvider;
   cryptoService: CryptoService;
-  dpopKeys?: Promise<CryptoKeyPair>;
-}): Promise<CryptoKeyPair> {
-  let signingKeys: CryptoKeyPair;
+  dpopKeys?: Promise<PemKeyPair>;
+}): Promise<PemKeyPair> {
+  let signingKeys: PemKeyPair;
   if (dpopKeys) {
     signingKeys = await dpopKeys;
   } else {
-    const keys = await cryptoService.generateSigningKeyPair();
-    // signingKeys = await crypto.subtle.generateKey(rsaPkcs1Sha256(), true, ['sign']);
-    signingKeys = await toCryptoKeyPair(keys);
+    // generateSigningKeyPair now returns PemKeyPair directly
+    signingKeys = await cryptoService.generateSigningKeyPair();
   }
 
   // This will contact the auth server and forcibly refresh the auth token claims,
@@ -361,7 +359,7 @@ export class Client {
   /**
    * Session binding keys. Used for DPoP and signed request bodies.
    */
-  readonly dpopKeys: Promise<CryptoKeyPair>;
+  readonly dpopKeys: Promise<PemKeyPair>;
 
   readonly dpopEnabled: boolean;
 

@@ -74,17 +74,12 @@ export type PublicKeyInfo = {
   pem: string;
 };
 
-export type AnyKeyPair = PemKeyPair | CryptoKeyPair;
-
 export type CryptoService = {
   /** Track which crypto implementation we are using */
   name: string;
 
   /** Default algorithm identifier. */
   method: AlgorithmUrn;
-
-  /** Convert or narrow from AnyKeyPair to PemKeyPair */
-  cryptoToPemPair: (keys: AnyKeyPair) => Promise<PemKeyPair>;
 
   /**
    * Try to decrypt content with the default or handed algorithm. Throws on
@@ -119,12 +114,17 @@ export type CryptoService = {
   generateKey: (length?: number) => Promise<string>;
 
   /**
-   * Generate an RSA key pair
+   * Generate an RSA key pair for encryption/decryption.
    * @param size in bits, defaults to a reasonable size for the default method
+   * @returns PEM-encoded key pair
    */
-  generateKeyPair: (size?: number) => Promise<AnyKeyPair>;
+  generateKeyPair: (size?: number) => Promise<PemKeyPair>;
 
-  generateSigningKeyPair: () => Promise<AnyKeyPair>;
+  /**
+   * Generate an RSA key pair for signing/verification.
+   * @returns PEM-encoded key pair
+   */
+  generateSigningKeyPair: () => Promise<PemKeyPair>;
 
   /**
    * Compute HMAC-SHA256 of content using key.
