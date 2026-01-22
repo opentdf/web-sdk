@@ -1,7 +1,7 @@
 import { base64, hex } from '../../../src/encodings/index.js';
 import { Binary } from '../binary.js';
 import type { CryptoService } from '../crypto/declarations.js';
-import { ztdfSalt } from '../crypto/salt.js';
+import { getZtdfSalt } from '../crypto/salt.js';
 import { Algorithms } from '../ciphers/index.js';
 import { Policy } from './policy.js';
 
@@ -44,7 +44,7 @@ export class ECWrapped {
       this.publicKey,
       {
         hash: 'SHA-256',
-        salt: await ztdfSalt,
+        salt: await getZtdfSalt(this.cryptoService),
       }
     );
 

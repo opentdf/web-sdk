@@ -53,7 +53,7 @@ import {
 import { unsigned } from './utils/buffer-crc32.js';
 import { ZipReader, ZipWriter, keyMerge, concatUint8, buffToString } from './utils/index.js';
 import { CentralDirectory } from './utils/zip-reader.js';
-import { ztdfSalt } from './crypto/salt.js';
+import { getZtdfSalt } from './crypto/salt.js';
 import { Payload } from './models/payload.js';
 import {
   getRequiredObligationFQNs,
@@ -848,7 +848,7 @@ async function unwrapKey({
             sessionPublicKey,
             {
               hash: 'SHA-256',
-              salt: await ztdfSalt,
+              salt: await getZtdfSalt(cryptoService),
             }
           );
 
