@@ -21,7 +21,7 @@
     "clsx": "^2.1.1",
     "native-file-system-adapter": "^3.0.1",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "react-dom": "^19.2.4",
     "streamsaver": "^2.0.6"
   },
   "devDependencies": {
@@ -30,7 +30,7 @@
     "@playwright/test": "^1.56.1",
     "@rollup/plugin-inject": "^5.0.5",
     "@types/react": "^19.0.10",
-    "@types/react-dom": "^19.0.4",
+    "@types/react-dom": "^19.2.3",
     "@types/streamsaver": "^2.0.5",
     "@types/wicg-file-system-access": "^2023.10.5",
     "@vitejs/plugin-react": "^4.3.4",
