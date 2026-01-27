@@ -186,9 +186,8 @@ export type KeyAccess = Message<"kas.KeyAccess"> & {
   wrappedKey: Uint8Array;
 
   /**
-   * Complete NanoTDF header containing all metadata and policy information
-   * Required: NanoTDF only
-   * ZTDF: Omitted (policy and metadata are separate)
+   * Complete header containing all metadata and policy information (for formats that embed it)
+   * Optional: Not used by ZTDF (policy and metadata are separate)
    * Contains magic bytes, version, algorithm, policy, and ephemeral key information
    *
    * @generated from field: bytes header = 9;
@@ -351,8 +350,7 @@ export type UnsignedRewrapRequest_WithPolicyRequest = Message<"kas.UnsignedRewra
   /**
    * List of Key Access Objects associated with this policy
    * Required: Always (at least one)
-   * NanoTDF: Exactly one KAO per policy
-   * ZTDF: One or more KAOs per policy
+   * Some formats require exactly one KAO per policy
    *
    * @generated from field: repeated kas.UnsignedRewrapRequest.WithKeyAccessObject key_access_objects = 1;
    */
@@ -369,7 +367,7 @@ export type UnsignedRewrapRequest_WithPolicyRequest = Message<"kas.UnsignedRewra
   /**
    * Cryptographic algorithm identifier for the TDF type
    * Optional: Defaults to rsa:2048 if omitted
-   * Values: "ec:secp256r1" (NanoTDF), "rsa:2048" (ZTDF), "" (defaults to rsa:2048)
+   * Values: "ec:secp256r1" (EC-based), "rsa:2048" (RSA-based), "" (defaults to rsa:2048)
    * Example: "ec:secp256r1"
    *
    * @generated from field: string algorithm = 3;
@@ -581,7 +579,7 @@ export type RewrapResponse = Message<"kas.RewrapResponse"> & {
 
   /**
    * KAS's ephemeral session public key in PEM format
-   * Required: For EC-based operations (NanoTDF and ZTDF with key_type="ec-wrapped")
+   * Required: For EC-based operations (key_type="ec-wrapped")
    * Optional: Empty for RSA-based ZTDF (key_type="wrapped")
    * Used by client to perform ECDH key agreement and decrypt the kas_wrapped_key values
    *
