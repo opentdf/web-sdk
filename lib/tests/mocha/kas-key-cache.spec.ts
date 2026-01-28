@@ -470,5 +470,153 @@ describe('Client Caching Behavior', () => {
       assert(cachedEntry1 !== null, 'First key (kid-1) from attribute 1 should be in the cache');
       assert(cachedEntry2 !== null, 'Second key (kid-2) from attribute 2 should be in the cache');
     });
+
+    it('should pre-populate the cache from attribute definition kasKeys', async () => {
+      const kasAttributeUri = 'https://attr-kaskeys.com/kas';
+
+      const attributeValue: Value = {
+        $typeName: 'policy.Value',
+        fqn: 'http://example.com/attr/attr-kaskeys/value/one',
+        kasKeys: [],
+        id: 'value-id-attr-kaskeys',
+        attribute: {
+          $typeName: 'policy.Attribute',
+          id: 'attr-id-attr-kaskeys',
+          name: 'attr-kaskeys',
+          fqn: 'http://example.com/attr/attr-kaskeys',
+          rule: 0,
+          values: [],
+          grants: [],
+          kasKeys: [
+            {
+              $typeName: 'policy.SimpleKasKey',
+              kasId: 'attr-kas-1',
+              kasUri: kasAttributeUri,
+              publicKey: {
+                $typeName: 'policy.SimpleKasPublicKey',
+                pem: Mocks.kasPublicKey,
+                kid: 'attr-kid-1',
+                algorithm: 1, // Algorithm.RSA_2048
+              },
+            },
+          ],
+          namespace: {
+            $typeName: 'policy.Namespace',
+            id: 'ns-id-attr-kaskeys',
+            name: 'attr-kaskeys',
+            fqn: 'http://example.com',
+            grants: [],
+            kasKeys: [],
+            rootCerts: [],
+          },
+        },
+        value: 'one',
+        grants: [],
+        active: true,
+        subjectMappings: [],
+        resourceMappings: [],
+        obligations: [],
+      };
+
+      fetchStub.returns(createFakeResponse({ error: 'Not Found' }, false, 404));
+      const cacheSpy = sinon.spy(client, '_doFetchKasKeyWithCache');
+
+      const encryptParams: EncryptParams = {
+        ...new EncryptParamsBuilder()
+          .withStringSource('some data to encrypt')
+          .withAutoconfigure()
+          .build(),
+        scope: {
+          attributeValues: [attributeValue],
+        },
+      };
+
+      await client.encrypt(encryptParams);
+
+      assert.isTrue(cacheSpy.calledOnce, 'cache method was called once for the splitPlan');
+      assert.equal(fetchStub.callCount, 0, 'fetch should not be called');
+
+      const cachedEntry = findEntryInCache(
+        client.kasKeyInfoCache,
+        kasAttributeUri,
+        'rsa:2048',
+        'attr-kid-1'
+      );
+      assert(cachedEntry !== null, 'Attribute-level key should be cached');
+    });
+
+    it('should pre-populate the cache from namespace kasKeys', async () => {
+      const kasNamespaceUri = 'https://ns-kaskeys.com/kas';
+
+      const attributeValue: Value = {
+        $typeName: 'policy.Value',
+        fqn: 'http://example.com/attr/ns-kaskeys/value/one',
+        kasKeys: [],
+        id: 'value-id-ns-kaskeys',
+        attribute: {
+          $typeName: 'policy.Attribute',
+          id: 'attr-id-ns-kaskeys',
+          name: 'ns-kaskeys',
+          fqn: 'http://example.com/attr/ns-kaskeys',
+          rule: 0,
+          values: [],
+          grants: [],
+          kasKeys: [],
+          namespace: {
+            $typeName: 'policy.Namespace',
+            id: 'ns-id-kaskeys',
+            name: 'ns-kaskeys',
+            fqn: 'http://example.com',
+            grants: [],
+            kasKeys: [
+              {
+                $typeName: 'policy.SimpleKasKey',
+                kasId: 'ns-kas-1',
+                kasUri: kasNamespaceUri,
+                publicKey: {
+                  $typeName: 'policy.SimpleKasPublicKey',
+                  pem: Mocks.kasPublicKey,
+                  kid: 'ns-kid-1',
+                  algorithm: 1, // Algorithm.RSA_2048
+                },
+              },
+            ],
+            rootCerts: [],
+          },
+        },
+        value: 'one',
+        grants: [],
+        active: true,
+        subjectMappings: [],
+        resourceMappings: [],
+        obligations: [],
+      };
+
+      fetchStub.returns(createFakeResponse({ error: 'Not Found' }, false, 404));
+      const cacheSpy = sinon.spy(client, '_doFetchKasKeyWithCache');
+
+      const encryptParams: EncryptParams = {
+        ...new EncryptParamsBuilder()
+          .withStringSource('some data to encrypt')
+          .withAutoconfigure()
+          .build(),
+        scope: {
+          attributeValues: [attributeValue],
+        },
+      };
+
+      await client.encrypt(encryptParams);
+
+      assert.isTrue(cacheSpy.calledOnce, 'cache method was called once for the splitPlan');
+      assert.equal(fetchStub.callCount, 0, 'fetch should not be called');
+
+      const cachedEntry = findEntryInCache(
+        client.kasKeyInfoCache,
+        kasNamespaceUri,
+        'rsa:2048',
+        'ns-kid-1'
+      );
+      assert(cachedEntry !== null, 'Namespace-level key should be cached');
+    });
   });
 });
