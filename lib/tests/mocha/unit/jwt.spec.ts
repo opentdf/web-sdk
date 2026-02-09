@@ -204,7 +204,7 @@ describe('JWT Utilities', () => {
         expect.fail('Should have thrown');
       } catch (error) {
         expect(error).to.be.instanceOf(Error);
-        expect((error as Error).message).to.include('token has expired');
+        expect((error as Error).message).to.include('"exp" claim timestamp check failed');
       }
 
       // Valid token
@@ -226,7 +226,7 @@ describe('JWT Utilities', () => {
         expect.fail('Should have thrown');
       } catch (error) {
         expect(error).to.be.instanceOf(Error);
-        expect((error as Error).message).to.include('not yet valid');
+        expect((error as Error).message).to.include('"nbf" claim timestamp check failed');
       }
     });
 
@@ -245,7 +245,9 @@ describe('JWT Utilities', () => {
         expect.fail('Should have thrown');
       } catch (error) {
         expect(error).to.be.instanceOf(Error);
-        expect((error as Error).message).to.include('token is too old');
+        expect((error as Error).message).to.include(
+          '"iat" claim timestamp check failed (too far in the past)'
+        );
       }
 
       // Should succeed with maxTokenAge of 3 hours
@@ -267,7 +269,7 @@ describe('JWT Utilities', () => {
         expect.fail('Should have thrown');
       } catch (error) {
         expect(error).to.be.instanceOf(Error);
-        expect((error as Error).message).to.include('token has expired');
+        expect((error as Error).message).to.include('"exp" claim timestamp check failed');
       }
 
       // Should succeed with 60 second clock tolerance
@@ -297,7 +299,7 @@ describe('JWT Utilities', () => {
         expect.fail('Should have thrown');
       } catch (error) {
         expect(error).to.be.instanceOf(Error);
-        expect((error as Error).message).to.include('Missing required claim');
+        expect((error as Error).message).to.include('missing required "role" claim');
       }
     });
   });
