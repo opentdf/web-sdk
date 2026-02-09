@@ -137,7 +137,7 @@ describe('JWT Utilities', () => {
         expect.fail('Should have thrown');
       } catch (error) {
         expect(error).to.be.instanceOf(Error);
-        expect((error as Error).message).to.include('expected 3 parts');
+        expect((error as Error).message).to.include('Invalid Token or Protected Header');
       }
     });
   });
