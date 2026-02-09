@@ -48,7 +48,8 @@ export function base64urlEncode(data: string | Uint8Array): string {
     return base64.encodeArrayBuffer(bytes.buffer, true); // urlSafe = true
   } else {
     // Encode Uint8Array to base64url
-    return base64.encodeArrayBuffer(data.buffer, true); // urlSafe = true
+    const buffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+    return base64.encodeArrayBuffer(buffer, true); // urlSafe = true
   }
 }
 
@@ -166,26 +167,18 @@ export async function verifyJwt(
   key: string | Uint8Array,
   options?: VerifyJwtOptions
 ): Promise<{ header: JwtHeader; payload: JwtPayload }> {
-  let parts: string[];
-  let headerB64: string;
-  let payloadB64: string;
-  let signatureB64: string;
-  try {
-    parts = token.split('.');
-    if (parts.length !== 3) {
-      throw new Error('Invalid JWT: expected 3 parts');
-    }
-    [headerB64, payloadB64, signatureB64] = parts;
-  } catch {
+  const parts = token.split('.');
+  if (parts.length !== 3) {
     throw new joseErrors.JWTInvalid('Invalid Token or Protected Header formatting');
   }
+  const [headerB64, payloadB64, signatureB64] = parts;
 
   // Decode and validate header
   const headerRaw = decodeProtectedHeader(token);
   if (typeof headerRaw.alg !== 'string' || !headerRaw.alg) {
     throw new joseErrors.JWTInvalid('JWS "alg" (Algorithm) Header Parameter missing or invalid');
   }
-  if (String(headerRaw.alg) === 'none') {
+  if ((headerRaw.alg as string) === 'none') {
     throw new joseErrors.JWTInvalid('Invalid JWT: alg "none" not allowed');
   }
 
