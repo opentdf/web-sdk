@@ -4,85 +4,37 @@ import {
   type SigningAlgorithm,
 } from './declarations.js';
 import { base64 } from '../../../src/encodings/index.js';
+import {
+  decodeProtectedHeader as joseDecodeProtectedHeader,
+  errors as joseErrors,
+  type JWTHeaderParameters,
+  type JWTPayload,
+  type JWTVerifyOptions,
+  type SignOptions,
+} from 'jose';
+import jwtClaimsSet from './jose/jwt-claims-set.js';
+import validateCrit from './jose/validate-crit.js';
 
-export type JwtHeader = { alg: SigningAlgorithm; typ?: 'JWT'; [key: string]: unknown };
-export type JwtPayload = { [key: string]: unknown };
+export type JwtHeader = JWTHeaderParameters & { alg: SigningAlgorithm };
+export type JwtPayload = JWTPayload;
 
 /**
  * Options for JWT signing. Matches jose SignOptions interface.
  */
-export interface SignJwtOptions {
-  /**
-   * An object with keys representing recognized "crit" (Critical) Header Parameter names.
-   * The value for those is either `true` or `false`. `true` when the Header Parameter MUST
-   * be integrity protected, `false` when it's irrelevant.
-   */
-  crit?: {
-    [propName: string]: boolean;
-  };
-}
+export type SignJwtOptions = SignOptions;
 
 /**
  * Options for JWT verification. Matches jose JWTVerifyOptions interface.
  * Combines signature verification options and JWT claim verification options.
  */
-export interface VerifyJwtOptions {
+export type VerifyJwtOptions = Omit<JWTVerifyOptions, 'algorithms'> & {
   /**
    * A list of accepted JWS "alg" (Algorithm) Header Parameter values.
    * By default all algorithms supported by the CryptoService are allowed.
    * Unsecured JWTs ({ "alg": "none" }) are never accepted.
    */
   algorithms?: SigningAlgorithm[];
-
-  /**
-   * An object with keys representing recognized "crit" (Critical) Header Parameter names.
-   */
-  crit?: {
-    [propName: string]: boolean;
-  };
-
-  /**
-   * Expected JWT "aud" (Audience) claim value(s).
-   */
-  audience?: string | string[];
-
-  /**
-   * Expected clock tolerance for time-based validations.
-   * Can be a number (seconds) or a string with units: "30s", "5m", "1h", "1d".
-   */
-  clockTolerance?: string | number;
-
-  /**
-   * Expected JWT "iss" (Issuer) claim value(s).
-   */
-  issuer?: string | string[];
-
-  /**
-   * Maximum age of the token. Can be a number (seconds) or a string with units: "30s", "5m", "1h", "1d".
-   */
-  maxTokenAge?: string | number;
-
-  /**
-   * Expected JWT "sub" (Subject) claim value.
-   */
-  subject?: string;
-
-  /**
-   * Expected JWT "typ" header parameter value.
-   */
-  typ?: string;
-
-  /**
-   * Date to use for time-based validations (for testing).
-   * Defaults to current time.
-   */
-  currentDate?: Date;
-
-  /**
-   * List of claim names that must be present in the JWT payload.
-   */
-  requiredClaims?: string[];
-}
+};
 
 /**
  * Base64url encode data per RFC 4648 Section 5.
@@ -96,7 +48,8 @@ export function base64urlEncode(data: string | Uint8Array): string {
     return base64.encodeArrayBuffer(bytes.buffer, true); // urlSafe = true
   } else {
     // Encode Uint8Array to base64url
-    return base64.encodeArrayBuffer(data.buffer, true); // urlSafe = true
+    const buffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+    return base64.encodeArrayBuffer(buffer, true); // urlSafe = true
   }
 }
 
@@ -115,20 +68,23 @@ function base64urlToBase64(str: string): string {
 }
 
 /**
- * Base64url decode to string per RFC 4648 Section 5.
- */
-function base64urlDecode(str: string): string {
-  const b64 = base64urlToBase64(str);
-  const bytes = base64.decodeArrayBuffer(b64);
-  return new TextDecoder().decode(bytes);
-}
-
-/**
  * Base64url decode to Uint8Array per RFC 4648 Section 5.
  */
 function base64urlDecodeBytes(str: string): Uint8Array {
   const b64 = base64urlToBase64(str);
   return new Uint8Array(base64.decodeArrayBuffer(b64));
+}
+
+/**
+ * Decode the protected header from a JWT without verifying the signature.
+ * Useful for inspecting the header to determine key type before verification.
+ *
+ * @param token - The JWT string
+ * @returns The decoded header
+ * @throws Error if the token is malformed or uses alg "none"
+ */
+export function decodeProtectedHeader(token: string): JwtHeader {
+  return joseDecodeProtectedHeader(token) as JwtHeader;
 }
 
 /**
@@ -154,14 +110,7 @@ export async function signJwt(
   header: JwtHeader,
   options?: SignJwtOptions
 ): Promise<string> {
-  // Validate crit header if present (basic validation only)
-  if (header.crit && options?.crit) {
-    for (const critParam of header.crit as string[]) {
-      if (!(critParam in options.crit)) {
-        throw new Error(`Critical header parameter "${critParam}" is not recognized`);
-      }
-    }
-  }
+  validateCrit(joseErrors.JWSInvalid, new Map([['b64', true]]), options?.crit, header, header);
 
   // Encode header and payload per RFC 7515
   const headerB64 = base64urlEncode(JSON.stringify(header));
@@ -218,42 +167,33 @@ export async function verifyJwt(
   key: string | Uint8Array,
   options?: VerifyJwtOptions
 ): Promise<{ header: JwtHeader; payload: JwtPayload }> {
-  // Split token
   const parts = token.split('.');
   if (parts.length !== 3) {
-    throw new Error('Invalid JWT: expected 3 parts');
+    throw new joseErrors.JWTInvalid('Invalid Token or Protected Header formatting');
   }
   const [headerB64, payloadB64, signatureB64] = parts;
 
   // Decode and validate header
-  const headerRaw = JSON.parse(base64urlDecode(headerB64)) as {
-    alg: string;
-    [key: string]: unknown;
-  };
-
-  // Check for 'none' algorithm (security: prevent unsigned JWTs)
-  if (headerRaw.alg === 'none') {
-    throw new Error('Invalid JWT: alg "none" not allowed');
+  const headerRaw = decodeProtectedHeader(token);
+  if (typeof headerRaw.alg !== 'string' || !headerRaw.alg) {
+    throw new joseErrors.JWTInvalid('JWS "alg" (Algorithm) Header Parameter missing or invalid');
+  }
+  if ((headerRaw.alg as string) === 'none') {
+    throw new joseErrors.JWTInvalid('Invalid JWT: alg "none" not allowed');
   }
 
   // Validate algorithm is in allowlist if provided
   if (options?.algorithms && !options.algorithms.includes(headerRaw.alg as SigningAlgorithm)) {
-    throw new Error(`Invalid JWT: algorithm "${headerRaw.alg}" not in allowlist`);
+    throw new joseErrors.JWTInvalid(`Invalid JWT: algorithm "${headerRaw.alg}" not in allowlist`);
   }
 
-  // Validate typ header if expected
-  if (options?.typ && headerRaw.typ !== options.typ) {
-    throw new Error(`Invalid JWT: unexpected "typ" header value "${headerRaw.typ}"`);
-  }
-
-  // Validate crit header if present
-  if (headerRaw.crit && options?.crit) {
-    for (const critParam of headerRaw.crit as string[]) {
-      if (!(critParam in options.crit)) {
-        throw new Error(`Critical header parameter "${critParam}" is not recognized`);
-      }
-    }
-  }
+  const extensions = validateCrit(
+    joseErrors.JWSInvalid,
+    new Map([['b64', true]]),
+    options?.crit,
+    headerRaw,
+    headerRaw
+  );
 
   // Now we know it's a valid algorithm
   const header = headerRaw as JwtHeader;
@@ -284,133 +224,16 @@ export async function verifyJwt(
   }
 
   if (!valid) {
-    throw new Error('Invalid JWT: signature verification failed');
+    throw new joseErrors.JWTInvalid('Invalid JWT: signature verification failed');
   }
 
-  // Decode payload
-  const payload = JSON.parse(base64urlDecode(payloadB64)) as JwtPayload;
+  if (extensions.has('b64') && (header as { b64?: boolean }).b64 === false) {
+    throw new joseErrors.JWTInvalid('JWTs MUST NOT use unencoded payload');
+  }
 
-  // Validate JWT claims
-  validateJwtClaims(payload, options);
+  // Decode payload and validate JWT claims
+  const payloadBytes = base64urlDecodeBytes(payloadB64);
+  const payload = jwtClaimsSet(header, payloadBytes, options) as JwtPayload;
 
   return { header, payload };
-}
-
-/**
- * Helper function to parse time duration strings like "5m", "1h" to seconds.
- */
-function parseDuration(duration: string | number): number {
-  if (typeof duration === 'number') {
-    return duration;
-  }
-
-  const match = duration.match(/^(\d+)([smhd])$/);
-  if (!match) {
-    throw new Error(`Invalid duration format: "${duration}"`);
-  }
-
-  const value = parseInt(match[1], 10);
-  const unit = match[2];
-
-  switch (unit) {
-    case 's':
-      return value;
-    case 'm':
-      return value * 60;
-    case 'h':
-      return value * 3600;
-    case 'd':
-      return value * 86400;
-    default:
-      throw new Error(`Unknown duration unit: "${unit}"`);
-  }
-}
-
-/**
- * Validate JWT claims according to options.
- */
-function validateJwtClaims(payload: JwtPayload, options?: VerifyJwtOptions): void {
-  if (!options) {
-    return;
-  }
-
-  const now = options.currentDate
-    ? Math.floor(options.currentDate.getTime() / 1000)
-    : Math.floor(Date.now() / 1000);
-  const tolerance = options.clockTolerance ? parseDuration(options.clockTolerance) : 0;
-
-  // Validate required claims
-  if (options.requiredClaims) {
-    for (const claim of options.requiredClaims) {
-      if (!(claim in payload)) {
-        throw new Error(`Missing required claim: "${claim}"`);
-      }
-    }
-  }
-
-  // Validate audience
-  if (options.audience !== undefined) {
-    const expectedAudiences = Array.isArray(options.audience)
-      ? options.audience
-      : [options.audience];
-    const actualAudiences = payload.aud
-      ? Array.isArray(payload.aud)
-        ? payload.aud
-        : [payload.aud]
-      : [];
-
-    // Validate that all audience values are strings
-    const validAudiences = actualAudiences.filter((aud) => typeof aud === 'string') as string[];
-    const hasMatch = expectedAudiences.some((expected) => validAudiences.includes(expected));
-    if (!hasMatch) {
-      throw new Error(`Invalid JWT: unexpected "aud" claim value`);
-    }
-  }
-
-  // Validate issuer
-  if (options.issuer !== undefined) {
-    const expectedIssuers = Array.isArray(options.issuer) ? options.issuer : [options.issuer];
-    if (typeof payload.iss !== 'string' || !expectedIssuers.includes(payload.iss)) {
-      throw new Error(`Invalid JWT: unexpected "iss" claim value`);
-    }
-  }
-
-  // Validate subject
-  if (options.subject !== undefined) {
-    if (typeof payload.sub !== 'string' || payload.sub !== options.subject) {
-      throw new Error(`Invalid JWT: unexpected "sub" claim value`);
-    }
-  }
-
-  // Validate expiration time
-  if (payload.exp !== undefined) {
-    if (typeof payload.exp !== 'number') {
-      throw new Error('Invalid JWT: "exp" claim must be a number');
-    }
-    if (now - tolerance >= payload.exp) {
-      throw new Error('Invalid JWT: token has expired');
-    }
-  }
-
-  // Validate not before time
-  if (payload.nbf !== undefined) {
-    if (typeof payload.nbf !== 'number') {
-      throw new Error('Invalid JWT: "nbf" claim must be a number');
-    }
-    if (now + tolerance < payload.nbf) {
-      throw new Error('Invalid JWT: token is not yet valid');
-    }
-  }
-
-  // Validate max token age
-  if (options.maxTokenAge !== undefined && payload.iat !== undefined) {
-    if (typeof payload.iat !== 'number') {
-      throw new Error('Invalid JWT: "iat" claim must be a number');
-    }
-    const maxAge = parseDuration(options.maxTokenAge);
-    const age = now - payload.iat;
-    if (age > maxAge + tolerance) {
-      throw new Error('Invalid JWT: token is too old');
-    }
-  }
 }
