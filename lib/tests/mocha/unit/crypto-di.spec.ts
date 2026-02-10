@@ -150,7 +150,7 @@ describe('CryptoService DI', () => {
       name: 'CustomCryptoService',
       method: 'http://www.w3.org/2009/xmlenc11#aes256-gcm',
       cryptoToPemPair: function (keys: unknown): Promise<PemKeyPair> {
-        throw new Error('Function not implemented.');
+        throw new Error(NOT_IMPLEMENTED);
       },
       decrypt: function (
         payload: Binary,
@@ -159,13 +159,13 @@ describe('CryptoService DI', () => {
         algorithm?: AlgorithmUrn | undefined,
         authTag?: Binary | undefined
       ): Promise<DecryptResult> {
-        throw new Error('Function not implemented.');
+        throw new Error(NOT_IMPLEMENTED);
       },
       decryptWithPrivateKey: function (
         encryptedPayload: Binary,
         privateKey: string
       ): Promise<Binary> {
-        throw new Error('Function not implemented.');
+        throw new Error(NOT_IMPLEMENTED);
       },
       encrypt: function (
         payload: Binary,
@@ -173,38 +173,38 @@ describe('CryptoService DI', () => {
         iv: Binary,
         algorithm?: AlgorithmUrn | undefined
       ): Promise<EncryptResult> {
-        throw new Error('Function not implemented.');
+        throw new Error(NOT_IMPLEMENTED);
       },
       encryptWithPublicKey: function (payload: Binary, publicKey: string): Promise<Binary> {
-        throw new Error('Function not implemented.');
+        throw new Error(NOT_IMPLEMENTED);
       },
       generateInitializationVector: function (length?: number): Promise<string> {
-        throw new Error('Function not implemented.');
+        throw new Error(NOT_IMPLEMENTED);
       },
       generateKey: function (length?: number): Promise<string> {
-        throw new Error('Function not implemented.');
+        throw new Error(NOT_IMPLEMENTED);
       },
       generateKeyPair: function (size?: number | undefined): Promise<CryptoKeyPair> {
-        throw new Error('Function not implemented.');
+        throw new Error(NOT_IMPLEMENTED);
       },
       generateSigningKeyPair: function (): Promise<CryptoKeyPair> {
-        throw new Error('Function not implemented.');
+        throw new Error(NOT_IMPLEMENTED);
       },
       hmac: function (key: string, content: string): Promise<string> {
-        throw new Error('Function not implemented.');
+        throw new Error(NOT_IMPLEMENTED);
       },
       randomBytes: function (byteLength: number): Promise<Uint8Array> {
-        throw new Error('Function not implemented.');
+        throw new Error(NOT_IMPLEMENTED);
       },
       sha256: function (content: string): Promise<string> {
-        throw new Error('Function not implemented.');
+        throw new Error(NOT_IMPLEMENTED);
       },
       sign: function (
         data: Uint8Array,
         privateKeyPem: string,
         algorithm: AsymmetricSigningAlgorithm
       ): Promise<Uint8Array> {
-        throw new Error('Function not implemented.');
+        throw new Error(NOT_IMPLEMENTED);
       },
       verify: function (
         data: Uint8Array,
@@ -212,39 +212,39 @@ describe('CryptoService DI', () => {
         publicKeyPem: string,
         algorithm: AsymmetricSigningAlgorithm
       ): Promise<boolean> {
-        throw new Error('Function not implemented.');
+        throw new Error(NOT_IMPLEMENTED);
       },
       signSymmetric: function (data: Uint8Array, key: Uint8Array): Promise<Uint8Array> {
-        throw new Error('Function not implemented.');
+        throw new Error(NOT_IMPLEMENTED);
       },
       verifySymmetric: function (
         data: Uint8Array,
         signature: Uint8Array,
         key: Uint8Array
       ): Promise<boolean> {
-        throw new Error('Function not implemented.');
+        throw new Error(NOT_IMPLEMENTED);
       },
       digest: function (algorithm: HashAlgorithm, data: Uint8Array): Promise<Uint8Array> {
-        throw new Error('Function not implemented.');
+        throw new Error(NOT_IMPLEMENTED);
       },
       extractPublicKeyPem: function (certOrPem: string): Promise<string> {
-        throw new Error('Function not implemented.');
+        throw new Error(NOT_IMPLEMENTED);
       },
       generateECKeyPair: function (curve?: ECCurve): Promise<PemKeyPair> {
-        throw new Error('Function not implemented.');
+        throw new Error(NOT_IMPLEMENTED);
       },
       deriveKeyFromECDH: function (
         privateKeyPem: string,
         publicKeyPem: string,
         hkdfParams: HkdfParams
       ): Promise<Uint8Array> {
-        throw new Error('Function not implemented.');
+        throw new Error(NOT_IMPLEMENTED);
       },
       importPublicKeyPem: function (pem: string): Promise<PublicKeyInfo> {
-        throw new Error('Function not implemented.');
+        throw new Error(NOT_IMPLEMENTED);
       },
       jwkToPem: function (jwk: JsonWebKey): Promise<string> {
-        throw new Error('Function not implemented.');
+        throw new Error(NOT_IMPLEMENTED);
       },
     };
 
