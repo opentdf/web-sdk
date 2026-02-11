@@ -14,10 +14,17 @@ import {
 } from './src/client/builders.js';
 import { type ClientConfig, createSessionKeys } from './src/client/index.js';
 import {
+  type AsymmetricSigningAlgorithm,
   type CryptoService,
   type DecryptResult,
+  type ECCurve,
   type EncryptResult,
+  type HashAlgorithm,
+  type HkdfParams,
   type PemKeyPair,
+  type PublicKeyInfo,
+  type SigningAlgorithm,
+  type SymmetricSigningAlgorithm,
 } from './src/crypto/declarations.js';
 import { Client, Errors, TDF3Client } from './src/index.js';
 import {
@@ -35,18 +42,25 @@ import { type Chunker } from '../src/seekable.js';
 export type {
   AlgorithmName,
   AlgorithmUrn,
+  AsymmetricSigningAlgorithm,
   AuthProvider,
   Chunker,
   CryptoService,
+  DecryptKeyMiddleware,
   DecryptResult,
+  DecryptStreamMiddleware,
+  ECCurve,
+  EncryptKeyMiddleware,
   EncryptResult,
+  EncryptStreamMiddleware,
+  HashAlgorithm,
+  HkdfParams,
   HttpMethod,
   PemKeyPair,
-  EncryptKeyMiddleware,
-  EncryptStreamMiddleware,
-  DecryptKeyMiddleware,
-  DecryptStreamMiddleware,
+  PublicKeyInfo,
+  SigningAlgorithm,
   SplitStep,
+  SymmetricSigningAlgorithm,
 };
 
 export {
