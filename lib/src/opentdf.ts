@@ -3,7 +3,7 @@ import { ConfigurationError, InvalidFileError } from './errors.js';
 export { Client as TDF3Client } from '../tdf3/src/client/index.js';
 import { Chunker, fromSource, sourceToStream, type Source } from './seekable.js';
 import { Client as TDF3Client } from '../tdf3/src/client/index.js';
-import { type CryptoService, type PemKeyPair } from '../tdf3/src/crypto/declarations.js';
+import { type CryptoService, type KeyPair } from '../tdf3/src/crypto/declarations.js';
 import * as DefaultCryptoService from '../tdf3/src/crypto/index.js';
 import {
   type Assertion,
@@ -175,12 +175,12 @@ export type OpenTDFOptions = {
    * These often must be registered via a DPoP flow with the IdP
    * which is out of the scope of this library.
    */
-  dpopKeys?: Promise<PemKeyPair>;
+  dpopKeys?: Promise<KeyPair>;
 
   /**
    * Optional custom CryptoService implementation.
    * If not provided, defaults to the browser's native Web Crypto API.
-   * This allows injecting FIPS-compliant crypto implementations.
+   * This allows injecting HSM-backed or other secure crypto implementations.
    */
   cryptoService?: CryptoService;
 };
@@ -267,7 +267,7 @@ export class OpenTDF {
   /** Default options for reading TDF objects. */
   defaultReadOptions: Omit<ReadOptions, 'source'>;
   /** The DPoP keys for this instance, if any. */
-  readonly dpopKeys: Promise<PemKeyPair>;
+  readonly dpopKeys: Promise<KeyPair>;
   /** The CryptoService implementation for this instance. */
   readonly cryptoService: CryptoService;
   /** The TDF3 client for encrypting and decrypting ZTDF files. */
@@ -304,7 +304,7 @@ export class OpenTDF {
       policyEndpoint,
       cryptoService: this.cryptoService,
     });
-    // Use CryptoService for key generation (returns PemKeyPair)
+    // Use CryptoService for key generation (returns opaque KeyPair)
     this.dpopKeys = dpopKeys ?? this.cryptoService.generateSigningKeyPair();
   }
 

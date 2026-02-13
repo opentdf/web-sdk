@@ -45,8 +45,8 @@ const CERT_END = '-----END CERTIFICATE-----';
 
 const P_256 = 'P-256';
 const P_384 = 'P-384';
-const P_512 = 'P-512';
-export type CurveName = typeof P_256 | typeof P_384 | typeof P_512;
+const P_521 = 'P-521';
+export type CurveName = typeof P_256 | typeof P_384 | typeof P_521;
 
 const ECDH = 'ECDH';
 const ECDSA = 'ECDSA';
@@ -99,7 +99,7 @@ export function guessCurveName(hex: string): CurveName {
   } else if (hex.includes(P384_OID)) {
     return P_384;
   } else if (hex.includes(P521_OID)) {
-    return P_512;
+    return P_521;
   }
   throw new TdfError('Unsupported curve name or invalid key');
 }
@@ -173,7 +173,7 @@ export function toJwsAlg(hex: string) {
         return 'ES256';
       case 'P-384':
         return 'ES384';
-      case 'P-512':
+      case 'P-521':
         return 'ES512';
     }
   } else if (a === RSA_OAEP) {

@@ -21,9 +21,13 @@ import {
   type EncryptResult,
   type HashAlgorithm,
   type HkdfParams,
+  type KeyPair,
   type PemKeyPair,
+  type PrivateKey,
+  type PublicKey,
   type PublicKeyInfo,
   type SigningAlgorithm,
+  type SymmetricKey,
   type SymmetricSigningAlgorithm,
 } from './src/crypto/declarations.js';
 import { Client, Errors, TDF3Client } from './src/index.js';
@@ -56,10 +60,14 @@ export type {
   HashAlgorithm,
   HkdfParams,
   HttpMethod,
+  KeyPair,
   PemKeyPair,
+  PrivateKey,
+  PublicKey,
   PublicKeyInfo,
   SigningAlgorithm,
   SplitStep,
+  SymmetricKey,
   SymmetricSigningAlgorithm,
 };
 

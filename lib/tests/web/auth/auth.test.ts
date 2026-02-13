@@ -2,7 +2,7 @@ import { assert, expect } from '@esm-bundle/chai';
 import { fake } from 'sinon';
 import { AccessToken, type AccessTokenResponse } from '../../../src/auth/oidc.js';
 import { DefaultCryptoService, generateSigningKeyPair } from '../../../tdf3/src/crypto/index.js';
-import type { PemKeyPair } from '../../../tdf3/src/crypto/declarations.js';
+import type { KeyPair } from '../../../tdf3/src/crypto/declarations.js';
 
 // // const qsparse = (s: string) => Object.fromEntries(new URLSearchParams(s));
 const qsparse = (s: string) =>
@@ -30,8 +30,8 @@ function mockFetch(
   return fake.resolves({ json, ok, status, statusText, text });
 }
 
-// Helper to generate PEM signing keys for tests
-async function generateTestSigningKey(): Promise<PemKeyPair> {
+// Helper to generate signing keys for tests
+async function generateTestSigningKey(): Promise<KeyPair> {
   return generateSigningKeyPair();
 }
 
