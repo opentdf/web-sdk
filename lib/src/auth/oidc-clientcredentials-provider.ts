@@ -2,6 +2,7 @@ import { ConfigurationError } from '../errors.js';
 import { AuthProvider, type HttpRequest } from './auth.js';
 import { AccessToken, type ClientSecretCredentials } from './oidc.js';
 import { type CryptoService, type PemKeyPair } from '../../tdf3/src/crypto/declarations.js';
+import * as defaultCryptoService from '../../tdf3/src/crypto/index.js';
 
 export class OIDCClientCredentialsProvider implements AuthProvider {
   oidcAuth: AccessToken;
@@ -14,7 +15,7 @@ export class OIDCClientCredentialsProvider implements AuthProvider {
       oidcTokenEndpoint,
       oidcUserInfoEndpoint,
     }: Partial<ClientSecretCredentials> & Omit<ClientSecretCredentials, 'exchange'>,
-    cryptoService: CryptoService
+    cryptoService: CryptoService = defaultCryptoService
   ) {
     if (!clientId || !clientSecret) {
       throw new ConfigurationError('clientId & clientSecret required for client credentials flow');

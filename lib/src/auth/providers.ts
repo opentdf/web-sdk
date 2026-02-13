@@ -11,6 +11,7 @@ import { OIDCRefreshTokenProvider } from './oidc-refreshtoken-provider.js';
 import { isBrowser } from '../utils.js';
 import { ConfigurationError } from '../errors.js';
 import { type CryptoService } from '../../tdf3/src/crypto/declarations.js';
+import * as defaultCryptoService from '../../tdf3/src/crypto/index.js';
 
 /**
  * Creates an OIDC Client Credentials Provider for non-browser contexts.
@@ -32,7 +33,7 @@ import { type CryptoService } from '../../tdf3/src/crypto/declarations.js';
  */
 export const clientSecretAuthProvider = async (
   clientConfig: ClientSecretCredentials,
-  cryptoService: CryptoService
+  cryptoService: CryptoService = defaultCryptoService
 ): Promise<OIDCClientCredentialsProvider> => {
   return new OIDCClientCredentialsProvider(
     {
@@ -64,7 +65,7 @@ export const clientSecretAuthProvider = async (
  */
 export const externalAuthProvider = async (
   clientConfig: ExternalJwtCredentials,
-  cryptoService: CryptoService
+  cryptoService: CryptoService = defaultCryptoService
 ): Promise<OIDCExternalJwtProvider> => {
   return new OIDCExternalJwtProvider(
     {
@@ -94,7 +95,7 @@ export const externalAuthProvider = async (
  */
 export const refreshAuthProvider = async (
   clientConfig: RefreshTokenCredentials,
-  cryptoService: CryptoService
+  cryptoService: CryptoService = defaultCryptoService
 ): Promise<OIDCRefreshTokenProvider> => {
   return new OIDCRefreshTokenProvider(
     {
@@ -115,7 +116,7 @@ export const refreshAuthProvider = async (
  */
 export const clientAuthProvider = async (
   clientConfig: OIDCCredentials,
-  cryptoService: CryptoService
+  cryptoService: CryptoService = defaultCryptoService
 ): Promise<AuthProvider> => {
   if (!clientConfig.clientId) {
     throw new ConfigurationError('Client ID must be provided to constructor');

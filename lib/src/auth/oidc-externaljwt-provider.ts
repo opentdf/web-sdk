@@ -2,6 +2,7 @@ import { ConfigurationError } from '../errors.js';
 import { type AuthProvider, type HttpRequest } from './auth.js';
 import { AccessToken, type ExternalJwtCredentials } from './oidc.js';
 import { type CryptoService, type PemKeyPair } from '../../tdf3/src/crypto/declarations.js';
+import * as defaultCryptoService from '../../tdf3/src/crypto/index.js';
 
 export class OIDCExternalJwtProvider implements AuthProvider {
   oidcAuth: AccessToken;
@@ -15,7 +16,7 @@ export class OIDCExternalJwtProvider implements AuthProvider {
       oidcTokenEndpoint,
       oidcUserInfoEndpoint,
     }: Partial<ExternalJwtCredentials> & Omit<ExternalJwtCredentials, 'exchange'>,
-    cryptoService: CryptoService
+    cryptoService: CryptoService = defaultCryptoService
   ) {
     if (!clientId || !externalJwt) {
       throw new ConfigurationError('external JWT exchange reequires client id and jwt');
