@@ -31,6 +31,7 @@ import * as base64 from '../encodings/base64.js';
 import { importX509 } from 'jose';
 import { encodeArrayBuffer as hexEncodeArrayBuffer } from '../encodings/hex.js';
 import { ConfigurationError, TdfError } from '../errors.js';
+import { NamedCurve } from './enums.js';
 
 const RSA_OID = '06092a864886f70d010101';
 const EC_OID = '06072a8648ce3d0201';
@@ -41,11 +42,6 @@ const SHA_512 = 'SHA-512';
 const SPKI = 'spki';
 const CERT_BEGIN = '-----BEGIN CERTIFICATE-----';
 const CERT_END = '-----END CERTIFICATE-----';
-
-const P_256 = 'P-256';
-const P_384 = 'P-384';
-const P_512 = 'P-512';
-type CurveName = typeof P_256 | typeof P_384 | typeof P_512;
 
 const ECDH = 'ECDH';
 const ECDSA = 'ECDSA';
@@ -92,13 +88,13 @@ function guessAlgorithmName(hex: string, algorithmName?: string): AlgorithmName 
   throw new TypeError(`Invalid public key, ${algorithmName}`);
 }
 
-function guessCurveName(hex: string): CurveName {
+function guessCurveName(hex: string): NamedCurve {
   if (hex.includes(P256_OID)) {
-    return P_256;
+    return NamedCurve.P256;
   } else if (hex.includes(P384_OID)) {
-    return P_384;
+    return NamedCurve.P384;
   } else if (hex.includes(P521_OID)) {
-    return P_512;
+    return NamedCurve.P521;
   }
   throw new TdfError('Unsupported curve name or invalid key');
 }
@@ -167,11 +163,11 @@ function toJwsAlg(hex: string) {
     return 'ECDH-ES';
   } else if (a === ECDSA) {
     switch (guessCurveName(hex)) {
-      case 'P-256':
+      case NamedCurve.P256:
         return 'ES256';
-      case 'P-384':
+      case NamedCurve.P384:
         return 'ES384';
-      case 'P-512':
+      case NamedCurve.P521:
         return 'ES512';
     }
   } else if (a === RSA_OAEP) {
