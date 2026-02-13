@@ -43,7 +43,6 @@ const SPKI = 'spki';
 const CERT_BEGIN = '-----BEGIN CERTIFICATE-----';
 const CERT_END = '-----END CERTIFICATE-----';
 
-
 const ECDH = 'ECDH';
 const ECDSA = 'ECDSA';
 const RSA_OAEP = 'RSA-OAEP';
