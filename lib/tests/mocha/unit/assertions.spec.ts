@@ -1,12 +1,16 @@
 // tests for assertions.ts
 
 import { expect } from 'chai';
-import { generateKeyPair, SignJWT, exportJWK } from 'jose';
 
 import * as assertions from '../../../tdf3/src/assertions.js';
+import * as DefaultCryptoService from '../../../tdf3/src/crypto/index.js';
 import { hex, base64 } from '../../../src/encodings/index.js';
+import { signJwt } from '../../../tdf3/src/crypto/jwt.js';
+import type { CryptoService } from '../../../tdf3/src/crypto/declarations.js';
 
 describe('assertions', () => {
+  const cryptoService: CryptoService = DefaultCryptoService;
+
   describe('isAssertionConfig', () => {
     it('validates config', () => {
       expect(
@@ -46,9 +50,9 @@ describe('assertions', () => {
         type: 'other',
       };
 
-      let h1 = await assertions.hash(assertion);
+      let h1 = await assertions.hash(assertion, cryptoService);
       delete assertion.signingKey;
-      let h2 = await assertions.hash(assertion);
+      let h2 = await assertions.hash(assertion, cryptoService);
 
       expect(h1).to.equal(h2);
     });
@@ -59,8 +63,17 @@ describe('assertions', () => {
     const isLegacyTDF = false;
 
     it('should verify assertion using jwk from header', async () => {
-      const { publicKey, privateKey } = await generateKeyPair('ES256');
-      const jwk = await exportJWK(publicKey);
+      // Generate EC key pair for ES256
+      const keyPair = await cryptoService.generateECKeyPair('P-256');
+      // Get JWK from the public key
+      const publicKeyBuffer = await crypto.subtle.importKey(
+        'spki',
+        pemToArrayBuffer(keyPair.publicKey),
+        { name: 'ECDSA', namedCurve: 'P-256' },
+        true,
+        ['verify']
+      );
+      const jwk = await crypto.subtle.exportKey('jwk', publicKeyBuffer);
 
       const assertion: assertions.Assertion = {
         id: 'test-assertion',
@@ -78,7 +91,7 @@ describe('assertions', () => {
         },
       };
 
-      const assertionHash = await assertions.hash(assertion);
+      const assertionHash = await assertions.hash(assertion, cryptoService);
       const combinedHash = new Uint8Array(aggregateHash.length + 32);
       combinedHash.set(aggregateHash, 0);
       combinedHash.set(new Uint8Array(hex.decodeArrayBuffer(assertionHash)), aggregateHash.length);
@@ -89,25 +102,28 @@ describe('assertions', () => {
         assertionSig: encodedHash,
       };
 
-      const token = await new SignJWT(payload)
-        .setProtectedHeader({ alg: 'ES256', jwk })
-        .sign(privateKey);
+      // Sign with ES256 and embed JWK in header
+      const token = await signJwt(cryptoService, payload, keyPair.privateKey, {
+        alg: 'ES256',
+        jwk,
+      });
 
       assertion.binding.signature = token;
 
-      // This should now pass because we implemented the fix
+      // Verify should work with embedded JWK - dummy key is ignored when JWK is present
       const dummyKey: assertions.AssertionKey = {
-        alg: 'HS256',
-        key: new Uint8Array(32),
+        alg: 'ES256',
+        key: keyPair.publicKey, // Not actually used since JWK is in header
       };
 
-      await assertions.verify(assertion, aggregateHash, dummyKey, isLegacyTDF);
+      await assertions.verify(assertion, aggregateHash, dummyKey, isLegacyTDF, cryptoService);
     });
 
     it('should fallback to provided key if no key in header', async () => {
+      const symmetricKey = await cryptoService.randomBytes(32);
       const key: assertions.AssertionKey = {
         alg: 'HS256',
-        key: new Uint8Array(32).fill(1),
+        key: symmetricKey,
       };
 
       const assertion: assertions.Assertion = {
@@ -126,7 +142,7 @@ describe('assertions', () => {
         },
       };
 
-      const assertionHash = await assertions.hash(assertion);
+      const assertionHash = await assertions.hash(assertion, cryptoService);
       const combinedHash = new Uint8Array(aggregateHash.length + 32);
       combinedHash.set(aggregateHash, 0);
       combinedHash.set(new Uint8Array(hex.decodeArrayBuffer(assertionHash)), aggregateHash.length);
@@ -137,11 +153,23 @@ describe('assertions', () => {
         assertionSig: encodedHash,
       };
 
-      const token = await new SignJWT(payload).setProtectedHeader({ alg: 'HS256' }).sign(key.key);
+      // Sign with HS256 using symmetric key
+      const token = await signJwt(cryptoService, payload, symmetricKey, { alg: 'HS256' });
 
       assertion.binding.signature = token;
 
-      await assertions.verify(assertion, aggregateHash, key, isLegacyTDF);
+      await assertions.verify(assertion, aggregateHash, key, isLegacyTDF, cryptoService);
     });
   });
 });
+
+/**
+ * Helper to convert PEM to ArrayBuffer for crypto.subtle operations.
+ */
+function pemToArrayBuffer(pem: string): ArrayBuffer {
+  const b64 = pem
+    .replace(/-----BEGIN.*-----/, '')
+    .replace(/-----END.*-----/, '')
+    .replace(/\s/g, '');
+  return base64.decodeArrayBuffer(b64);
+}

@@ -559,6 +559,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
                 ...systemMetadataConfigBase, // Spread the properties from the base config
                 signingKey: signingKeyForSystemMetadata, // Add the signing key
               },
+              cfg.cryptoService,
               cfg.tdfSpecVersion // Pass the TDF spec version
             )
           );
@@ -577,6 +578,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
                   ...assertionConfig,
                   signingKey,
                 },
+                cfg.cryptoService,
                 cfg.tdfSpecVersion
               );
 
@@ -1179,7 +1181,13 @@ export async function decryptStreamFrom(
           assertionKey = foundKey;
         }
       }
-      await assertions.verify(assertion, aggregateHash, assertionKey, isLegacyTDF);
+      await assertions.verify(
+        assertion,
+        aggregateHash,
+        assertionKey,
+        isLegacyTDF,
+        cfg.cryptoService
+      );
     }
   }
 

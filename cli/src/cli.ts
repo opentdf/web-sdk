@@ -21,7 +21,6 @@ import { CLIError, Level, log } from './logger.js';
 import { webcrypto } from 'crypto';
 import * as assertions from '@opentdf/sdk/assertions';
 import { base64 } from '@opentdf/sdk/encodings';
-import { type CryptoKey, importPKCS8, importSPKI } from 'jose'; // for RS256
 
 type AuthToProcess = {
   auth?: string;
@@ -198,7 +197,7 @@ async function parseReadOptions(argv: Partial<mainArgs>): Promise<ReadOptions> {
 async function correctAssertionKeys({
   alg,
   key,
-}: assertions.AssertionKey): Promise<CryptoKey | Uint8Array> {
+}: assertions.AssertionKey): Promise<string | Uint8Array> {
   if (alg === 'HS256') {
     // Convert key string to Uint8Array
     if (typeof key !== 'string') {
@@ -210,20 +209,22 @@ async function correctAssertionKeys({
     if (typeof key !== 'string') {
       throw new CLIError('CRITICAL', 'RS256 key must be a PEM string');
     }
-    try {
-      return await importPKCS8(key, 'RS256'); // Import private key
-    } catch (err) {
-      // If importing as a private key fails, try importing as a public key
-      log('SILLY', `Failed to import RS256 key as private key: ${err.message}`);
-      try {
-        return await importSPKI(key, 'RS256'); // Import public key
-      } catch (err) {
-        throw new CLIError('CRITICAL', `Issue converting RS256 key: ${err.message}`, err);
-      }
+    if (!isPemFormatted(key)) {
+      throw new CLIError('CRITICAL', 'RS256 key must be a PEM formatted string');
     }
+    // check if formatted as pem
+    return key;
   }
   // Otherwise its an unsupported alg
   throw new CLIError('CRITICAL', `Unsupported signing key algorithm: ${alg}`); // Handle unsupported algs
+}
+
+function isPemFormatted(key: string): boolean {
+  return (
+    typeof key === 'string' &&
+    /-----BEGIN (PUBLIC|PRIVATE) KEY-----/.test(key) &&
+    /-----END (PUBLIC|PRIVATE) KEY-----/.test(key)
+  );
 }
 
 async function parseAssertionConfig(s: string): Promise<assertions.AssertionConfig[]> {
