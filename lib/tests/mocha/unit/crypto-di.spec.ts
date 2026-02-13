@@ -48,7 +48,10 @@ describe('CryptoService DI', () => {
       ): Promise<EncryptResult> {
         throw new Error('Function not implemented.');
       },
-      encryptWithPublicKey: function (payload: Binary | SymmetricKey, publicKey: PublicKey): Promise<Binary> {
+      encryptWithPublicKey: function (
+        payload: Binary | SymmetricKey,
+        publicKey: PublicKey
+      ): Promise<Binary> {
         throw new Error('Function not implemented.');
       },
       generateInitializationVector: function (length?: number): Promise<string> {
@@ -196,7 +199,10 @@ describe('CryptoService DI', () => {
       ): Promise<EncryptResult> {
         throw new Error('Function not implemented.');
       },
-      encryptWithPublicKey: function (payload: Binary | SymmetricKey, publicKey: PublicKey): Promise<Binary> {
+      encryptWithPublicKey: function (
+        payload: Binary | SymmetricKey,
+        publicKey: PublicKey
+      ): Promise<Binary> {
         throw new Error('Function not implemented.');
       },
       generateInitializationVector: function (length?: number): Promise<string> {

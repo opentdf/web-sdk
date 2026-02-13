@@ -208,9 +208,10 @@ export async function signJwt(
       throw new Error('HS256 requires a SymmetricKey, not a PrivateKey');
     }
     // Convert Uint8Array to SymmetricKey if needed, otherwise assume it's already SymmetricKey
-    const symmetricKey = key instanceof Uint8Array
-      ? await cryptoService.importSymmetricKey(key)
-      : key as SymmetricKey;
+    const symmetricKey =
+      key instanceof Uint8Array
+        ? await cryptoService.importSymmetricKey(key)
+        : (key as SymmetricKey);
     signature = await cryptoService.signSymmetric(signingInputBytes, symmetricKey);
   } else {
     // Asymmetric signing - accept string (PEM) or PrivateKey
@@ -221,9 +222,10 @@ export async function signJwt(
       throw new Error(`${header.alg} requires a PrivateKey, not a SymmetricKey`);
     }
     // Convert PEM string to PrivateKey if needed, otherwise assume it's already PrivateKey
-    const privateKey = typeof key === 'string'
-      ? await cryptoService.importPrivateKey(key, { usage: 'sign' })
-      : key as PrivateKey;
+    const privateKey =
+      typeof key === 'string'
+        ? await cryptoService.importPrivateKey(key, { usage: 'sign' })
+        : (key as PrivateKey);
     signature = await cryptoService.sign(
       signingInputBytes,
       privateKey,
@@ -302,9 +304,10 @@ export async function verifyJwt(
       throw new Error('HS256 requires a SymmetricKey, not a PublicKey');
     }
     // Convert Uint8Array to SymmetricKey if needed, otherwise assume it's already SymmetricKey
-    const symmetricKey = key instanceof Uint8Array
-      ? await cryptoService.importSymmetricKey(key)
-      : key as SymmetricKey;
+    const symmetricKey =
+      key instanceof Uint8Array
+        ? await cryptoService.importSymmetricKey(key)
+        : (key as SymmetricKey);
     valid = await cryptoService.verifySymmetric(signingInputBytes, signature, symmetricKey);
   } else {
     // Asymmetric verification - accept string (PEM) or PublicKey
@@ -315,9 +318,10 @@ export async function verifyJwt(
       throw new Error(`${header.alg} requires a PublicKey, not a SymmetricKey`);
     }
     // Convert PEM string to PublicKey if needed, otherwise assume it's already PublicKey
-    const publicKey = typeof key === 'string'
-      ? await cryptoService.importPublicKey(key, { usage: 'sign' })
-      : key as PublicKey;
+    const publicKey =
+      typeof key === 'string'
+        ? await cryptoService.importPublicKey(key, { usage: 'sign' })
+        : (key as PublicKey);
     valid = await cryptoService.verify(
       signingInputBytes,
       signature,

@@ -51,12 +51,11 @@ describe('Crypto Service', () => {
       assert.equal(hash, '2cc732a9b86e2ff403e8c0e07ee82e69dcb1820e424d465efe69c63eacb0ee95');
     });
     it('random string', async () => {
-      const keyBytes = new Uint8Array(hex.decodeArrayBuffer('d3d71c8ad8dd6e99be3eea609f69fd92a2903e2e2f0f064293997cff06ea4a6d'));
-      const key = await importSymmetricKey(keyBytes);
-      const hash = await hmac(
-        key,
-        'e12e1b9689c9f3f56f8c185269391577'
+      const keyBytes = new Uint8Array(
+        hex.decodeArrayBuffer('d3d71c8ad8dd6e99be3eea609f69fd92a2903e2e2f0f064293997cff06ea4a6d')
       );
+      const key = await importSymmetricKey(keyBytes);
+      const hash = await hmac(key, 'e12e1b9689c9f3f56f8c185269391577');
       assert.equal(hash, '185fe0d7324b01a3fbf30e56cd7f868689b3f9c2904642603b6bb969c790ccfc');
     });
   });
@@ -416,8 +415,18 @@ describe('Crypto Service', () => {
       );
       // Wrap as opaque keys
       const ecKeyPair = {
-        publicKey: { _brand: 'PublicKey', algorithm: 'ec:secp256r1', curve: 'P-256', _internal: webCryptoKeyPair.publicKey } as any,
-        privateKey: { _brand: 'PrivateKey', algorithm: 'ec:secp256r1', curve: 'P-256', _internal: webCryptoKeyPair.privateKey } as any,
+        publicKey: {
+          _brand: 'PublicKey',
+          algorithm: 'ec:secp256r1',
+          curve: 'P-256',
+          _internal: webCryptoKeyPair.publicKey,
+        } as any,
+        privateKey: {
+          _brand: 'PrivateKey',
+          algorithm: 'ec:secp256r1',
+          curve: 'P-256',
+          _internal: webCryptoKeyPair.privateKey,
+        } as any,
       };
       const data = new TextEncoder().encode('test data for ECDSA');
 
@@ -435,8 +444,18 @@ describe('Crypto Service', () => {
         ['sign', 'verify']
       );
       const ecKeyPair = {
-        publicKey: { _brand: 'PublicKey', algorithm: 'ec:secp256r1', curve: 'P-256', _internal: webCryptoKeyPair.publicKey } as any,
-        privateKey: { _brand: 'PrivateKey', algorithm: 'ec:secp256r1', curve: 'P-256', _internal: webCryptoKeyPair.privateKey } as any,
+        publicKey: {
+          _brand: 'PublicKey',
+          algorithm: 'ec:secp256r1',
+          curve: 'P-256',
+          _internal: webCryptoKeyPair.publicKey,
+        } as any,
+        privateKey: {
+          _brand: 'PrivateKey',
+          algorithm: 'ec:secp256r1',
+          curve: 'P-256',
+          _internal: webCryptoKeyPair.privateKey,
+        } as any,
       };
       const data = new TextEncoder().encode('original data');
       const tamperedData = new TextEncoder().encode('tampered data');
@@ -453,8 +472,18 @@ describe('Crypto Service', () => {
         ['sign', 'verify']
       );
       const ecKeyPair = {
-        publicKey: { _brand: 'PublicKey', algorithm: 'ec:secp384r1', curve: 'P-384', _internal: webCryptoKeyPair.publicKey } as any,
-        privateKey: { _brand: 'PrivateKey', algorithm: 'ec:secp384r1', curve: 'P-384', _internal: webCryptoKeyPair.privateKey } as any,
+        publicKey: {
+          _brand: 'PublicKey',
+          algorithm: 'ec:secp384r1',
+          curve: 'P-384',
+          _internal: webCryptoKeyPair.publicKey,
+        } as any,
+        privateKey: {
+          _brand: 'PrivateKey',
+          algorithm: 'ec:secp384r1',
+          curve: 'P-384',
+          _internal: webCryptoKeyPair.privateKey,
+        } as any,
       };
       const data = new TextEncoder().encode('test data for ES384');
 
@@ -470,8 +499,18 @@ describe('Crypto Service', () => {
         ['sign', 'verify']
       );
       const ecKeyPair = {
-        publicKey: { _brand: 'PublicKey', algorithm: 'ec:secp521r1', curve: 'P-521', _internal: webCryptoKeyPair.publicKey } as any,
-        privateKey: { _brand: 'PrivateKey', algorithm: 'ec:secp521r1', curve: 'P-521', _internal: webCryptoKeyPair.privateKey } as any,
+        publicKey: {
+          _brand: 'PublicKey',
+          algorithm: 'ec:secp521r1',
+          curve: 'P-521',
+          _internal: webCryptoKeyPair.publicKey,
+        } as any,
+        privateKey: {
+          _brand: 'PrivateKey',
+          algorithm: 'ec:secp521r1',
+          curve: 'P-521',
+          _internal: webCryptoKeyPair.privateKey,
+        } as any,
       };
       const data = new TextEncoder().encode('test data for ES512');
 

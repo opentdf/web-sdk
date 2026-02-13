@@ -1,4 +1,8 @@
-import { type CryptoService, type KeyPair, type PrivateKey } from '../../tdf3/src/crypto/declarations.js';
+import {
+  type CryptoService,
+  type KeyPair,
+  type PrivateKey,
+} from '../../tdf3/src/crypto/declarations.js';
 import { signJwt, type JwtHeader, type JwtPayload } from '../../tdf3/src/crypto/jwt.js';
 
 export type HttpMethod =
