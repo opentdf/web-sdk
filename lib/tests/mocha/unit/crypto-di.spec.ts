@@ -113,6 +113,9 @@ describe('CryptoService DI', () => {
       importPublicKeyPem: function (pem: string): Promise<PublicKeyInfo> {
         throw new Error('Function not implemented.');
       },
+      pemToJwk: function (publicKeyPem: string): Promise<JsonWebKey> {
+        throw new Error('Function not implemented.');
+      },
       jwkToPem: function (jwk: JsonWebKey): Promise<string> {
         throw new Error('Function not implemented.');
       },
@@ -232,6 +235,9 @@ describe('CryptoService DI', () => {
         throw new Error('Function not implemented.');
       },
       importPublicKeyPem: function (pem: string): Promise<PublicKeyInfo> {
+        throw new Error('Function not implemented.');
+      },
+      pemToJwk: function (publicKeyPem: string): Promise<JsonWebKey> {
         throw new Error('Function not implemented.');
       },
       jwkToPem: function (jwk: JsonWebKey): Promise<string> {

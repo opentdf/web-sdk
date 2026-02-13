@@ -441,18 +441,24 @@ export class Client {
       //browser-based OIDC login and authentication process against the OIDC endpoint using their chosen method,
       //and provide us with a valid refresh token/clientId obtained from that process.
       if (clientConfig.refreshToken) {
-        this.authProvider = new OIDCRefreshTokenProvider({
-          clientId: clientConfig.clientId,
-          refreshToken: clientConfig.refreshToken,
-          oidcOrigin: clientConfig.oidcOrigin,
-        });
+        this.authProvider = new OIDCRefreshTokenProvider(
+          {
+            clientId: clientConfig.clientId,
+            refreshToken: clientConfig.refreshToken,
+            oidcOrigin: clientConfig.oidcOrigin,
+          },
+          this.cryptoService
+        );
       } else if (clientConfig.externalJwt) {
         //Are we exchanging a JWT previously issued by a trusted external entity (e.g. Google) for a bearer token?
-        this.authProvider = new OIDCExternalJwtProvider({
-          clientId: clientConfig.clientId,
-          externalJwt: clientConfig.externalJwt,
-          oidcOrigin: clientConfig.oidcOrigin,
-        });
+        this.authProvider = new OIDCExternalJwtProvider(
+          {
+            clientId: clientConfig.clientId,
+            externalJwt: clientConfig.externalJwt,
+            oidcOrigin: clientConfig.oidcOrigin,
+          },
+          this.cryptoService
+        );
       }
     }
     this.dpopKeys = createSessionKeys({
