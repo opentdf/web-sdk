@@ -109,9 +109,14 @@ function wrapPublicKey(key: CryptoKey, algorithm: KeyAlgorithm): PublicKey {
     result.modulusBits = parseInt(algorithm.split(':')[1], 10);
   } else if (algorithm.startsWith('ec:')) {
     const curvePart = algorithm.split(':')[1];
-    result.curve = curvePart === 'secp256r1' ? 'P-256' :
-                   curvePart === 'secp384r1' ? 'P-384' :
-                   curvePart === 'secp521r1' ? 'P-521' : undefined;
+    result.curve =
+      curvePart === 'secp256r1'
+        ? 'P-256'
+        : curvePart === 'secp384r1'
+          ? 'P-384'
+          : curvePart === 'secp521r1'
+            ? 'P-521'
+            : undefined;
   }
   return result as PublicKey;
 }
@@ -130,9 +135,14 @@ function wrapPrivateKey(key: CryptoKey, algorithm: KeyAlgorithm): PrivateKey {
     result.modulusBits = parseInt(algorithm.split(':')[1], 10);
   } else if (algorithm.startsWith('ec:')) {
     const curvePart = algorithm.split(':')[1];
-    result.curve = curvePart === 'secp256r1' ? 'P-256' :
-                   curvePart === 'secp384r1' ? 'P-384' :
-                   curvePart === 'secp521r1' ? 'P-521' : undefined;
+    result.curve =
+      curvePart === 'secp256r1'
+        ? 'P-256'
+        : curvePart === 'secp384r1'
+          ? 'P-384'
+          : curvePart === 'secp521r1'
+            ? 'P-521'
+            : undefined;
   }
   return result as PrivateKey;
 }
@@ -152,7 +162,7 @@ function unwrapKey(key: PublicKey | PrivateKey): CryptoKey {
 function wrapSymmetricKey(keyBytes: Uint8Array): SymmetricKey {
   return {
     _brand: 'SymmetricKey',
-    length: keyBytes.length * 8,  // bits
+    length: keyBytes.length * 8, // bits
     _internal: keyBytes,
   } as SymmetricKey;
 }
@@ -182,7 +192,9 @@ export async function generateKeyPair(size?: number): Promise<KeyPair> {
   } else if (keySize === 4096) {
     algorithm = 'rsa:4096';
   } else {
-    throw new ConfigurationError(`Unsupported RSA key size: ${keySize}. Only 2048 and 4096 are supported.`);
+    throw new ConfigurationError(
+      `Unsupported RSA key size: ${keySize}. Only 2048 and 4096 are supported.`
+    );
   }
 
   return {
@@ -197,11 +209,7 @@ export async function generateKeyPair(size?: number): Promise<KeyPair> {
  */
 export async function generateSigningKeyPair(): Promise<KeyPair> {
   const rsaParams = rsaPkcs1Sha256(2048);
-  const keyPair = await crypto.subtle.generateKey(
-    rsaParams,
-    true,
-    SIGN_VERIFY_METHODS
-  );
+  const keyPair = await crypto.subtle.generateKey(rsaParams, true, SIGN_VERIFY_METHODS);
 
   const algorithm: KeyAlgorithm = 'rsa:2048';
   return {
@@ -233,11 +241,7 @@ export async function encryptWithPublicKey(
   }
 
   const cryptoKey = unwrapKey(publicKey);
-  const result = await crypto.subtle.encrypt(
-    { name: 'RSA-OAEP' },
-    cryptoKey,
-    payloadBuffer
-  );
+  const result = await crypto.subtle.encrypt({ name: 'RSA-OAEP' }, cryptoKey, payloadBuffer);
   return Binary.fromArrayBuffer(result);
 }
 
@@ -1073,10 +1077,16 @@ export async function importPublicKey(pem: string, options: KeyOptions): Promise
     }
   } else if (algorithm.startsWith('ec:')) {
     const curve = algorithm.split(':')[1];
-    const namedCurve = curve === 'secp256r1' ? 'P-256' :
-                       curve === 'secp384r1' ? 'P-384' :
-                       curve === 'secp521r1' ? 'P-521' :
-                       (() => { throw new ConfigurationError(`Unsupported EC curve: ${curve}`); })();
+    const namedCurve =
+      curve === 'secp256r1'
+        ? 'P-256'
+        : curve === 'secp384r1'
+          ? 'P-384'
+          : curve === 'secp521r1'
+            ? 'P-521'
+            : (() => {
+                throw new ConfigurationError(`Unsupported EC curve: ${curve}`);
+              })();
 
     if (usage === 'derive') {
       cryptoAlgorithm = { name: 'ECDH', namedCurve };
@@ -1150,10 +1160,16 @@ export async function importPrivateKey(pem: string, options: KeyOptions): Promis
     }
   } else if (algorithm.startsWith('ec:')) {
     const curve = algorithm.split(':')[1];
-    const namedCurve = curve === 'secp256r1' ? 'P-256' :
-                       curve === 'secp384r1' ? 'P-384' :
-                       curve === 'secp521r1' ? 'P-521' :
-                       (() => { throw new ConfigurationError(`Unsupported EC curve: ${curve}`); })();
+    const namedCurve =
+      curve === 'secp256r1'
+        ? 'P-256'
+        : curve === 'secp384r1'
+          ? 'P-384'
+          : curve === 'secp521r1'
+            ? 'P-521'
+            : (() => {
+                throw new ConfigurationError(`Unsupported EC curve: ${curve}`);
+              })();
 
     if (usage === 'derive') {
       cryptoAlgorithm = { name: 'ECDH', namedCurve };

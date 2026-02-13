@@ -63,7 +63,11 @@ export class AesGcmCipher extends SymmetricCipher {
    * @returns
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  override async decrypt(buffer: ArrayBuffer, key: SymmetricKey, iv?: Binary): Promise<DecryptResult> {
+  override async decrypt(
+    buffer: ArrayBuffer,
+    key: SymmetricKey,
+    iv?: Binary
+  ): Promise<DecryptResult> {
     const { payload, payloadIv, payloadAuthTag } = processGcmPayload(buffer);
 
     return this.cryptoService.decrypt(

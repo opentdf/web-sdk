@@ -120,11 +120,7 @@ export class SplitKey {
       };
 
       const encryptedMetadataStr = JSON.stringify(encryptedMetadataOb);
-      const keyAccessObject = await item.write(
-        policy,
-        unwrappedKeySplit,
-        encryptedMetadataStr
-      );
+      const keyAccessObject = await item.write(policy, unwrappedKeySplit, encryptedMetadataStr);
       keyAccessObjects.push(keyAccessObject);
     }
 

@@ -7,7 +7,11 @@ import {
   type JwtHeader,
   type JwtPayload,
 } from '../../../tdf3/src/crypto/jwt.js';
-import type { CryptoService, PrivateKey, PublicKey } from '../../../tdf3/src/crypto/declarations.js';
+import type {
+  CryptoService,
+  PrivateKey,
+  PublicKey,
+} from '../../../tdf3/src/crypto/declarations.js';
 
 describe('JWT Utilities', () => {
   let privateKey: PrivateKey;
@@ -453,7 +457,9 @@ describe('JWT Utilities', () => {
         expect.fail('Should have thrown');
       } catch (error) {
         expect(error).to.be.instanceOf(Error);
-        expect((error as Error).message).to.include('HS256 requires a SymmetricKey, not a PrivateKey');
+        expect((error as Error).message).to.include(
+          'HS256 requires a SymmetricKey, not a PrivateKey'
+        );
       }
     });
 
@@ -467,7 +473,9 @@ describe('JWT Utilities', () => {
         expect.fail('Should have thrown');
       } catch (error) {
         expect(error).to.be.instanceOf(Error);
-        expect((error as Error).message).to.include('HS256 requires a SymmetricKey, not a PublicKey');
+        expect((error as Error).message).to.include(
+          'HS256 requires a SymmetricKey, not a PublicKey'
+        );
       }
     });
 

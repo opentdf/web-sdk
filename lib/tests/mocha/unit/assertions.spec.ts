@@ -70,8 +70,18 @@ describe('assertions', () => {
         ['sign', 'verify']
       );
       const keyPair = {
-        publicKey: { _brand: 'PublicKey', algorithm: 'ec:secp256r1', curve: 'P-256', _internal: webCryptoKeyPair.publicKey } as any,
-        privateKey: { _brand: 'PrivateKey', algorithm: 'ec:secp256r1', curve: 'P-256', _internal: webCryptoKeyPair.privateKey } as any,
+        publicKey: {
+          _brand: 'PublicKey',
+          algorithm: 'ec:secp256r1',
+          curve: 'P-256',
+          _internal: webCryptoKeyPair.publicKey,
+        } as any,
+        privateKey: {
+          _brand: 'PrivateKey',
+          algorithm: 'ec:secp256r1',
+          curve: 'P-256',
+          _internal: webCryptoKeyPair.privateKey,
+        } as any,
       };
       // Get JWK from the public key
       const jwk = await crypto.subtle.exportKey('jwk', webCryptoKeyPair.publicKey);

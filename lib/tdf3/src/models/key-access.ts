@@ -35,17 +35,15 @@ export class ECWrapped {
     const ek = await this.ephemeralKeyPair;
 
     // Import KAS public key from PEM
-    const kasPublicKey = await this.cryptoService.importPublicKey(this.publicKey, { usage: 'derive' });
+    const kasPublicKey = await this.cryptoService.importPublicKey(this.publicKey, {
+      usage: 'derive',
+    });
 
     // Derive encryption key using ECDH + HKDF via CryptoService
-    const derivedKey = await this.cryptoService.deriveKeyFromECDH(
-      ek.privateKey,
-      kasPublicKey,
-      {
-        hash: 'SHA-256',
-        salt: await getZtdfSalt(this.cryptoService),
-      }
-    );
+    const derivedKey = await this.cryptoService.deriveKeyFromECDH(ek.privateKey, kasPublicKey, {
+      hash: 'SHA-256',
+      salt: await getZtdfSalt(this.cryptoService),
+    });
 
     // Generate random IV
     const iv = await this.cryptoService.randomBytes(12);
@@ -69,10 +67,7 @@ export class ECWrapped {
     entityWrappedKey.set(ciphertext, iv.length);
     entityWrappedKey.set(authTag, iv.length + ciphertext.length);
 
-    const policyBinding = await this.cryptoService.hmac(
-      dek,
-      base64.encode(policyStr)
-    );
+    const policyBinding = await this.cryptoService.hmac(dek, base64.encode(policyStr));
 
     // Export ephemeral public key to PEM for manifest
     const ephemeralPublicKeyPem = await this.cryptoService.exportPublicKeyPem(ek.publicKey);
@@ -121,16 +116,12 @@ export class Wrapped {
   ): Promise<KeyAccessObject> {
     const policyStr = JSON.stringify(policy);
     // Import KAS public key from PEM
-    const kasPublicKey = await this.cryptoService.importPublicKey(this.publicKey, { usage: 'encrypt' });
-    const wrappedKeyBinary = await this.cryptoService.encryptWithPublicKey(
-      key,
-      kasPublicKey
-    );
+    const kasPublicKey = await this.cryptoService.importPublicKey(this.publicKey, {
+      usage: 'encrypt',
+    });
+    const wrappedKeyBinary = await this.cryptoService.encryptWithPublicKey(key, kasPublicKey);
 
-    const policyBinding = await this.cryptoService.hmac(
-      key,
-      base64.encode(policyStr)
-    );
+    const policyBinding = await this.cryptoService.hmac(key, base64.encode(policyStr));
 
     this.keyAccessObject = {
       type: 'wrapped',

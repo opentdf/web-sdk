@@ -36,7 +36,12 @@ import { AesGcmCipher } from './ciphers/aes-gcm-cipher.js';
 import { SymmetricCipher } from './ciphers/symmetric-cipher-base.js';
 import { DecryptParams } from './client/builders.js';
 import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
-import { type CryptoService, type DecryptResult, type KeyPair, type SymmetricKey } from './crypto/declarations.js';
+import {
+  type CryptoService,
+  type DecryptResult,
+  type KeyPair,
+  type SymmetricKey,
+} from './crypto/declarations.js';
 import { Algorithms } from './ciphers/index.js';
 import {
   ECWrapped,
@@ -770,7 +775,9 @@ async function unwrapKey({
     }
 
     // Export public key to PEM for protobuf request
-    const clientPublicKey = await cryptoService.exportPublicKeyPem(ephemeralEncryptionKeys.publicKey);
+    const clientPublicKey = await cryptoService.exportPublicKeyPem(
+      ephemeralEncryptionKeys.publicKey
+    );
 
     // Convert keySplitInfo to protobuf KeyAccess
     const keyAccessProto = create(KeyAccessSchema, {
@@ -844,7 +851,9 @@ async function unwrapKey({
 
         if (wrappingKeyAlgorithm === 'ec:secp256r1') {
           // Import KAS session public key from PEM
-          const sessionPublicKeyOpaque = await cryptoService.importPublicKey(sessionPublicKey, { usage: 'derive' });
+          const sessionPublicKeyOpaque = await cryptoService.importPublicKey(sessionPublicKey, {
+            usage: 'derive',
+          });
 
           // Derive decryption key using ECDH + HKDF via CryptoService (returns SymmetricKey)
           const derivedKey = await cryptoService.deriveKeyFromECDH(
@@ -863,7 +872,7 @@ async function unwrapKey({
           // Decrypt using CryptoService with opaque symmetric key
           const decryptResult = await cryptoService.decrypt(
             Binary.fromArrayBuffer(wrappedKey.buffer),
-            derivedKey,  // SymmetricKey (opaque)
+            derivedKey, // SymmetricKey (opaque)
             Binary.fromArrayBuffer(iv.buffer),
             Algorithms.AES_256_GCM
           );
@@ -941,7 +950,7 @@ async function unwrapKey({
     // Merge symmetric keys via CryptoService
     const reconstructedKey = await cryptoService.mergeSymmetricKeys(splitKeys);
     return {
-      reconstructedKey,  // SymmetricKey (opaque)
+      reconstructedKey, // SymmetricKey (opaque)
       metadata: rewrapResponseData[0].metadata, // Use metadata from first split
       requiredObligations: [...requiredObligations],
     };
@@ -976,7 +985,7 @@ async function decryptChunk(
     throw new UnsupportedError(`Unsupported integrity alg [${segmentIntegrityAlgorithm}]`);
   }
   const segmentSig = await getSignature(
-    reconstructedKey,  // SymmetricKey (opaque)
+    reconstructedKey, // SymmetricKey (opaque)
     encryptedChunk,
     segmentIntegrityAlgorithm,
     cryptoService
@@ -1161,7 +1170,7 @@ export async function decryptStreamFrom(
   }
 
   const payloadSig = await getSignature(
-    keyForDecryption,  // SymmetricKey (opaque)
+    keyForDecryption, // SymmetricKey (opaque)
     aggregateHash,
     integrityAlgorithm,
     cfg.cryptoService
@@ -1172,7 +1181,7 @@ export async function decryptStreamFrom(
       // Create a default assertion key
       let assertionKey: AssertionKey = {
         alg: 'HS256',
-        key: keyForDecryption,  // SymmetricKey (opaque)
+        key: keyForDecryption, // SymmetricKey (opaque)
       };
 
       if (cfg.assertionVerificationKeys) {

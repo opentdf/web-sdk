@@ -2,7 +2,12 @@ import { canonicalizeEx } from 'json-canonicalize';
 import { base64, hex } from '../../src/encodings/index.js';
 import { ConfigurationError, IntegrityError, InvalidFileError } from '../../src/errors.js';
 import { tdfSpecVersion, version as sdkVersion } from '../../src/version.js';
-import { type CryptoService, type PrivateKey, type PublicKey, type SymmetricKey } from './crypto/declarations.js';
+import {
+  type CryptoService,
+  type PrivateKey,
+  type PublicKey,
+  type SymmetricKey,
+} from './crypto/declarations.js';
 import { decodeProtectedHeader, signJwt, verifyJwt, type JwtHeader } from './crypto/jwt.js';
 
 export type AssertionKeyAlg = 'ES256' | 'RS256' | 'HS256';
@@ -81,7 +86,9 @@ async function sign(
 
   // Runtime check: ensure we have a signing key, not a verification key
   if (typeof key.key === 'object' && '_brand' in key.key && key.key._brand === 'PublicKey') {
-    throw new ConfigurationError('Cannot sign assertion with PublicKey. Use PrivateKey or SymmetricKey for signing.');
+    throw new ConfigurationError(
+      'Cannot sign assertion with PublicKey. Use PrivateKey or SymmetricKey for signing.'
+    );
   }
 
   let token: string;
@@ -142,7 +149,11 @@ export async function verify(
 
     // Determine the verification key (for verification, should be PublicKey or SymmetricKey, not PrivateKey)
     // Cast to exclude PrivateKey since we're in verification context
-    let verificationKey: string | Uint8Array | PublicKey | SymmetricKey = key.key as string | Uint8Array | PublicKey | SymmetricKey;
+    let verificationKey: string | Uint8Array | PublicKey | SymmetricKey = key.key as
+      | string
+      | Uint8Array
+      | PublicKey
+      | SymmetricKey;
 
     if (header.jwk) {
       // Convert embedded JWK to PEM
