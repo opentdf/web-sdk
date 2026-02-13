@@ -3,6 +3,7 @@ import {
   type CryptoService,
   type DecryptResult,
   type EncryptResult,
+  type SymmetricKey,
 } from '../crypto/declarations.js';
 
 export abstract class SymmetricCipher {
@@ -25,14 +26,14 @@ export abstract class SymmetricCipher {
     return this.cryptoService.generateInitializationVector(this.ivLength);
   }
 
-  async generateKey(): Promise<string> {
+  async generateKey(): Promise<SymmetricKey> {
     if (!this.keyLength) {
       throw Error('No key length');
     }
     return this.cryptoService.generateKey(this.keyLength);
   }
 
-  abstract encrypt(payload: Binary, key: Binary, iv: Binary): Promise<EncryptResult>;
+  abstract encrypt(payload: Binary, key: SymmetricKey, iv: Binary): Promise<EncryptResult>;
 
-  abstract decrypt(payload: Uint8Array, key: Binary, iv?: Binary): Promise<DecryptResult>;
+  abstract decrypt(payload: Uint8Array, key: SymmetricKey, iv?: Binary): Promise<DecryptResult>;
 }

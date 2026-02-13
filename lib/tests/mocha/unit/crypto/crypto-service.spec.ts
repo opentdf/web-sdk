@@ -8,6 +8,7 @@ import {
   digest,
   encrypt,
   encryptWithPublicKey,
+  exportPublicKeyPem,
   generateECKeyPair,
   generateInitializationVector,
   generateKey,
@@ -16,6 +17,7 @@ import {
   hex2Ab,
   hmac,
   importPublicKeyPem,
+  importSymmetricKey,
   jwkToPem,
   randomBytesAsHex,
   sha256,
@@ -24,26 +26,35 @@ import {
   verify,
   verifySymmetric,
 } from '../../../../tdf3/src/crypto/index.js';
+import { hex } from '../../../../src/encodings/index.js';
 import { Binary } from '../../../../tdf3/src/binary.js';
 import { decodeArrayBuffer, encodeArrayBuffer } from '../../../../src/encodings/base64.js';
 
 describe('Crypto Service', () => {
   describe('hmac', () => {
     it('a', async () => {
-      const hash = await hmac('0b', 'a');
+      const keyBytes = new Uint8Array(hex.decodeArrayBuffer('0b'));
+      const key = await importSymmetricKey(keyBytes);
+      const hash = await hmac(key, 'a');
       assert.equal(hash, '481294b9ead3f3c62cab40bbfda108e6678f8536d03264e37a583babbfacafc9');
     });
     it('content', async () => {
-      const hash = await hmac('00', 'content');
+      const keyBytes = new Uint8Array(hex.decodeArrayBuffer('00'));
+      const key = await importSymmetricKey(keyBytes);
+      const hash = await hmac(key, 'content');
       assert.equal(hash, '2cc732a9b86e2ff403e8c0e07ee82e69dcb1820e424d465efe69c63eacb0ee95');
     });
     it('content', async () => {
-      const hash = await hmac('000000', 'content');
+      const keyBytes = new Uint8Array(hex.decodeArrayBuffer('000000'));
+      const key = await importSymmetricKey(keyBytes);
+      const hash = await hmac(key, 'content');
       assert.equal(hash, '2cc732a9b86e2ff403e8c0e07ee82e69dcb1820e424d465efe69c63eacb0ee95');
     });
     it('random string', async () => {
+      const keyBytes = new Uint8Array(hex.decodeArrayBuffer('d3d71c8ad8dd6e99be3eea609f69fd92a2903e2e2f0f064293997cff06ea4a6d'));
+      const key = await importSymmetricKey(keyBytes);
       const hash = await hmac(
-        'd3d71c8ad8dd6e99be3eea609f69fd92a2903e2e2f0f064293997cff06ea4a6d',
+        key,
         'e12e1b9689c9f3f56f8c185269391577'
       );
       assert.equal(hash, '185fe0d7324b01a3fbf30e56cd7f868689b3f9c2904642603b6bb969c790ccfc');
@@ -69,28 +80,33 @@ describe('Crypto Service', () => {
   describe('generateKey', () => {
     it('default length (32 bytes)', async () => {
       const key = await generateKey(0);
-      expect(key).to.be.a('string');
-      expect(key).to.have.lengthOf(32 << 1);
+      expect(key).to.be.an('object');
+      expect(key).to.have.property('_brand', 'SymmetricKey');
+      expect(key).to.have.property('length', 32 * 8); // bits
     });
     it('short', async () => {
       const key = await generateKey(1);
-      expect(key).to.be.a('string');
-      expect(key).to.have.lengthOf(2);
+      expect(key).to.be.an('object');
+      expect(key).to.have.property('_brand', 'SymmetricKey');
+      expect(key).to.have.property('length', 1 * 8); // bits
     });
     it('reasonable bytes', async () => {
       const key = await generateKey(20);
-      expect(key).to.be.a('string');
-      expect(key).to.have.lengthOf(40);
+      expect(key).to.be.an('object');
+      expect(key).to.have.property('_brand', 'SymmetricKey');
+      expect(key).to.have.property('length', 20 * 8); // bits
     });
     it('undefined bytes', async () => {
       const key = await generateKey(undefined);
-      expect(key).to.be.a('string');
-      expect(key).to.have.lengthOf(64);
+      expect(key).to.be.an('object');
+      expect(key).to.have.property('_brand', 'SymmetricKey');
+      expect(key).to.have.property('length', 32 * 8); // bits (default)
     });
     it('null bytes', async () => {
       const key = await generateKey();
-      expect(key).to.be.a('string');
-      expect(key).to.have.lengthOf(64);
+      expect(key).to.be.an('object');
+      expect(key).to.have.property('_brand', 'SymmetricKey');
+      expect(key).to.have.property('length', 32 * 8); // bits (default)
     });
   });
 
@@ -101,7 +117,7 @@ describe('Crypto Service', () => {
     });
 
     it('should generate pair', async () => {
-      const res = await generateKeyPair(2056);
+      const res = await generateKeyPair(2048);
       expect(res).to.have.own.property('publicKey');
     });
 
@@ -153,7 +169,7 @@ describe('Crypto Service', () => {
   });
 
   it('should encrypt with public key and decrypt with private key', async () => {
-    const { publicKey, privateKey } = await generateKeyPair(2056);
+    const { publicKey, privateKey } = await generateKeyPair(2048);
     const rawData = '1';
     const payload = Binary.fromString(rawData);
 
@@ -164,7 +180,7 @@ describe('Crypto Service', () => {
   });
 
   it('should encrypt with publicKey', async () => {
-    const { publicKey, privateKey } = await generateKeyPair(2056);
+    const { publicKey, privateKey } = await generateKeyPair(2048);
     const rawData = '1';
     const payload = Binary.fromString(rawData);
 
@@ -176,23 +192,24 @@ describe('Crypto Service', () => {
 
   it('should encrypt file', async () => {
     const rawData = '1';
-    const binaryKey = Binary.fromArrayBuffer(
+    const keyBytes = new Uint8Array(
       // crypto.scryptSync('test', 'salt', 32) =>
       decodeArrayBuffer('cvR6X2vLG5ap13ssLxRjOV1KOjJfraYpD8D+97zdtY4=')
     );
+    const symmetricKey = await importSymmetricKey(keyBytes);
     const algorithm = Algorithms.AES_256_GCM;
     const payload = Binary.fromString(rawData);
     const iv = '0'.repeat(32);
     const binaryIV = Binary.fromString(iv);
 
-    const encrypted = await encrypt(payload, binaryKey, binaryIV, algorithm);
+    const encrypted = await encrypt(payload, symmetricKey, binaryIV, algorithm);
     expect(encodeArrayBuffer(encrypted.payload.asArrayBuffer())).to.eql('8Q==');
     const expectArrayBuffer = (encrypted.authTag as Binary).asArrayBuffer();
     expect(encodeArrayBuffer(expectArrayBuffer)).to.eql('d0HF3e42QRxb5nnvFl57ZQ==');
   });
 
   it('should encrypt with pub key and decrypt with private', async () => {
-    const { publicKey, privateKey } = await generateKeyPair(2056);
+    const { publicKey, privateKey } = await generateKeyPair(2048);
     const rawData = '1';
     const payload = Binary.fromString(rawData);
 
@@ -207,10 +224,11 @@ describe('Crypto Service', () => {
     const rawData = '1';
     const payload = Binary.fromString(rawData);
 
-    const key = Binary.fromArrayBuffer(
+    const keyBytes = new Uint8Array(
       // crypto.scryptSync('test', 'salt', 32) =>
       decodeArrayBuffer('cvR6X2vLG5ap13ssLxRjOV1KOjJfraYpD8D+97zdtY4=')
     );
+    const key = await importSymmetricKey(keyBytes);
     const iv = Binary.fromString(await generateInitializationVector(16));
     const algo = 'http://www.w3.org/2009/xmlenc11#aes256-gcm';
 
@@ -225,26 +243,35 @@ describe('Crypto Service', () => {
       const keyPair = await generateECKeyPair('P-256');
       expect(keyPair).to.have.property('publicKey');
       expect(keyPair).to.have.property('privateKey');
-      expect(keyPair.publicKey).to.include('-----BEGIN PUBLIC KEY-----');
-      expect(keyPair.privateKey).to.include('-----BEGIN PRIVATE KEY-----');
+      expect(keyPair.publicKey).to.have.property('_brand', 'PublicKey');
+      expect(keyPair.publicKey).to.have.property('algorithm', 'ec:secp256r1');
+      expect(keyPair.publicKey).to.have.property('curve', 'P-256');
+      expect(keyPair.privateKey).to.have.property('_brand', 'PrivateKey');
+      expect(keyPair.privateKey).to.have.property('algorithm', 'ec:secp256r1');
+      expect(keyPair.privateKey).to.have.property('curve', 'P-256');
     });
 
     it('should generate P-384 key pair', async () => {
       const keyPair = await generateECKeyPair('P-384');
       expect(keyPair).to.have.property('publicKey');
       expect(keyPair).to.have.property('privateKey');
+      expect(keyPair.publicKey).to.have.property('algorithm', 'ec:secp384r1');
+      expect(keyPair.publicKey).to.have.property('curve', 'P-384');
     });
 
     it('should generate P-521 key pair', async () => {
       const keyPair = await generateECKeyPair('P-521');
       expect(keyPair).to.have.property('publicKey');
       expect(keyPair).to.have.property('privateKey');
+      expect(keyPair.publicKey).to.have.property('algorithm', 'ec:secp521r1');
+      expect(keyPair.publicKey).to.have.property('curve', 'P-521');
     });
 
     it('should default to P-256', async () => {
       const keyPair = await generateECKeyPair();
       expect(keyPair).to.have.property('publicKey');
       expect(keyPair).to.have.property('privateKey');
+      expect(keyPair.publicKey).to.have.property('algorithm', 'ec:secp256r1');
     });
   });
 
@@ -267,8 +294,13 @@ describe('Crypto Service', () => {
         keyLength: 256,
       });
 
+      // Now returns SymmetricKey instead of Uint8Array
+      expect(aliceDerivedKey).to.have.property('_brand', 'SymmetricKey');
+      expect(aliceDerivedKey).to.have.property('length', 256); // 256 bits
+      expect(bobDerivedKey).to.have.property('_brand', 'SymmetricKey');
+      expect(bobDerivedKey).to.have.property('length', 256); // 256 bits
+      // Keys should be equal (deep comparison of opaque structure)
       expect(aliceDerivedKey).to.deep.equal(bobDerivedKey);
-      expect(aliceDerivedKey).to.have.lengthOf(32); // 256 bits = 32 bytes
     });
 
     it('should derive key from ECDH with P-384', async () => {
@@ -288,14 +320,16 @@ describe('Crypto Service', () => {
       });
 
       expect(aliceDerivedKey).to.deep.equal(bobDerivedKey);
+      expect(aliceDerivedKey).to.have.property('length', 256); // 256 bits
     });
   });
 
   describe('signSymmetric and verifySymmetric', () => {
     it('should sign and verify with HMAC-SHA256', async () => {
       const data = new TextEncoder().encode('test data');
-      const key = new Uint8Array(32); // 256-bit key
-      crypto.getRandomValues(key);
+      const keyBytes = new Uint8Array(32); // 256-bit key
+      crypto.getRandomValues(keyBytes);
+      const key = await importSymmetricKey(keyBytes);
 
       const signature = await signSymmetric(data, key);
       expect(signature).to.have.lengthOf(32); // HMAC-SHA256 produces 32 bytes
@@ -306,8 +340,9 @@ describe('Crypto Service', () => {
 
     it('should reject invalid signature', async () => {
       const data = new TextEncoder().encode('test data');
-      const key = new Uint8Array(32);
-      crypto.getRandomValues(key);
+      const keyBytes = new Uint8Array(32);
+      crypto.getRandomValues(keyBytes);
+      const key = await importSymmetricKey(keyBytes);
 
       const signature = await signSymmetric(data, key);
       signature[0] ^= 0xff; // Corrupt the signature
@@ -318,10 +353,12 @@ describe('Crypto Service', () => {
 
     it('should reject wrong key', async () => {
       const data = new TextEncoder().encode('test data');
-      const key1 = new Uint8Array(32);
-      const key2 = new Uint8Array(32);
-      crypto.getRandomValues(key1);
-      crypto.getRandomValues(key2);
+      const key1Bytes = new Uint8Array(32);
+      const key2Bytes = new Uint8Array(32);
+      crypto.getRandomValues(key1Bytes);
+      crypto.getRandomValues(key2Bytes);
+      const key1 = await importSymmetricKey(key1Bytes);
+      const key2 = await importSymmetricKey(key2Bytes);
 
       const signature = await signSymmetric(data, key1);
       const valid = await verifySymmetric(data, signature, key2);
@@ -331,41 +368,57 @@ describe('Crypto Service', () => {
 
   describe('importPublicKeyPem', () => {
     it('should import RSA public key', async () => {
-      const pemPair = await generateKeyPair(2048);
+      const keyPair = await generateKeyPair(2048);
+      const publicKeyPem = await exportPublicKeyPem(keyPair.publicKey);
 
-      const result = await importPublicKeyPem(pemPair.publicKey);
+      const result = await importPublicKeyPem(publicKeyPem);
       expect(result.algorithm).to.equal('rsa:2048');
-      expect(result.pem).to.equal(pemPair.publicKey);
+      expect(result.pem).to.equal(publicKeyPem);
     });
 
     it('should import EC P-256 public key', async () => {
       const ecKeyPair = await generateECKeyPair('P-256');
+      const publicKeyPem = await exportPublicKeyPem(ecKeyPair.publicKey);
 
-      const result = await importPublicKeyPem(ecKeyPair.publicKey);
+      const result = await importPublicKeyPem(publicKeyPem);
       expect(result.algorithm).to.equal('ec:secp256r1');
-      expect(result.pem).to.equal(ecKeyPair.publicKey);
+      expect(result.pem).to.equal(publicKeyPem);
     });
 
     it('should import EC P-384 public key', async () => {
       const ecKeyPair = await generateECKeyPair('P-384');
+      const publicKeyPem = await exportPublicKeyPem(ecKeyPair.publicKey);
 
-      const result = await importPublicKeyPem(ecKeyPair.publicKey);
+      const result = await importPublicKeyPem(publicKeyPem);
       expect(result.algorithm).to.equal('ec:secp384r1');
-      expect(result.pem).to.equal(ecKeyPair.publicKey);
+      expect(result.pem).to.equal(publicKeyPem);
     });
 
     it('should import EC P-521 public key', async () => {
       const ecKeyPair = await generateECKeyPair('P-521');
+      const publicKeyPem = await exportPublicKeyPem(ecKeyPair.publicKey);
 
-      const result = await importPublicKeyPem(ecKeyPair.publicKey);
+      const result = await importPublicKeyPem(publicKeyPem);
       expect(result.algorithm).to.equal('ec:secp521r1');
-      expect(result.pem).to.equal(ecKeyPair.publicKey);
+      expect(result.pem).to.equal(publicKeyPem);
     });
   });
 
   describe('sign and verify with ES256', () => {
+    // Note: generateECKeyPair() generates ECDH keys for key agreement, not signing.
+    // For ES256 signing tests, we generate ECDSA keys directly.
     it('should sign and verify with ES256', async () => {
-      const ecKeyPair = await generateECKeyPair('P-256');
+      // Generate ECDSA key pair for signing (not ECDH)
+      const webCryptoKeyPair = await crypto.subtle.generateKey(
+        { name: 'ECDSA', namedCurve: 'P-256' },
+        true,
+        ['sign', 'verify']
+      );
+      // Wrap as opaque keys
+      const ecKeyPair = {
+        publicKey: { _brand: 'PublicKey', algorithm: 'ec:secp256r1', curve: 'P-256', _internal: webCryptoKeyPair.publicKey } as any,
+        privateKey: { _brand: 'PrivateKey', algorithm: 'ec:secp256r1', curve: 'P-256', _internal: webCryptoKeyPair.privateKey } as any,
+      };
       const data = new TextEncoder().encode('test data for ECDSA');
 
       const signature = await sign(data, ecKeyPair.privateKey, 'ES256');
@@ -376,7 +429,15 @@ describe('Crypto Service', () => {
     });
 
     it('should reject tampered data with ES256', async () => {
-      const ecKeyPair = await generateECKeyPair('P-256');
+      const webCryptoKeyPair = await crypto.subtle.generateKey(
+        { name: 'ECDSA', namedCurve: 'P-256' },
+        true,
+        ['sign', 'verify']
+      );
+      const ecKeyPair = {
+        publicKey: { _brand: 'PublicKey', algorithm: 'ec:secp256r1', curve: 'P-256', _internal: webCryptoKeyPair.publicKey } as any,
+        privateKey: { _brand: 'PrivateKey', algorithm: 'ec:secp256r1', curve: 'P-256', _internal: webCryptoKeyPair.privateKey } as any,
+      };
       const data = new TextEncoder().encode('original data');
       const tamperedData = new TextEncoder().encode('tampered data');
 
@@ -386,7 +447,15 @@ describe('Crypto Service', () => {
     });
 
     it('should sign and verify with ES384', async () => {
-      const ecKeyPair = await generateECKeyPair('P-384');
+      const webCryptoKeyPair = await crypto.subtle.generateKey(
+        { name: 'ECDSA', namedCurve: 'P-384' },
+        true,
+        ['sign', 'verify']
+      );
+      const ecKeyPair = {
+        publicKey: { _brand: 'PublicKey', algorithm: 'ec:secp384r1', curve: 'P-384', _internal: webCryptoKeyPair.publicKey } as any,
+        privateKey: { _brand: 'PrivateKey', algorithm: 'ec:secp384r1', curve: 'P-384', _internal: webCryptoKeyPair.privateKey } as any,
+      };
       const data = new TextEncoder().encode('test data for ES384');
 
       const signature = await sign(data, ecKeyPair.privateKey, 'ES384');
@@ -395,7 +464,15 @@ describe('Crypto Service', () => {
     });
 
     it('should sign and verify with ES512', async () => {
-      const ecKeyPair = await generateECKeyPair('P-521');
+      const webCryptoKeyPair = await crypto.subtle.generateKey(
+        { name: 'ECDSA', namedCurve: 'P-521' },
+        true,
+        ['sign', 'verify']
+      );
+      const ecKeyPair = {
+        publicKey: { _brand: 'PublicKey', algorithm: 'ec:secp521r1', curve: 'P-521', _internal: webCryptoKeyPair.publicKey } as any,
+        privateKey: { _brand: 'PrivateKey', algorithm: 'ec:secp521r1', curve: 'P-521', _internal: webCryptoKeyPair.privateKey } as any,
+      };
       const data = new TextEncoder().encode('test data for ES512');
 
       const signature = await sign(data, ecKeyPair.privateKey, 'ES512');

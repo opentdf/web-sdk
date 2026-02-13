@@ -63,17 +63,18 @@ describe('assertions', () => {
     const isLegacyTDF = false;
 
     it('should verify assertion using jwk from header', async () => {
-      // Generate EC key pair for ES256
-      const keyPair = await cryptoService.generateECKeyPair('P-256');
-      // Get JWK from the public key
-      const publicKeyBuffer = await crypto.subtle.importKey(
-        'spki',
-        pemToArrayBuffer(keyPair.publicKey),
+      // Generate ECDSA key pair for ES256 signing (not ECDH)
+      const webCryptoKeyPair = await crypto.subtle.generateKey(
         { name: 'ECDSA', namedCurve: 'P-256' },
         true,
-        ['verify']
+        ['sign', 'verify']
       );
-      const jwk = await crypto.subtle.exportKey('jwk', publicKeyBuffer);
+      const keyPair = {
+        publicKey: { _brand: 'PublicKey', algorithm: 'ec:secp256r1', curve: 'P-256', _internal: webCryptoKeyPair.publicKey } as any,
+        privateKey: { _brand: 'PrivateKey', algorithm: 'ec:secp256r1', curve: 'P-256', _internal: webCryptoKeyPair.privateKey } as any,
+      };
+      // Get JWK from the public key
+      const jwk = await crypto.subtle.exportKey('jwk', webCryptoKeyPair.publicKey);
 
       const assertion: assertions.Assertion = {
         id: 'test-assertion',
@@ -162,14 +163,3 @@ describe('assertions', () => {
     });
   });
 });
-
-/**
- * Helper to convert PEM to ArrayBuffer for crypto.subtle operations.
- */
-function pemToArrayBuffer(pem: string): ArrayBuffer {
-  const b64 = pem
-    .replace(/-----BEGIN.*-----/, '')
-    .replace(/-----END.*-----/, '')
-    .replace(/\s/g, '');
-  return base64.decodeArrayBuffer(b64);
-}

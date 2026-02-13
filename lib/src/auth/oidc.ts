@@ -3,7 +3,7 @@ import { HttpRequest, withHeaders } from './auth.js';
 import { base64 } from '../encodings/index.js';
 import { ConfigurationError, TdfError } from '../errors.js';
 import { rstrip } from '../utils.js';
-import { type CryptoService, type PemKeyPair } from '../../tdf3/src/crypto/declarations.js';
+import { type CryptoService, type KeyPair } from '../../tdf3/src/crypto/declarations.js';
 
 /**
  * Common fields used by all OIDC credentialing flows.
@@ -19,7 +19,7 @@ export type CommonCredentials = {
   dpopEnabled?: boolean;
 
   /** the client's public key, base64 encoded. Will be bound to the OIDC token. Deprecated. If not set in the constructor, */
-  signingKey?: PemKeyPair;
+  signingKey?: KeyPair;
 };
 
 /**
@@ -95,7 +95,7 @@ export class AccessToken {
   tokenEndpoint: string;
   userInfoEndpoint: string;
 
-  signingKey?: PemKeyPair;
+  signingKey?: KeyPair;
 
   extraHeaders: Record<string, string> = {};
 
@@ -174,8 +174,9 @@ export class AccessToken {
       if (!this.signingKey) {
         throw new ConfigurationError('No signature configured');
       }
-      // signingKey.publicKey is already PEM format
-      headers['X-VirtruPubKey'] = base64.encode(this.signingKey.publicKey);
+      // Export opaque public key to PEM format for header
+      const publicKeyPem = await this.cryptoService.exportPublicKeyPem(this.signingKey.publicKey);
+      headers['X-VirtruPubKey'] = base64.encode(publicKeyPem);
       headers.DPoP = await dpopFn(this.signingKey, this.cryptoService, url, 'POST');
     }
     return (this.request || fetch)(url, {
@@ -260,7 +261,7 @@ export class AccessToken {
    *
    * Calling this function will trigger a forcible token refresh using the cached refresh token, and contact the auth server.
    */
-  async refreshTokenClaimsWithClientPubkeyIfNeeded(signingKey: PemKeyPair): Promise<void> {
+  async refreshTokenClaimsWithClientPubkeyIfNeeded(signingKey: KeyPair): Promise<void> {
     // If we already have a token, and the pubkey changes,
     // we need to force a refresh now - otherwise
     // we can wait until we create the token for the first time
