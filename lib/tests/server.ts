@@ -259,7 +259,12 @@ const kas: RequestListener = async (req, res) => {
           dek = await decryptWithPrivateKey(Binary.fromArrayBuffer(wk), Mocks.kasPrivateKey);
         }
         if (clientPublicKey.algorithm.name == 'RSA-OAEP') {
-          const cek = await encryptWithPublicKey(dek, rewrap.clientPublicKey);
+          // Import the client public key as opaque PublicKey for encryptWithPublicKey
+          const clientPubKeyOpaque = await DefaultCryptoService.importPublicKey(
+            rewrap.clientPublicKey,
+            { usage: 'encrypt' }
+          );
+          const cek = await encryptWithPublicKey(dek, clientPubKeyOpaque);
           const reply = create(RewrapResponseSchema, {
             responses: [
               create(PolicyRewrapResultSchema, {

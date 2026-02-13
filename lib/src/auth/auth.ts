@@ -1,4 +1,4 @@
-import { type CryptoService, type PemKeyPair } from '../../tdf3/src/crypto/declarations.js';
+import { type CryptoService, type KeyPair, type PrivateKey } from '../../tdf3/src/crypto/declarations.js';
 import { signJwt, type JwtHeader, type JwtPayload } from '../../tdf3/src/crypto/jwt.js';
 
 export type HttpMethod =
@@ -56,14 +56,14 @@ function getTimestampInSeconds() {
 /**
  * Generate a JWT (or JWS-ed object)
  * @param toSign the data to sign. Interpreted as JwtPayload but AFAIK this isn't required
- * @param privateKeyPem a PEM-encoded RSA private key
+ * @param privateKey an opaque RSA private key
  * @param cryptoService the crypto service to use for signing
  * @param jwtProtectedHeader optional JWT header, defaults to RS256
  * @returns the signed object, with a JWS header. This may be a JWT.
  */
 export async function reqSignature(
   toSign: unknown,
-  privateKeyPem: string,
+  privateKey: PrivateKey,
   cryptoService: CryptoService,
   jwtProtectedHeader: JwtHeader = { alg: 'RS256' }
 ) {
@@ -74,7 +74,7 @@ export async function reqSignature(
     iat: now - anHour,
     exp: now + anHour,
   };
-  return signJwt(cryptoService, payload, privateKeyPem, jwtProtectedHeader);
+  return signJwt(cryptoService, payload, privateKey, jwtProtectedHeader);
 }
 
 /**
@@ -95,10 +95,10 @@ export type AuthProvider = {
    * using the cached refresh token, and update the auth server config with the
    * current key.
    *
-   * @param signingKey the client signing key pair as PEM strings. Will be bound
+   * @param signingKey the client signing key pair (opaque keys). Will be bound
    * to the OIDC token and require a DPoP header, when set.
    */
-  updateClientPublicKey(signingKey?: PemKeyPair): Promise<void>;
+  updateClientPublicKey(signingKey?: KeyPair): Promise<void>;
 
   /**
    * Augment the provided http request with custom auth info to be used by backend services.

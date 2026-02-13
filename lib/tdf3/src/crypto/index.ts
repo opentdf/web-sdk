@@ -14,9 +14,15 @@ import {
   type EncryptResult,
   type HashAlgorithm,
   type HkdfParams,
+  type KeyAlgorithm,
+  type KeyOptions,
+  type KeyPair,
   MIN_ASYMMETRIC_KEY_SIZE_BITS,
   type PemKeyPair,
+  type PrivateKey,
+  type PublicKey,
   type PublicKeyInfo,
+  type SymmetricKey,
 } from './declarations.js';
 import { ConfigurationError, DecryptError } from '../../../src/errors.js';
 import { formatAsPem, removePemFormatting } from './crypto-utils.js';
@@ -29,9 +35,11 @@ import {
   guessAlgorithmName,
   guessCurveName,
 } from '../../../src/crypto/pemPublicToCrypto.js';
+import { keySplit, keyMerge } from '../utils/keysplit.js';
 
 // Used to pass into native crypto functions
-const METHODS: KeyUsage[] = ['encrypt', 'decrypt'];
+const ENC_DEC_METHODS: KeyUsage[] = ['encrypt', 'decrypt'];
+const SIGN_VERIFY_METHODS: KeyUsage[] = ['sign', 'verify'];
 export const isSupported = typeof globalThis?.crypto !== 'undefined';
 
 export const method = 'http://www.w3.org/2001/04/xmlenc#aes256-cbc';
@@ -74,11 +82,87 @@ export function rsaPkcs1Sha256(
 }
 
 /**
- * Generate a random hex key
- * @return New key as a hex string
+ * Generate a random symmetric key (opaque).
+ * @param length - Key length in bytes (default 32 for AES-256)
+ * @return Opaque symmetric key
  */
-export async function generateKey(length?: number): Promise<string> {
-  return randomBytesAsHex(length || 32);
+export async function generateKey(length?: number): Promise<SymmetricKey> {
+  const keyBytes = await randomBytes(length || 32);
+  return wrapSymmetricKey(keyBytes);
+}
+
+// ============================================================
+// Opaque Key Wrapping/Unwrapping Helpers
+// ============================================================
+
+/**
+ * Wrap a CryptoKey as an opaque PublicKey.
+ * @internal
+ */
+function wrapPublicKey(key: CryptoKey, algorithm: KeyAlgorithm): PublicKey {
+  const result: any = {
+    _brand: 'PublicKey',
+    algorithm,
+    _internal: key,
+  };
+  if (algorithm.startsWith('rsa:')) {
+    result.modulusBits = parseInt(algorithm.split(':')[1], 10);
+  } else if (algorithm.startsWith('ec:')) {
+    const curvePart = algorithm.split(':')[1];
+    result.curve = curvePart === 'secp256r1' ? 'P-256' :
+                   curvePart === 'secp384r1' ? 'P-384' :
+                   curvePart === 'secp521r1' ? 'P-521' : undefined;
+  }
+  return result as PublicKey;
+}
+
+/**
+ * Wrap a CryptoKey as an opaque PrivateKey.
+ * @internal
+ */
+function wrapPrivateKey(key: CryptoKey, algorithm: KeyAlgorithm): PrivateKey {
+  const result: any = {
+    _brand: 'PrivateKey',
+    algorithm,
+    _internal: key,
+  };
+  if (algorithm.startsWith('rsa:')) {
+    result.modulusBits = parseInt(algorithm.split(':')[1], 10);
+  } else if (algorithm.startsWith('ec:')) {
+    const curvePart = algorithm.split(':')[1];
+    result.curve = curvePart === 'secp256r1' ? 'P-256' :
+                   curvePart === 'secp384r1' ? 'P-384' :
+                   curvePart === 'secp521r1' ? 'P-521' : undefined;
+  }
+  return result as PrivateKey;
+}
+
+/**
+ * Unwrap an opaque key to get the internal CryptoKey.
+ * @internal
+ */
+function unwrapKey(key: PublicKey | PrivateKey): CryptoKey {
+  return (key as any)._internal;
+}
+
+/**
+ * Wrap raw key bytes as an opaque SymmetricKey.
+ * @internal
+ */
+function wrapSymmetricKey(keyBytes: Uint8Array): SymmetricKey {
+  return {
+    _brand: 'SymmetricKey',
+    length: keyBytes.length * 8,  // bits
+    _internal: keyBytes,
+  } as SymmetricKey;
+}
+
+/**
+ * Unwrap an opaque SymmetricKey to get raw bytes.
+ * @internal
+ */
+function unwrapSymmetricKey(key: SymmetricKey): Uint8Array {
+  return (key as any)._internal;
 }
 
 /**
@@ -86,19 +170,24 @@ export async function generateKey(length?: number): Promise<string> {
  * @see    {@link https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/generateKey}
  * @param  size in bits
  */
-export async function generateKeyPair(size?: number): Promise<PemKeyPair> {
-  const algoDomString = rsaOaepSha1(size || MIN_ASYMMETRIC_KEY_SIZE_BITS);
-  const keyPair = await crypto.subtle.generateKey(algoDomString, true, METHODS);
+export async function generateKeyPair(size?: number): Promise<KeyPair> {
+  const keySize = size || MIN_ASYMMETRIC_KEY_SIZE_BITS;
+  const algoDomString = rsaOaepSha1(keySize);
+  const keyPair = await crypto.subtle.generateKey(algoDomString, true, ENC_DEC_METHODS);
 
-  // Export to PEM format
-  const [publicKeyBuffer, privateKeyBuffer] = await Promise.all([
-    crypto.subtle.exportKey('spki', keyPair.publicKey),
-    crypto.subtle.exportKey('pkcs8', keyPair.privateKey),
-  ]);
+  // Map to supported algorithm sizes
+  let algorithm: KeyAlgorithm;
+  if (keySize === 2048) {
+    algorithm = 'rsa:2048';
+  } else if (keySize === 4096) {
+    algorithm = 'rsa:4096';
+  } else {
+    throw new ConfigurationError(`Unsupported RSA key size: ${keySize}. Only 2048 and 4096 are supported.`);
+  }
 
   return {
-    publicKey: formatAsPem(publicKeyBuffer, 'PUBLIC KEY'),
-    privateKey: formatAsPem(privateKeyBuffer, 'PRIVATE KEY'),
+    publicKey: wrapPublicKey(keyPair.publicKey, algorithm),
+    privateKey: wrapPrivateKey(keyPair.privateKey, algorithm),
   };
 }
 
@@ -106,53 +195,48 @@ export async function generateKeyPair(size?: number): Promise<PemKeyPair> {
  * Generate an RSA key pair suitable for signatures
  * @see    {@link https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/generateKey}
  */
-export async function generateSigningKeyPair(): Promise<PemKeyPair> {
+export async function generateSigningKeyPair(): Promise<KeyPair> {
+  const rsaParams = rsaPkcs1Sha256(2048);
   const keyPair = await crypto.subtle.generateKey(
-    {
-      name: 'RSASSA-PKCS1-v1_5',
-      hash: 'SHA-256',
-      modulusLength: 2048,
-      publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
-    },
+    rsaParams,
     true,
-    ['sign', 'verify']
+    SIGN_VERIFY_METHODS
   );
 
-  // Export to PEM format
-  const [publicKeyBuffer, privateKeyBuffer] = await Promise.all([
-    crypto.subtle.exportKey('spki', keyPair.publicKey),
-    crypto.subtle.exportKey('pkcs8', keyPair.privateKey),
-  ]);
-
+  const algorithm: KeyAlgorithm = 'rsa:2048';
   return {
-    publicKey: formatAsPem(publicKeyBuffer, 'PUBLIC KEY'),
-    privateKey: formatAsPem(privateKeyBuffer, 'PRIVATE KEY'),
+    publicKey: wrapPublicKey(keyPair.publicKey, algorithm),
+    privateKey: wrapPrivateKey(keyPair.privateKey, algorithm),
   };
 }
 
 /**
- * Encrypt using a public key
- * @param payload Payload to encrypt
- * @param publicKey PEM formatted public key
+ * Encrypt using a public key (RSA-OAEP).
+ * Accepts Binary or SymmetricKey for key wrapping.
+ * @param payload Payload to encrypt (Binary) or symmetric key to wrap (SymmetricKey)
+ * @param publicKey Opaque public key
  * @return Encrypted payload
  */
-export async function encryptWithPublicKey(payload: Binary, publicKey: string): Promise<Binary> {
-  console.assert(typeof payload === 'object');
-  console.assert(typeof publicKey === 'string');
+export async function encryptWithPublicKey(
+  payload: Binary | SymmetricKey,
+  publicKey: PublicKey
+): Promise<Binary> {
+  let payloadBuffer: ArrayBuffer;
 
-  const algoDomString = rsaOaepSha1();
+  // Handle SymmetricKey unwrapping
+  if ('_brand' in payload && payload._brand === 'SymmetricKey') {
+    const keyBytes = unwrapSymmetricKey(payload);
+    payloadBuffer = keyBytes.buffer;
+  } else {
+    // Binary payload
+    payloadBuffer = (payload as Binary).asArrayBuffer();
+  }
 
-  // Web Crypto APIs don't work with PEM formatted strings
-  publicKey = removePemFormatting(publicKey);
-
-  const keyBuffer = base64Decode(publicKey);
-  const cryptoKey = await crypto.subtle.importKey('spki', keyBuffer, algoDomString, false, [
-    'encrypt',
-  ]);
+  const cryptoKey = unwrapKey(publicKey);
   const result = await crypto.subtle.encrypt(
     { name: 'RSA-OAEP' },
     cryptoKey,
-    payload.asArrayBuffer()
+    payloadBuffer
   );
   return Binary.fromArrayBuffer(result);
 }
@@ -190,26 +274,19 @@ export async function randomBytesAsHex(length: number): Promise<string> {
 /**
  * Decrypt a public-key encrypted payload with a private key
  * @param  encryptedPayload  Payload to decrypt
- * @param  privateKey        PEM formatted private keynpmv
+ * @param  privateKey        Opaque private key
  * @return Decrypted payload
  */
 export async function decryptWithPrivateKey(
   encryptedPayload: Binary,
-  privateKey: string
+  privateKey: PrivateKey
 ): Promise<Binary> {
   console.assert(typeof encryptedPayload === 'object', 'encryptedPayload must be object');
-  console.assert(typeof privateKey === 'string', 'privateKey must be string');
 
-  const algoDomString = rsaOaepSha1();
-
-  // Web Crypto APIs don't work with PEM formatted strings
-  const keyDataString = removePemFormatting(privateKey);
-  const keyData = base64Decode(keyDataString);
-
-  const key = await crypto.subtle.importKey('pkcs8', keyData, algoDomString, false, ['decrypt']);
+  const cryptoKey = unwrapKey(privateKey);
   const payload = await crypto.subtle.decrypt(
     { name: 'RSA-OAEP' },
-    key,
+    cryptoKey,
     encryptedPayload.asArrayBuffer()
   );
   const bufferView = new Uint8Array(payload);
@@ -219,14 +296,14 @@ export async function decryptWithPrivateKey(
 /**
  * Decrypt content synchronously
  * @param payload The payload to decrypt
- * @param key     The encryption key
+ * @param key     The symmetric encryption key (opaque)
  * @param iv      The initialization vector
  * @param algorithm The algorithm to use for encryption
  * @param authTag The authentication tag for authenticated crypto.
  */
 export function decrypt(
   payload: Binary,
-  key: Binary,
+  key: SymmetricKey,
   iv: Binary,
   algorithm?: AlgorithmUrn,
   authTag?: Binary
@@ -242,8 +319,8 @@ export function decrypt(
  * @param algorithm The algorithm to use for encryption
  */
 export function encrypt(
-  payload: Binary,
-  key: Binary,
+  payload: Binary | SymmetricKey,
+  key: SymmetricKey,
   iv: Binary,
   algorithm?: AlgorithmUrn
 ): Promise<EncryptResult> {
@@ -251,8 +328,8 @@ export function encrypt(
 }
 
 async function _doEncrypt(
-  payload: Binary,
-  key: Binary,
+  payload: Binary | SymmetricKey,
+  key: SymmetricKey,
   iv: Binary,
   algorithm?: AlgorithmUrn
 ): Promise<EncryptResult> {
@@ -260,10 +337,22 @@ async function _doEncrypt(
   console.assert(key != null);
   console.assert(iv != null);
 
-  const payloadBuffer = payload.asArrayBuffer();
+  // Handle both Binary and SymmetricKey payloads
+  let payloadBuffer: ArrayBuffer;
+  if ('_brand' in payload && payload._brand === 'SymmetricKey') {
+    // Unwrap SymmetricKey to get raw bytes for encryption
+    const payloadKeyBytes = unwrapSymmetricKey(payload);
+    payloadBuffer = payloadKeyBytes.buffer;
+  } else {
+    // Binary payload
+    payloadBuffer = (payload as Binary).asArrayBuffer();
+  }
+
   const algoDomString = getSymmetricAlgoDomString(iv, algorithm);
 
-  const importedKey = await _importKey(key, algoDomString);
+  // Unwrap symmetric key to get raw bytes
+  const keyBytes = unwrapSymmetricKey(key);
+  const importedKey = await _importKey(keyBytes, algoDomString);
   const encrypted = await crypto.subtle.encrypt(algoDomString, importedKey, payloadBuffer);
   if (algoDomString.name === 'AES-GCM') {
     return {
@@ -278,7 +367,7 @@ async function _doEncrypt(
 
 async function _doDecrypt(
   payload: Binary,
-  key: Binary,
+  key: SymmetricKey,
   iv: Binary,
   algorithm?: AlgorithmUrn,
   authTag?: Binary
@@ -300,7 +389,9 @@ async function _doDecrypt(
 
   const algoDomString = getSymmetricAlgoDomString(iv, algorithm);
 
-  const importedKey = await _importKey(key, algoDomString);
+  // Unwrap symmetric key to get raw bytes
+  const keyBytes = unwrapSymmetricKey(key);
+  const importedKey = await _importKey(keyBytes, algoDomString);
   algoDomString.iv = iv.asArrayBuffer();
 
   const decrypted = await crypto.subtle
@@ -316,8 +407,8 @@ async function _doDecrypt(
   return { payload: Binary.fromArrayBuffer(decrypted) };
 }
 
-function _importKey(key: Binary, algorithm: AesCbcParams | AesGcmParams) {
-  return crypto.subtle.importKey('raw', key.asArrayBuffer(), algorithm, true, METHODS);
+function _importKey(keyBytes: Uint8Array, algorithm: AesCbcParams | AesGcmParams) {
+  return crypto.subtle.importKey('raw', keyBytes, algorithm, true, ENC_DEC_METHODS);
 }
 
 /**
@@ -359,12 +450,13 @@ export async function sha256(content: string): Promise<string> {
  * @param  content Content string
  * @return Hex hash
  */
-export async function hmac(key: string, content: string): Promise<string> {
+export async function hmac(key: SymmetricKey, content: string): Promise<string> {
   const contentBuffer = new TextEncoder().encode(content);
-  const keyBuffer = hex2Ab(key);
+  // Unwrap symmetric key to get raw bytes
+  const keyBytes = unwrapSymmetricKey(key);
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
-    keyBuffer,
+    keyBytes,
     {
       name: 'HMAC',
       hash: { name: 'SHA-256' },
@@ -546,17 +638,13 @@ function derToIeeeP1363(signature: Uint8Array, algorithm: AsymmetricSigningAlgor
  */
 export async function sign(
   data: Uint8Array,
-  privateKeyPem: string,
+  privateKey: PrivateKey,
   algorithm: AsymmetricSigningAlgorithm
 ): Promise<Uint8Array> {
-  const { importParams, signParams } = getSigningAlgorithmParams(algorithm);
+  const { signParams } = getSigningAlgorithmParams(algorithm);
 
-  // Remove PEM formatting and decode
-  const keyData = removePemFormatting(privateKeyPem);
-  const keyBuffer = base64Decode(keyData);
-
-  // Import private key
-  const key = await crypto.subtle.importKey('pkcs8', keyBuffer, importParams, false, ['sign']);
+  // Unwrap the internal CryptoKey
+  const key = unwrapKey(privateKey);
 
   // Sign the data
   const signature = await crypto.subtle.sign(signParams, key, data);
@@ -571,17 +659,13 @@ export async function sign(
 export async function verify(
   data: Uint8Array,
   signature: Uint8Array,
-  publicKeyPem: string,
+  publicKey: PublicKey,
   algorithm: AsymmetricSigningAlgorithm
 ): Promise<boolean> {
-  const { importParams, signParams } = getSigningAlgorithmParams(algorithm);
+  const { signParams } = getSigningAlgorithmParams(algorithm);
 
-  // Remove PEM formatting and decode
-  const keyData = removePemFormatting(publicKeyPem);
-  const keyBuffer = base64Decode(keyData);
-
-  // Import public key
-  const key = await crypto.subtle.importKey('spki', keyBuffer, importParams, false, ['verify']);
+  // Unwrap the internal CryptoKey
+  const key = unwrapKey(publicKey);
 
   // Convert from DER to IEEE P1363 for EC algorithms
   const ieeeSignature = derToIeeeP1363(signature, algorithm);
@@ -656,7 +740,7 @@ function curveToNamedCurve(curve: ECCurve): string {
 /**
  * Generate an EC key pair for ECDH key agreement or ECDSA signing.
  */
-export async function generateECKeyPair(curve: ECCurve = 'P-256'): Promise<PemKeyPair> {
+export async function generateECKeyPair(curve: ECCurve = 'P-256'): Promise<KeyPair> {
   const namedCurve = curveToNamedCurve(curve);
 
   // Generate key pair using ECDH (can be used for both ECDH and ECDSA)
@@ -664,15 +748,25 @@ export async function generateECKeyPair(curve: ECCurve = 'P-256'): Promise<PemKe
     'deriveBits',
   ]);
 
-  // Export to PEM format
-  const [publicKeyBuffer, privateKeyBuffer] = await Promise.all([
-    crypto.subtle.exportKey('spki', keyPair.publicKey),
-    crypto.subtle.exportKey('pkcs8', keyPair.privateKey),
-  ]);
+  // Map to KeyAlgorithm literal type
+  let algorithm: KeyAlgorithm;
+  switch (namedCurve) {
+    case 'P-256':
+      algorithm = 'ec:secp256r1';
+      break;
+    case 'P-384':
+      algorithm = 'ec:secp384r1';
+      break;
+    case 'P-521':
+      algorithm = 'ec:secp521r1';
+      break;
+    default:
+      throw new ConfigurationError(`Unsupported curve: ${namedCurve}`);
+  }
 
   return {
-    publicKey: formatAsPem(publicKeyBuffer, 'PUBLIC KEY'),
-    privateKey: formatAsPem(privateKeyBuffer, 'PRIVATE KEY'),
+    publicKey: wrapPublicKey(keyPair.publicKey, algorithm),
+    privateKey: wrapPrivateKey(keyPair.privateKey, algorithm),
   };
 }
 
@@ -694,98 +788,50 @@ function base64urlByteLength(base64url: string): number {
 }
 
 /**
- * Extract EC curve from a public key by importing and exporting as JWK.
- * Uses Web Crypto's built-in ASN.1 parsing for robustness.
+ * Extract EC curve from a public key by parsing ASN.1 OIDs.
+ * Reuses the existing guessCurveName function that checks for curve OIDs.
  */
-async function extractEcCurveFromPublicKey(keyData: ArrayBuffer): Promise<SupportedEcCurve> {
-  // Try each curve - Web Crypto validates the curve matches the key
-  for (const namedCurve of SUPPORTED_EC_CURVES) {
-    try {
-      const key = await crypto.subtle.importKey(
-        'spki',
-        keyData,
-        { name: 'ECDH', namedCurve },
-        true,
-        []
-      );
-      const jwk = await crypto.subtle.exportKey('jwk', key);
-      if (jwk.crv && SUPPORTED_EC_CURVES.includes(jwk.crv as SupportedEcCurve)) {
-        return jwk.crv as SupportedEcCurve;
-      }
-    } catch {
-      // Curve mismatch, try next
-    }
-  }
-  throw new ConfigurationError('Unable to determine EC curve from public key - unsupported curve');
-}
+function extractEcCurveFromPublicKey(keyData: ArrayBuffer): SupportedEcCurve {
+  // Convert to hex for OID parsing
+  const hexKey = hexEncode(keyData);
 
-// /**
-//  * Extract EC curve from a private key by importing and exporting as JWK.
-//  * Uses Web Crypto's built-in ASN.1 parsing for robustness.
-//  */
-// async function extractEcCurveFromPrivateKey(keyData: ArrayBuffer): Promise<SupportedEcCurve> {
-//   for (const namedCurve of SUPPORTED_EC_CURVES) {
-//     try {
-//       const key = await crypto.subtle.importKey(
-//         'pkcs8',
-//         keyData,
-//         { name: 'ECDH', namedCurve },
-//         true,
-//         ['deriveBits']
-//       );
-//       const jwk = await crypto.subtle.exportKey('jwk', key);
-//       if (jwk.crv && SUPPORTED_EC_CURVES.includes(jwk.crv as SupportedEcCurve)) {
-//         return jwk.crv as SupportedEcCurve;
-//       }
-//     } catch {
-//       // Curve mismatch, try next
-//     }
-//   }
-//   throw new ConfigurationError('Unable to determine EC curve from private key - unsupported curve');
-// }
+  // Use existing OID parser (returns 'P-256', 'P-384', or 'P-521')
+  const curveName = guessCurveName(hexKey);
+
+  return curveName as SupportedEcCurve;
+}
 
 /**
  * Perform ECDH key agreement followed by HKDF key derivation.
+ * Returns opaque symmetric key for symmetric encryption.
  */
 export async function deriveKeyFromECDH(
-  privateKeyPem: string,
-  publicKeyPem: string,
+  privateKey: PrivateKey,
+  publicKey: PublicKey,
   hkdfParams: HkdfParams
-): Promise<Uint8Array> {
-  const privateKeyData = base64Decode(removePemFormatting(privateKeyPem));
-  const publicKeyData = base64Decode(removePemFormatting(publicKeyPem));
+): Promise<SymmetricKey> {
+  // Unwrap the internal CryptoKeys
+  const privateKeyCrypto = unwrapKey(privateKey);
+  const publicKeyCrypto = unwrapKey(publicKey);
 
-  // Extract curve from the public key using JWK export (robust ASN.1 parsing via Web Crypto)
-  const detectedCurve = await extractEcCurveFromPublicKey(publicKeyData);
-
-  // Import keys with the detected curve (non-extractable for actual use)
-  const privateKey = await crypto.subtle.importKey(
-    'pkcs8',
-    privateKeyData,
-    { name: 'ECDH', namedCurve: detectedCurve },
-    false,
-    ['deriveBits']
-  );
-  const publicKey = await crypto.subtle.importKey(
-    'spki',
-    publicKeyData,
-    { name: 'ECDH', namedCurve: detectedCurve },
-    false,
-    []
-  );
+  // Get curve from key metadata
+  const curve = publicKey.curve;
+  if (!curve) {
+    throw new ConfigurationError('EC curve not found on public key');
+  }
 
   // Determine bits based on curve
-  const curveBits: Record<SupportedEcCurve, number> = {
+  const curveBits: Record<ECCurve, number> = {
     'P-256': 256,
     'P-384': 384,
     'P-521': 528, // P-521 derives 528 bits (66 bytes)
   };
-  const bits = curveBits[detectedCurve];
+  const bits = curveBits[curve];
 
   // Perform ECDH to get shared secret
   const sharedSecret = await crypto.subtle.deriveBits(
-    { name: 'ECDH', public: publicKey },
-    privateKey,
+    { name: 'ECDH', public: publicKeyCrypto },
+    privateKeyCrypto,
     bits
   );
 
@@ -807,18 +853,20 @@ export async function deriveKeyFromECDH(
     ['encrypt', 'decrypt']
   );
 
-  // Export the derived key as raw bytes
+  // Export the derived key as raw bytes and wrap as SymmetricKey
   const keyBytes = await crypto.subtle.exportKey('raw', derivedKey);
-  return new Uint8Array(keyBytes);
+  return wrapSymmetricKey(new Uint8Array(keyBytes));
 }
 
 /**
  * Sign data with a symmetric key (HMAC-SHA256).
  */
-export async function signSymmetric(data: Uint8Array, key: Uint8Array): Promise<Uint8Array> {
+export async function signSymmetric(data: Uint8Array, key: SymmetricKey): Promise<Uint8Array> {
+  // Unwrap symmetric key to get raw bytes
+  const keyBytes = unwrapSymmetricKey(key);
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
-    key,
+    keyBytes,
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign']
@@ -834,11 +882,13 @@ export async function signSymmetric(data: Uint8Array, key: Uint8Array): Promise<
 export async function verifySymmetric(
   data: Uint8Array,
   signature: Uint8Array,
-  key: Uint8Array
+  key: SymmetricKey
 ): Promise<boolean> {
+  // Unwrap symmetric key to get raw bytes
+  const keyBytes = unwrapSymmetricKey(key);
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
-    key,
+    keyBytes,
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['verify']
@@ -905,9 +955,9 @@ export async function importPublicKeyPem(pem: string): Promise<PublicKeyInfo> {
     // Not an RSA key, try EC next
   }
 
-  // Try EC - use JWK export to get curve
+  // Try EC - parse curve from OID
   try {
-    const detectedCurve = await extractEcCurveFromPublicKey(keyData);
+    const detectedCurve = extractEcCurveFromPublicKey(keyData);
     const curveMap = {
       'P-256': 'ec:secp256r1',
       'P-384': 'ec:secp384r1',
@@ -962,12 +1012,10 @@ export async function pemToJwk(publicKeyPem: string): Promise<JsonWebKey> {
   if (algorithmName === 'ECDH' || algorithmName === 'ECDSA') {
     // EC key - detect curve from OID
     const namedCurve = guessCurveName(hex);
-    // Map P-512 to P-521 (guessCurveName returns P-512 but Web Crypto uses P-521)
-    const webCryptoCurve = namedCurve === 'P-512' ? 'P-521' : namedCurve;
     const key = await crypto.subtle.importKey(
       'spki',
       keyBuffer,
-      { name: 'ECDSA', namedCurve: webCryptoCurve },
+      { name: 'ECDSA', namedCurve },
       true,
       ['verify']
     );
@@ -991,6 +1039,212 @@ export async function pemToJwk(publicKeyPem: string): Promise<JsonWebKey> {
   }
 }
 
+// ============================================================
+// Key Import Functions (PEM → Opaque)
+// ============================================================
+
+/**
+ * Import a PEM public key as an opaque key.
+ */
+export async function importPublicKey(pem: string, options: KeyOptions): Promise<PublicKey> {
+  const { usage = 'encrypt', extractable = true, algorithmHint } = options;
+
+  // Detect algorithm from PEM
+  const keyInfo = await importPublicKeyPem(pem);
+  const algorithm = algorithmHint || keyInfo.algorithm;
+
+  // Remove PEM formatting
+  const keyData = removePemFormatting(pem);
+  const keyBuffer = base64Decode(keyData);
+
+  // Determine Web Crypto algorithm and usages based on key type and usage
+  let cryptoAlgorithm: RsaHashedImportParams | EcKeyImportParams;
+  let keyUsages: KeyUsage[];
+
+  if (algorithm.startsWith('rsa:')) {
+    if (usage === 'encrypt') {
+      cryptoAlgorithm = rsaOaepSha1();
+      keyUsages = ['encrypt'];
+    } else if (usage === 'sign') {
+      cryptoAlgorithm = { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' };
+      keyUsages = ['verify'];
+    } else {
+      throw new ConfigurationError('RSA keys only support usage: encrypt or sign');
+    }
+  } else if (algorithm.startsWith('ec:')) {
+    const curve = algorithm.split(':')[1];
+    const namedCurve = curve === 'secp256r1' ? 'P-256' :
+                       curve === 'secp384r1' ? 'P-384' :
+                       curve === 'secp521r1' ? 'P-521' :
+                       (() => { throw new ConfigurationError(`Unsupported EC curve: ${curve}`); })();
+
+    if (usage === 'derive') {
+      cryptoAlgorithm = { name: 'ECDH', namedCurve };
+      keyUsages = [];
+    } else if (usage === 'sign') {
+      cryptoAlgorithm = { name: 'ECDSA', namedCurve };
+      keyUsages = ['verify'];
+    } else {
+      throw new ConfigurationError('EC keys only support usage: derive or sign');
+    }
+  } else {
+    throw new ConfigurationError(`Unsupported algorithm: ${algorithm}`);
+  }
+
+  // Import as CryptoKey
+  const cryptoKey = await crypto.subtle.importKey(
+    'spki',
+    keyBuffer,
+    cryptoAlgorithm,
+    extractable,
+    keyUsages
+  );
+
+  return wrapPublicKey(cryptoKey, algorithm);
+}
+
+/**
+ * Import a PEM private key as an opaque key.
+ */
+export async function importPrivateKey(pem: string, options: KeyOptions): Promise<PrivateKey> {
+  const { usage = 'encrypt', extractable = true, algorithmHint } = options;
+
+  // Detect algorithm from PEM structure (similar to public key detection)
+  // For now, use algorithmHint if provided, otherwise detect from key structure
+  let algorithm: KeyAlgorithm;
+
+  if (algorithmHint) {
+    algorithm = algorithmHint;
+  } else {
+    // Try to detect from PEM - check EC OIDs vs RSA
+    const keyData = removePemFormatting(pem);
+    const keyBuffer = base64Decode(keyData);
+
+    // Simple heuristic: EC private keys are much smaller than RSA
+    // More robust: would need ASN.1 parsing
+    if (keyBuffer.byteLength < 200) {
+      // Likely EC - default to P-256
+      algorithm = 'ec:secp256r1';
+    } else {
+      // Likely RSA - default to 2048
+      algorithm = 'rsa:2048';
+    }
+  }
+
+  const keyData = removePemFormatting(pem);
+  const keyBuffer = base64Decode(keyData);
+
+  // Determine Web Crypto algorithm and usages
+  let cryptoAlgorithm: RsaHashedImportParams | EcKeyImportParams;
+  let keyUsages: KeyUsage[];
+
+  if (algorithm.startsWith('rsa:')) {
+    if (usage === 'encrypt') {
+      cryptoAlgorithm = rsaOaepSha1();
+      keyUsages = ['decrypt'];
+    } else if (usage === 'sign') {
+      cryptoAlgorithm = { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' };
+      keyUsages = ['sign'];
+    } else {
+      throw new ConfigurationError('RSA keys only support usage: encrypt or sign');
+    }
+  } else if (algorithm.startsWith('ec:')) {
+    const curve = algorithm.split(':')[1];
+    const namedCurve = curve === 'secp256r1' ? 'P-256' :
+                       curve === 'secp384r1' ? 'P-384' :
+                       curve === 'secp521r1' ? 'P-521' :
+                       (() => { throw new ConfigurationError(`Unsupported EC curve: ${curve}`); })();
+
+    if (usage === 'derive') {
+      cryptoAlgorithm = { name: 'ECDH', namedCurve };
+      keyUsages = ['deriveBits'];
+    } else if (usage === 'sign') {
+      cryptoAlgorithm = { name: 'ECDSA', namedCurve };
+      keyUsages = ['sign'];
+    } else {
+      throw new ConfigurationError('EC keys only support usage: derive or sign');
+    }
+  } else {
+    throw new ConfigurationError(`Unsupported algorithm: ${algorithm}`);
+  }
+
+  // Import as CryptoKey
+  const cryptoKey = await crypto.subtle.importKey(
+    'pkcs8',
+    keyBuffer,
+    cryptoAlgorithm,
+    extractable,
+    keyUsages
+  );
+
+  return wrapPrivateKey(cryptoKey, algorithm);
+}
+
+/**
+ * Import a PEM key pair as opaque keys.
+ */
+export async function importKeyPair(pem: PemKeyPair, options: KeyOptions): Promise<KeyPair> {
+  const [publicKey, privateKey] = await Promise.all([
+    importPublicKey(pem.publicKey, options),
+    importPrivateKey(pem.privateKey, options),
+  ]);
+
+  return { publicKey, privateKey };
+}
+
+// ============================================================
+// Key Export Functions (Opaque → PEM/JWK)
+// ============================================================
+
+/**
+ * Export an opaque public key to PEM format.
+ */
+export async function exportPublicKeyPem(key: PublicKey): Promise<string> {
+  const cryptoKey = unwrapKey(key);
+  const keyBuffer = await crypto.subtle.exportKey('spki', cryptoKey);
+  return formatAsPem(keyBuffer, 'PUBLIC KEY');
+}
+
+/**
+ * Export an opaque public key to JWK format.
+ */
+export async function exportPublicKeyJwk(key: PublicKey): Promise<JsonWebKey> {
+  const cryptoKey = unwrapKey(key);
+  return await crypto.subtle.exportKey('jwk', cryptoKey);
+}
+
+/**
+ * Import raw key bytes as an opaque symmetric key.
+ * Used for external keys (e.g., unwrapped from KAS).
+ */
+export async function importSymmetricKey(keyBytes: Uint8Array): Promise<SymmetricKey> {
+  return wrapSymmetricKey(keyBytes);
+}
+
+/**
+ * Split a symmetric key into N shares using XOR secret sharing.
+ * Key bytes are extracted internally for splitting.
+ * HSM implementations cannot extract bytes and should throw ConfigurationError.
+ */
+export async function splitSymmetricKey(
+  key: SymmetricKey,
+  numShares: number
+): Promise<SymmetricKey[]> {
+  const keyBytes = unwrapSymmetricKey(key);
+  const splits = await keySplit(keyBytes, numShares, DefaultCryptoService);
+  return splits.map(wrapSymmetricKey);
+}
+
+/**
+ * Merge symmetric key shares back into the original key using XOR.
+ * Key bytes are extracted internally for merging.
+ */
+export async function mergeSymmetricKeys(shares: SymmetricKey[]): Promise<SymmetricKey> {
+  const splitBytes = shares.map(unwrapSymmetricKey);
+  const merged = keyMerge(splitBytes);
+  return wrapSymmetricKey(merged);
+}
+
 export const DefaultCryptoService: CryptoService = {
   name,
   method,
@@ -1000,6 +1254,8 @@ export const DefaultCryptoService: CryptoService = {
   digest,
   encrypt,
   encryptWithPublicKey,
+  exportPublicKeyJwk,
+  exportPublicKeyPem,
   extractPublicKeyPem,
   generateECKeyPair,
   generateInitializationVector,
@@ -1007,13 +1263,19 @@ export const DefaultCryptoService: CryptoService = {
   generateKeyPair,
   generateSigningKeyPair,
   hmac,
+  importKeyPair,
+  importPrivateKey,
+  importPublicKey,
   importPublicKeyPem,
+  importSymmetricKey,
   jwkToPem,
+  mergeSymmetricKeys,
   pemToJwk,
   randomBytes,
   sha256,
   sign,
   signSymmetric,
+  splitSymmetricKey,
   verify,
   verifySymmetric,
 };

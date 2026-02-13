@@ -3,7 +3,8 @@
 
 import type {
   CryptoService,
-  PemKeyPair,
+  KeyPair,
+  PrivateKey,
   AsymmetricSigningAlgorithm,
 } from '../../tdf3/src/crypto/declarations.js';
 
@@ -30,13 +31,13 @@ interface DPoPJwtHeaderParameters {
 async function jwt(
   header: DPoPJwtHeaderParameters,
   claimsSet: Record<string, unknown>,
-  privateKeyPem: string,
+  privateKey: PrivateKey,
   cryptoService: CryptoService
 ) {
   const input = `${b64u(buf(JSON.stringify(header)))}.${b64u(buf(JSON.stringify(claimsSet)))}`;
   const signature = await cryptoService.sign(
     buf(input),
-    privateKeyPem,
+    privateKey,
     header.alg as AsymmetricSigningAlgorithm
   );
   return `${input}.${b64u(signature)}`;
@@ -134,10 +135,6 @@ function determineJWSAlgorithmFromKeyInfo(algorithm: string): JWSAlgorithm {
   }
 }
 
-function isPemString(key: unknown): key is string {
-  return typeof key === 'string' && key.includes('-----BEGIN');
-}
-
 /**
  * Returns the current unix timestamp in seconds.
  */
@@ -148,7 +145,7 @@ function epochTime() {
 /**
  * Generates a unique DPoP Proof JWT.
  *
- * @param keypair PEM-encoded key pair
+ * @param keypair Opaque key pair
  * @param cryptoService CryptoService for cryptographic operations
  * @param htu The HTTP URI (without query and fragment parts) of the request
  * @param htm The HTTP method of the request
@@ -157,7 +154,7 @@ function epochTime() {
  * @param additional Any additional claims.
  */
 export default async function DPoP(
-  keypair: PemKeyPair,
+  keypair: KeyPair,
   cryptoService: CryptoService,
   htu: string,
   htm: string,
@@ -167,14 +164,6 @@ export default async function DPoP(
 ): Promise<string> {
   const privateKey = keypair?.privateKey;
   const publicKey = keypair?.publicKey;
-
-  if (!isPemString(privateKey)) {
-    throw new TypeError('"keypair.privateKey" must be a PEM string');
-  }
-
-  if (!isPemString(publicKey)) {
-    throw new TypeError('"keypair.publicKey" must be a PEM string');
-  }
 
   if (typeof htu !== 'string') {
     throw new TypeError('"htu" must be a string');
@@ -199,12 +188,11 @@ export default async function DPoP(
     throw new TypeError('"additional" must be an object');
   }
 
-  // Detect algorithm from public key using CryptoService
-  const keyInfo = await cryptoService.importPublicKeyPem(publicKey);
-  const alg = determineJWSAlgorithmFromKeyInfo(keyInfo.algorithm);
+  // Detect algorithm from opaque key metadata
+  const alg = determineJWSAlgorithmFromKeyInfo(publicKey.algorithm);
 
-  // Get public key as JWK for the header
-  const jwk = await cryptoService.pemToJwk(publicKey);
+  // Export public key as JWK for the header
+  const jwk = await cryptoService.exportPublicKeyJwk(publicKey);
 
   // Compute access token hash if provided
   let ath: string | undefined;

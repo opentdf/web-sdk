@@ -1,4 +1,3 @@
-import { keySplit } from '../utils/index.js';
 import { base64, hex } from '../../../src/encodings/index.js';
 import { Binary } from '../binary.js';
 import { type SymmetricCipher } from '../ciphers/symmetric-cipher-base.js';
@@ -8,12 +7,13 @@ import {
   type CryptoService,
   type DecryptResult,
   type EncryptResult,
+  type SymmetricKey,
 } from '../crypto/declarations.js';
 import { IntegrityAlgorithm } from '../tdf.js';
 import { ConfigurationError } from '../../../src/errors.js';
 
 export type KeyInfo = {
-  readonly unwrappedKeyBinary: Binary;
+  readonly unwrappedKey: SymmetricKey;
   readonly unwrappedKeyIvBinary: Binary;
 };
 
@@ -59,42 +59,39 @@ export class SplitKey {
 
   async generateKey(): Promise<KeyInfo> {
     const unwrappedKey = await this.cipher.generateKey();
-    const unwrappedKeyBinary = Binary.fromString(hex.decode(unwrappedKey));
     const unwrappedKeyIvBinary = await this.generateIvBinary();
-    return { unwrappedKeyBinary, unwrappedKeyIvBinary };
+    return { unwrappedKey, unwrappedKeyIvBinary };
   }
 
   async encrypt(
     contentBinary: Binary,
-    keyBinary: Binary,
+    key: SymmetricKey,
     ivBinaryOptional?: Binary
   ): Promise<EncryptResult> {
     const ivBinary = ivBinaryOptional || (await this.generateIvBinary());
-    return this.cipher.encrypt(contentBinary, keyBinary, ivBinary);
+    return this.cipher.encrypt(contentBinary, key, ivBinary);
   }
 
-  async decrypt(content: Uint8Array, keyBinary: Binary): Promise<DecryptResult> {
-    return this.cipher.decrypt(content, keyBinary);
+  async decrypt(content: Uint8Array, key: SymmetricKey): Promise<DecryptResult> {
+    return this.cipher.decrypt(content, key);
   }
 
   async getKeyAccessObjects(policy: Policy, keyInfo: KeyInfo): Promise<KeyAccessObject[]> {
     const splitIds = [...new Set(this.keyAccess.map(({ sid }) => sid))].sort((a = '', b = '') =>
       a.localeCompare(b)
     );
-    const unwrappedKeySplitBuffers = await keySplit(
-      new Uint8Array(keyInfo.unwrappedKeyBinary.asByteArray()),
-      splitIds.length,
-      this.cryptoService
+    const unwrappedKeySplits = await this.cryptoService.splitSymmetricKey(
+      keyInfo.unwrappedKey,
+      splitIds.length
     );
     const splitsByName = Object.fromEntries(
-      splitIds.map((sid, index) => [sid, unwrappedKeySplitBuffers[index]])
+      splitIds.map((sid, index) => [sid, unwrappedKeySplits[index]])
     );
 
     const keyAccessObjects = [];
     for (const item of this.keyAccess) {
       // use the key split to encrypt metadata for each key access object
-      const unwrappedKeySplitBuffer = splitsByName[item.sid || ''];
-      const unwrappedKeySplitBinary = Binary.fromArrayBuffer(unwrappedKeySplitBuffer.buffer);
+      const unwrappedKeySplit = splitsByName[item.sid || ''];
 
       const metadata = item.metadata || '';
       const metadataStr = (
@@ -113,7 +110,7 @@ export class SplitKey {
 
       const encryptedMetadataResult = await this.encrypt(
         metadataBinary,
-        unwrappedKeySplitBinary,
+        unwrappedKeySplit,
         keyInfo.unwrappedKeyIvBinary
       );
 
@@ -125,7 +122,7 @@ export class SplitKey {
       const encryptedMetadataStr = JSON.stringify(encryptedMetadataOb);
       const keyAccessObject = await item.write(
         policy,
-        unwrappedKeySplitBuffer,
+        unwrappedKeySplit,
         encryptedMetadataStr
       );
       keyAccessObjects.push(keyAccessObject);

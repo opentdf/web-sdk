@@ -1,8 +1,8 @@
 import { ConfigurationError } from '../errors.js';
 import { AuthProvider, type HttpRequest } from './auth.js';
 import { AccessToken, type ClientSecretCredentials } from './oidc.js';
-import { type CryptoService, type PemKeyPair } from '../../tdf3/src/crypto/declarations.js';
 import * as defaultCryptoService from '../../tdf3/src/crypto/index.js';
+import { type CryptoService, type KeyPair } from '../../tdf3/src/crypto/declarations.js';
 
 export class OIDCClientCredentialsProvider implements AuthProvider {
   oidcAuth: AccessToken;
@@ -34,7 +34,7 @@ export class OIDCClientCredentialsProvider implements AuthProvider {
     );
   }
 
-  async updateClientPublicKey(signingKey: PemKeyPair): Promise<void> {
+  async updateClientPublicKey(signingKey: KeyPair): Promise<void> {
     await this.oidcAuth.refreshTokenClaimsWithClientPubkeyIfNeeded(signingKey);
   }
 

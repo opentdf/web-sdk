@@ -3,19 +3,21 @@ import { expect } from 'chai';
 import { ECWrapped, Wrapped } from '../../../tdf3/src/models/key-access.js';
 import { Policy } from '../../../tdf3/src/models/policy.js';
 import { base64 } from '../../../src/encodings/index.js';
-import type { CryptoService, PemKeyPair } from '../../../tdf3/src/crypto/declarations.js';
+import type { CryptoService, KeyPair } from '../../../tdf3/src/crypto/declarations.js';
 import { Binary } from '../../../tdf3/src/binary.js';
+import { importSymmetricKey } from '../../../tdf3/src/crypto/index.js';
 
 // Mock CryptoService for testing
 const mockCryptoService: CryptoService = {
-  async generateECKeyPair(): Promise<PemKeyPair> {
+  async generateECKeyPair(): Promise<KeyPair> {
     return {
-      publicKey: 'ephemeral-public-key-pem',
-      privateKey: 'ephemeral-private-key-pem',
+      publicKey: { _brand: 'PublicKey', algorithm: 'ec:secp256r1', curve: 'P-256' } as any,
+      privateKey: { _brand: 'PrivateKey', algorithm: 'ec:secp256r1', curve: 'P-256' } as any,
     };
   },
-  async deriveKeyFromECDH(): Promise<Uint8Array> {
-    return new Uint8Array(32); // 256-bit key
+  async deriveKeyFromECDH() {
+    const keyBytes = new Uint8Array(32);
+    return await importSymmetricKey(keyBytes);
   },
   async randomBytes(length: number): Promise<Uint8Array> {
     return new Uint8Array(length);
@@ -32,6 +34,9 @@ const mockCryptoService: CryptoService = {
   async encryptWithPublicKey() {
     return Binary.fromString('mock-wrapped-key');
   },
+  async exportPublicKeyPem() {
+    return 'ephemeral-public-key-pem';
+  },
 } as unknown as CryptoService;
 
 describe('ECWrapped', () => {
@@ -41,7 +46,7 @@ describe('ECWrapped', () => {
   const metadata = { key: 'value' };
   const sid = 'test-sid';
   const policy: Policy = { uuid: 'test-policy' };
-  const dek = new Uint8Array([1, 2, 3, 4, 5]);
+  const dekBytes = new Uint8Array([1, 2, 3, 4, 5]);
   const encryptedMetadataStr = 'encrypted-metadata';
 
   ['ECWrapped', 'Wrapped'].forEach((typeName) => {
@@ -56,6 +61,7 @@ describe('ECWrapped', () => {
           sid
         );
 
+        const dek = await importSymmetricKey(dekBytes);
         const keyAccessObject = await wrappedInstance.write(policy, dek, encryptedMetadataStr);
 
         // Type value has hyphen for ec-wrapped, no hyphen for wrapped
