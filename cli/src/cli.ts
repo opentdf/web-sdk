@@ -78,14 +78,12 @@ async function processAuth({
       'Auth expects clientId and clientSecret, or combined auth param'
     );
   }
-  const actual = await AuthProviders.clientSecretAuthProvider(
-    {
-      clientId,
-      oidcOrigin: oidcEndpoint,
-      exchange: 'client',
-      clientSecret,
-    }
-  );
+  const actual = await AuthProviders.clientSecretAuthProvider({
+    clientId,
+    oidcOrigin: oidcEndpoint,
+    exchange: 'client',
+    clientSecret,
+  });
   if (concurrencyLimit !== 1) {
     await actual.oidcAuth.get();
   }
