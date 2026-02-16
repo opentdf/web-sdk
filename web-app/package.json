@@ -39,7 +39,7 @@
     "eslint-config-prettier": "^10.0.2",
     "eslint-plugin-chai-friendly": "^1.0.1",
     "eslint-plugin-prettier": "^5.2.3",
-    "globals": "^16.0.0",
+    "globals": "^17.3.0",
     "license-checker-rseidelsohn": "^4.4.2",
     "playwright": "^1.56.1",
     "prettier": "^3.5.3",
