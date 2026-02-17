@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>WASM TDF Encrypt — Browser Tests</title>
+  <style>
+    body { font-family: monospace; margin: 2em; background: #111; color: #eee; }
+    .pass { color: #4f4; }
+    .fail { color: #f44; }
+    .info { color: #aaa; }
+    #log { white-space: pre-wrap; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <h2>WASM TDF Encrypt — Browser Round-Trip Tests</h2>
+  <div id="log"></div>
+  <script type="module">
+    import { WasmTDF, ALG_HS256, ALG_GMAC } from './wasm-tdf.mjs';
+
+    const logEl = document.getElementById('log');
+    function log(msg, cls) {
+      const span = document.createElement('span');
+      span.className = cls || '';
+      span.textContent = msg + '\n';
+      logEl.appendChild(span);
+    }
+
+    let passed = 0;
+    let failed = 0;
+
+    function assert(cond, msg) {
+      if (!cond) throw new Error('Assertion failed: ' + msg);
+    }
+
+    function assertEq(a, b, label) {
+      if (a instanceof Uint8Array && b instanceof Uint8Array) {
+        if (a.byteLength !== b.byteLength) throw new Error(`${label}: length ${a.byteLength} !== ${b.byteLength}`);
+        for (let i = 0; i < a.byteLength; i++) {
+          if (a[i] !== b[i]) throw new Error(`${label}: differ at byte ${i}`);
+        }
+        return;
+      }
+      if (a !== b) throw new Error(`${label}: ${JSON.stringify(a)} !== ${JSON.stringify(b)}`);
+    }
+
+    // ── Minimal ZIP parser (STORE method, handles data descriptors) ──
+    // Parses the central directory to get correct sizes, then extracts
+    // file data from local file headers using those sizes.
+
+    function parseZip(buf) {
+      const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+      const files = {};
+
+      // 1. Find End of Central Directory record (scan backwards for signature)
+      let eocdOffset = -1;
+      for (let i = buf.byteLength - 22; i >= 0; i--) {
+        if (view.getUint32(i, true) === 0x06054b50) { eocdOffset = i; break; }
+      }
+      if (eocdOffset < 0) throw new Error('ZIP: EOCD not found');
+
+      const cdOffset = view.getUint32(eocdOffset + 16, true);
+      const cdCount = view.getUint16(eocdOffset + 10, true);
+
+      // 2. Parse central directory entries to get file sizes and local header offsets
+      const entries = [];
+      let pos = cdOffset;
+      for (let i = 0; i < cdCount; i++) {
+        if (view.getUint32(pos, true) !== 0x02014b50) break;
+        const compSize = view.getUint32(pos + 20, true);
+        const nameLen = view.getUint16(pos + 28, true);
+        const extraLen = view.getUint16(pos + 30, true);
+        const commentLen = view.getUint16(pos + 32, true);
+        const localOffset = view.getUint32(pos + 42, true);
+        const name = new TextDecoder().decode(buf.slice(pos + 46, pos + 46 + nameLen));
+        entries.push({ name, compSize, localOffset });
+        pos += 46 + nameLen + extraLen + commentLen;
+      }
+
+      // 3. Extract file data from local headers using central directory sizes
+      for (const entry of entries) {
+        const lhOff = entry.localOffset;
+        const lhNameLen = view.getUint16(lhOff + 26, true);
+        const lhExtraLen = view.getUint16(lhOff + 28, true);
+        const dataStart = lhOff + 30 + lhNameLen + lhExtraLen;
+        files[entry.name] = buf.slice(dataStart, dataStart + entry.compSize);
+      }
+      return files;
+    }
+
+    // ── PEM / DER helpers ───────────────────────────────────────────
+
+    function pemToDer(pem) {
+      const b64 = pem.split('\n').filter(l => !l.startsWith('-----')).join('');
+      const bin = atob(b64);
+      const buf = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+      return buf.buffer;
+    }
+
+    function derToPem(der, label) {
+      const b64 = btoa(String.fromCharCode(...new Uint8Array(der)));
+      const lines = [];
+      for (let i = 0; i < b64.length; i += 64) lines.push(b64.slice(i, i + 64));
+      return `-----BEGIN ${label}-----\n${lines.join('\n')}\n-----END ${label}-----\n`;
+    }
+
+    // ── Decrypt verification via SubtleCrypto ───────────────────────
+
+    async function verifyRoundTrip(tdfBytes, privKey, plaintext) {
+      const zip = parseZip(tdfBytes);
+      assert(zip['0.manifest.json'], 'missing 0.manifest.json');
+      assert(zip['0.payload'], 'missing 0.payload');
+
+      const manifest = JSON.parse(new TextDecoder().decode(zip['0.manifest.json']));
+      const payload = zip['0.payload'];
+
+      // Unwrap DEK: RSA-OAEP decrypt the wrapped key
+      const wrappedKey = Uint8Array.from(atob(manifest.encryptionInformation.keyAccess[0].wrappedKey), c => c.charCodeAt(0));
+      const dekBuf = await crypto.subtle.decrypt('RSA-OAEP', privKey, wrappedKey);
+      const dek = new Uint8Array(dekBuf);
+      assertEq(dek.byteLength, 32, 'DEK length');
+
+      // Decrypt payload: [nonce(12) || ciphertext || tag(16)]
+      const iv = payload.slice(0, 12);
+      const ct = payload.slice(12);
+      const aesKey = await crypto.subtle.importKey('raw', dek, 'AES-GCM', false, ['decrypt']);
+      const ptBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv, tagLength: 128 }, aesKey, ct);
+      const decrypted = new Uint8Array(ptBuf);
+
+      assertEq(decrypted, plaintext, 'round-trip plaintext');
+      return { manifest, dek, payload };
+    }
+
+    // ── Test runner ─────────────────────────────────────────────────
+
+    async function runTest(name, fn) {
+      try {
+        await fn();
+        log(`  PASS  ${name}`, 'pass');
+        passed++;
+      } catch (e) {
+        log(`  FAIL  ${name}: ${e.message}`, 'fail');
+        failed++;
+      }
+    }
+
+    async function main() {
+      log('Initializing WASM TDF engine...', 'info');
+
+      const tdf = new WasmTDF();
+      try {
+        await tdf.init('tdfcore.wasm');
+      } catch (e) {
+        log(`Failed to initialize: ${e.message}`, 'fail');
+        log('Make sure tdfcore.wasm is built: cd <platform-repo> && GOOS=wasip1 GOARCH=wasm go build -o <web-sdk>/wasm-host/tdfcore.wasm ./sdk/experimental/tdf/wasm/', 'info');
+        return;
+      }
+      log('WASM module loaded.\n', 'info');
+
+      // Generate RSA-2048 keypair for tests
+      log('Generating RSA-2048 keypair...', 'info');
+      const keyPair = await crypto.subtle.generateKey(
+        { name: 'RSA-OAEP', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-1' },
+        true,
+        ['encrypt', 'decrypt'],
+      );
+      const pubDer = await crypto.subtle.exportKey('spki', keyPair.publicKey);
+      const kasPubPEM = derToPem(pubDer, 'PUBLIC KEY');
+      log('Keypair ready.\n', 'info');
+
+      // ── Test 1: HS256 round-trip ──────────────────────────────────
+
+      await runTest('HS256 encrypt + decrypt round-trip', async () => {
+        const plaintext = new TextEncoder().encode('hello, TDF from browser WASM!');
+        const tdfBytes = await tdf.encrypt({
+          kasPubPEM,
+          kasURL: 'https://kas.example.com',
+          plaintext,
+          integrityAlg: ALG_HS256,
+          segIntegrityAlg: ALG_HS256,
+        });
+        assert(tdfBytes.byteLength > 0, 'TDF output is empty');
+
+        const { manifest } = await verifyRoundTrip(tdfBytes, keyPair.privateKey, plaintext);
+
+        // Verify manifest fields (JSON field names from tinyjson serialization)
+        assertEq(manifest.schemaVersion, '4.3.0', 'schema version');
+        assertEq(manifest.encryptionInformation.method.algorithm, 'AES-256-GCM', 'algorithm');
+        assertEq(manifest.encryptionInformation.integrityInformation.rootSignature.alg, 'HS256', 'root alg');
+        assertEq(manifest.encryptionInformation.integrityInformation.segmentHashAlg, 'HS256', 'segment alg');
+      });
+
+      // ── Test 2: GMAC round-trip ───────────────────────────────────
+
+      await runTest('GMAC encrypt + decrypt round-trip', async () => {
+        const plaintext = new TextEncoder().encode('GMAC integrity test from browser!');
+        const tdfBytes = await tdf.encrypt({
+          kasPubPEM,
+          kasURL: 'https://kas.example.com',
+          plaintext,
+          integrityAlg: ALG_HS256,
+          segIntegrityAlg: ALG_GMAC,
+        });
+        assert(tdfBytes.byteLength > 0, 'TDF output is empty');
+
+        const { manifest, payload } = await verifyRoundTrip(tdfBytes, keyPair.privateKey, plaintext);
+
+        // Verify GMAC segment hash = base64(last 16 bytes of cipher)
+        const cipher = payload.slice(12);
+        const gmacTag = cipher.slice(cipher.byteLength - 16);
+        const expectedSegHash = btoa(String.fromCharCode(...gmacTag));
+        assertEq(manifest.encryptionInformation.integrityInformation.segments[0].hash, expectedSegHash, 'GMAC segment hash');
+        assertEq(manifest.encryptionInformation.integrityInformation.segmentHashAlg, 'GMAC', 'segment alg');
+      });
+
+      // ── Test 3: Error handling ────────────────────────────────────
+
+      await runTest('Invalid PEM key returns error', async () => {
+        const plaintext = new TextEncoder().encode('should fail');
+        let threw = false;
+        try {
+          await tdf.encrypt({
+            kasPubPEM: 'not-a-valid-pem',
+            kasURL: 'https://kas.example.com',
+            plaintext,
+          });
+        } catch (e) {
+          threw = true;
+          assert(e.message.length > 0, 'error message should be non-empty');
+        }
+        assert(threw, 'expected error for invalid PEM');
+      });
+
+      // ── Summary ───────────────────────────────────────────────────
+
+      log('');
+      log(`Results: ${passed} passed, ${failed} failed`, failed > 0 ? 'fail' : 'pass');
+      tdf.terminate();
+    }
+
+    main().catch(e => log(`Fatal: ${e.message}\n${e.stack}`, 'fail'));
+  </script>
+</body>
+</html>
