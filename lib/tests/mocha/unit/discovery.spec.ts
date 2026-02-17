@@ -1,0 +1,115 @@
+import { expect, assert } from 'chai';
+import {
+  validateAttributes,
+  validateAttributeValue,
+  getEntityAttributes,
+} from '../../../src/policy/discovery.js';
+import { AttributeNotFoundError, ConfigurationError } from '../../../src/errors.js';
+
+// Null/stub auth provider — not needed for validation-only code paths.
+const noopAuthProvider = {
+  updateClientPublicKey: async () => {},
+  withCreds: async (req: unknown) => req,
+} as never;
+
+const platformUrl = 'http://localhost:3000';
+
+describe('discovery - validateAttributes', () => {
+  it('returns immediately for null input', async () => {
+    await validateAttributes(platformUrl, noopAuthProvider, null as never);
+  });
+
+  it('returns immediately for empty array', async () => {
+    await validateAttributes(platformUrl, noopAuthProvider, []);
+  });
+
+  it('throws ConfigurationError when too many FQNs are provided', async () => {
+    const fqns = Array.from({ length: 251 }, (_, i) => `https://example.com/attr/a/value/v${i}`);
+    try {
+      await validateAttributes(platformUrl, noopAuthProvider, fqns);
+      assert.fail('expected to throw');
+    } catch (e) {
+      expect(e).to.be.instanceOf(ConfigurationError);
+      expect((e as Error).message).to.include('too many attribute FQNs');
+    }
+  });
+
+  it('throws ConfigurationError for an invalid FQN format', async () => {
+    try {
+      await validateAttributes(platformUrl, noopAuthProvider, ['not-a-valid-fqn']);
+      assert.fail('expected to throw');
+    } catch (e) {
+      expect(e).to.be.instanceOf(ConfigurationError);
+      expect((e as Error).message).to.include('invalid attribute value FQN');
+      expect((e as Error).message).to.include('not-a-valid-fqn');
+    }
+  });
+
+  it('throws ConfigurationError for an FQN missing the /attr/ segment', async () => {
+    try {
+      await validateAttributes(platformUrl, noopAuthProvider, [
+        'https://example.com/department/marketing',
+      ]);
+      assert.fail('expected to throw');
+    } catch (e) {
+      expect(e).to.be.instanceOf(ConfigurationError);
+      expect((e as Error).message).to.include('invalid attribute value FQN');
+    }
+  });
+
+  it('throws ConfigurationError for an FQN missing the /value/ segment', async () => {
+    try {
+      await validateAttributes(platformUrl, noopAuthProvider, [
+        'https://example.com/attr/department',
+      ]);
+      assert.fail('expected to throw');
+    } catch (e) {
+      expect(e).to.be.instanceOf(ConfigurationError);
+      expect((e as Error).message).to.include('invalid attribute value FQN');
+    }
+  });
+});
+
+describe('discovery - validateAttributeValue', () => {
+  it('throws ConfigurationError for an invalid FQN format', async () => {
+    try {
+      await validateAttributeValue(platformUrl, noopAuthProvider, 'bad-fqn-format');
+      assert.fail('expected to throw');
+    } catch (e) {
+      expect(e).to.be.instanceOf(ConfigurationError);
+      expect((e as Error).message).to.include('invalid attribute value FQN');
+    }
+  });
+});
+
+describe('discovery - getEntityAttributes', () => {
+  it('throws ConfigurationError when entity is null', async () => {
+    try {
+      await getEntityAttributes(platformUrl, noopAuthProvider, null as never);
+      assert.fail('expected to throw');
+    } catch (e) {
+      expect(e).to.be.instanceOf(ConfigurationError);
+      expect((e as Error).message).to.include('entity must not be null');
+    }
+  });
+
+  it('throws ConfigurationError when entity is undefined', async () => {
+    try {
+      await getEntityAttributes(platformUrl, noopAuthProvider, undefined as never);
+      assert.fail('expected to throw');
+    } catch (e) {
+      expect(e).to.be.instanceOf(ConfigurationError);
+      expect((e as Error).message).to.include('entity must not be null');
+    }
+  });
+});
+
+// Verify the error type hierarchy is correct.
+describe('AttributeNotFoundError', () => {
+  it('is an instance of Error', () => {
+    const err = new AttributeNotFoundError('test');
+    expect(err).to.be.instanceOf(Error);
+    expect(err.name).to.equal('AttributeNotFoundError');
+    expect(err.message).to.equal('test');
+  });
+});
