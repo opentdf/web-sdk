@@ -24,6 +24,18 @@ describe('discovery - validateAttributes', () => {
     await validateAttributes(platformUrl, noopAuthProvider, []);
   });
 
+  it('throws ConfigurationError for insecure platformUrl', async () => {
+    try {
+      await validateAttributes('http://example.com', noopAuthProvider, [
+        'https://example.com/attr/a/value/v',
+      ]);
+      assert.fail('expected to throw');
+    } catch (e) {
+      expect(e).to.be.instanceOf(ConfigurationError);
+      expect((e as Error).message).to.include('platformUrl must use HTTPS');
+    }
+  });
+
   it('throws ConfigurationError when too many FQNs are provided', async () => {
     const fqns = Array.from({ length: 251 }, (_, i) => `https://example.com/attr/a/value/v${i}`);
     try {
@@ -42,7 +54,6 @@ describe('discovery - validateAttributes', () => {
     } catch (e) {
       expect(e).to.be.instanceOf(ConfigurationError);
       expect((e as Error).message).to.include('invalid attribute value FQN');
-      expect((e as Error).message).to.include('not-a-valid-fqn');
     }
   });
 
@@ -69,6 +80,30 @@ describe('discovery - validateAttributes', () => {
       expect((e as Error).message).to.include('invalid attribute value FQN');
     }
   });
+
+  it('throws ConfigurationError for FQN with HTML tags (XSS prevention)', async () => {
+    try {
+      await validateAttributes(platformUrl, noopAuthProvider, [
+        'https://example.com/attr/<script>/value/alert',
+      ]);
+      assert.fail('expected to throw');
+    } catch (e) {
+      expect(e).to.be.instanceOf(ConfigurationError);
+      expect((e as Error).message).to.include('invalid attribute value FQN');
+    }
+  });
+
+  it('throws ConfigurationError for FQN with special characters', async () => {
+    try {
+      await validateAttributes(platformUrl, noopAuthProvider, [
+        'https://example.com/attr/test&param=1/value/test',
+      ]);
+      assert.fail('expected to throw');
+    } catch (e) {
+      expect(e).to.be.instanceOf(ConfigurationError);
+      expect((e as Error).message).to.include('invalid attribute value FQN');
+    }
+  });
 });
 
 describe('discovery - validateAttributeExists', () => {
@@ -84,6 +119,36 @@ describe('discovery - validateAttributeExists', () => {
 });
 
 describe('discovery - validateAttributeValue', () => {
+  it('throws ConfigurationError for an empty value string', async () => {
+    try {
+      await validateAttributeValue(
+        platformUrl,
+        noopAuthProvider,
+        'https://example.com/attr/clearance',
+        ''
+      );
+      assert.fail('expected to throw');
+    } catch (e) {
+      expect(e).to.be.instanceOf(ConfigurationError);
+      expect((e as Error).message).to.include('must not be empty');
+    }
+  });
+
+  it('throws ConfigurationError for insecure platformUrl', async () => {
+    try {
+      await validateAttributeValue(
+        'http://example.com',
+        noopAuthProvider,
+        'https://example.com/attr/clearance',
+        'secret'
+      );
+      assert.fail('expected to throw');
+    } catch (e) {
+      expect(e).to.be.instanceOf(ConfigurationError);
+      expect((e as Error).message).to.include('platformUrl must use HTTPS');
+    }
+  });
+
   it('throws ConfigurationError for a value FQN passed as attributeFqn', async () => {
     // A full value FQN (containing /value/) is not a valid attribute-level FQN.
     try {
@@ -129,6 +194,16 @@ describe('discovery - getEntityAttributes', () => {
     } catch (e) {
       expect(e).to.be.instanceOf(ConfigurationError);
       expect((e as Error).message).to.include('entity must not be null');
+    }
+  });
+
+  it('throws ConfigurationError for insecure platformUrl', async () => {
+    try {
+      await getEntityAttributes('http://example.com', noopAuthProvider, { id: 'test' } as never);
+      assert.fail('expected to throw');
+    } catch (e) {
+      expect(e).to.be.instanceOf(ConfigurationError);
+      expect((e as Error).message).to.include('platformUrl must use HTTPS');
     }
   });
 });

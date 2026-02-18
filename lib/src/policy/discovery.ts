@@ -14,10 +14,12 @@ const MAX_LIST_ATTRIBUTES_PAGES = 1000;
 const MAX_VALIDATE_FQNS = 250;
 
 // Attribute value FQN format: https://<namespace>/attr/<name>/value/<value>
-const ATTRIBUTE_VALUE_FQN_RE = /^https?:\/\/[^/]+\/attr\/[^/]+\/value\/[^/]+$/i;
+// Restricts to safe URL characters to prevent XSS via FQNs in error messages
+const ATTRIBUTE_VALUE_FQN_RE = /^https?:\/\/[a-zA-Z0-9._~%-]+\/attr\/[a-zA-Z0-9._~%-]+\/value\/[a-zA-Z0-9._~%-]+$/i;
 
 // Attribute-level FQN format: https://<namespace>/attr/<name>  (no /value/ segment)
-const ATTRIBUTE_FQN_RE = /^https?:\/\/[^/]+\/attr\/[^/]+$/i;
+// Restricts to safe URL characters to prevent XSS via FQNs in error messages
+const ATTRIBUTE_FQN_RE = /^https?:\/\/[a-zA-Z0-9._~%-]+\/attr\/[a-zA-Z0-9._~%-]+$/i;
 
 /**
  * Returns all active attributes available on the platform, auto-paginating through all results.
@@ -43,6 +45,9 @@ export async function listAttributes(
   authProvider: AuthProvider,
   namespace?: string
 ): Promise<Attribute[]> {
+  if (!validateSecureUrl(platformUrl)) {
+    throw new ConfigurationError('platformUrl must use HTTPS protocol');
+  }
   const platform = new PlatformClient({ authProvider, platformUrl });
   const result: Attribute[] = [];
   let nextOffset = 0;
@@ -55,11 +60,7 @@ export async function listAttributes(
         pagination: { offset: nextOffset, limit: 0 },
       });
     } catch (e) {
-      throw new NetworkError(`[${platformUrl}] [ListAttributes] ${extractRpcErrorMessage(e)}`);
-    }
-
-    if (pages === 0 && (resp.pagination?.total ?? 0) > 0) {
-      result.length = 0; // reset before push to avoid over-allocation (pre-hint not available in JS arrays natively)
+      throw new NetworkError(`[ListAttributes] ${extractRpcErrorMessage(e)}`);
     }
 
     result.push(...resp.attributes);
@@ -105,6 +106,10 @@ export async function validateAttributes(
     return;
   }
 
+  if (!validateSecureUrl(platformUrl)) {
+    throw new ConfigurationError('platformUrl must use HTTPS protocol');
+  }
+
   if (fqns.length > MAX_VALIDATE_FQNS) {
     throw new ConfigurationError(
       `too many attribute FQNs: ${fqns.length} exceeds maximum of ${MAX_VALIDATE_FQNS}`
@@ -113,7 +118,7 @@ export async function validateAttributes(
 
   for (const fqn of fqns) {
     if (!ATTRIBUTE_VALUE_FQN_RE.test(fqn)) {
-      throw new ConfigurationError(`invalid attribute value FQN "${fqn}"`);
+      throw new ConfigurationError('invalid attribute value FQN format');
     }
   }
 
@@ -122,15 +127,13 @@ export async function validateAttributes(
   try {
     resp = await platform.v1.attributes.getAttributeValuesByFqns({ fqns });
   } catch (e) {
-    throw new NetworkError(
-      `[${platformUrl}] [GetAttributeValuesByFqns] ${extractRpcErrorMessage(e)}`
-    );
+    throw new NetworkError(`[GetAttributeValuesByFqns] ${extractRpcErrorMessage(e)}`);
   }
 
   const found = resp.fqnAttributeValues;
   const missing = fqns.filter((fqn) => !(fqn in found));
   if (missing.length > 0) {
-    throw new AttributeNotFoundError(`attribute not found: ${missing.join(', ')}`);
+    throw new AttributeNotFoundError(`attribute not found: ${missing.length} FQN(s) missing`);
   }
 }
 
@@ -179,8 +182,16 @@ export async function validateAttributeValue(
   attributeFqn: string,
   value: string
 ): Promise<void> {
+  if (!value) {
+    throw new ConfigurationError('attribute value must not be empty');
+  }
+
+  if (!validateSecureUrl(platformUrl)) {
+    throw new ConfigurationError('platformUrl must use HTTPS protocol');
+  }
+
   if (!ATTRIBUTE_FQN_RE.test(attributeFqn)) {
-    throw new ConfigurationError(`invalid attribute FQN "${attributeFqn}"`);
+    throw new ConfigurationError('invalid attribute FQN format');
   }
 
   const platform = new PlatformClient({ authProvider, platformUrl });
@@ -190,7 +201,7 @@ export async function validateAttributeValue(
       identifier: { case: 'fqn', value: attributeFqn },
     });
   } catch (e) {
-    throw new AttributeNotFoundError(`attribute not found: ${attributeFqn}`);
+    throw new AttributeNotFoundError('attribute not found');
   }
 
   const vals = resp.attribute?.values ?? [];
@@ -201,9 +212,7 @@ export async function validateAttributeValue(
 
   const match = vals.some((v) => v.value.toLowerCase() === value.toLowerCase());
   if (!match) {
-    throw new AttributeNotFoundError(
-      `attribute not found: value "${value}" not permitted for attribute ${attributeFqn}`
-    );
+    throw new AttributeNotFoundError('attribute value not permitted for this attribute');
   }
 }
 
@@ -237,19 +246,18 @@ export async function getEntityAttributes(
     throw new ConfigurationError('entity must not be null');
   }
 
+  if (!validateSecureUrl(platformUrl)) {
+    throw new ConfigurationError('platformUrl must use HTTPS protocol');
+  }
+
   const platform = new PlatformClient({ authProvider, platformUrl });
   let resp;
   try {
     resp = await platform.v1.authorization.getEntitlements({ entities: [entity] });
   } catch (e) {
-    throw new NetworkError(`[${platformUrl}] [GetEntitlements] ${extractRpcErrorMessage(e)}`);
+    throw new NetworkError(`[GetEntitlements] ${extractRpcErrorMessage(e)}`);
   }
 
-  const entityId = entity.id;
-  for (const e of resp.entitlements) {
-    if (e.entityId === entityId) {
-      return e.attributeValueFqns;
-    }
-  }
-  return [];
+  const entitlement = resp.entitlements.find((e) => e.entityId === entity.id);
+  return entitlement?.attributeValueFqns ?? [];
 }
