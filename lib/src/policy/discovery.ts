@@ -201,7 +201,7 @@ export async function validateAttributeValue(
     resp = await platform.v1.attributes.getAttribute({
       identifier: { case: 'fqn', value: attributeFqn },
     });
-  } catch (e) {
+  } catch {
     throw new AttributeNotFoundError('attribute not found');
   }
 
