@@ -4,6 +4,7 @@ export { attributeFQNsAsValues } from './policy/api.js';
 export {
   listAttributes,
   validateAttributes,
+  validateAttributeExists,
   validateAttributeValue,
   getEntityAttributes,
 } from './policy/discovery.js';

@@ -1,6 +1,6 @@
 import { AttributeNotFoundError, ConfigurationError, NetworkError } from '../errors.js';
 import { type AuthProvider } from '../auth/auth.js';
-import { extractRpcErrorMessage } from '../utils.js';
+import { extractRpcErrorMessage, validateSecureUrl } from '../utils.js';
 import { PlatformClient } from '../platform.js';
 import type { Attribute } from '../platform/policy/objects_pb.js';
 import type { Entity } from '../platform/authorization/authorization_pb.js';
@@ -15,6 +15,9 @@ const MAX_VALIDATE_FQNS = 250;
 
 // Attribute value FQN format: https://<namespace>/attr/<name>/value/<value>
 const ATTRIBUTE_VALUE_FQN_RE = /^https?:\/\/[^/]+\/attr\/[^/]+\/value\/[^/]+$/i;
+
+// Attribute-level FQN format: https://<namespace>/attr/<name>  (no /value/ segment)
+const ATTRIBUTE_FQN_RE = /^https?:\/\/[^/]+\/attr\/[^/]+$/i;
 
 /**
  * Returns all active attributes available on the platform, auto-paginating through all results.
@@ -142,12 +145,66 @@ export async function validateAttributes(
  * @throws {@link AttributeNotFoundError} if the FQN does not exist on the platform.
  * @throws {@link ConfigurationError} if the FQN format is invalid.
  */
-export async function validateAttributeValue(
+export async function validateAttributeExists(
   platformUrl: string,
   authProvider: AuthProvider,
   fqn: string
 ): Promise<void> {
   return validateAttributes(platformUrl, authProvider, [fqn]);
+}
+
+/**
+ * Checks that `value` is a permitted value for the attribute identified by `attributeFqn`.
+ * Handles both enumerated and dynamic attribute types:
+ * - Enumerated attributes: `value` must match one of the pre-registered values (case-insensitive).
+ * - Dynamic attributes (no pre-registered values): any value is accepted.
+ *
+ * @param platformUrl The platform base URL.
+ * @param authProvider An auth provider for the request.
+ * @param attributeFqn The attribute-level FQN, e.g. `https://example.com/attr/clearance`.
+ * @param value The candidate value string, e.g. `secret`.
+ * @throws {@link AttributeNotFoundError} if the attribute does not exist, or if the attribute
+ *   is enumerated and `value` is not in the allowed set.
+ * @throws {@link ConfigurationError} if the FQN format is invalid.
+ *
+ * @example
+ * ```ts
+ * await validateAttributeValue(platformUrl, authProvider, 'https://opentdf.io/attr/clearance', 'secret');
+ * // Safe to use — value confirmed valid for this attribute
+ * ```
+ */
+export async function validateAttributeValue(
+  platformUrl: string,
+  authProvider: AuthProvider,
+  attributeFqn: string,
+  value: string
+): Promise<void> {
+  if (!ATTRIBUTE_FQN_RE.test(attributeFqn)) {
+    throw new ConfigurationError(`invalid attribute FQN "${attributeFqn}"`);
+  }
+
+  const platform = new PlatformClient({ authProvider, platformUrl });
+  let resp;
+  try {
+    resp = await platform.v1.attributes.getAttribute({
+      identifier: { case: 'fqn', value: attributeFqn },
+    });
+  } catch (e) {
+    throw new AttributeNotFoundError(`attribute not found: ${attributeFqn}`);
+  }
+
+  const vals = resp.attribute?.values ?? [];
+  if (vals.length === 0) {
+    // Dynamic attribute — any value is permitted.
+    return;
+  }
+
+  const match = vals.some((v) => v.value.toLowerCase() === value.toLowerCase());
+  if (!match) {
+    throw new AttributeNotFoundError(
+      `attribute not found: value "${value}" not permitted for attribute ${attributeFqn}`
+    );
+  }
 }
 
 /**

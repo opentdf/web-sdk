@@ -1,6 +1,7 @@
 import { expect, assert } from 'chai';
 import {
   validateAttributes,
+  validateAttributeExists,
   validateAttributeValue,
   getEntityAttributes,
 } from '../../../src/policy/discovery.js';
@@ -70,14 +71,42 @@ describe('discovery - validateAttributes', () => {
   });
 });
 
-describe('discovery - validateAttributeValue', () => {
+describe('discovery - validateAttributeExists', () => {
   it('throws ConfigurationError for an invalid FQN format', async () => {
     try {
-      await validateAttributeValue(platformUrl, noopAuthProvider, 'bad-fqn-format');
+      await validateAttributeExists(platformUrl, noopAuthProvider, 'bad-fqn-format');
       assert.fail('expected to throw');
     } catch (e) {
       expect(e).to.be.instanceOf(ConfigurationError);
       expect((e as Error).message).to.include('invalid attribute value FQN');
+    }
+  });
+});
+
+describe('discovery - validateAttributeValue', () => {
+  it('throws ConfigurationError for a value FQN passed as attributeFqn', async () => {
+    // A full value FQN (containing /value/) is not a valid attribute-level FQN.
+    try {
+      await validateAttributeValue(
+        platformUrl,
+        noopAuthProvider,
+        'https://example.com/attr/clearance/value/secret',
+        'secret'
+      );
+      assert.fail('expected to throw');
+    } catch (e) {
+      expect(e).to.be.instanceOf(ConfigurationError);
+      expect((e as Error).message).to.include('invalid attribute FQN');
+    }
+  });
+
+  it('throws ConfigurationError for a non-URL attributeFqn', async () => {
+    try {
+      await validateAttributeValue(platformUrl, noopAuthProvider, 'not-a-fqn', 'somevalue');
+      assert.fail('expected to throw');
+    } catch (e) {
+      expect(e).to.be.instanceOf(ConfigurationError);
+      expect((e as Error).message).to.include('invalid attribute FQN');
     }
   });
 });
