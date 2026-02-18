@@ -15,7 +15,8 @@ const MAX_VALIDATE_FQNS = 250;
 
 // Attribute value FQN format: https://<namespace>/attr/<name>/value/<value>
 // Restricts to safe URL characters to prevent XSS via FQNs in error messages
-const ATTRIBUTE_VALUE_FQN_RE = /^https?:\/\/[a-zA-Z0-9._~%-]+\/attr\/[a-zA-Z0-9._~%-]+\/value\/[a-zA-Z0-9._~%-]+$/i;
+const ATTRIBUTE_VALUE_FQN_RE =
+  /^https?:\/\/[a-zA-Z0-9._~%-]+\/attr\/[a-zA-Z0-9._~%-]+\/value\/[a-zA-Z0-9._~%-]+$/i;
 
 // Attribute-level FQN format: https://<namespace>/attr/<name>  (no /value/ segment)
 // Restricts to safe URL characters to prevent XSS via FQNs in error messages
