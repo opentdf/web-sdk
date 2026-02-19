@@ -4,8 +4,8 @@ export { attributeFQNsAsValues } from './policy/api.js';
 export {
   listAttributes,
   validateAttributes,
-  validateAttributeExists,
-  validateAttributeValue,
+  attributeExists,
+  attributeValueExists,
 } from './policy/discovery.js';
 export { version, clientType, tdfSpecVersion } from './version.js';
 export { PlatformClient, type PlatformClientOptions, type PlatformServices } from './platform.js';

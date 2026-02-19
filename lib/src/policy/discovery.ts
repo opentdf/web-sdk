@@ -1,3 +1,4 @@
+import { ConnectError, Code } from '@connectrpc/connect';
 import { AttributeNotFoundError, ConfigurationError, NetworkError } from '../errors.js';
 import { type AuthProvider } from '../auth/auth.js';
 import { extractRpcErrorMessage, validateSecureUrl } from '../utils.js';
@@ -144,56 +145,23 @@ export async function validateAttributes(
 }
 
 /**
- * Checks that a single attribute value FQN is valid in format and exists on the platform.
+ * Reports whether the attribute definition identified by `attributeFqn` exists on the platform.
  *
- * This is a convenience wrapper around {@link validateAttributes} for the single-FQN case.
- *
- * @param platformUrl The platform base URL.
- * @param authProvider An auth provider for the request.
- * @param fqn The attribute value FQN to validate.
- * @throws {@link AttributeNotFoundError} if the FQN does not exist on the platform.
- * @throws {@link ConfigurationError} if the FQN format is invalid.
- */
-export async function validateAttributeExists(
-  platformUrl: string,
-  authProvider: AuthProvider,
-  fqn: string
-): Promise<void> {
-  return validateAttributes(platformUrl, authProvider, [fqn]);
-}
-
-/**
- * Checks that `value` is registered on the attribute identified by `attributeFqn`.
- * The value must match one of the attribute's registered values (case-insensitive),
- * or the call fails.
- *
- * The attribute rule type (`ANY_OF`, `ALL_OF`, `HIERARCHY`) is not relevant here — it governs
- * access decisions at decryption time, not value registration.
+ * `attributeFqn` should be an attribute-level FQN (no `/value/` segment):
+ * `https://<namespace>/attr/<attribute_name>`
  *
  * @param platformUrl The platform base URL.
  * @param authProvider An auth provider for the request.
- * @param attributeFqn The attribute-level FQN, e.g. `https://example.com/attr/clearance`.
- * @param value The candidate value string, e.g. `secret`.
- * @throws {@link AttributeNotFoundError} if the attribute does not exist, or if `value` is
- *   not among its registered values.
- * @throws {@link ConfigurationError} if the FQN format is invalid.
- *
- * @example
- * ```ts
- * await validateAttributeValue(platformUrl, authProvider, 'https://opentdf.io/attr/clearance', 'secret');
- * // Safe to use — value confirmed valid for this attribute
- * ```
+ * @param attributeFqn The attribute-level FQN to check.
+ * @returns `true` if the attribute exists, `false` if it does not.
+ * @throws {@link ConfigurationError} if the FQN format is invalid or the URL is insecure.
+ * @throws {@link NetworkError} if a non-not-found service error occurs.
  */
-export async function validateAttributeValue(
+export async function attributeExists(
   platformUrl: string,
   authProvider: AuthProvider,
-  attributeFqn: string,
-  value: string
-): Promise<void> {
-  if (!value) {
-    throw new ConfigurationError('attribute value must not be empty');
-  }
-
+  attributeFqn: string
+): Promise<boolean> {
   if (!validateSecureUrl(platformUrl)) {
     throw new ConfigurationError('platformUrl must use HTTPS protocol');
   }
@@ -203,20 +171,52 @@ export async function validateAttributeValue(
   }
 
   const platform = new PlatformClient({ authProvider, platformUrl });
-  let resp;
   try {
-    resp = await platform.v1.attributes.getAttribute({
+    await platform.v1.attributes.getAttribute({
       identifier: { case: 'fqn', value: attributeFqn },
     });
-  } catch {
-    throw new AttributeNotFoundError(`attribute not found: ${attributeFqn}`);
+    return true;
+  } catch (e) {
+    if (e instanceof ConnectError && e.code === Code.NotFound) {
+      return false;
+    }
+    throw new NetworkError(`[GetAttribute] ${extractRpcErrorMessage(e)}`);
+  }
+}
+
+/**
+ * Reports whether the attribute value FQN exists on the platform.
+ *
+ * `valueFqn` should be a full attribute value FQN (with `/value/` segment):
+ * `https://<namespace>/attr/<attribute_name>/value/<value>`
+ *
+ * @param platformUrl The platform base URL.
+ * @param authProvider An auth provider for the request.
+ * @param valueFqn The attribute value FQN to check.
+ * @returns `true` if the value exists, `false` if it does not.
+ * @throws {@link ConfigurationError} if the FQN format is invalid or the URL is insecure.
+ * @throws {@link NetworkError} if a service error occurs.
+ */
+export async function attributeValueExists(
+  platformUrl: string,
+  authProvider: AuthProvider,
+  valueFqn: string
+): Promise<boolean> {
+  if (!validateSecureUrl(platformUrl)) {
+    throw new ConfigurationError('platformUrl must use HTTPS protocol');
   }
 
-  const vals = resp.attribute?.values ?? [];
-  const match = vals.some((v) => v.value.toLowerCase() === value.toLowerCase());
-  if (!match) {
-    throw new AttributeNotFoundError(
-      `attribute not found: value "${value}" not found for attribute ${attributeFqn}`
-    );
+  if (!ATTRIBUTE_VALUE_FQN_RE.test(valueFqn)) {
+    throw new ConfigurationError('invalid attribute value FQN format');
   }
+
+  const platform = new PlatformClient({ authProvider, platformUrl });
+  let resp;
+  try {
+    resp = await platform.v1.attributes.getAttributeValuesByFqns({ fqns: [valueFqn] });
+  } catch (e) {
+    throw new NetworkError(`[GetAttributeValuesByFqns] ${extractRpcErrorMessage(e)}`);
+  }
+
+  return valueFqn in resp.fqnAttributeValues;
 }

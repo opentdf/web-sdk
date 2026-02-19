@@ -1,8 +1,8 @@
 import { expect, assert } from 'chai';
 import {
   validateAttributes,
-  validateAttributeExists,
-  validateAttributeValue,
+  attributeExists,
+  attributeValueExists,
 } from '../../../src/policy/discovery.js';
 import { AttributeNotFoundError, ConfigurationError } from '../../../src/errors.js';
 
@@ -105,41 +105,13 @@ describe('discovery - validateAttributes', () => {
   });
 });
 
-describe('discovery - validateAttributeExists', () => {
-  it('throws ConfigurationError for an invalid FQN format', async () => {
-    try {
-      await validateAttributeExists(platformUrl, noopAuthProvider, 'bad-fqn-format');
-      assert.fail('expected to throw');
-    } catch (e) {
-      expect(e).to.be.instanceOf(ConfigurationError);
-      expect((e as Error).message).to.include('invalid attribute value FQN');
-    }
-  });
-});
-
-describe('discovery - validateAttributeValue', () => {
-  it('throws ConfigurationError for an empty value string', async () => {
-    try {
-      await validateAttributeValue(
-        platformUrl,
-        noopAuthProvider,
-        'https://example.com/attr/clearance',
-        ''
-      );
-      assert.fail('expected to throw');
-    } catch (e) {
-      expect(e).to.be.instanceOf(ConfigurationError);
-      expect((e as Error).message).to.include('must not be empty');
-    }
-  });
-
+describe('discovery - attributeExists', () => {
   it('throws ConfigurationError for insecure platformUrl', async () => {
     try {
-      await validateAttributeValue(
+      await attributeExists(
         'http://example.com',
         noopAuthProvider,
-        'https://example.com/attr/clearance',
-        'secret'
+        'https://example.com/attr/clearance'
       );
       assert.fail('expected to throw');
     } catch (e) {
@@ -148,15 +120,9 @@ describe('discovery - validateAttributeValue', () => {
     }
   });
 
-  it('throws ConfigurationError for a value FQN passed as attributeFqn', async () => {
-    // A full value FQN (containing /value/) is not a valid attribute-level FQN.
+  it('throws ConfigurationError for an invalid attribute FQN format', async () => {
     try {
-      await validateAttributeValue(
-        platformUrl,
-        noopAuthProvider,
-        'https://example.com/attr/clearance/value/secret',
-        'secret'
-      );
+      await attributeExists(platformUrl, noopAuthProvider, 'not-a-valid-fqn');
       assert.fail('expected to throw');
     } catch (e) {
       expect(e).to.be.instanceOf(ConfigurationError);
@@ -164,13 +130,59 @@ describe('discovery - validateAttributeValue', () => {
     }
   });
 
-  it('throws ConfigurationError for a non-URL attributeFqn', async () => {
+  it('throws ConfigurationError when passed a value FQN (with /value/)', async () => {
+    // A full value FQN is not a valid attribute-level FQN.
     try {
-      await validateAttributeValue(platformUrl, noopAuthProvider, 'not-a-fqn', 'somevalue');
+      await attributeExists(
+        platformUrl,
+        noopAuthProvider,
+        'https://example.com/attr/clearance/value/secret'
+      );
       assert.fail('expected to throw');
     } catch (e) {
       expect(e).to.be.instanceOf(ConfigurationError);
       expect((e as Error).message).to.include('invalid attribute FQN');
+    }
+  });
+});
+
+describe('discovery - attributeValueExists', () => {
+  it('throws ConfigurationError for insecure platformUrl', async () => {
+    try {
+      await attributeValueExists(
+        'http://example.com',
+        noopAuthProvider,
+        'https://example.com/attr/clearance/value/secret'
+      );
+      assert.fail('expected to throw');
+    } catch (e) {
+      expect(e).to.be.instanceOf(ConfigurationError);
+      expect((e as Error).message).to.include('platformUrl must use HTTPS');
+    }
+  });
+
+  it('throws ConfigurationError for an invalid FQN format', async () => {
+    try {
+      await attributeValueExists(platformUrl, noopAuthProvider, 'not-a-valid-fqn');
+      assert.fail('expected to throw');
+    } catch (e) {
+      expect(e).to.be.instanceOf(ConfigurationError);
+      expect((e as Error).message).to.include('invalid attribute value FQN');
+    }
+  });
+
+  it('throws ConfigurationError when passed an attribute-level FQN (no /value/)', async () => {
+    // An attribute-level FQN without /value/ is not a valid value FQN.
+    try {
+      await attributeValueExists(
+        platformUrl,
+        noopAuthProvider,
+        'https://example.com/attr/clearance'
+      );
+      assert.fail('expected to throw');
+    } catch (e) {
+      expect(e).to.be.instanceOf(ConfigurationError);
+      expect((e as Error).message).to.include('invalid attribute value FQN');
     }
   });
 });
