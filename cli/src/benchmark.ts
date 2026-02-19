@@ -586,7 +586,7 @@ async function main() {
     .option('wasmBinary', {
       alias: 'w',
       type: 'string',
-      default: resolve(__dirname, '../../wasm-host/tdfcore.wasm'),
+      default: resolve(__dirname, '../../../wasm-host/tdfcore.wasm'),
       description: 'Path to tdfcore.wasm',
     })
     .help()
