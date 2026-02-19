@@ -335,6 +335,14 @@ function buildWasiImports(): Record<string, Function> {
     sched_yield() {
       return 0;
     },
+    fd_fdstat_set_flags() {
+      return 0;
+    },
+    poll_oneoff(_inPtr: number, _outPtr: number, _nsubscriptions: number, neventsPtr: number) {
+      const dv = new DataView(wasmMemory!.buffer);
+      dv.setUint32(neventsPtr, 0, true);
+      return 0;
+    },
   };
 }
 
