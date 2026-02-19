@@ -119,3 +119,12 @@ export class PermissionDeniedError extends TdfError {
 export class UnsupportedFeatureError extends TdfError {
   override name = 'UnsupportedFeatureError';
 }
+
+/**
+ * One or more attribute value FQNs were not found on the platform.
+ * Thrown by {@link validateAttributes} and {@link validateAttributeValue} when the platform
+ * does not recognize the requested FQNs.
+ */
+export class AttributeNotFoundError extends TdfError {
+  override name = 'AttributeNotFoundError';
+}
