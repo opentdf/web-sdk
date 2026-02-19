@@ -163,17 +163,19 @@ export async function validateAttributeExists(
 }
 
 /**
- * Checks that `value` is a permitted value for the attribute identified by `attributeFqn`.
- * Handles both enumerated and dynamic attribute types:
- * - Enumerated attributes: `value` must match one of the pre-registered values (case-insensitive).
- * - Dynamic attributes (no pre-registered values): any value is accepted.
+ * Checks that `value` is registered on the attribute identified by `attributeFqn`.
+ * The value must match one of the attribute's registered values (case-insensitive),
+ * or the call fails.
+ *
+ * The attribute rule type (`ANY_OF`, `ALL_OF`, `HIERARCHY`) is not relevant here — it governs
+ * access decisions at decryption time, not value registration.
  *
  * @param platformUrl The platform base URL.
  * @param authProvider An auth provider for the request.
  * @param attributeFqn The attribute-level FQN, e.g. `https://example.com/attr/clearance`.
  * @param value The candidate value string, e.g. `secret`.
- * @throws {@link AttributeNotFoundError} if the attribute does not exist, or if the attribute
- *   is enumerated and `value` is not in the allowed set.
+ * @throws {@link AttributeNotFoundError} if the attribute does not exist, or if `value` is
+ *   not among its registered values.
  * @throws {@link ConfigurationError} if the FQN format is invalid.
  *
  * @example
@@ -207,19 +209,14 @@ export async function validateAttributeValue(
       identifier: { case: 'fqn', value: attributeFqn },
     });
   } catch {
-    throw new AttributeNotFoundError('attribute not found');
+    throw new AttributeNotFoundError(`attribute not found: ${attributeFqn}`);
   }
 
   const vals = resp.attribute?.values ?? [];
-  if (vals.length === 0) {
-    // Dynamic attribute — any value is permitted.
-    return;
-  }
-
   const match = vals.some((v) => v.value.toLowerCase() === value.toLowerCase());
   if (!match) {
     throw new AttributeNotFoundError(
-      `value "${value}" is not permitted for attribute ${attributeFqn}`
+      `attribute not found: value "${value}" not found for attribute ${attributeFqn}`
     );
   }
 }
