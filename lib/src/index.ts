@@ -6,7 +6,6 @@ export {
   validateAttributes,
   validateAttributeExists,
   validateAttributeValue,
-  getEntityAttributes,
 } from './policy/discovery.js';
 export { version, clientType, tdfSpecVersion } from './version.js';
 export { PlatformClient, type PlatformClientOptions, type PlatformServices } from './platform.js';

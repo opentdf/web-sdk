@@ -3,7 +3,6 @@ import {
   validateAttributes,
   validateAttributeExists,
   validateAttributeValue,
-  getEntityAttributes,
 } from '../../../src/policy/discovery.js';
 import { AttributeNotFoundError, ConfigurationError } from '../../../src/errors.js';
 
@@ -176,37 +175,6 @@ describe('discovery - validateAttributeValue', () => {
   });
 });
 
-describe('discovery - getEntityAttributes', () => {
-  it('throws ConfigurationError when entity is null', async () => {
-    try {
-      await getEntityAttributes(platformUrl, noopAuthProvider, null as never);
-      assert.fail('expected to throw');
-    } catch (e) {
-      expect(e).to.be.instanceOf(ConfigurationError);
-      expect((e as Error).message).to.include('entity must not be null');
-    }
-  });
-
-  it('throws ConfigurationError when entity is undefined', async () => {
-    try {
-      await getEntityAttributes(platformUrl, noopAuthProvider, undefined as never);
-      assert.fail('expected to throw');
-    } catch (e) {
-      expect(e).to.be.instanceOf(ConfigurationError);
-      expect((e as Error).message).to.include('entity must not be null');
-    }
-  });
-
-  it('throws ConfigurationError for insecure platformUrl', async () => {
-    try {
-      await getEntityAttributes('http://example.com', noopAuthProvider, { id: 'test' } as never);
-      assert.fail('expected to throw');
-    } catch (e) {
-      expect(e).to.be.instanceOf(ConfigurationError);
-      expect((e as Error).message).to.include('platformUrl must use HTTPS');
-    }
-  });
-});
 
 // Verify the error type hierarchy is correct.
 describe('AttributeNotFoundError', () => {

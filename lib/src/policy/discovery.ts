@@ -3,14 +3,19 @@ import { type AuthProvider } from '../auth/auth.js';
 import { extractRpcErrorMessage, validateSecureUrl } from '../utils.js';
 import { PlatformClient } from '../platform.js';
 import type { Attribute } from '../platform/policy/objects_pb.js';
-import type { Entity } from '../platform/authorization/authorization_pb.js';
 
-// Caps the pagination loop in listAttributes to prevent unbounded memory growth
-// if a server repeatedly returns a non-zero next_offset.
-const MAX_LIST_ATTRIBUTES_PAGES = 1000;
+// Caps the pagination loop in listAttributes. 10 pages × 1000 records = 10,000
+// attributes maximum, which is generous for browser use while preventing runaway
+// memory growth if a server repeatedly returns a non-zero next_offset.
+const MAX_LIST_ATTRIBUTES_PAGES = 10;
 
-// Matches the server-side limit on GetAttributeValuesByFqns so callers get a
-// clear local error instead of a cryptic server rejection.
+// Number of attributes to request per page. Matches the platform's default
+// (ListRequestLimitDefault = 1000) so behavior is stable regardless of server config.
+const LIST_ATTRIBUTES_PAGE_SIZE = 1000;
+
+// Matches the server-side proto constraint: GetAttributeValuesByFqnsRequest has
+// max_items: 250 on the fqns field, so the client rejects oversized requests
+// locally instead of receiving a cryptic server validation error.
 const MAX_VALIDATE_FQNS = 250;
 
 // Attribute value FQN format: https://<namespace>/attr/<name>/value/<value>
@@ -58,7 +63,7 @@ export async function listAttributes(
     try {
       resp = await platform.v1.attributes.listAttributes({
         namespace: namespace ?? '',
-        pagination: { offset: nextOffset, limit: 0 },
+        pagination: { offset: nextOffset, limit: LIST_ATTRIBUTES_PAGE_SIZE },
       });
     } catch (e) {
       throw new NetworkError(`[ListAttributes] ${extractRpcErrorMessage(e)}`);
@@ -72,7 +77,7 @@ export async function listAttributes(
   }
 
   throw new ConfigurationError(
-    `listing attributes: exceeded maximum page limit (${MAX_LIST_ATTRIBUTES_PAGES})`
+    `listAttributes returned more than ${MAX_LIST_ATTRIBUTES_PAGES * LIST_ATTRIBUTES_PAGE_SIZE} attributes. Use the namespace parameter to narrow results.`
   );
 }
 
@@ -213,52 +218,9 @@ export async function validateAttributeValue(
 
   const match = vals.some((v) => v.value.toLowerCase() === value.toLowerCase());
   if (!match) {
-    throw new AttributeNotFoundError('attribute value not permitted for this attribute');
+    throw new AttributeNotFoundError(
+      `value "${value}" is not permitted for attribute ${attributeFqn}`
+    );
   }
 }
 
-/**
- * Returns the attribute value FQNs assigned to an entity (PE or NPE).
- *
- * Use this to inspect what attributes a user, service account, or other entity has been
- * granted before making authorization decisions or constructing access policies.
- *
- * @param platformUrl The platform base URL.
- * @param authProvider An auth provider for the request.
- * @param entity The entity to look up. Must not be null/undefined.
- * @returns Attribute value FQNs assigned to the entity, or an empty array if none.
- * @throws {@link ConfigurationError} if entity is null or undefined.
- *
- * @example
- * ```ts
- * import type { Entity } from '@opentdf/sdk';
- *
- * const entity: Entity = { id: 'e1', emailAddress: 'alice@example.com' };
- * const fqns = await getEntityAttributes(platformUrl, authProvider, entity);
- * console.log("alice's entitlements:", fqns);
- * ```
- */
-export async function getEntityAttributes(
-  platformUrl: string,
-  authProvider: AuthProvider,
-  entity: Entity
-): Promise<string[]> {
-  if (!entity) {
-    throw new ConfigurationError('entity must not be null');
-  }
-
-  if (!validateSecureUrl(platformUrl)) {
-    throw new ConfigurationError('platformUrl must use HTTPS protocol');
-  }
-
-  const platform = new PlatformClient({ authProvider, platformUrl });
-  let resp;
-  try {
-    resp = await platform.v1.authorization.getEntitlements({ entities: [entity] });
-  } catch (e) {
-    throw new NetworkError(`[GetEntitlements] ${extractRpcErrorMessage(e)}`);
-  }
-
-  const entitlement = resp.entitlements.find((e) => e.entityId === entity.id);
-  return entitlement?.attributeValueFqns ?? [];
-}
