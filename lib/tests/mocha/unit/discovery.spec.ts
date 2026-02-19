@@ -175,7 +175,6 @@ describe('discovery - validateAttributeValue', () => {
   });
 });
 
-
 // Verify the error type hierarchy is correct.
 describe('AttributeNotFoundError', () => {
   it('is an instance of Error', () => {
