@@ -23,7 +23,8 @@
     "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))",
     "format": "prettier --write \"{src,tests}/**/*.ts\"",
     "license-check": "license-checker-rseidelsohn --production --onlyAllow 'Apache-2.0; BSD; CC-BY-4.0; ISC; MIT'",
-    "lint": "eslint ./{src,tests}/**/*.ts"
+    "lint": "eslint ./{src,tests}/**/*.ts",
+    "benchmark": "npm run build && node dist/src/benchmark.js"
   },
   "bin": {
     "opentdf": "./bin/opentdf.mjs"
