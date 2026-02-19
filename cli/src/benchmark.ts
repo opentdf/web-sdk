@@ -412,10 +412,7 @@ function getWasmError(): string {
 function wasmEncrypt(kasPubPEM: string, plaintext: Uint8Array): Uint8Array {
   const kasPubBytes = Buffer.from(kasPubPEM, 'utf8');
   const kasURLBytes = Buffer.from('https://kas.example.com', 'utf8');
-  const attrBytes = Buffer.from(
-    'https://example.com/attr/classification/value/secret',
-    'utf8'
-  );
+  const attrBytes = Buffer.from('https://example.com/attr/classification/value/secret', 'utf8');
 
   const kasPubPtr = allocAndWrite(kasPubBytes);
   const kasURLPtr = allocAndWrite(kasURLBytes);
@@ -502,8 +499,7 @@ function unwrapDEKLocal(tdfBytes: Uint8Array, privPEM: string): Buffer {
   if (!manifestBytes) throw new Error('0.manifest.json not found in TDF ZIP');
 
   const manifest = JSON.parse(Buffer.from(manifestBytes).toString('utf8'));
-  const wrappedKeyB64 =
-    manifest.encryptionInformation.keyAccess[0].wrappedKey;
+  const wrappedKeyB64 = manifest.encryptionInformation.keyAccess[0].wrappedKey;
   const wrappedKey = Buffer.from(wrappedKeyB64, 'base64');
   const dek = privateDecrypt(
     { key: privPEM, oaepHash: 'sha1', padding: constants.RSA_PKCS1_OAEP_PADDING },
