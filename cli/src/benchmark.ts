@@ -698,10 +698,14 @@ async function main() {
   }
   console.log();
   console.log('Both columns use the same real KAS for key operations.');
-  console.log('Encrypt: SDK includes KAS pubkey fetch + framework overhead; WASM uses cached KAS pubkey.');
+  console.log(
+    'Encrypt: SDK includes KAS pubkey fetch + framework overhead; WASM uses cached KAS pubkey.'
+  );
   console.log('Decrypt: both call KAS rewrap over HTTP (dominates timing).');
   if (prodWasmOK) {
-    console.log(`KAS public key fetch latency: ${fmtDurationMS(kasPubKeyFetchMs)} (one-time, cacheable)`);
+    console.log(
+      `KAS public key fetch latency: ${fmtDurationMS(kasPubKeyFetchMs)} (one-time, cacheable)`
+    );
   }
 
   client.close();
