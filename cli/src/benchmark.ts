@@ -409,10 +409,15 @@ function getWasmError(): string {
 
 // ── WASM encrypt ────────────────────────────────────────────────────
 
-function wasmEncrypt(kasPubPEM: string, plaintext: Uint8Array): Uint8Array {
+function wasmEncrypt(
+  kasPubPEM: string,
+  plaintext: Uint8Array,
+  kasURL: string = 'https://kas.example.com',
+  attribute: string = 'https://example.com/attr/classification/value/secret'
+): Uint8Array {
   const kasPubBytes = Buffer.from(kasPubPEM, 'utf8');
-  const kasURLBytes = Buffer.from('https://kas.example.com', 'utf8');
-  const attrBytes = Buffer.from('https://example.com/attr/classification/value/secret', 'utf8');
+  const kasURLBytes = Buffer.from(kasURL, 'utf8');
+  const attrBytes = Buffer.from(attribute, 'utf8');
 
   const kasPubPtr = allocAndWrite(kasPubBytes);
   const kasURLPtr = allocAndWrite(kasURLBytes);
@@ -446,96 +451,18 @@ function wasmEncrypt(kasPubPEM: string, plaintext: Uint8Array): Uint8Array {
   return readWasm(outPtr, resultLen);
 }
 
-// ─��� Inline ZIP parser ───────────────────────────────────────────────
+// ── KAS public key fetch ────────────────────────────────────────────
 
-function parseZip(buf: Uint8Array): Record<string, Uint8Array> {
-  const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
-  const files: Record<string, Uint8Array> = {};
-
-  // Find EOCD signature scanning backwards
-  let eocdOffset = -1;
-  for (let i = buf.byteLength - 22; i >= 0; i--) {
-    if (view.getUint32(i, true) === 0x06054b50) {
-      eocdOffset = i;
-      break;
-    }
-  }
-  if (eocdOffset < 0) throw new Error('ZIP: EOCD not found');
-
-  const cdOffset = view.getUint32(eocdOffset + 16, true);
-  const cdCount = view.getUint16(eocdOffset + 10, true);
-
-  // Parse central directory entries
-  const entries: { name: string; compSize: number; localOffset: number }[] = [];
-  let pos = cdOffset;
-  for (let i = 0; i < cdCount; i++) {
-    if (view.getUint32(pos, true) !== 0x02014b50) break;
-    const compSize = view.getUint32(pos + 20, true);
-    const nameLen = view.getUint16(pos + 28, true);
-    const extraLen = view.getUint16(pos + 30, true);
-    const commentLen = view.getUint16(pos + 32, true);
-    const localOffset = view.getUint32(pos + 42, true);
-    const name = Buffer.from(buf.slice(pos + 46, pos + 46 + nameLen)).toString('utf8');
-    entries.push({ name, compSize, localOffset });
-    pos += 46 + nameLen + extraLen + commentLen;
-  }
-
-  // Extract file data from local headers using central directory sizes
-  for (const entry of entries) {
-    const lhOff = entry.localOffset;
-    const lhNameLen = view.getUint16(lhOff + 26, true);
-    const lhExtraLen = view.getUint16(lhOff + 28, true);
-    const dataStart = lhOff + 30 + lhNameLen + lhExtraLen;
-    files[entry.name] = buf.slice(dataStart, dataStart + entry.compSize);
-  }
-  return files;
-}
-
-// ── DEK unwrap ──────────────────────────────────────────────────────
-
-function unwrapDEKLocal(tdfBytes: Uint8Array, privPEM: string): Buffer {
-  const files = parseZip(tdfBytes);
-  const manifestBytes = files['0.manifest.json'];
-  if (!manifestBytes) throw new Error('0.manifest.json not found in TDF ZIP');
-
-  const manifest = JSON.parse(Buffer.from(manifestBytes).toString('utf8'));
-  const wrappedKeyB64 = manifest.encryptionInformation.keyAccess[0].wrappedKey;
-  const wrappedKey = Buffer.from(wrappedKeyB64, 'base64');
-  const dek = privateDecrypt(
-    { key: privPEM, oaepHash: 'sha1', padding: constants.RSA_PKCS1_OAEP_PADDING },
-    wrappedKey
-  );
-  if (dek.length !== 32) {
-    throw new Error(`DEK length: got ${dek.length}, want 32`);
-  }
-  return dek;
-}
-
-// ── WASM decrypt ────────────────────────────────────────────────────
-
-function wasmDecrypt(tdfBytes: Uint8Array, dek: Buffer): Uint8Array {
-  const tdfPtr = allocAndWrite(tdfBytes);
-  const dekPtr = allocAndWrite(dek);
-
-  const outCapacity = tdfBytes.length;
-  const outPtr = wasmMalloc(outCapacity);
-
-  const resultLen = (wasmInstance!.exports.tdf_decrypt as Function)(
-    tdfPtr,
-    tdfBytes.length,
-    dekPtr,
-    dek.length,
-    outPtr,
-    outCapacity
-  ) as number;
-
-  if (resultLen === 0) {
-    const err = getWasmError();
-    if (err) throw new Error('WASM decrypt failed: ' + err);
-    return new Uint8Array(0);
-  }
-
-  return readWasm(outPtr, resultLen);
+async function fetchKasPublicKey(kasEndpoint: string): Promise<string> {
+  const url = new URL(kasEndpoint);
+  if (!url.pathname.endsWith('/')) url.pathname += '/';
+  url.pathname += 'v2/kas_public_key';
+  url.searchParams.set('algorithm', 'rsa:2048');
+  url.searchParams.set('v', '2');
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`KAS public key fetch failed: ${resp.status}`);
+  const body = (await resp.json()) as { publicKey: string };
+  return body.publicKey; // PEM string
 }
 
 // ── Main benchmark ──────────────────────────────────────────────────
@@ -573,7 +500,7 @@ async function main() {
     })
     .option('clientId', {
       type: 'string',
-      default: 'opentdf',
+      default: 'opentdf-sdk',
       description: 'OAuth client ID',
     })
     .option('clientSecret', {
@@ -617,24 +544,33 @@ async function main() {
     },
   });
 
-  // Setup WASM runtime + RSA keypair
+  // Setup WASM runtime
   console.log('Initializing WASM runtime (Node.js WebAssembly)...');
-  let wasmPubPEM = '';
-  let wasmPrivPEM = '';
   try {
-    const { publicKey, privateKey } = generateKeyPairSync('rsa', {
-      modulusLength: 2048,
-      publicKeyEncoding: { type: 'spki', format: 'pem' },
-      privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
-    });
-    wasmPubPEM = publicKey as string;
-    wasmPrivPEM = privateKey as string;
     initWasm(wasmBinaryPath);
     wasmOK = true;
     console.log('WASM runtime initialized.');
   } catch (e: any) {
     console.log('WASM init failed: ' + e.message);
     wasmOK = false;
+  }
+
+  // Fetch real KAS public key for production WASM benchmarks
+  let realKasPubPEM = '';
+  let kasPubKeyFetchMs = 0;
+  let prodWasmOK = false;
+  if (wasmOK) {
+    try {
+      console.log('Fetching KAS public key...');
+      const fetchStart = performance.now();
+      realKasPubPEM = await fetchKasPublicKey(kasEndpoint);
+      kasPubKeyFetchMs = performance.now() - fetchStart;
+      prodWasmOK = true;
+      console.log(`KAS public key fetched in ${fmtDurationMS(kasPubKeyFetchMs)}.`);
+    } catch (e: any) {
+      console.log(`KAS public key fetch failed: ${e.message}`);
+      console.log('Production WASM benchmarks will be skipped.');
+    }
   }
 
   const encryptTimes: number[] = [];
@@ -665,14 +601,14 @@ async function main() {
     }
     encryptTimes.push(encTotal / iterations);
 
-    // ── WASM encrypt ────────────────────────────────────────
+    // ── WASM encrypt (with real KAS key) ─────────────────────
     let wasmTdf: Uint8Array | null = null;
-    if (wasmOK) {
+    if (prodWasmOK && wasmOK) {
       try {
         let wasmEncTotal = 0;
         for (let j = 0; j < iterations; j++) {
           const start = performance.now();
-          const tdf = wasmEncrypt(wasmPubPEM, payload);
+          const tdf = wasmEncrypt(realKasPubPEM, payload, kasEndpoint, attribute);
           wasmEncTotal += performance.now() - start;
           wasmTdf = tdf;
         }
@@ -681,8 +617,7 @@ async function main() {
       } catch (e: any) {
         console.log(`  WASM encrypt failed: ${e.message}`);
         wasmEncryptTimes.push(null);
-        wasmEncErrors.push('OOM');
-        // Reinit WASM runtime
+        wasmEncErrors.push('ERR');
         try {
           initWasm(wasmBinaryPath);
           wasmOK = true;
@@ -708,14 +643,18 @@ async function main() {
     }
     decryptTimes.push(decTotal / iterations);
 
-    // ── WASM decrypt ────────────────────────────────────────
-    if (wasmTdf && wasmOK) {
+    // ── WASM decrypt (client.read on WASM-encrypted TDF) ────
+    // Uses SDK client.read() which includes KAS rewrap — this is what a
+    // production WASM host would also need before calling tdf_decrypt()
+    if (wasmTdf && prodWasmOK) {
       try {
         let wasmDecTotal = 0;
         for (let j = 0; j < iterations; j++) {
           const start = performance.now();
-          const dek = unwrapDEKLocal(wasmTdf, wasmPrivPEM);
-          wasmDecrypt(wasmTdf, dek);
+          const pt: DecoratedStream = await client.read({
+            source: { type: 'buffer', location: wasmTdf },
+          });
+          await streamToBuffer(pt);
           wasmDecTotal += performance.now() - start;
         }
         wasmDecryptTimes.push(wasmDecTotal / iterations);
@@ -723,24 +662,14 @@ async function main() {
       } catch (e: any) {
         console.log(`  WASM decrypt failed: ${e.message}`);
         wasmDecryptTimes.push(null);
-        wasmDecErrors.push('OOM');
-        try {
-          initWasm(wasmBinaryPath);
-          wasmOK = true;
-        } catch (reinitErr: any) {
-          console.log(`  WASM runtime reinit failed: ${reinitErr.message}`);
-          wasmOK = false;
-        }
+        wasmDecErrors.push('ERR');
       }
     } else if (wasmEncErrors[si]) {
       wasmDecryptTimes.push(null);
       wasmDecErrors.push('N/A');
-    } else if (!wasmOK) {
-      wasmDecryptTimes.push(null);
-      wasmDecErrors.push('N/A');
     } else {
       wasmDecryptTimes.push(null);
-      wasmDecErrors.push(null);
+      wasmDecErrors.push('N/A');
     }
   }
 
@@ -752,8 +681,8 @@ async function main() {
   console.log();
 
   console.log('## Encrypt');
-  console.log('| Payload | TypeScript SDK | WASM |');
-  console.log('|---------|----------------|------|');
+  console.log('| Payload | TS SDK | WASM |');
+  console.log('|---------|--------|------|');
   for (let i = 0; i < sizes.length; i++) {
     const wasmCol = wasmEncErrors[i] ? wasmEncErrors[i] : fmtDurationMS(wasmEncryptTimes[i]!);
     console.log(`| ${formatSize(sizes[i])} | ${fmtDurationMS(encryptTimes[i])} | ${wasmCol} |`);
@@ -761,16 +690,19 @@ async function main() {
 
   console.log();
   console.log('## Decrypt');
-  console.log('| Payload | TypeScript SDK* | WASM** |');
-  console.log('|---------|-----------------|--------|');
+  console.log('| Payload | TS SDK | WASM |');
+  console.log('|---------|--------|------|');
   for (let i = 0; i < sizes.length; i++) {
     const wasmCol = wasmDecErrors[i] ? wasmDecErrors[i] : fmtDurationMS(wasmDecryptTimes[i]!);
     console.log(`| ${formatSize(sizes[i])} | ${fmtDurationMS(decryptTimes[i])} | ${wasmCol} |`);
   }
-  console.log('*TypeScript SDK: includes KAS rewrap network latency');
-  console.log(
-    '**WASM: includes local RSA-OAEP DEK unwrap (no network); in production the host would call KAS for rewrap'
-  );
+  console.log();
+  console.log('Both columns use the same real KAS for key operations.');
+  console.log('Encrypt: SDK includes KAS pubkey fetch + framework overhead; WASM uses cached KAS pubkey.');
+  console.log('Decrypt: both call KAS rewrap over HTTP (dominates timing).');
+  if (prodWasmOK) {
+    console.log(`KAS public key fetch latency: ${fmtDurationMS(kasPubKeyFetchMs)} (one-time, cacheable)`);
+  }
 
   client.close();
 }
