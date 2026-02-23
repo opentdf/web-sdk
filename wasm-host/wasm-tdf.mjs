@@ -45,7 +45,7 @@ export class WasmTDF {
     });
   }
 
-  encrypt({ kasPubPEM, kasURL, attrs, plaintext, integrityAlg, segIntegrityAlg }) {
+  encrypt({ kasPubPEM, kasURL, attrs, plaintext, integrityAlg, segIntegrityAlg, segmentSize }) {
     const id = this._nextId++;
     return new Promise((resolve, reject) => {
       this._pending.set(id, { resolve, reject });
@@ -58,6 +58,7 @@ export class WasmTDF {
         plaintext: plaintext instanceof Uint8Array ? plaintext : new TextEncoder().encode(plaintext),
         integrityAlg: integrityAlg ?? ALG_HS256,
         segIntegrityAlg: segIntegrityAlg ?? ALG_HS256,
+        segmentSize: segmentSize || 0,
       });
     });
   }

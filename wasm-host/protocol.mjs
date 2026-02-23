@@ -31,14 +31,15 @@ export const OFF_SCALAR = 16;
 export const OFF_RESULT_LEN = 20;
 export const OFF_EXTRA = 24;
 
-// Sizes
+// Sizes — 4MB data region (2MB input + 2MB output) to support
+// AES-GCM encrypt/decrypt of segments up to ~2MB via the SAB bridge.
 export const CTRL_BYTES = 32;
-export const DATA_SIZE = 2 * 1024 * 1024;
+export const DATA_SIZE = 4 * 1024 * 1024;
 export const TOTAL_SAB_SIZE = CTRL_BYTES + DATA_SIZE;
 
 // Data region offsets (absolute, from start of SAB)
 export const INPUT_OFFSET = CTRL_BYTES; // 32
-export const OUTPUT_OFFSET = CTRL_BYTES + 1024 * 1024; // 32 + 1MB
+export const OUTPUT_OFFSET = CTRL_BYTES + 2 * 1024 * 1024; // 32 + 2MB
 
 // Operation IDs
 export const OP_RANDOM_BYTES = 0;

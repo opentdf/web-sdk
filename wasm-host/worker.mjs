@@ -4,7 +4,7 @@
 //
 // Messages IN:
 //   { type: 'init', sab: SharedArrayBuffer, wasmUrl: string }
-//   { type: 'encrypt', id, kasPubPEM, kasURL, attrs, plaintext, integrityAlg, segIntegrityAlg }
+//   { type: 'encrypt', id, kasPubPEM, kasURL, attrs, plaintext, integrityAlg, segIntegrityAlg, segmentSize }
 //
 // Messages OUT:
 //   { type: 'ready' }
@@ -216,14 +216,25 @@ function hostGetLastError(outPtr, outCapacity) {
   return len;
 }
 
-// ── I/O host functions (no-op for encrypt-only path) ────────────────
+// ── I/O host functions (streaming encrypt via read_input/write_output) ──
 
-function hostReadInput() {
-  return 0; // EOF — encrypt doesn't use streaming input
+let ioInput = null;      // Uint8Array — plaintext source
+let ioInputOffset = 0;
+let ioOutputChunks = []; // collected TDF output chunks
+
+function hostReadInput(bufPtr, bufCapacity) {
+  if (!ioInput || ioInputOffset >= ioInput.byteLength) return 0; // EOF
+  const remaining = ioInput.byteLength - ioInputOffset;
+  const n = Math.min(remaining, bufCapacity);
+  writeWasmBytes(bufPtr, ioInput.subarray(ioInputOffset, ioInputOffset + n));
+  ioInputOffset += n;
+  return n;
 }
 
-function hostWriteOutput() {
-  return ERR_SENTINEL; // Not used in current encrypt path
+function hostWriteOutput(bufPtr, bufLen) {
+  const data = readWasmBytes(bufPtr, bufLen);
+  ioOutputChunks.push(new Uint8Array(data));
+  return bufLen;
 }
 
 // ── Minimal WASI stubs ──────────────────────────────────────────────
@@ -360,24 +371,25 @@ function getWasmError() {
   return new TextDecoder().decode(readWasmBytes(bufPtr, n));
 }
 
-function doEncrypt(kasPubPEM, kasURL, attrs, plaintext, integrityAlg, segIntegrityAlg) {
+function doEncrypt(kasPubPEM, kasURL, attrs, plaintext, integrityAlg, segIntegrityAlg, segmentSize) {
   const pub = writeStringToWasm(kasPubPEM);
   const url = writeStringToWasm(kasURL);
   const attrStr = attrs && attrs.length > 0 ? attrs.join('\n') : '';
   const attr = writeStringToWasm(attrStr);
-  const pt = writeBytesToWasm(plaintext);
 
-  const outCapacity = 1024 * 1024; // 1MB
-  const outPtr = wasmMalloc(outCapacity);
+  // Set up streaming I/O state
+  ioInput = plaintext;
+  ioInputOffset = 0;
+  ioOutputChunks = [];
 
   const resultLen = wasmInstance.exports.tdf_encrypt(
     pub.ptr, pub.len,
     url.ptr, url.len,
     attr.ptr, attr.len,
-    pt.ptr, pt.len,
-    outPtr, outCapacity,
+    BigInt(plaintext.byteLength), // plaintextSize (i64)
     integrityAlg || 0,
     segIntegrityAlg || 0,
+    segmentSize || 0,
   );
 
   if (resultLen === 0) {
@@ -385,7 +397,17 @@ function doEncrypt(kasPubPEM, kasURL, attrs, plaintext, integrityAlg, segIntegri
     throw new Error(errMsg || 'tdf_encrypt returned 0');
   }
 
-  return readWasmBytes(outPtr, resultLen);
+  // Concatenate output chunks
+  const totalLen = ioOutputChunks.reduce((sum, c) => sum + c.byteLength, 0);
+  const result = new Uint8Array(totalLen);
+  let offset = 0;
+  for (const chunk of ioOutputChunks) {
+    result.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  ioInput = null;
+  ioOutputChunks = [];
+  return result;
 }
 
 // ── Message handler ─────────────────────────────────────────────────
@@ -417,6 +439,7 @@ self.onmessage = async (e) => {
         msg.plaintext,
         msg.integrityAlg,
         msg.segIntegrityAlg,
+        msg.segmentSize,
       );
       // Transfer the ArrayBuffer for zero-copy
       self.postMessage({ type: 'result', id: msg.id, data: result }, [result.buffer]);

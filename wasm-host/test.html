@@ -131,6 +131,46 @@
       return { manifest, dek, payload };
     }
 
+    // ── Multi-segment decrypt verification ──────────────────────────
+
+    async function verifyMultiSegRoundTrip(tdfBytes, privKey, plaintext) {
+      const zip = parseZip(tdfBytes);
+      assert(zip['0.manifest.json'], 'missing 0.manifest.json');
+      assert(zip['0.payload'], 'missing 0.payload');
+
+      const manifest = JSON.parse(new TextDecoder().decode(zip['0.manifest.json']));
+      const segments = manifest.encryptionInformation.integrityInformation.segments;
+      const payloadData = zip['0.payload'];
+
+      // Unwrap DEK
+      const wrappedKey = Uint8Array.from(atob(manifest.encryptionInformation.keyAccess[0].wrappedKey), c => c.charCodeAt(0));
+      const dekBuf = await crypto.subtle.decrypt('RSA-OAEP', privKey, wrappedKey);
+      const dek = new Uint8Array(dekBuf);
+      const aesKey = await crypto.subtle.importKey('raw', dek, 'AES-GCM', false, ['decrypt']);
+
+      // Split payload into segments by encryptedSegmentSize and decrypt each
+      const ptChunks = [];
+      let off = 0;
+      for (const seg of segments) {
+        const encSize = seg.encryptedSegmentSize;
+        const segData = payloadData.slice(off, off + encSize);
+        off += encSize;
+        const iv = segData.slice(0, 12);
+        const ct = segData.slice(12);
+        const ptBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv, tagLength: 128 }, aesKey, ct);
+        ptChunks.push(new Uint8Array(ptBuf));
+      }
+
+      const totalLen = ptChunks.reduce((s, c) => s + c.byteLength, 0);
+      const decrypted = new Uint8Array(totalLen);
+      let doff = 0;
+      for (const chunk of ptChunks) {
+        decrypted.set(chunk, doff);
+        doff += chunk.byteLength;
+      }
+      assertEq(decrypted, plaintext, 'round-trip plaintext');
+    }
+
     // ── Test runner ─────────────────────────────────────────────────
 
     async function runTest(name, fn) {
@@ -231,11 +271,76 @@
         assert(threw, 'expected error for invalid PEM');
       });
 
+      // ── Benchmarks ──────────────────────────────────────────────────
+
+      log('\n── Encrypt Benchmarks ──────────────────────────────', 'info');
+      const benchSizes = [256, 16384, 65536, 262144, 1048576, 10485760];
+      const benchIterations = 3;
+      const benchResults = [];
+
+      for (const size of benchSizes) {
+        const payload = new Uint8Array(size);
+        // crypto.getRandomValues() limited to 65536 bytes per call
+        for (let off = 0; off < size; off += 65536) {
+          const len = Math.min(65536, size - off);
+          crypto.getRandomValues(payload.subarray(off, off + len));
+        }
+
+        // Auto-select segment size for larger payloads
+        const segmentSize = size > 1048576 ? 1048576 : 0;
+
+        let totalMs = 0;
+        let lastTdfBytes = null;
+        for (let j = 0; j < benchIterations; j++) {
+          const start = performance.now();
+          lastTdfBytes = await tdf.encrypt({
+            kasPubPEM,
+            kasURL: 'https://kas.example.com',
+            plaintext: payload,
+            integrityAlg: ALG_HS256,
+            segIntegrityAlg: ALG_HS256,
+            segmentSize,
+          });
+          totalMs += performance.now() - start;
+        }
+        const avgMs = totalMs / benchIterations;
+
+        // Verify round-trip on last iteration (multi-segment aware)
+        let ok = false;
+        try {
+          await verifyMultiSegRoundTrip(lastTdfBytes, keyPair.privateKey, payload);
+          ok = true;
+        } catch (e) {
+          log(`  FAIL  Benchmark ${fmtSize(size)} round-trip: ${e.message}`, 'fail');
+          failed++;
+        }
+
+        benchResults.push({ size, avgMs, ok });
+        const status = ok ? 'pass' : 'fail';
+        log(`  ${ok ? 'PASS' : 'FAIL'}  ${fmtSize(size)}: ${avgMs.toFixed(1)} ms (avg ${benchIterations} iters)`, status);
+      }
+
+      // Print markdown table
+      log('\n## Browser WASM Encrypt (Chromium/V8, TinyGo)', 'info');
+      log('| Payload | Avg (ms) |', 'info');
+      log('|---------|----------|', 'info');
+      for (const r of benchResults) {
+        log(`| ${fmtSize(r.size)} | ${r.avgMs.toFixed(1)} |`, 'info');
+      }
+
       // ── Summary ───────────────────────────────────────────────────
 
       log('');
       log(`Results: ${passed} passed, ${failed} failed`, failed > 0 ? 'fail' : 'pass');
       tdf.terminate();
+    }
+
+    function fmtSize(n) {
+      const mb = 1024 * 1024;
+      const kb = 1024;
+      if (n >= mb && n % mb === 0) return `${n / mb} MB`;
+      if (n >= kb && n % kb === 0) return `${n / kb} KB`;
+      return `${n} B`;
     }
 
     main().catch(e => log(`Fatal: ${e.message}\n${e.stack}`, 'fail'));
