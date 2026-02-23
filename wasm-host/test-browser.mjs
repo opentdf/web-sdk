@@ -64,7 +64,7 @@ try {
   await page.waitForFunction(() => {
     const log = document.getElementById('log');
     return log && log.textContent.includes('Results:');
-  }, { timeout: 30000 });
+  }, { timeout: 300000 });
 
   // Extract results
   const text = await page.textContent('#log');

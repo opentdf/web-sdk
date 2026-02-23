@@ -83,6 +83,11 @@ let wasmMemory: any = null;
 let wasmLastError = '';
 let wasmOK = false;
 
+// Streaming I/O state for WASM tdf_encrypt
+let ioInput: Uint8Array | null = null;
+let ioInputOffset = 0;
+let ioOutputChunks: Uint8Array[] = [];
+
 function getMemBuf(): Uint8Array {
   return new Uint8Array(wasmMemory!.buffer);
 }
@@ -363,8 +368,19 @@ function initWasm(wasmPath: string): void {
       get_last_error: hostGetLastError,
     },
     io: {
-      read_input: () => 0,
-      write_output: () => ERR_SENTINEL,
+      read_input: (bufPtr: number, bufCapacity: number): number => {
+        if (!ioInput || ioInputOffset >= ioInput.byteLength) return 0; // EOF
+        const remaining = ioInput.byteLength - ioInputOffset;
+        const n = Math.min(remaining, bufCapacity);
+        writeWasm(bufPtr, ioInput.subarray(ioInputOffset, ioInputOffset + n));
+        ioInputOffset += n;
+        return n;
+      },
+      write_output: (bufPtr: number, bufLen: number): number => {
+        const data = readWasm(bufPtr, bufLen);
+        ioOutputChunks.push(new Uint8Array(data));
+        return bufLen;
+      },
     },
   };
 
@@ -413,7 +429,8 @@ function wasmEncrypt(
   kasPubPEM: string,
   plaintext: Uint8Array,
   kasURL: string = 'https://kas.example.com',
-  attribute: string = 'https://example.com/attr/classification/value/secret'
+  attribute: string = 'https://example.com/attr/classification/value/secret',
+  segmentSize: number = 0
 ): Uint8Array {
   const kasPubBytes = Buffer.from(kasPubPEM, 'utf8');
   const kasURLBytes = Buffer.from(kasURL, 'utf8');
@@ -422,10 +439,11 @@ function wasmEncrypt(
   const kasPubPtr = allocAndWrite(kasPubBytes);
   const kasURLPtr = allocAndWrite(kasURLBytes);
   const attrPtr = allocAndWrite(attrBytes);
-  const ptPtr = allocAndWrite(plaintext);
 
-  const outCapacity = plaintext.length * 2 + 65536;
-  const outPtr = wasmMalloc(outCapacity);
+  // Setup streaming I/O state
+  ioInput = plaintext;
+  ioInputOffset = 0;
+  ioOutputChunks = [];
 
   const resultLen = (wasmInstance!.exports.tdf_encrypt as Function)(
     kasPubPtr,
@@ -434,13 +452,10 @@ function wasmEncrypt(
     kasURLBytes.length,
     attrPtr,
     attrBytes.length,
-    ptPtr,
-    plaintext.length,
-    outPtr,
-    outCapacity,
-    0,
-    0, // HS256 for root + segment integrity
-    0 // default segment size
+    BigInt(plaintext.byteLength), // plaintextSize (i64)
+    0, // HS256 root integrity
+    0, // HS256 segment integrity
+    segmentSize
   ) as number;
 
   if (resultLen === 0) {
@@ -448,7 +463,17 @@ function wasmEncrypt(
     throw new Error('WASM encrypt failed: ' + (err || 'unknown error'));
   }
 
-  return readWasm(outPtr, resultLen);
+  // Concatenate output chunks
+  const totalLen = ioOutputChunks.reduce((s, c) => s + c.byteLength, 0);
+  const result = new Uint8Array(totalLen);
+  let off = 0;
+  for (const chunk of ioOutputChunks) {
+    result.set(chunk, off);
+    off += chunk.byteLength;
+  }
+  ioInput = null;
+  ioOutputChunks = [];
+  return result;
 }
 
 // ── KAS public key fetch ────────────────────────────────────────────
@@ -480,7 +505,7 @@ async function main() {
     .option('sizes', {
       alias: 's',
       type: 'string',
-      default: '256,1024,16384,65536,262144,1048576',
+      default: '256,1024,16384,65536,262144,1048576,10485760,104857600',
       description: 'Comma-separated payload sizes in bytes',
     })
     .option('platformUrl', {
@@ -608,7 +633,8 @@ async function main() {
         let wasmEncTotal = 0;
         for (let j = 0; j < iterations; j++) {
           const start = performance.now();
-          const tdf = wasmEncrypt(realKasPubPEM, payload, kasEndpoint, attribute);
+          const segSize = size > 1048576 ? 1048576 : 0;
+          const tdf = wasmEncrypt(realKasPubPEM, payload, kasEndpoint, attribute, segSize);
           wasmEncTotal += performance.now() - start;
           wasmTdf = tdf;
         }
