@@ -152,7 +152,7 @@ export type HkdfParams = {
 };
 
 /**
- * Public key information returned from importPublicKeyPem.
+ * Public key information returned from parsePublicKeyPem.
  */
 export type PublicKeyInfo = {
   /** Detected algorithm of the key. */
@@ -199,9 +199,6 @@ export type CryptoService = {
    */
   encryptWithPublicKey: (payload: Binary | SymmetricKey, publicKey: PublicKey) => Promise<Binary>;
 
-  /** Get length random bytes as a hex-encoded string (IVs are not secret). */
-  generateInitializationVector: (length?: number) => Promise<string>;
-
   /** Generate symmetric AES key (opaque, never hex string). */
   generateKey: (length?: number) => Promise<SymmetricKey>;
 
@@ -234,9 +231,6 @@ export type CryptoService = {
   hmac: (key: SymmetricKey, content: string) => Promise<string>;
 
   randomBytes: (byteLength: number) => Promise<Uint8Array>;
-
-  /** Compute the hex-encoded SHA hash of a UTF-16 encoded string. */
-  sha256: (content: string) => Promise<string>;
 
   /**
    * Sign data with an asymmetric private key.
@@ -291,24 +285,6 @@ export type CryptoService = {
   digest: (algorithm: HashAlgorithm, data: Uint8Array) => Promise<Uint8Array>;
 
   /**
-   * Extract PEM public key from X.509 certificate or return PEM key as-is.
-   *
-   * Used to normalize KAS public keys which may be provided as either:
-   * - X.509 certificates (-----BEGIN CERTIFICATE-----)
-   * - Raw PEM public keys (-----BEGIN PUBLIC KEY-----)
-   *
-   * For certificates, jwaAlgorithm must be provided to correctly parse the key
-   * (e.g., 'RS256', 'RS512', 'ES256', 'ES384', 'ES512'). For raw PEM keys,
-   * the algorithm parameter is ignored.
-   *
-   * @param certOrPem - PEM-encoded public key or X.509 certificate
-   * @param jwaAlgorithm - JWA algorithm for certificate parsing (required for certificates)
-   * @returns PEM-encoded public key (SPKI format)
-   * @throws Error if input is not valid PEM or certificate
-   */
-  extractPublicKeyPem: (certOrPem: string, jwaAlgorithm?: string) => Promise<string>;
-
-  /**
    * Generate an EC key pair for ECDH key agreement.
    * @param curve - Elliptic curve to use (defaults to P-256)
    * @throws ConfigurationError if EC operations not supported
@@ -330,36 +306,6 @@ export type CryptoService = {
     publicKey: PublicKey,
     hkdfParams: HkdfParams
   ) => Promise<SymmetricKey>;
-
-  /**
-   * Import and validate a PEM public key, returning algorithm info.
-   *
-   * @param pem - PEM-encoded public key or X.509 certificate
-   * @returns Validated PEM and detected algorithm
-   * @throws ConfigurationError if key format invalid or algorithm not supported
-   */
-  importPublicKeyPem: (pem: string) => Promise<PublicKeyInfo>;
-
-  /**
-   * Convert a JWK (JSON Web Key) to PEM format.
-   * Supports both RSA and EC keys.
-   *
-   * @param jwk - JSON Web Key object
-   * @returns PEM-encoded public key
-   * @throws ConfigurationError if JWK format invalid
-   */
-  jwkToPem: (jwk: JsonWebKey) => Promise<string>;
-
-  /**
-   * Convert a PEM public key to JWK format.
-   * Used for DPoP JWT header which requires JWK representation.
-   * Supports both RSA and EC keys.
-   *
-   * @param publicKeyPem - PEM-encoded public key (SPKI format)
-   * @returns JWK object with only public key components (kty, e, n for RSA; kty, crv, x, y for EC)
-   * @throws ConfigurationError if PEM format invalid
-   */
-  pemToJwk: (publicKeyPem: string) => Promise<JsonWebKey>;
 
   // === Key Import (PEM → opaque) ===
 

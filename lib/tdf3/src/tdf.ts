@@ -59,6 +59,7 @@ import { unsigned } from './utils/buffer-crc32.js';
 import { ZipReader, ZipWriter, concatUint8, buffToString } from './utils/index.js';
 import { CentralDirectory } from './utils/zip-reader.js';
 import { getZtdfSalt } from './crypto/salt.js';
+import { extractPublicKeyPem } from './crypto/index.js';
 import { Payload } from './models/payload.js';
 import {
   getRequiredObligationFQNs,
@@ -225,7 +226,7 @@ export async function extractPemFromKeyString(
   // Convert KAS algorithm to JWA algorithm if provided
   const jwaAlgorithm = publicKeyAlgorithmToJwa(alg);
   // extractPublicKeyPem handles both X.509 certificates and raw PEM keys
-  return cryptoService.extractPublicKeyPem(keyString, jwaAlgorithm);
+  return extractPublicKeyPem(keyString, jwaAlgorithm);
 }
 
 /**

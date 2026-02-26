@@ -245,13 +245,6 @@ export async function encryptWithPublicKey(
   return Binary.fromArrayBuffer(result);
 }
 
-/**
- * Generate a 16-byte initialization vector
- */
-export async function generateInitializationVector(length?: number): Promise<string> {
-  return randomBytesAsHex(length || 16);
-}
-
 export async function randomBytes(byteLength: number): Promise<Uint8Array> {
   const r = new Uint8Array(byteLength);
   crypto.getRandomValues(r);
@@ -442,11 +435,6 @@ function getSymmetricAlgoDomString(
  * @param  content  String content
  * @return Hex hash
  */
-export async function sha256(content: string): Promise<string> {
-  const buffer = new TextEncoder().encode(content);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-  return hexEncode(hashBuffer);
-}
 
 /**
  * Create an HMAC SHA256 hash
@@ -926,7 +914,7 @@ async function extractRsaModulusBitLength(keyData: ArrayBuffer): Promise<number>
  * Import and validate a PEM public key, returning algorithm info.
  * Uses JWK export for robust key parameter detection.
  */
-export async function importPublicKeyPem(pem: string): Promise<PublicKeyInfo> {
+export async function parsePublicKeyPem(pem: string): Promise<PublicKeyInfo> {
   // First extract public key if it's a certificate
   let publicKeyPem = pem;
   if (pem.includes('-----BEGIN CERTIFICATE-----')) {
@@ -978,7 +966,7 @@ export async function importPublicKeyPem(pem: string): Promise<PublicKeyInfo> {
 /**
  * Convert a JWK (JSON Web Key) to PEM format.
  */
-export async function jwkToPem(jwk: JsonWebKey): Promise<string> {
+export async function jwkToPublicKeyPem(jwk: JsonWebKey): Promise<string> {
   let key: CryptoKey;
 
   if (jwk.kty === 'RSA') {
@@ -1005,7 +993,7 @@ export async function jwkToPem(jwk: JsonWebKey): Promise<string> {
  * Convert a PEM public key to JWK format.
  * Returns only public key components (no private key data).
  */
-export async function pemToJwk(publicKeyPem: string): Promise<JsonWebKey> {
+export async function publicKeyPemToJwk(publicKeyPem: string): Promise<JsonWebKey> {
   const keyDataBase64 = removePemFormatting(publicKeyPem);
   const keyBuffer = base64Decode(keyDataBase64);
   const hex = hexEncode(keyBuffer);
@@ -1054,7 +1042,7 @@ export async function importPublicKey(pem: string, options: KeyOptions): Promise
   const { usage = 'encrypt', extractable = true, algorithmHint } = options;
 
   // Detect algorithm from PEM
-  const keyInfo = await importPublicKeyPem(pem);
+  const keyInfo = await parsePublicKeyPem(pem);
   const algorithm = algorithmHint || keyInfo.algorithm;
 
   // Remove PEM formatting
@@ -1283,9 +1271,7 @@ export const DefaultCryptoService: CryptoService = {
   exportPublicKeyJwk,
   exportPrivateKeyPem,
   exportPublicKeyPem,
-  extractPublicKeyPem,
   generateECKeyPair,
-  generateInitializationVector,
   generateKey,
   generateKeyPair,
   generateSigningKeyPair,
@@ -1293,13 +1279,9 @@ export const DefaultCryptoService: CryptoService = {
   importKeyPair,
   importPrivateKey,
   importPublicKey,
-  importPublicKeyPem,
   importSymmetricKey,
-  jwkToPem,
   mergeSymmetricKeys,
-  pemToJwk,
   randomBytes,
-  sha256,
   sign,
   signSymmetric,
   splitSymmetricKey,

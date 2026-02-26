@@ -9,6 +9,7 @@ import {
   type SymmetricKey,
 } from './crypto/declarations.js';
 import { decodeProtectedHeader, signJwt, verifyJwt, type JwtHeader } from './crypto/jwt.js';
+import { extractPublicKeyPem, jwkToPublicKeyPem } from './crypto/index.js';
 
 export type AssertionKeyAlg = 'ES256' | 'RS256' | 'HS256';
 export type AssertionType = 'handling' | 'other';
@@ -157,11 +158,11 @@ export async function verify(
 
     if (header.jwk) {
       // Convert embedded JWK to PEM
-      verificationKey = await cryptoService.jwkToPem(header.jwk as JsonWebKey);
+      verificationKey = await jwkToPublicKeyPem(header.jwk as JsonWebKey);
     } else if (header.x5c && Array.isArray(header.x5c) && header.x5c.length > 0) {
       // Extract public key from X.509 certificate
       const cert = `-----BEGIN CERTIFICATE-----\n${header.x5c[0]}\n-----END CERTIFICATE-----`;
-      verificationKey = await cryptoService.extractPublicKeyPem(cert);
+      verificationKey = await extractPublicKeyPem(cert);
     }
 
     const result = await verifyJwt(cryptoService, thiz.binding.signature, verificationKey, {

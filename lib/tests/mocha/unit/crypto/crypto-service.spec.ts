@@ -10,17 +10,15 @@ import {
   encryptWithPublicKey,
   exportPublicKeyPem,
   generateECKeyPair,
-  generateInitializationVector,
   generateKey,
   generateKeyPair,
   generateSigningKeyPair,
   hex2Ab,
   hmac,
-  importPublicKeyPem,
+  parsePublicKeyPem,
   importSymmetricKey,
-  jwkToPem,
+  jwkToPublicKeyPem,
   randomBytesAsHex,
-  sha256,
   sign,
   signSymmetric,
   verify,
@@ -65,14 +63,20 @@ describe('Crypto Service', () => {
     expect(ab).to.have.property('byteLength');
   });
 
-  describe('sha256', () => {
+  describe('digest (sha256)', () => {
     it('a', async () => {
-      const hash = await sha256('a');
-      assert.equal(hash, 'ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb');
+      const hashBytes = await digest('SHA-256', new TextEncoder().encode('a'));
+      assert.equal(
+        hex.encodeArrayBuffer(hashBytes.buffer),
+        'ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb'
+      );
     });
     it('content', async () => {
-      const hash = await sha256('content');
-      assert.equal(hash, 'ed7002b439e9ac845f22357d822bac1444730fbdb6016d3ec9432297b9ec9f73');
+      const hashBytes = await digest('SHA-256', new TextEncoder().encode('content'));
+      assert.equal(
+        hex.encodeArrayBuffer(hashBytes.buffer),
+        'ed7002b439e9ac845f22357d822bac1444730fbdb6016d3ec9432297b9ec9f73'
+      );
     });
   });
 
@@ -142,17 +146,6 @@ describe('Crypto Service', () => {
           expect(e.message).to.match(/Invalid key size requested/);
         }
       });
-    });
-  });
-
-  describe('generateInitializationVector', () => {
-    it('iv - just one byte', async () => {
-      const iv = await generateInitializationVector(1);
-      expect(iv).to.have.lengthOf(2);
-    });
-    it('iv - standard length (16)', async () => {
-      const iv = await generateInitializationVector();
-      expect(iv).to.have.lengthOf(32);
     });
   });
 
@@ -228,7 +221,7 @@ describe('Crypto Service', () => {
       decodeArrayBuffer('cvR6X2vLG5ap13ssLxRjOV1KOjJfraYpD8D+97zdtY4=')
     );
     const key = await importSymmetricKey(keyBytes);
-    const iv = Binary.fromString(await generateInitializationVector(16));
+    const iv = Binary.fromString(await randomBytesAsHex(16));
     const algo = 'http://www.w3.org/2009/xmlenc11#aes256-gcm';
 
     const encrypted = await encrypt(payload, key, iv, algo);
@@ -365,12 +358,12 @@ describe('Crypto Service', () => {
     });
   });
 
-  describe('importPublicKeyPem', () => {
+  describe('parsePublicKeyPem', () => {
     it('should import RSA public key', async () => {
       const keyPair = await generateKeyPair(2048);
       const publicKeyPem = await exportPublicKeyPem(keyPair.publicKey);
 
-      const result = await importPublicKeyPem(publicKeyPem);
+      const result = await parsePublicKeyPem(publicKeyPem);
       expect(result.algorithm).to.equal('rsa:2048');
       expect(result.pem).to.equal(publicKeyPem);
     });
@@ -379,7 +372,7 @@ describe('Crypto Service', () => {
       const ecKeyPair = await generateECKeyPair('P-256');
       const publicKeyPem = await exportPublicKeyPem(ecKeyPair.publicKey);
 
-      const result = await importPublicKeyPem(publicKeyPem);
+      const result = await parsePublicKeyPem(publicKeyPem);
       expect(result.algorithm).to.equal('ec:secp256r1');
       expect(result.pem).to.equal(publicKeyPem);
     });
@@ -388,7 +381,7 @@ describe('Crypto Service', () => {
       const ecKeyPair = await generateECKeyPair('P-384');
       const publicKeyPem = await exportPublicKeyPem(ecKeyPair.publicKey);
 
-      const result = await importPublicKeyPem(publicKeyPem);
+      const result = await parsePublicKeyPem(publicKeyPem);
       expect(result.algorithm).to.equal('ec:secp384r1');
       expect(result.pem).to.equal(publicKeyPem);
     });
@@ -397,7 +390,7 @@ describe('Crypto Service', () => {
       const ecKeyPair = await generateECKeyPair('P-521');
       const publicKeyPem = await exportPublicKeyPem(ecKeyPair.publicKey);
 
-      const result = await importPublicKeyPem(publicKeyPem);
+      const result = await parsePublicKeyPem(publicKeyPem);
       expect(result.algorithm).to.equal('ec:secp521r1');
       expect(result.pem).to.equal(publicKeyPem);
     });
@@ -563,7 +556,7 @@ describe('Crypto Service', () => {
     });
   });
 
-  describe('jwkToPem', () => {
+  describe('jwkToPublicKeyPem', () => {
     it('should convert RSA JWK to PEM', async () => {
       // Generate an RSA key pair and export to JWK
       const rsaKeyPair = await crypto.subtle.generateKey(
@@ -578,7 +571,7 @@ describe('Crypto Service', () => {
       );
       const jwk = await crypto.subtle.exportKey('jwk', rsaKeyPair.publicKey);
 
-      const pem = await jwkToPem(jwk);
+      const pem = await jwkToPublicKeyPem(jwk);
       expect(pem).to.include('-----BEGIN PUBLIC KEY-----');
       expect(pem).to.include('-----END PUBLIC KEY-----');
     });
@@ -592,12 +585,12 @@ describe('Crypto Service', () => {
       );
       const jwk = await crypto.subtle.exportKey('jwk', ecKeyPair.publicKey);
 
-      const pem = await jwkToPem(jwk);
+      const pem = await jwkToPublicKeyPem(jwk);
       expect(pem).to.include('-----BEGIN PUBLIC KEY-----');
       expect(pem).to.include('-----END PUBLIC KEY-----');
 
       // Verify the PEM can be imported back
-      const keyInfo = await importPublicKeyPem(pem);
+      const keyInfo = await parsePublicKeyPem(pem);
       expect(keyInfo.algorithm).to.equal('ec:secp256r1');
     });
 
@@ -609,10 +602,10 @@ describe('Crypto Service', () => {
       );
       const jwk = await crypto.subtle.exportKey('jwk', ecKeyPair.publicKey);
 
-      const pem = await jwkToPem(jwk);
+      const pem = await jwkToPublicKeyPem(jwk);
       expect(pem).to.include('-----BEGIN PUBLIC KEY-----');
 
-      const keyInfo = await importPublicKeyPem(pem);
+      const keyInfo = await parsePublicKeyPem(pem);
       expect(keyInfo.algorithm).to.equal('ec:secp384r1');
     });
   });
