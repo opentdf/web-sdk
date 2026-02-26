@@ -11,6 +11,7 @@ import type {
   CryptoService,
   PrivateKey,
   PublicKey,
+  SymmetricKey,
 } from '../../../tdf3/src/crypto/declarations.js';
 
 describe('JWT Utilities', () => {
@@ -362,11 +363,11 @@ describe('JWT Utilities', () => {
   });
 
   describe('HS256 (symmetric) signing', () => {
-    let symmetricKey: Uint8Array;
+    let symmetricKey: SymmetricKey;
 
     before(async () => {
       // Generate a 256-bit symmetric key
-      symmetricKey = await cryptoService.randomBytes(32);
+      symmetricKey = await cryptoService.importSymmetricKey(await cryptoService.randomBytes(32));
     });
 
     it('should sign and verify JWT with HS256', async () => {
@@ -457,9 +458,7 @@ describe('JWT Utilities', () => {
         expect.fail('Should have thrown');
       } catch (error) {
         expect(error).to.be.instanceOf(Error);
-        expect((error as Error).message).to.include(
-          'HS256 requires a SymmetricKey, not a PrivateKey'
-        );
+        expect((error as Error).message).to.include('HS256 requires a SymmetricKey');
       }
     });
 
@@ -488,7 +487,7 @@ describe('JWT Utilities', () => {
         expect.fail('Should have thrown');
       } catch (error) {
         expect(error).to.be.instanceOf(Error);
-        expect((error as Error).message).to.include('RS256 requires a PEM string or PrivateKey');
+        expect((error as Error).message).to.include('RS256 requires a PrivateKey');
       }
     });
 
@@ -502,7 +501,9 @@ describe('JWT Utilities', () => {
         expect.fail('Should have thrown');
       } catch (error) {
         expect(error).to.be.instanceOf(Error);
-        expect((error as Error).message).to.include('RS256 requires a PEM string or PublicKey');
+        expect((error as Error).message).to.include(
+          'RS256 requires a PublicKey, not a SymmetricKey'
+        );
       }
     });
   });

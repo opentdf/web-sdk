@@ -86,6 +86,16 @@ async function sign(
   const header: JwtHeader = { alg: key.alg };
 
   // Runtime check: ensure we have a signing key, not a verification key
+  if (typeof key.key === 'string') {
+    throw new ConfigurationError(
+      'Cannot sign assertion with a PEM string. Use PrivateKey or SymmetricKey for signing.'
+    );
+  }
+  if (key.key instanceof Uint8Array) {
+    throw new ConfigurationError(
+      'Cannot sign assertion with raw Uint8Array. Use SymmetricKey for signing.'
+    );
+  }
   if (typeof key.key === 'object' && '_brand' in key.key && key.key._brand === 'PublicKey') {
     throw new ConfigurationError(
       'Cannot sign assertion with PublicKey. Use PrivateKey or SymmetricKey for signing.'
@@ -94,7 +104,7 @@ async function sign(
 
   let token: string;
   try {
-    token = await signJwt(cryptoService, payload, key.key, header);
+    token = await signJwt(cryptoService, payload, key.key as PrivateKey | SymmetricKey, header);
   } catch (error) {
     throw new ConfigurationError(`Signing assertion failed: ${error.message}`, error);
   }
@@ -257,6 +267,12 @@ export async function CreateAssertion(
 
   return await sign(a, assertionHash, encodedHash, assertionConfig.signingKey, cryptoService);
 }
+
+// TODO: Split AssertionKey into two separate types:
+//   - AssertionSigningKey: key restricted to PrivateKey | SymmetricKey (no strings, no raw bytes)
+//   - AssertionVerificationKey: key restricted to string | PublicKey | SymmetricKey
+// This would make the signing/verification distinction type-safe rather than relying on runtime checks.
+// AssertionConfig.signingKey would use AssertionSigningKey; verify() and AssertionVerificationKeys would use AssertionVerificationKey.
 
 /**
  * Key used for signing or verifying assertions.

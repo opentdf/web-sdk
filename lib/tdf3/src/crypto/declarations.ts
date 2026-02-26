@@ -301,11 +301,13 @@ export type CryptoService = {
 
   /**
    * Import a PEM private key as an opaque key.
+   * Optional - intended for use in tests or by downstream integrators who need to bring
+   * their own PEM key material. Main SDK code should use opaque PrivateKey objects directly.
    * @param pem - PEM-encoded private key
    * @param options - Import options (usage required for RSA keys to disambiguate encrypt vs sign)
    * @returns Opaque private key with metadata
    */
-  importPrivateKey: (pem: string, options: KeyOptions) => Promise<PrivateKey>;
+  importPrivateKey?: (pem: string, options: KeyOptions) => Promise<PrivateKey>;
 
   // === Key Export (opaque → PEM/JWK) ===
 

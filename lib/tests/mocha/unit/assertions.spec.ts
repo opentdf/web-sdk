@@ -131,7 +131,9 @@ describe('assertions', () => {
     });
 
     it('should fallback to provided key if no key in header', async () => {
-      const symmetricKey = await cryptoService.randomBytes(32);
+      const symmetricKey = await cryptoService.importSymmetricKey(
+        await cryptoService.randomBytes(32)
+      );
       const key: assertions.AssertionKey = {
         alg: 'HS256',
         key: symmetricKey,

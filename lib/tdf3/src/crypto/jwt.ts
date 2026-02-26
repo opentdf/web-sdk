@@ -168,7 +168,7 @@ export function decodeProtectedHeader(token: string): JwtHeader {
  *
  * @param cryptoService - Crypto implementation to use
  * @param payload - JWT payload (claims)
- * @param key - For asymmetric: PEM string or PrivateKey (opaque). For HS256: Uint8Array or SymmetricKey (opaque).
+ * @param key - For asymmetric (RS256, ES256): PrivateKey (opaque). For HS256: SymmetricKey (opaque).
  * @param header - JWT header (must include alg)
  * @param options - Optional signing options (e.g., crit header handling)
  * @returns Compact JWT string
@@ -176,7 +176,7 @@ export function decodeProtectedHeader(token: string): JwtHeader {
 export async function signJwt(
   cryptoService: CryptoService,
   payload: JwtPayload,
-  key: string | Uint8Array | PrivateKey | SymmetricKey,
+  key: PrivateKey | SymmetricKey,
   header: JwtHeader,
   options?: SignJwtOptions
 ): Promise<string> {
@@ -200,35 +200,17 @@ export async function signJwt(
   // Sign via CryptoService - route based on algorithm
   let signature: Uint8Array;
   if (header.alg === 'HS256') {
-    // Symmetric signing - accept Uint8Array or SymmetricKey
-    if (typeof key === 'string') {
-      throw new Error('HS256 requires a Uint8Array or SymmetricKey, not a PEM string');
+    if (key._brand !== 'SymmetricKey') {
+      throw new Error('HS256 requires a SymmetricKey');
     }
-    if ('_brand' in key && key._brand === 'PrivateKey') {
-      throw new Error('HS256 requires a SymmetricKey, not a PrivateKey');
-    }
-    // Convert Uint8Array to SymmetricKey if needed, otherwise assume it's already SymmetricKey
-    const symmetricKey =
-      key instanceof Uint8Array
-        ? await cryptoService.importSymmetricKey(key)
-        : (key as SymmetricKey);
-    signature = await cryptoService.hmac(signingInputBytes, symmetricKey);
+    signature = await cryptoService.hmac(signingInputBytes, key);
   } else {
-    // Asymmetric signing - accept string (PEM) or PrivateKey
-    if (key instanceof Uint8Array) {
-      throw new Error(`${header.alg} requires a PEM string or PrivateKey, not Uint8Array`);
+    if (key._brand !== 'PrivateKey') {
+      throw new Error(`${header.alg} requires a PrivateKey`);
     }
-    if (typeof key === 'object' && '_brand' in key && key._brand === 'SymmetricKey') {
-      throw new Error(`${header.alg} requires a PrivateKey, not a SymmetricKey`);
-    }
-    // Convert PEM string to PrivateKey if needed, otherwise assume it's already PrivateKey
-    const privateKey =
-      typeof key === 'string'
-        ? await cryptoService.importPrivateKey(key, { usage: 'sign' })
-        : (key as PrivateKey);
     signature = await cryptoService.sign(
       signingInputBytes,
-      privateKey,
+      key,
       header.alg as AsymmetricSigningAlgorithm
     );
   }
