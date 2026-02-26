@@ -4,7 +4,6 @@ import { ConfigurationError, IntegrityError, InvalidFileError } from '../../src/
 import { tdfSpecVersion, version as sdkVersion } from '../../src/version.js';
 import {
   type CryptoService,
-  type KeyAlgorithm,
   type PrivateKey,
   type PublicKey,
   type SymmetricKey,
@@ -101,7 +100,6 @@ async function sign(
     const importedPrivateKey = await cryptoService.importPrivateKey(key.key, {
       usage: 'sign',
       extractable: false,
-      algorithmHint: key.alg as KeyAlgorithm,
     });
     key.key = importedPrivateKey;
   }
