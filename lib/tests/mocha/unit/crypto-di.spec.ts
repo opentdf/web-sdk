@@ -62,9 +62,6 @@ describe('CryptoService DI', () => {
       generateSigningKeyPair: function (): Promise<KeyPair> {
         throw new Error('Function not implemented.');
       },
-      hmac: function (key: SymmetricKey, content: string): Promise<string> {
-        throw new Error('Function not implemented.');
-      },
       randomBytes: function (byteLength: number): Promise<Uint8Array> {
         throw new Error('Function not implemented.');
       },
@@ -83,14 +80,10 @@ describe('CryptoService DI', () => {
       ): Promise<boolean> {
         throw new Error('Function not implemented.');
       },
-      signSymmetric: function (data: Uint8Array, key: SymmetricKey): Promise<Uint8Array> {
+      hmac: function (data: Uint8Array, key: SymmetricKey): Promise<Uint8Array> {
         throw new Error('Function not implemented.');
       },
-      verifySymmetric: function (
-        data: Uint8Array,
-        signature: Uint8Array,
-        key: SymmetricKey
-      ): Promise<boolean> {
+      verifyHmac: function (data: Uint8Array, signature: Uint8Array, key: SymmetricKey): Promise<boolean> {
         throw new Error('Function not implemented.');
       },
       digest: function (algorithm: HashAlgorithm, data: Uint8Array): Promise<Uint8Array> {
@@ -110,9 +103,6 @@ describe('CryptoService DI', () => {
         throw new Error('Function not implemented.');
       },
       importPrivateKey: function (pem: string): Promise<PrivateKey> {
-        throw new Error('Function not implemented.');
-      },
-      importKeyPair: function (pem: { publicKey: string; privateKey: string }): Promise<KeyPair> {
         throw new Error('Function not implemented.');
       },
       importSymmetricKey: function (keyBytes: Uint8Array): Promise<SymmetricKey> {
@@ -195,9 +185,6 @@ describe('CryptoService DI', () => {
       generateSigningKeyPair: function (): Promise<KeyPair> {
         throw new Error('Function not implemented.');
       },
-      hmac: function (key: SymmetricKey, content: string): Promise<string> {
-        throw new Error('Function not implemented.');
-      },
       randomBytes: function (byteLength: number): Promise<Uint8Array> {
         throw new Error('Function not implemented.');
       },
@@ -216,14 +203,10 @@ describe('CryptoService DI', () => {
       ): Promise<boolean> {
         throw new Error('Function not implemented.');
       },
-      signSymmetric: function (data: Uint8Array, key: SymmetricKey): Promise<Uint8Array> {
+      hmac: function (data: Uint8Array, key: SymmetricKey): Promise<Uint8Array> {
         throw new Error('Function not implemented.');
       },
-      verifySymmetric: function (
-        data: Uint8Array,
-        signature: Uint8Array,
-        key: SymmetricKey
-      ): Promise<boolean> {
+      verifyHmac: function (data: Uint8Array, signature: Uint8Array, key: SymmetricKey): Promise<boolean> {
         throw new Error('Function not implemented.');
       },
       digest: function (algorithm: HashAlgorithm, data: Uint8Array): Promise<Uint8Array> {
@@ -243,9 +226,6 @@ describe('CryptoService DI', () => {
         throw new Error('Function not implemented.');
       },
       importPrivateKey: function (pem: string): Promise<PrivateKey> {
-        throw new Error('Function not implemented.');
-      },
-      importKeyPair: function (pem: { publicKey: string; privateKey: string }): Promise<KeyPair> {
         throw new Error('Function not implemented.');
       },
       importSymmetricKey: function (keyBytes: Uint8Array): Promise<SymmetricKey> {

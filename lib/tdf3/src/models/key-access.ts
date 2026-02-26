@@ -1,4 +1,4 @@
-import { base64 } from '../../../src/encodings/index.js';
+import { base64, hex } from '../../../src/encodings/index.js';
 import { Binary } from '../binary.js';
 import type { CryptoService, KeyPair, SymmetricKey } from '../crypto/declarations.js';
 import { getZtdfSalt } from '../crypto/salt.js';
@@ -67,7 +67,9 @@ export class ECWrapped {
     entityWrappedKey.set(ciphertext, iv.length);
     entityWrappedKey.set(authTag, iv.length + ciphertext.length);
 
-    const policyBinding = await this.cryptoService.hmac(dek, base64.encode(policyStr));
+    const policyBinding = hex.encodeArrayBuffer(
+      (await this.cryptoService.hmac(new TextEncoder().encode(base64.encode(policyStr)), dek)).buffer
+    );
 
     // Export ephemeral public key to PEM for manifest
     const ephemeralPublicKeyPem = await this.cryptoService.exportPublicKeyPem(ek.publicKey);
@@ -121,7 +123,9 @@ export class Wrapped {
     });
     const wrappedKeyBinary = await this.cryptoService.encryptWithPublicKey(key, kasPublicKey);
 
-    const policyBinding = await this.cryptoService.hmac(key, base64.encode(policyStr));
+    const policyBinding = hex.encodeArrayBuffer(
+      (await this.cryptoService.hmac(new TextEncoder().encode(base64.encode(policyStr)), key)).buffer
+    );
 
     this.keyAccessObject = {
       type: 'wrapped',

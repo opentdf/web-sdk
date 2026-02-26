@@ -18,7 +18,6 @@ import {
   type KeyOptions,
   type KeyPair,
   MIN_ASYMMETRIC_KEY_SIZE_BITS,
-  type PemKeyPair,
   type PrivateKey,
   type PublicKey,
   type PublicKeyInfo,
@@ -436,29 +435,6 @@ function getSymmetricAlgoDomString(
  * @return Hex hash
  */
 
-/**
- * Create an HMAC SHA256 hash
- * @param  key     Key string
- * @param  content Content string
- * @return Hex hash
- */
-export async function hmac(key: SymmetricKey, content: string): Promise<string> {
-  const contentBuffer = new TextEncoder().encode(content);
-  // Unwrap symmetric key to get raw bytes
-  const keyBytes = unwrapSymmetricKey(key);
-  const cryptoKey = await crypto.subtle.importKey(
-    'raw',
-    keyBytes,
-    {
-      name: 'HMAC',
-      hash: { name: 'SHA-256' },
-    },
-    true,
-    ['sign', 'verify']
-  );
-  const hashBuffer = await crypto.subtle.sign('HMAC', cryptoKey, contentBuffer);
-  return hexEncode(hashBuffer);
-}
 
 /**
  * Create an ArrayBuffer from a hex string.
@@ -851,9 +827,9 @@ export async function deriveKeyFromECDH(
 }
 
 /**
- * Sign data with a symmetric key (HMAC-SHA256).
+ * Compute HMAC-SHA256 of data with a symmetric key.
  */
-export async function signSymmetric(data: Uint8Array, key: SymmetricKey): Promise<Uint8Array> {
+export async function hmac(data: Uint8Array, key: SymmetricKey): Promise<Uint8Array> {
   // Unwrap symmetric key to get raw bytes
   const keyBytes = unwrapSymmetricKey(key);
   const cryptoKey = await crypto.subtle.importKey(
@@ -869,14 +845,13 @@ export async function signSymmetric(data: Uint8Array, key: SymmetricKey): Promis
 }
 
 /**
- * Verify symmetric signature (HMAC-SHA256).
+ * Verify HMAC-SHA256. Standalone utility — not part of CryptoService interface.
  */
-export async function verifySymmetric(
+export async function verifyHmac(
   data: Uint8Array,
   signature: Uint8Array,
   key: SymmetricKey
 ): Promise<boolean> {
-  // Unwrap symmetric key to get raw bytes
   const keyBytes = unwrapSymmetricKey(key);
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
@@ -885,7 +860,6 @@ export async function verifySymmetric(
     false,
     ['verify']
   );
-
   return crypto.subtle.verify('HMAC', cryptoKey, signature, data);
 }
 
@@ -1184,18 +1158,6 @@ export async function importPrivateKey(pem: string, options: KeyOptions): Promis
   return wrapPrivateKey(cryptoKey, algorithm);
 }
 
-/**
- * Import a PEM key pair as opaque keys.
- */
-export async function importKeyPair(pem: PemKeyPair, options: KeyOptions): Promise<KeyPair> {
-  const [publicKey, privateKey] = await Promise.all([
-    importPublicKey(pem.publicKey, options),
-    importPrivateKey(pem.privateKey, options),
-  ]);
-
-  return { publicKey, privateKey };
-}
-
 // ============================================================
 // Key Export Functions (Opaque → PEM/JWK)
 // ============================================================
@@ -1275,16 +1237,14 @@ export const DefaultCryptoService: CryptoService = {
   generateKey,
   generateKeyPair,
   generateSigningKeyPair,
-  hmac,
-  importKeyPair,
   importPrivateKey,
   importPublicKey,
   importSymmetricKey,
   mergeSymmetricKeys,
   randomBytes,
+  hmac,
+  verifyHmac,
   sign,
-  signSymmetric,
   splitSymmetricKey,
   verify,
-  verifySymmetric,
 };

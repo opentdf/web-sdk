@@ -96,7 +96,8 @@ export {
   version,
 };
 
-export * as WebCryptoService from './src/crypto/index.js';
+export { DefaultCryptoService as WebCryptoService } from './src/crypto/index.js';
+// export the other methods from crypto/index.js that aren't part of CryptoService but are needed for JWT handling
 export {
   type CreateOptions,
   type CreateZTDFOptions,

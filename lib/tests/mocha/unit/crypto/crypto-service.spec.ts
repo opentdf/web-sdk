@@ -14,47 +14,46 @@ import {
   generateKeyPair,
   generateSigningKeyPair,
   hex2Ab,
-  hmac,
   parsePublicKeyPem,
   importSymmetricKey,
   jwkToPublicKeyPem,
   randomBytesAsHex,
   sign,
-  signSymmetric,
+  hmac,
+  verifyHmac,
   verify,
-  verifySymmetric,
 } from '../../../../tdf3/src/crypto/index.js';
 import { hex } from '../../../../src/encodings/index.js';
 import { Binary } from '../../../../tdf3/src/binary.js';
 import { decodeArrayBuffer, encodeArrayBuffer } from '../../../../src/encodings/base64.js';
 
 describe('Crypto Service', () => {
-  describe('hmac', () => {
+  describe('hmac (known-answer)', () => {
     it('a', async () => {
       const keyBytes = new Uint8Array(hex.decodeArrayBuffer('0b'));
       const key = await importSymmetricKey(keyBytes);
-      const hash = await hmac(key, 'a');
-      assert.equal(hash, '481294b9ead3f3c62cab40bbfda108e6678f8536d03264e37a583babbfacafc9');
+      const sig = await hmac(new TextEncoder().encode('a'), key);
+      assert.equal(hex.encodeArrayBuffer(sig.buffer), '481294b9ead3f3c62cab40bbfda108e6678f8536d03264e37a583babbfacafc9');
     });
-    it('content', async () => {
+    it('content with 1-byte key', async () => {
       const keyBytes = new Uint8Array(hex.decodeArrayBuffer('00'));
       const key = await importSymmetricKey(keyBytes);
-      const hash = await hmac(key, 'content');
-      assert.equal(hash, '2cc732a9b86e2ff403e8c0e07ee82e69dcb1820e424d465efe69c63eacb0ee95');
+      const sig = await hmac(new TextEncoder().encode('content'), key);
+      assert.equal(hex.encodeArrayBuffer(sig.buffer), '2cc732a9b86e2ff403e8c0e07ee82e69dcb1820e424d465efe69c63eacb0ee95');
     });
-    it('content', async () => {
+    it('content with 3-byte key', async () => {
       const keyBytes = new Uint8Array(hex.decodeArrayBuffer('000000'));
       const key = await importSymmetricKey(keyBytes);
-      const hash = await hmac(key, 'content');
-      assert.equal(hash, '2cc732a9b86e2ff403e8c0e07ee82e69dcb1820e424d465efe69c63eacb0ee95');
+      const sig = await hmac(new TextEncoder().encode('content'), key);
+      assert.equal(hex.encodeArrayBuffer(sig.buffer), '2cc732a9b86e2ff403e8c0e07ee82e69dcb1820e424d465efe69c63eacb0ee95');
     });
     it('random string', async () => {
       const keyBytes = new Uint8Array(
         hex.decodeArrayBuffer('d3d71c8ad8dd6e99be3eea609f69fd92a2903e2e2f0f064293997cff06ea4a6d')
       );
       const key = await importSymmetricKey(keyBytes);
-      const hash = await hmac(key, 'e12e1b9689c9f3f56f8c185269391577');
-      assert.equal(hash, '185fe0d7324b01a3fbf30e56cd7f868689b3f9c2904642603b6bb969c790ccfc');
+      const sig = await hmac(new TextEncoder().encode('e12e1b9689c9f3f56f8c185269391577'), key);
+      assert.equal(hex.encodeArrayBuffer(sig.buffer), '185fe0d7324b01a3fbf30e56cd7f868689b3f9c2904642603b6bb969c790ccfc');
     });
   });
 
@@ -316,17 +315,17 @@ describe('Crypto Service', () => {
     });
   });
 
-  describe('signSymmetric and verifySymmetric', () => {
+  describe('hmac and verifyHmac', () => {
     it('should sign and verify with HMAC-SHA256', async () => {
       const data = new TextEncoder().encode('test data');
-      const keyBytes = new Uint8Array(32); // 256-bit key
+      const keyBytes = new Uint8Array(32);
       crypto.getRandomValues(keyBytes);
       const key = await importSymmetricKey(keyBytes);
 
-      const signature = await signSymmetric(data, key);
-      expect(signature).to.have.lengthOf(32); // HMAC-SHA256 produces 32 bytes
+      const signature = await hmac(data, key);
+      expect(signature).to.have.lengthOf(32);
 
-      const valid = await verifySymmetric(data, signature, key);
+      const valid = await verifyHmac(data, signature, key);
       expect(valid).to.be.true;
     });
 
@@ -336,24 +335,20 @@ describe('Crypto Service', () => {
       crypto.getRandomValues(keyBytes);
       const key = await importSymmetricKey(keyBytes);
 
-      const signature = await signSymmetric(data, key);
-      signature[0] ^= 0xff; // Corrupt the signature
+      const signature = await hmac(data, key);
+      signature[0] ^= 0xff;
 
-      const valid = await verifySymmetric(data, signature, key);
+      const valid = await verifyHmac(data, signature, key);
       expect(valid).to.be.false;
     });
 
     it('should reject wrong key', async () => {
       const data = new TextEncoder().encode('test data');
-      const key1Bytes = new Uint8Array(32);
-      const key2Bytes = new Uint8Array(32);
-      crypto.getRandomValues(key1Bytes);
-      crypto.getRandomValues(key2Bytes);
-      const key1 = await importSymmetricKey(key1Bytes);
-      const key2 = await importSymmetricKey(key2Bytes);
+      const key1 = await importSymmetricKey(crypto.getRandomValues(new Uint8Array(32)));
+      const key2 = await importSymmetricKey(crypto.getRandomValues(new Uint8Array(32)));
 
-      const signature = await signSymmetric(data, key1);
-      const valid = await verifySymmetric(data, signature, key2);
+      const signature = await hmac(data, key1);
+      const valid = await verifyHmac(data, signature, key2);
       expect(valid).to.be.false;
     });
   });

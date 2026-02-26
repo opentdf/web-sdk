@@ -163,7 +163,7 @@ export function decodeProtectedHeader(token: string): JwtHeader {
  * Implementation:
  * 1. Base64url encode header and payload as JSON
  * 2. Create signing input: `${headerB64}.${payloadB64}`
- * 3. Sign via cryptoService.sign() (asymmetric) or signSymmetric() (HS256)
+ * 3. Sign via cryptoService.sign() (asymmetric) or hmac() (HS256)
  * 4. Return compact JWT: `${headerB64}.${payloadB64}.${signatureB64}`
  *
  * @param cryptoService - Crypto implementation to use
@@ -212,7 +212,7 @@ export async function signJwt(
       key instanceof Uint8Array
         ? await cryptoService.importSymmetricKey(key)
         : (key as SymmetricKey);
-    signature = await cryptoService.signSymmetric(signingInputBytes, symmetricKey);
+    signature = await cryptoService.hmac(signingInputBytes, symmetricKey);
   } else {
     // Asymmetric signing - accept string (PEM) or PrivateKey
     if (key instanceof Uint8Array) {
@@ -243,7 +243,7 @@ export async function signJwt(
  * Implementation:
  * 1. Split token into header.payload.signature
  * 2. Decode header, validate algorithm against allowlist
- * 3. Verify signature via cryptoService.verify() (asymmetric) or verifySymmetric() (HS256)
+ * 3. Verify signature via cryptoService.verify() (asymmetric) or verifyHmac() (HS256)
  * 4. Validate JWT claims (aud, iss, exp, nbf, etc.)
  * 5. Return decoded header and payload
  *
@@ -308,7 +308,7 @@ export async function verifyJwt(
       key instanceof Uint8Array
         ? await cryptoService.importSymmetricKey(key)
         : (key as SymmetricKey);
-    valid = await cryptoService.verifySymmetric(signingInputBytes, signature, symmetricKey);
+    valid = await cryptoService.verifyHmac(signingInputBytes, signature, symmetricKey);
   } else {
     // Asymmetric verification - accept string (PEM) or PublicKey
     if (key instanceof Uint8Array) {

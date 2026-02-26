@@ -340,7 +340,7 @@ async function getSignature(
       return content.slice(-16);
     case 'HS256': {
       // Use CryptoService for HMAC-SHA256 signing
-      return cryptoService.signSymmetric(content, unwrappedKey);
+      return cryptoService.hmac(content, unwrappedKey);
     }
     default:
       throw new ConfigurationError(`Unsupported signature alg [${algorithmType}]`);
@@ -357,11 +357,11 @@ async function getSignatureVersion422(
     case 'GMAC':
       // use the auth tag baked into the encrypted payload
       return buffToString(Uint8Array.from(payloadBinary.asByteArray()).slice(-16), 'hex');
-    case 'HS256':
-      return await cryptoService.hmac(
-        unwrappedKey,
-        buffToString(new Uint8Array(payloadBinary.asArrayBuffer()), 'utf-8')
-      );
+    case 'HS256': {
+      const content = buffToString(new Uint8Array(payloadBinary.asArrayBuffer()), 'utf-8');
+      const sig = await cryptoService.hmac(new TextEncoder().encode(content), unwrappedKey);
+      return hex.encodeArrayBuffer(sig.buffer);
+    }
     default:
       throw new ConfigurationError(`Unsupported signature alg [${algorithmType}]`);
   }

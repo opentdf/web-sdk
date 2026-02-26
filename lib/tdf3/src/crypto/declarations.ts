@@ -215,20 +215,6 @@ export type CryptoService = {
    */
   generateSigningKeyPair: () => Promise<KeyPair>;
 
-  /**
-   * Compute HMAC-SHA256 of content using opaque symmetric key.
-   * Used for TDF3 policy binding (integrity signature in manifest).
-   *
-   * This is separate from HS256 JWT signing (which uses signSymmetric/verifySymmetric).
-   * The key is raw bytes (SymmetricKey), output is hex-encoded.
-   *
-   * @param key - Opaque symmetric key (raw bytes)
-   * @param content - Content string to authenticate (typically base64-encoded policy)
-   * @returns Hex-encoded HMAC result
-   *
-   * Note: Implementations may normalize case, but callers MUST NOT rely on a specific case.
-   */
-  hmac: (key: SymmetricKey, content: string) => Promise<string>;
 
   randomBytes: (byteLength: number) => Promise<Uint8Array>;
 
@@ -259,23 +245,20 @@ export type CryptoService = {
   ) => Promise<boolean>;
 
   /**
-   * Sign data with a symmetric key (HMAC-SHA256).
-   * @param data - Data to sign
+   * Compute HMAC-SHA256 of data with a symmetric key.
+   * @param data - Data to authenticate
    * @param key - Opaque symmetric key
-   * @returns Signature bytes
-   *
-   * Note: Different from hmac() which returns hex-encoded string for TDF3 policy binding.
-   * This method is for JWT HS256 signing and returns raw signature bytes.
+   * @returns Raw HMAC bytes
    */
-  signSymmetric: (data: Uint8Array, key: SymmetricKey) => Promise<Uint8Array>;
+  hmac: (data: Uint8Array, key: SymmetricKey) => Promise<Uint8Array>;
 
   /**
-   * Verify symmetric signature (HMAC-SHA256).
-   * @param data - Original data that was signed
-   * @param signature - Signature to verify
+   * Verify HMAC-SHA256.
+   * @param data - Original data that was authenticated
+   * @param signature - HMAC to verify
    * @param key - Opaque symmetric key
    */
-  verifySymmetric: (data: Uint8Array, signature: Uint8Array, key: SymmetricKey) => Promise<boolean>;
+  verifyHmac: (data: Uint8Array, signature: Uint8Array, key: SymmetricKey) => Promise<boolean>;
 
   /**
    * Compute hash digest.
@@ -325,13 +308,6 @@ export type CryptoService = {
    */
   importPrivateKey: (pem: string, options: KeyOptions) => Promise<PrivateKey>;
 
-  /**
-   * Import a PEM key pair as opaque keys.
-   * @param pem - PEM key pair
-   * @param options - Import options (usage required for RSA keys to disambiguate encrypt vs sign)
-   * @returns Opaque key pair with metadata
-   */
-  importKeyPair: (pem: PemKeyPair, options: KeyOptions) => Promise<KeyPair>;
 
   // === Key Export (opaque → PEM/JWK) ===
 
