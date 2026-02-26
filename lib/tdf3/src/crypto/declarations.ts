@@ -25,6 +25,55 @@ export type PemKeyPair = {
  */
 export const MIN_ASYMMETRIC_KEY_SIZE_BITS = 2048;
 
+/**
+ * Elliptic curves supported for ECDH/ECDSA operations.
+ */
+export type ECCurve = 'P-256' | 'P-384' | 'P-521';
+
+/**
+ * Asymmetric signing algorithms (require PEM keys).
+ */
+export type AsymmetricSigningAlgorithm = 'RS256' | 'ES256' | 'ES384' | 'ES512';
+
+/**
+ * Symmetric signing algorithm (requires raw key bytes).
+ */
+export type SymmetricSigningAlgorithm = 'HS256';
+
+/**
+ * All supported signing algorithms.
+ */
+export type SigningAlgorithm = AsymmetricSigningAlgorithm | SymmetricSigningAlgorithm;
+
+/**
+ * Supported hash algorithms.
+ */
+export type HashAlgorithm = 'SHA-256' | 'SHA-384' | 'SHA-512';
+
+/**
+ * Parameters for HKDF key derivation.
+ */
+export type HkdfParams = {
+  /** Hash algorithm to use for HKDF. */
+  hash: HashAlgorithm;
+  /** Salt for HKDF (can be empty Uint8Array). */
+  salt: Uint8Array;
+  /** Optional info/context for HKDF. */
+  info?: Uint8Array;
+  /** Desired key length in bits. Defaults to 256. */
+  keyLength?: number;
+};
+
+/**
+ * Public key information returned from importPublicKeyPem.
+ */
+export type PublicKeyInfo = {
+  /** Detected algorithm of the key. */
+  algorithm: 'rsa:2048' | 'rsa:4096' | 'ec:secp256r1' | 'ec:secp384r1' | 'ec:secp521r1';
+  /** Normalized PEM string. */
+  pem: string;
+};
+
 export type AnyKeyPair = PemKeyPair | CryptoKeyPair;
 
 export type CryptoService = {
@@ -78,7 +127,13 @@ export type CryptoService = {
   generateSigningKeyPair: () => Promise<AnyKeyPair>;
 
   /**
-   * Create an HMAC SHA256 hash
+   * Compute HMAC-SHA256 of content using key.
+   * @param key - Hex-encoded key bytes (e.g., "0a1b2c...")
+   * @param content - Hex-encoded content bytes to authenticate
+   * @returns Hex-encoded HMAC result
+   *
+   * Note: Callers should treat inputs and outputs as hex-encoded byte strings.
+   * Implementations may normalize case, but callers MUST NOT rely on a specific case.
    */
   hmac: (key: string, content: string) => Promise<string>;
 
@@ -86,4 +141,114 @@ export type CryptoService = {
 
   /** Compute the hex-encoded SHA hash of a UTF-16 encoded string. */
   sha256: (content: string) => Promise<string>;
+
+  /**
+   * Sign data with an asymmetric private key.
+   * @param data - Data to sign
+   * @param privateKeyPem - PEM-encoded private key (PKCS#8 format)
+   * @param algorithm - Signing algorithm (RS256, ES256, ES384, ES512)
+   */
+  sign: (
+    data: Uint8Array,
+    privateKeyPem: string,
+    algorithm: AsymmetricSigningAlgorithm
+  ) => Promise<Uint8Array>;
+
+  /**
+   * Verify signature with an asymmetric public key.
+   * @param data - Original data that was signed
+   * @param signature - Signature to verify
+   * @param publicKeyPem - PEM-encoded public key (SPKI format)
+   * @param algorithm - Must match algorithm used for signing
+   */
+  verify: (
+    data: Uint8Array,
+    signature: Uint8Array,
+    publicKeyPem: string,
+    algorithm: AsymmetricSigningAlgorithm
+  ) => Promise<boolean>;
+
+  /**
+   * Sign data with a symmetric key (HMAC-SHA256).
+   * @param data - Data to sign
+   * @param key - Raw key bytes (NOT hex-encoded like hmac())
+   * @returns Signature bytes
+   *
+   * Note: Different from hmac() which uses hex encoding for TDF3 policy binding.
+   * This method is for JWT HS256 signing with raw byte keys.
+   */
+  signSymmetric: (data: Uint8Array, key: Uint8Array) => Promise<Uint8Array>;
+
+  /**
+   * Verify symmetric signature (HMAC-SHA256).
+   * @param data - Original data that was signed
+   * @param signature - Signature to verify
+   * @param key - Raw key bytes
+   */
+  verifySymmetric: (data: Uint8Array, signature: Uint8Array, key: Uint8Array) => Promise<boolean>;
+
+  /**
+   * Compute hash digest.
+   * @param algorithm - Hash algorithm to use (SHA-256, SHA-384, SHA-512)
+   * @param data - Data to hash
+   */
+  digest: (algorithm: HashAlgorithm, data: Uint8Array) => Promise<Uint8Array>;
+
+  /**
+   * Extract PEM public key from X.509 certificate or return PEM key as-is.
+   *
+   * Used to normalize KAS public keys which may be provided as either:
+   * - X.509 certificates (-----BEGIN CERTIFICATE-----)
+   * - Raw PEM public keys (-----BEGIN PUBLIC KEY-----)
+   *
+   * X.509 certificates are self-describing (algorithm is in cert metadata),
+   * so no algorithm parameter is needed. Output is always SPKI-format PEM.
+   *
+   * @param certOrPem - PEM-encoded public key or X.509 certificate
+   * @returns PEM-encoded public key (SPKI format)
+   * @throws Error if input is not valid PEM or certificate
+   */
+  extractPublicKeyPem: (certOrPem: string) => Promise<string>;
+
+  /**
+   * Generate an EC key pair for ECDH key agreement or ECDSA signing.
+   * @param curve - Elliptic curve to use (defaults to P-256)
+   * @throws ConfigurationError if EC operations not supported
+   */
+  generateECKeyPair: (curve?: ECCurve) => Promise<PemKeyPair>;
+
+  /**
+   * Perform ECDH key agreement followed by HKDF key derivation.
+   * Returns raw derived key bytes suitable for symmetric encryption.
+   *
+   * @param privateKeyPem - PEM-encoded EC private key
+   * @param publicKeyPem - PEM-encoded EC public key of other party
+   * @param hkdfParams - Parameters for HKDF derivation
+   * @returns Raw derived key bytes
+   * @throws ConfigurationError if EC operations not supported
+   */
+  deriveKeyFromECDH: (
+    privateKeyPem: string,
+    publicKeyPem: string,
+    hkdfParams: HkdfParams
+  ) => Promise<Uint8Array>;
+
+  /**
+   * Import and validate a PEM public key, returning algorithm info.
+   *
+   * @param pem - PEM-encoded public key or X.509 certificate
+   * @returns Validated PEM and detected algorithm
+   * @throws ConfigurationError if key format invalid or algorithm not supported
+   */
+  importPublicKeyPem: (pem: string) => Promise<PublicKeyInfo>;
+
+  /**
+   * Convert a JWK (JSON Web Key) to PEM format.
+   * Supports both RSA and EC keys.
+   *
+   * @param jwk - JSON Web Key object
+   * @returns PEM-encoded public key
+   * @throws ConfigurationError if JWK format invalid
+   */
+  jwkToPem: (jwk: JsonWebKey) => Promise<string>;
 };
