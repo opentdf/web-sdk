@@ -68,7 +68,8 @@ export class ECWrapped {
     entityWrappedKey.set(authTag, iv.length + ciphertext.length);
 
     const policyBinding = hex.encodeArrayBuffer(
-      (await this.cryptoService.hmac(new TextEncoder().encode(base64.encode(policyStr)), dek)).buffer
+      (await this.cryptoService.hmac(new TextEncoder().encode(base64.encode(policyStr)), dek))
+        .buffer
     );
 
     // Export ephemeral public key to PEM for manifest
@@ -124,7 +125,8 @@ export class Wrapped {
     const wrappedKeyBinary = await this.cryptoService.encryptWithPublicKey(key, kasPublicKey);
 
     const policyBinding = hex.encodeArrayBuffer(
-      (await this.cryptoService.hmac(new TextEncoder().encode(base64.encode(policyStr)), key)).buffer
+      (await this.cryptoService.hmac(new TextEncoder().encode(base64.encode(policyStr)), key))
+        .buffer
     );
 
     this.keyAccessObject = {

@@ -434,7 +434,6 @@ function getSymmetricAlgoDomString(
  * @return Hex hash
  */
 
-
 /**
  * Create an ArrayBuffer from a hex string.
  * https://developers.google.com/web/updates/2012/06/How-to-convert-ArrayBuffer-to-and-from-String?hl=en
@@ -1102,7 +1101,8 @@ export async function importPrivateKey(pem: string, options: KeyOptions): Promis
         'P-521': 'ec:secp521r1',
       };
       const mapped = curveMap[namedCurve];
-      if (!mapped) throw new ConfigurationError(`Unsupported EC curve in private key: ${namedCurve}`);
+      if (!mapped)
+        throw new ConfigurationError(`Unsupported EC curve in private key: ${namedCurve}`);
       algorithm = mapped;
     } else {
       // RSA — determine key size by importing and reading modulus length from JWK

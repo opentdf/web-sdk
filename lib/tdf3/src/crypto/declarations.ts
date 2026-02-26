@@ -215,7 +215,6 @@ export type CryptoService = {
    */
   generateSigningKeyPair: () => Promise<KeyPair>;
 
-
   randomBytes: (byteLength: number) => Promise<Uint8Array>;
 
   /**
@@ -307,7 +306,6 @@ export type CryptoService = {
    * @returns Opaque private key with metadata
    */
   importPrivateKey: (pem: string, options: KeyOptions) => Promise<PrivateKey>;
-
 
   // === Key Export (opaque → PEM/JWK) ===
 

@@ -83,7 +83,11 @@ describe('CryptoService DI', () => {
       hmac: function (data: Uint8Array, key: SymmetricKey): Promise<Uint8Array> {
         throw new Error('Function not implemented.');
       },
-      verifyHmac: function (data: Uint8Array, signature: Uint8Array, key: SymmetricKey): Promise<boolean> {
+      verifyHmac: function (
+        data: Uint8Array,
+        signature: Uint8Array,
+        key: SymmetricKey
+      ): Promise<boolean> {
         throw new Error('Function not implemented.');
       },
       digest: function (algorithm: HashAlgorithm, data: Uint8Array): Promise<Uint8Array> {
@@ -206,7 +210,11 @@ describe('CryptoService DI', () => {
       hmac: function (data: Uint8Array, key: SymmetricKey): Promise<Uint8Array> {
         throw new Error('Function not implemented.');
       },
-      verifyHmac: function (data: Uint8Array, signature: Uint8Array, key: SymmetricKey): Promise<boolean> {
+      verifyHmac: function (
+        data: Uint8Array,
+        signature: Uint8Array,
+        key: SymmetricKey
+      ): Promise<boolean> {
         throw new Error('Function not implemented.');
       },
       digest: function (algorithm: HashAlgorithm, data: Uint8Array): Promise<Uint8Array> {

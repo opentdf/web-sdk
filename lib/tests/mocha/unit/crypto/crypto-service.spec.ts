@@ -33,19 +33,28 @@ describe('Crypto Service', () => {
       const keyBytes = new Uint8Array(hex.decodeArrayBuffer('0b'));
       const key = await importSymmetricKey(keyBytes);
       const sig = await hmac(new TextEncoder().encode('a'), key);
-      assert.equal(hex.encodeArrayBuffer(sig.buffer), '481294b9ead3f3c62cab40bbfda108e6678f8536d03264e37a583babbfacafc9');
+      assert.equal(
+        hex.encodeArrayBuffer(sig.buffer),
+        '481294b9ead3f3c62cab40bbfda108e6678f8536d03264e37a583babbfacafc9'
+      );
     });
     it('content with 1-byte key', async () => {
       const keyBytes = new Uint8Array(hex.decodeArrayBuffer('00'));
       const key = await importSymmetricKey(keyBytes);
       const sig = await hmac(new TextEncoder().encode('content'), key);
-      assert.equal(hex.encodeArrayBuffer(sig.buffer), '2cc732a9b86e2ff403e8c0e07ee82e69dcb1820e424d465efe69c63eacb0ee95');
+      assert.equal(
+        hex.encodeArrayBuffer(sig.buffer),
+        '2cc732a9b86e2ff403e8c0e07ee82e69dcb1820e424d465efe69c63eacb0ee95'
+      );
     });
     it('content with 3-byte key', async () => {
       const keyBytes = new Uint8Array(hex.decodeArrayBuffer('000000'));
       const key = await importSymmetricKey(keyBytes);
       const sig = await hmac(new TextEncoder().encode('content'), key);
-      assert.equal(hex.encodeArrayBuffer(sig.buffer), '2cc732a9b86e2ff403e8c0e07ee82e69dcb1820e424d465efe69c63eacb0ee95');
+      assert.equal(
+        hex.encodeArrayBuffer(sig.buffer),
+        '2cc732a9b86e2ff403e8c0e07ee82e69dcb1820e424d465efe69c63eacb0ee95'
+      );
     });
     it('random string', async () => {
       const keyBytes = new Uint8Array(
@@ -53,7 +62,10 @@ describe('Crypto Service', () => {
       );
       const key = await importSymmetricKey(keyBytes);
       const sig = await hmac(new TextEncoder().encode('e12e1b9689c9f3f56f8c185269391577'), key);
-      assert.equal(hex.encodeArrayBuffer(sig.buffer), '185fe0d7324b01a3fbf30e56cd7f868689b3f9c2904642603b6bb969c790ccfc');
+      assert.equal(
+        hex.encodeArrayBuffer(sig.buffer),
+        '185fe0d7324b01a3fbf30e56cd7f868689b3f9c2904642603b6bb969c790ccfc'
+      );
     });
   });
 
