@@ -86,7 +86,7 @@
     "dpop": "^1.4.1",
     "jose": "^6.0.8",
     "json-canonicalize": "^1.0.6",
-    "uuid": "~11.1.0"
+    "uuid": "~13.0.0"
   },
   "devDependencies": {
     "@bufbuild/buf": "^1.64.0",
