@@ -228,12 +228,12 @@ export async function encryptWithPublicKey(
   payload: Binary | SymmetricKey,
   publicKey: PublicKey
 ): Promise<Binary> {
-  let payloadBuffer: ArrayBuffer;
+  let payloadBuffer: BufferSource;
 
   // Handle SymmetricKey unwrapping
   if ('_brand' in payload && payload._brand === 'SymmetricKey') {
-    const keyBytes = unwrapSymmetricKey(payload);
-    payloadBuffer = keyBytes.buffer;
+    // Pass Uint8Array directly — Web Crypto respects byteOffset/byteLength on typed array views.
+    payloadBuffer = unwrapSymmetricKey(payload);
   } else {
     // Binary payload
     payloadBuffer = (payload as Binary).asArrayBuffer();
@@ -334,11 +334,10 @@ async function _doEncrypt(
   console.assert(iv != null);
 
   // Handle both Binary and SymmetricKey payloads
-  let payloadBuffer: ArrayBuffer;
+  let payloadBuffer: BufferSource;
   if ('_brand' in payload && payload._brand === 'SymmetricKey') {
-    // Unwrap SymmetricKey to get raw bytes for encryption
-    const payloadKeyBytes = unwrapSymmetricKey(payload);
-    payloadBuffer = payloadKeyBytes.buffer;
+    // Pass Uint8Array directly — Web Crypto respects byteOffset/byteLength on typed array views.
+    payloadBuffer = unwrapSymmetricKey(payload);
   } else {
     // Binary payload
     payloadBuffer = (payload as Binary).asArrayBuffer();
@@ -1085,26 +1084,40 @@ export async function importPrivateKey(pem: string, options: KeyOptions): Promis
   // For now, use algorithmHint if provided, otherwise detect from key structure
   let algorithm: KeyAlgorithm;
 
+  const keyData = removePemFormatting(pem);
+  const keyBuffer = base64Decode(keyData);
+
   if (algorithmHint) {
     algorithm = algorithmHint;
   } else {
-    // Try to detect from PEM - check EC OIDs vs RSA
-    const keyData = removePemFormatting(pem);
-    const keyBuffer = base64Decode(keyData);
-
-    // Simple heuristic: EC private keys are much smaller than RSA
-    // More robust: would need ASN.1 parsing
-    if (keyBuffer.byteLength < 200) {
-      // Likely EC - default to P-256
-      algorithm = 'ec:secp256r1';
+    // PKCS#8 PrivateKeyInfo embeds the same AlgorithmIdentifier OIDs as SPKI,
+    // so guessAlgorithmName / guessCurveName work on private key bytes too.
+    const hex = hexEncode(keyBuffer);
+    const algorithmName = guessAlgorithmName(hex); // throws on unrecognised OID
+    if (algorithmName === 'ECDH' || algorithmName === 'ECDSA') {
+      const namedCurve = guessCurveName(hex);
+      const curveMap: Record<string, KeyAlgorithm> = {
+        'P-256': 'ec:secp256r1',
+        'P-384': 'ec:secp384r1',
+        'P-521': 'ec:secp521r1',
+      };
+      const mapped = curveMap[namedCurve];
+      if (!mapped) throw new ConfigurationError(`Unsupported EC curve in private key: ${namedCurve}`);
+      algorithm = mapped;
     } else {
-      // Likely RSA - default to 2048
-      algorithm = 'rsa:2048';
+      // RSA — determine key size by importing and reading modulus length from JWK
+      const tempKey = await crypto.subtle.importKey(
+        'pkcs8',
+        keyBuffer,
+        { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+        true,
+        ['sign']
+      );
+      const jwk = await crypto.subtle.exportKey('jwk', tempKey);
+      const modulusBits = jwk.n ? base64urlByteLength(jwk.n) * 8 : 2048;
+      algorithm = modulusBits <= 2048 ? 'rsa:2048' : 'rsa:4096';
     }
   }
-
-  const keyData = removePemFormatting(pem);
-  const keyBuffer = base64Decode(keyData);
 
   // Determine Web Crypto algorithm and usages
   let cryptoAlgorithm: RsaHashedImportParams | EcKeyImportParams;
