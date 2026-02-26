@@ -1,6 +1,6 @@
 import { base64, hex } from '../../../src/encodings/index.js';
 import { Binary } from '../binary.js';
-import type { CryptoService } from '../crypto/declarations.js';
+import type { CryptoService, KeyPair, SymmetricKey } from '../crypto/declarations.js';
 import { getZtdfSalt } from '../crypto/salt.js';
 import { Algorithms } from '../ciphers/index.js';
 import { Policy } from './policy.js';
@@ -9,11 +9,9 @@ export type KeyAccessType = 'remote' | 'wrapped' | 'ec-wrapped';
 
 export const schemaVersion = '1.0';
 
-import type { PemKeyPair } from '../crypto/declarations.js';
-
 export class ECWrapped {
   readonly type = 'ec-wrapped';
-  readonly ephemeralKeyPair: Promise<PemKeyPair>;
+  readonly ephemeralKeyPair: Promise<KeyPair>;
   keyAccessObject?: KeyAccessObject;
 
   constructor(
@@ -24,37 +22,37 @@ export class ECWrapped {
     public readonly cryptoService: CryptoService,
     public readonly sid?: string
   ) {
-    // Generate EC key pair using CryptoService - returns PEM keys
-    // Note: Original used crypto.subtle with ['deriveBits', 'deriveKey'] usages,
-    // but with PEM export/import, the usages are set when re-importing in deriveKeyFromECDH
+    // Generate EC key pair using CryptoService - returns opaque keys
     this.ephemeralKeyPair = this.cryptoService.generateECKeyPair('P-256');
   }
 
   async write(
     policy: Policy,
-    dek: Uint8Array,
+    dek: SymmetricKey,
     encryptedMetadataStr: string
   ): Promise<KeyAccessObject> {
     const policyStr = JSON.stringify(policy);
     const ek = await this.ephemeralKeyPair;
 
+    // Import KAS public key from PEM
+    const kasPublicKey = await this.cryptoService.importPublicKey(this.publicKey, {
+      usage: 'derive',
+    });
+
     // Derive encryption key using ECDH + HKDF via CryptoService
-    const derivedKeyBytes = await this.cryptoService.deriveKeyFromECDH(
-      ek.privateKey,
-      this.publicKey,
-      {
-        hash: 'SHA-256',
-        salt: await getZtdfSalt(this.cryptoService),
-      }
-    );
+    const derivedKey = await this.cryptoService.deriveKeyFromECDH(ek.privateKey, kasPublicKey, {
+      hash: 'SHA-256',
+      salt: await getZtdfSalt(this.cryptoService),
+    });
 
     // Generate random IV
     const iv = await this.cryptoService.randomBytes(12);
 
     // Encrypt DEK using derived key with AES-GCM
+    // Payload is SymmetricKey (the DEK), key is SymmetricKey (derived from ECDH)
     const encryptResult = await this.cryptoService.encrypt(
-      Binary.fromArrayBuffer(dek.buffer),
-      Binary.fromArrayBuffer(derivedKeyBytes.buffer),
+      dek,
+      derivedKey,
       Binary.fromArrayBuffer(iv.buffer),
       Algorithms.AES_256_GCM
     );
@@ -69,10 +67,13 @@ export class ECWrapped {
     entityWrappedKey.set(ciphertext, iv.length);
     entityWrappedKey.set(authTag, iv.length + ciphertext.length);
 
-    const policyBinding = await this.cryptoService.hmac(
-      hex.encodeArrayBuffer(dek),
-      base64.encode(policyStr)
+    const policyBinding = hex.encodeArrayBuffer(
+      (await this.cryptoService.hmac(new TextEncoder().encode(base64.encode(policyStr)), dek))
+        .buffer
     );
+
+    // Export ephemeral public key to PEM for manifest
+    const ephemeralPublicKeyPem = await this.cryptoService.exportPublicKeyPem(ek.publicKey);
 
     const kao: KeyAccessObject = {
       type: 'ec-wrapped',
@@ -85,7 +86,7 @@ export class ECWrapped {
         hash: base64.encode(policyBinding),
       },
       schemaVersion,
-      ephemeralPublicKey: ek.publicKey,
+      ephemeralPublicKey: ephemeralPublicKeyPem,
     };
     if (this.kid) {
       kao.kid = this.kid;
@@ -113,19 +114,19 @@ export class Wrapped {
 
   async write(
     policy: Policy,
-    keyBuffer: Uint8Array,
+    key: SymmetricKey,
     encryptedMetadataStr: string
   ): Promise<KeyAccessObject> {
     const policyStr = JSON.stringify(policy);
-    const unwrappedKeyBinary = Binary.fromArrayBuffer(keyBuffer.buffer);
-    const wrappedKeyBinary = await this.cryptoService.encryptWithPublicKey(
-      unwrappedKeyBinary,
-      this.publicKey
-    );
+    // Import KAS public key from PEM
+    const kasPublicKey = await this.cryptoService.importPublicKey(this.publicKey, {
+      usage: 'encrypt',
+    });
+    const wrappedKeyBinary = await this.cryptoService.encryptWithPublicKey(key, kasPublicKey);
 
-    const policyBinding = await this.cryptoService.hmac(
-      hex.encodeArrayBuffer(keyBuffer),
-      base64.encode(policyStr)
+    const policyBinding = hex.encodeArrayBuffer(
+      (await this.cryptoService.hmac(new TextEncoder().encode(base64.encode(policyStr)), key))
+        .buffer
     );
 
     this.keyAccessObject = {

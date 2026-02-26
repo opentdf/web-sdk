@@ -14,6 +14,7 @@ export type DecryptResult = {
 
 /**
  * PEM formatted keypair.
+ * Used for import/export compatibility. Internal code should use KeyPair (opaque keys).
  */
 export type PemKeyPair = {
   publicKey: string;
@@ -21,9 +22,95 @@ export type PemKeyPair = {
 };
 
 /**
+ * Key algorithm identifier combining key type and parameters.
+ */
+export type KeyAlgorithm =
+  | 'rsa:2048'
+  | 'rsa:4096'
+  | 'ec:secp256r1'
+  | 'ec:secp384r1'
+  | 'ec:secp521r1';
+
+/**
+ * Options for key generation and import.
+ */
+export type KeyOptions = {
+  /**
+   * Key usage: 'encrypt' for RSA-OAEP, 'sign' for RSA/ECDSA signing, 'derive' for ECDH.
+   * If not specified, defaults based on the generation method or key type.
+   */
+  usage?: 'encrypt' | 'sign' | 'derive';
+
+  /**
+   * Whether keys can be exported. Defaults to true.
+   * HSM-backed implementations may force false for private keys.
+   */
+  extractable?: boolean;
+
+  /**
+   * Optional algorithm hint for import validation.
+   * Helps disambiguate or validate imported keys.
+   */
+  algorithmHint?: KeyAlgorithm;
+};
+
+/**
+ * Opaque public key - internal representation hidden.
+ * Code outside CryptoService treats this as a token.
+ *
+ * Includes metadata for algorithm selection without needing CryptoService calls.
+ */
+export type PublicKey = {
+  readonly _brand: 'PublicKey';
+  /** Algorithm identifier (e.g., 'rsa:2048', 'ec:secp256r1') */
+  readonly algorithm: KeyAlgorithm;
+  /** RSA modulus bit length (only for RSA keys) */
+  readonly modulusBits?: number;
+  /** EC curve name (only for EC keys) */
+  readonly curve?: ECCurve;
+};
+
+/**
+ * Opaque private key - internal representation hidden.
+ * Code outside CryptoService treats this as a token.
+ *
+ * Includes metadata for algorithm selection without needing CryptoService calls.
+ */
+export type PrivateKey = {
+  readonly _brand: 'PrivateKey';
+  /** Algorithm identifier (e.g., 'rsa:2048', 'ec:secp256r1') */
+  readonly algorithm: KeyAlgorithm;
+  /** RSA modulus bit length (only for RSA keys) */
+  readonly modulusBits?: number;
+  /** EC curve name (only for EC keys) */
+  readonly curve?: ECCurve;
+};
+
+/**
+ * Opaque key pair with matching algorithms.
+ */
+export type KeyPair = {
+  readonly publicKey: PublicKey;
+  readonly privateKey: PrivateKey;
+};
+
+/**
  * The minimum acceptable asymetric key size, currently 2^11.
  */
 export const MIN_ASYMMETRIC_KEY_SIZE_BITS = 2048;
+
+/**
+ * Opaque symmetric key - internal representation hidden.
+ * Code outside CryptoService treats this as a token.
+ * Used for AES encryption/decryption.
+ *
+ * Includes metadata for key length without needing CryptoService calls.
+ */
+export type SymmetricKey = {
+  readonly _brand: 'SymmetricKey';
+  /** Key length in bits (e.g., 256 for AES-256) */
+  readonly length: number;
+};
 
 /**
  * Elliptic curves supported for ECDH/ECDSA operations.
@@ -65,7 +152,7 @@ export type HkdfParams = {
 };
 
 /**
- * Public key information returned from importPublicKeyPem.
+ * Public key information returned from parsePublicKeyPem.
  */
 export type PublicKeyInfo = {
   /** Detected algorithm of the key. */
@@ -87,70 +174,58 @@ export type CryptoService = {
    */
   decrypt: (
     payload: Binary,
-    key: Binary,
+    key: SymmetricKey,
     iv: Binary,
     algorithm?: AlgorithmUrn,
     authTag?: Binary
   ) => Promise<DecryptResult>;
 
-  decryptWithPrivateKey: (encryptedPayload: Binary, privateKey: string) => Promise<Binary>;
+  decryptWithPrivateKey: (encryptedPayload: Binary, privateKey: PrivateKey) => Promise<Binary>;
 
   /**
    * Encrypt content with the default or handed algorithm.
+   * Accepts Binary or SymmetricKey as payload (for key wrapping with symmetric keys).
    */
   encrypt: (
-    payload: Binary,
-    key: Binary,
+    payload: Binary | SymmetricKey,
+    key: SymmetricKey,
     iv: Binary,
     algorithm?: AlgorithmUrn
   ) => Promise<EncryptResult>;
 
-  encryptWithPublicKey: (payload: Binary, publicKey: string) => Promise<Binary>;
+  /**
+   * Encrypt with asymmetric public key (RSA-OAEP).
+   * Accepts Binary or SymmetricKey for key wrapping.
+   */
+  encryptWithPublicKey: (payload: Binary | SymmetricKey, publicKey: PublicKey) => Promise<Binary>;
 
-  /** Get length random bytes as a hex-encoded string. */
-  generateInitializationVector: (length?: number) => Promise<string>;
-
-  /** Get length random bytes as a hex-encoded string. */
-  generateKey: (length?: number) => Promise<string>;
+  /** Generate symmetric AES key (opaque, never hex string). */
+  generateKey: (length?: number) => Promise<SymmetricKey>;
 
   /**
    * Generate an RSA key pair for encryption/decryption.
    * @param size in bits, defaults to a reasonable size for the default method
-   * @returns PEM-encoded key pair
+   * @returns Opaque key pair
    */
-  generateKeyPair: (size?: number) => Promise<PemKeyPair>;
+  generateKeyPair: (size?: number) => Promise<KeyPair>;
 
   /**
    * Generate an RSA key pair for signing/verification.
-   * @returns PEM-encoded key pair
+   * @returns Opaque key pair
    */
-  generateSigningKeyPair: () => Promise<PemKeyPair>;
-
-  /**
-   * Compute HMAC-SHA256 of content using key.
-   * @param key - Hex-encoded key bytes (e.g., "0a1b2c...")
-   * @param content - Hex-encoded content bytes to authenticate
-   * @returns Hex-encoded HMAC result
-   *
-   * Note: Callers should treat inputs and outputs as hex-encoded byte strings.
-   * Implementations may normalize case, but callers MUST NOT rely on a specific case.
-   */
-  hmac: (key: string, content: string) => Promise<string>;
+  generateSigningKeyPair: () => Promise<KeyPair>;
 
   randomBytes: (byteLength: number) => Promise<Uint8Array>;
-
-  /** Compute the hex-encoded SHA hash of a UTF-16 encoded string. */
-  sha256: (content: string) => Promise<string>;
 
   /**
    * Sign data with an asymmetric private key.
    * @param data - Data to sign
-   * @param privateKeyPem - PEM-encoded private key (PKCS#8 format)
+   * @param privateKey - Opaque private key
    * @param algorithm - Signing algorithm (RS256, ES256, ES384, ES512)
    */
   sign: (
     data: Uint8Array,
-    privateKeyPem: string,
+    privateKey: PrivateKey,
     algorithm: AsymmetricSigningAlgorithm
   ) => Promise<Uint8Array>;
 
@@ -158,34 +233,31 @@ export type CryptoService = {
    * Verify signature with an asymmetric public key.
    * @param data - Original data that was signed
    * @param signature - Signature to verify
-   * @param publicKeyPem - PEM-encoded public key (SPKI format)
+   * @param publicKey - Opaque public key
    * @param algorithm - Must match algorithm used for signing
    */
   verify: (
     data: Uint8Array,
     signature: Uint8Array,
-    publicKeyPem: string,
+    publicKey: PublicKey,
     algorithm: AsymmetricSigningAlgorithm
   ) => Promise<boolean>;
 
   /**
-   * Sign data with a symmetric key (HMAC-SHA256).
-   * @param data - Data to sign
-   * @param key - Raw key bytes (NOT hex-encoded like hmac())
-   * @returns Signature bytes
-   *
-   * Note: Different from hmac() which uses hex encoding for TDF3 policy binding.
-   * This method is for JWT HS256 signing with raw byte keys.
+   * Compute HMAC-SHA256 of data with a symmetric key.
+   * @param data - Data to authenticate
+   * @param key - Opaque symmetric key
+   * @returns Raw HMAC bytes
    */
-  signSymmetric: (data: Uint8Array, key: Uint8Array) => Promise<Uint8Array>;
+  hmac: (data: Uint8Array, key: SymmetricKey) => Promise<Uint8Array>;
 
   /**
-   * Verify symmetric signature (HMAC-SHA256).
-   * @param data - Original data that was signed
-   * @param signature - Signature to verify
-   * @param key - Raw key bytes
+   * Verify HMAC-SHA256.
+   * @param data - Original data that was authenticated
+   * @param signature - HMAC to verify
+   * @param key - Opaque symmetric key
    */
-  verifySymmetric: (data: Uint8Array, signature: Uint8Array, key: Uint8Array) => Promise<boolean>;
+  verifyHmac: (data: Uint8Array, signature: Uint8Array, key: SymmetricKey) => Promise<boolean>;
 
   /**
    * Compute hash digest.
@@ -195,73 +267,102 @@ export type CryptoService = {
   digest: (algorithm: HashAlgorithm, data: Uint8Array) => Promise<Uint8Array>;
 
   /**
-   * Extract PEM public key from X.509 certificate or return PEM key as-is.
-   *
-   * Used to normalize KAS public keys which may be provided as either:
-   * - X.509 certificates (-----BEGIN CERTIFICATE-----)
-   * - Raw PEM public keys (-----BEGIN PUBLIC KEY-----)
-   *
-   * For certificates, jwaAlgorithm must be provided to correctly parse the key
-   * (e.g., 'RS256', 'RS512', 'ES256', 'ES384', 'ES512'). For raw PEM keys,
-   * the algorithm parameter is ignored.
-   *
-   * @param certOrPem - PEM-encoded public key or X.509 certificate
-   * @param jwaAlgorithm - JWA algorithm for certificate parsing (required for certificates)
-   * @returns PEM-encoded public key (SPKI format)
-   * @throws Error if input is not valid PEM or certificate
-   */
-  extractPublicKeyPem: (certOrPem: string, jwaAlgorithm?: string) => Promise<string>;
-
-  /**
-   * Generate an EC key pair for ECDH key agreement or ECDSA signing.
+   * Generate an EC key pair for ECDH key agreement.
    * @param curve - Elliptic curve to use (defaults to P-256)
    * @throws ConfigurationError if EC operations not supported
    */
-  generateECKeyPair: (curve?: ECCurve) => Promise<PemKeyPair>;
+  generateECKeyPair: (curve?: ECCurve) => Promise<KeyPair>;
 
   /**
    * Perform ECDH key agreement followed by HKDF key derivation.
-   * Returns raw derived key bytes suitable for symmetric encryption.
+   * Returns opaque symmetric key suitable for symmetric encryption.
    *
-   * @param privateKeyPem - PEM-encoded EC private key
-   * @param publicKeyPem - PEM-encoded EC public key of other party
+   * @param privateKey - Opaque EC private key
+   * @param publicKey - Opaque EC public key of other party
    * @param hkdfParams - Parameters for HKDF derivation
-   * @returns Raw derived key bytes
+   * @returns Opaque symmetric key
    * @throws ConfigurationError if EC operations not supported
    */
   deriveKeyFromECDH: (
-    privateKeyPem: string,
-    publicKeyPem: string,
+    privateKey: PrivateKey,
+    publicKey: PublicKey,
     hkdfParams: HkdfParams
-  ) => Promise<Uint8Array>;
+  ) => Promise<SymmetricKey>;
+
+  // === Key Import (PEM → opaque) ===
 
   /**
-   * Import and validate a PEM public key, returning algorithm info.
-   *
-   * @param pem - PEM-encoded public key or X.509 certificate
-   * @returns Validated PEM and detected algorithm
-   * @throws ConfigurationError if key format invalid or algorithm not supported
+   * Import a PEM public key as an opaque key.
+   * @param pem - PEM-encoded public key
+   * @param options - Import options (usage required for RSA keys to disambiguate encrypt vs sign)
+   * @returns Opaque public key with metadata
    */
-  importPublicKeyPem: (pem: string) => Promise<PublicKeyInfo>;
+  importPublicKey: (pem: string, options: KeyOptions) => Promise<PublicKey>;
 
   /**
-   * Convert a JWK (JSON Web Key) to PEM format.
-   * Supports both RSA and EC keys.
-   *
-   * @param jwk - JSON Web Key object
-   * @returns PEM-encoded public key
-   * @throws ConfigurationError if JWK format invalid
+   * Import a PEM private key as an opaque key.
+   * Optional - intended for use in tests or by downstream integrators who need to bring
+   * their own PEM key material. Main SDK code should use opaque PrivateKey objects directly.
+   * @param pem - PEM-encoded private key
+   * @param options - Import options (usage required for RSA keys to disambiguate encrypt vs sign)
+   * @returns Opaque private key with metadata
    */
-  jwkToPem: (jwk: JsonWebKey) => Promise<string>;
+  importPrivateKey?: (pem: string, options: KeyOptions) => Promise<PrivateKey>;
+
+  // === Key Export (opaque → PEM/JWK) ===
 
   /**
-   * Convert a PEM public key to JWK format.
-   * Used for DPoP JWT header which requires JWK representation.
-   * Supports both RSA and EC keys.
-   *
-   * @param publicKeyPem - PEM-encoded public key (SPKI format)
-   * @returns JWK object with only public key components (kty, e, n for RSA; kty, crv, x, y for EC)
-   * @throws ConfigurationError if PEM format invalid
+   * Export an opaque public key to PEM format.
+   * @param key - Opaque public key
+   * @returns PEM-encoded public key (SPKI format)
    */
-  pemToJwk: (publicKeyPem: string) => Promise<JsonWebKey>;
+  exportPublicKeyPem: (key: PublicKey) => Promise<string>;
+
+  /**
+   * OPTIONAL -- ONLY USE FOR TESTING/DEVELOPMENT. Private keys should NOT be exportable in secure environments.
+   * Export an opaque private key to PEM format.
+   * @param key - Opaque private key
+   * @returns PEM-encoded private key (PKCS8 format)
+   */
+  exportPrivateKeyPem?: (key: PrivateKey) => Promise<string>;
+  /**
+   * Export an opaque public key to JWK format.
+   * @param key - Opaque public key
+   * @returns JWK representation
+   */
+  exportPublicKeyJwk: (key: PublicKey) => Promise<JsonWebKey>;
+
+  // === Symmetric Key Operations ===
+
+  /**
+   * Import raw key bytes as an opaque symmetric key.
+   * Used for external keys (e.g., unwrapped from KAS).
+   * @param keyBytes - Raw key bytes
+   * @returns Opaque symmetric key
+   */
+  importSymmetricKey: (keyBytes: Uint8Array) => Promise<SymmetricKey>;
+
+  /**
+   * Split a symmetric key into N shares using XOR secret sharing.
+   *
+   * DefaultCryptoService: Uses keySplit() utility (extracts bytes internally)
+   * HSM implementations: Must use native splitting OR throw ConfigurationError
+   *
+   * @param key - Symmetric key to split
+   * @param numShares - Number of shares to create
+   * @returns Array of opaque key shares
+   * @throws ConfigurationError if not supported by the implementation
+   *
+   * Note: Multi-KAS may not be available in all secure environments (single KAS only)
+   */
+  splitSymmetricKey: (key: SymmetricKey, numShares: number) => Promise<SymmetricKey[]>;
+
+  /**
+   * Merge symmetric key shares back into the original key using XOR.
+   *
+   * @param shares - Array of key shares (from splitSymmetricKey)
+   * @returns Merged symmetric key
+   * @throws ConfigurationError if not supported by the implementation
+   */
+  mergeSymmetricKeys: (shares: SymmetricKey[]) => Promise<SymmetricKey>;
 };

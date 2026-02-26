@@ -3,7 +3,9 @@ import {
   type CryptoService,
   type DecryptResult,
   type EncryptResult,
+  type SymmetricKey,
 } from '../crypto/declarations.js';
+import { encodeArrayBuffer as hexEncode } from '../../../src/encodings/hex.js';
 
 export abstract class SymmetricCipher {
   cryptoService: CryptoService;
@@ -22,17 +24,18 @@ export abstract class SymmetricCipher {
     if (!this.ivLength) {
       throw Error('No iv length');
     }
-    return this.cryptoService.generateInitializationVector(this.ivLength);
+    const bytes = await this.cryptoService.randomBytes(this.ivLength);
+    return hexEncode(bytes.buffer);
   }
 
-  async generateKey(): Promise<string> {
+  async generateKey(): Promise<SymmetricKey> {
     if (!this.keyLength) {
       throw Error('No key length');
     }
     return this.cryptoService.generateKey(this.keyLength);
   }
 
-  abstract encrypt(payload: Binary, key: Binary, iv: Binary): Promise<EncryptResult>;
+  abstract encrypt(payload: Binary, key: SymmetricKey, iv: Binary): Promise<EncryptResult>;
 
-  abstract decrypt(payload: Uint8Array, key: Binary, iv?: Binary): Promise<DecryptResult>;
+  abstract decrypt(payload: Uint8Array, key: SymmetricKey, iv?: Binary): Promise<DecryptResult>;
 }

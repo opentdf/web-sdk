@@ -2,8 +2,14 @@ import { canonicalizeEx } from 'json-canonicalize';
 import { base64, hex } from '../../src/encodings/index.js';
 import { ConfigurationError, IntegrityError, InvalidFileError } from '../../src/errors.js';
 import { tdfSpecVersion, version as sdkVersion } from '../../src/version.js';
-import { type CryptoService } from './crypto/declarations.js';
+import {
+  type CryptoService,
+  type PrivateKey,
+  type PublicKey,
+  type SymmetricKey,
+} from './crypto/declarations.js';
 import { decodeProtectedHeader, signJwt, verifyJwt, type JwtHeader } from './crypto/jwt.js';
+import { extractPublicKeyPem, jwkToPublicKeyPem } from './crypto/index.js';
 
 export type AssertionKeyAlg = 'ES256' | 'RS256' | 'HS256';
 export type AssertionType = 'handling' | 'other';
@@ -79,9 +85,32 @@ async function sign(
 
   const header: JwtHeader = { alg: key.alg };
 
+  if (typeof key.key === 'object' && '_brand' in key.key && key.key._brand === 'PublicKey') {
+    throw new ConfigurationError(
+      'Cannot sign assertion with PublicKey. Use PrivateKey or SymmetricKey for signing.'
+    );
+  }
+
+  if (typeof key.key === 'string') {
+    if (!cryptoService.importPrivateKey) {
+      throw new ConfigurationError(
+        'CryptoService does not support importing private keys. Cannot sign assertion with a PEM string. Use PrivateKey or SymmetricKey for signing.'
+      );
+    }
+    const importedPrivateKey = await cryptoService.importPrivateKey(key.key, {
+      usage: 'sign',
+      extractable: false,
+    });
+    key.key = importedPrivateKey;
+  }
+  if (key.key instanceof Uint8Array) {
+    const importedSymmetricKey = await cryptoService.importSymmetricKey(key.key);
+    key.key = importedSymmetricKey;
+  }
+
   let token: string;
   try {
-    token = await signJwt(cryptoService, payload, key.key, header);
+    token = await signJwt(cryptoService, payload, key.key as PrivateKey | SymmetricKey, header);
   } catch (error) {
     throw new ConfigurationError(`Signing assertion failed: ${error.message}`, error);
   }
@@ -135,16 +164,21 @@ export async function verify(
     // Parse JWT header to check for embedded keys (jwk or x5c)
     const header = decodeProtectedHeader(thiz.binding.signature);
 
-    // Determine the verification key
-    let verificationKey: string | Uint8Array = key.key;
+    // Runtime check: ensure we have a verification key, not a signing key
+    if (typeof key.key === 'object' && '_brand' in key.key && key.key._brand === 'PrivateKey') {
+      throw new ConfigurationError(
+        'Cannot verify assertion with PrivateKey. Use PublicKey or SymmetricKey for verification.'
+      );
+    }
+    let verificationKey: string | Uint8Array | PublicKey | SymmetricKey = key.key;
 
     if (header.jwk) {
       // Convert embedded JWK to PEM
-      verificationKey = await cryptoService.jwkToPem(header.jwk as JsonWebKey);
+      verificationKey = await jwkToPublicKeyPem(header.jwk as JsonWebKey);
     } else if (header.x5c && Array.isArray(header.x5c) && header.x5c.length > 0) {
       // Extract public key from X.509 certificate
       const cert = `-----BEGIN CERTIFICATE-----\n${header.x5c[0]}\n-----END CERTIFICATE-----`;
-      verificationKey = await cryptoService.extractPublicKeyPem(cert);
+      verificationKey = await extractPublicKeyPem(cert);
     }
 
     const result = await verifyJwt(cryptoService, thiz.binding.signature, verificationKey, {
@@ -240,14 +274,20 @@ export async function CreateAssertion(
   return await sign(a, assertionHash, encodedHash, assertionConfig.signingKey, cryptoService);
 }
 
+// TODO: Split AssertionKey into two separate types:
+//   - AssertionSigningKey: key restricted to PrivateKey | SymmetricKey (no strings, no raw bytes)
+//   - AssertionVerificationKey: key restricted to string | PublicKey | SymmetricKey
+// This would make the signing/verification distinction type-safe rather than relying on runtime checks.
+// AssertionConfig.signingKey would use AssertionSigningKey; verify() and AssertionVerificationKeys would use AssertionVerificationKey.
+
 /**
  * Key used for signing or verifying assertions.
- * For asymmetric algorithms (RS256, ES256), key should be a PEM string.
- * For symmetric algorithms (HS256), key should be a Uint8Array.
+ * For asymmetric algorithms (RS256, ES256): PEM string, PrivateKey (for signing), or PublicKey (for verification).
+ * For symmetric algorithms (HS256): Uint8Array or SymmetricKey (opaque).
  */
 export type AssertionKey = {
   alg: AssertionKeyAlg;
-  key: string | Uint8Array;
+  key: string | Uint8Array | PrivateKey | PublicKey | SymmetricKey;
 };
 
 // AssertionConfig is a shadow of Assertion with the addition of the signing key.

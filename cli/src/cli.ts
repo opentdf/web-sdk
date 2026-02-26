@@ -20,7 +20,7 @@ import {
 import { CLIError, Level, log } from './logger.js';
 import * as assertions from '@opentdf/sdk/assertions';
 import { base64 } from '@opentdf/sdk/encodings';
-import { type PemKeyPair } from '@opentdf/sdk/singlecontainer';
+import { type KeyPair } from '@opentdf/sdk/singlecontainer';
 
 type AuthToProcess = {
   auth?: string;
@@ -90,7 +90,7 @@ async function processAuth({
   const requestLog: AuthProviders.HttpRequest[] = [];
   return {
     requestLog,
-    updateClientPublicKey: async (signingKey: PemKeyPair) => {
+    updateClientPublicKey: async (signingKey: KeyPair) => {
       actual.updateClientPublicKey(signingKey);
       log('DEBUG', `updateClientPublicKey: [${signingKey?.publicKey}]`);
     },
@@ -209,22 +209,11 @@ async function correctAssertionKeys({
     if (typeof key !== 'string') {
       throw new CLIError('CRITICAL', 'RS256 key must be a PEM string');
     }
-    if (!isPemFormatted(key)) {
-      throw new CLIError('CRITICAL', 'RS256 key must be a PEM formatted string');
-    }
     // check if formatted as pem
     return key;
   }
   // Otherwise its an unsupported alg
   throw new CLIError('CRITICAL', `Unsupported signing key algorithm: ${alg}`); // Handle unsupported algs
-}
-
-function isPemFormatted(key: string): boolean {
-  return (
-    typeof key === 'string' &&
-    /-----BEGIN (PUBLIC|PRIVATE) KEY-----/.test(key) &&
-    /-----END (PUBLIC|PRIVATE) KEY-----/.test(key)
-  );
 }
 
 async function parseAssertionConfig(s: string): Promise<assertions.AssertionConfig[]> {
