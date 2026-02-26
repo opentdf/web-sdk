@@ -98,7 +98,11 @@ async function sign(
         'CryptoService does not support importing private keys. Cannot sign assertion with a PEM string. Use PrivateKey or SymmetricKey for signing.'
       );
     }
-    const importedPrivateKey = await cryptoService.importPrivateKey(key.key, {usage: "sign", extractable: false, algorithmHint: key.alg as KeyAlgorithm});
+    const importedPrivateKey = await cryptoService.importPrivateKey(key.key, {
+      usage: 'sign',
+      extractable: false,
+      algorithmHint: key.alg as KeyAlgorithm,
+    });
     key.key = importedPrivateKey;
   }
   if (key.key instanceof Uint8Array) {
