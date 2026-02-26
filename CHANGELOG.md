@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.10.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.9.0...sdk-v0.10.0) (2026-02-26)
+
+
+### Features
+
+* **sdk:** DSPX-2418 add attribute discovery methods ([#841](https://github.com/opentdf/web-sdk/issues/841)) ([06c5964](https://github.com/opentdf/web-sdk/commit/06c596415a4a3600e9401fce2f7658b9d23190e1))
+
+
+### Bug Fixes
+
+* **sdk:** bump qs from 6.14.1 to 6.14.2 in /lib ([#839](https://github.com/opentdf/web-sdk/issues/839)) ([44afd7d](https://github.com/opentdf/web-sdk/commit/44afd7d90f0f10aa29bc177ee171454c6537de77))
+* **sdk:** bump rollup from 4.25.0 to 4.59.0 in /lib ([#848](https://github.com/opentdf/web-sdk/issues/848)) ([27dbcbc](https://github.com/opentdf/web-sdk/commit/27dbcbc481073df22791fe306ded0be86d88d171))
+* Update curve name from P-512 to P-521 in crypto utilities ([#837](https://github.com/opentdf/web-sdk/issues/837)) ([a3c440c](https://github.com/opentdf/web-sdk/commit/a3c440c667194bcca97c9b3fb2ad9d3cc7d23fd3))
+
 ## [0.9.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.8.0...sdk-v0.9.0) (2026-01-28)
 
 
