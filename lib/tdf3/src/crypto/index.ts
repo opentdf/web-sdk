@@ -715,31 +715,6 @@ async function extractEcCurveFromPublicKey(keyData: ArrayBuffer): Promise<Suppor
   throw new ConfigurationError('Unable to determine EC curve from public key - unsupported curve');
 }
 
-// /**
-//  * Extract EC curve from a private key by importing and exporting as JWK.
-//  * Uses Web Crypto's built-in ASN.1 parsing for robustness.
-//  */
-// async function extractEcCurveFromPrivateKey(keyData: ArrayBuffer): Promise<SupportedEcCurve> {
-//   for (const namedCurve of SUPPORTED_EC_CURVES) {
-//     try {
-//       const key = await crypto.subtle.importKey(
-//         'pkcs8',
-//         keyData,
-//         { name: 'ECDH', namedCurve },
-//         true,
-//         ['deriveBits']
-//       );
-//       const jwk = await crypto.subtle.exportKey('jwk', key);
-//       if (jwk.crv && SUPPORTED_EC_CURVES.includes(jwk.crv as SupportedEcCurve)) {
-//         return jwk.crv as SupportedEcCurve;
-//       }
-//     } catch {
-//       // Curve mismatch, try next
-//     }
-//   }
-//   throw new ConfigurationError('Unable to determine EC curve from private key - unsupported curve');
-// }
-
 /**
  * Perform ECDH key agreement followed by HKDF key derivation.
  */
