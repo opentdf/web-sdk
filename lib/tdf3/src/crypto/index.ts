@@ -1222,6 +1222,16 @@ export async function exportPublicKeyPem(key: PublicKey): Promise<string> {
 }
 
 /**
+ * Export an opaque private key to PEM format.
+ * ONLY USE FOR TESTING/DEVELOPMENT. Private keys should NOT be exportable in secure environments.
+ */
+export async function exportPrivateKeyPem(key: PrivateKey): Promise<string> {
+  const cryptoKey = unwrapKey(key);
+  const keyBuffer = await crypto.subtle.exportKey('pkcs8', cryptoKey);
+  return formatAsPem(keyBuffer, 'PRIVATE KEY');
+}
+
+/**
  * Export an opaque public key to JWK format.
  */
 export async function exportPublicKeyJwk(key: PublicKey): Promise<JsonWebKey> {
@@ -1271,6 +1281,7 @@ export const DefaultCryptoService: CryptoService = {
   encrypt,
   encryptWithPublicKey,
   exportPublicKeyJwk,
+  exportPrivateKeyPem,
   exportPublicKeyPem,
   extractPublicKeyPem,
   generateECKeyPair,

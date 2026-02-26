@@ -20,7 +20,7 @@ import {
 import { CLIError, Level, log } from './logger.js';
 import * as assertions from '@opentdf/sdk/assertions';
 import { base64 } from '@opentdf/sdk/encodings';
-import { type PemKeyPair } from '@opentdf/sdk/singlecontainer';
+import { type KeyPair } from '@opentdf/sdk/singlecontainer';
 
 type AuthToProcess = {
   auth?: string;
@@ -90,7 +90,7 @@ async function processAuth({
   const requestLog: AuthProviders.HttpRequest[] = [];
   return {
     requestLog,
-    updateClientPublicKey: async (signingKey: PemKeyPair) => {
+    updateClientPublicKey: async (signingKey: KeyPair) => {
       actual.updateClientPublicKey(signingKey);
       log('DEBUG', `updateClientPublicKey: [${signingKey?.publicKey}]`);
     },

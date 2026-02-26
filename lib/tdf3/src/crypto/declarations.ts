@@ -397,6 +397,13 @@ export type CryptoService = {
   exportPublicKeyPem: (key: PublicKey) => Promise<string>;
 
   /**
+   * OPTIONAL -- ONLY USE FOR TESTING/DEVELOPMENT. Private keys should NOT be exportable in secure environments.
+   * Export an opaque private key to PEM format.
+   * @param key - Opaque private key
+   * @returns PEM-encoded private key (PKCS8 format)
+   */
+  exportPrivateKeyPem?: (key: PrivateKey) => Promise<string>;
+  /**
    * Export an opaque public key to JWK format.
    * @param key - Opaque public key
    * @returns JWK representation
