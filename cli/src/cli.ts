@@ -219,6 +219,9 @@ async function correctAssertionKeys({
   throw new CLIError('CRITICAL', `Unsupported signing key algorithm: ${alg}`); // Handle unsupported algs
 }
 
+// TODO: This validation function might be too restrictive and also allow for some weird edge cases. 
+// Like a PEM that begins with BEGIN PUBLIC KEY but ends with END PRIVATE KEY
+// Use the isPemKeyPair from the lib/src/crypto/crypto-utils.ts file for a more robust solution if this becomes an issue.
 function isPemFormatted(key: string): boolean {
   return (
     typeof key === 'string' &&
