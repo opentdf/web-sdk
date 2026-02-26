@@ -20,13 +20,7 @@ import {
 import { CLIError, Level, log } from './logger.js';
 import * as assertions from '@opentdf/sdk/assertions';
 import { base64 } from '@opentdf/sdk/encodings';
-import {
-  type KeyPair,
-  type PrivateKey,
-  type PublicKey,
-  type SymmetricKey,
-  WebCryptoService,
-} from '@opentdf/sdk/singlecontainer';
+import { type KeyPair } from '@opentdf/sdk/singlecontainer';
 
 type AuthToProcess = {
   auth?: string;
@@ -168,7 +162,7 @@ async function parseAssertionVerificationKeys(
       );
     }
     try {
-      u.Keys[assertionName].key = await correctVerificationKey(assertionKey);
+      u.Keys[assertionName].key = await correctAssertionKeys(assertionKey);
     } catch (err) {
       throw new CLIError('CRITICAL', `Issue converting assertion key from string: ${err.message}`);
     }
@@ -203,64 +197,23 @@ async function parseReadOptions(argv: Partial<mainArgs>): Promise<ReadOptions> {
 async function correctAssertionKeys({
   alg,
   key,
-}: {
-  alg: assertions.AssertionKeyAlg;
-  key: unknown;
-}): Promise<PrivateKey | SymmetricKey> {
+}: assertions.AssertionKey): Promise<string | Uint8Array> {
   if (alg === 'HS256') {
+    // Convert key string to Uint8Array
     if (typeof key !== 'string') {
       throw new CLIError('CRITICAL', 'HS256 key must be a string');
     }
-    return WebCryptoService.importSymmetricKey(new TextEncoder().encode(key));
-  } else if (alg === 'RS256' || alg === 'ES256') {
+    return new TextEncoder().encode(key); // Update array element directly
+  } else if (alg === 'RS256') {
+    // Convert PEM string to a KeyLike object
     if (typeof key !== 'string') {
-      throw new CLIError('CRITICAL', `${alg} key must be a PEM string`);
+      throw new CLIError('CRITICAL', 'RS256 key must be a PEM string');
     }
-    if (!isPemFormatted(key)) {
-      throw new CLIError('CRITICAL', `${alg} key must be a PEM formatted string`);
-    }
-    if (!WebCryptoService.importPrivateKey) {
-      throw new CLIError(
-        'CRITICAL',
-        'importPrivateKey not supported by current crypto implementation'
-      );
-    }
-    return WebCryptoService.importPrivateKey(key, { usage: 'sign' });
+    // check if formatted as pem
+    return key;
   }
   // Otherwise its an unsupported alg
-  throw new CLIError('CRITICAL', `Unsupported signing key algorithm: ${alg}`);
-}
-
-async function correctVerificationKey({
-  alg,
-  key,
-}: {
-  alg: assertions.AssertionKeyAlg;
-  key: unknown;
-}): Promise<PublicKey | SymmetricKey> {
-  if (alg === 'HS256') {
-    if (typeof key !== 'string') {
-      throw new CLIError('CRITICAL', 'HS256 key must be a string');
-    }
-    return WebCryptoService.importSymmetricKey(new TextEncoder().encode(key));
-  } else if (alg === 'RS256' || alg === 'ES256') {
-    if (typeof key !== 'string') {
-      throw new CLIError('CRITICAL', `${alg} verification key must be a PEM string`);
-    }
-    if (!isPemFormatted(key)) {
-      throw new CLIError('CRITICAL', `${alg} verification key must be a PEM formatted string`);
-    }
-    return WebCryptoService.importPublicKey(key, { usage: 'sign' });
-  }
-  throw new CLIError('CRITICAL', `Unsupported verification key algorithm: ${alg}`);
-}
-
-function isPemFormatted(key: string): boolean {
-  return (
-    typeof key === 'string' &&
-    /-----BEGIN (PUBLIC|PRIVATE) KEY-----/.test(key) &&
-    /-----END (PUBLIC|PRIVATE) KEY-----/.test(key)
-  );
+  throw new CLIError('CRITICAL', `Unsupported signing key algorithm: ${alg}`); // Handle unsupported algs
 }
 
 async function parseAssertionConfig(s: string): Promise<assertions.AssertionConfig[]> {

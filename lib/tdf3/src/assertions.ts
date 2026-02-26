@@ -4,6 +4,7 @@ import { ConfigurationError, IntegrityError, InvalidFileError } from '../../src/
 import { tdfSpecVersion, version as sdkVersion } from '../../src/version.js';
 import {
   type CryptoService,
+  type KeyAlgorithm,
   type PrivateKey,
   type PublicKey,
   type SymmetricKey,
@@ -85,21 +86,24 @@ async function sign(
 
   const header: JwtHeader = { alg: key.alg };
 
-  // Runtime check: ensure we have a signing key, not a verification key
-  if (typeof key.key === 'string') {
-    throw new ConfigurationError(
-      'Cannot sign assertion with a PEM string. Use PrivateKey or SymmetricKey for signing.'
-    );
-  }
-  if (key.key instanceof Uint8Array) {
-    throw new ConfigurationError(
-      'Cannot sign assertion with raw Uint8Array. Use SymmetricKey for signing.'
-    );
-  }
   if (typeof key.key === 'object' && '_brand' in key.key && key.key._brand === 'PublicKey') {
     throw new ConfigurationError(
       'Cannot sign assertion with PublicKey. Use PrivateKey or SymmetricKey for signing.'
     );
+  }
+
+  if (typeof key.key === 'string') {
+    if (!cryptoService.importPrivateKey) {
+      throw new ConfigurationError(
+        'CryptoService does not support importing private keys. Cannot sign assertion with a PEM string. Use PrivateKey or SymmetricKey for signing.'
+      );
+    }
+    const importedPrivateKey = await cryptoService.importPrivateKey(key.key, {usage: "sign", extractable: false, algorithmHint: key.alg as KeyAlgorithm});
+    key.key = importedPrivateKey;
+  }
+  if (key.key instanceof Uint8Array) {
+    const importedSymmetricKey = await cryptoService.importSymmetricKey(key.key);
+    key.key = importedSymmetricKey;
   }
 
   let token: string;

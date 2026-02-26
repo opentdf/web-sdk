@@ -271,9 +271,8 @@ describe('encrypt decrypt test', async function () {
         };
 
         // Generate a random HS256 key
-        const hs256KeyRaw = new Uint8Array(32);
-        crypto.getRandomValues(hs256KeyRaw);
-        const hs256Key = await client.cryptoService.importSymmetricKey(hs256KeyRaw);
+        const hs256Key = new Uint8Array(32);
+        crypto.getRandomValues(hs256Key);
 
         console.log('ASDF about to encrypt');
 
