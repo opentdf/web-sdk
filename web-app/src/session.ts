@@ -328,6 +328,9 @@ export class OidcClient implements AuthProvider {
     }
     // Generate or load PEM keys if needed
     let keyPair: KeyPair;
+    if (!WebCryptoService.importPrivateKey) {
+      throw new Error('importPrivateKey not supported by current crypto implementation');
+    }
     if (this._sessions?.k) {
       // Keys are already stored as base64-encoded DER, just wrap them in PEM format
       const [publicKeyDer, privateKeyDer] = this._sessions.k;

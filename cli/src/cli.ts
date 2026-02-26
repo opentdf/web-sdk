@@ -20,7 +20,12 @@ import {
 import { CLIError, Level, log } from './logger.js';
 import * as assertions from '@opentdf/sdk/assertions';
 import { base64 } from '@opentdf/sdk/encodings';
-import { type KeyPair } from '@opentdf/sdk/singlecontainer';
+import {
+  type KeyPair,
+  type PrivateKey,
+  type SymmetricKey,
+  WebCryptoService,
+} from '@opentdf/sdk/singlecontainer';
 
 type AuthToProcess = {
   auth?: string;
@@ -197,26 +202,32 @@ async function parseReadOptions(argv: Partial<mainArgs>): Promise<ReadOptions> {
 async function correctAssertionKeys({
   alg,
   key,
-}: assertions.AssertionKey): Promise<string | Uint8Array> {
+}: {
+  alg: assertions.AssertionKeyAlg;
+  key: unknown;
+}): Promise<PrivateKey | SymmetricKey> {
   if (alg === 'HS256') {
-    // Convert key string to Uint8Array
     if (typeof key !== 'string') {
       throw new CLIError('CRITICAL', 'HS256 key must be a string');
     }
-    return new TextEncoder().encode(key); // Update array element directly
-  } else if (alg === 'RS256') {
-    // Convert PEM string to a KeyLike object
+    return WebCryptoService.importSymmetricKey(new TextEncoder().encode(key));
+  } else if (alg === 'RS256' || alg === 'ES256') {
     if (typeof key !== 'string') {
-      throw new CLIError('CRITICAL', 'RS256 key must be a PEM string');
+      throw new CLIError('CRITICAL', `${alg} key must be a PEM string`);
     }
     if (!isPemFormatted(key)) {
-      throw new CLIError('CRITICAL', 'RS256 key must be a PEM formatted string');
+      throw new CLIError('CRITICAL', `${alg} key must be a PEM formatted string`);
     }
-    // check if formatted as pem
-    return key;
+    if (!WebCryptoService.importPrivateKey) {
+      throw new CLIError(
+        'CRITICAL',
+        'importPrivateKey not supported by current crypto implementation'
+      );
+    }
+    return WebCryptoService.importPrivateKey(key, { usage: 'sign' });
   }
   // Otherwise its an unsupported alg
-  throw new CLIError('CRITICAL', `Unsupported signing key algorithm: ${alg}`); // Handle unsupported algs
+  throw new CLIError('CRITICAL', `Unsupported signing key algorithm: ${alg}`);
 }
 
 function isPemFormatted(key: string): boolean {
