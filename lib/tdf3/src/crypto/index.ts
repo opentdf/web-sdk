@@ -704,12 +704,12 @@ function curveToNamedCurve(curve: ECCurve): string {
 }
 
 /**
- * Generate an EC key pair for ECDH key agreement or ECDSA signing.
+ * Generate an EC key pair for ECDH key agreement.
  */
 export async function generateECKeyPair(curve: ECCurve = 'P-256'): Promise<KeyPair> {
   const namedCurve = curveToNamedCurve(curve);
 
-  // Generate key pair using ECDH (can be used for both ECDH and ECDSA)
+  // Generate key pair for ECDH key agreement
   const keyPair = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve }, true, [
     'deriveBits',
   ]);

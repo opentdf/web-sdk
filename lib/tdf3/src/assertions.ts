@@ -148,13 +148,13 @@ export async function verify(
     // Parse JWT header to check for embedded keys (jwk or x5c)
     const header = decodeProtectedHeader(thiz.binding.signature);
 
-    // Determine the verification key (for verification, should be PublicKey or SymmetricKey, not PrivateKey)
-    // Cast to exclude PrivateKey since we're in verification context
-    let verificationKey: string | Uint8Array | PublicKey | SymmetricKey = key.key as
-      | string
-      | Uint8Array
-      | PublicKey
-      | SymmetricKey;
+    // Runtime check: ensure we have a verification key, not a signing key
+    if (typeof key.key === 'object' && '_brand' in key.key && key.key._brand === 'PrivateKey') {
+      throw new ConfigurationError(
+        'Cannot verify assertion with PrivateKey. Use PublicKey or SymmetricKey for verification.'
+      );
+    }
+    let verificationKey: string | Uint8Array | PublicKey | SymmetricKey = key.key;
 
     if (header.jwk) {
       // Convert embedded JWK to PEM

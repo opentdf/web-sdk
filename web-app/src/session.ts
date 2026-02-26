@@ -441,6 +441,9 @@ export class OidcClient implements AuthProvider {
     // getSigningKey() ensures signingKeyPem is populated
     const signingKey = await this.getSigningKey();
     const publicKeyPem = await WebCryptoService.exportPublicKeyPem(signingKey.publicKey);
+    if (!WebCryptoService.exportPrivateKeyPem) {
+      throw new Error('exportPrivateKeyPem not supported by current crypto implementation');
+    }
     const privateKeyPem = await WebCryptoService.exportPrivateKeyPem(signingKey.privateKey);
     if (this._sessions && this.signingKey) {
       // Store the base64-encoded DER (PEM without headers/footers)
@@ -497,6 +500,9 @@ export class OidcClient implements AuthProvider {
       return httpReq;
     }
     const publicKeyPem = await WebCryptoService.exportPublicKeyPem(signingKey.publicKey);
+    if (!WebCryptoService.exportPrivateKeyPem) {
+      throw new Error('exportPrivateKeyPem not supported by current crypto implementation');
+    }
     const privateKeyPem = await WebCryptoService.exportPrivateKeyPem(signingKey.privateKey);
     console.info(
       `signing request for ${httpReq.url} with DPoP key ${JSON.stringify(
