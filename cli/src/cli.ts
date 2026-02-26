@@ -23,6 +23,7 @@ import { base64 } from '@opentdf/sdk/encodings';
 import {
   type KeyPair,
   type PrivateKey,
+  type PublicKey,
   type SymmetricKey,
   WebCryptoService,
 } from '@opentdf/sdk/singlecontainer';
@@ -167,7 +168,7 @@ async function parseAssertionVerificationKeys(
       );
     }
     try {
-      u.Keys[assertionName].key = await correctAssertionKeys(assertionKey);
+      u.Keys[assertionName].key = await correctVerificationKey(assertionKey);
     } catch (err) {
       throw new CLIError('CRITICAL', `Issue converting assertion key from string: ${err.message}`);
     }
@@ -228,6 +229,30 @@ async function correctAssertionKeys({
   }
   // Otherwise its an unsupported alg
   throw new CLIError('CRITICAL', `Unsupported signing key algorithm: ${alg}`);
+}
+
+async function correctVerificationKey({
+  alg,
+  key,
+}: {
+  alg: assertions.AssertionKeyAlg;
+  key: unknown;
+}): Promise<PublicKey | SymmetricKey> {
+  if (alg === 'HS256') {
+    if (typeof key !== 'string') {
+      throw new CLIError('CRITICAL', 'HS256 key must be a string');
+    }
+    return WebCryptoService.importSymmetricKey(new TextEncoder().encode(key));
+  } else if (alg === 'RS256' || alg === 'ES256') {
+    if (typeof key !== 'string') {
+      throw new CLIError('CRITICAL', `${alg} verification key must be a PEM string`);
+    }
+    if (!isPemFormatted(key)) {
+      throw new CLIError('CRITICAL', `${alg} verification key must be a PEM formatted string`);
+    }
+    return WebCryptoService.importPublicKey(key, { usage: 'sign' });
+  }
+  throw new CLIError('CRITICAL', `Unsupported verification key algorithm: ${alg}`);
 }
 
 function isPemFormatted(key: string): boolean {
