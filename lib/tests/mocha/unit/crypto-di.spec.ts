@@ -119,6 +119,9 @@ describe('CryptoService DI', () => {
       jwkToPem: function (jwk: JsonWebKey): Promise<string> {
         throw new Error(NOT_IMPLEMENTED);
       },
+      pemToJwk: function (publicKeyPem: string): Promise<JsonWebKey> {
+        throw new Error('Function not implemented.');
+      },
     };
     const c = new Client({
       cryptoService,
@@ -239,6 +242,9 @@ describe('CryptoService DI', () => {
       },
       jwkToPem: function (jwk: JsonWebKey): Promise<string> {
         throw new Error(NOT_IMPLEMENTED);
+      },
+      pemToJwk: function (publicKeyPem: string): Promise<JsonWebKey> {
+        throw new Error('Function not implemented.');
       },
     };
 
