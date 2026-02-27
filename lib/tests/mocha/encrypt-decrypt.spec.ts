@@ -262,8 +262,7 @@ describe('encrypt decrypt test', async function () {
         });
 
         // Generate RSA key pair for RS256 assertions as PEM strings
-        const assertionKeyPair = await client.cryptoService.generateSigningKeyPair();
-        const assertionKeys = await client.cryptoService.cryptoToPemPair(assertionKeyPair);
+        const assertionKeys = await client.cryptoService.generateSigningKeyPair();
         const assertionPublicKey = assertionKeys.publicKey;
         const assertionPrivateKey = assertionKeys.privateKey;
         const scope: Scope = {

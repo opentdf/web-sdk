@@ -24,6 +24,7 @@ import { encodeArrayBuffer as hexEncode } from '../../../src/encodings/hex.js';
 import { decodeArrayBuffer as base64Decode } from '../../../src/encodings/base64.js';
 import { AlgorithmUrn } from '../ciphers/algorithms.js';
 import { exportSPKI, importX509 } from 'jose';
+import { toJwsAlg } from '../../../src/crypto/pemPublicToCrypto.js';
 
 // Used to pass into native crypto functions
 const METHODS: KeyUsage[] = ['encrypt', 'decrypt'];
@@ -81,17 +82,28 @@ export async function generateKey(length?: number): Promise<string> {
  * @see    {@link https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/generateKey}
  * @param  size in bits
  */
-export async function generateKeyPair(size?: number): Promise<CryptoKeyPair> {
+export async function generateKeyPair(size?: number): Promise<PemKeyPair> {
   const algoDomString = rsaOaepSha1(size || MIN_ASYMMETRIC_KEY_SIZE_BITS);
-  return crypto.subtle.generateKey(algoDomString, true, METHODS);
+  const keyPair = await crypto.subtle.generateKey(algoDomString, true, METHODS);
+
+  // Export to PEM format
+  const [publicKeyBuffer, privateKeyBuffer] = await Promise.all([
+    crypto.subtle.exportKey('spki', keyPair.publicKey),
+    crypto.subtle.exportKey('pkcs8', keyPair.privateKey),
+  ]);
+
+  return {
+    publicKey: formatAsPem(publicKeyBuffer, 'PUBLIC KEY'),
+    privateKey: formatAsPem(privateKeyBuffer, 'PRIVATE KEY'),
+  };
 }
 
 /**
  * Generate an RSA key pair suitable for signatures
  * @see    {@link https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/generateKey}
  */
-export async function generateSigningKeyPair(): Promise<CryptoKeyPair> {
-  return crypto.subtle.generateKey(
+export async function generateSigningKeyPair(): Promise<PemKeyPair> {
+  const keyPair = await crypto.subtle.generateKey(
     {
       name: 'RSASSA-PKCS1-v1_5',
       hash: 'SHA-256',
@@ -101,22 +113,16 @@ export async function generateSigningKeyPair(): Promise<CryptoKeyPair> {
     true,
     ['sign', 'verify']
   );
-}
 
-export async function cryptoToPemPair(keysMaybe: unknown): Promise<PemKeyPair> {
-  const keys = keysMaybe as CryptoKeyPair;
-  if (!keys.privateKey || !keys.publicKey) {
-    // These are only ever generated here, so this should not happen
-    throw new Error('internal: invalid keys');
-  }
-
-  const [exPublic, exPrivate] = await Promise.all([
-    crypto.subtle.exportKey('spki', keys.publicKey),
-    crypto.subtle.exportKey('pkcs8', keys.privateKey),
+  // Export to PEM format
+  const [publicKeyBuffer, privateKeyBuffer] = await Promise.all([
+    crypto.subtle.exportKey('spki', keyPair.publicKey),
+    crypto.subtle.exportKey('pkcs8', keyPair.privateKey),
   ]);
+
   return {
-    publicKey: formatAsPem(exPublic, 'PUBLIC KEY'),
-    privateKey: formatAsPem(exPrivate, 'PRIVATE KEY'),
+    publicKey: formatAsPem(publicKeyBuffer, 'PUBLIC KEY'),
+    privateKey: formatAsPem(privateKeyBuffer, 'PRIVATE KEY'),
   };
 }
 
@@ -597,14 +603,25 @@ export async function digest(algorithm: HashAlgorithm, data: Uint8Array): Promis
 /**
  * Extract PEM public key from X.509 certificate or return PEM key as-is.
  *
- * Note: Currently only RS256 (RSA with SHA-256) X.509 certificates are supported,
- * because the underlying `jose.importX509` API requires an explicit algorithm
- * and this function passes `'RS256'` as that parameter.
+ * @param certOrPem - A PEM-encoded X.509 certificate or public key
+ * @param jwaAlgorithm - JWA algorithm hint for certificate parsing (RS256, RS512, ES256, ES384, ES512).
+ *                       If not provided for a certificate, will attempt to auto-detect from OIDs.
  */
-export async function extractPublicKeyPem(certOrPem: string): Promise<string> {
+export async function extractPublicKeyPem(
+  certOrPem: string,
+  jwaAlgorithm?: string
+): Promise<string> {
   // If it's a certificate, extract the public key
   if (certOrPem.includes('-----BEGIN CERTIFICATE-----')) {
-    const cert = await importX509(certOrPem, 'RS256', { extractable: true });
+    let alg = jwaAlgorithm;
+    if (!alg) {
+      // Auto-detect algorithm from certificate OIDs
+      const certBody = certOrPem.replace(/-----(BEGIN|END) CERTIFICATE-----|\s/g, '');
+      const certBytes = base64Decode(certBody);
+      const hex = hexEncode(certBytes);
+      alg = toJwsAlg(hex);
+    }
+    const cert = await importX509(certOrPem, alg, { extractable: true });
     return exportSPKI(cert);
   }
 
@@ -904,7 +921,6 @@ export async function jwkToPem(jwk: JsonWebKey): Promise<string> {
 export const DefaultCryptoService: CryptoService = {
   name,
   method,
-  cryptoToPemPair,
   decrypt,
   decryptWithPrivateKey,
   deriveKeyFromECDH,

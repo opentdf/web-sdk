@@ -1,6 +1,8 @@
 import { assert, expect } from '@esm-bundle/chai';
 import { fake } from 'sinon';
 import { AccessToken, type AccessTokenResponse } from '../../../src/auth/oidc.js';
+import * as DefaultCryptoService from '../../../tdf3/src/crypto/index.js';
+import type { PemKeyPair } from '../../../tdf3/src/crypto/declarations.js';
 
 // // const qsparse = (s: string) => Object.fromEntries(new URLSearchParams(s));
 const qsparse = (s: string) =>
@@ -28,12 +30,10 @@ function mockFetch(
   return fake.resolves({ json, ok, status, statusText, text });
 }
 
-const algorithmSigner = {
-  name: 'RSASSA-PKCS1-v1_5',
-  hash: 'SHA-256',
-  modulusLength: 2048,
-  publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
-};
+// Helper to generate PEM signing keys for tests
+async function generateTestSigningKey(): Promise<PemKeyPair> {
+  return DefaultCryptoService.generateSigningKeyPair();
+}
 
 // Due to Jest mocks not working with ESModules currently,
 // these tests use poor man's mocking
@@ -83,10 +83,7 @@ describe('AccessToken', () => {
   describe('exchanging refresh token for token with TDF claims', () => {
     describe('using client credentials', () => {
       it('passes client creds with refresh grant type to token endpoint', async () => {
-        const signingKey = await crypto.subtle.generateKey(algorithmSigner, true, [
-          'sign',
-          'verify',
-        ]);
+        const signingKey = await generateTestSigningKey();
         const mf = mockFetch({ access_token: 'fdfsdffsdf' });
         const accessToken = new AccessToken(
           {
@@ -114,10 +111,7 @@ describe('AccessToken', () => {
         expect(mf.lastCall.lastArg.headers).to.have.property('DPoP');
       });
       it('passes client creds with refresh grant type to token endpoint and dPoP disabled', async () => {
-        const signingKey = await crypto.subtle.generateKey(algorithmSigner, true, [
-          'sign',
-          'verify',
-        ]);
+        const signingKey = await generateTestSigningKey();
         const mf = mockFetch({ access_token: 'fdfsdffsdf' });
         const accessToken = new AccessToken(
           {
@@ -147,10 +141,7 @@ describe('AccessToken', () => {
     });
     describe('using browser flow', () => {
       it('passes only refresh token with refresh grant type to token endpoint', async () => {
-        const signingKey = await crypto.subtle.generateKey(algorithmSigner, true, [
-          'sign',
-          'verify',
-        ]);
+        const signingKey = await generateTestSigningKey();
         const mf = mockFetch({ access_token: 'fake_token' });
         const accessToken = new AccessToken(
           {
@@ -178,10 +169,7 @@ describe('AccessToken', () => {
   describe('exchanging external JWT for token with TDF claims', () => {
     describe('using client credentials', () => {
       it('passes client creds and JWT with exchange grant type to token endpoint', async () => {
-        const signingKey = await crypto.subtle.generateKey(algorithmSigner, true, [
-          'sign',
-          'verify',
-        ]);
+        const signingKey = await generateTestSigningKey();
         const mf = mockFetch({ access_token: 'fake_token' });
         const accessToken = new AccessToken(
           {
@@ -209,7 +197,7 @@ describe('AccessToken', () => {
 
     describe('using browser flow', () => {
       it('passes only external JWT with exchange grant type to token endpoint', async () => {
-        const signingKey = await crypto.subtle.generateKey(algorithmSigner, true, ['sign']);
+        const signingKey = await generateTestSigningKey();
         const mf = mockFetch({ access_token: 'fake_token' });
         const accessToken = new AccessToken(
           {
@@ -240,7 +228,7 @@ describe('AccessToken', () => {
   describe('get token', () => {
     describe('clientCredentials and no cached tokenset', () => {
       it('should call token endpoint using client credentials if no cached tokenset', async () => {
-        const signingKey = await crypto.subtle.generateKey(algorithmSigner, true, ['sign']);
+        const signingKey = await generateTestSigningKey();
         const mf = mockFetch({ access_token: 'notreal' });
         const accessTokenClient = new AccessToken(
           {
@@ -285,7 +273,7 @@ describe('AccessToken', () => {
 
   describe('cached tokenset', () => {
     it('should call userinfo endpoint and return cached tokenset', async () => {
-      const signingKey = await crypto.subtle.generateKey(algorithmSigner, true, ['sign']);
+      const signingKey = await generateTestSigningKey();
       const mf = mockFetch({ access_token: 'notreal' });
       const accessTokenClient = new AccessToken(
         {
@@ -308,7 +296,7 @@ describe('AccessToken', () => {
       // expect(mf.callCount).to.eql(0);
     });
     it('should attempt to refresh token if userinfo call throws error', async () => {
-      const signingKey = await crypto.subtle.generateKey(algorithmSigner, true, ['sign']);
+      const signingKey = await generateTestSigningKey();
       const json = fake.resolves({ access_token: 'a' });
       const mf = fake((url: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
         if (!init) {

@@ -74,17 +74,12 @@ export type PublicKeyInfo = {
   pem: string;
 };
 
-export type AnyKeyPair = PemKeyPair | CryptoKeyPair;
-
 export type CryptoService = {
   /** Track which crypto implementation we are using */
   name: string;
 
   /** Default algorithm identifier. */
   method: AlgorithmUrn;
-
-  /** Convert or narrow from AnyKeyPair to PemKeyPair */
-  cryptoToPemPair: (keys: AnyKeyPair) => Promise<PemKeyPair>;
 
   /**
    * Try to decrypt content with the default or handed algorithm. Throws on
@@ -119,12 +114,17 @@ export type CryptoService = {
   generateKey: (length?: number) => Promise<string>;
 
   /**
-   * Generate an RSA key pair
+   * Generate an RSA key pair for encryption/decryption.
    * @param size in bits, defaults to a reasonable size for the default method
+   * @returns PEM-encoded key pair
    */
-  generateKeyPair: (size?: number) => Promise<AnyKeyPair>;
+  generateKeyPair: (size?: number) => Promise<PemKeyPair>;
 
-  generateSigningKeyPair: () => Promise<AnyKeyPair>;
+  /**
+   * Generate an RSA key pair for signing/verification.
+   * @returns PEM-encoded key pair
+   */
+  generateSigningKeyPair: () => Promise<PemKeyPair>;
 
   /**
    * Compute HMAC-SHA256 of content using key.
@@ -201,14 +201,16 @@ export type CryptoService = {
    * - X.509 certificates (-----BEGIN CERTIFICATE-----)
    * - Raw PEM public keys (-----BEGIN PUBLIC KEY-----)
    *
-   * X.509 certificates are self-describing (algorithm is in cert metadata),
-   * so no algorithm parameter is needed. Output is always SPKI-format PEM.
+   * For certificates, jwaAlgorithm must be provided to correctly parse the key
+   * (e.g., 'RS256', 'RS512', 'ES256', 'ES384', 'ES512'). For raw PEM keys,
+   * the algorithm parameter is ignored.
    *
    * @param certOrPem - PEM-encoded public key or X.509 certificate
+   * @param jwaAlgorithm - JWA algorithm for certificate parsing (required for certificates)
    * @returns PEM-encoded public key (SPKI format)
    * @throws Error if input is not valid PEM or certificate
    */
-  extractPublicKeyPem: (certOrPem: string) => Promise<string>;
+  extractPublicKeyPem: (certOrPem: string, jwaAlgorithm?: string) => Promise<string>;
 
   /**
    * Generate an EC key pair for ECDH key agreement or ECDSA signing.

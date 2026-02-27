@@ -3,7 +3,6 @@ import {
   isPublicKeyAlgorithm,
   KasPublicKeyAlgorithm,
   KasPublicKeyInfo,
-  noteInvalidPublicKey,
   OriginAllowList,
 } from '../access.js';
 
@@ -22,7 +21,6 @@ import { ListKeyAccessServersResponse } from '../platform/policy/kasregistry/key
 import {
   extractRpcErrorMessage,
   getPlatformUrlFromKasEndpoint,
-  pemToCryptoPublicKey,
   validateSecureUrl,
 } from '../utils.js';
 import { X_REWRAP_ADDITIONAL_CONTEXT } from './constants.js';
@@ -201,7 +199,6 @@ export async function fetchKasPubKey(
       v: '2',
     });
     const result: KasPublicKeyInfo = {
-      key: noteInvalidPublicKey(new URL(platformUrl), pemToCryptoPublicKey(publicKey)),
       publicKey,
       url: kasEndpoint,
       algorithm: algorithm || 'rsa:2048',
@@ -240,10 +237,6 @@ export async function fetchKasBasePubKey(kasEndpoint: string): Promise<KasPublic
     }
 
     const result: KasPublicKeyInfo = {
-      key: noteInvalidPublicKey(
-        new URL(baseKey.kas_uri),
-        pemToCryptoPublicKey(baseKey.public_key.pem)
-      ),
       publicKey: baseKey.public_key.pem,
       url: baseKey.kas_uri,
       algorithm: baseKey.public_key.algorithm,

@@ -2,7 +2,6 @@ import { assert, expect } from 'chai';
 
 import { Algorithms } from '../../../../tdf3/src/ciphers/index.js';
 import {
-  cryptoToPemPair,
   decrypt,
   decryptWithPrivateKey,
   deriveKeyFromECDH,
@@ -154,8 +153,7 @@ describe('Crypto Service', () => {
   });
 
   it('should encrypt with public key and decrypt with private key', async () => {
-    const ckp = await generateKeyPair(2056);
-    const { publicKey, privateKey } = await cryptoToPemPair(ckp);
+    const { publicKey, privateKey } = await generateKeyPair(2056);
     const rawData = '1';
     const payload = Binary.fromString(rawData);
 
@@ -166,8 +164,7 @@ describe('Crypto Service', () => {
   });
 
   it('should encrypt with publicKey', async () => {
-    const ckp = await generateKeyPair(2056);
-    const { publicKey, privateKey } = await cryptoToPemPair(ckp);
+    const { publicKey, privateKey } = await generateKeyPair(2056);
     const rawData = '1';
     const payload = Binary.fromString(rawData);
 
@@ -195,8 +192,7 @@ describe('Crypto Service', () => {
   });
 
   it('should encrypt with pub key and decrypt with private', async () => {
-    const ckp = await generateKeyPair(2056);
-    const { publicKey, privateKey } = await cryptoToPemPair(ckp);
+    const { publicKey, privateKey } = await generateKeyPair(2056);
     const rawData = '1';
     const payload = Binary.fromString(rawData);
 
@@ -335,8 +331,7 @@ describe('Crypto Service', () => {
 
   describe('importPublicKeyPem', () => {
     it('should import RSA public key', async () => {
-      const rsaKeyPair = await generateKeyPair(2048);
-      const pemPair = await cryptoToPemPair(rsaKeyPair);
+      const pemPair = await generateKeyPair(2048);
 
       const result = await importPublicKeyPem(pemPair.publicKey);
       expect(result.algorithm).to.equal('rsa:2048');
@@ -411,8 +406,7 @@ describe('Crypto Service', () => {
 
   describe('sign and verify with RS256', () => {
     it('should sign and verify with RS256', async () => {
-      const rsaKeyPair = await generateSigningKeyPair();
-      const pemPair = await cryptoToPemPair(rsaKeyPair);
+      const pemPair = await generateSigningKeyPair();
       const data = new TextEncoder().encode('test data for RSA');
 
       const signature = await sign(data, pemPair.privateKey, 'RS256');
@@ -423,8 +417,7 @@ describe('Crypto Service', () => {
     });
 
     it('should reject tampered data with RS256', async () => {
-      const rsaKeyPair = await generateSigningKeyPair();
-      const pemPair = await cryptoToPemPair(rsaKeyPair);
+      const pemPair = await generateSigningKeyPair();
       const data = new TextEncoder().encode('original data');
       const tamperedData = new TextEncoder().encode('tampered data');
 

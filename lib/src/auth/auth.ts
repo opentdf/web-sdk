@@ -1,4 +1,5 @@
-import { type JWTHeaderParameters, type JWTPayload, SignJWT } from 'jose';
+import { type CryptoService, type PemKeyPair } from '../../tdf3/src/crypto/declarations.js';
+import { signJwt, type JwtHeader, type JwtPayload } from '../../tdf3/src/crypto/jwt.js';
 
 export type HttpMethod =
   | 'GET'
@@ -54,22 +55,26 @@ function getTimestampInSeconds() {
 
 /**
  * Generate a JWT (or JWS-ed object)
- * @param toSign the data to sign. Interpreted as JWTPayload but AFAIK this isn't required
- * @param privateKey an RSA key
+ * @param toSign the data to sign. Interpreted as JwtPayload but AFAIK this isn't required
+ * @param privateKeyPem a PEM-encoded RSA private key
+ * @param cryptoService the crypto service to use for signing
+ * @param jwtProtectedHeader optional JWT header, defaults to RS256
  * @returns the signed object, with a JWS header. This may be a JWT.
  */
 export async function reqSignature(
   toSign: unknown,
-  privateKey: CryptoKey,
-  jwtProtectedHeader: JWTHeaderParameters = { alg: 'RS256' }
+  privateKeyPem: string,
+  cryptoService: CryptoService,
+  jwtProtectedHeader: JwtHeader = { alg: 'RS256' }
 ) {
   const now = getTimestampInSeconds();
   const anHour = 3600;
-  return new SignJWT(toSign as JWTPayload)
-    .setProtectedHeader(jwtProtectedHeader)
-    .setIssuedAt(now - anHour)
-    .setExpirationTime(now + anHour)
-    .sign(privateKey);
+  const payload: JwtPayload = {
+    ...(toSign as JwtPayload),
+    iat: now - anHour,
+    exp: now + anHour,
+  };
+  return signJwt(cryptoService, payload, privateKeyPem, jwtProtectedHeader);
 }
 
 /**
@@ -90,10 +95,10 @@ export type AuthProvider = {
    * using the cached refresh token, and update the auth server config with the
    * current key.
    *
-   * @param signingKey the client signing key pair. Will be bound
+   * @param signingKey the client signing key pair as PEM strings. Will be bound
    * to the OIDC token and require a DPoP header, when set.
    */
-  updateClientPublicKey(signingKey?: CryptoKeyPair): Promise<void>;
+  updateClientPublicKey(signingKey?: PemKeyPair): Promise<void>;
 
   /**
    * Augment the provided http request with custom auth info to be used by backend services.
