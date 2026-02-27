@@ -1,15 +1,19 @@
 import { expect } from '@esm-bundle/chai';
 import { clientAuthProvider } from '../../../src/auth/providers.js';
 import { Client as TDF3Client, type ClientConfig } from '../../../tdf3/src/client/index.js';
+import { DefaultCryptoService } from '../../../tdf3/src/crypto/index.js';
 
 describe('tdf3 client', () => {
   describe('fulfillableObligationFQNs', async () => {
-    const authProvider = await clientAuthProvider({
-      clientId: 'string',
-      oidcOrigin: 'string',
-      exchange: 'client',
-      clientSecret: 'password',
-    });
+    const authProvider = await clientAuthProvider(
+      {
+        clientId: 'string',
+        oidcOrigin: 'string',
+        exchange: 'client',
+        clientSecret: 'password',
+      },
+      DefaultCryptoService
+    );
     const defaultConfig: ClientConfig = {
       authProvider,
       kasEndpoint: 'https://opentdf.io/kas',

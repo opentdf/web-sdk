@@ -1,7 +1,8 @@
 import { ConfigurationError } from '../errors.js';
 import { type AuthProvider, type HttpRequest } from './auth.js';
 import { AccessToken, type RefreshTokenCredentials } from './oidc.js';
-import { type PemKeyPair } from '../../tdf3/src/crypto/declarations.js';
+import { type CryptoService, type PemKeyPair } from '../../tdf3/src/crypto/declarations.js';
+import * as defaultCryptoService from '../../tdf3/src/crypto/index.js';
 
 /**
  * An AuthProvider that uses an OIDC refresh token to obtain an access token.
@@ -21,25 +22,31 @@ export class OIDCRefreshTokenProvider implements AuthProvider {
   oidcAuth: AccessToken;
   refreshToken?: string;
 
-  constructor({
-    clientId,
-    refreshToken,
-    oidcOrigin,
-    oidcTokenEndpoint,
-    oidcUserInfoEndpoint,
-  }: Partial<RefreshTokenCredentials> & Omit<RefreshTokenCredentials, 'exchange'>) {
-    if (!clientId || !refreshToken) {
-      throw new ConfigurationError('refresh token or client id missing');
-    }
-
-    this.oidcAuth = new AccessToken({
-      exchange: 'refresh',
+  constructor(
+    {
       clientId,
       refreshToken,
       oidcOrigin,
       oidcTokenEndpoint,
       oidcUserInfoEndpoint,
-    });
+    }: Partial<RefreshTokenCredentials> & Omit<RefreshTokenCredentials, 'exchange'>,
+    cryptoService: CryptoService = defaultCryptoService
+  ) {
+    if (!clientId || !refreshToken) {
+      throw new ConfigurationError('refresh token or client id missing');
+    }
+
+    this.oidcAuth = new AccessToken(
+      {
+        exchange: 'refresh',
+        clientId,
+        refreshToken,
+        oidcOrigin,
+        oidcTokenEndpoint,
+        oidcUserInfoEndpoint,
+      },
+      cryptoService
+    );
     this.refreshToken = refreshToken;
   }
 

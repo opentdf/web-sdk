@@ -10,6 +10,8 @@ import { type AuthProvider } from './auth.js';
 import { OIDCRefreshTokenProvider } from './oidc-refreshtoken-provider.js';
 import { isBrowser } from '../utils.js';
 import { ConfigurationError } from '../errors.js';
+import { type CryptoService } from '../../tdf3/src/crypto/declarations.js';
+import * as defaultCryptoService from '../../tdf3/src/crypto/index.js';
 
 /**
  * Creates an OIDC Client Credentials Provider for non-browser contexts.
@@ -30,15 +32,19 @@ import { ConfigurationError } from '../errors.js';
  *
  */
 export const clientSecretAuthProvider = async (
-  clientConfig: ClientSecretCredentials
+  clientConfig: ClientSecretCredentials,
+  cryptoService: CryptoService = defaultCryptoService
 ): Promise<OIDCClientCredentialsProvider> => {
-  return new OIDCClientCredentialsProvider({
-    clientId: clientConfig.clientId,
-    clientSecret: clientConfig.clientSecret,
-    oidcOrigin: clientConfig.oidcOrigin,
-    oidcTokenEndpoint: clientConfig.oidcTokenEndpoint,
-    oidcUserInfoEndpoint: clientConfig.oidcUserInfoEndpoint,
-  });
+  return new OIDCClientCredentialsProvider(
+    {
+      clientId: clientConfig.clientId,
+      clientSecret: clientConfig.clientSecret,
+      oidcOrigin: clientConfig.oidcOrigin,
+      oidcTokenEndpoint: clientConfig.oidcTokenEndpoint,
+      oidcUserInfoEndpoint: clientConfig.oidcUserInfoEndpoint,
+    },
+    cryptoService
+  );
 };
 
 /**
@@ -58,15 +64,19 @@ export const clientSecretAuthProvider = async (
  * {@link updateClientPublicKey}, which will force an explicit token refresh.
  */
 export const externalAuthProvider = async (
-  clientConfig: ExternalJwtCredentials
+  clientConfig: ExternalJwtCredentials,
+  cryptoService: CryptoService = defaultCryptoService
 ): Promise<OIDCExternalJwtProvider> => {
-  return new OIDCExternalJwtProvider({
-    clientId: clientConfig.clientId,
-    externalJwt: clientConfig.externalJwt,
-    oidcOrigin: clientConfig.oidcOrigin,
-    oidcTokenEndpoint: clientConfig.oidcTokenEndpoint,
-    oidcUserInfoEndpoint: clientConfig.oidcUserInfoEndpoint,
-  });
+  return new OIDCExternalJwtProvider(
+    {
+      clientId: clientConfig.clientId,
+      externalJwt: clientConfig.externalJwt,
+      oidcOrigin: clientConfig.oidcOrigin,
+      oidcTokenEndpoint: clientConfig.oidcTokenEndpoint,
+      oidcUserInfoEndpoint: clientConfig.oidcUserInfoEndpoint,
+    },
+    cryptoService
+  );
 };
 
 /**
@@ -84,15 +94,19 @@ export const externalAuthProvider = async (
  * {@link updateClientPublicKey} which will force an explicit token refresh
  */
 export const refreshAuthProvider = async (
-  clientConfig: RefreshTokenCredentials
+  clientConfig: RefreshTokenCredentials,
+  cryptoService: CryptoService = defaultCryptoService
 ): Promise<OIDCRefreshTokenProvider> => {
-  return new OIDCRefreshTokenProvider({
-    clientId: clientConfig.clientId,
-    refreshToken: clientConfig.refreshToken,
-    oidcOrigin: clientConfig.oidcOrigin,
-    oidcTokenEndpoint: clientConfig.oidcTokenEndpoint,
-    oidcUserInfoEndpoint: clientConfig.oidcUserInfoEndpoint,
-  });
+  return new OIDCRefreshTokenProvider(
+    {
+      clientId: clientConfig.clientId,
+      refreshToken: clientConfig.refreshToken,
+      oidcOrigin: clientConfig.oidcOrigin,
+      oidcTokenEndpoint: clientConfig.oidcTokenEndpoint,
+      oidcUserInfoEndpoint: clientConfig.oidcUserInfoEndpoint,
+    },
+    cryptoService
+  );
 };
 
 /**
@@ -100,7 +114,10 @@ export const refreshAuthProvider = async (
  * @param clientConfig OIDC client credentials
  * @returns a promise for a new auth provider with the requested excahnge type
  */
-export const clientAuthProvider = async (clientConfig: OIDCCredentials): Promise<AuthProvider> => {
+export const clientAuthProvider = async (
+  clientConfig: OIDCCredentials,
+  cryptoService: CryptoService = defaultCryptoService
+): Promise<AuthProvider> => {
   if (!clientConfig.clientId) {
     throw new ConfigurationError('Client ID must be provided to constructor');
   }
@@ -116,13 +133,13 @@ export const clientAuthProvider = async (clientConfig: OIDCCredentials): Promise
     //and provide us with a valid refresh token/clientId obtained from that process.
     switch (clientConfig.exchange) {
       case 'refresh': {
-        return refreshAuthProvider(clientConfig);
+        return refreshAuthProvider(clientConfig, cryptoService);
       }
       case 'external': {
-        return externalAuthProvider(clientConfig);
+        return externalAuthProvider(clientConfig, cryptoService);
       }
       case 'client': {
-        return clientSecretAuthProvider(clientConfig);
+        return clientSecretAuthProvider(clientConfig, cryptoService);
       }
       default:
         throw new ConfigurationError(`Unsupported client type`);
@@ -136,7 +153,7 @@ export const clientAuthProvider = async (clientConfig: OIDCCredentials): Promise
       'When using client credentials, must supply both client ID and client secret to constructor'
     );
   }
-  return clientSecretAuthProvider(clientConfig);
+  return clientSecretAuthProvider(clientConfig, cryptoService);
 };
 
 export * from './auth.js';
