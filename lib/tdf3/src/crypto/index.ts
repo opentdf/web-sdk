@@ -24,7 +24,11 @@ import { encodeArrayBuffer as hexEncode } from '../../../src/encodings/hex.js';
 import { decodeArrayBuffer as base64Decode } from '../../../src/encodings/base64.js';
 import { AlgorithmUrn } from '../ciphers/algorithms.js';
 import { exportSPKI, importX509 } from 'jose';
-import { toJwsAlg } from '../../../src/crypto/pemPublicToCrypto.js';
+import {
+  toJwsAlg,
+  guessAlgorithmName,
+  guessCurveName,
+} from '../../../src/crypto/pemPublicToCrypto.js';
 
 // Used to pass into native crypto functions
 const METHODS: KeyUsage[] = ['encrypt', 'decrypt'];

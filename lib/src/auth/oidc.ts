@@ -307,7 +307,6 @@ export class AccessToken {
     const accessToken = (this.currentAccessToken ??= await this.get());
     if (this.config.dpopEnabled && this.signingKey) {
       // Convert PEM to CryptoKeyPair for dpop library (dpop requires Web Crypto keys)
-      const cryptoKeyPair = await toCryptoKeyPair(this.signingKey);
       const dpopToken = await dpopFn(
         this.signingKey,
         this.cryptoService,
