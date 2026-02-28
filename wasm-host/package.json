@@ -1,0 +1,13 @@
+{
+  "name": "@opentdf/wasm-tdf-host",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Browser host for WASM TDF encrypt module — validates round-trip via SubtleCrypto",
+  "scripts": {
+    "serve": "node serve.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.58.2"
+  }
+}
