@@ -24,7 +24,11 @@ import { encodeArrayBuffer as hexEncode } from '../../../src/encodings/hex.js';
 import { decodeArrayBuffer as base64Decode } from '../../../src/encodings/base64.js';
 import { AlgorithmUrn } from '../ciphers/algorithms.js';
 import { exportSPKI, importX509 } from 'jose';
-import { toJwsAlg } from '../../../src/crypto/pemPublicToCrypto.js';
+import {
+  toJwsAlg,
+  guessAlgorithmName,
+  guessCurveName,
+} from '../../../src/crypto/pemPublicToCrypto.js';
 
 // Used to pass into native crypto functions
 const METHODS: KeyUsage[] = ['encrypt', 'decrypt'];
@@ -918,6 +922,50 @@ export async function jwkToPem(jwk: JsonWebKey): Promise<string> {
   return formatAsPem(spkiBuffer, 'PUBLIC KEY');
 }
 
+/**
+ * Convert a PEM public key to JWK format.
+ * Returns only public key components (no private key data).
+ */
+export async function pemToJwk(publicKeyPem: string): Promise<JsonWebKey> {
+  const keyDataBase64 = removePemFormatting(publicKeyPem);
+  const keyBuffer = base64Decode(keyDataBase64);
+  const hex = hexEncode(keyBuffer);
+
+  // Detect key type using OID
+  const algorithmName = guessAlgorithmName(hex);
+
+  if (algorithmName === 'ECDH' || algorithmName === 'ECDSA') {
+    // EC key - detect curve from OID
+    const namedCurve = guessCurveName(hex);
+    // Map P-512 to P-521 (guessCurveName returns P-512 but Web Crypto uses P-521)
+    const webCryptoCurve = namedCurve === 'P-512' ? 'P-521' : namedCurve;
+    const key = await crypto.subtle.importKey(
+      'spki',
+      keyBuffer,
+      { name: 'ECDSA', namedCurve: webCryptoCurve },
+      true,
+      ['verify']
+    );
+    const jwk = await crypto.subtle.exportKey('jwk', key);
+    // Return only public key components
+    const { kty, crv, x, y } = jwk;
+    return { kty, crv, x, y };
+  } else {
+    // RSA key
+    const key = await crypto.subtle.importKey(
+      'spki',
+      keyBuffer,
+      { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+      true,
+      ['verify']
+    );
+    const jwk = await crypto.subtle.exportKey('jwk', key);
+    // Return only public key components
+    const { kty, e, n } = jwk;
+    return { kty, e, n };
+  }
+}
+
 export const DefaultCryptoService: CryptoService = {
   name,
   method,
@@ -936,6 +984,7 @@ export const DefaultCryptoService: CryptoService = {
   hmac,
   importPublicKeyPem,
   jwkToPem,
+  pemToJwk,
   randomBytes,
   sha256,
   sign,
