@@ -6,5 +6,26 @@ export { generateKeyPair } from './generateKeyPair.js';
 export { keyAgreement } from './keyAgreement.js';
 export { default as exportCryptoKey } from './exportCryptoKey.js';
 export { generateRandomNumber } from './generateRandomNumber.js';
-export { pemPublicToCrypto, pemCertToCrypto } from './pemPublicToCrypto.js';
+export {
+  pemPublicToCrypto,
+  pemCertToCrypto,
+  guessAlgorithmName,
+  guessCurveName,
+  toJwsAlg,
+  RSA_OID,
+  EC_OID,
+  P256_OID,
+  P384_OID,
+  P521_OID,
+  type AlgorithmName,
+  type CurveName,
+} from './pemPublicToCrypto.js';
 export * as enums from './enums.js';
+
+// PEM Formatting Utilities from tdf3
+export {
+  formatAsPem,
+  removePemFormatting,
+  isPemKeyPair,
+  isCryptoKeyPair,
+} from '../../tdf3/src/crypto/crypto-utils.js';

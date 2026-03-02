@@ -1,9 +1,5 @@
 import { v4 } from 'uuid';
-import {
-  keyMiddleware as defaultKeyMiddleware,
-  streamToBuffer,
-  ZipReader,
-} from '../utils/index.js';
+import { keyMiddleware as keyMiddlewareFn, streamToBuffer, ZipReader } from '../utils/index.js';
 import { base64 } from '../../../src/encodings/index.js';
 import {
   buildKeyAccess,
@@ -499,12 +495,13 @@ export class Client {
       metadata,
       mimeType = 'unknown',
       windowSize = DEFAULT_SEGMENT_SIZE,
-      keyMiddleware = defaultKeyMiddleware,
+      keyMiddleware: keyMiddlewareOpt,
       splitPlan: preconfiguredSplitPlan,
       streamMiddleware = async (stream: DecoratedReadableStream) => stream,
       tdfSpecVersion,
       wrappingKeyAlgorithm,
     } = opts;
+    const keyMiddleware = keyMiddlewareOpt ?? (() => keyMiddlewareFn(this.cryptoService));
     const scope = opts.scope ?? { attributes: [], dissem: [] };
 
     for (const attributeValue of scope.attributeValues || []) {

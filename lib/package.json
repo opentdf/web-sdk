@@ -48,6 +48,13 @@
         "import": "./dist/web/src/encodings/index.js"
       }
     },
+    "./cryptoutils": {
+      "default": {
+        "types": "./dist/types/src/crypto/index.d.ts",
+        "require": "./dist/cjs/src/crypto/index.js",
+        "import": "./dist/web/src/crypto/index.js"
+      }
+    },
     "./platform": {
       "types": "./dist/types/src/platform.d.ts",
       "require": "./dist/cjs/src/platform.js",
