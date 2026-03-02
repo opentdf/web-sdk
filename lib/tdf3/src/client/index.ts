@@ -18,7 +18,6 @@ import { unwrapHtml } from '../utils/unwrap.js';
 import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-provider.js';
 import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider.js';
 import { CryptoService } from '../crypto/declarations.js';
-import { parsePublicKeyPem } from '../crypto/index.js';
 import { type AuthProvider, HttpRequest, withHeaders } from '../../../src/auth/auth.js';
 import { getPlatformUrlFromKasEndpoint, rstrip, validateSecureUrl } from '../../../src/utils.js';
 
@@ -63,7 +62,7 @@ const defaultClientConfig = { oidcOrigin: '', cryptoService: defaultCryptoServic
 const getFirstTwoBytes = async (chunker: Chunker) => new TextDecoder().decode(await chunker(0, 2));
 
 async function algorithmFromPEM(pem: string, cryptoService: CryptoService) {
-  const keyInfo = await parsePublicKeyPem(pem);
+  const keyInfo = await cryptoService.parsePublicKeyPem(pem);
   return keyInfo.algorithm;
 }
 
@@ -74,7 +73,7 @@ export const resolveKasInfo = async (
   cryptoService: CryptoService,
   kid?: string
 ): Promise<KasPublicKeyInfo> => {
-  const keyInfo = await parsePublicKeyPem(pem);
+  const keyInfo = await cryptoService.parsePublicKeyPem(pem);
   return {
     publicKey: pem,
     url: uri,
@@ -297,7 +296,7 @@ const putKasKeyIntoCache = (
     return cachedEntry;
   }
   const keyInfoPromise = (async function () {
-    const keyInfo = await parsePublicKeyPem(kasKey.publicKey.pem);
+    const keyInfo = await cryptoService.parsePublicKeyPem(kasKey.publicKey.pem);
     return {
       algorithm: keyInfo.algorithm,
       kid: kasKey.publicKey.kid,

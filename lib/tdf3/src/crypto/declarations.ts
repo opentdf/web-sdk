@@ -309,6 +309,15 @@ export type CryptoService = {
    */
   importPrivateKey?: (pem: string, options: KeyOptions) => Promise<PrivateKey>;
 
+  /**
+   * Parse and validate a PEM public key, returning algorithm info.
+   *
+   * @param pem - PEM-encoded public key or X.509 certificate
+   * @returns Validated PEM and detected algorithm
+   * @throws ConfigurationError if key format invalid or algorithm not supported
+   */
+  parsePublicKeyPem: (pem: string) => Promise<PublicKeyInfo>;
+
   // === Key Export (opaque → PEM/JWK) ===
 
   /**
@@ -331,6 +340,34 @@ export type CryptoService = {
    * @returns JWK representation
    */
   exportPublicKeyJwk: (key: PublicKey) => Promise<JsonWebKey>;
+
+  /**
+   * Extract PEM public key from X.509 certificate or return PEM key as-is.
+   *
+   * Used to normalize KAS public keys which may be provided as either:
+   * - X.509 certificates (-----BEGIN CERTIFICATE-----)
+   * - Raw PEM public keys (-----BEGIN PUBLIC KEY-----)
+   *
+   * For certificates, jwaAlgorithm must be provided to correctly parse the key
+   * (e.g., 'RS256', 'RS512', 'ES256', 'ES384', 'ES512'). For raw PEM keys,
+   * the algorithm parameter is ignored.
+   *
+   * @param certOrPem - PEM-encoded public key or X.509 certificate
+   * @param jwaAlgorithm - JWA algorithm for certificate parsing (required for certificates)
+   * @returns PEM-encoded public key (SPKI format)
+   * @throws Error if input is not valid PEM or certificate
+   */
+  extractPublicKeyPem: (certOrPem: string, jwaAlgorithm?: string) => Promise<string>;
+
+  /**
+   * Convert a JWK (JSON Web Key) public key to PEM format.
+   * Supports both RSA and EC keys.
+   *
+   * @param jwk - JSON Web Key object
+   * @returns PEM-encoded public key
+   * @throws ConfigurationError if JWK format invalid
+   */
+  jwkToPublicKeyPem: (jwk: JsonWebKey) => Promise<string>;
 
   // === Symmetric Key Operations ===
 
