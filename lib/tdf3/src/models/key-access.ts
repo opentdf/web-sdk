@@ -9,6 +9,8 @@ export type KeyAccessType = 'remote' | 'wrapped' | 'ec-wrapped';
 
 export const schemaVersion = '1.0';
 
+import type { PemKeyPair } from '../crypto/declarations.js';
+
 export class ECWrapped {
   readonly type = 'ec-wrapped';
   readonly ephemeralKeyPair: Promise<KeyPair>;

@@ -220,7 +220,8 @@ export async function fetchKasPublicKey(
 
 export async function extractPemFromKeyString(
   keyString: string,
-  alg: KasPublicKeyAlgorithm
+  alg: KasPublicKeyAlgorithm,
+  cryptoService: CryptoService
 ): Promise<string> {
   // Convert KAS algorithm to JWA algorithm if provided
   const jwaAlgorithm = publicKeyAlgorithmToJwa(alg);
@@ -262,7 +263,7 @@ export async function buildKeyAccess({
 
   let pubKey: string;
   try {
-    pubKey = await extractPemFromKeyString(publicKey, alg);
+    pubKey = await extractPemFromKeyString(publicKey, alg, cryptoService);
   } catch (e) {
     throw new ConfigurationError(
       `TDF.buildKeyAccess: Invalid public key [${publicKey}], caused by [${e}]`,

@@ -414,6 +414,46 @@ export class OidcClient implements AuthProvider {
     return { publicKey, privateKey };
   }
 
+  private derToPem(derBase64: string, label: string): string {
+    const pemBody = derBase64.match(/.{1,64}/g)?.join('\n') || derBase64;
+    return `-----BEGIN ${label}-----\n${pemBody}\n-----END ${label}-----`;
+  }
+
+  private bufferToPem(buffer: ArrayBuffer, label: string): string {
+    const derBase64 = base64.encodeArrayBuffer(buffer);
+    return this.derToPem(derBase64, label);
+  }
+
+  private pemToDer(pem: string): string {
+    // Remove PEM headers/footers and whitespace to get base64-encoded DER
+    return pem
+      .replace(/-----BEGIN [A-Z ]+-----/g, '')
+      .replace(/-----END [A-Z ]+-----/g, '')
+      .replace(/\s/g, '');
+  }
+
+  private async pemToJwk(publicKeyPem: string): Promise<JsonWebKey> {
+    const derBase64 = this.pemToDer(publicKeyPem);
+    const derBuffer = base64.decodeArrayBuffer(derBase64);
+    const key = await crypto.subtle.importKey('spki', derBuffer, rsaPkcs1Sha256(), true, [
+      'verify',
+    ]);
+    return crypto.subtle.exportKey('jwk', key);
+  }
+
+  private async pemToCryptoKeyPair(pemKeyPair: PemKeyPair): Promise<CryptoKeyPair> {
+    const publicKeyDer = base64.decodeArrayBuffer(this.pemToDer(pemKeyPair.publicKey));
+    const privateKeyDer = base64.decodeArrayBuffer(this.pemToDer(pemKeyPair.privateKey));
+    const algorithm = rsaPkcs1Sha256();
+
+    const [publicKey, privateKey] = await Promise.all([
+      crypto.subtle.importKey('spki', publicKeyDer, algorithm, true, ['verify']),
+      crypto.subtle.importKey('pkcs8', privateKeyDer, algorithm, true, ['sign']),
+    ]);
+
+    return { publicKey, privateKey };
+  }
+
   private async _makeAccessTokenRequest(options: {
     grantType: 'authorization_code' | 'refresh_token';
     codeOrRefreshToken: string;

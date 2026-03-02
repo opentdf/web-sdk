@@ -175,3 +175,14 @@ describe('assertions', () => {
     });
   });
 });
+
+/**
+ * Helper to convert PEM to ArrayBuffer for crypto.subtle operations.
+ */
+function pemToArrayBuffer(pem: string): ArrayBuffer {
+  const b64 = pem
+    .replace(/-----BEGIN.*-----/, '')
+    .replace(/-----END.*-----/, '')
+    .replace(/\s/g, '');
+  return base64.decodeArrayBuffer(b64);
+}
