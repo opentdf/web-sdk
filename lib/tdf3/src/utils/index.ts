@@ -1,8 +1,7 @@
-import * as WebCryptoService from '../crypto/index.js';
 import { KeyInfo, SplitKey } from '../models/index.js';
-
 import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
 import { ConfigurationError } from '../../../src/errors.js';
+import { type CryptoService } from '../crypto/declarations.js';
 import { decodeArrayBuffer, encodeArrayBuffer } from '../../../src/encodings/base64.js';
 
 export { ZipReader, readUInt64LE } from './zip-reader.js';
@@ -292,15 +291,15 @@ export function base64ToBytes(str: string): Uint8Array {
  *
  * @returns {Object}:
  * {
- *   keyForEncryption: Binary;
- *   keyForManifest: Binary;
+ *   keyForEncryption: KeyInfo;
+ *   keyForManifest: KeyInfo;
  * }
  */
-export async function keyMiddleware(): Promise<{
+export async function keyMiddleware(cryptoService: CryptoService): Promise<{
   keyForEncryption: KeyInfo;
   keyForManifest: KeyInfo;
 }> {
-  const cipher = new AesGcmCipher(WebCryptoService);
+  const cipher = new AesGcmCipher(cryptoService);
   const encryptionInformation = new SplitKey(cipher);
   if (!encryptionInformation?.generateKey) {
     throw new ConfigurationError('Crypto service not initialised');
