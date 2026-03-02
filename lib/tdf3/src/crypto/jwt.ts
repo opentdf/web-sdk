@@ -165,7 +165,7 @@ export async function signJwt(
 export async function verifyJwt(
   cryptoService: CryptoService,
   token: string,
-  key: string | Uint8Array,
+  key: string | Uint8Array | PublicKey | SymmetricKey,
   options?: VerifyJwtOptions
 ): Promise<{ header: JwtHeader; payload: JwtPayload }> {
   const parts = token.split('.');
