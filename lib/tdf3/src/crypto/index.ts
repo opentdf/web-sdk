@@ -903,7 +903,11 @@ export async function parsePublicKeyPem(pem: string): Promise<PublicKeyInfo> {
   try {
     const modulusBits = await extractRsaModulusBitLength(keyData);
     let algorithm: PublicKeyInfo['algorithm'];
-    if (modulusBits <= 2048) {
+    if (modulusBits < MIN_ASYMMETRIC_KEY_SIZE_BITS) {
+      throw new ConfigurationError(
+        `RSA key size ${modulusBits} bits is below the minimum of ${MIN_ASYMMETRIC_KEY_SIZE_BITS} bits`
+      );
+    } else if (modulusBits <= 2048) {
       algorithm = 'rsa:2048';
     } else if (modulusBits <= 4096) {
       algorithm = 'rsa:4096';
@@ -912,8 +916,8 @@ export async function parsePublicKeyPem(pem: string): Promise<PublicKeyInfo> {
     }
     return { algorithm, pem: publicKeyPem };
   } catch (e) {
-    // If it's our own error about key size, rethrow
-    if (e instanceof ConfigurationError && e.message.includes('RSA key size')) {
+    // If it's our own ConfigurationError, rethrow
+    if (e instanceof ConfigurationError) {
       throw e;
     }
     // Not an RSA key, try EC next
@@ -1114,7 +1118,15 @@ export async function importPrivateKey(pem: string, options: KeyOptions): Promis
         ['sign']
       );
       const jwk = await crypto.subtle.exportKey('jwk', tempKey);
-      const modulusBits = jwk.n ? base64urlByteLength(jwk.n) * 8 : 2048;
+      if (!jwk.n) {
+        throw new ConfigurationError('Invalid RSA private key: missing modulus');
+      }
+      const modulusBits = base64urlByteLength(jwk.n) * 8;
+      if (modulusBits < MIN_ASYMMETRIC_KEY_SIZE_BITS) {
+        throw new ConfigurationError(
+          `RSA key size ${modulusBits} bits is below the minimum of ${MIN_ASYMMETRIC_KEY_SIZE_BITS} bits`
+        );
+      }
       algorithm = modulusBits <= 2048 ? 'rsa:2048' : 'rsa:4096';
     }
   }
