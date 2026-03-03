@@ -89,41 +89,50 @@ export class SplitKey {
     );
 
     const keyAccessObjects = [];
-    for (const item of this.keyAccess) {
-      // use the key split to encrypt metadata for each key access object
-      const unwrappedKeySplit = splitsByName[item.sid || ''];
+    try {
+      for (const item of this.keyAccess) {
+        // use the key split to encrypt metadata for each key access object
+        const unwrappedKeySplit = splitsByName[item.sid || ''];
 
-      const metadata = item.metadata || '';
-      const metadataStr = (
-        typeof metadata === 'object'
-          ? JSON.stringify(metadata)
-          : typeof metadata === 'string'
-            ? metadata
-            : () => {
-                throw new ConfigurationError(
-                  "KAO generation failure: metadata isn't a string or object"
-                );
-              }
-      ) as string;
+        const metadata = item.metadata || '';
+        const metadataStr = (
+          typeof metadata === 'object'
+            ? JSON.stringify(metadata)
+            : typeof metadata === 'string'
+              ? metadata
+              : () => {
+                  throw new ConfigurationError(
+                    "KAO generation failure: metadata isn't a string or object"
+                  );
+                }
+        ) as string;
 
-      const metadataBinary = Binary.fromArrayBuffer(new TextEncoder().encode(metadataStr));
+        const metadataBinary = Binary.fromArrayBuffer(new TextEncoder().encode(metadataStr));
 
-      const encryptedMetadataResult = await this.encrypt(
-        metadataBinary,
-        unwrappedKeySplit,
-        keyInfo.unwrappedKeyIvBinary
-      );
+        const encryptedMetadataResult = await this.encrypt(
+          metadataBinary,
+          unwrappedKeySplit,
+          keyInfo.unwrappedKeyIvBinary
+        );
 
-      const encryptedMetadataOb = {
-        ciphertext: base64.encode(encryptedMetadataResult.payload.asString()),
-        iv: base64.encode(keyInfo.unwrappedKeyIvBinary.asString()),
-      };
+        const encryptedMetadataOb = {
+          ciphertext: base64.encode(encryptedMetadataResult.payload.asString()),
+          iv: base64.encode(keyInfo.unwrappedKeyIvBinary.asString()),
+        };
 
-      const encryptedMetadataStr = JSON.stringify(encryptedMetadataOb);
-      const keyAccessObject = await item.write(policy, unwrappedKeySplit, encryptedMetadataStr);
-      keyAccessObjects.push(keyAccessObject);
+        const encryptedMetadataStr = JSON.stringify(encryptedMetadataOb);
+        const keyAccessObject = await item.write(policy, unwrappedKeySplit, encryptedMetadataStr);
+        keyAccessObjects.push(keyAccessObject);
+      }
+    } finally {
+      // Release split keys that are distinct from the original unwrapped key.
+      // Implementations may return the original key handle as a split even for n>1,
+      // so we filter by reference to avoid releasing an active key.
+      const splitsToRelease = unwrappedKeySplits.filter((s) => s !== keyInfo.unwrappedKey);
+      if (splitsToRelease.length > 0) {
+        await this.cryptoService.releaseKeys?.(...splitsToRelease).catch(() => {});
+      }
     }
-
     return keyAccessObjects;
   }
 

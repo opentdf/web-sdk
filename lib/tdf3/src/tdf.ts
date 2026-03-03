@@ -773,140 +773,150 @@ async function unwrapKey({
     } else {
       throw new ConfigurationError(`Unsupported wrapping key algorithm [${wrappingKeyAlgorithm}]`);
     }
+    try {
+      // Export public key to PEM for protobuf request
+      const clientPublicKey = await cryptoService.exportPublicKeyPem(
+        ephemeralEncryptionKeys.publicKey
+      );
 
-    // Export public key to PEM for protobuf request
-    const clientPublicKey = await cryptoService.exportPublicKeyPem(
-      ephemeralEncryptionKeys.publicKey
-    );
+      // Convert keySplitInfo to protobuf KeyAccess
+      const keyAccessProto = create(KeyAccessSchema, {
+        ...(keySplitInfo.type && { keyType: keySplitInfo.type }),
+        ...(keySplitInfo.url && { kasUrl: keySplitInfo.url }),
+        ...(keySplitInfo.protocol && { protocol: keySplitInfo.protocol }),
+        ...(keySplitInfo.wrappedKey && {
+          wrappedKey: new Uint8Array(base64.decodeArrayBuffer(keySplitInfo.wrappedKey)),
+        }),
+        ...(keySplitInfo.policyBinding && { policyBinding: keySplitInfo.policyBinding }),
+        ...(keySplitInfo.kid && { kid: keySplitInfo.kid }),
+        ...(keySplitInfo.sid && { splitId: keySplitInfo.sid }),
+        ...(keySplitInfo.encryptedMetadata && {
+          encryptedMetadata: keySplitInfo.encryptedMetadata,
+        }),
+        ...(keySplitInfo.ephemeralPublicKey && {
+          ephemeralPublicKey: keySplitInfo.ephemeralPublicKey,
+        }),
+      });
 
-    // Convert keySplitInfo to protobuf KeyAccess
-    const keyAccessProto = create(KeyAccessSchema, {
-      ...(keySplitInfo.type && { keyType: keySplitInfo.type }),
-      ...(keySplitInfo.url && { kasUrl: keySplitInfo.url }),
-      ...(keySplitInfo.protocol && { protocol: keySplitInfo.protocol }),
-      ...(keySplitInfo.wrappedKey && {
-        wrappedKey: new Uint8Array(base64.decodeArrayBuffer(keySplitInfo.wrappedKey)),
-      }),
-      ...(keySplitInfo.policyBinding && { policyBinding: keySplitInfo.policyBinding }),
-      ...(keySplitInfo.kid && { kid: keySplitInfo.kid }),
-      ...(keySplitInfo.sid && { splitId: keySplitInfo.sid }),
-      ...(keySplitInfo.encryptedMetadata && { encryptedMetadata: keySplitInfo.encryptedMetadata }),
-      ...(keySplitInfo.ephemeralPublicKey && {
-        ephemeralPublicKey: keySplitInfo.ephemeralPublicKey,
-      }),
-    });
-
-    // Create the protobuf request
-    const unsignedRequest = create(UnsignedRewrapRequestSchema, {
-      clientPublicKey,
-      requests: [
-        create(UnsignedRewrapRequest_WithPolicyRequestSchema, {
-          keyAccessObjects: [
-            create(UnsignedRewrapRequest_WithKeyAccessObjectSchema, {
-              keyAccessObjectId: 'kao-0',
-              keyAccessObject: keyAccessProto,
-            }),
-          ],
-          ...(manifest.encryptionInformation.policy && {
-            policy: create(UnsignedRewrapRequest_WithPolicySchema, {
-              id: 'policy',
-              body: manifest.encryptionInformation.policy,
+      // Create the protobuf request
+      const unsignedRequest = create(UnsignedRewrapRequestSchema, {
+        clientPublicKey,
+        requests: [
+          create(UnsignedRewrapRequest_WithPolicyRequestSchema, {
+            keyAccessObjects: [
+              create(UnsignedRewrapRequest_WithKeyAccessObjectSchema, {
+                keyAccessObjectId: 'kao-0',
+                keyAccessObject: keyAccessProto,
+              }),
+            ],
+            ...(manifest.encryptionInformation.policy && {
+              policy: create(UnsignedRewrapRequest_WithPolicySchema, {
+                id: 'policy',
+                body: manifest.encryptionInformation.policy,
+              }),
             }),
           }),
-        }),
-      ],
-      // include deprecated fields for backward compatibility
-      algorithm: 'RS256',
-      keyAccess: keyAccessProto,
-      policy: manifest.encryptionInformation.policy,
-    });
+        ],
+        // include deprecated fields for backward compatibility
+        algorithm: 'RS256',
+        keyAccess: keyAccessProto,
+        policy: manifest.encryptionInformation.policy,
+      });
 
-    const requestBodyStr = toJsonString(UnsignedRewrapRequestSchema, unsignedRequest);
+      const requestBodyStr = toJsonString(UnsignedRewrapRequestSchema, unsignedRequest);
 
-    const jwtPayload = { requestBody: requestBodyStr };
-    const signedRequestToken = await reqSignature(jwtPayload, dpopKeys.privateKey, cryptoService);
+      const jwtPayload = { requestBody: requestBodyStr };
+      const signedRequestToken = await reqSignature(jwtPayload, dpopKeys.privateKey, cryptoService);
 
-    const rewrapResp = await fetchWrappedKey(
-      url,
-      signedRequestToken,
-      authProvider,
-      fulfillableObligations
-    );
-    // Upgrade V1 response to V2 format if needed
-    upgradeRewrapResponseV1(rewrapResp);
-    const { sessionPublicKey } = rewrapResp;
-    const requiredObligations = getRequiredObligationFQNs(rewrapResp);
-    // Assume only one response and one result for now (V1 style)
-    const result = rewrapResp.responses?.[0]?.results?.[0];
-    if (!result) {
-      // This should not happen - KAS should always return at least one response and one result
-      // or the upgradeRewrapResponseV1 should have created them
-      throw new DecryptError('KAS rewrap response missing expected response or result');
-    }
-    const metadata = result.metadata;
-    // Handle the different cases of result.result
-    switch (result.result.case) {
-      case 'kasWrappedKey': {
-        const entityWrappedKey = result.result.value;
+      const rewrapResp = await fetchWrappedKey(
+        url,
+        signedRequestToken,
+        authProvider,
+        fulfillableObligations
+      );
+      // Upgrade V1 response to V2 format if needed
+      upgradeRewrapResponseV1(rewrapResp);
+      const { sessionPublicKey } = rewrapResp;
+      const requiredObligations = getRequiredObligationFQNs(rewrapResp);
+      // Assume only one response and one result for now (V1 style)
+      const result = rewrapResp.responses?.[0]?.results?.[0];
+      if (!result) {
+        // This should not happen - KAS should always return at least one response and one result
+        // or the upgradeRewrapResponseV1 should have created them
+        throw new DecryptError('KAS rewrap response missing expected response or result');
+      }
+      const metadata = result.metadata;
+      // Handle the different cases of result.result
+      switch (result.result.case) {
+        case 'kasWrappedKey': {
+          const entityWrappedKey = result.result.value;
 
-        if (wrappingKeyAlgorithm === 'ec:secp256r1') {
-          // Import KAS session public key from PEM
-          const sessionPublicKeyOpaque = await cryptoService.importPublicKey(sessionPublicKey, {
-            usage: 'derive',
-          });
-
-          // Derive decryption key using ECDH + HKDF via CryptoService (returns SymmetricKey)
-          const derivedKey = await cryptoService.deriveKeyFromECDH(
-            ephemeralEncryptionKeys.privateKey,
-            sessionPublicKeyOpaque,
-            {
-              hash: 'SHA-256',
-              salt: await getZtdfSalt(cryptoService),
+          if (wrappingKeyAlgorithm === 'ec:secp256r1') {
+            // Import KAS session public key from PEM; release it regardless of outcome.
+            const sessionPublicKeyOpaque = await cryptoService.importPublicKey(sessionPublicKey, {
+              usage: 'derive',
+            });
+            try {
+              // Derive decryption key using ECDH + HKDF via CryptoService (returns SymmetricKey)
+              const derivedKey = await cryptoService.deriveKeyFromECDH(
+                ephemeralEncryptionKeys.privateKey,
+                sessionPublicKeyOpaque,
+                {
+                  hash: 'SHA-256',
+                  salt: await getZtdfSalt(cryptoService),
+                }
+              );
+              const wrappedKeyAndNonce = entityWrappedKey;
+              const iv = wrappedKeyAndNonce.slice(0, 12);
+              const wrappedKey = wrappedKeyAndNonce.slice(12);
+              let decryptResult: Awaited<ReturnType<typeof cryptoService.decrypt>>;
+              try {
+                // Decrypt using CryptoService with opaque symmetric key
+                decryptResult = await cryptoService.decrypt(
+                  Binary.fromArrayBuffer(wrappedKey.buffer),
+                  derivedKey,
+                  Binary.fromArrayBuffer(iv.buffer),
+                  Algorithms.AES_256_GCM
+                );
+              } finally {
+                await cryptoService.releaseKeys?.(derivedKey).catch(() => {});
+              }
+              return {
+                key: new Uint8Array(decryptResult.payload.asArrayBuffer()),
+                metadata,
+                requiredObligations,
+              };
+            } finally {
+              await cryptoService.releaseKeys?.(sessionPublicKeyOpaque).catch(() => {});
             }
+          }
+          const key = Binary.fromArrayBuffer(entityWrappedKey);
+          const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(
+            key,
+            ephemeralEncryptionKeys.privateKey
           );
-
-          const wrappedKeyAndNonce = entityWrappedKey;
-          const iv = wrappedKeyAndNonce.slice(0, 12);
-          const wrappedKey = wrappedKeyAndNonce.slice(12);
-
-          // Decrypt using CryptoService with opaque symmetric key
-          const decryptResult = await cryptoService.decrypt(
-            Binary.fromArrayBuffer(wrappedKey.buffer),
-            derivedKey, // SymmetricKey (opaque)
-            Binary.fromArrayBuffer(iv.buffer),
-            Algorithms.AES_256_GCM
-          );
-
           return {
-            key: new Uint8Array(decryptResult.payload.asArrayBuffer()),
+            key: new Uint8Array(decryptedKeyBinary.asByteArray()),
             metadata,
             requiredObligations,
           };
         }
-        const key = Binary.fromArrayBuffer(entityWrappedKey);
-        const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(
-          key,
-          ephemeralEncryptionKeys.privateKey
-        );
 
-        return {
-          key: new Uint8Array(decryptedKeyBinary.asByteArray()),
-          metadata,
-          requiredObligations,
-        };
-      }
+        case 'error': {
+          handleRpcRewrapErrorString(
+            result.result.value,
+            getPlatformUrlFromKasEndpoint(url),
+            requiredObligations
+          );
+        }
 
-      case 'error': {
-        handleRpcRewrapErrorString(
-          result.result.value,
-          getPlatformUrlFromKasEndpoint(url),
-          requiredObligations
-        );
+        default: {
+          throw new DecryptError('KAS rewrap response missing wrapped key');
+        }
       }
-
-      default: {
-        throw new DecryptError('KAS rewrap response missing wrapped key');
-      }
+    } finally {
+      // Release ephemeral key pair regardless of which branch was taken or whether it threw.
+      await cryptoService.releaseKeys?.(ephemeralEncryptionKeys).catch(() => {});
     }
   }
 
@@ -947,8 +957,14 @@ async function unwrapKey({
         requiredObligations.add(requiredObligation.toLowerCase());
       }
     }
-    // Merge symmetric keys via CryptoService
+    // Merge symmetric keys via CryptoService.
+    // Release splits that are not aliased by reconstructedKey — implementations may legally
+    // return one of the input handles as the merged key, so filter by reference.
     const reconstructedKey = await cryptoService.mergeSymmetricKeys(splitKeys);
+    const splitsToRelease = splitKeys.filter((s) => s !== reconstructedKey);
+    if (splitsToRelease.length > 0) {
+      await cryptoService.releaseKeys?.(...splitsToRelease).catch(() => {});
+    }
     return {
       reconstructedKey, // SymmetricKey (opaque)
       metadata: rewrapResponseData[0].metadata, // Use metadata from first split

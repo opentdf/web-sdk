@@ -402,4 +402,16 @@ export type CryptoService = {
    * @throws ConfigurationError if not supported by the implementation
    */
   mergeSymmetricKeys: (shares: SymmetricKey[]) => Promise<SymmetricKey>;
+
+  /**
+   * Release key material, freeing any associated resources (e.g. HSM slots).
+   *
+   * Callers MUST NOT use a key after releasing it.
+   * Implementations MUST be idempotent (double-release is safe).
+   * DefaultCryptoService: no-op (Web Crypto handles lifetime via GC).
+   * HSM implementations: release the corresponding key slot(s).
+   *
+   * @param keys - Keys to release. KeyPair is accepted as a convenience (releases both halves).
+   */
+  releaseKeys?: (...keys: (PublicKey | PrivateKey | SymmetricKey | KeyPair)[]) => Promise<void>;
 };

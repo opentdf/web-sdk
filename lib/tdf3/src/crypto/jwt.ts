@@ -214,11 +214,15 @@ export async function verifyJwt(
       throw new Error('HS256 requires a SymmetricKey, not a PublicKey');
     }
     // Convert Uint8Array to SymmetricKey if needed, otherwise assume it's already SymmetricKey
-    const symmetricKey =
-      key instanceof Uint8Array
-        ? await cryptoService.importSymmetricKey(key)
-        : (key as SymmetricKey);
-    valid = await cryptoService.verifyHmac(signingInputBytes, signature, symmetricKey);
+    const imported = key instanceof Uint8Array;
+    const symmetricKey = imported
+      ? await cryptoService.importSymmetricKey(key)
+      : (key as SymmetricKey);
+    try {
+      valid = await cryptoService.verifyHmac(signingInputBytes, signature, symmetricKey);
+    } finally {
+      if (imported) await cryptoService.releaseKeys?.(symmetricKey).catch(() => {});
+    }
   } else {
     // Asymmetric verification - accept string (PEM) or PublicKey
     if (key instanceof Uint8Array) {
@@ -228,16 +232,20 @@ export async function verifyJwt(
       throw new Error(`${header.alg} requires a PublicKey, not a SymmetricKey`);
     }
     // Convert PEM string to PublicKey if needed, otherwise assume it's already PublicKey
-    const publicKey =
-      typeof key === 'string'
-        ? await cryptoService.importPublicKey(key, { usage: 'sign' })
-        : (key as PublicKey);
-    valid = await cryptoService.verify(
-      signingInputBytes,
-      signature,
-      publicKey,
-      header.alg as AsymmetricSigningAlgorithm
-    );
+    const imported = typeof key === 'string';
+    const publicKey = imported
+      ? await cryptoService.importPublicKey(key, { usage: 'sign' })
+      : (key as PublicKey);
+    try {
+      valid = await cryptoService.verify(
+        signingInputBytes,
+        signature,
+        publicKey,
+        header.alg as AsymmetricSigningAlgorithm
+      );
+    } finally {
+      if (imported) await cryptoService.releaseKeys?.(publicKey).catch(() => {});
+    }
   }
 
   if (!valid) {

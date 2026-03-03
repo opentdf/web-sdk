@@ -34,68 +34,74 @@ export class ECWrapped {
     const policyStr = JSON.stringify(policy);
     const ek = await this.ephemeralKeyPair;
 
-    // Import KAS public key from PEM
+    // Import KAS public key; release it (and the ephemeral pair) regardless of outcome.
     const kasPublicKey = await this.cryptoService.importPublicKey(this.publicKey, {
       usage: 'derive',
     });
+    try {
+      // Derive encryption key using ECDH + HKDF via CryptoService
+      const derivedKey = await this.cryptoService.deriveKeyFromECDH(ek.privateKey, kasPublicKey, {
+        hash: 'SHA-256',
+        salt: await getZtdfSalt(this.cryptoService),
+      });
+      try {
+        // Generate random IV
+        const iv = await this.cryptoService.randomBytes(12);
 
-    // Derive encryption key using ECDH + HKDF via CryptoService
-    const derivedKey = await this.cryptoService.deriveKeyFromECDH(ek.privateKey, kasPublicKey, {
-      hash: 'SHA-256',
-      salt: await getZtdfSalt(this.cryptoService),
-    });
+        // Encrypt DEK using derived key with AES-GCM
+        const encryptResult = await this.cryptoService.encrypt(
+          dek,
+          derivedKey,
+          Binary.fromArrayBuffer(iv.buffer),
+          Algorithms.AES_256_GCM
+        );
 
-    // Generate random IV
-    const iv = await this.cryptoService.randomBytes(12);
+        // Combine IV, ciphertext, and authTag to form the wrapped key.
+        const ciphertext = new Uint8Array(encryptResult.payload.asArrayBuffer());
+        const authTag = encryptResult.authTag
+          ? new Uint8Array(encryptResult.authTag.asArrayBuffer())
+          : new Uint8Array(0);
+        const entityWrappedKey = new Uint8Array(iv.length + ciphertext.length + authTag.length);
+        entityWrappedKey.set(iv);
+        entityWrappedKey.set(ciphertext, iv.length);
+        entityWrappedKey.set(authTag, iv.length + ciphertext.length);
 
-    // Encrypt DEK using derived key with AES-GCM
-    // Payload is SymmetricKey (the DEK), key is SymmetricKey (derived from ECDH)
-    const encryptResult = await this.cryptoService.encrypt(
-      dek,
-      derivedKey,
-      Binary.fromArrayBuffer(iv.buffer),
-      Algorithms.AES_256_GCM
-    );
+        const policyBinding = hex.encodeArrayBuffer(
+          (await this.cryptoService.hmac(new TextEncoder().encode(base64.encode(policyStr)), dek))
+            .buffer
+        );
 
-    // Combine IV, ciphertext, and authTag to form the wrapped key.
-    const ciphertext = new Uint8Array(encryptResult.payload.asArrayBuffer());
-    const authTag = encryptResult.authTag
-      ? new Uint8Array(encryptResult.authTag.asArrayBuffer())
-      : new Uint8Array(0);
-    const entityWrappedKey = new Uint8Array(iv.length + ciphertext.length + authTag.length);
-    entityWrappedKey.set(iv);
-    entityWrappedKey.set(ciphertext, iv.length);
-    entityWrappedKey.set(authTag, iv.length + ciphertext.length);
+        // Export ephemeral public key to PEM for manifest (last use of ek.publicKey).
+        const ephemeralPublicKeyPem = await this.cryptoService.exportPublicKeyPem(ek.publicKey);
 
-    const policyBinding = hex.encodeArrayBuffer(
-      (await this.cryptoService.hmac(new TextEncoder().encode(base64.encode(policyStr)), dek))
-        .buffer
-    );
-
-    // Export ephemeral public key to PEM for manifest
-    const ephemeralPublicKeyPem = await this.cryptoService.exportPublicKeyPem(ek.publicKey);
-
-    const kao: KeyAccessObject = {
-      type: 'ec-wrapped',
-      url: this.url,
-      protocol: 'kas',
-      wrappedKey: base64.encodeArrayBuffer(entityWrappedKey),
-      encryptedMetadata: base64.encode(encryptedMetadataStr),
-      policyBinding: {
-        alg: 'HS256',
-        hash: base64.encode(policyBinding),
-      },
-      schemaVersion,
-      ephemeralPublicKey: ephemeralPublicKeyPem,
-    };
-    if (this.kid) {
-      kao.kid = this.kid;
+        const kao: KeyAccessObject = {
+          type: 'ec-wrapped',
+          url: this.url,
+          protocol: 'kas',
+          wrappedKey: base64.encodeArrayBuffer(entityWrappedKey),
+          encryptedMetadata: base64.encode(encryptedMetadataStr),
+          policyBinding: {
+            alg: 'HS256',
+            hash: base64.encode(policyBinding),
+          },
+          schemaVersion,
+          ephemeralPublicKey: ephemeralPublicKeyPem,
+        };
+        if (this.kid) {
+          kao.kid = this.kid;
+        }
+        if (this.sid?.length) {
+          kao.sid = this.sid;
+        }
+        this.keyAccessObject = kao;
+        return kao;
+      } finally {
+        await this.cryptoService.releaseKeys?.(derivedKey).catch(() => {});
+      }
+    } finally {
+      // kasPublicKey and ek are both fully consumed by this point.
+      await this.cryptoService.releaseKeys?.(kasPublicKey, ek).catch(() => {});
     }
-    if (this.sid?.length) {
-      kao.sid = this.sid;
-    }
-    this.keyAccessObject = kao;
-    return kao;
   }
 }
 
@@ -118,11 +124,16 @@ export class Wrapped {
     encryptedMetadataStr: string
   ): Promise<KeyAccessObject> {
     const policyStr = JSON.stringify(policy);
-    // Import KAS public key from PEM
+    // Import KAS public key from PEM; release it regardless of outcome.
     const kasPublicKey = await this.cryptoService.importPublicKey(this.publicKey, {
       usage: 'encrypt',
     });
-    const wrappedKeyBinary = await this.cryptoService.encryptWithPublicKey(key, kasPublicKey);
+    let wrappedKeyBinary!: Binary;
+    try {
+      wrappedKeyBinary = await this.cryptoService.encryptWithPublicKey(key, kasPublicKey);
+    } finally {
+      await this.cryptoService.releaseKeys?.(kasPublicKey).catch(() => {});
+    }
 
     const policyBinding = hex.encodeArrayBuffer(
       (await this.cryptoService.hmac(new TextEncoder().encode(base64.encode(policyStr)), key))

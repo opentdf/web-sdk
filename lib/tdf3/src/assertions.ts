@@ -90,6 +90,9 @@ async function sign(
     );
   }
 
+  // Track keys we import so we can release them after signing (caller owns pre-imported keys).
+  let ownedKey: PrivateKey | SymmetricKey | undefined;
+
   if (typeof key.key === 'string') {
     if (!cryptoService.importPrivateKey) {
       throw new ConfigurationError(
@@ -101,10 +104,12 @@ async function sign(
       extractable: false,
     });
     key.key = importedPrivateKey;
+    ownedKey = importedPrivateKey;
   }
   if (key.key instanceof Uint8Array) {
     const importedSymmetricKey = await cryptoService.importSymmetricKey(key.key);
     key.key = importedSymmetricKey;
+    ownedKey = importedSymmetricKey;
   }
 
   let token: string;
@@ -112,6 +117,8 @@ async function sign(
     token = await signJwt(cryptoService, payload, key.key as PrivateKey | SymmetricKey, header);
   } catch (error) {
     throw new ConfigurationError(`Signing assertion failed: ${error.message}`, error);
+  } finally {
+    if (ownedKey) await cryptoService.releaseKeys?.(ownedKey).catch(() => {});
   }
   thiz.binding.method = 'jws';
   thiz.binding.signature = token;
