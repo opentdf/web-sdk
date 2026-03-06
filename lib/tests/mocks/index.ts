@@ -1,7 +1,8 @@
 import { SignJWT, importPKCS8, JWTPayload } from 'jose';
 import { v4 } from 'uuid';
 
-import { toCryptoKeyPair } from '../../tdf3/src/crypto/crypto-utils.js';
+import { type KeyPair } from '../../tdf3/src/crypto/declarations.js';
+import * as DefaultCryptoService from '../../tdf3/src/crypto/index.js';
 import {
   entityECPrivateKey,
   entityECPublicKey,
@@ -107,25 +108,31 @@ tN5S0umLPkMUJ6zBIxh1RQK1ZYjfuKij+EEimbqtte9rYyQr3Q==
     kasECCert,
     kasECPrivateKey,
 
-    async entityKeyPair(): Promise<CryptoKeyPair> {
-      return toCryptoKeyPair({
-        privateKey: entityPrivateKey,
-        publicKey: entityPublicKey,
-      });
+    async entityKeyPair(): Promise<KeyPair> {
+      return {
+        privateKey: await DefaultCryptoService.importPrivateKey(entityPrivateKey, {
+          usage: 'sign',
+        }),
+        publicKey: await DefaultCryptoService.importPublicKey(entityPublicKey, { usage: 'sign' }),
+      };
     },
 
-    async entityECKeyPair(): Promise<CryptoKeyPair> {
-      return toCryptoKeyPair({
-        privateKey: entityECPrivateKey,
-        publicKey: entityECPublicKey,
-      });
+    async entityECKeyPair(): Promise<KeyPair> {
+      return {
+        privateKey: await DefaultCryptoService.importPrivateKey(entityECPrivateKey, {
+          usage: 'sign',
+        }),
+        publicKey: await DefaultCryptoService.importPublicKey(entityECPublicKey, { usage: 'sign' }),
+      };
     },
 
-    async extraECKeyPair(): Promise<CryptoKeyPair> {
-      return toCryptoKeyPair({
-        privateKey: extraECPrivateKey,
-        publicKey: extraECPublicKey,
-      });
+    async extraECKeyPair(): Promise<KeyPair> {
+      return {
+        privateKey: await DefaultCryptoService.importPrivateKey(extraECPrivateKey, {
+          usage: 'sign',
+        }),
+        publicKey: await DefaultCryptoService.importPublicKey(extraECPublicKey, { usage: 'sign' }),
+      };
     },
 
     createAttribute({

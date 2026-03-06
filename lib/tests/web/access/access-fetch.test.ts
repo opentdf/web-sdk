@@ -242,7 +242,6 @@ EAnqlA1Io0Qv3SZZ3h0VWtCMwQkrF76p5c8onD/pgRCO3Udx6K+RLbSkEJell5kj
 1EuR3P3E1anNU/NoWdh23c5GXtQvXz4yKy+05kUTZ5xmh/H/0T8WqOrjcnOZycBn
 ywIDAQAB
 -----END PUBLIC KEY-----`;
-    const mockCryptoKey = { type: 'public' }; // Mock CryptoKey object
 
     it('should fetch and return KAS public key info on success', async () => {
       const mockResponse = { publicKey: mockPemKey, kid: 'test-kid' };
@@ -250,18 +249,12 @@ ywIDAQAB
 
       const result = await fetchKasPubKey(kasEndpoint);
 
-      const { key, ...resultWithoutKey } = result;
-
-      expect((await key).type).to.deep.equal(mockCryptoKey.type);
-      expect(resultWithoutKey).to.deep.equal({
+      expect(result).to.deep.equal({
         publicKey: mockPemKey,
         url: kasEndpoint,
         algorithm: 'rsa:2048',
         kid: 'test-kid',
       });
-
-      // expect(validateSecureUrlStub.calledWith(kasEndpoint)).to.be.true;
-      // expect(pemToCryptoPublicKeyStub.calledWith(mockPemKey)).to.be.true;
 
       // IMPROVEMENT: Test URL components instead of a hardcoded string.
       const fetchedUrl = new URL(fetchStub.firstCall.args[0]);

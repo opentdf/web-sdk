@@ -19,12 +19,7 @@ import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-pr
 import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider.js';
 import { CryptoService } from '../crypto/declarations.js';
 import { type AuthProvider, HttpRequest, withHeaders } from '../../../src/auth/auth.js';
-import {
-  getPlatformUrlFromKasEndpoint,
-  pemToCryptoPublicKey,
-  rstrip,
-  validateSecureUrl,
-} from '../../../src/utils.js';
+import { getPlatformUrlFromKasEndpoint, rstrip, validateSecureUrl } from '../../../src/utils.js';
 
 import {
   type DecryptParams,
@@ -42,13 +37,11 @@ import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 import {
   fetchKeyAccessServers,
   type KasPublicKeyInfo,
-  keyAlgorithmToPublicKeyAlgorithm,
   OriginAllowList,
 } from '../../../src/access.js';
 import { ConfigurationError } from '../../../src/errors.js';
-import { Binary } from '../binary.js';
 import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
-import { toCryptoKeyPair } from '../crypto/crypto-utils.js';
+import { type KeyPair, type SymmetricKey } from '../crypto/declarations.js';
 import * as defaultCryptoService from '../crypto/index.js';
 import {
   type AttributeObject,
@@ -69,24 +62,23 @@ const defaultClientConfig = { oidcOrigin: '', cryptoService: defaultCryptoServic
 
 const getFirstTwoBytes = async (chunker: Chunker) => new TextDecoder().decode(await chunker(0, 2));
 
-async function algorithmFromPEM(pem: string) {
-  const k: CryptoKey = await pemToCryptoPublicKey(pem);
-  return keyAlgorithmToPublicKeyAlgorithm(k);
+async function algorithmFromPEM(pem: string, cryptoService: CryptoService) {
+  const keyInfo = await cryptoService.parsePublicKeyPem(pem);
+  return keyInfo.algorithm;
 }
 
-// Convert a PEM string to a CryptoKey
+// Convert a PEM string to KasPublicKeyInfo
 export const resolveKasInfo = async (
   pem: string,
   uri: string,
+  cryptoService: CryptoService,
   kid?: string
 ): Promise<KasPublicKeyInfo> => {
-  const k: CryptoKey = await pemToCryptoPublicKey(pem);
-  const algorithm = keyAlgorithmToPublicKeyAlgorithm(k);
+  const keyInfo = await cryptoService.parsePublicKeyPem(pem);
   return {
-    key: Promise.resolve(k),
     publicKey: pem,
     url: uri,
-    algorithm,
+    algorithm: keyInfo.algorithm,
     kid: kid,
   };
 };
@@ -132,7 +124,7 @@ export interface ClientConfig {
   /// oauth client id; used to generate oauth authProvider
   clientId?: string;
   dpopEnabled?: boolean;
-  dpopKeys?: Promise<CryptoKeyPair>;
+  dpopKeys?: Promise<KeyPair>;
   kasEndpoint: string;
   /**
    * Service to use to look up ABAC. Used during autoconfigure. Defaults to
@@ -177,28 +169,23 @@ export interface ClientConfig {
  */
 export async function createSessionKeys({
   authProvider,
-  // FIXME use cryptoservice to generate keys again
   cryptoService,
   dpopKeys,
 }: {
   authProvider?: AuthProvider;
   cryptoService: CryptoService;
-  dpopKeys?: Promise<CryptoKeyPair>;
-}): Promise<CryptoKeyPair> {
-  let signingKeys: CryptoKeyPair;
+  dpopKeys?: Promise<KeyPair>;
+}): Promise<KeyPair> {
+  let signingKeys: KeyPair;
   if (dpopKeys) {
     signingKeys = await dpopKeys;
   } else {
-    const keys = await cryptoService.generateSigningKeyPair();
-    // signingKeys = await crypto.subtle.generateKey(rsaPkcs1Sha256(), true, ['sign']);
-    signingKeys = await toCryptoKeyPair(keys);
+    // generateSigningKeyPair returns opaque KeyPair
+    signingKeys = await cryptoService.generateSigningKeyPair();
   }
 
   // This will contact the auth server and forcibly refresh the auth token claims,
   // binding the token and the (new) pubkey together.
-  // Note that we base64 encode the PEM string here as a quick workaround, simply because
-  // a formatted raw PEM string isn't a valid header value and sending it raw makes keycloak's
-  // header parser barf. There are more subtle ways to solve this, but this works for now.
   if (authProvider) {
     await authProvider?.updateClientPublicKey(signingKeys);
   }
@@ -301,7 +288,8 @@ const putKasKeyIntoCache = (
   cache: KasKeyInfoCache,
   kasKey: Omit<SimpleKasKey, 'publicKey'> & {
     publicKey: Exclude<SimpleKasKey['publicKey'], undefined>;
-  }
+  },
+  cryptoService: CryptoService
 ): ReturnType<typeof fetchKasPublicKey> => {
   const algorithmString = algorithmEnumValueToString(kasKey.publicKey.algorithm);
   const cachedEntry = findEntryInCache(cache, kasKey.kasUri, algorithmString, kasKey.publicKey.kid);
@@ -309,12 +297,9 @@ const putKasKeyIntoCache = (
     return cachedEntry;
   }
   const keyInfoPromise = (async function () {
-    const keyPromise = pemToCryptoPublicKey(kasKey.publicKey.pem);
-    const key = await keyPromise;
-    const algorithm = keyAlgorithmToPublicKeyAlgorithm(key);
+    const keyInfo = await cryptoService.parsePublicKeyPem(kasKey.publicKey.pem);
     return {
-      algorithm: algorithm,
-      key: keyPromise,
+      algorithm: keyInfo.algorithm,
       kid: kasKey.publicKey.kid,
       publicKey: kasKey.publicKey.pem,
       url: kasKey.kasUri,
@@ -371,7 +356,7 @@ export class Client {
   /**
    * Session binding keys. Used for DPoP and signed request bodies.
    */
-  readonly dpopKeys: Promise<CryptoKeyPair>;
+  readonly dpopKeys: Promise<KeyPair>;
 
   readonly dpopEnabled: boolean;
 
@@ -453,18 +438,24 @@ export class Client {
       //browser-based OIDC login and authentication process against the OIDC endpoint using their chosen method,
       //and provide us with a valid refresh token/clientId obtained from that process.
       if (clientConfig.refreshToken) {
-        this.authProvider = new OIDCRefreshTokenProvider({
-          clientId: clientConfig.clientId,
-          refreshToken: clientConfig.refreshToken,
-          oidcOrigin: clientConfig.oidcOrigin,
-        });
+        this.authProvider = new OIDCRefreshTokenProvider(
+          {
+            clientId: clientConfig.clientId,
+            refreshToken: clientConfig.refreshToken,
+            oidcOrigin: clientConfig.oidcOrigin,
+          },
+          this.cryptoService
+        );
       } else if (clientConfig.externalJwt) {
         //Are we exchanging a JWT previously issued by a trusted external entity (e.g. Google) for a bearer token?
-        this.authProvider = new OIDCExternalJwtProvider({
-          clientId: clientConfig.clientId,
-          externalJwt: clientConfig.externalJwt,
-          oidcOrigin: clientConfig.oidcOrigin,
-        });
+        this.authProvider = new OIDCExternalJwtProvider(
+          {
+            clientId: clientConfig.clientId,
+            externalJwt: clientConfig.externalJwt,
+            oidcOrigin: clientConfig.oidcOrigin,
+          },
+          this.cryptoService
+        );
       }
     }
     this.dpopKeys = createSessionKeys({
@@ -509,22 +500,27 @@ export class Client {
       metadata,
       mimeType = 'unknown',
       windowSize = DEFAULT_SEGMENT_SIZE,
-      keyMiddleware = defaultKeyMiddleware,
+      keyMiddleware: keyMiddlewareOpt,
       splitPlan: preconfiguredSplitPlan,
       streamMiddleware = async (stream: DecoratedReadableStream) => stream,
       tdfSpecVersion,
       wrappingKeyAlgorithm,
     } = opts;
+    const keyMiddleware = keyMiddlewareOpt ?? (() => defaultKeyMiddleware(this.cryptoService));
     const scope = opts.scope ?? { attributes: [], dissem: [] };
 
     for (const attributeValue of scope.attributeValues || []) {
       for (const kasKey of attributeValue.kasKeys) {
         if (kasKey.publicKey !== undefined) {
-          await putKasKeyIntoCache(this.kasKeyInfoCache, {
-            // TypeScript is silly and cannot infer that publicKey is not undefined, without re-referencing it like this, even though we checked already.
-            ...kasKey,
-            publicKey: kasKey.publicKey,
-          });
+          await putKasKeyIntoCache(
+            this.kasKeyInfoCache,
+            {
+              // TypeScript is silly and cannot infer that publicKey is not undefined, without re-referencing it like this, even though we checked already.
+              ...kasKey,
+              publicKey: kasKey.publicKey,
+            },
+            this.cryptoService
+          );
         }
       }
     }
@@ -594,11 +590,15 @@ export class Client {
       for (const attributeValue of attributeValues) {
         for (const kasKey of effectiveKasKeys(attributeValue)) {
           if (kasKey.publicKey !== undefined) {
-            await putKasKeyIntoCache(this.kasKeyInfoCache, {
-              // TypeScript is silly and cannot infer that publicKey is not undefined, without re-referencing it like this, even though we checked already.
-              ...kasKey,
-              publicKey: kasKey.publicKey,
-            });
+            await putKasKeyIntoCache(
+              this.kasKeyInfoCache,
+              {
+                // TypeScript is silly and cannot infer that publicKey is not undefined, without re-referencing it like this, even though we checked already.
+                ...kasKey,
+                publicKey: kasKey.publicKey,
+              },
+              this.cryptoService
+            );
           }
         }
       }
@@ -606,7 +606,7 @@ export class Client {
       const detailedPlan = plan(attributeValues);
       for (const item of detailedPlan) {
         if ('kid' in item.kas) {
-          const pemAlgorithm = await algorithmFromPEM(item.kas.pem);
+          const pemAlgorithm = await algorithmFromPEM(item.kas.pem, this.cryptoService);
           const kasPublicKeyInfo = await this._doFetchKasKeyWithCache(
             this.kasKeyInfoCache,
             item.kas.kasUri,
@@ -694,7 +694,7 @@ export class Client {
     }
     encryptionInformation.keyAccess = await Promise.all(
       splitPlan.map(async ({ kas, kid, pem, sid }) => {
-        const algorithm = await algorithmFromPEM(pem);
+        const algorithm = await algorithmFromPEM(pem, this.cryptoService);
         if (algorithm !== wrappingKeyAlgorithm) {
           console.warn(
             `Mismatched wrapping key algorithm: [${algorithm}] is not requested type, [${wrappingKeyAlgorithm}]`
@@ -722,6 +722,7 @@ export class Client {
           publicKey: pem,
           metadata,
           sid,
+          cryptoService: this.cryptoService,
         });
       })
     );
@@ -765,7 +766,7 @@ export class Client {
   async decrypt({
     source,
     allowList,
-    keyMiddleware = async (key: Binary) => key,
+    keyMiddleware = async (key: SymmetricKey) => key,
     streamMiddleware = async (stream: DecoratedReadableStream) => stream,
     assertionVerificationKeys,
     noVerifyAssertions,

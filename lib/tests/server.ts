@@ -10,7 +10,8 @@ import { removePemFormatting } from '../tdf3/src/crypto/crypto-utils.js';
 import { Binary } from '../tdf3/index.js';
 import { valueFor } from './web/policy/mock-attrs.js';
 import { AttributeAndValue } from '../src/policy/attributes.js';
-import { ztdfSalt } from '../tdf3/src/crypto/salt.js';
+import { getZtdfSalt } from '../tdf3/src/crypto/salt.js';
+import { DefaultCryptoService } from '../tdf3/src/crypto/index.js';
 
 import { create, toJsonString, fromJson } from '@bufbuild/protobuf';
 import { ValueSchema } from '@bufbuild/protobuf/wkt';
@@ -247,7 +248,7 @@ const kas: RequestListener = async (req, res) => {
             ['deriveBits', 'deriveKey']
           );
           const kek = await keyAgreement(kasPrivateKey, ephemeralKey, {
-            hkdfSalt: await ztdfSalt,
+            hkdfSalt: await getZtdfSalt(DefaultCryptoService),
             hkdfHash: 'SHA-256',
           });
           const iv = wk.slice(0, 12);
@@ -258,7 +259,12 @@ const kas: RequestListener = async (req, res) => {
           dek = await decryptWithPrivateKey(Binary.fromArrayBuffer(wk), Mocks.kasPrivateKey);
         }
         if (clientPublicKey.algorithm.name == 'RSA-OAEP') {
-          const cek = await encryptWithPublicKey(dek, rewrap.clientPublicKey);
+          // Import the client public key as opaque PublicKey for encryptWithPublicKey
+          const clientPubKeyOpaque = await DefaultCryptoService.importPublicKey(
+            rewrap.clientPublicKey,
+            { usage: 'encrypt' }
+          );
+          const cek = await encryptWithPublicKey(dek, clientPubKeyOpaque);
           const reply = create(RewrapResponseSchema, {
             responses: [
               create(PolicyRewrapResultSchema, {
@@ -294,7 +300,7 @@ const kas: RequestListener = async (req, res) => {
           ['deriveBits', 'deriveKey']
         );
         const kek = await keyAgreement(sessionKeyPair.privateKey, clientPublicKey, {
-          hkdfSalt: await ztdfSalt,
+          hkdfSalt: await getZtdfSalt(DefaultCryptoService),
           hkdfHash: 'SHA-256',
         });
         const iv = generateRandomNumber(12);

@@ -4,7 +4,7 @@ import { type Metadata } from '../tdf.js';
 import { Binary } from '../binary.js';
 
 import { ConfigurationError } from '../../../src/errors.js';
-import { PemKeyPair } from '../crypto/declarations.js';
+import { PemKeyPair, type SymmetricKey } from '../crypto/declarations.js';
 import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 import { type Chunker } from '../../../src/seekable.js';
 import { AssertionConfig, AssertionVerificationKeys } from '../assertions.js';
@@ -516,7 +516,7 @@ class EncryptParamsBuilder {
   }
 }
 
-export type DecryptKeyMiddleware = (key: Binary) => Promise<Binary>;
+export type DecryptKeyMiddleware = (key: SymmetricKey) => Promise<SymmetricKey>;
 
 export type DecryptStreamMiddleware = (
   stream: DecoratedReadableStream

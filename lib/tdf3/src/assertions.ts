@@ -1,8 +1,14 @@
 import { canonicalizeEx } from 'json-canonicalize';
-import { SignJWT, jwtVerify, importJWK, importX509 } from 'jose';
 import { base64, hex } from '../../src/encodings/index.js';
 import { ConfigurationError, IntegrityError, InvalidFileError } from '../../src/errors.js';
 import { tdfSpecVersion, version as sdkVersion } from '../../src/version.js';
+import {
+  type CryptoService,
+  type PrivateKey,
+  type PublicKey,
+  type SymmetricKey,
+} from './crypto/declarations.js';
+import { decodeProtectedHeader, signJwt, verifyJwt, type JwtHeader } from './crypto/jwt.js';
 
 export type AssertionKeyAlg = 'ES256' | 'RS256' | 'HS256';
 export type AssertionType = 'handling' | 'other';
@@ -41,39 +47,69 @@ export type AssertionPayload = {
 /**
  * Computes the SHA-256 hash of the assertion object, excluding the 'binding' and 'hash' properties.
  *
+ * @param a - The assertion to hash
+ * @param cryptoService - The crypto service to use for hashing
  * @returns the hexadecimal string representation of the hash
  */
-export async function hash(a: Assertion): Promise<string> {
+export async function hash(a: Assertion, cryptoService: CryptoService): Promise<string> {
   const result = canonicalizeEx(a, {
     exclude: ['binding', 'hash', 'sign', 'verify', 'signingKey'],
   });
 
-  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(result));
-  return hex.encodeArrayBuffer(hash);
+  const hashBytes = await cryptoService.digest('SHA-256', new TextEncoder().encode(result));
+  return hex.encodeArrayBuffer(hashBytes.buffer);
 }
 
 /**
  * Signs the given hash and signature using the provided key and sets the binding method and signature.
  *
- * @param hash - The hash to be signed.
+ * @param thiz - The assertion to sign.
+ * @param assertionHash - The hash to be signed.
  * @param sig - The signature to be signed.
- * @param {AssertionKey} key - The key used for signing.
- * @returns {Promise<void>} A promise that resolves when the signing is complete.
+ * @param key - The key used for signing.
+ * @param cryptoService - The crypto service to use for signing.
+ * @returns A promise that resolves to the signed assertion.
  */
 async function sign(
   thiz: Assertion,
   assertionHash: string,
   sig: string,
-  key: AssertionKey
+  key: AssertionKey,
+  cryptoService: CryptoService
 ): Promise<Assertion> {
   const payload: AssertionPayload = {
     assertionHash,
     assertionSig: sig,
   };
 
+  const header: JwtHeader = { alg: key.alg };
+
+  if (typeof key.key === 'object' && '_brand' in key.key && key.key._brand === 'PublicKey') {
+    throw new ConfigurationError(
+      'Cannot sign assertion with PublicKey. Use PrivateKey or SymmetricKey for signing.'
+    );
+  }
+
+  if (typeof key.key === 'string') {
+    if (!cryptoService.importPrivateKey) {
+      throw new ConfigurationError(
+        'CryptoService does not support importing private keys. Cannot sign assertion with a PEM string. Use PrivateKey or SymmetricKey for signing.'
+      );
+    }
+    const importedPrivateKey = await cryptoService.importPrivateKey(key.key, {
+      usage: 'sign',
+      extractable: false,
+    });
+    key.key = importedPrivateKey;
+  }
+  if (key.key instanceof Uint8Array) {
+    const importedSymmetricKey = await cryptoService.importSymmetricKey(key.key);
+    key.key = importedSymmetricKey;
+  }
+
   let token: string;
   try {
-    token = await new SignJWT(payload).setProtectedHeader({ alg: key.alg }).sign(key.key);
+    token = await signJwt(cryptoService, payload, key.key as PrivateKey | SymmetricKey, header);
   } catch (error) {
     throw new ConfigurationError(`Signing assertion failed: ${error.message}`, error);
   }
@@ -107,36 +143,54 @@ export function isAssertionConfig(obj: unknown): obj is AssertionConfig {
 /**
  * Verifies the signature of the assertion using the provided key.
  *
- * @param {AssertionKey} key - The key used for verification.
- * @returns {Promise<[string, string]>} A promise that resolves to a tuple containing the assertion hash and signature.
- * @throws {Error} If the verification fails.
+ * @param thiz - The assertion to verify.
+ * @param aggregateHash - The aggregate hash for integrity checking.
+ * @param key - The key used for verification.
+ * @param isLegacyTDF - Whether this is a legacy TDF format.
+ * @param cryptoService - The crypto service to use for verification.
+ * @throws {InvalidFileError} If the verification fails.
+ * @throws {IntegrityError} If the integrity check fails.
  */
 export async function verify(
   thiz: Assertion,
   aggregateHash: Uint8Array,
   key: AssertionKey,
-  isLegacyTDF: boolean
+  isLegacyTDF: boolean,
+  cryptoService: CryptoService
 ): Promise<void> {
   let payload: AssertionPayload;
   try {
-    const uj = await jwtVerify(thiz.binding.signature, async (header) => {
-      if (header.jwk) {
-        return await importJWK(header.jwk, header.alg);
-      }
-      if (header.x5c && header.x5c.length > 0) {
-        const cert = `-----BEGIN CERTIFICATE-----\n${header.x5c[0]}\n-----END CERTIFICATE-----`;
-        return await importX509(cert, header.alg);
-      }
-      return key.key;
+    // Parse JWT header to check for embedded keys (jwk or x5c)
+    const header = decodeProtectedHeader(thiz.binding.signature);
+
+    // Runtime check: ensure we have a verification key, not a signing key
+    if (typeof key.key === 'object' && '_brand' in key.key && key.key._brand === 'PrivateKey') {
+      throw new ConfigurationError(
+        'Cannot verify assertion with PrivateKey. Use PublicKey or SymmetricKey for verification.'
+      );
+    }
+    let verificationKey: string | Uint8Array | PublicKey | SymmetricKey = key.key;
+
+    if (header.jwk) {
+      // Convert embedded JWK to PEM
+      verificationKey = await cryptoService.jwkToPublicKeyPem(header.jwk as JsonWebKey);
+    } else if (header.x5c && Array.isArray(header.x5c) && header.x5c.length > 0) {
+      // Extract public key from X.509 certificate
+      const cert = `-----BEGIN CERTIFICATE-----\n${header.x5c[0]}\n-----END CERTIFICATE-----`;
+      verificationKey = await cryptoService.extractPublicKeyPem(cert);
+    }
+
+    const result = await verifyJwt(cryptoService, thiz.binding.signature, verificationKey, {
+      algorithms: [key.alg],
     });
-    payload = uj.payload as AssertionPayload;
+    payload = result.payload as AssertionPayload;
   } catch (error) {
     throw new InvalidFileError(`Verifying assertion failed: ${error.message}`, error);
   }
   const { assertionHash, assertionSig } = payload;
 
   // Get the hash of the assertion
-  const hashOfAssertion = await hash(thiz);
+  const hashOfAssertion = await hash(thiz, cryptoService);
 
   // check if assertionHash is same as hashOfAssertion
   if (hashOfAssertion !== assertionHash) {
@@ -164,13 +218,17 @@ export async function verify(
 
 /**
  * Creates an Assertion object with the specified properties.
- */
-/**
- * Creates an Assertion object with the specified properties.
+ *
+ * @param aggregateHash - The aggregate hash for the assertion.
+ * @param assertionConfig - The configuration for the assertion.
+ * @param cryptoService - The crypto service to use for signing.
+ * @param targetVersion - The target TDF spec version.
+ * @returns The created assertion.
  */
 export async function CreateAssertion(
   aggregateHash: Uint8Array | string,
   assertionConfig: AssertionConfig,
+  cryptoService: CryptoService,
   targetVersion?: string
 ): Promise<Assertion> {
   if (!assertionConfig.signingKey) {
@@ -187,7 +245,7 @@ export async function CreateAssertion(
     binding: { method: '', signature: '' },
   };
 
-  const assertionHash = await hash(a);
+  const assertionHash = await hash(a, cryptoService);
   let encodedHash: string;
   switch (targetVersion || '4.3.0') {
     case '4.2.2':
@@ -212,12 +270,23 @@ export async function CreateAssertion(
       throw new ConfigurationError(`Unsupported TDF spec version: [${targetVersion}]`);
   }
 
-  return await sign(a, assertionHash, encodedHash, assertionConfig.signingKey);
+  return await sign(a, assertionHash, encodedHash, assertionConfig.signingKey, cryptoService);
 }
 
+// TODO: Split AssertionKey into two separate types:
+//   - AssertionSigningKey: key restricted to PrivateKey | SymmetricKey (no strings, no raw bytes)
+//   - AssertionVerificationKey: key restricted to string | PublicKey | SymmetricKey
+// This would make the signing/verification distinction type-safe rather than relying on runtime checks.
+// AssertionConfig.signingKey would use AssertionSigningKey; verify() and AssertionVerificationKeys would use AssertionVerificationKey.
+
+/**
+ * Key used for signing or verifying assertions.
+ * For asymmetric algorithms (RS256, ES256): PEM string, PrivateKey (for signing), or PublicKey (for verification).
+ * For symmetric algorithms (HS256): Uint8Array or SymmetricKey (opaque).
+ */
 export type AssertionKey = {
   alg: AssertionKeyAlg;
-  key: CryptoKey | Uint8Array;
+  key: string | Uint8Array | PrivateKey | PublicKey | SymmetricKey;
 };
 
 // AssertionConfig is a shadow of Assertion with the addition of the signing key.
