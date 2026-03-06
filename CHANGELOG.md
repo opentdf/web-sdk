@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.9.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.8.0...sdk-v0.9.0) (2026-01-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove NanoTDF support ([#791](https://github.com/opentdf/web-sdk/issues/791))
+
+### Features
+
+* remove NanoTDF support ([#791](https://github.com/opentdf/web-sdk/issues/791)) ([6a87956](https://github.com/opentdf/web-sdk/commit/6a87956e9982eb6c3198cfdfa19651bb8d446d70))
+* **sdk:** Pull kas keys from definitions and namespaces. ([#808](https://github.com/opentdf/web-sdk/issues/808)) ([28eb417](https://github.com/opentdf/web-sdk/commit/28eb417a1f1beaf030c9d6bd069249d0ab94a53d))
+
+
+### Bug Fixes
+
+* all vulnerabilities and update tooling ([#812](https://github.com/opentdf/web-sdk/issues/812)) ([be7e4ae](https://github.com/opentdf/web-sdk/commit/be7e4ae81b3cd7661bc66453b60ade76dd71a9ff))
+* **sdk:** bump lodash from 4.17.21 to 4.17.23 in /lib ([#810](https://github.com/opentdf/web-sdk/issues/810)) ([abc3acd](https://github.com/opentdf/web-sdk/commit/abc3acd4007da8c2e60efa9be32f89ed43ebadd8))
+
 ## [Unreleased]
 
 ### Removed

@@ -53,6 +53,7 @@ import { plan } from '../../../src/policy/granter.js';
 import { attributeFQNsAsValues } from '../../../src/policy/api.js';
 import { type Chunker, fromBuffer, fromSource } from '../../../src/seekable.js';
 import { Algorithm, SimpleKasKey } from '../../../src/platform/policy/objects_pb.js';
+import { effectiveKasKeys } from '../../../src/policy/kas-keys.js';
 
 const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
 
@@ -587,7 +588,7 @@ export class Client {
       }
 
       for (const attributeValue of attributeValues) {
-        for (const kasKey of attributeValue.kasKeys) {
+        for (const kasKey of effectiveKasKeys(attributeValue)) {
           if (kasKey.publicKey !== undefined) {
             await putKasKeyIntoCache(
               this.kasKeyInfoCache,

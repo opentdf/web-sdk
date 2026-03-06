@@ -1,6 +1,7 @@
 import { ConfigurationError } from '../errors.js';
 import { Attribute, AttributeRuleType, KeyAccessServer, Value } from './attributes.js';
 import { SimpleKasPublicKey } from '../platform/policy/objects_pb.js';
+import { effectiveKasKeys } from './kas-keys.js';
 
 type KeyHolder = KeyAccessServer | (SimpleKasPublicKey & { kasUri: string });
 
@@ -60,6 +61,20 @@ export function plan(dataAttrs: Value[]): KeySplitStep[] {
   // Values grouped by normalized attribute prefix
   const allClauses: Record<string, AttributeClause> = Object.create(null);
 
+  const toKeyHolders = (keys?: Value['kasKeys']): KeyHolder[] => {
+    if (!keys?.length) {
+      return [];
+    }
+    return keys
+      .map((kasKey) => {
+        if (!kasKey.publicKey) {
+          return null;
+        }
+        return Object.assign({ kasUri: kasKey.kasUri }, kasKey.publicKey);
+      })
+      .filter((kasKey) => kasKey !== null);
+  };
+
   const addGrants = (valueFQN: string, gs?: KeyHolder[]): boolean => {
     if (!(valueFQN in granters)) {
       granters[valueFQN] = new Set();
@@ -74,7 +89,7 @@ export function plan(dataAttrs: Value[]): KeySplitStep[] {
   };
 
   for (const v of dataAttrs) {
-    const { attribute, fqn, kasKeys } = v;
+    const { attribute, fqn } = v;
     if (!attribute) {
       throw new ConfigurationError(`attribute not defined for [${fqn}]`);
     }
@@ -87,16 +102,10 @@ export function plan(dataAttrs: Value[]): KeySplitStep[] {
       };
     }
     allClauses[attrFqn].values.push(valFqn);
-    const validKasKeys = kasKeys
-      .map((kasKey) => {
-        if (!kasKey.publicKey) {
-          return null;
-        }
-        return Object.assign({ kasUri: kasKey.kasUri }, kasKey.publicKey);
-      })
-      .filter((kasKey) => kasKey !== null);
-    if (validKasKeys.length) {
-      addGrants(valFqn, validKasKeys);
+    // Prioritize key mappings over grants
+    const kasKeyHolders = toKeyHolders(effectiveKasKeys(v));
+    if (kasKeyHolders.length) {
+      addGrants(valFqn, kasKeyHolders);
     } else if (!addGrants(valFqn, v.grants)) {
       if (!addGrants(valFqn, attribute.grants)) {
         addGrants(valFqn, attribute.namespace?.grants);
