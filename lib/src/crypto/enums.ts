@@ -10,7 +10,7 @@ export enum AlgorithmName {
 export enum NamedCurve {
   P256 = 'P-256',
   P384 = 'P-384',
-  P512 = 'P-512',
+  P521 = 'P-521',
 }
 
 export enum CipherType {

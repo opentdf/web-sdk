@@ -2,7 +2,7 @@ import { decodeJwt } from 'jose';
 import { default as dpopFn } from 'dpop';
 import { base64 } from '@opentdf/sdk/encodings';
 import { AuthProvider, HttpRequest, withHeaders } from '@opentdf/sdk';
-import { type PemKeyPair } from '@opentdf/sdk/singlecontainer';
+import { type KeyPair, WebCryptoService } from '@opentdf/sdk/singlecontainer';
 
 export type OpenidConfiguration = {
   issuer: string;
@@ -174,7 +174,8 @@ export class OidcClient implements AuthProvider {
   scope: string;
   sessionIdentifier: string;
   _sessions?: Sessions;
-  signingKey?: PemKeyPair;
+  // Store as opaque KeyPair
+  private signingKey?: KeyPair;
 
   constructor(host: string, clientId: string, sessionIdentifier: string) {
     this.clientId = clientId;
@@ -321,30 +322,53 @@ export class OidcClient implements AuthProvider {
     }
   }
 
-  async getSigningKey(): Promise<PemKeyPair> {
+  async getSigningKey(): Promise<KeyPair> {
     if (this.signingKey) {
       return this.signingKey;
+    }
+    // Generate or load PEM keys if needed
+    let keyPair: KeyPair;
+    if (!WebCryptoService.importPrivateKey) {
+      throw new Error('importPrivateKey not supported by current crypto implementation');
     }
     if (this._sessions?.k) {
       // Keys are already stored as base64-encoded DER, just wrap them in PEM format
       const [publicKeyDer, privateKeyDer] = this._sessions.k;
-      this.signingKey = {
-        publicKey: this.derToPem(publicKeyDer, 'PUBLIC KEY'),
-        privateKey: this.derToPem(privateKeyDer, 'PRIVATE KEY'),
+      keyPair = {
+        publicKey: await WebCryptoService.importPublicKey(
+          this.derToPem(publicKeyDer, 'PUBLIC KEY'),
+          { usage: 'sign' }
+        ),
+        privateKey: await WebCryptoService.importPrivateKey(
+          this.derToPem(privateKeyDer, 'PRIVATE KEY'),
+          { usage: 'sign' }
+        ),
       };
+      this.signingKey = keyPair;
     } else {
       // Generate new key pair
-      const keyPair = await crypto.subtle.generateKey(rsaPkcs1Sha256(), true, ['sign', 'verify']);
-      const [publicKeyBuffer, privateKeyBuffer] = await Promise.all([
-        crypto.subtle.exportKey('spki', keyPair.publicKey),
-        crypto.subtle.exportKey('pkcs8', keyPair.privateKey),
+      const cryptoKeyPair = await crypto.subtle.generateKey(rsaPkcs1Sha256(), true, [
+        'sign',
+        'verify',
       ]);
-      this.signingKey = {
-        publicKey: this.bufferToPem(publicKeyBuffer, 'PUBLIC KEY'),
-        privateKey: this.bufferToPem(privateKeyBuffer, 'PRIVATE KEY'),
+      const [publicKeyBuffer, privateKeyBuffer] = await Promise.all([
+        crypto.subtle.exportKey('spki', cryptoKeyPair.publicKey),
+        crypto.subtle.exportKey('pkcs8', cryptoKeyPair.privateKey),
+      ]);
+      keyPair = {
+        publicKey: await WebCryptoService.importPublicKey(
+          this.bufferToPem(publicKeyBuffer, 'PUBLIC KEY'),
+          { usage: 'sign' }
+        ),
+        privateKey: await WebCryptoService.importPrivateKey(
+          this.bufferToPem(privateKeyBuffer, 'PRIVATE KEY'),
+          { usage: 'sign' }
+        ),
       };
+      this.signingKey = keyPair;
     }
-    return this.signingKey;
+
+    return keyPair;
   }
 
   private derToPem(derBase64: string, label: string): string {
@@ -374,7 +398,10 @@ export class OidcClient implements AuthProvider {
     return crypto.subtle.exportKey('jwk', key);
   }
 
-  private async pemToCryptoKeyPair(pemKeyPair: PemKeyPair): Promise<CryptoKeyPair> {
+  private async pemToCryptoKeyPair(pemKeyPair: {
+    publicKey: string;
+    privateKey: string;
+  }): Promise<CryptoKeyPair> {
     const publicKeyDer = base64.decodeArrayBuffer(this.pemToDer(pemKeyPair.publicKey));
     const privateKeyDer = base64.decodeArrayBuffer(this.pemToDer(pemKeyPair.privateKey));
     const algorithm = rsaPkcs1Sha256();
@@ -414,18 +441,28 @@ export class OidcClient implements AuthProvider {
     const headers: Record<string, string> = {
       'Content-Type': 'application/x-www-form-urlencoded',
     };
+    // getSigningKey() ensures signingKeyPem is populated
     const signingKey = await this.getSigningKey();
+    const publicKeyPem = await WebCryptoService.exportPublicKeyPem(signingKey.publicKey);
+    if (!WebCryptoService.exportPrivateKeyPem) {
+      throw new Error('exportPrivateKeyPem not supported by current crypto implementation');
+    }
+    const privateKeyPem = await WebCryptoService.exportPrivateKeyPem(signingKey.privateKey);
     if (this._sessions && this.signingKey) {
       // Store the base64-encoded DER (PEM without headers/footers)
-      this._sessions.k = [
-        this.pemToDer(this.signingKey.publicKey),
-        this.pemToDer(this.signingKey.privateKey),
-      ];
+      this._sessions.k = [this.pemToDer(publicKeyPem), this.pemToDer(privateKeyPem)];
     }
+    if (!this.signingKey) {
+      throw new Error('Signing key not initialized');
+    }
+
     console.info(
-      `signing token request with DPoP key ${JSON.stringify(await this.pemToJwk(signingKey.publicKey))}`
+      `signing token request with DPoP key ${JSON.stringify(await this.pemToJwk(publicKeyPem))}`
     );
-    const cryptoPair = await this.pemToCryptoKeyPair(signingKey);
+    const cryptoPair = await this.pemToCryptoKeyPair({
+      publicKey: publicKeyPem,
+      privateKey: privateKeyPem,
+    });
     headers.DPoP = await dpopFn(cryptoPair, config.token_endpoint, 'POST');
     const response = await fetch(config.token_endpoint, {
       method: 'POST',
@@ -449,7 +486,7 @@ export class OidcClient implements AuthProvider {
     };
   }
 
-  async updateClientPublicKey(signingKey: PemKeyPair): Promise<void> {
+  async updateClientPublicKey(signingKey: KeyPair): Promise<void> {
     this.signingKey = signingKey;
   }
 
@@ -465,12 +502,20 @@ export class OidcClient implements AuthProvider {
       console.error('missing DPoP key');
       return httpReq;
     }
+    const publicKeyPem = await WebCryptoService.exportPublicKeyPem(signingKey.publicKey);
+    if (!WebCryptoService.exportPrivateKeyPem) {
+      throw new Error('exportPrivateKeyPem not supported by current crypto implementation');
+    }
+    const privateKeyPem = await WebCryptoService.exportPrivateKeyPem(signingKey.privateKey);
     console.info(
       `signing request for ${httpReq.url} with DPoP key ${JSON.stringify(
-        await this.pemToJwk(signingKey.publicKey)
+        await this.pemToJwk(publicKeyPem)
       )}`
     );
-    const cryptoPair = await this.pemToCryptoKeyPair(signingKey);
+    const cryptoPair = await this.pemToCryptoKeyPair({
+      publicKey: publicKeyPem,
+      privateKey: privateKeyPem,
+    });
     const dpopToken = await dpopFn(
       cryptoPair,
       httpReq.url,

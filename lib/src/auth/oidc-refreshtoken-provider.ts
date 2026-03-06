@@ -1,8 +1,8 @@
 import { ConfigurationError } from '../errors.js';
 import { type AuthProvider, type HttpRequest } from './auth.js';
 import { AccessToken, type RefreshTokenCredentials } from './oidc.js';
-import { type CryptoService, type PemKeyPair } from '../../tdf3/src/crypto/declarations.js';
 import * as defaultCryptoService from '../../tdf3/src/crypto/index.js';
+import { type CryptoService, type KeyPair } from '../../tdf3/src/crypto/declarations.js';
 
 /**
  * An AuthProvider that uses an OIDC refresh token to obtain an access token.
@@ -50,7 +50,7 @@ export class OIDCRefreshTokenProvider implements AuthProvider {
     this.refreshToken = refreshToken;
   }
 
-  async updateClientPublicKey(signingKey: PemKeyPair): Promise<void> {
+  async updateClientPublicKey(signingKey: KeyPair): Promise<void> {
     await this.oidcAuth.refreshTokenClaimsWithClientPubkeyIfNeeded(signingKey);
   }
 

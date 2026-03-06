@@ -40,9 +40,8 @@ import {
   OriginAllowList,
 } from '../../../src/access.js';
 import { ConfigurationError } from '../../../src/errors.js';
-import { Binary } from '../binary.js';
 import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
-import { type PemKeyPair } from '../crypto/declarations.js';
+import { type KeyPair, type SymmetricKey } from '../crypto/declarations.js';
 import * as defaultCryptoService from '../crypto/index.js';
 import {
   type AttributeObject,
@@ -63,7 +62,7 @@ const defaultClientConfig = { oidcOrigin: '', cryptoService: defaultCryptoServic
 const getFirstTwoBytes = async (chunker: Chunker) => new TextDecoder().decode(await chunker(0, 2));
 
 async function algorithmFromPEM(pem: string, cryptoService: CryptoService) {
-  const keyInfo = await cryptoService.importPublicKeyPem(pem);
+  const keyInfo = await cryptoService.parsePublicKeyPem(pem);
   return keyInfo.algorithm;
 }
 
@@ -74,7 +73,7 @@ export const resolveKasInfo = async (
   cryptoService: CryptoService,
   kid?: string
 ): Promise<KasPublicKeyInfo> => {
-  const keyInfo = await cryptoService.importPublicKeyPem(pem);
+  const keyInfo = await cryptoService.parsePublicKeyPem(pem);
   return {
     publicKey: pem,
     url: uri,
@@ -124,7 +123,7 @@ export interface ClientConfig {
   /// oauth client id; used to generate oauth authProvider
   clientId?: string;
   dpopEnabled?: boolean;
-  dpopKeys?: Promise<PemKeyPair>;
+  dpopKeys?: Promise<KeyPair>;
   kasEndpoint: string;
   /**
    * Service to use to look up ABAC. Used during autoconfigure. Defaults to
@@ -174,21 +173,18 @@ export async function createSessionKeys({
 }: {
   authProvider?: AuthProvider;
   cryptoService: CryptoService;
-  dpopKeys?: Promise<PemKeyPair>;
-}): Promise<PemKeyPair> {
-  let signingKeys: PemKeyPair;
+  dpopKeys?: Promise<KeyPair>;
+}): Promise<KeyPair> {
+  let signingKeys: KeyPair;
   if (dpopKeys) {
     signingKeys = await dpopKeys;
   } else {
-    // generateSigningKeyPair now returns PemKeyPair directly
+    // generateSigningKeyPair returns opaque KeyPair
     signingKeys = await cryptoService.generateSigningKeyPair();
   }
 
   // This will contact the auth server and forcibly refresh the auth token claims,
   // binding the token and the (new) pubkey together.
-  // Note that we base64 encode the PEM string here as a quick workaround, simply because
-  // a formatted raw PEM string isn't a valid header value and sending it raw makes keycloak's
-  // header parser barf. There are more subtle ways to solve this, but this works for now.
   if (authProvider) {
     await authProvider?.updateClientPublicKey(signingKeys);
   }
@@ -300,7 +296,7 @@ const putKasKeyIntoCache = (
     return cachedEntry;
   }
   const keyInfoPromise = (async function () {
-    const keyInfo = await cryptoService.importPublicKeyPem(kasKey.publicKey.pem);
+    const keyInfo = await cryptoService.parsePublicKeyPem(kasKey.publicKey.pem);
     return {
       algorithm: keyInfo.algorithm,
       kid: kasKey.publicKey.kid,
@@ -359,7 +355,7 @@ export class Client {
   /**
    * Session binding keys. Used for DPoP and signed request bodies.
    */
-  readonly dpopKeys: Promise<PemKeyPair>;
+  readonly dpopKeys: Promise<KeyPair>;
 
   readonly dpopEnabled: boolean;
 
@@ -503,12 +499,13 @@ export class Client {
       metadata,
       mimeType = 'unknown',
       windowSize = DEFAULT_SEGMENT_SIZE,
-      keyMiddleware = defaultKeyMiddleware,
+      keyMiddleware: keyMiddlewareOpt,
       splitPlan: preconfiguredSplitPlan,
       streamMiddleware = async (stream: DecoratedReadableStream) => stream,
       tdfSpecVersion,
       wrappingKeyAlgorithm,
     } = opts;
+    const keyMiddleware = keyMiddlewareOpt ?? (() => defaultKeyMiddleware(this.cryptoService));
     const scope = opts.scope ?? { attributes: [], dissem: [] };
 
     for (const attributeValue of scope.attributeValues || []) {
@@ -768,7 +765,7 @@ export class Client {
   async decrypt({
     source,
     allowList,
-    keyMiddleware = async (key: Binary) => key,
+    keyMiddleware = async (key: SymmetricKey) => key,
     streamMiddleware = async (stream: DecoratedReadableStream) => stream,
     assertionVerificationKeys,
     noVerifyAssertions,

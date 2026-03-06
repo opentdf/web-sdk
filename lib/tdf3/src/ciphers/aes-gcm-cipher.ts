@@ -7,6 +7,7 @@ import {
   type CryptoService,
   type DecryptResult,
   type EncryptResult,
+  type SymmetricKey,
 } from '../crypto/declarations.js';
 
 const KEY_LENGTH = 32;
@@ -45,7 +46,7 @@ export class AesGcmCipher extends SymmetricCipher {
    * result from the crypto service and construct the payload automatically from
    * it's parts.  There is no need to process the payload.
    */
-  override async encrypt(payload: Binary, key: Binary, iv: Binary): Promise<EncryptResult> {
+  override async encrypt(payload: Binary, key: SymmetricKey, iv: Binary): Promise<EncryptResult> {
     const toConcat: Uint8Array[] = [];
     const result = await this.cryptoService.encrypt(payload, key, iv, Algorithms.AES_256_GCM);
     toConcat.push(new Uint8Array(iv.asArrayBuffer()));
@@ -62,7 +63,11 @@ export class AesGcmCipher extends SymmetricCipher {
    * @returns
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  override async decrypt(buffer: ArrayBuffer, key: Binary, iv?: Binary): Promise<DecryptResult> {
+  override async decrypt(
+    buffer: ArrayBuffer,
+    key: SymmetricKey,
+    iv?: Binary
+  ): Promise<DecryptResult> {
     const { payload, payloadIv, payloadAuthTag } = processGcmPayload(buffer);
 
     return this.cryptoService.decrypt(

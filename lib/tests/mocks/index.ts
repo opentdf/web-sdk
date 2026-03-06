@@ -1,7 +1,8 @@
 import { SignJWT, importPKCS8, JWTPayload } from 'jose';
 import { v4 } from 'uuid';
 
-import { PemKeyPair } from '../../tdf3/src/crypto/declarations.js';
+import { type KeyPair } from '../../tdf3/src/crypto/declarations.js';
+import * as DefaultCryptoService from '../../tdf3/src/crypto/index.js';
 import {
   entityECPrivateKey,
   entityECPublicKey,
@@ -107,24 +108,30 @@ tN5S0umLPkMUJ6zBIxh1RQK1ZYjfuKij+EEimbqtte9rYyQr3Q==
     kasECCert,
     kasECPrivateKey,
 
-    async entityKeyPair(): Promise<PemKeyPair> {
+    async entityKeyPair(): Promise<KeyPair> {
       return {
-        privateKey: entityPrivateKey,
-        publicKey: entityPublicKey,
+        privateKey: await DefaultCryptoService.importPrivateKey(entityPrivateKey, {
+          usage: 'sign',
+        }),
+        publicKey: await DefaultCryptoService.importPublicKey(entityPublicKey, { usage: 'sign' }),
       };
     },
 
-    async entityECKeyPair(): Promise<PemKeyPair> {
+    async entityECKeyPair(): Promise<KeyPair> {
       return {
-        privateKey: entityECPrivateKey,
-        publicKey: entityECPublicKey,
+        privateKey: await DefaultCryptoService.importPrivateKey(entityECPrivateKey, {
+          usage: 'sign',
+        }),
+        publicKey: await DefaultCryptoService.importPublicKey(entityECPublicKey, { usage: 'sign' }),
       };
     },
 
-    async extraECKeyPair(): Promise<PemKeyPair> {
+    async extraECKeyPair(): Promise<KeyPair> {
       return {
-        privateKey: extraECPrivateKey,
-        publicKey: extraECPublicKey,
+        privateKey: await DefaultCryptoService.importPrivateKey(extraECPrivateKey, {
+          usage: 'sign',
+        }),
+        publicKey: await DefaultCryptoService.importPublicKey(extraECPublicKey, { usage: 'sign' }),
       };
     },
 
