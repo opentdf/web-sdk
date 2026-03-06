@@ -18,7 +18,6 @@ export {
   P384_OID,
   P521_OID,
   type AlgorithmName,
-  type CurveName,
 } from './pemPublicToCrypto.js';
 export * as enums from './enums.js';
 
