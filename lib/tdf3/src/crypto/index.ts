@@ -571,7 +571,14 @@ function derToIeeeP1363(signature: Uint8Array, algorithm: AsymmetricSigningAlgor
   let offset = 1;
   if (signature[offset] & 0x80) {
     // Long-form: low 7 bits = number of subsequent length bytes.
-    offset += 1 + (signature[offset] & 0x7f);
+    const lenBytesCount = signature[offset] & 0x7f;
+    if (lenBytesCount === 0 || lenBytesCount > 4) {
+      throw new ConfigurationError('Invalid DER signature: invalid long-form length');
+    }
+    offset += 1 + lenBytesCount;
+    if (offset > signature.length) {
+      throw new ConfigurationError('Invalid DER signature: length bytes exceed signature length');
+    }
   } else {
     // Short-form: single length byte.
     offset += 1;
