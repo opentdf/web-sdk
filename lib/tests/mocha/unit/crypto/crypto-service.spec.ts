@@ -14,6 +14,7 @@ import {
   generateKeyPair,
   generateSigningKeyPair,
   hex2Ab,
+  importPublicKey,
   parsePublicKeyPem,
   importSymmetricKey,
   jwkToPublicKeyPem,
@@ -26,6 +27,7 @@ import {
 import { hex } from '../../../../src/encodings/index.js';
 import { Binary } from '../../../../tdf3/src/binary.js';
 import { decodeArrayBuffer, encodeArrayBuffer } from '../../../../src/encodings/base64.js';
+import { kasECCert, kasPublicKey } from '../../../mocks/pems.js';
 
 describe('Crypto Service', () => {
   describe('hmac (known-answer)', () => {
@@ -518,6 +520,43 @@ describe('Crypto Service', () => {
       const valid = await verify(data, signature, ecKeyPair.publicKey, 'ES512');
       expect(valid).to.be.true;
     });
+
+    it('ES512 DER output is well-formed and round-trips correctly', async () => {
+      // Verifies that ieeeP1363ToDer and derToIeeeP1363 both use correct DER length
+      // encoding, including long-form (0x81 <len>) when the SEQUENCE body is ≥ 128 bytes.
+      // Correct encoding is required for interoperability with external parsers
+      // (Go crypto, OpenSSL, etc.) that strictly validate the DER structure.
+      const webCryptoKeyPair = await crypto.subtle.generateKey(
+        { name: 'ECDSA', namedCurve: 'P-521' },
+        true,
+        ['sign', 'verify']
+      );
+      const ecKeyPair = {
+        publicKey: {
+          _brand: 'PublicKey',
+          algorithm: 'ec:secp521r1',
+          curve: 'P-521',
+          _internal: webCryptoKeyPair.publicKey,
+        } as any,
+        privateKey: {
+          _brand: 'PrivateKey',
+          algorithm: 'ec:secp521r1',
+          curve: 'P-521',
+          _internal: webCryptoKeyPair.privateKey,
+        } as any,
+      };
+      const data = new TextEncoder().encode('test data for ES512 DER long-form');
+
+      const der = await sign(data, ecKeyPair.privateKey, 'ES512');
+
+      // Output must be a DER SEQUENCE regardless of component size.
+      expect(der[0]).to.equal(0x30);
+
+      // Round-trip validates that the length field was encoded and decoded consistently,
+      // including long-form (needed when the SEQUENCE body is ≥ 128 bytes).
+      const valid = await verify(data, der, ecKeyPair.publicKey, 'ES512');
+      expect(valid).to.be.true;
+    });
   });
 
   describe('sign and verify with RS256', () => {
@@ -614,6 +653,24 @@ describe('Crypto Service', () => {
 
       const keyInfo = await parsePublicKeyPem(pem);
       expect(keyInfo.algorithm).to.equal('ec:secp384r1');
+    });
+  });
+
+  describe('importPublicKey', () => {
+    it('should import a plain PEM public key', async () => {
+      // Baseline: plain -----BEGIN PUBLIC KEY----- works before and after the fix.
+      const key = await importPublicKey(kasPublicKey, { usage: 'encrypt' });
+      expect(key._brand).to.equal('PublicKey');
+      expect(key.algorithm).to.equal('rsa:2048');
+    });
+
+    it('should import a public key from an X.509 certificate', async () => {
+      // KAS public keys are sometimes delivered as X.509 certificates rather than
+      // plain SPKI PEMs. importPublicKey must extract the SubjectPublicKeyInfo from
+      // the certificate before passing bytes to crypto.subtle.importKey('spki').
+      const key = await importPublicKey(kasECCert, { usage: 'derive' });
+      expect(key._brand).to.equal('PublicKey');
+      expect(key.algorithm).to.equal('ec:secp256r1');
     });
   });
 });

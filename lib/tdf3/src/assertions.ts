@@ -90,26 +90,26 @@ async function sign(
     );
   }
 
+  let signingMaterial: PrivateKey | SymmetricKey;
   if (typeof key.key === 'string') {
     if (!cryptoService.importPrivateKey) {
       throw new ConfigurationError(
         'CryptoService does not support importing private keys. Cannot sign assertion with a PEM string. Use PrivateKey or SymmetricKey for signing.'
       );
     }
-    const importedPrivateKey = await cryptoService.importPrivateKey(key.key, {
+    signingMaterial = await cryptoService.importPrivateKey(key.key, {
       usage: 'sign',
       extractable: false,
     });
-    key.key = importedPrivateKey;
-  }
-  if (key.key instanceof Uint8Array) {
-    const importedSymmetricKey = await cryptoService.importSymmetricKey(key.key);
-    key.key = importedSymmetricKey;
+  } else if (key.key instanceof Uint8Array) {
+    signingMaterial = await cryptoService.importSymmetricKey(key.key);
+  } else {
+    signingMaterial = key.key as PrivateKey | SymmetricKey;
   }
 
   let token: string;
   try {
-    token = await signJwt(cryptoService, payload, key.key as PrivateKey | SymmetricKey, header);
+    token = await signJwt(cryptoService, payload, signingMaterial, header);
   } catch (error) {
     throw new ConfigurationError(`Signing assertion failed: ${error.message}`, error);
   }
