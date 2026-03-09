@@ -525,11 +525,14 @@ function ieeeP1363ToDer(signature: Uint8Array, algorithm: AsymmetricSigningAlgor
   const sDer = new Uint8Array([0x02, sTrimmed.length, ...sTrimmed]);
 
   const seqLen = rDer.length + sDer.length;
-  const result = new Uint8Array(2 + seqLen);
+  // DER length: short-form for < 128, long-form (0x81 nn) for 128-255.
+  // ECDSA sequences never exceed 255 bytes for any supported curve.
+  const lenBytes = seqLen < 128 ? new Uint8Array([seqLen]) : new Uint8Array([0x81, seqLen]);
+  const result = new Uint8Array(1 + lenBytes.length + seqLen);
   result[0] = 0x30;
-  result[1] = seqLen;
-  result.set(rDer, 2);
-  result.set(sDer, 2 + rDer.length);
+  result.set(lenBytes, 1);
+  result.set(rDer, 1 + lenBytes.length);
+  result.set(sDer, 1 + lenBytes.length + rDer.length);
 
   return result;
 }
@@ -564,7 +567,15 @@ function derToIeeeP1363(signature: Uint8Array, algorithm: AsymmetricSigningAlgor
     throw new ConfigurationError('Invalid DER signature: expected SEQUENCE');
   }
 
-  let offset = 2; // Skip SEQUENCE tag and length
+  // Skip SEQUENCE tag, then parse DER length (short- or long-form).
+  let offset = 1;
+  if (signature[offset] & 0x80) {
+    // Long-form: low 7 bits = number of subsequent length bytes.
+    offset += 1 + (signature[offset] & 0x7f);
+  } else {
+    // Short-form: single length byte.
+    offset += 1;
+  }
 
   // Parse r INTEGER
   if (signature[offset] !== 0x02) {
@@ -1017,12 +1028,13 @@ export async function publicKeyPemToJwk(publicKeyPem: string): Promise<JsonWebKe
 export async function importPublicKey(pem: string, options: KeyOptions): Promise<PublicKey> {
   const { usage = 'encrypt', extractable = true, algorithmHint } = options;
 
-  // Detect algorithm from PEM
+  // Detect algorithm from PEM; also normalises certificates → plain SPKI PEM.
   const keyInfo = await parsePublicKeyPem(pem);
   const algorithm = algorithmHint || keyInfo.algorithm;
 
-  // Remove PEM formatting
-  const keyData = removePemFormatting(pem);
+  // Use keyInfo.pem (normalised SPKI) not the original pem, which may be a certificate.
+  // Passing raw X.509 DER bytes to crypto.subtle.importKey('spki') would throw DataError.
+  const keyData = removePemFormatting(keyInfo.pem);
   const keyBuffer = base64Decode(keyData);
 
   // Determine Web Crypto algorithm and usages based on key type and usage
