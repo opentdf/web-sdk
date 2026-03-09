@@ -209,7 +209,6 @@ async function correctAssertionKeys({
     if (typeof key !== 'string') {
       throw new CLIError('CRITICAL', 'RS256 key must be a PEM string');
     }
-    // check if formatted as pem
     return key;
   }
   // Otherwise its an unsupported alg
