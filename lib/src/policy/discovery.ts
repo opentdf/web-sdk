@@ -32,7 +32,7 @@ const ATTRIBUTE_FQN_RE = /^https?:\/\/[a-zA-Z0-9._~%-]+\/attr\/[a-zA-Z0-9._~%-]+
  * Returns all active attributes available on the platform, auto-paginating through all results.
  * An optional namespace name or ID may be provided to filter results.
  *
- * Use this before calling `createZTDF()` to see what attributes are available for data tagging.
+ * Use this before calling `createTDF()` to see what attributes are available for data tagging.
  *
  * @param platformUrl The platform base URL.
  * @param authProvider An auth provider for the request.
@@ -86,7 +86,7 @@ export async function listAttributes(
  * Checks that all provided attribute value FQNs exist on the platform.
  * Validates FQN format first, then verifies existence via the platform API.
  *
- * Use this before `createZTDF()` to catch missing or misspelled attributes early
+ * Use this before `createTDF()` to catch missing or misspelled attributes early
  * instead of discovering the problem at decryption time.
  *
  * @param platformUrl The platform base URL.

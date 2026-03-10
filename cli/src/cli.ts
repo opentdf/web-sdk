@@ -6,7 +6,7 @@ import { hideBin } from 'yargs/helpers';
 import {
   type AuthProvider,
   type CreateOptions,
-  type CreateZTDFOptions,
+  type CreateTDFOptions,
   type HttpRequest,
   type ReadOptions,
   type Source,
@@ -269,8 +269,8 @@ async function parseCreateOptions(argv: Partial<mainArgs>): Promise<CreateOption
   return c;
 }
 
-async function parseCreateZTDFOptions(argv: Partial<mainArgs>): Promise<CreateZTDFOptions> {
-  const c: CreateZTDFOptions = await parseCreateOptions(argv);
+async function parseCreateTDFOptions(argv: Partial<mainArgs>): Promise<CreateTDFOptions> {
+  const c: CreateTDFOptions = await parseCreateOptions(argv);
   if (argv.assertions?.length) {
     c.assertionConfigs = await parseAssertionConfig(argv.assertions);
   }
@@ -290,7 +290,7 @@ async function parseCreateZTDFOptions(argv: Partial<mainArgs>): Promise<CreateZT
   if (argv.tdfSpecVersion) {
     c.tdfSpecVersion = argv.tdfSpecVersion as never;
   }
-  log('DEBUG', `CreateZTDFOptions: ${JSON.stringify(c)}`);
+  log('DEBUG', `CreateTDFOptions: ${JSON.stringify(c)}`);
   return c;
 }
 
@@ -636,8 +636,8 @@ export const handleArgs = (args: string[]) => {
           });
           try {
             log('SILLY', `Initialized client`);
-            log('DEBUG', `ZTDF Create`);
-            const ct: DecoratedStream = await client.createZTDF(await parseCreateZTDFOptions(argv));
+            log('DEBUG', `TDF Create`);
+            const ct: DecoratedStream = await client.createTDF(await parseCreateTDFOptions(argv));
             if (!ct) {
               throw new CLIError('CRITICAL', 'Encrypt configuration error: No output?');
             }

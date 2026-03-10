@@ -6,7 +6,7 @@ and some management tasks for ABAC.
 
 **[OpenTDF Web Documentation](https://opentdf.github.io/web-sdk/)**
 
-## Usage (ZTDF)
+## Usage
 
 ```typescript
 import { AuthProviders, OpenTDF } from '@opentdf/sdk';
@@ -37,7 +37,7 @@ const client = new OpenTDF({
 });
 
 // Encrypt
-const cipherText = await client.createZTDF({
+const cipherText = await client.createTDF({
   source: { type: 'stream', location: plainTextStream },
   autoconfigure: false,
 });
