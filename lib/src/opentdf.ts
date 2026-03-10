@@ -99,7 +99,10 @@ export type SplitStep = {
   sid?: string;
 };
 
-/** Options specific to the ZTDF container format. */
+/**
+ * Options specific to the ZTDF container format.
+ * @deprecated Use {@link CreateTDFOptions} instead.
+ */
 export type CreateZTDFOptions = CreateOptions & {
   /** Configuration for bound metadata. */
   assertionConfigs?: AssertionConfig[];
@@ -126,7 +129,7 @@ export type CreateZTDFOptions = CreateOptions & {
   tdfSpecVersion?: '4.2.2' | '4.3.0';
 };
 
-/** @deprecated Use {@link CreateTDFOptions} instead. */
+/** Options for creating a TDF. */
 export type CreateTDFOptions = CreateZTDFOptions;
 
 /** Settings for decrypting any variety of TDF file. */
