@@ -14,10 +14,23 @@ import {
 } from './src/client/builders.js';
 import { type ClientConfig, createSessionKeys } from './src/client/index.js';
 import {
+  type AsymmetricSigningAlgorithm,
   type CryptoService,
   type DecryptResult,
+  type ECCurve,
   type EncryptResult,
+  type HashAlgorithm,
+  type HkdfParams,
+  type KeyPair,
+  type KeyOptions,
+  type KeyAlgorithm,
   type PemKeyPair,
+  type PrivateKey,
+  type PublicKey,
+  type PublicKeyInfo,
+  type SigningAlgorithm,
+  type SymmetricKey,
+  type SymmetricSigningAlgorithm,
 } from './src/crypto/declarations.js';
 import { Client, Errors, TDF3Client } from './src/index.js';
 import {
@@ -35,18 +48,31 @@ import { type Chunker } from '../src/seekable.js';
 export type {
   AlgorithmName,
   AlgorithmUrn,
+  AsymmetricSigningAlgorithm,
   AuthProvider,
   Chunker,
   CryptoService,
-  DecryptResult,
-  EncryptResult,
-  HttpMethod,
-  PemKeyPair,
-  EncryptKeyMiddleware,
-  EncryptStreamMiddleware,
   DecryptKeyMiddleware,
+  DecryptResult,
   DecryptStreamMiddleware,
+  ECCurve,
+  EncryptKeyMiddleware,
+  EncryptResult,
+  EncryptStreamMiddleware,
+  HashAlgorithm,
+  HkdfParams,
+  HttpMethod,
+  KeyPair,
+  KeyOptions,
+  KeyAlgorithm,
+  PemKeyPair,
+  PrivateKey,
+  PublicKey,
+  PublicKeyInfo,
+  SigningAlgorithm,
   SplitStep,
+  SymmetricKey,
+  SymmetricSigningAlgorithm,
 };
 
 export {
@@ -74,7 +100,8 @@ export {
   version,
 };
 
-export * as WebCryptoService from './src/crypto/index.js';
+export { DefaultCryptoService as WebCryptoService } from './src/crypto/index.js';
+// export the other methods from crypto/index.js that aren't part of CryptoService but are needed for JWT handling
 export {
   type CreateOptions,
   type CreateZTDFOptions,

@@ -33,11 +33,12 @@ import { encodeArrayBuffer as hexEncodeArrayBuffer } from '../encodings/hex.js';
 import { ConfigurationError, TdfError } from '../errors.js';
 import { NamedCurve } from './enums.js';
 
-const RSA_OID = '06092a864886f70d010101';
-const EC_OID = '06072a8648ce3d0201';
-const P256_OID = '06082a8648ce3d030107';
-const P384_OID = '06052b81040022';
-const P521_OID = '06052b81040023';
+// OID constants for algorithm detection (hex-encoded ASN.1 OIDs)
+export const RSA_OID = '06092a864886f70d010101';
+export const EC_OID = '06072a8648ce3d0201';
+export const P256_OID = '06082a8648ce3d030107';
+export const P384_OID = '06052b81040022';
+export const P521_OID = '06052b81040023';
 const SHA_512 = 'SHA-512';
 const SPKI = 'spki';
 const CERT_BEGIN = '-----BEGIN CERTIFICATE-----';
@@ -47,7 +48,7 @@ const ECDH = 'ECDH';
 const ECDSA = 'ECDSA';
 const RSA_OAEP = 'RSA-OAEP';
 const RSA_PSS = 'RSA-PSS';
-type AlgorithmName = typeof ECDH | typeof ECDSA | typeof RSA_OAEP | typeof RSA_PSS;
+export type AlgorithmName = typeof ECDH | typeof ECDSA | typeof RSA_OAEP | typeof RSA_PSS;
 
 interface PemPublicToCryptoOptions {
   name?: string;
@@ -71,7 +72,7 @@ function guessKeyUsages(algorithmName: AlgorithmName, usages?: KeyUsage[]): KeyU
   }
 }
 
-function guessAlgorithmName(hex: string, algorithmName?: string): AlgorithmName {
+export function guessAlgorithmName(hex: string, algorithmName?: string): AlgorithmName {
   if (hex.includes(EC_OID)) {
     if (!algorithmName || algorithmName === ECDH) {
       return ECDH;
@@ -88,7 +89,7 @@ function guessAlgorithmName(hex: string, algorithmName?: string): AlgorithmName 
   throw new TypeError(`Invalid public key, ${algorithmName}`);
 }
 
-function guessCurveName(hex: string): NamedCurve {
+export function guessCurveName(hex: string): NamedCurve {
   if (hex.includes(P256_OID)) {
     return NamedCurve.P256;
   } else if (hex.includes(P384_OID)) {
@@ -155,9 +156,10 @@ export async function pemPublicToCrypto(
 }
 
 /**
+ * Detect JWS algorithm from hex-encoded key/certificate data.
  * Look up JWK algorithm at https://github.com/panva/jose/issues/210
  */
-function toJwsAlg(hex: string) {
+export function toJwsAlg(hex: string) {
   const a = guessAlgorithmName(hex);
   if (a === ECDH) {
     return 'ECDH-ES';

@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 
 import { bxor, keySplit, keyMerge } from '../../../tdf3/src/utils/keysplit.js';
-import { generateKey } from '../../../tdf3/src/crypto/index.js';
+import { randomBytes } from '../../../tdf3/src/crypto/index.js';
 import { hex } from '../../../src/encodings/index.js';
 import { Binary } from '../../../tdf3/src/binary.js';
 import * as defaultCryptoService from '../../../tdf3/src/crypto/index.js';
@@ -27,15 +27,16 @@ describe('keysplits', () => {
   });
 
   it(`should serialize hex key into Binary and back`, async () => {
-    const key = await generateKey(4);
+    const keyBytes = await randomBytes(4);
+    const keyHex = hex.encodeArrayBuffer(keyBytes.buffer);
 
-    const unwrappedKeyBinary = Binary.fromString(hex.decode(key));
+    const unwrappedKeyBinary = Binary.fromString(hex.decode(keyHex));
     const splits = await keySplit(
       new Uint8Array(unwrappedKeyBinary.asArrayBuffer()),
       1,
       defaultCryptoService
     );
 
-    expect(hex.encodeArrayBuffer(splits[0])).to.eql(key);
+    expect(hex.encodeArrayBuffer(splits[0])).to.eql(keyHex);
   });
 });

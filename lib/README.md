@@ -1,6 +1,6 @@
 # An OpenTDF Library for Browser Applications
 
-This project presents client code to write and read OpenTDF data formats (ZTDF).
+This project presents client code to write and read OpenTDF data formats.
 
 ## Usage
 
@@ -23,7 +23,7 @@ const client = new OpenTDF({
 });
 
 // Encrypt
-const cipherText = await client.createZTDF({
+const cipherText = await client.createTDF({
   source: { type: 'stream', location: source },
   autoconfigure: false,
 });

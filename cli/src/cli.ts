@@ -6,7 +6,7 @@ import { hideBin } from 'yargs/helpers';
 import {
   type AuthProvider,
   type CreateOptions,
-  type CreateZTDFOptions,
+  type CreateTDFOptions,
   type HttpRequest,
   type ReadOptions,
   type Source,
@@ -18,10 +18,9 @@ import {
   isPublicKeyAlgorithm,
 } from '@opentdf/sdk';
 import { CLIError, Level, log } from './logger.js';
-import { webcrypto } from 'crypto';
 import * as assertions from '@opentdf/sdk/assertions';
 import { base64 } from '@opentdf/sdk/encodings';
-import { type CryptoKey, importPKCS8, importSPKI } from 'jose'; // for RS256
+import { type KeyPair } from '@opentdf/sdk/singlecontainer';
 
 type AuthToProcess = {
   auth?: string;
@@ -91,7 +90,7 @@ async function processAuth({
   const requestLog: AuthProviders.HttpRequest[] = [];
   return {
     requestLog,
-    updateClientPublicKey: async (signingKey: webcrypto.CryptoKeyPair) => {
+    updateClientPublicKey: async (signingKey: KeyPair) => {
       actual.updateClientPublicKey(signingKey);
       log('DEBUG', `updateClientPublicKey: [${signingKey?.publicKey}]`);
     },
@@ -198,7 +197,7 @@ async function parseReadOptions(argv: Partial<mainArgs>): Promise<ReadOptions> {
 async function correctAssertionKeys({
   alg,
   key,
-}: assertions.AssertionKey): Promise<CryptoKey | Uint8Array> {
+}: assertions.AssertionKey): Promise<string | Uint8Array> {
   if (alg === 'HS256') {
     // Convert key string to Uint8Array
     if (typeof key !== 'string') {
@@ -210,17 +209,7 @@ async function correctAssertionKeys({
     if (typeof key !== 'string') {
       throw new CLIError('CRITICAL', 'RS256 key must be a PEM string');
     }
-    try {
-      return await importPKCS8(key, 'RS256'); // Import private key
-    } catch (err) {
-      // If importing as a private key fails, try importing as a public key
-      log('SILLY', `Failed to import RS256 key as private key: ${err.message}`);
-      try {
-        return await importSPKI(key, 'RS256'); // Import public key
-      } catch (err) {
-        throw new CLIError('CRITICAL', `Issue converting RS256 key: ${err.message}`, err);
-      }
-    }
+    return key;
   }
   // Otherwise its an unsupported alg
   throw new CLIError('CRITICAL', `Unsupported signing key algorithm: ${alg}`); // Handle unsupported algs
@@ -280,8 +269,8 @@ async function parseCreateOptions(argv: Partial<mainArgs>): Promise<CreateOption
   return c;
 }
 
-async function parseCreateZTDFOptions(argv: Partial<mainArgs>): Promise<CreateZTDFOptions> {
-  const c: CreateZTDFOptions = await parseCreateOptions(argv);
+async function parseCreateTDFOptions(argv: Partial<mainArgs>): Promise<CreateTDFOptions> {
+  const c: CreateTDFOptions = await parseCreateOptions(argv);
   if (argv.assertions?.length) {
     c.assertionConfigs = await parseAssertionConfig(argv.assertions);
   }
@@ -301,7 +290,7 @@ async function parseCreateZTDFOptions(argv: Partial<mainArgs>): Promise<CreateZT
   if (argv.tdfSpecVersion) {
     c.tdfSpecVersion = argv.tdfSpecVersion as never;
   }
-  log('DEBUG', `CreateZTDFOptions: ${JSON.stringify(c)}`);
+  log('DEBUG', `CreateTDFOptions: ${JSON.stringify(c)}`);
   return c;
 }
 
@@ -647,8 +636,8 @@ export const handleArgs = (args: string[]) => {
           });
           try {
             log('SILLY', `Initialized client`);
-            log('DEBUG', `ZTDF Create`);
-            const ct: DecoratedStream = await client.createZTDF(await parseCreateZTDFOptions(argv));
+            log('DEBUG', `TDF Create`);
+            const ct: DecoratedStream = await client.createTDF(await parseCreateTDFOptions(argv));
             if (!ct) {
               throw new CLIError('CRITICAL', 'Encrypt configuration error: No output?');
             }
