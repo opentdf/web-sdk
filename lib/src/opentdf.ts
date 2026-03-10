@@ -126,6 +126,9 @@ export type CreateZTDFOptions = CreateOptions & {
   tdfSpecVersion?: '4.2.2' | '4.3.0';
 };
 
+/** @deprecated Use {@link CreateTDFOptions} instead. */
+export type CreateTDFOptions = CreateZTDFOptions;
+
 /** Settings for decrypting any variety of TDF file. */
 export type ReadOptions = {
   /** The ciphertext source. */
@@ -245,7 +248,7 @@ export type TDFReader = {
  *   platformUrl: 'https://platform.example.com',
  * });
  *
- * const cipherText = await client.createZTDF({
+ * const cipherText = await client.createTDF({
  *   source: { type: 'stream', location: source },
  *   autoconfigure: false,
  * });
@@ -308,7 +311,15 @@ export class OpenTDF {
     this.dpopKeys = dpopKeys ?? this.cryptoService.generateSigningKeyPair();
   }
 
-  /** Creates a new ZTDF stream. */
+  /** Creates a new TDF stream. */
+  async createTDF(opts: CreateTDFOptions): Promise<DecoratedStream> {
+    return this.createZTDF(opts);
+  }
+
+  /**
+   * Creates a new TDF stream.
+   * @deprecated Use {@link createTDF} instead.
+   */
   async createZTDF(opts: CreateZTDFOptions): Promise<DecoratedStream> {
     opts = { ...this.defaultCreateOptions, ...opts };
     const oldStream = await this.tdf3Client.encrypt({
