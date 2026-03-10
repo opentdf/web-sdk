@@ -3,6 +3,8 @@ import { ConfigurationError, InvalidFileError } from './errors.js';
 export { Client as TDF3Client } from '../tdf3/src/client/index.js';
 import { Chunker, fromSource, sourceToStream, type Source } from './seekable.js';
 import { Client as TDF3Client } from '../tdf3/src/client/index.js';
+import { type CryptoService, type KeyPair } from '../tdf3/src/crypto/declarations.js';
+import * as DefaultCryptoService from '../tdf3/src/crypto/index.js';
 import {
   type Assertion,
   AssertionConfig,
@@ -33,6 +35,7 @@ import { Policy } from '../tdf3/src/models/policy.js';
 
 export {
   type Assertion,
+  type CryptoService,
   type EncryptionInformation,
   type IntegrityAlgorithm,
   type KasPublicKeyAlgorithm,
@@ -172,7 +175,14 @@ export type OpenTDFOptions = {
    * These often must be registered via a DPoP flow with the IdP
    * which is out of the scope of this library.
    */
-  dpopKeys?: Promise<CryptoKeyPair>;
+  dpopKeys?: Promise<KeyPair>;
+
+  /**
+   * Optional custom CryptoService implementation.
+   * If not provided, defaults to the browser's native Web Crypto API.
+   * This allows injecting HSM-backed or other secure crypto implementations.
+   */
+  cryptoService?: CryptoService;
 };
 
 /** A decorated readable stream. */
@@ -257,7 +267,9 @@ export class OpenTDF {
   /** Default options for reading TDF objects. */
   defaultReadOptions: Omit<ReadOptions, 'source'>;
   /** The DPoP keys for this instance, if any. */
-  readonly dpopKeys: Promise<CryptoKeyPair>;
+  readonly dpopKeys: Promise<KeyPair>;
+  /** The CryptoService implementation for this instance. */
+  readonly cryptoService: CryptoService;
   /** The TDF3 client for encrypting and decrypting ZTDF files. */
   readonly tdf3Client: TDF3Client;
 
@@ -269,6 +281,7 @@ export class OpenTDF {
     disableDPoP,
     policyEndpoint,
     platformUrl,
+    cryptoService,
   }: OpenTDFOptions) {
     this.authProvider = authProvider;
     this.defaultCreateOptions = defaultCreateOptions || {};
@@ -282,25 +295,17 @@ export class OpenTDF {
       );
     }
     this.policyEndpoint = policyEndpoint || '';
+    this.cryptoService = cryptoService ?? DefaultCryptoService;
     this.tdf3Client = new TDF3Client({
       authProvider,
       dpopKeys,
       kasEndpoint: this.platformUrl || 'https://disallow.all.invalid',
       platformUrl,
       policyEndpoint,
+      cryptoService: this.cryptoService,
     });
-    this.dpopKeys =
-      dpopKeys ??
-      crypto.subtle.generateKey(
-        {
-          name: 'RSASSA-PKCS1-v1_5',
-          hash: 'SHA-256',
-          modulusLength: 2048,
-          publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
-        },
-        true,
-        ['sign', 'verify']
-      );
+    // Use CryptoService for key generation (returns opaque KeyPair)
+    this.dpopKeys = dpopKeys ?? this.cryptoService.generateSigningKeyPair();
   }
 
   /** Creates a new ZTDF stream. */

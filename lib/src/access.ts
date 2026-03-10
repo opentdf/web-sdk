@@ -1,5 +1,4 @@
 import { type AuthProvider } from './auth/auth.js';
-import { ServiceError } from './errors.js';
 import { RewrapResponse } from './platform/kas/kas_pb.js';
 import { getPlatformUrlFromKasEndpoint, validateSecureUrl } from './utils.js';
 import { base64 } from './encodings/index.js';
@@ -155,23 +154,7 @@ export type KasPublicKeyInfo = {
 
   /** The key value, encoded within a PEM envelope */
   publicKey: string;
-
-  /** A subtle crypto version of the key.
-   * This can be used for wrapping key data for key access objects (with RSA)
-   * or to derive key data (with EC keys). */
-  key: Promise<CryptoKey>;
 };
-
-export async function noteInvalidPublicKey(url: URL, r: Promise<CryptoKey>): Promise<CryptoKey> {
-  try {
-    return await r;
-  } catch (e) {
-    if (e instanceof TypeError) {
-      throw new ServiceError(`invalid public key from [${url}]`, e);
-    }
-    throw e;
-  }
-}
 
 /**
  * Fetches the key access servers for a given platform URL.

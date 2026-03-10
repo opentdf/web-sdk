@@ -1,5 +1,5 @@
 import { base64 } from '../../../src/encodings/index.js';
-import { type AnyKeyPair, type PemKeyPair } from './declarations.js';
+import { type PemKeyPair } from './declarations.js';
 import { rsaPkcs1Sha256 } from './index.js';
 
 /**
@@ -73,7 +73,10 @@ export const removePemFormatting = (input: string): string => {
 const PEMRE =
   /-----BEGIN\s((?:RSA\s)?(?:PUBLIC\sKEY|PRIVATE\sKEY|CERTIFICATE))-----[\s0-9A-Za-z+/=]+-----END\s\1-----/;
 
-export const isPemKeyPair = (i: AnyKeyPair): i is PemKeyPair => {
+/**
+ * Type guard to check if a key pair is a PemKeyPair.
+ */
+export const isPemKeyPair = (i: PemKeyPair | CryptoKeyPair): i is PemKeyPair => {
   const { privateKey, publicKey } = i;
   if (typeof privateKey !== 'string' || typeof publicKey !== 'string') {
     return false;
@@ -89,7 +92,10 @@ export const isPemKeyPair = (i: AnyKeyPair): i is PemKeyPair => {
   return true;
 };
 
-export const isCryptoKeyPair = (i: AnyKeyPair): i is CryptoKeyPair => {
+/**
+ * Type guard to check if a key pair is a CryptoKeyPair.
+ */
+export const isCryptoKeyPair = (i: PemKeyPair | CryptoKeyPair): i is CryptoKeyPair => {
   const { privateKey, publicKey } = i;
   if (typeof privateKey !== 'object' || typeof publicKey !== 'object') {
     return false;
@@ -100,12 +106,13 @@ export const isCryptoKeyPair = (i: AnyKeyPair): i is CryptoKeyPair => {
   return privateKey.type === 'private' && publicKey.type === 'public';
 };
 
-export const toCryptoKeyPair = async (input: AnyKeyPair): Promise<CryptoKeyPair> => {
-  if (isCryptoKeyPair(input)) {
-    return input;
-  }
+/**
+ * Convert a PemKeyPair to CryptoKeyPair for internal use.
+ * This is needed when interfacing with APIs that still require CryptoKey objects.
+ */
+export const toCryptoKeyPair = async (input: PemKeyPair): Promise<CryptoKeyPair> => {
   if (!isPemKeyPair(input)) {
-    throw new Error('internal: generated invalid keypair');
+    throw new Error('internal: invalid PEM keypair');
   }
   const k = [input.publicKey, input.privateKey]
     .map(removePemFormatting)
