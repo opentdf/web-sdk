@@ -144,7 +144,7 @@
     "webpack-cli": "^6.0.1"
   },
   "overrides": {
-    "serialize-javascript": "^7.0.3",
+    "serialize-javascript": "^7.0.4",
     "koa": "^2.16.4"
   }
 }
