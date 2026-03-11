@@ -27,7 +27,7 @@ jobs:
       - name: Build CLI
         working-directory: ./cli
         run: |
-          npm ci
+          npm install
           npm install ../lib/opentdf-sdk-*.tgz
           npm run build
           npm pack
