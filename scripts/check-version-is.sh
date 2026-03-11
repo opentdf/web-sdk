@@ -10,7 +10,7 @@
 set -euo pipefail
 
 # Parse github.ref context parameter if provided
-if [[ ${1:-} =~ refs/heads/release/sdk/v(.*) ]]; then
+if [[ ${1:-} =~ refs/heads/release/sdk[-/]v(.*) ]]; then
   minor_version="${BASH_REMATCH[1]}"
   lib_version="$(cd lib && node -p "require('./package.json').version")"
   if [[ $lib_version != $minor_version* ]]; then
@@ -18,7 +18,7 @@ if [[ ${1:-} =~ refs/heads/release/sdk/v(.*) ]]; then
     exit 1
   fi
   expected_version="$lib_version"
-elif [[ ${1:-} =~ refs/tags/sdk/v(.*) ]]; then
+elif [[ ${1:-} =~ refs/tags/sdk[-/]v(.*) ]]; then
   expected_version="${BASH_REMATCH[1]}"
 elif [[ ${1:-} =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
   expected_version="${1}"
