@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.10.0...sdk-v0.11.0) (2026-03-12)
+
+
+### Bug Fixes
+
+* **sdk:** await sleep in retry backoff; fix CI deliver and dev-artifact ([#858](https://github.com/opentdf/web-sdk/issues/858)) ([f14d6eb](https://github.com/opentdf/web-sdk/commit/f14d6eb09605e65855b69bed39dbbd1241276d63))
+
 ## [0.10.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.9.0...sdk-v0.10.0) (2026-03-10)
 
 
