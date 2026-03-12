@@ -2,7 +2,7 @@ name: Publish Dev Artifact
 
 on:
   push:
-    branches: [main, fix/dev-artifact-integrity]
+    branches: [main]
 
 permissions:
   contents: write
