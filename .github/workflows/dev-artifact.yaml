@@ -2,7 +2,7 @@ name: Publish Dev Artifact
 
 on:
   push:
-    branches: [main]
+    branches: [main, fix/dev-artifact-integrity]
 
 permissions:
   contents: write
@@ -27,7 +27,7 @@ jobs:
       - name: Build CLI
         working-directory: ./cli
         run: |
-          npm install
+          rm package-lock.json
           npm install ../lib/opentdf-sdk-*.tgz
           npm run build
           npm pack
