@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Validate that version number is same across all expected files
+# Publish SDK and CLI packages to an npm registry
 
 set -exuo pipefail
 
@@ -17,8 +17,21 @@ mv "${file}.tmp" "${file}"
 npm version --no-git-tag-version --allow-same-version "$version"
 npm publish --access public --tag "$tag"
 
-# Wait for npm publish to go through...
-sleep 5
+# Wait for the SDK package to appear on the registry before the CLI can install it.
+# npm registry propagation can take longer than 5 seconds, so retry with backoff.
+max_attempts=6
+for attempt in $(seq 1 $max_attempts); do
+	if npm view "@opentdf/sdk@$version" version >/dev/null 2>&1; then
+		echo "SDK version $version is available on the registry"
+		break
+	fi
+	if [ "$attempt" -eq "$max_attempts" ]; then
+		echo "ERROR: SDK version $version not found on registry after $max_attempts attempts"
+		exit 1
+	fi
+	echo "Waiting for SDK $version to propagate (attempt $attempt/$max_attempts)..."
+	sleep $(( attempt * 5 ))
+done
 
 cd "../cli"
 npm version --no-git-tag-version --allow-same-version "$version"
