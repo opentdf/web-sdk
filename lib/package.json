@@ -91,7 +91,7 @@
     "@connectrpc/connect": "^2.0.2",
     "@connectrpc/connect-web": "^2.0.2",
     "buffer-crc32": "^1.0.0",
-    "jose": "6.0.8",
+    "jose": "6.2.1",
     "json-canonicalize": "^1.0.6",
     "uuid": "~13.0.0"
   },
