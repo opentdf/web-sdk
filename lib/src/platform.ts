@@ -135,15 +135,29 @@ function createAuthInterceptor(authProvider: AuthProvider): Interceptor {
     const url = new URL(req.url);
     const pathOnly = url.pathname;
     // Signs only the path of the url in the request
-    const token = await authProvider.withCreds({
-      url: pathOnly,
-      method: 'POST',
-      // Start with any headers Connect already has
-      headers: {
-        ...Object.fromEntries(req.header.entries()),
-        'Content-Type': 'application/json',
-      },
-    });
+    let token;
+    try {
+      token = await authProvider.withCreds({
+        url: pathOnly,
+        method: 'POST',
+        // Start with any headers Connect already has
+        headers: {
+          ...Object.fromEntries(req.header.entries()),
+          'Content-Type': 'application/json',
+        },
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('public key') || msg.includes('updateClientPublicKey')) {
+        throw new Error(
+          'PlatformClient: DPoP key binding is not complete. ' +
+            'If you are using OpenTDF with PlatformClient, create OpenTDF first and ' +
+            '`await client.ready` before constructing PlatformClient. ' +
+            `Original error: ${msg}`
+        );
+      }
+      throw err;
+    }
 
     Object.entries(token.headers).forEach(([key, value]) => {
       req.header.set(key, value);

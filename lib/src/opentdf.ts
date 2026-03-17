@@ -327,7 +327,9 @@ export class OpenTDF {
     // Prevent unhandled rejection if caller doesn't await ready.
     // The error will still surface via TDF3Client's own key binding
     // when encrypt/decrypt is called.
-    this.ready.catch(() => {});
+    this.ready.catch((err) => {
+      console.warn('OpenTDF: DPoP key binding failed during initialization:', err);
+    });
   }
 
   /** Creates a new TDF stream. */
