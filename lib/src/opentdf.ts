@@ -304,7 +304,8 @@ export class OpenTDF {
     this.cryptoService = cryptoService ?? DefaultCryptoService;
     this.tdf3Client = new TDF3Client({
       authProvider,
-      dpopKeys,
+      dpopEnabled: this.dpopEnabled,
+      dpopKeys: this.dpopEnabled ? dpopKeys : undefined,
       kasEndpoint: this.platformUrl || 'https://disallow.all.invalid',
       platformUrl,
       policyEndpoint,
