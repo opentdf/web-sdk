@@ -292,7 +292,7 @@ export class OpenTDF {
     this.authProvider = authProvider;
     this.defaultCreateOptions = defaultCreateOptions || {};
     this.defaultReadOptions = defaultReadOptions || {};
-    this.dpopEnabled = !!disableDPoP;
+    this.dpopEnabled = !disableDPoP;
     if (platformUrl) {
       this.platformUrl = platformUrl;
     } else {
