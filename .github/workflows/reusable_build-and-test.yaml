@@ -207,10 +207,11 @@ jobs:
             .github/workflows/roundtrip/platform/sdk/go.sum
             .github/workflows/roundtrip/platform/service/go.sum
       - run: find ./ -name go.mod
-      - name: go configure backend
+      - name: verify platform go.work
         run: |-
-          go work init
-          go work use -r ./platform
+          test -f ./platform/go.work
+          cd ./platform/service
+          go env GOWORK
       - run: docker compose up -d --wait --wait-timeout 240
       - env:
           PLAYWRIGHT_TESTS_TO_RUN: roundtrip

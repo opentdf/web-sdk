@@ -98,11 +98,16 @@ _init_platform() {
     echo "[ERROR] unable to cd ${APP_DIR}"
     exit 2
   fi
-  svc=github.com/opentdf/platform/service@latest
-  if [ -f go.work ]; then
-    svc=github.com/opentdf/platform/service
-  fi
-  if ! go run "${svc}" provision keycloak -f "${APP_DIR}/keycloak_data.yaml"; then
+
+  _run_platform_service() {
+    if [ -d "${APP_DIR}/platform/service" ]; then
+      (cd "${APP_DIR}/platform/service" && go run . "$@")
+      return $?
+    fi
+    go run github.com/opentdf/platform/service@latest "$@"
+  }
+
+  if ! _run_platform_service provision keycloak -f "${APP_DIR}/keycloak_data.yaml"; then
     echo "[ERROR] unable to provision keycloak"
     return 1
   fi
@@ -114,7 +119,7 @@ _init_platform() {
     echo "[ERROR] unable to initialize keys"
     return 1
   fi
-  go run "${svc}" start &>"$output" &
+  _run_platform_service start &>"$output" &
   server_pid=$!
   echo "Platform pid: $server_pid"
   echo "Output: $output"
@@ -139,7 +144,7 @@ _init_platform() {
     sleep ${sleep_for}
   done
 
-  if ! go run "${svc}" provision fixtures; then
+  if ! _run_platform_service provision fixtures; then
     echo "[ERROR] unable to provision fixtures"
     return 1
   fi
