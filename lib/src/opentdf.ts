@@ -274,6 +274,8 @@ export class OpenTDF {
   defaultReadOptions: Omit<ReadOptions, 'source'>;
   /** The DPoP keys for this instance, if any. */
   readonly dpopKeys: Promise<KeyPair>;
+  /** Resolves once DPoP keys have been bound to the auth provider. Await before using PlatformClient. */
+  readonly ready: Promise<void>;
   /** The CryptoService implementation for this instance. */
   readonly cryptoService: CryptoService;
   /** The TDF3 client for encrypting and decrypting ZTDF files. */
@@ -313,6 +315,11 @@ export class OpenTDF {
     });
     // Use CryptoService for key generation (returns opaque KeyPair)
     this.dpopKeys = dpopKeys ?? this.cryptoService.generateSigningKeyPair();
+    // Eagerly bind DPoP keys to the auth provider so PlatformClient
+    // can make gRPC calls without waiting for a TDF operation first.
+    this.ready = this.dpopEnabled
+      ? this.dpopKeys.then((keys) => authProvider.updateClientPublicKey(keys))
+      : Promise.resolve();
   }
 
   /** Creates a new TDF stream. */

@@ -48,4 +48,37 @@ describe('OpenTDF constructor', () => {
       expect(client.tdf3Client.dpopEnabled).to.equal(true);
     });
   });
+
+  describe('ready promise', () => {
+    it('eagerly binds DPoP keys to the auth provider', async () => {
+      let publicKeyUpdated = false;
+      const trackingAuthProvider: AuthProvider = {
+        updateClientPublicKey: async () => {
+          publicKeyUpdated = true;
+        },
+        withCreds: async (req) => req,
+      };
+      const client = new OpenTDF({
+        authProvider: trackingAuthProvider,
+      });
+      await client.ready;
+      expect(publicKeyUpdated).to.equal(true);
+    });
+
+    it('resolves immediately when DPoP is disabled', async () => {
+      let publicKeyUpdated = false;
+      const trackingAuthProvider: AuthProvider = {
+        updateClientPublicKey: async () => {
+          publicKeyUpdated = true;
+        },
+        withCreds: async (req) => req,
+      };
+      const client = new OpenTDF({
+        authProvider: trackingAuthProvider,
+        disableDPoP: true,
+      });
+      await client.ready;
+      expect(publicKeyUpdated).to.equal(false);
+    });
+  });
 });
