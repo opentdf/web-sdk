@@ -210,7 +210,7 @@ jobs:
       - name: go configure backend
         run: |-
           go work init
-          for x in platform/{protocol/go,lib/{fixtures,ocrypto},sdk,service}; do
+          for x in platform/{protocol/go,lib/{fixtures,ocrypto,flattening,identifier},sdk,service,examples,tests-bdd}; do
             go work use "$x"
           done
       - run: docker compose up -d --wait --wait-timeout 240
