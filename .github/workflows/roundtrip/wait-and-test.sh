@@ -101,7 +101,10 @@ _init_platform() {
 
   _run_platform_service() {
     if [ -d "${APP_DIR}/platform/service" ]; then
-      (cd "${APP_DIR}/platform/service" && go run . "$@")
+      (
+        cd "${APP_DIR}" &&
+          GOWORK="${APP_DIR}/platform/go.work" go run ./platform/service "$@"
+      )
       return $?
     fi
     go run github.com/opentdf/platform/service@latest "$@"
