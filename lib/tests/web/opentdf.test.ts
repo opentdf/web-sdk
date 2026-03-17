@@ -31,5 +31,21 @@ describe('OpenTDF constructor', () => {
       });
       expect(client.dpopEnabled).to.equal(true);
     });
+
+    it('does not pass dpopKeys to tdf3Client when disableDPoP is true', () => {
+      const client = new OpenTDF({
+        authProvider: stubAuthProvider,
+        disableDPoP: true,
+      });
+      expect(client.tdf3Client.dpopEnabled).to.equal(false);
+    });
+
+    it('passes dpopKeys to tdf3Client when disableDPoP is false', () => {
+      const client = new OpenTDF({
+        authProvider: stubAuthProvider,
+        disableDPoP: false,
+      });
+      expect(client.tdf3Client.dpopEnabled).to.equal(true);
+    });
   });
 });
