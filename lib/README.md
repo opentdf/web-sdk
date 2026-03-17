@@ -7,9 +7,11 @@ This project presents client code to write and read OpenTDF data formats.
 ```typescript
 import { AuthProviders, OpenTDF } from '@opentdf/sdk';
 
-const authProvider = await AuthProviders.clientSecretAuthProvider({
-  clientId: 'my-client',
-  clientSecret: 'my-secret',
+// Use refreshAuthProvider for browser applications.
+// The refresh token is obtained after the user logs in via your OIDC provider.
+const authProvider = await AuthProviders.refreshAuthProvider({
+  clientId: 'my-client-id',
+  refreshToken: refreshToken,
   oidcOrigin: 'https://keycloak.example.com/auth/realms/my-realm',
 });
 
