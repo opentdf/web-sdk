@@ -80,5 +80,23 @@ describe('OpenTDF constructor', () => {
       await client.ready;
       expect(publicKeyUpdated).to.equal(false);
     });
+
+    it('propagates rejection when updateClientPublicKey fails', async () => {
+      const failingAuthProvider: AuthProvider = {
+        updateClientPublicKey: async () => {
+          throw new Error('IdP unreachable');
+        },
+        withCreds: async (req) => req,
+      };
+      const client = new OpenTDF({
+        authProvider: failingAuthProvider,
+      });
+      try {
+        await client.ready;
+        expect.fail('expected ready to reject');
+      } catch (e) {
+        expect(e).to.have.property('message', 'IdP unreachable');
+      }
+    });
   });
 });

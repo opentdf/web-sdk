@@ -317,9 +317,17 @@ export class OpenTDF {
     });
     // Eagerly bind DPoP keys to the auth provider so PlatformClient
     // can make gRPC calls without waiting for a TDF operation first.
+    // Note: TDF3Client.createSessionKeys() also calls updateClientPublicKey
+    // with the same keys, but the duplicate call is benign —
+    // refreshTokenClaimsWithClientPubkeyIfNeeded short-circuits when
+    // the signing key hasn't changed.
     this.ready = this.dpopEnabled
       ? this.dpopKeys.then((keys) => authProvider.updateClientPublicKey(keys))
       : Promise.resolve();
+    // Prevent unhandled rejection if caller doesn't await ready.
+    // The error will still surface via TDF3Client's own key binding
+    // when encrypt/decrypt is called.
+    this.ready.catch(() => {});
   }
 
   /** Creates a new TDF stream. */
