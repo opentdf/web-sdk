@@ -304,17 +304,17 @@ export class OpenTDF {
     }
     this.policyEndpoint = policyEndpoint || '';
     this.cryptoService = cryptoService ?? DefaultCryptoService;
+    // Use CryptoService for key generation (returns opaque KeyPair)
+    this.dpopKeys = dpopKeys ?? this.cryptoService.generateSigningKeyPair();
     this.tdf3Client = new TDF3Client({
       authProvider,
       dpopEnabled: this.dpopEnabled,
-      dpopKeys: this.dpopEnabled ? dpopKeys : undefined,
+      dpopKeys: this.dpopEnabled ? this.dpopKeys : undefined,
       kasEndpoint: this.platformUrl || 'https://disallow.all.invalid',
       platformUrl,
       policyEndpoint,
       cryptoService: this.cryptoService,
     });
-    // Use CryptoService for key generation (returns opaque KeyPair)
-    this.dpopKeys = dpopKeys ?? this.cryptoService.generateSigningKeyPair();
     // Eagerly bind DPoP keys to the auth provider so PlatformClient
     // can make gRPC calls without waiting for a TDF operation first.
     this.ready = this.dpopEnabled
