@@ -83,7 +83,8 @@ async function getRemoteChunk(url: string, range?: string): Promise<Uint8Array> 
       });
     } catch (e) {
       console.warn(`fetch failed with network error [${e}], retrying...`);
-      sleep(2 ** i * 1000);
+      errors.push(e instanceof Error ? e : new Error(String(e)));
+      await sleep(2 ** i * 1000);
       continue;
     }
     if (!res.ok) {
@@ -97,8 +98,9 @@ async function getRemoteChunk(url: string, range?: string): Promise<Uint8Array> 
         );
       }
       console.warn(`fetch failed with status [${res.status}: ${res.statusText}], retrying...`);
+      errors.push(new NetworkError(`${res.status}: ${res.statusText} for [${url}]`));
       // waits for 1, 2, 4 seconds
-      sleep(2 ** i * 1000);
+      await sleep(2 ** i * 1000);
       continue;
     }
     const data = await res.arrayBuffer();

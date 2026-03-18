@@ -15,7 +15,7 @@ jobs:
 
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
-          node-version: "22"
+          node-version: "24"
 
       - name: Build SDK
         working-directory: ./lib
@@ -27,7 +27,7 @@ jobs:
       - name: Build CLI
         working-directory: ./cli
         run: |
-          npm ci
+          npm install
           npm install ../lib/opentdf-sdk-*.tgz
           npm run build
           npm pack

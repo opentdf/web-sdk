@@ -28,7 +28,14 @@
   [[ $output == "rc" ]]
 }
 
-@test "all tags go to release" {
+@test "sdk-v prefixed tags go to release" {
+  export GITHUB_REF=refs/tags/sdk-v12
+  run $BATS_TEST_DIRNAME/guess-dist-tag.sh
+  echo output=[$output]
+  [[ $output == "latest" ]]
+}
+
+@test "legacy sdk/v prefixed tags go to release" {
   export GITHUB_REF=refs/tags/sdk/v12
   run $BATS_TEST_DIRNAME/guess-dist-tag.sh
   echo output=[$output]

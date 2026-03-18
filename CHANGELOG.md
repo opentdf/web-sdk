@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.11.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.10.0...sdk-v0.11.0) (2026-03-17)
+
+
+### Bug Fixes
+
+* **ci:** update tests to cover sdk-v* tag format for npm latest dist-tag ([#868](https://github.com/opentdf/web-sdk/issues/868)) ([4d9058d](https://github.com/opentdf/web-sdk/commit/4d9058d7a78b9951675849b0fb27585e25876ae7))
+* **sdk:** await sleep in retry backoff; fix CI deliver and dev-artifact ([#858](https://github.com/opentdf/web-sdk/issues/858)) ([f14d6eb](https://github.com/opentdf/web-sdk/commit/f14d6eb09605e65855b69bed39dbbd1241276d63))
+
+## [0.10.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.9.0...sdk-v0.10.0) (2026-03-10)
+
+
+### Features
+
+* **sdk:** add createTDF alias for createZTDF, deprecate createZTDF ([#855](https://github.com/opentdf/web-sdk/issues/855)) ([84503b0](https://github.com/opentdf/web-sdk/commit/84503b06b7220001aaa46185380ce4a140c6dfc9))
+* **sdk:** DSPX-2418 add attribute discovery methods ([#841](https://github.com/opentdf/web-sdk/issues/841)) ([06c5964](https://github.com/opentdf/web-sdk/commit/06c596415a4a3600e9401fce2f7658b9d23190e1))
+* **sdk:** Encapsulate all crypto in cryptoservice, make it pluggable ([#835](https://github.com/opentdf/web-sdk/issues/835)) ([6ab17cc](https://github.com/opentdf/web-sdk/commit/6ab17cc000481b0845378b5fb44c004b05d393c4))
+
+
+### Bug Fixes
+
+* **sdk:** bump minimatch in /lib ([#850](https://github.com/opentdf/web-sdk/issues/850)) ([ecbac8f](https://github.com/opentdf/web-sdk/commit/ecbac8f5d7ea4866b8f126e8f53ac81f102b9c07))
+* **sdk:** bump qs from 6.14.1 to 6.14.2 in /lib ([#839](https://github.com/opentdf/web-sdk/issues/839)) ([44afd7d](https://github.com/opentdf/web-sdk/commit/44afd7d90f0f10aa29bc177ee171454c6537de77))
+* **sdk:** bump rollup from 4.25.0 to 4.59.0 in /lib ([#848](https://github.com/opentdf/web-sdk/issues/848)) ([27dbcbc](https://github.com/opentdf/web-sdk/commit/27dbcbc481073df22791fe306ded0be86d88d171))
+* Update curve name from P-512 to P-521 in crypto utilities ([#837](https://github.com/opentdf/web-sdk/issues/837)) ([a3c440c](https://github.com/opentdf/web-sdk/commit/a3c440c667194bcca97c9b3fb2ad9d3cc7d23fd3))
+
 ## [0.9.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.8.0...sdk-v0.9.0) (2026-01-28)
 
 
