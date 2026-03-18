@@ -1,6 +1,6 @@
 
 # x-release-please-start-version
-version=0.11.0
+version=0.12.0
 # x-release-please-end
 extras=cli web-app
 pkgs=lib $(extras)
