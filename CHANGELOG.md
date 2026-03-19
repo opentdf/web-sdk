@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.12.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.11.0...sdk-v0.12.0) (2026-03-18)
+
+
+### Bug Fixes
+
+* **ci:** use 'sdk' scope in release-please PR title pattern ([#867](https://github.com/opentdf/web-sdk/issues/867)) ([a1acca2](https://github.com/opentdf/web-sdk/commit/a1acca2ad77db1d043fecb9a2cf6b66868321645))
+* **sdk:** correct disableDPoP flag and add eager DPoP key binding ([#883](https://github.com/opentdf/web-sdk/issues/883)) ([bfb23f8](https://github.com/opentdf/web-sdk/commit/bfb23f84ded2ec9efb05e2a1a278eebed7b5dcfa))
+* **sdk:** update lib README with current SDK usage patterns ([#886](https://github.com/opentdf/web-sdk/issues/886)) ([8f1c0ec](https://github.com/opentdf/web-sdk/commit/8f1c0ec5def6309996d9a8548bef77887c22e1df))
+
 ## [0.11.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.10.0...sdk-v0.11.0) (2026-03-17)
 
 
