@@ -1,34 +1,35 @@
-# An OpenTDF Library for Browser Applications
+# OpenTDF SDK for Browser Applications
 
 This project presents client code to write and read OpenTDF data formats.
 
 ## Usage
 
 ```typescript
-import { type Chunker, OpenTDF } from '@opentdf/sdk';
+import { AuthProviders, OpenTDF } from '@opentdf/sdk';
 
-const oidcCredentials: RefreshTokenCredentials = {
-  clientId: keycloakClientId,
-  exchange: 'refresh',
+// Use refreshAuthProvider for browser applications.
+// The refresh token is obtained after the user logs in via your OIDC provider.
+const authProvider = await AuthProviders.refreshAuthProvider({
+  clientId: 'my-client-id',
   refreshToken: refreshToken,
-  oidcOrigin: keycloakUrl,
-};
-const authProvider = await AuthProviders.refreshAuthProvider(oidcCredentials);
+  oidcOrigin: 'https://keycloak.example.com/auth/realms/my-realm',
+});
+
 const client = new OpenTDF({
   authProvider,
-  defaultCreateOptions: {
-    defaultKASEndpoint: kasEndpoint, // Server used for Key Access Control
-  },
-  dpopKeys: authProvider.getSigningKey(),
+  platformUrl: 'https://platform.example.com',
 });
 
 // Encrypt
 const cipherText = await client.createTDF({
-  source: { type: 'stream', location: source },
-  autoconfigure: false,
+  source: { type: 'buffer', location: new TextEncoder().encode('hello, world') },
+  defaultKASEndpoint: 'https://platform.example.com/kas',
 });
 
 // Decrypt
-const reader = client.open({ source: { type: 'stream', location: cipherText } });
-const clearText = await reader.decrypt();
+const encrypted = new Uint8Array(await new Response(cipherText).arrayBuffer());
+const plainText = await client.read({
+  source: { type: 'buffer', location: encrypted },
+});
+console.log(await new Response(plainText).text()); // "hello, world"
 ```

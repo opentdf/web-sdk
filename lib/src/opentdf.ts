@@ -274,6 +274,8 @@ export class OpenTDF {
   defaultReadOptions: Omit<ReadOptions, 'source'>;
   /** The DPoP keys for this instance, if any. */
   readonly dpopKeys: Promise<KeyPair>;
+  /** Resolves once DPoP keys have been bound to the auth provider. Await before using PlatformClient. */
+  readonly ready: Promise<void>;
   /** The CryptoService implementation for this instance. */
   readonly cryptoService: CryptoService;
   /** The TDF3 client for encrypting and decrypting ZTDF files. */
@@ -292,7 +294,7 @@ export class OpenTDF {
     this.authProvider = authProvider;
     this.defaultCreateOptions = defaultCreateOptions || {};
     this.defaultReadOptions = defaultReadOptions || {};
-    this.dpopEnabled = !!disableDPoP;
+    this.dpopEnabled = !disableDPoP;
     if (platformUrl) {
       this.platformUrl = platformUrl;
     } else {
@@ -302,16 +304,32 @@ export class OpenTDF {
     }
     this.policyEndpoint = policyEndpoint || '';
     this.cryptoService = cryptoService ?? DefaultCryptoService;
+    // Use CryptoService for key generation (returns opaque KeyPair)
+    this.dpopKeys = dpopKeys ?? this.cryptoService.generateSigningKeyPair();
     this.tdf3Client = new TDF3Client({
       authProvider,
-      dpopKeys,
+      dpopEnabled: this.dpopEnabled,
+      dpopKeys: this.dpopEnabled ? this.dpopKeys : undefined,
       kasEndpoint: this.platformUrl || 'https://disallow.all.invalid',
       platformUrl,
       policyEndpoint,
       cryptoService: this.cryptoService,
     });
-    // Use CryptoService for key generation (returns opaque KeyPair)
-    this.dpopKeys = dpopKeys ?? this.cryptoService.generateSigningKeyPair();
+    // Eagerly bind DPoP keys to the auth provider so PlatformClient
+    // can make gRPC calls without waiting for a TDF operation first.
+    // Note: TDF3Client.createSessionKeys() also calls updateClientPublicKey
+    // with the same keys, but the duplicate call is benign —
+    // refreshTokenClaimsWithClientPubkeyIfNeeded short-circuits when
+    // the signing key hasn't changed.
+    this.ready = this.dpopEnabled
+      ? this.dpopKeys.then((keys) => authProvider.updateClientPublicKey(keys))
+      : Promise.resolve();
+    // Prevent unhandled rejection if caller doesn't await ready.
+    // The error will still surface via TDF3Client's own key binding
+    // when encrypt/decrypt is called.
+    this.ready.catch((err) => {
+      console.warn('OpenTDF: DPoP key binding failed during initialization:', err);
+    });
   }
 
   /** Creates a new TDF stream. */
