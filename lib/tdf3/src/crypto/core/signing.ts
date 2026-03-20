@@ -55,9 +55,9 @@ function ieeeP1363ToDer(signature: Uint8Array, algorithm: AsymmetricSigningAlgor
 
   // Remove leading zeros but keep one if the high bit is set
   const trimLeadingZeros = (arr: Uint8Array): Uint8Array => {
-    let index = 0;
-    while (index < arr.length - 1 && arr[index] === 0) index++;
-    return arr.slice(index);
+    let i = 0;
+    while (i < arr.length - 1 && arr[i] === 0) i++;
+    return arr.slice(i);
   };
 
   let rTrimmed = trimLeadingZeros(r);

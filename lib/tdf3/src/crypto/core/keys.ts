@@ -72,7 +72,7 @@ export function unwrapKey(key: PublicKey | PrivateKey): CryptoKey {
 export function wrapSymmetricKey(keyBytes: Uint8Array): SymmetricKey {
   return {
     _brand: 'SymmetricKey',
-    length: keyBytes.length * 8,
+    length: keyBytes.length * 8, // bits
     _internal: keyBytes,
   } as SymmetricKey;
 }

@@ -1,7 +1,6 @@
 import { Algorithms, type AlgorithmUrn } from '../../ciphers/algorithms.js';
 import { Binary } from '../../binary.js';
 import {
-  type CryptoService,
   type DecryptResult,
   type EncryptResult,
   type HashAlgorithm,
@@ -9,7 +8,7 @@ import {
 } from '../declarations.js';
 import { ConfigurationError, DecryptError } from '../../../../src/errors.js';
 import { encodeArrayBuffer as hexEncode } from '../../../../src/encodings/hex.js';
-import { keyMerge, keySplit } from '../../utils/keysplit.js';
+import { keyMerge } from '../../utils/keysplit.js';
 import { unwrapSymmetricKey, wrapSymmetricKey } from './keys.js';
 
 const ENC_DEC_METHODS: KeyUsage[] = ['encrypt', 'decrypt'];
@@ -25,9 +24,9 @@ export async function generateKey(length?: number): Promise<SymmetricKey> {
 }
 
 export async function randomBytes(byteLength: number): Promise<Uint8Array> {
-  const randomValues = new Uint8Array(byteLength);
-  crypto.getRandomValues(randomValues);
-  return randomValues;
+  const r = new Uint8Array(byteLength);
+  crypto.getRandomValues(r);
+  return r;
 }
 
 /**
@@ -42,9 +41,9 @@ export async function randomBytes(byteLength: number): Promise<Uint8Array> {
  */
 export async function randomBytesAsHex(length: number): Promise<string> {
   // Create a typed array of the correct length to fill
-  const randomValues = new Uint8Array(length);
-  crypto.getRandomValues(randomValues);
-  return hexEncode(randomValues.buffer);
+  const r = new Uint8Array(length);
+  crypto.getRandomValues(r);
+  return hexEncode(r.buffer);
 }
 
 /**
@@ -190,8 +189,8 @@ export function hex2Ab(hex: string): ArrayBuffer {
   const buffer = new ArrayBuffer(hex.length / 2);
   const bufferView = new Uint8Array(buffer);
 
-  for (let index = 0; index < hex.length; index += 2) {
-    bufferView[index / 2] = parseInt(hex.substr(index, 2), 16);
+  for (let i = 0; i < hex.length; i += 2) {
+    bufferView[i / 2] = parseInt(hex.substr(i, 2), 16);
   }
 
   return buffer;
@@ -253,21 +252,6 @@ export async function verifyHmac(
  */
 export async function importSymmetricKey(keyBytes: Uint8Array): Promise<SymmetricKey> {
   return wrapSymmetricKey(keyBytes);
-}
-
-/**
- * Split a symmetric key into N shares using XOR secret sharing.
- * Key bytes are extracted internally for splitting.
- * HSM implementations cannot extract bytes and should throw ConfigurationError.
- */
-export async function splitSymmetricKey(
-  key: SymmetricKey,
-  numShares: number
-): Promise<SymmetricKey[]> {
-  const keyBytes = unwrapSymmetricKey(key);
-  const randomService = { randomBytes } as unknown as CryptoService;
-  const splits = await keySplit(keyBytes, numShares, randomService);
-  return splits.map(wrapSymmetricKey);
 }
 
 /**

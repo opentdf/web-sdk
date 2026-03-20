@@ -128,10 +128,10 @@ export async function parsePublicKeyPem(pem: string): Promise<PublicKeyInfo> {
       throw new ConfigurationError(`Unsupported RSA key size: ${modulusBits} bits`);
     }
     return { algorithm, pem: publicKeyPem };
-  } catch (error) {
+  } catch (e) {
     // If it's our own ConfigurationError, rethrow
-    if (error instanceof ConfigurationError) {
-      throw error;
+    if (e instanceof ConfigurationError) {
+      throw e;
     }
     // Not an RSA key, try EC next
   }
@@ -204,20 +204,20 @@ export async function publicKeyPemToJwk(publicKeyPem: string): Promise<JsonWebKe
     // Return only public key components
     const { kty, crv, x, y } = jwk;
     return { kty, crv, x, y };
+  } else {
+    // RSA key
+    const key = await crypto.subtle.importKey(
+      'spki',
+      keyBuffer,
+      { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+      true,
+      ['verify']
+    );
+    const jwk = await crypto.subtle.exportKey('jwk', key);
+    // Return only public key components
+    const { kty, e, n } = jwk;
+    return { kty, e, n };
   }
-
-  // RSA key
-  const key = await crypto.subtle.importKey(
-    'spki',
-    keyBuffer,
-    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-    true,
-    ['verify']
-  );
-  const jwk = await crypto.subtle.exportKey('jwk', key);
-  // Return only public key components
-  const { kty, e, n } = jwk;
-  return { kty, e, n };
 }
 
 /**
@@ -305,7 +305,7 @@ export async function importPrivateKey(pem: string, options: KeyOptions): Promis
     // PKCS#8 PrivateKeyInfo embeds the same AlgorithmIdentifier OIDs as SPKI,
     // so guessAlgorithmName / guessCurveName work on private key bytes too.
     const hex = hexEncode(keyBuffer);
-    const algorithmName = guessAlgorithmName(hex);
+    const algorithmName = guessAlgorithmName(hex); // throws on unrecognised OID
     if (algorithmName === 'ECDH' || algorithmName === 'ECDSA') {
       const namedCurve = guessCurveName(hex);
       const curveMap: Record<string, KeyAlgorithm> = {
@@ -314,9 +314,8 @@ export async function importPrivateKey(pem: string, options: KeyOptions): Promis
         'P-521': 'ec:secp521r1',
       };
       const mapped = curveMap[namedCurve];
-      if (!mapped) {
+      if (!mapped)
         throw new ConfigurationError(`Unsupported EC curve in private key: ${namedCurve}`);
-      }
       algorithm = mapped;
     } else {
       // RSA — determine key size by importing and reading modulus length from JWK
