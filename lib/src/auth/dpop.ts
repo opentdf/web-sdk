@@ -63,7 +63,7 @@ function b64u(input: Uint8Array | ArrayBuffer) {
 /**
  * Generates 32 random bytes and encodes them using base64url.
  */
-async function randomBytes(cryptoService: CryptoService) {
+async function randomBytes() {
   return b64u(crypto.getRandomValues(new Uint8Array(32)));
 }
 
@@ -210,7 +210,7 @@ export default async function DPoP(
     {
       ...additional,
       iat: epochTime(),
-      jti: await randomBytes(cryptoService),
+      jti: await randomBytes(),
       htm,
       nonce,
       htu,
