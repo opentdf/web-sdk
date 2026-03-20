@@ -64,7 +64,7 @@ function b64u(input: Uint8Array | ArrayBuffer) {
  * Generates 32 random bytes and encodes them using base64url.
  */
 async function randomBytes(cryptoService: CryptoService) {
-  return b64u(await cryptoService.randomBytes(32));
+  return b64u(crypto.getRandomValues(new Uint8Array(32)));
 }
 
 /**
