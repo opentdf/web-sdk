@@ -32,10 +32,12 @@ function curveToNamedCurve(curve: ECCurve): string {
 export async function generateECKeyPair(curve: ECCurve = 'P-256'): Promise<KeyPair> {
   const namedCurve = curveToNamedCurve(curve);
 
+  // Generate key pair for ECDH key agreement
   const keyPair = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve }, true, [
     'deriveBits',
   ]);
 
+  // Map to KeyAlgorithm literal type
   let algorithm: KeyAlgorithm;
   switch (namedCurve) {
     case 'P-256':
@@ -66,29 +68,36 @@ export async function deriveKeyFromECDH(
   publicKey: PublicKey,
   hkdfParams: HkdfParams
 ): Promise<SymmetricKey> {
+  // Unwrap the internal CryptoKeys
   const privateKeyCrypto = unwrapKey(privateKey);
   const publicKeyCrypto = unwrapKey(publicKey);
 
+  // Get curve from key metadata
   const curve = publicKey.curve;
   if (!curve) {
     throw new ConfigurationError('EC curve not found on public key');
   }
 
+  // Determine bits based on curve
   const curveBits: Record<ECCurve, number> = {
     'P-256': 256,
     'P-384': 384,
+    // P-521 derives 528 bits (66 bytes)
     'P-521': 528,
   };
   const bits = curveBits[curve];
 
+  // Perform ECDH to get shared secret
   const sharedSecret = await crypto.subtle.deriveBits(
     { name: 'ECDH', public: publicKeyCrypto },
     privateKeyCrypto,
     bits
   );
 
+  // Import shared secret as HKDF key material
   const hkdfKey = await crypto.subtle.importKey('raw', sharedSecret, 'HKDF', false, ['deriveKey']);
 
+  // Derive the final key using HKDF
   const keyLength = hkdfParams.keyLength ?? 256;
   const derivedKey = await crypto.subtle.deriveKey(
     {
@@ -103,6 +112,7 @@ export async function deriveKeyFromECDH(
     ['encrypt', 'decrypt']
   );
 
+  // Export the derived key as raw bytes and wrap as SymmetricKey
   const keyBytes = await crypto.subtle.exportKey('raw', derivedKey);
   return wrapSymmetricKey(new Uint8Array(keyBytes));
 }

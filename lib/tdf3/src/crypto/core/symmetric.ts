@@ -32,8 +32,16 @@ export async function randomBytes(byteLength: number): Promise<Uint8Array> {
 
 /**
  * Returns a promise to the encryption key as a binary string.
+ *
+ * Note: This function should almost never fail as it includes a fallback
+ * if for some reason the native generate key fails.
+ *
+ * @param length The key length, defaults to 256
+ *
+ * @returns The hex string.
  */
 export async function randomBytesAsHex(length: number): Promise<string> {
+  // Create a typed array of the correct length to fill
   const randomValues = new Uint8Array(length);
   crypto.getRandomValues(randomValues);
   return hexEncode(randomValues.buffer);
@@ -41,6 +49,11 @@ export async function randomBytesAsHex(length: number): Promise<string> {
 
 /**
  * Decrypt content synchronously
+ * @param payload The payload to decrypt
+ * @param key     The symmetric encryption key (opaque)
+ * @param iv      The initialization vector
+ * @param algorithm The algorithm to use for encryption
+ * @param authTag The authentication tag for authenticated crypto.
  */
 export function decrypt(
   payload: Binary,
@@ -54,6 +67,10 @@ export function decrypt(
 
 /**
  * Encrypt content synchronously
+ * @param payload   The payload to encrypt
+ * @param key       The encryption key
+ * @param iv        The initialization vector
+ * @param algorithm The algorithm to use for encryption
  */
 export function encrypt(
   payload: Binary | SymmetricKey,
@@ -74,10 +91,13 @@ async function _doEncrypt(
   console.assert(key != null);
   console.assert(iv != null);
 
+  // Handle both Binary and SymmetricKey payloads
   let payloadBuffer: BufferSource;
   if ('_brand' in payload && payload._brand === 'SymmetricKey') {
+    // Pass Uint8Array directly — Web Crypto respects byteOffset/byteLength on typed array views.
     payloadBuffer = unwrapSymmetricKey(payload);
   } else {
+    // Binary payload
     payloadBuffer = (payload as Binary).asArrayBuffer();
   }
 
@@ -109,6 +129,7 @@ async function _doDecrypt(
 
   let payloadBuffer = payload.asArrayBuffer();
 
+  // Concat the the auth tag to the payload for decryption
   if (authTag) {
     const authTagBuffer = authTag.asArrayBuffer();
     const gcmPayload = new Uint8Array(payloadBuffer.byteLength + authTagBuffer.byteLength);
@@ -124,6 +145,7 @@ async function _doDecrypt(
 
   const decrypted = await crypto.subtle
     .decrypt(algoDomString, importedKey, payloadBuffer)
+    // Catching this error so we can specifically check for OperationError
     .catch((err) => {
       if (err.name === 'OperationError') {
         throw new DecryptError(err);
@@ -141,6 +163,8 @@ function _importKey(keyBytes: Uint8Array, algorithm: AesCbcParams | AesGcmParams
 /**
  * Get a DOMString representing the algorithm to use for a crypto
  * operation. Defaults to AES-CBC.
+ * @param  {String|undefined} algorithm
+ * @return {DOMString} Algorithm to use
  */
 function getSymmetricAlgoDomString(
   iv: Binary,
@@ -159,6 +183,8 @@ function getSymmetricAlgoDomString(
 
 /**
  * Create an ArrayBuffer from a hex string.
+ * https://developers.google.com/web/updates/2012/06/How-to-convert-ArrayBuffer-to-and-from-String?hl=en
+ * @param  hex - Hex string
  */
 export function hex2Ab(hex: string): ArrayBuffer {
   const buffer = new ArrayBuffer(hex.length / 2);
@@ -203,6 +229,7 @@ export async function hmac(data: Uint8Array, key: SymmetricKey): Promise<Uint8Ar
 
 /**
  * Verify HMAC-SHA256.
+ * Standalone utility — not part of CryptoService interface.
  */
 export async function verifyHmac(
   data: Uint8Array,
@@ -222,6 +249,7 @@ export async function verifyHmac(
 
 /**
  * Import raw key bytes as an opaque symmetric key.
+ * Used for external keys (e.g., unwrapped from KAS).
  */
 export async function importSymmetricKey(keyBytes: Uint8Array): Promise<SymmetricKey> {
   return wrapSymmetricKey(keyBytes);
@@ -229,6 +257,8 @@ export async function importSymmetricKey(keyBytes: Uint8Array): Promise<Symmetri
 
 /**
  * Split a symmetric key into N shares using XOR secret sharing.
+ * Key bytes are extracted internally for splitting.
+ * HSM implementations cannot extract bytes and should throw ConfigurationError.
  */
 export async function splitSymmetricKey(
   key: SymmetricKey,
@@ -242,6 +272,7 @@ export async function splitSymmetricKey(
 
 /**
  * Merge symmetric key shares back into the original key using XOR.
+ * Key bytes are extracted internally for merging.
  */
 export async function mergeSymmetricKeys(shares: SymmetricKey[]): Promise<SymmetricKey> {
   const splitBytes = shares.map(unwrapSymmetricKey);

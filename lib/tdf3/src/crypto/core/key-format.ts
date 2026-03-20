@@ -26,9 +26,11 @@ export async function extractPublicKeyPem(
   certOrPem: string,
   jwaAlgorithm?: string
 ): Promise<string> {
+  // If it's a certificate, extract the public key
   if (certOrPem.includes('-----BEGIN CERTIFICATE-----')) {
     let alg = jwaAlgorithm;
     if (!alg) {
+      // Auto-detect algorithm from certificate OIDs
       const certBody = certOrPem.replace(/-----(BEGIN|END) CERTIFICATE-----|\s/g, '');
       const certBytes = base64Decode(certBody);
       const hex = hexEncode(certBytes);
@@ -38,6 +40,7 @@ export async function extractPublicKeyPem(
     return exportSPKI(cert);
   }
 
+  // If it's already a PEM public key, return as-is
   if (certOrPem.includes('-----BEGIN PUBLIC KEY-----')) {
     return certOrPem;
   }
@@ -50,8 +53,10 @@ type SupportedEcCurve = (typeof SUPPORTED_EC_CURVES)[number];
 
 /**
  * Decode base64url string and return byte length.
+ * Uses the existing base64 decoder which handles both standard and URL-safe encoding.
  */
 function base64urlByteLength(base64url: string): number {
+  // Add padding if needed (base64url omits padding)
   const padding = (4 - (base64url.length % 4)) % 4;
   const padded = base64url + '='.repeat(padding);
   return base64Decode(padded).byteLength;
@@ -59,15 +64,19 @@ function base64urlByteLength(base64url: string): number {
 
 /**
  * Extract EC curve from a public key by parsing ASN.1 OIDs.
+ * Reuses the existing guessCurveName function that checks for curve OIDs.
  */
 function extractEcCurveFromPublicKey(keyData: ArrayBuffer): SupportedEcCurve {
+  // Convert to hex for OID parsing
   const hexKey = hexEncode(keyData);
+  // Use existing OID parser (returns 'P-256', 'P-384', or 'P-521')
   const curveName = guessCurveName(hexKey);
   return curveName as SupportedEcCurve;
 }
 
 /**
  * Extract RSA modulus bit length by importing key and exporting as JWK.
+ * Uses Web Crypto's built-in ASN.1 parsing for robustness.
  */
 async function extractRsaModulusBitLength(keyData: ArrayBuffer): Promise<number> {
   const key = await crypto.subtle.importKey(
@@ -81,13 +90,17 @@ async function extractRsaModulusBitLength(keyData: ArrayBuffer): Promise<number>
   if (!jwk.n) {
     throw new ConfigurationError('Invalid RSA key: missing modulus');
   }
+  // JWK 'n' is base64url-encoded modulus
+  // Decode and count bytes, multiply by 8 for bits
   return base64urlByteLength(jwk.n) * 8;
 }
 
 /**
  * Import and validate a PEM public key, returning algorithm info.
+ * Uses JWK export for robust key parameter detection.
  */
 export async function parsePublicKeyPem(pem: string): Promise<PublicKeyInfo> {
+  // First extract public key if it's a certificate
   let publicKeyPem = pem;
   if (pem.includes('-----BEGIN CERTIFICATE-----')) {
     publicKeyPem = await extractPublicKeyPem(pem);
@@ -99,6 +112,7 @@ export async function parsePublicKeyPem(pem: string): Promise<PublicKeyInfo> {
 
   const keyData = base64Decode(removePemFormatting(publicKeyPem));
 
+  // Try RSA first - use JWK export to get modulus size
   try {
     const modulusBits = await extractRsaModulusBitLength(keyData);
     let algorithm: PublicKeyInfo['algorithm'];
@@ -115,11 +129,14 @@ export async function parsePublicKeyPem(pem: string): Promise<PublicKeyInfo> {
     }
     return { algorithm, pem: publicKeyPem };
   } catch (error) {
+    // If it's our own ConfigurationError, rethrow
     if (error instanceof ConfigurationError) {
       throw error;
     }
+    // Not an RSA key, try EC next
   }
 
+  // Try EC - parse curve from OID
   try {
     const detectedCurve = extractEcCurveFromPublicKey(keyData);
     const curveMap = {
@@ -142,10 +159,12 @@ export async function jwkToPublicKeyPem(jwk: JsonWebKey): Promise<string> {
   let key: CryptoKey;
 
   if (jwk.kty === 'RSA') {
+    // RSA key
     key = await crypto.subtle.importKey('jwk', jwk, { name: 'RSA-OAEP', hash: 'SHA-256' }, true, [
       'encrypt',
     ]);
   } else if (jwk.kty === 'EC') {
+    // EC key
     const crv = jwk.crv;
     if (!crv || !['P-256', 'P-384', 'P-521'].includes(crv)) {
       throw new ConfigurationError(`Unsupported EC curve: ${crv}`);
@@ -168,9 +187,11 @@ export async function publicKeyPemToJwk(publicKeyPem: string): Promise<JsonWebKe
   const keyBuffer = base64Decode(keyDataBase64);
   const hex = hexEncode(keyBuffer);
 
+  // Detect key type using OID
   const algorithmName = guessAlgorithmName(hex);
 
   if (algorithmName === 'ECDH' || algorithmName === 'ECDSA') {
+    // EC key - detect curve from OID
     const namedCurve = guessCurveName(hex);
     const key = await crypto.subtle.importKey(
       'spki',
@@ -180,10 +201,12 @@ export async function publicKeyPemToJwk(publicKeyPem: string): Promise<JsonWebKe
       ['verify']
     );
     const jwk = await crypto.subtle.exportKey('jwk', key);
+    // Return only public key components
     const { kty, crv, x, y } = jwk;
     return { kty, crv, x, y };
   }
 
+  // RSA key
   const key = await crypto.subtle.importKey(
     'spki',
     keyBuffer,
@@ -192,6 +215,7 @@ export async function publicKeyPemToJwk(publicKeyPem: string): Promise<JsonWebKe
     ['verify']
   );
   const jwk = await crypto.subtle.exportKey('jwk', key);
+  // Return only public key components
   const { kty, e, n } = jwk;
   return { kty, e, n };
 }
@@ -202,11 +226,15 @@ export async function publicKeyPemToJwk(publicKeyPem: string): Promise<JsonWebKe
 export async function importPublicKey(pem: string, options: KeyOptions): Promise<PublicKey> {
   const { usage = 'encrypt', extractable = true, algorithmHint } = options;
 
+  // Detect algorithm from PEM; also normalises certificates → plain SPKI PEM.
   const keyInfo = await parsePublicKeyPem(pem);
   const algorithm = algorithmHint || keyInfo.algorithm;
+  // Use keyInfo.pem (normalised SPKI) not the original pem, which may be a certificate.
+  // Passing raw X.509 DER bytes to crypto.subtle.importKey('spki') would throw DataError.
   const keyData = removePemFormatting(keyInfo.pem);
   const keyBuffer = base64Decode(keyData);
 
+  // Determine Web Crypto algorithm and usages based on key type and usage
   let cryptoAlgorithm: RsaHashedImportParams | EcKeyImportParams;
   let keyUsages: KeyUsage[];
 
@@ -246,6 +274,7 @@ export async function importPublicKey(pem: string, options: KeyOptions): Promise
     throw new ConfigurationError(`Unsupported algorithm: ${algorithm}`);
   }
 
+  // Import as CryptoKey
   const cryptoKey = await crypto.subtle.importKey(
     'spki',
     keyBuffer,
@@ -263,6 +292,8 @@ export async function importPublicKey(pem: string, options: KeyOptions): Promise
 export async function importPrivateKey(pem: string, options: KeyOptions): Promise<PrivateKey> {
   const { usage = 'encrypt', extractable = true, algorithmHint } = options;
 
+  // Detect algorithm from PEM structure (similar to public key detection)
+  // For now, use algorithmHint if provided, otherwise detect from key structure
   let algorithm: KeyAlgorithm;
 
   const keyData = removePemFormatting(pem);
@@ -271,6 +302,8 @@ export async function importPrivateKey(pem: string, options: KeyOptions): Promis
   if (algorithmHint) {
     algorithm = algorithmHint;
   } else {
+    // PKCS#8 PrivateKeyInfo embeds the same AlgorithmIdentifier OIDs as SPKI,
+    // so guessAlgorithmName / guessCurveName work on private key bytes too.
     const hex = hexEncode(keyBuffer);
     const algorithmName = guessAlgorithmName(hex);
     if (algorithmName === 'ECDH' || algorithmName === 'ECDSA') {
@@ -286,6 +319,7 @@ export async function importPrivateKey(pem: string, options: KeyOptions): Promis
       }
       algorithm = mapped;
     } else {
+      // RSA — determine key size by importing and reading modulus length from JWK
       const tempKey = await crypto.subtle.importKey(
         'pkcs8',
         keyBuffer,
@@ -307,6 +341,7 @@ export async function importPrivateKey(pem: string, options: KeyOptions): Promis
     }
   }
 
+  // Determine Web Crypto algorithm and usages
   let cryptoAlgorithm: RsaHashedImportParams | EcKeyImportParams;
   let keyUsages: KeyUsage[];
 
@@ -346,6 +381,7 @@ export async function importPrivateKey(pem: string, options: KeyOptions): Promis
     throw new ConfigurationError(`Unsupported algorithm: ${algorithm}`);
   }
 
+  // Import as CryptoKey
   const cryptoKey = await crypto.subtle.importKey(
     'pkcs8',
     keyBuffer,
@@ -368,6 +404,7 @@ export async function exportPublicKeyPem(key: PublicKey): Promise<string> {
 
 /**
  * Export an opaque private key to PEM format.
+ * ONLY USE FOR TESTING/DEVELOPMENT. Private keys should NOT be exportable in secure environments.
  */
 export async function exportPrivateKeyPem(key: PrivateKey): Promise<string> {
   const cryptoKey = unwrapKey(key);

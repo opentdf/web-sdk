@@ -29,6 +29,7 @@ export function rsaOaepSha1(
       name: 'SHA-1',
     },
     modulusLength,
+    // 24 bit representation of 65537
     publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
   };
 }
@@ -45,6 +46,7 @@ export function rsaPkcs1Sha256(
       name: 'SHA-256',
     },
     modulusLength,
+    // 24 bit representation of 65537
     publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
   };
 }
@@ -59,6 +61,7 @@ export async function generateKeyPair(size?: number): Promise<KeyPair> {
   const algoDomString = rsaOaepSha1(keySize);
   const keyPair = await crypto.subtle.generateKey(algoDomString, true, ENC_DEC_METHODS);
 
+  // Map to supported algorithm sizes
   let algorithm: KeyAlgorithm;
   if (keySize === 2048) {
     algorithm = 'rsa:2048';
@@ -94,6 +97,9 @@ export async function generateSigningKeyPair(): Promise<KeyPair> {
 /**
  * Encrypt using a public key (RSA-OAEP).
  * Accepts Binary or SymmetricKey for key wrapping.
+ * @param payload Payload to encrypt (Binary) or symmetric key to wrap (SymmetricKey)
+ * @param publicKey Opaque public key
+ * @return Encrypted payload
  */
 export async function encryptWithPublicKey(
   payload: Binary | SymmetricKey,
@@ -101,9 +107,12 @@ export async function encryptWithPublicKey(
 ): Promise<Binary> {
   let payloadBuffer: BufferSource;
 
+  // Handle SymmetricKey unwrapping
   if ('_brand' in payload && payload._brand === 'SymmetricKey') {
+    // Pass Uint8Array directly — Web Crypto respects byteOffset/byteLength on typed array views.
     payloadBuffer = unwrapSymmetricKey(payload);
   } else {
+    // Binary payload
     payloadBuffer = (payload as Binary).asArrayBuffer();
   }
 
@@ -114,6 +123,9 @@ export async function encryptWithPublicKey(
 
 /**
  * Decrypt a public-key encrypted payload with a private key
+ * @param  encryptedPayload  Payload to decrypt
+ * @param  privateKey        Opaque private key
+ * @return Decrypted payload
  */
 export async function decryptWithPrivateKey(
   encryptedPayload: Binary,

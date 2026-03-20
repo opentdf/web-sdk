@@ -48,10 +48,12 @@ function ieeeP1363ToDer(signature: Uint8Array, algorithm: AsymmetricSigningAlgor
     return signature;
   }
 
+  // IEEE P1363: r || s where each is padded to key size
   const halfLen = signature.length / 2;
   const r = signature.slice(0, halfLen);
   const s = signature.slice(halfLen);
 
+  // Remove leading zeros but keep one if the high bit is set
   const trimLeadingZeros = (arr: Uint8Array): Uint8Array => {
     let index = 0;
     while (index < arr.length - 1 && arr[index] === 0) index++;
@@ -61,6 +63,7 @@ function ieeeP1363ToDer(signature: Uint8Array, algorithm: AsymmetricSigningAlgor
   let rTrimmed = trimLeadingZeros(r);
   let sTrimmed = trimLeadingZeros(s);
 
+  // Add leading zero if high bit is set (to keep positive in DER)
   if (rTrimmed[0] & 0x80) {
     const padded = new Uint8Array(rTrimmed.length + 1);
     padded.set(rTrimmed, 1);
@@ -72,10 +75,14 @@ function ieeeP1363ToDer(signature: Uint8Array, algorithm: AsymmetricSigningAlgor
     sTrimmed = padded;
   }
 
+  // DER SEQUENCE: 0x30 [length] [r INTEGER] [s INTEGER]
+  // INTEGER: 0x02 [length] [value]
   const rDer = new Uint8Array([0x02, rTrimmed.length, ...rTrimmed]);
   const sDer = new Uint8Array([0x02, sTrimmed.length, ...sTrimmed]);
 
   const seqLen = rDer.length + sDer.length;
+  // DER length: short-form for < 128, long-form (0x81 nn) for 128-255.
+  // ECDSA sequences never exceed 255 bytes for any supported curve.
   const lenBytes = seqLen < 128 ? new Uint8Array([seqLen]) : new Uint8Array([0x81, seqLen]);
   const result = new Uint8Array(1 + lenBytes.length + seqLen);
   result[0] = 0x30;
@@ -95,6 +102,7 @@ function derToIeeeP1363(signature: Uint8Array, algorithm: AsymmetricSigningAlgor
     return signature;
   }
 
+  // Determine the expected component length based on algorithm
   let componentLen: number;
   switch (algorithm) {
     case 'ES256':
@@ -114,8 +122,10 @@ function derToIeeeP1363(signature: Uint8Array, algorithm: AsymmetricSigningAlgor
     throw new ConfigurationError('Invalid DER signature: expected SEQUENCE');
   }
 
+  // Skip SEQUENCE tag, then parse DER length (short- or long-form).
   let offset = 1;
   if (signature[offset] & 0x80) {
+    // Long-form: low 7 bits = number of subsequent length bytes.
     const lenBytesCount = signature[offset] & 0x7f;
     if (lenBytesCount === 0 || lenBytesCount > 4) {
       throw new ConfigurationError('Invalid DER signature: invalid long-form length');
@@ -125,9 +135,11 @@ function derToIeeeP1363(signature: Uint8Array, algorithm: AsymmetricSigningAlgor
       throw new ConfigurationError('Invalid DER signature: length bytes exceed signature length');
     }
   } else {
+    // Short-form: single length byte.
     offset += 1;
   }
 
+  // Parse r INTEGER
   if (signature[offset] !== 0x02) {
     throw new ConfigurationError('Invalid DER signature: expected INTEGER for r');
   }
@@ -136,6 +148,7 @@ function derToIeeeP1363(signature: Uint8Array, algorithm: AsymmetricSigningAlgor
   let r = signature.slice(offset, offset + rLen);
   offset += rLen;
 
+  // Parse s INTEGER
   if (signature[offset] !== 0x02) {
     throw new ConfigurationError('Invalid DER signature: expected INTEGER for s');
   }
@@ -143,6 +156,7 @@ function derToIeeeP1363(signature: Uint8Array, algorithm: AsymmetricSigningAlgor
   offset += 2;
   let s = signature.slice(offset, offset + sLen);
 
+  // Remove leading zero padding if present
   if (r[0] === 0 && r.length > componentLen) {
     r = r.slice(1);
   }
@@ -150,6 +164,7 @@ function derToIeeeP1363(signature: Uint8Array, algorithm: AsymmetricSigningAlgor
     s = s.slice(1);
   }
 
+  // Pad to component length
   const result = new Uint8Array(componentLen * 2);
   result.set(r, componentLen - r.length);
   result.set(s, componentLen * 2 - s.length);
@@ -166,8 +181,14 @@ export async function sign(
   algorithm: AsymmetricSigningAlgorithm
 ): Promise<Uint8Array> {
   const { signParams } = getSigningAlgorithmParams(algorithm);
+
+  // Unwrap the internal CryptoKey
   const key = unwrapKey(privateKey);
+
+  // Sign the data
   const signature = await crypto.subtle.sign(signParams, key, data);
+
+  // Convert from IEEE P1363 to DER for EC algorithms
   return ieeeP1363ToDer(new Uint8Array(signature), algorithm);
 }
 
@@ -181,7 +202,13 @@ export async function verify(
   algorithm: AsymmetricSigningAlgorithm
 ): Promise<boolean> {
   const { signParams } = getSigningAlgorithmParams(algorithm);
+
+  // Unwrap the internal CryptoKey
   const key = unwrapKey(publicKey);
+
+  // Convert from DER to IEEE P1363 for EC algorithms
   const ieeeSignature = derToIeeeP1363(signature, algorithm);
+
+  // Verify the signature
   return crypto.subtle.verify(signParams, key, ieeeSignature, data);
 }
