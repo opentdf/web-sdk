@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.13.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.12.0...sdk-v0.13.0) (2026-03-27)
+
+
+### Bug Fixes
+
+* **sdk:** bump picomatch in /lib ([#893](https://github.com/opentdf/web-sdk/issues/893)) ([29fb0be](https://github.com/opentdf/web-sdk/commit/29fb0be5fc7c0c0811a94ec48c965e08042160fb))
+* **sdk:** Only use crypto service randomBytes where necessary ([#889](https://github.com/opentdf/web-sdk/issues/889)) ([1818a74](https://github.com/opentdf/web-sdk/commit/1818a74a3529cd3f681410c15c2895412178b084))
+
 ## [0.12.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.11.0...sdk-v0.12.0) (2026-03-18)
 
 
