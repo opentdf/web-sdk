@@ -1,6 +1,6 @@
 {
   "name": "@opentdf/ctl",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "description": "Node based CLI for opentdf",
   "repository": {
     "type": "git",
@@ -54,7 +54,7 @@
     "serialize-javascript": "^7.0.4"
   },
   "dependencies": {
-    "@opentdf/sdk": "file:../lib/opentdf-sdk-0.12.0.tgz",
+    "@opentdf/sdk": "file:../lib/opentdf-sdk-0.13.0.tgz",
     "yargs": "^18.0.0"
   }
 }
