@@ -176,6 +176,8 @@ export class AccessToken {
       }
       // Export opaque public key to PEM format for header
       const publicKeyPem = await this.cryptoService.exportPublicKeyPem(this.signingKey.publicKey);
+      // TODO: Rename to X-OpenTDF-PubKey; requires coordinated change with
+      // platform Keycloak mapper (lib/fixtures/keycloak.go `client.publickey`).
       headers['X-VirtruPubKey'] = base64.encode(publicKeyPem);
       headers.DPoP = await dpopFn(this.signingKey, this.cryptoService, url, 'POST');
     }
@@ -300,13 +302,13 @@ export class AccessToken {
   }
 
   async withCreds(httpReq: HttpRequest): Promise<HttpRequest> {
-    if (!this.signingKey) {
-      throw new ConfigurationError(
-        'Client public key was not set via `updateClientPublicKey` or passed in via constructor, cannot fetch OIDC token with valid Virtru claims'
-      );
-    }
     const accessToken = (this.currentAccessToken ??= await this.get());
-    if (this.config.dpopEnabled && this.signingKey) {
+    if (this.config.dpopEnabled) {
+      if (!this.signingKey) {
+        throw new ConfigurationError(
+          'Client public key was not set via `updateClientPublicKey` or passed in via constructor; required when DPoP is enabled'
+        );
+      }
       const dpopToken = await dpopFn(
         this.signingKey,
         this.cryptoService,

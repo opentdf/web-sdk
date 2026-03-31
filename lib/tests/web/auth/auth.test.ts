@@ -338,4 +338,56 @@ describe('AccessToken', () => {
       expect(mf.callCount).to.eql(2);
     });
   });
+
+  describe('withCreds', () => {
+    it('returns Bearer token without signingKey when DPoP is disabled', async () => {
+      const mf = mockFetch({ access_token: 'test_token' });
+      const accessToken = new AccessToken(
+        {
+          exchange: 'refresh',
+          oidcOrigin: 'https://auth.invalid/auth/realms/test/',
+          clientId: 'myid',
+          refreshToken: 'refresh',
+          dpopEnabled: false,
+        },
+        DefaultCryptoService,
+        mf
+      );
+      const result = await accessToken.withCreds({
+        url: 'https://kas.invalid/v2/rewrap',
+        method: 'POST',
+        headers: {},
+      });
+      expect(result.headers).to.have.property('Authorization', 'Bearer test_token');
+      expect(result.headers).not.to.have.property('DPoP');
+    });
+
+    it('throws when DPoP is enabled but signingKey is missing', async () => {
+      const mf = mockFetch({ access_token: 'test_token' });
+      const accessToken = new AccessToken(
+        {
+          exchange: 'refresh',
+          oidcOrigin: 'https://auth.invalid/auth/realms/test/',
+          clientId: 'myid',
+          refreshToken: 'refresh',
+          dpopEnabled: true,
+        },
+        DefaultCryptoService,
+        mf
+      );
+      // Pre-populate access token so withCreds reaches its own signingKey check
+      // rather than failing in doPost() during token fetch.
+      accessToken.currentAccessToken = 'pre_cached_token';
+      try {
+        await accessToken.withCreds({
+          url: 'https://kas.invalid/v2/rewrap',
+          method: 'POST',
+          headers: {},
+        });
+        assert.fail('Expected ConfigurationError');
+      } catch (e) {
+        expect(e.message).to.match(/required when DPoP is enabled/);
+      }
+    });
+  });
 });
