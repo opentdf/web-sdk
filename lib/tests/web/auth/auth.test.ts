@@ -375,9 +375,6 @@ describe('AccessToken', () => {
         DefaultCryptoService,
         mf
       );
-      // Pre-populate access token so withCreds reaches its own signingKey check
-      // rather than failing in doPost() during token fetch.
-      accessToken.currentAccessToken = 'pre_cached_token';
       try {
         await accessToken.withCreds({
           url: 'https://kas.invalid/v2/rewrap',

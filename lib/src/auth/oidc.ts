@@ -302,13 +302,13 @@ export class AccessToken {
   }
 
   async withCreds(httpReq: HttpRequest): Promise<HttpRequest> {
+    if (this.config.dpopEnabled && !this.signingKey) {
+      throw new ConfigurationError(
+        'Client public key was not set via `updateClientPublicKey` or passed in via constructor; required when DPoP is enabled'
+      );
+    }
     const accessToken = (this.currentAccessToken ??= await this.get());
-    if (this.config.dpopEnabled) {
-      if (!this.signingKey) {
-        throw new ConfigurationError(
-          'Client public key was not set via `updateClientPublicKey` or passed in via constructor; required when DPoP is enabled'
-        );
-      }
+    if (this.config.dpopEnabled && this.signingKey) {
       const dpopToken = await dpopFn(
         this.signingKey,
         this.cryptoService,
