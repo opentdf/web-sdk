@@ -11,7 +11,7 @@ import { type CryptoService, type KeyPair } from '../../tdf3/src/crypto/declarat
 export type CommonCredentials = {
   /** The OIDC client ID used for token issuance and exchange flows */
   clientId: string;
-  /** The endpoint of the OIDC IdP to authenticate against, ex. 'https://virtru.com/auth' */
+  /** The endpoint of the OIDC IdP to authenticate against, ex. 'https://keycloak.opentdf.local/auth' */
   oidcOrigin: string;
   oidcTokenEndpoint?: string;
   oidcUserInfoEndpoint?: string;
