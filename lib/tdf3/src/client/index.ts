@@ -19,6 +19,8 @@ import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-pr
 import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider.js';
 import { CryptoService } from '../crypto/declarations.js';
 import { type AuthProvider, HttpRequest, withHeaders } from '../../../src/auth/auth.js';
+import { type AuthConfig } from '../../../src/auth/interceptors.js';
+import { type Interceptor } from '@connectrpc/connect';
 import { getPlatformUrlFromKasEndpoint, rstrip, validateSecureUrl } from '../../../src/utils.js';
 
 import {
@@ -154,7 +156,10 @@ export interface ClientConfig {
   kasPublicKey?: string;
   oidcOrigin?: string;
   externalJwt?: string;
+  /** @deprecated Use `interceptors` instead. */
   authProvider?: AuthProvider;
+  /** Connect RPC interceptors for authentication. Preferred over authProvider. */
+  interceptors?: Interceptor[];
   readerUrl?: string;
   entityObjectEndpoint?: string;
   fileStreamServiceWorker?: string;
@@ -349,6 +354,9 @@ export class Client {
 
   readonly authProvider?: AuthProvider;
 
+  /** Connect RPC interceptors for authentication. */
+  readonly interceptors?: Interceptor[];
+
   readonly readerUrl?: string;
 
   readonly fileStreamServiceWorker?: string;
@@ -425,12 +433,15 @@ export class Client {
     }
 
     this.authProvider = config.authProvider;
+    this.interceptors = config.interceptors;
     this.clientConfig = clientConfig;
 
     this.clientId = clientConfig.clientId;
-    if (!this.authProvider) {
+    if (!this.authProvider && !this.interceptors?.length) {
       if (!clientConfig.clientId) {
-        throw new ConfigurationError('Client ID or custom AuthProvider must be defined');
+        throw new ConfigurationError(
+          'Client ID, custom AuthProvider, or interceptors must be defined'
+        );
       }
 
       //Are we exchanging a refreshToken for a bearer token (normal AuthCode browser auth flow)?
@@ -458,11 +469,28 @@ export class Client {
         );
       }
     }
-    this.dpopKeys = createSessionKeys({
-      authProvider: this.authProvider,
-      cryptoService: this.cryptoService,
-      dpopKeys: clientConfig.dpopKeys,
-    });
+    if (this.interceptors?.length && !this.authProvider) {
+      // Interceptor path: no updateClientPublicKey needed.
+      // Still need dpopKeys for request body signing (reqSignature).
+      this.dpopKeys = clientConfig.dpopKeys ?? this.cryptoService.generateSigningKeyPair();
+    } else {
+      this.dpopKeys = createSessionKeys({
+        authProvider: this.authProvider,
+        cryptoService: this.cryptoService,
+        dpopKeys: clientConfig.dpopKeys,
+      });
+    }
+  }
+
+  /**
+   * Returns the auth configuration for this client.
+   * Prefers interceptors over authProvider.
+   */
+  get auth(): AuthConfig | undefined {
+    if (this.interceptors?.length) {
+      return { interceptors: this.interceptors };
+    }
+    return this.authProvider;
   }
 
   /** Necessary only for testing. A dependency-injection approach should be preferred, but that is difficult currently */
@@ -566,9 +594,12 @@ export class Client {
         if (!this.platformUrl) {
           throw new ConfigurationError('platformUrl not set in TDF3 Client constructor');
         }
+        if (!this.auth) {
+          throw new ConfigurationError('AuthProvider or interceptors required for autoconfigure');
+        }
         const fetchedFQNValues = await attributeFQNsAsValues(
           this.platformUrl,
-          this.authProvider as AuthProvider,
+          this.auth,
           ...fqnsWithoutValues
         );
         fetchedFQNValues.forEach((fetchedValue) => {
@@ -739,6 +770,7 @@ export class Client {
       contentStream: opts.source,
       mimeType,
       policy: policyObject,
+      auth: this.auth,
       authProvider: this.authProvider,
       progressHandler: this.clientConfig.progressHandler,
       keyForEncryption,
@@ -775,14 +807,14 @@ export class Client {
     fulfillableObligationFQNs = [],
   }: DecryptParams): Promise<DecoratedReadableStream> {
     const dpopKeys = await this.dpopKeys;
-    if (!this.authProvider) {
-      throw new ConfigurationError('AuthProvider missing');
+    if (!this.auth) {
+      throw new ConfigurationError('AuthProvider or interceptors missing');
     }
     const chunker = await makeChunkable(source);
     if (!allowList && this.allowedKases) {
       allowList = this.allowedKases;
     } else if (this.platformUrl) {
-      allowList = await fetchKeyAccessServers(this.platformUrl, this.authProvider);
+      allowList = await fetchKeyAccessServers(this.platformUrl, this.auth);
     } else {
       throw new ConfigurationError('platformUrl is required when allowedKases is empty');
     }
@@ -798,6 +830,7 @@ export class Client {
     return await (streamMiddleware as DecryptStreamMiddleware)(
       await readStream({
         allowList,
+        auth: this.auth,
         authProvider: this.authProvider,
         chunker,
         concurrencyLimit,

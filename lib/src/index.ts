@@ -1,5 +1,14 @@
 export { type AuthProvider, type HttpMethod, HttpRequest, withHeaders } from './auth/auth.js';
 export * as AuthProviders from './auth/providers.js';
+export {
+  authTokenInterceptor,
+  authTokenDPoPInterceptor,
+  authProviderInterceptor,
+  type AuthConfig,
+  type DPoPInterceptor,
+  type DPoPInterceptorOptions,
+  type TokenProvider,
+} from './auth/interceptors.js';
 export { attributeFQNsAsValues } from './policy/api.js';
 export {
   listAttributes,

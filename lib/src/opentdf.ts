@@ -1,4 +1,5 @@
 import { type AuthProvider } from './auth/providers.js';
+import { type Interceptor } from '@connectrpc/connect';
 import { ConfigurationError, InvalidFileError } from './errors.js';
 export { Client as TDF3Client } from '../tdf3/src/client/index.js';
 import { Chunker, fromSource, sourceToStream, type Source } from './seekable.js';
@@ -164,8 +165,17 @@ export type OpenTDFOptions = {
   /** Platform URL. */
   platformUrl?: string;
 
-  /** Auth provider for connections to the policy service and KASes. */
-  authProvider: AuthProvider;
+  /**
+   * Connect RPC interceptors for authentication. Preferred over authProvider.
+   * Use `authTokenInterceptor()` or `authTokenDPoPInterceptor()` to create interceptors.
+   */
+  interceptors?: Interceptor[];
+
+  /**
+   * Auth provider for connections to the policy service and KASes.
+   * @deprecated Use `interceptors` with `authTokenInterceptor()` or `authTokenDPoPInterceptor()` instead.
+   */
+  authProvider?: AuthProvider;
 
   /** Default settings for 'encrypt' type requests. */
   defaultCreateOptions?: Omit<CreateOptions, 'source'>;
@@ -264,8 +274,10 @@ export class OpenTDF {
   readonly platformUrl: string;
   /** The policy service endpoint */
   readonly policyEndpoint: string;
-  /** The auth provider for the OpenTDF instance. */
-  readonly authProvider: AuthProvider;
+  /** The auth provider for the OpenTDF instance (deprecated, use interceptors). */
+  readonly authProvider?: AuthProvider;
+  /** Connect RPC interceptors for authentication. */
+  readonly interceptors?: Interceptor[];
   /** If DPoP is enabled for this instance. */
   readonly dpopEnabled: boolean;
   /** Default options for creating TDF objects. */
@@ -283,6 +295,7 @@ export class OpenTDF {
 
   constructor({
     authProvider,
+    interceptors,
     dpopKeys,
     defaultCreateOptions,
     defaultReadOptions,
@@ -291,7 +304,11 @@ export class OpenTDF {
     platformUrl,
     cryptoService,
   }: OpenTDFOptions) {
+    if (!authProvider && !interceptors?.length) {
+      throw new ConfigurationError('Either authProvider or interceptors must be provided.');
+    }
     this.authProvider = authProvider;
+    this.interceptors = interceptors;
     this.defaultCreateOptions = defaultCreateOptions || {};
     this.defaultReadOptions = defaultReadOptions || {};
     this.dpopEnabled = !disableDPoP;
@@ -308,6 +325,7 @@ export class OpenTDF {
     this.dpopKeys = dpopKeys ?? this.cryptoService.generateSigningKeyPair();
     this.tdf3Client = new TDF3Client({
       authProvider,
+      interceptors,
       dpopEnabled: this.dpopEnabled,
       dpopKeys: this.dpopEnabled ? this.dpopKeys : undefined,
       kasEndpoint: this.platformUrl || 'https://disallow.all.invalid',
@@ -315,21 +333,31 @@ export class OpenTDF {
       policyEndpoint,
       cryptoService: this.cryptoService,
     });
-    // Eagerly bind DPoP keys to the auth provider so PlatformClient
-    // can make gRPC calls without waiting for a TDF operation first.
-    // Note: TDF3Client.createSessionKeys() also calls updateClientPublicKey
-    // with the same keys, but the duplicate call is benign —
-    // refreshTokenClaimsWithClientPubkeyIfNeeded short-circuits when
-    // the signing key hasn't changed.
-    this.ready = this.dpopEnabled
-      ? this.dpopKeys.then((keys) => authProvider.updateClientPublicKey(keys))
-      : Promise.resolve();
-    // Prevent unhandled rejection if caller doesn't await ready.
-    // The error will still surface via TDF3Client's own key binding
-    // when encrypt/decrypt is called.
-    this.ready.catch((err) => {
-      console.warn('OpenTDF: DPoP key binding failed during initialization:', err);
-    });
+
+    if (interceptors?.length && !authProvider) {
+      // Interceptor path: no updateClientPublicKey needed.
+      // DPoP key binding is handled by the interceptor itself.
+      this.ready = Promise.resolve();
+    } else if (authProvider) {
+      // Legacy AuthProvider path: eagerly bind DPoP keys to the auth provider
+      // so PlatformClient can make gRPC calls without waiting for a TDF
+      // operation first.
+      // Note: TDF3Client.createSessionKeys() also calls updateClientPublicKey
+      // with the same keys, but the duplicate call is benign —
+      // refreshTokenClaimsWithClientPubkeyIfNeeded short-circuits when
+      // the signing key hasn't changed.
+      this.ready = this.dpopEnabled
+        ? this.dpopKeys.then((keys) => authProvider.updateClientPublicKey(keys))
+        : Promise.resolve();
+      // Prevent unhandled rejection if caller doesn't await ready.
+      // The error will still surface via TDF3Client's own key binding
+      // when encrypt/decrypt is called.
+      this.ready.catch((err) => {
+        console.warn('OpenTDF: DPoP key binding failed during initialization:', err);
+      });
+    } else {
+      this.ready = Promise.resolve();
+    }
   }
 
   /** Creates a new TDF stream. */
@@ -485,9 +513,9 @@ class ZTDFReader {
 
     const dpopKeys = await this.client.dpopKeys;
 
-    const { authProvider, cryptoService } = this.client;
-    if (!authProvider) {
-      throw new ConfigurationError('authProvider is required');
+    const { auth, authProvider, cryptoService } = this.client;
+    if (!auth) {
+      throw new ConfigurationError('authProvider or interceptors are required');
     }
 
     let allowList: OriginAllowList | undefined;
@@ -498,13 +526,14 @@ class ZTDFReader {
         this.opts.ignoreAllowlist
       );
     } else if (this.opts.platformUrl) {
-      allowList = await fetchKeyAccessServers(this.opts.platformUrl, authProvider);
+      allowList = await fetchKeyAccessServers(this.opts.platformUrl, auth);
     }
 
     const overview = await this.overview;
     const oldStream = await decryptStreamFrom(
       {
         allowList,
+        auth,
         authProvider,
         chunker: this.source,
         concurrencyLimit: 1,
