@@ -78,7 +78,7 @@ jobs:
       - run: npm run license-check
       - run: npm run lint
       - run: npm pack
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 #v4.6.2
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f #v7.0.0
         with:
           name: opentdf-sdk-lib
           path: ./lib/opentdf-sdk-*.tgz
@@ -117,7 +117,7 @@ jobs:
       - name: Setup Bats and bats libs
         uses: bats-core/bats-action@3.0.1
       - run: bats bin/opentdf.bats
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 #v4.6.2
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f #v7.0.0
         with:
           name: opentdf-ctl
           path: ./cli/opentdf-ctl-*.tgz
