@@ -513,7 +513,7 @@ class ZTDFReader {
 
     const dpopKeys = await this.client.dpopKeys;
 
-    const { auth, authProvider, cryptoService } = this.client;
+    const { auth, cryptoService } = this.client;
     if (!auth) {
       throw new ConfigurationError('authProvider or interceptors are required');
     }
@@ -534,7 +534,6 @@ class ZTDFReader {
       {
         allowList,
         auth,
-        authProvider,
         chunker: this.source,
         concurrencyLimit: 1,
         cryptoService,

@@ -352,10 +352,11 @@ export class Client {
 
   readonly clientId?: string;
 
-  readonly authProvider?: AuthProvider;
-
-  /** Connect RPC interceptors for authentication. */
-  readonly interceptors?: Interceptor[];
+  /**
+   * Resolved auth configuration. Set once in the constructor from either
+   * authProvider or interceptors. Threaded through all internal layers.
+   */
+  readonly auth?: AuthConfig;
 
   readonly readerUrl?: string;
 
@@ -432,12 +433,12 @@ export class Client {
       this.easEndpoint = clientConfig.easEndpoint;
     }
 
-    this.authProvider = config.authProvider;
-    this.interceptors = config.interceptors;
     this.clientConfig = clientConfig;
 
+    // Resolve auth once at the boundary. Internally, only `this.auth` is used.
+    let authProvider = config.authProvider;
     this.clientId = clientConfig.clientId;
-    if (!this.authProvider && !this.interceptors?.length) {
+    if (!authProvider && !config.interceptors?.length) {
       if (!clientConfig.clientId) {
         throw new ConfigurationError(
           'Client ID, custom AuthProvider, or interceptors must be defined'
@@ -449,7 +450,7 @@ export class Client {
       //browser-based OIDC login and authentication process against the OIDC endpoint using their chosen method,
       //and provide us with a valid refresh token/clientId obtained from that process.
       if (clientConfig.refreshToken) {
-        this.authProvider = new OIDCRefreshTokenProvider(
+        authProvider = new OIDCRefreshTokenProvider(
           {
             clientId: clientConfig.clientId,
             refreshToken: clientConfig.refreshToken,
@@ -459,7 +460,7 @@ export class Client {
         );
       } else if (clientConfig.externalJwt) {
         //Are we exchanging a JWT previously issued by a trusted external entity (e.g. Google) for a bearer token?
-        this.authProvider = new OIDCExternalJwtProvider(
+        authProvider = new OIDCExternalJwtProvider(
           {
             clientId: clientConfig.clientId,
             externalJwt: clientConfig.externalJwt,
@@ -469,28 +470,25 @@ export class Client {
         );
       }
     }
-    if (this.interceptors?.length && !this.authProvider) {
+
+    // Resolve to AuthConfig: interceptors take precedence over authProvider.
+    if (config.interceptors?.length) {
+      this.auth = { interceptors: config.interceptors };
+    } else if (authProvider) {
+      this.auth = authProvider;
+    }
+
+    if (config.interceptors?.length && !authProvider) {
       // Interceptor path: no updateClientPublicKey needed.
       // Still need dpopKeys for request body signing (reqSignature).
       this.dpopKeys = clientConfig.dpopKeys ?? this.cryptoService.generateSigningKeyPair();
     } else {
       this.dpopKeys = createSessionKeys({
-        authProvider: this.authProvider,
+        authProvider,
         cryptoService: this.cryptoService,
         dpopKeys: clientConfig.dpopKeys,
       });
     }
-  }
-
-  /**
-   * Returns the auth configuration for this client.
-   * Prefers interceptors over authProvider.
-   */
-  get auth(): AuthConfig | undefined {
-    if (this.interceptors?.length) {
-      return { interceptors: this.interceptors };
-    }
-    return this.authProvider;
   }
 
   /** Necessary only for testing. A dependency-injection approach should be preferred, but that is difficult currently */
@@ -771,7 +769,6 @@ export class Client {
       mimeType,
       policy: policyObject,
       auth: this.auth,
-      authProvider: this.authProvider,
       progressHandler: this.clientConfig.progressHandler,
       keyForEncryption,
       keyForManifest,
@@ -831,7 +828,6 @@ export class Client {
       await readStream({
         allowList,
         auth: this.auth,
-        authProvider: this.authProvider,
         chunker,
         concurrencyLimit,
         cryptoService: this.cryptoService,

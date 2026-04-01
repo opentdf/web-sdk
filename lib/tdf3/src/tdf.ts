@@ -153,9 +153,7 @@ export type EncryptConfiguration = {
   contentStream: ReadableStream<Uint8Array>;
   mimeType?: string;
   policy: Policy;
-  /** @deprecated Use `auth` instead. */
-  authProvider?: AuthProvider;
-  /** Auth configuration: AuthProvider or { interceptors }. Preferred over authProvider. */
+  /** Auth configuration: AuthProvider or { interceptors }. */
   auth?: AuthConfig;
   byteLimit: number;
   progressHandler?: (bytesProcessed: number) => void;
@@ -170,9 +168,7 @@ export type DecryptConfiguration = {
   fulfillableObligations: string[];
   allowedKases?: string[];
   allowList?: OriginAllowList;
-  /** @deprecated Use `auth` instead. */
-  authProvider?: AuthProvider;
-  /** Auth configuration: AuthProvider or { interceptors }. Preferred over authProvider. */
+  /** Auth configuration: AuthProvider or { interceptors }. */
   auth?: AuthConfig;
   cryptoService: CryptoService;
 
@@ -378,7 +374,7 @@ function isTargetSpecLegacyTDF(targetSpecVersion?: string): boolean {
 }
 
 export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedReadableStream> {
-  if (!cfg.auth && !cfg.authProvider) {
+  if (!cfg.auth) {
     throw new ConfigurationError('No authorization middleware defined');
   }
   if (!cfg.contentStream) {
@@ -745,7 +741,6 @@ async function unwrapKey({
   manifest,
   allowedKases,
   auth,
-  authProvider,
   dpopKeys,
   concurrencyLimit,
   cryptoService,
@@ -754,9 +749,7 @@ async function unwrapKey({
 }: {
   manifest: Manifest;
   allowedKases: OriginAllowList;
-  /** @deprecated Use `auth` instead. */
-  authProvider?: AuthProvider;
-  /** Auth configuration: AuthProvider or { interceptors }. Preferred over authProvider. */
+  /** Auth configuration: AuthProvider or { interceptors }. */
   auth?: AuthConfig;
   concurrencyLimit?: number;
   dpopKeys: KeyPair;
@@ -764,10 +757,10 @@ async function unwrapKey({
   wrappingKeyAlgorithm?: KasPublicKeyAlgorithm;
   fulfillableObligations: string[];
 }) {
-  if (!auth && !authProvider) {
+  if (!auth) {
     throw new ConfigurationError('rewrap requires auth; must be configured in client constructor');
   }
-  const resolvedAuth: AuthConfig = (auth ?? authProvider) as AuthConfig;
+  const resolvedAuth: AuthConfig = auth;
   const { keyAccess } = manifest.encryptionInformation;
   const splitPotentials = splitLookupTableFactory(keyAccess, allowedKases);
 
@@ -1154,7 +1147,6 @@ export async function decryptStreamFrom(
     fulfillableObligations: cfg.fulfillableObligations,
     manifest,
     auth: cfg.auth,
-    authProvider: cfg.authProvider,
     allowedKases: allowList,
     dpopKeys: cfg.dpopKeys,
     cryptoService: cfg.cryptoService,

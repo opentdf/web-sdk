@@ -140,12 +140,12 @@ describe('OpenTDF constructor', () => {
       }
     });
 
-    it('passes interceptors to tdf3Client', () => {
+    it('resolves auth config in tdf3Client', () => {
       const client = new OpenTDF({
         interceptors: [stubInterceptor],
         platformUrl: 'https://example.com',
       });
-      expect(client.tdf3Client.interceptors).to.deep.equal([stubInterceptor]);
+      expect(client.tdf3Client.auth).to.deep.equal({ interceptors: [stubInterceptor] });
     });
 
     it('generates dpopKeys even with interceptors', async () => {
