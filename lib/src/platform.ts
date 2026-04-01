@@ -47,7 +47,7 @@ export interface PlatformServicesV2 {
 export interface PlatformClientOptions {
   /**
    * Authentication provider for generating auth interceptor.
-   * @deprecated Use `interceptors` with `authTokenInterceptor()` or `authTokenDPoPInterceptor()` instead.
+   * @deprecated since 0.14.0. Use `interceptors` with `authTokenInterceptor()` or `authTokenDPoPInterceptor()` instead.
    */
   authProvider?: AuthProvider;
   /** Array of interceptors to apply to rpc requests. Preferred over authProvider. */

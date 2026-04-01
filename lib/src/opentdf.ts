@@ -173,7 +173,7 @@ export type OpenTDFOptions = {
 
   /**
    * Auth provider for connections to the policy service and KASes.
-   * @deprecated Use `interceptors` with `authTokenInterceptor()` or `authTokenDPoPInterceptor()` instead.
+   * @deprecated since 0.14.0. Use `interceptors` with `authTokenInterceptor()` or `authTokenDPoPInterceptor()` instead.
    */
   authProvider?: AuthProvider;
 

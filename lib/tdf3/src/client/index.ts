@@ -156,7 +156,7 @@ export interface ClientConfig {
   kasPublicKey?: string;
   oidcOrigin?: string;
   externalJwt?: string;
-  /** @deprecated Use `interceptors` instead. */
+  /** @deprecated since 0.14.0. Use `interceptors` instead. */
   authProvider?: AuthProvider;
   /** Connect RPC interceptors for authentication. Preferred over authProvider. */
   interceptors?: Interceptor[];
