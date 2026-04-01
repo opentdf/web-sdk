@@ -1,4 +1,5 @@
 import { type Interceptor } from '@connectrpc/connect';
+export type { Interceptor } from '@connectrpc/connect';
 import { type CryptoService, type KeyPair } from '../../tdf3/src/crypto/declarations.js';
 import * as DefaultCryptoService from '../../tdf3/src/crypto/index.js';
 import DPoP from './dpop.js';

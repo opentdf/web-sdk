@@ -246,18 +246,10 @@ export type TDFReader = {
  * It also requires a platform URL to be set, which is used to fetch key access servers and policies.
  * @example
  * ```
- * import { type Chunker, OpenTDF } from '@opentdf/sdk';
- *
- * const oidcCredentials: RefreshTokenCredentials = {
- *   clientId: keycloakClientId,
- *   exchange: 'refresh',
- *   refreshToken: refreshToken,
- *   oidcOrigin: keycloakUrl,
- * };
- * const authProvider = await AuthProviders.refreshAuthProvider(oidcCredentials);
+ * import { authTokenInterceptor, OpenTDF } from '@opentdf/sdk';
  *
  * const client = new OpenTDF({
- *   authProvider,
+ *   interceptors: [authTokenInterceptor(() => `${myAuth.token.accessToken}`)],
  *   platformUrl: 'https://platform.example.com',
  * });
  *

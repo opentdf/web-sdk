@@ -7,6 +7,7 @@ export {
   type AuthConfig,
   type DPoPInterceptor,
   type DPoPInterceptorOptions,
+  type Interceptor,
   type TokenProvider,
 } from './auth/interceptors.js';
 export { attributeFQNsAsValues } from './policy/api.js';
