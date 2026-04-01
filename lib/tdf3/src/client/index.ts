@@ -19,6 +19,8 @@ import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-pr
 import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider.js';
 import { CryptoService } from '../crypto/declarations.js';
 import { type AuthProvider, HttpRequest, withHeaders } from '../../../src/auth/auth.js';
+import { type AuthConfig } from '../../../src/auth/interceptors.js';
+import { type Interceptor } from '@connectrpc/connect';
 import { getPlatformUrlFromKasEndpoint, rstrip, validateSecureUrl } from '../../../src/utils.js';
 
 import {
@@ -154,7 +156,10 @@ export interface ClientConfig {
   kasPublicKey?: string;
   oidcOrigin?: string;
   externalJwt?: string;
+  /** @deprecated since 0.14.0. Use `interceptors` instead. */
   authProvider?: AuthProvider;
+  /** Connect RPC interceptors for authentication. Preferred over authProvider. */
+  interceptors?: Interceptor[];
   readerUrl?: string;
   entityObjectEndpoint?: string;
   fileStreamServiceWorker?: string;
@@ -347,7 +352,11 @@ export class Client {
 
   readonly clientId?: string;
 
-  readonly authProvider?: AuthProvider;
+  /**
+   * Resolved auth configuration. Set once in the constructor from either
+   * authProvider or interceptors. Threaded through all internal layers.
+   */
+  readonly auth?: AuthConfig;
 
   readonly readerUrl?: string;
 
@@ -424,13 +433,16 @@ export class Client {
       this.easEndpoint = clientConfig.easEndpoint;
     }
 
-    this.authProvider = config.authProvider;
     this.clientConfig = clientConfig;
 
+    // Resolve auth once at the boundary. Internally, only `this.auth` is used.
+    let authProvider = config.authProvider;
     this.clientId = clientConfig.clientId;
-    if (!this.authProvider) {
+    if (!authProvider && !config.interceptors?.length) {
       if (!clientConfig.clientId) {
-        throw new ConfigurationError('Client ID or custom AuthProvider must be defined');
+        throw new ConfigurationError(
+          'Client ID, custom AuthProvider, or interceptors must be defined'
+        );
       }
 
       //Are we exchanging a refreshToken for a bearer token (normal AuthCode browser auth flow)?
@@ -438,7 +450,7 @@ export class Client {
       //browser-based OIDC login and authentication process against the OIDC endpoint using their chosen method,
       //and provide us with a valid refresh token/clientId obtained from that process.
       if (clientConfig.refreshToken) {
-        this.authProvider = new OIDCRefreshTokenProvider(
+        authProvider = new OIDCRefreshTokenProvider(
           {
             clientId: clientConfig.clientId,
             refreshToken: clientConfig.refreshToken,
@@ -448,7 +460,7 @@ export class Client {
         );
       } else if (clientConfig.externalJwt) {
         //Are we exchanging a JWT previously issued by a trusted external entity (e.g. Google) for a bearer token?
-        this.authProvider = new OIDCExternalJwtProvider(
+        authProvider = new OIDCExternalJwtProvider(
           {
             clientId: clientConfig.clientId,
             externalJwt: clientConfig.externalJwt,
@@ -458,11 +470,25 @@ export class Client {
         );
       }
     }
-    this.dpopKeys = createSessionKeys({
-      authProvider: this.authProvider,
-      cryptoService: this.cryptoService,
-      dpopKeys: clientConfig.dpopKeys,
-    });
+
+    // Resolve to AuthConfig: interceptors take precedence over authProvider.
+    if (config.interceptors?.length) {
+      this.auth = { interceptors: config.interceptors };
+    } else if (authProvider) {
+      this.auth = authProvider;
+    }
+
+    if (config.interceptors?.length && !authProvider) {
+      // Interceptor path: no updateClientPublicKey needed.
+      // Still need dpopKeys for request body signing (reqSignature).
+      this.dpopKeys = clientConfig.dpopKeys ?? this.cryptoService.generateSigningKeyPair();
+    } else {
+      this.dpopKeys = createSessionKeys({
+        authProvider,
+        cryptoService: this.cryptoService,
+        dpopKeys: clientConfig.dpopKeys,
+      });
+    }
   }
 
   /** Necessary only for testing. A dependency-injection approach should be preferred, but that is difficult currently */
@@ -566,9 +592,12 @@ export class Client {
         if (!this.platformUrl) {
           throw new ConfigurationError('platformUrl not set in TDF3 Client constructor');
         }
+        if (!this.auth) {
+          throw new ConfigurationError('AuthProvider or interceptors required for autoconfigure');
+        }
         const fetchedFQNValues = await attributeFQNsAsValues(
           this.platformUrl,
-          this.authProvider as AuthProvider,
+          this.auth,
           ...fqnsWithoutValues
         );
         fetchedFQNValues.forEach((fetchedValue) => {
@@ -739,7 +768,7 @@ export class Client {
       contentStream: opts.source,
       mimeType,
       policy: policyObject,
-      authProvider: this.authProvider,
+      auth: this.auth,
       progressHandler: this.clientConfig.progressHandler,
       keyForEncryption,
       keyForManifest,
@@ -775,14 +804,14 @@ export class Client {
     fulfillableObligationFQNs = [],
   }: DecryptParams): Promise<DecoratedReadableStream> {
     const dpopKeys = await this.dpopKeys;
-    if (!this.authProvider) {
-      throw new ConfigurationError('AuthProvider missing');
+    if (!this.auth) {
+      throw new ConfigurationError('AuthProvider or interceptors missing');
     }
     const chunker = await makeChunkable(source);
     if (!allowList && this.allowedKases) {
       allowList = this.allowedKases;
     } else if (this.platformUrl) {
-      allowList = await fetchKeyAccessServers(this.platformUrl, this.authProvider);
+      allowList = await fetchKeyAccessServers(this.platformUrl, this.auth);
     } else {
       throw new ConfigurationError('platformUrl is required when allowedKases is empty');
     }
@@ -798,7 +827,7 @@ export class Client {
     return await (streamMiddleware as DecryptStreamMiddleware)(
       await readStream({
         allowList,
-        authProvider: this.authProvider,
+        auth: this.auth,
         chunker,
         concurrencyLimit,
         cryptoService: this.cryptoService,

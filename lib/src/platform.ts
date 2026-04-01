@@ -3,7 +3,8 @@ export * as platformConnectWeb from '@connectrpc/connect-web';
 export * as platformConnect from '@connectrpc/connect';
 
 import { createConnectTransport } from '@connectrpc/connect-web';
-import { AuthProvider } from '../tdf3/index.js';
+import type { AuthProvider } from '../tdf3/index.js';
+import { authProviderInterceptor } from './auth/interceptors.js';
 
 import { Client, createClient, Interceptor } from '@connectrpc/connect';
 import { WellKnownService } from './platform/wellknownconfiguration/wellknown_configuration_pb.js';
@@ -44,9 +45,12 @@ export interface PlatformServicesV2 {
 }
 
 export interface PlatformClientOptions {
-  /** Optional authentication provider for generating auth interceptor. */
+  /**
+   * Authentication provider for generating auth interceptor.
+   * @deprecated since 0.14.0. Use `interceptors` with `authTokenInterceptor()` or `authTokenDPoPInterceptor()` instead.
+   */
   authProvider?: AuthProvider;
-  /** Array of custom interceptors to apply to rpc requests. */
+  /** Array of interceptors to apply to rpc requests. Preferred over authProvider. */
   interceptors?: Interceptor[];
   /** Base URL of the platform API. */
   platformUrl: string;
@@ -85,8 +89,7 @@ export class PlatformClient {
     const interceptors: Interceptor[] = [];
 
     if (options.authProvider) {
-      const authInterceptor = createAuthInterceptor(options.authProvider);
-      interceptors.push(authInterceptor);
+      interceptors.push(authProviderInterceptor(options.authProvider));
     }
 
     if (options.interceptors?.length) {
@@ -119,51 +122,4 @@ export class PlatformClient {
       authorization: createClient(AuthorizationServiceV2, transport),
     };
   }
-}
-
-/**
- * Creates an interceptor that adds authentication headers to outgoing requests.
- *
- * This function uses the provided `AuthProvider` to generate authentication credentials
- * for each request. The `AuthProvider` is expected to implement a `withCreds` method
- * that returns an object containing authentication headers. These headers are then
- * added to the request before it is sent to the server.
- *
- */
-function createAuthInterceptor(authProvider: AuthProvider): Interceptor {
-  const authInterceptor: Interceptor = (next) => async (req) => {
-    const url = new URL(req.url);
-    const pathOnly = url.pathname;
-    // Signs only the path of the url in the request
-    let token;
-    try {
-      token = await authProvider.withCreds({
-        url: pathOnly,
-        method: 'POST',
-        // Start with any headers Connect already has
-        headers: {
-          ...Object.fromEntries(req.header.entries()),
-          'Content-Type': 'application/json',
-        },
-      });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes('public key') || msg.includes('updateClientPublicKey')) {
-        throw new Error(
-          'PlatformClient: DPoP key binding is not complete. ' +
-            'If you are using OpenTDF with PlatformClient, create OpenTDF first and ' +
-            '`await client.ready` before constructing PlatformClient. ' +
-            `Original error: ${msg}`
-        );
-      }
-      throw err;
-    }
-
-    Object.entries(token.headers).forEach(([key, value]) => {
-      req.header.set(key, value);
-    });
-
-    return await next(req);
-  };
-  return authInterceptor;
 }

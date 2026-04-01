@@ -15,6 +15,7 @@ import {
   UnsignedRewrapRequest_WithKeyAccessObjectSchema,
 } from '../../src/platform/kas/kas_pb.js';
 import { type AuthProvider, reqSignature } from '../../src/auth/auth.js';
+import { type AuthConfig } from '../../src/auth/interceptors.js';
 import { handleRpcRewrapErrorString } from '../../src/access/access-rpc.js';
 import { allPool, anyPool } from '../../src/concurrency.js';
 import { base64, hex } from '../../src/encodings/index.js';
@@ -152,7 +153,8 @@ export type EncryptConfiguration = {
   contentStream: ReadableStream<Uint8Array>;
   mimeType?: string;
   policy: Policy;
-  authProvider?: AuthProvider;
+  /** Auth configuration: AuthProvider or { interceptors }. */
+  auth?: AuthConfig;
   byteLimit: number;
   progressHandler?: (bytesProcessed: number) => void;
   keyForEncryption: KeyInfo;
@@ -166,7 +168,8 @@ export type DecryptConfiguration = {
   fulfillableObligations: string[];
   allowedKases?: string[];
   allowList?: OriginAllowList;
-  authProvider: AuthProvider;
+  /** Auth configuration: AuthProvider or { interceptors }. */
+  auth?: AuthConfig;
   cryptoService: CryptoService;
 
   dpopKeys: KeyPair;
@@ -371,7 +374,7 @@ function isTargetSpecLegacyTDF(targetSpecVersion?: string): boolean {
 }
 
 export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedReadableStream> {
-  if (!cfg.authProvider) {
+  if (!cfg.auth) {
     throw new ConfigurationError('No authorization middleware defined');
   }
   if (!cfg.contentStream) {
@@ -737,7 +740,7 @@ type RewrapResponseData = {
 async function unwrapKey({
   manifest,
   allowedKases,
-  authProvider,
+  auth,
   dpopKeys,
   concurrencyLimit,
   cryptoService,
@@ -746,18 +749,18 @@ async function unwrapKey({
 }: {
   manifest: Manifest;
   allowedKases: OriginAllowList;
-  authProvider: AuthProvider;
+  /** Auth configuration: AuthProvider or { interceptors }. */
+  auth?: AuthConfig;
   concurrencyLimit?: number;
   dpopKeys: KeyPair;
   cryptoService: CryptoService;
   wrappingKeyAlgorithm?: KasPublicKeyAlgorithm;
   fulfillableObligations: string[];
 }) {
-  if (authProvider === undefined) {
-    throw new ConfigurationError(
-      'rewrap requires auth provider; must be configured in client constructor'
-    );
+  if (!auth) {
+    throw new ConfigurationError('rewrap requires auth; must be configured in client constructor');
   }
+  const resolvedAuth: AuthConfig = auth;
   const { keyAccess } = manifest.encryptionInformation;
   const splitPotentials = splitLookupTableFactory(keyAccess, allowedKases);
 
@@ -829,7 +832,7 @@ async function unwrapKey({
     const rewrapResp = await fetchWrappedKey(
       url,
       signedRequestToken,
-      authProvider,
+      resolvedAuth,
       fulfillableObligations
     );
     // Upgrade V1 response to V2 format if needed
@@ -1143,7 +1146,7 @@ export async function decryptStreamFrom(
   const { metadata, reconstructedKey, requiredObligations } = await unwrapKey({
     fulfillableObligations: cfg.fulfillableObligations,
     manifest,
-    authProvider: cfg.authProvider,
+    auth: cfg.auth,
     allowedKases: allowList,
     dpopKeys: cfg.dpopKeys,
     cryptoService: cfg.cryptoService,
