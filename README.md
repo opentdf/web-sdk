@@ -77,7 +77,7 @@ import { AuthProviders, OpenTDF } from '@opentdf/sdk';
 const authProvider = await AuthProviders.refreshAuthProvider({
   clientId: 'applicationNameFromIdP',
   exchange: 'refresh',
-  refreshToken: refreshToken,
+  refreshToken: 'refreshToken',
   oidcOrigin: 'http://localhost:65432/auth/realms/opentdf',
 });
 
@@ -117,7 +117,7 @@ import { PlatformClient } from '@opentdf/sdk/platform';
 
 const platform = new PlatformClient({
   interceptors: [authTokenInterceptor(() => myAuth.getAccessToken())],
-  platformUrl: '/api',
+  platformUrl: 'https://platform.example.com',
 });
 
 // Fetch well-known configuration
