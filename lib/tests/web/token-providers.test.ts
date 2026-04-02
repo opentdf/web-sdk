@@ -14,7 +14,9 @@ function fakeJwt(exp: number): string {
 }
 
 // Helper: create a mock fetch that returns token responses
-function mockFetch(responses: Array<{ access_token: string; refresh_token?: string }>) {
+function mockFetch(
+  responses: Array<{ access_token: string; refresh_token?: string; expires_in?: number }>
+) {
   let callIndex = 0;
   const fetchFake = fake(async (_url: string, _opts?: RequestInit) => {
     const resp = responses[callIndex] ?? responses[responses.length - 1];
@@ -113,6 +115,49 @@ describe('clientCredentialsTokenProvider', () => {
       })
     ).to.throw('clientId and clientSecret are required');
   });
+
+  it('throws on blank oidcOrigin without endpoint override', () => {
+    expect(() =>
+      clientCredentialsTokenProvider({
+        clientId: 'test-client',
+        clientSecret: 'secret',
+        oidcOrigin: '',
+      })
+    ).to.throw('oidcOrigin or oidcTokenEndpoint is required');
+  });
+
+  it('caches opaque tokens using expires_in', async () => {
+    const fetchFake = mockFetch([{ access_token: 'opaque-token-abc', expires_in: 3600 }]);
+
+    const provider = clientCredentialsTokenProvider({
+      clientId: 'test-client',
+      clientSecret: 'test-secret',
+      oidcOrigin: 'http://localhost:8080/auth/realms/opentdf',
+    });
+
+    const first = await provider();
+    const second = await provider();
+    expect(first).to.equal('opaque-token-abc');
+    expect(second).to.equal('opaque-token-abc');
+    expect(fetchFake.callCount).to.equal(1);
+  });
+
+  it('deduplicates concurrent calls', async () => {
+    const token = fakeJwt(Date.now() / 1000 + 3600);
+    const fetchFake = mockFetch([{ access_token: token }]);
+
+    const provider = clientCredentialsTokenProvider({
+      clientId: 'test-client',
+      clientSecret: 'test-secret',
+      oidcOrigin: 'http://localhost:8080/auth/realms/opentdf',
+    });
+
+    const [r1, r2, r3] = await Promise.all([provider(), provider(), provider()]);
+    expect(r1).to.equal(token);
+    expect(r2).to.equal(token);
+    expect(r3).to.equal(token);
+    expect(fetchFake.callCount).to.equal(1);
+  });
 });
 
 describe('refreshTokenProvider', () => {
@@ -156,6 +201,22 @@ describe('refreshTokenProvider', () => {
 
     const secondBody = (fetchFake.secondCall.args[1] as RequestInit).body as string;
     expect(secondBody).to.include('refresh_token=refresh-v2');
+  });
+
+  it('deduplicates concurrent refresh calls', async () => {
+    const token = fakeJwt(Date.now() / 1000 + 3600);
+    const fetchFake = mockFetch([{ access_token: token, refresh_token: 'new-refresh' }]);
+
+    const provider = refreshTokenProvider({
+      clientId: 'test-client',
+      refreshToken: 'initial-refresh',
+      oidcOrigin: 'http://localhost:8080/auth/realms/opentdf',
+    });
+
+    const [r1, r2] = await Promise.all([provider(), provider()]);
+    expect(r1).to.equal(token);
+    expect(r2).to.equal(token);
+    expect(fetchFake.callCount).to.equal(1);
   });
 });
 
@@ -201,5 +262,21 @@ describe('externalJwtTokenProvider', () => {
     const secondBody = (fetchFake.secondCall.args[1] as RequestInit).body as string;
     expect(secondBody).to.include('grant_type=refresh_token');
     expect(secondBody).to.include('refresh_token=exchange-refresh');
+  });
+
+  it('deduplicates concurrent exchange calls', async () => {
+    const token = fakeJwt(Date.now() / 1000 + 3600);
+    const fetchFake = mockFetch([{ access_token: token, refresh_token: 'new-refresh' }]);
+
+    const provider = externalJwtTokenProvider({
+      clientId: 'test-client',
+      externalJwt: 'eyJhbGciOi...',
+      oidcOrigin: 'http://localhost:8080/auth/realms/opentdf',
+    });
+
+    const [r1, r2] = await Promise.all([provider(), provider()]);
+    expect(r1).to.equal(token);
+    expect(r2).to.equal(token);
+    expect(fetchFake.callCount).to.equal(1);
   });
 });

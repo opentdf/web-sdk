@@ -51,8 +51,12 @@ type TokenResponse = {
 };
 
 function resolveTokenEndpoint(oidcOrigin: string, override?: string): string {
-  if (override) return override;
-  return `${rstrip(oidcOrigin, '/')}/protocol/openid-connect/token`;
+  if (override?.trim()) return override;
+  const base = oidcOrigin?.trim();
+  if (!base) {
+    throw new ConfigurationError('oidcOrigin or oidcTokenEndpoint is required');
+  }
+  return `${rstrip(base, '/')}/protocol/openid-connect/token`;
 }
 
 /**
@@ -73,10 +77,20 @@ function getJwtExpiration(token: string): number | undefined {
   }
 }
 
-function isTokenExpired(token: string, bufferSeconds = 30): boolean {
-  const exp = getJwtExpiration(token);
-  if (exp === undefined) return true;
-  return Date.now() / 1000 >= exp - bufferSeconds;
+/**
+ * Compute the absolute expiry (seconds since epoch) for a token response.
+ * Prefers `expires_in` from the token response, falls back to the JWT `exp` claim.
+ */
+function resolveTokenExpiry(accessToken: string, expiresIn?: number): number | undefined {
+  if (typeof expiresIn === 'number') {
+    return Date.now() / 1000 + expiresIn;
+  }
+  return getJwtExpiration(accessToken);
+}
+
+function isTokenExpired(expiry: number | undefined, bufferSeconds = 30): boolean {
+  if (expiry === undefined) return true;
+  return Date.now() / 1000 >= expiry - bufferSeconds;
 }
 
 async function fetchToken(
@@ -124,18 +138,30 @@ export function clientCredentialsTokenProvider(
   }
   const tokenEndpoint = resolveTokenEndpoint(options.oidcOrigin, options.oidcTokenEndpoint);
   let cachedToken: string | undefined;
+  let cachedExpiry: number | undefined;
+  let inFlight: Promise<string> | undefined;
 
   return async () => {
-    if (cachedToken && !isTokenExpired(cachedToken)) {
+    if (cachedToken && !isTokenExpired(cachedExpiry)) {
       return cachedToken;
     }
-    const resp = await fetchToken(tokenEndpoint, {
-      grant_type: 'client_credentials',
-      client_id: options.clientId,
-      client_secret: options.clientSecret,
-    });
-    cachedToken = resp.access_token;
-    return cachedToken;
+    if (!inFlight) {
+      inFlight = (async () => {
+        try {
+          const resp = await fetchToken(tokenEndpoint, {
+            grant_type: 'client_credentials',
+            client_id: options.clientId,
+            client_secret: options.clientSecret,
+          });
+          cachedToken = resp.access_token;
+          cachedExpiry = resolveTokenExpiry(resp.access_token, resp.expires_in);
+          return cachedToken;
+        } finally {
+          inFlight = undefined;
+        }
+      })();
+    }
+    return inFlight;
   };
 }
 
@@ -163,21 +189,33 @@ export function refreshTokenProvider(options: RefreshTokenProviderOptions): Toke
   const tokenEndpoint = resolveTokenEndpoint(options.oidcOrigin, options.oidcTokenEndpoint);
   let currentRefreshToken = options.refreshToken;
   let cachedToken: string | undefined;
+  let cachedExpiry: number | undefined;
+  let inFlight: Promise<string> | undefined;
 
   return async () => {
-    if (cachedToken && !isTokenExpired(cachedToken)) {
+    if (cachedToken && !isTokenExpired(cachedExpiry)) {
       return cachedToken;
     }
-    const resp = await fetchToken(tokenEndpoint, {
-      grant_type: 'refresh_token',
-      refresh_token: currentRefreshToken,
-      client_id: options.clientId,
-    });
-    cachedToken = resp.access_token;
-    if (resp.refresh_token) {
-      currentRefreshToken = resp.refresh_token;
+    if (!inFlight) {
+      inFlight = (async () => {
+        try {
+          const resp = await fetchToken(tokenEndpoint, {
+            grant_type: 'refresh_token',
+            refresh_token: currentRefreshToken,
+            client_id: options.clientId,
+          });
+          cachedToken = resp.access_token;
+          cachedExpiry = resolveTokenExpiry(resp.access_token, resp.expires_in);
+          if (resp.refresh_token) {
+            currentRefreshToken = resp.refresh_token;
+          }
+          return cachedToken;
+        } finally {
+          inFlight = undefined;
+        }
+      })();
     }
-    return cachedToken;
+    return inFlight;
   };
 }
 
@@ -204,45 +242,56 @@ export function externalJwtTokenProvider(options: ExternalJwtTokenProviderOption
   }
   const tokenEndpoint = resolveTokenEndpoint(options.oidcOrigin, options.oidcTokenEndpoint);
   let cachedToken: string | undefined;
+  let cachedExpiry: number | undefined;
   let currentRefreshToken: string | undefined;
   let initialExchangeDone = false;
+  let inFlight: Promise<string> | undefined;
 
   return async () => {
-    if (cachedToken && !isTokenExpired(cachedToken)) {
+    if (cachedToken && !isTokenExpired(cachedExpiry)) {
       return cachedToken;
     }
+    if (!inFlight) {
+      inFlight = (async () => {
+        try {
+          let resp: TokenResponse;
+          if (!initialExchangeDone) {
+            resp = await fetchToken(tokenEndpoint, {
+              grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+              subject_token: options.externalJwt,
+              subject_token_type: 'urn:ietf:params:oauth:token-type:jwt',
+              audience: options.clientId,
+              client_id: options.clientId,
+            });
+            initialExchangeDone = true;
+          } else if (currentRefreshToken) {
+            resp = await fetchToken(tokenEndpoint, {
+              grant_type: 'refresh_token',
+              refresh_token: currentRefreshToken,
+              client_id: options.clientId,
+            });
+          } else {
+            // Re-exchange the original JWT if no refresh token available
+            resp = await fetchToken(tokenEndpoint, {
+              grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+              subject_token: options.externalJwt,
+              subject_token_type: 'urn:ietf:params:oauth:token-type:jwt',
+              audience: options.clientId,
+              client_id: options.clientId,
+            });
+          }
 
-    let resp: TokenResponse;
-    if (!initialExchangeDone) {
-      resp = await fetchToken(tokenEndpoint, {
-        grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
-        subject_token: options.externalJwt,
-        subject_token_type: 'urn:ietf:params:oauth:token-type:jwt',
-        audience: options.clientId,
-        client_id: options.clientId,
-      });
-      initialExchangeDone = true;
-    } else if (currentRefreshToken) {
-      resp = await fetchToken(tokenEndpoint, {
-        grant_type: 'refresh_token',
-        refresh_token: currentRefreshToken,
-        client_id: options.clientId,
-      });
-    } else {
-      // Re-exchange the original JWT if no refresh token available
-      resp = await fetchToken(tokenEndpoint, {
-        grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
-        subject_token: options.externalJwt,
-        subject_token_type: 'urn:ietf:params:oauth:token-type:jwt',
-        audience: options.clientId,
-        client_id: options.clientId,
-      });
+          cachedToken = resp.access_token;
+          cachedExpiry = resolveTokenExpiry(resp.access_token, resp.expires_in);
+          if (resp.refresh_token) {
+            currentRefreshToken = resp.refresh_token;
+          }
+          return cachedToken;
+        } finally {
+          inFlight = undefined;
+        }
+      })();
     }
-
-    cachedToken = resp.access_token;
-    if (resp.refresh_token) {
-      currentRefreshToken = resp.refresh_token;
-    }
-    return cachedToken;
+    return inFlight;
   };
 }
