@@ -31,6 +31,29 @@ function mockFetch(
   return fetchFake;
 }
 
+// Helper: create a mock fetch that returns an error response, then succeeds
+function mockFetchWithError(
+  errorStatus: number,
+  successResponse: { access_token: string; refresh_token?: string }
+) {
+  let callIndex = 0;
+  const fetchFake = fake(async () => {
+    callIndex++;
+    if (callIndex === 1) {
+      return new Response('token request failed', {
+        status: errorStatus,
+        statusText: 'Error',
+      });
+    }
+    return new Response(JSON.stringify(successResponse), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  });
+  replace(globalThis, 'fetch', fetchFake as typeof fetch);
+  return fetchFake;
+}
+
 describe('clientCredentialsTokenProvider', () => {
   afterEach(() => restore());
 
@@ -159,6 +182,29 @@ describe('clientCredentialsTokenProvider', () => {
     expect(r3).to.equal(token);
     expect(fetchFake.callCount).to.equal(1);
   });
+
+  it('rejects on error response and allows retry', async () => {
+    const token = fakeJwt(Date.now() / 1000 + 3600);
+    const fetchFake = mockFetchWithError(401, { access_token: token });
+
+    const provider = clientCredentialsTokenProvider({
+      clientId: 'test-client',
+      clientSecret: 'test-secret',
+      oidcOrigin: 'http://localhost:8080/auth/realms/opentdf',
+    });
+
+    try {
+      await provider();
+      expect.fail('should have thrown');
+    } catch (e) {
+      expect((e as Error).message).to.include('401');
+    }
+
+    // Retry should succeed
+    const result = await provider();
+    expect(result).to.equal(token);
+    expect(fetchFake.callCount).to.equal(2);
+  });
 });
 
 describe('refreshTokenProvider', () => {
@@ -218,6 +264,28 @@ describe('refreshTokenProvider', () => {
     expect(r1).to.equal(token);
     expect(r2).to.equal(token);
     expect(fetchFake.callCount).to.equal(1);
+  });
+
+  it('rejects on error response and allows retry', async () => {
+    const token = fakeJwt(Date.now() / 1000 + 3600);
+    const fetchFake = mockFetchWithError(500, { access_token: token, refresh_token: 'new-refresh' });
+
+    const provider = refreshTokenProvider({
+      clientId: 'test-client',
+      refreshToken: 'initial-refresh',
+      oidcOrigin: 'http://localhost:8080/auth/realms/opentdf',
+    });
+
+    try {
+      await provider();
+      expect.fail('should have thrown');
+    } catch (e) {
+      expect((e as Error).message).to.include('500');
+    }
+
+    const result = await provider();
+    expect(result).to.equal(token);
+    expect(fetchFake.callCount).to.equal(2);
   });
 });
 
@@ -279,5 +347,27 @@ describe('externalJwtTokenProvider', () => {
     expect(r1).to.equal(token);
     expect(r2).to.equal(token);
     expect(fetchFake.callCount).to.equal(1);
+  });
+
+  it('rejects on error response and allows retry', async () => {
+    const token = fakeJwt(Date.now() / 1000 + 3600);
+    const fetchFake = mockFetchWithError(403, { access_token: token, refresh_token: 'new-refresh' });
+
+    const provider = externalJwtTokenProvider({
+      clientId: 'test-client',
+      externalJwt: 'eyJhbGciOi...',
+      oidcOrigin: 'http://localhost:8080/auth/realms/opentdf',
+    });
+
+    try {
+      await provider();
+      expect.fail('should have thrown');
+    } catch (e) {
+      expect((e as Error).message).to.include('403');
+    }
+
+    const result = await provider();
+    expect(result).to.equal(token);
+    expect(fetchFake.callCount).to.equal(2);
   });
 });
