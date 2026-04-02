@@ -268,7 +268,10 @@ describe('refreshTokenProvider', () => {
 
   it('rejects on error response and allows retry', async () => {
     const token = fakeJwt(Date.now() / 1000 + 3600);
-    const fetchFake = mockFetchWithError(500, { access_token: token, refresh_token: 'new-refresh' });
+    const fetchFake = mockFetchWithError(500, {
+      access_token: token,
+      refresh_token: 'new-refresh',
+    });
 
     const provider = refreshTokenProvider({
       clientId: 'test-client',
@@ -351,7 +354,10 @@ describe('externalJwtTokenProvider', () => {
 
   it('rejects on error response and allows retry', async () => {
     const token = fakeJwt(Date.now() / 1000 + 3600);
-    const fetchFake = mockFetchWithError(403, { access_token: token, refresh_token: 'new-refresh' });
+    const fetchFake = mockFetchWithError(403, {
+      access_token: token,
+      refresh_token: 'new-refresh',
+    });
 
     const provider = externalJwtTokenProvider({
       clientId: 'test-client',
