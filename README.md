@@ -8,38 +8,23 @@ and some management tasks for ABAC.
 
 ## Usage
 
+### With Interceptors (Recommended)
+
+Use interceptors to provide authentication. The SDK does not manage tokens — you bring your own auth.
+
 ```typescript
-import { AuthProviders, OpenTDF } from '@opentdf/sdk';
-
-// Configuration Options
-const kasEndpoint = "http://localhost:65432/kas";
-
-// Authentication options (vary by middleware)
-const oidcOrigin = "http://localhost:65432/auth/realms/opentdf";
-const clientId = "applicationNameFromIdP";
-const refreshToken = "refreshTokenValueFromIdP";
-
-// AuthProviders are middlewares that add `Authorization` or other bearer tokens to requests.
-// These include The `refresh` provider can be handed a refresh and optional access token.
-const authProvider = await AuthProviders.refreshAuthProvider({
-  clientId,
-  exchange: 'refresh',
-  refreshToken,
-  oidcOrigin,
-});
+import { authTokenInterceptor, OpenTDF } from '@opentdf/sdk';
 
 const client = new OpenTDF({
-  authProvider,
-  defaultCreateOptions: {
-    defaultKASEndpoint: kasEndpoint,
-  },
-  dpopKeys: authProvider.getSigningKey(),
+  interceptors: [authTokenInterceptor(() => myAuth.getAccessToken())],
+  platformUrl: 'https://platform.example.com',
 });
 
 // Encrypt
 const cipherText = await client.createTDF({
   source: { type: 'stream', location: plainTextStream },
   autoconfigure: false,
+  defaultKASEndpoint: 'https://platform.example.com/kas',
 });
 
 // Decrypt
@@ -47,103 +32,102 @@ const reader = client.open({ source: { type: 'stream', location: cipherText } })
 const clearText = await reader.decrypt();
 ```
 
-### Authorization Middleware Options
+The `authTokenInterceptor` takes a function that returns an access token. Your auth library handles token refresh, caching, etc.
 
-#### Client Credentials
-
-For long running server-side apps, a client id + secret is allowed with OAuth2.
-This should not be used in a browser, but within a Deno or Node process.
+For DPoP-bound tokens, use `authTokenDPoPInterceptor`:
 
 ```typescript
-import { AuthProviders } from '@opentdf/sdk';
+import { authTokenDPoPInterceptor, OpenTDF } from '@opentdf/sdk';
 
-// Authentication options (vary by middleware)
-const oidcOrigin = "http://localhost:65432/auth/realms/opentdf";
-const clientId = "username";
-const clientSecret = "IdP_GENERATED_SECRET";
+const dpopInterceptor = authTokenDPoPInterceptor({
+  tokenProvider: () => myAuth.getAccessToken(),
+});
 
-const authProvider = await AuthProviders.clientSecretAuthProvider({
-  clientId,
-  clientSecret,
-  oidcOrigin,
-  exchange: 'client',
+const client = new OpenTDF({
+  interceptors: [dpopInterceptor],
+  dpopKeys: dpopInterceptor.dpopKeys,
+  platformUrl: 'https://platform.example.com',
 });
 ```
 
-#### Given Credentials
+You can also write your own interceptor for full control over request headers:
 
-The `refreshAuthProvider` and `externalAuthProvder` allow the application developer to use existing tokens.
+```typescript
+import { type Interceptor, OpenTDF } from '@opentdf/sdk';
+
+const myInterceptor: Interceptor = (next) => async (req) => {
+  req.header.set('Authorization', `Bearer ${await getToken()}`);
+  req.header.set('X-Custom-Header', 'value');
+  return next(req);
+};
+
+const client = new OpenTDF({
+  interceptors: [myInterceptor],
+  platformUrl: 'https://platform.example.com',
+});
+```
+
+### With AuthProvider (Deprecated)
+
+The `AuthProvider` pattern is still supported for backwards compatibility but is deprecated since 0.14.0.
 
 ```typescript
 import { AuthProviders, OpenTDF } from '@opentdf/sdk';
 
-const oidcCredentials: RefreshTokenCredentials = {
-  clientId: keycloakClientId,
+const authProvider = await AuthProviders.refreshAuthProvider({
+  clientId: 'applicationNameFromIdP',
   exchange: 'refresh',
   refreshToken: refreshToken,
-  oidcOrigin: keycloakUrlWithRealm,
-}
+  oidcOrigin: 'http://localhost:65432/auth/realms/opentdf',
+});
+
+const client = new OpenTDF({
+  authProvider,
+  defaultCreateOptions: {
+    defaultKASEndpoint: 'http://localhost:65432/kas',
+  },
+});
 ```
 
-#### Building your own provider
+You can bridge an existing `AuthProvider` to the interceptor pattern using `authProviderInterceptor`:
 
-A more complete example of using an OIDC compatible provider
-with support for authorization code flow with PKCE and DPoP
-is available in the [sample `web-app` folder](./web-app/src/session.ts)
+```typescript
+import { AuthProviders, authProviderInterceptor, OpenTDF } from '@opentdf/sdk';
+
+const authProvider = await AuthProviders.clientSecretAuthProvider({
+  clientId: 'myClient',
+  clientSecret: 'mySecret',
+  oidcOrigin: 'http://localhost:65432/auth/realms/opentdf',
+  exchange: 'client',
+});
+
+const client = new OpenTDF({
+  interceptors: [authProviderInterceptor(authProvider)],
+  platformUrl: 'https://platform.example.com',
+});
+```
 
 ## Platform Client
 
 The Platform Client provides an interface to interact with the OpenTDF platform's RPC services.
 
-### Usage Example
-
-Below is an example of how to use the `PlatformClient` to interact with the platform's RPC services.
-
 ```typescript
-import { AuthProvider, OpenTDF } from '@opentdf/sdk';
+import { authTokenInterceptor } from '@opentdf/sdk';
 import { PlatformClient } from '@opentdf/sdk/platform';
 
-const authProvider: AuthProvider = {/* configure your auth provider */};
 const platform = new PlatformClient({
-  authProvider,
+  interceptors: [authTokenInterceptor(() => myAuth.getAccessToken())],
   platformUrl: '/api',
 });
 
-async function exampleUsage() {
-  // Fetch well-known configuration
-  const wellKnownResponse = await platform.v1.wellknown.getWellKnownConfiguration({});
-  console.log('Well-known configuration:', wellKnownResponse.configuration);
+// Fetch well-known configuration
+const wellKnownResponse = await platform.v1.wellknown.getWellKnownConfiguration({});
+console.log('Well-known configuration:', wellKnownResponse.configuration);
 
-  // List policy attributes
-  const attributesResponse = await platform.v1.attributes.listAttributes({});
-  console.log('Policy Attributes:', attributesResponse.attributes);
-}
-
-exampleUsage();
+// List policy attributes
+const attributesResponse = await platform.v1.attributes.listAttributes({});
+console.log('Policy Attributes:', attributesResponse.attributes);
 ```
-
-### Using Interceptor
-
-The `PlatformClient` client supports the use of interceptors for customizing RPC calls. Interceptors allow you to modify requests or responses, such as adding custom headers or handling authentication, before or after the RPC call is executed.
-
-Below is an example of using an interceptor to add an `Authorization` header to all outgoing requests:
-
-```typescript
-import { platformConnect, PlatformClient } from '@opentdf/sdk/platform';
-
-const authInterceptor: platformConnect.Interceptor = (next) => async (req) => {
-  req.header.set('Authorization', `Bearer ${accessToken}`);
-  return await next(req); // Pass the modified request to the next handler in the chain
-};
-
-const platform = new PlatformClient({
-  interceptors: [authInterceptor], // Attach the interceptor
-  platformUrl: '/api',
-});
-```
-
-### Key Notes
-Interceptors are particularly useful for scenarios where you need to dynamically modify requests, such as adding authentication tokens or logging request/response data.
 
 
 ## Building and Testing
