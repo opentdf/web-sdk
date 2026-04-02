@@ -18,6 +18,7 @@ function mockFetch(
   responses: Array<{ access_token: string; refresh_token?: string; expires_in?: number }>
 ) {
   let callIndex = 0;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const fetchFake = fake(async (_url: string, _opts?: RequestInit) => {
     const resp = responses[callIndex] ?? responses[responses.length - 1];
     callIndex++;
