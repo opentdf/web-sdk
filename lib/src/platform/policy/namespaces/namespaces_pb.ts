@@ -2,14 +2,14 @@
 // @generated from file policy/namespaces/namespaces.proto (package policy.namespaces, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1";
 import { file_buf_validate_validate } from "../../buf/validate/validate_pb.js";
 import type { ActiveStateEnum, MetadataMutable, MetadataUpdateEnum } from "../../common/common_pb.js";
 import { file_common_common } from "../../common/common_pb.js";
 import type { Namespace } from "../objects_pb.js";
 import { file_policy_objects } from "../objects_pb.js";
-import type { PageRequest, PageResponse } from "../selectors_pb.js";
+import type { PageRequest, PageResponse, SortDirection } from "../selectors_pb.js";
 import { file_policy_selectors } from "../selectors_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -17,7 +17,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file policy/namespaces/namespaces.proto.
  */
 export const file_policy_namespaces_namespaces: GenFile = /*@__PURE__*/
-  fileDesc("CiJwb2xpY3kvbmFtZXNwYWNlcy9uYW1lc3BhY2VzLnByb3RvEhFwb2xpY3kubmFtZXNwYWNlcyJmChhOYW1lc3BhY2VLZXlBY2Nlc3NTZXJ2ZXISHgoMbmFtZXNwYWNlX2lkGAEgASgJQgi6SAVyA7ABARImChRrZXlfYWNjZXNzX3NlcnZlcl9pZBgCIAEoCUIIukgFcgOwAQE6AhgBIk4KDE5hbWVzcGFjZUtleRIhCgxuYW1lc3BhY2VfaWQYASABKAlCC7pICMgBAXIDsAEBEhsKBmtleV9pZBgCIAEoCUILukgIyAEBcgOwAQEiqAMKE0dldE5hbWVzcGFjZVJlcXVlc3QSGQoCaWQYASABKAlCDRgBukgI2AEBcgOwAQESIAoMbmFtZXNwYWNlX2lkGAIgASgJQgi6SAVyA7ABAUgAEhkKA2ZxbhgDIAEoCUIKukgHcgUQAYgBAUgAOqoCukimAhqiAQoQZXhjbHVzaXZlX2ZpZWxkcxJQRWl0aGVyIHVzZSBkZXByZWNhdGVkICdpZCcgZmllbGQgb3Igb25lIG9mICduYW1lc3BhY2VfaWQnIG9yICdmcW4nLCBidXQgbm90IGJvdGgaPCEoaGFzKHRoaXMuaWQpICYmIChoYXModGhpcy5uYW1lc3BhY2VfaWQpIHx8IGhhcyh0aGlzLmZxbikpKRp/Cg9yZXF1aXJlZF9maWVsZHMSM0VpdGhlciBpZCBvciBvbmUgb2YgbmFtZXNwYWNlX2lkIG9yIGZxbiBtdXN0IGJlIHNldBo3aGFzKHRoaXMuaWQpIHx8IGhhcyh0aGlzLm5hbWVzcGFjZV9pZCkgfHwgaGFzKHRoaXMuZnFuKUIMCgppZGVudGlmaWVyIjwKFEdldE5hbWVzcGFjZVJlc3BvbnNlEiQKCW5hbWVzcGFjZRgBIAEoCzIRLnBvbGljeS5OYW1lc3BhY2UiaAoVTGlzdE5hbWVzcGFjZXNSZXF1ZXN0EiYKBXN0YXRlGAEgASgOMhcuY29tbW9uLkFjdGl2ZVN0YXRlRW51bRInCgpwYWdpbmF0aW9uGAogASgLMhMucG9saWN5LlBhZ2VSZXF1ZXN0ImkKFkxpc3ROYW1lc3BhY2VzUmVzcG9uc2USJQoKbmFtZXNwYWNlcxgBIAMoCzIRLnBvbGljeS5OYW1lc3BhY2USKAoKcGFnaW5hdGlvbhgKIAEoCzIULnBvbGljeS5QYWdlUmVzcG9uc2Ui7gQKFkNyZWF0ZU5hbWVzcGFjZVJlcXVlc3QSqAQKBG5hbWUYASABKAlCmQS6SJUEugGJBAoQbmFtZXNwYWNlX2Zvcm1hdBKhA05hbWVzcGFjZSBtdXN0IGJlIGEgdmFsaWQgaG9zdG5hbWUuIEl0IHNob3VsZCBpbmNsdWRlIGF0IGxlYXN0IG9uZSBkb3QsIHdpdGggZWFjaCBzZWdtZW50IChsYWJlbCkgc3RhcnRpbmcgYW5kIGVuZGluZyB3aXRoIGFuIGFscGhhbnVtZXJpYyBjaGFyYWN0ZXIuIEVhY2ggbGFiZWwgbXVzdCBiZSAxIHRvIDYzIGNoYXJhY3RlcnMgbG9uZywgYWxsb3dpbmcgaHlwaGVucyBidXQgbm90IGFzIHRoZSBmaXJzdCBvciBsYXN0IGNoYXJhY3Rlci4gVGhlIHRvcC1sZXZlbCBkb21haW4gKHRoZSBsYXN0IHNlZ21lbnQgYWZ0ZXIgdGhlIGZpbmFsIGRvdCkgbXVzdCBjb25zaXN0IG9mIGF0IGxlYXN0IHR3byBhbHBoYWJldGljIGNoYXJhY3RlcnMuIFRoZSBzdG9yZWQgbmFtZXNwYWNlIHdpbGwgYmUgbm9ybWFsaXplZCB0byBsb3dlciBjYXNlLhpRdGhpcy5tYXRjaGVzKCdeKFthLXpBLVowLTldKFthLXpBLVowLTlcXC1dezAsNjF9W2EtekEtWjAtOV0pP1xcLikrW2EtekEtWl17Mix9JCcpyAEBcgMY/QESKQoIbWV0YWRhdGEYZCABKAsyFy5jb21tb24uTWV0YWRhdGFNdXRhYmxlIj8KF0NyZWF0ZU5hbWVzcGFjZVJlc3BvbnNlEiQKCW5hbWVzcGFjZRgBIAEoCzIRLnBvbGljeS5OYW1lc3BhY2UilwEKFlVwZGF0ZU5hbWVzcGFjZVJlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBEikKCG1ldGFkYXRhGGQgASgLMhcuY29tbW9uLk1ldGFkYXRhTXV0YWJsZRI8ChhtZXRhZGF0YV91cGRhdGVfYmVoYXZpb3IYZSABKA4yGi5jb21tb24uTWV0YWRhdGFVcGRhdGVFbnVtIj8KF1VwZGF0ZU5hbWVzcGFjZVJlc3BvbnNlEiQKCW5hbWVzcGFjZRgBIAEoCzIRLnBvbGljeS5OYW1lc3BhY2UiMgoaRGVhY3RpdmF0ZU5hbWVzcGFjZVJlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBIh0KG0RlYWN0aXZhdGVOYW1lc3BhY2VSZXNwb25zZSJ/CidBc3NpZ25LZXlBY2Nlc3NTZXJ2ZXJUb05hbWVzcGFjZVJlcXVlc3QSUAobbmFtZXNwYWNlX2tleV9hY2Nlc3Nfc2VydmVyGAEgASgLMisucG9saWN5Lm5hbWVzcGFjZXMuTmFtZXNwYWNlS2V5QWNjZXNzU2VydmVyOgIYASJ8CihBc3NpZ25LZXlBY2Nlc3NTZXJ2ZXJUb05hbWVzcGFjZVJlc3BvbnNlElAKG25hbWVzcGFjZV9rZXlfYWNjZXNzX3NlcnZlchgBIAEoCzIrLnBvbGljeS5uYW1lc3BhY2VzLk5hbWVzcGFjZUtleUFjY2Vzc1NlcnZlciKBAQopUmVtb3ZlS2V5QWNjZXNzU2VydmVyRnJvbU5hbWVzcGFjZVJlcXVlc3QSUAobbmFtZXNwYWNlX2tleV9hY2Nlc3Nfc2VydmVyGAEgASgLMisucG9saWN5Lm5hbWVzcGFjZXMuTmFtZXNwYWNlS2V5QWNjZXNzU2VydmVyOgIYASJ+CipSZW1vdmVLZXlBY2Nlc3NTZXJ2ZXJGcm9tTmFtZXNwYWNlUmVzcG9uc2USUAobbmFtZXNwYWNlX2tleV9hY2Nlc3Nfc2VydmVyGAEgASgLMisucG9saWN5Lm5hbWVzcGFjZXMuTmFtZXNwYWNlS2V5QWNjZXNzU2VydmVyImMKIUFzc2lnblB1YmxpY0tleVRvTmFtZXNwYWNlUmVxdWVzdBI+Cg1uYW1lc3BhY2Vfa2V5GAEgASgLMh8ucG9saWN5Lm5hbWVzcGFjZXMuTmFtZXNwYWNlS2V5Qga6SAPIAQEiXAoiQXNzaWduUHVibGljS2V5VG9OYW1lc3BhY2VSZXNwb25zZRI2Cg1uYW1lc3BhY2Vfa2V5GAEgASgLMh8ucG9saWN5Lm5hbWVzcGFjZXMuTmFtZXNwYWNlS2V5ImUKI1JlbW92ZVB1YmxpY0tleUZyb21OYW1lc3BhY2VSZXF1ZXN0Ej4KDW5hbWVzcGFjZV9rZXkYASABKAsyHy5wb2xpY3kubmFtZXNwYWNlcy5OYW1lc3BhY2VLZXlCBrpIA8gBASJeCiRSZW1vdmVQdWJsaWNLZXlGcm9tTmFtZXNwYWNlUmVzcG9uc2USNgoNbmFtZXNwYWNlX2tleRgBIAEoCzIfLnBvbGljeS5uYW1lc3BhY2VzLk5hbWVzcGFjZUtleTKiCQoQTmFtZXNwYWNlU2VydmljZRJkCgxHZXROYW1lc3BhY2USJi5wb2xpY3kubmFtZXNwYWNlcy5HZXROYW1lc3BhY2VSZXF1ZXN0GicucG9saWN5Lm5hbWVzcGFjZXMuR2V0TmFtZXNwYWNlUmVzcG9uc2UiA5ACARJqCg5MaXN0TmFtZXNwYWNlcxIoLnBvbGljeS5uYW1lc3BhY2VzLkxpc3ROYW1lc3BhY2VzUmVxdWVzdBopLnBvbGljeS5uYW1lc3BhY2VzLkxpc3ROYW1lc3BhY2VzUmVzcG9uc2UiA5ACARJqCg9DcmVhdGVOYW1lc3BhY2USKS5wb2xpY3kubmFtZXNwYWNlcy5DcmVhdGVOYW1lc3BhY2VSZXF1ZXN0GioucG9saWN5Lm5hbWVzcGFjZXMuQ3JlYXRlTmFtZXNwYWNlUmVzcG9uc2UiABJqCg9VcGRhdGVOYW1lc3BhY2USKS5wb2xpY3kubmFtZXNwYWNlcy5VcGRhdGVOYW1lc3BhY2VSZXF1ZXN0GioucG9saWN5Lm5hbWVzcGFjZXMuVXBkYXRlTmFtZXNwYWNlUmVzcG9uc2UiABJ2ChNEZWFjdGl2YXRlTmFtZXNwYWNlEi0ucG9saWN5Lm5hbWVzcGFjZXMuRGVhY3RpdmF0ZU5hbWVzcGFjZVJlcXVlc3QaLi5wb2xpY3kubmFtZXNwYWNlcy5EZWFjdGl2YXRlTmFtZXNwYWNlUmVzcG9uc2UiABKgAQogQXNzaWduS2V5QWNjZXNzU2VydmVyVG9OYW1lc3BhY2USOi5wb2xpY3kubmFtZXNwYWNlcy5Bc3NpZ25LZXlBY2Nlc3NTZXJ2ZXJUb05hbWVzcGFjZVJlcXVlc3QaOy5wb2xpY3kubmFtZXNwYWNlcy5Bc3NpZ25LZXlBY2Nlc3NTZXJ2ZXJUb05hbWVzcGFjZVJlc3BvbnNlIgOIAgESpgEKIlJlbW92ZUtleUFjY2Vzc1NlcnZlckZyb21OYW1lc3BhY2USPC5wb2xpY3kubmFtZXNwYWNlcy5SZW1vdmVLZXlBY2Nlc3NTZXJ2ZXJGcm9tTmFtZXNwYWNlUmVxdWVzdBo9LnBvbGljeS5uYW1lc3BhY2VzLlJlbW92ZUtleUFjY2Vzc1NlcnZlckZyb21OYW1lc3BhY2VSZXNwb25zZSIDiAIBEosBChpBc3NpZ25QdWJsaWNLZXlUb05hbWVzcGFjZRI0LnBvbGljeS5uYW1lc3BhY2VzLkFzc2lnblB1YmxpY0tleVRvTmFtZXNwYWNlUmVxdWVzdBo1LnBvbGljeS5uYW1lc3BhY2VzLkFzc2lnblB1YmxpY0tleVRvTmFtZXNwYWNlUmVzcG9uc2UiABKRAQocUmVtb3ZlUHVibGljS2V5RnJvbU5hbWVzcGFjZRI2LnBvbGljeS5uYW1lc3BhY2VzLlJlbW92ZVB1YmxpY0tleUZyb21OYW1lc3BhY2VSZXF1ZXN0GjcucG9saWN5Lm5hbWVzcGFjZXMuUmVtb3ZlUHVibGljS2V5RnJvbU5hbWVzcGFjZVJlc3BvbnNlIgBiBnByb3RvMw", [file_buf_validate_validate, file_common_common, file_policy_objects, file_policy_selectors]);
+  fileDesc("CiJwb2xpY3kvbmFtZXNwYWNlcy9uYW1lc3BhY2VzLnByb3RvEhFwb2xpY3kubmFtZXNwYWNlcyJmChhOYW1lc3BhY2VLZXlBY2Nlc3NTZXJ2ZXISHgoMbmFtZXNwYWNlX2lkGAEgASgJQgi6SAVyA7ABARImChRrZXlfYWNjZXNzX3NlcnZlcl9pZBgCIAEoCUIIukgFcgOwAQE6AhgBIk4KDE5hbWVzcGFjZUtleRIhCgxuYW1lc3BhY2VfaWQYASABKAlCC7pICMgBAXIDsAEBEhsKBmtleV9pZBgCIAEoCUILukgIyAEBcgOwAQEiqAMKE0dldE5hbWVzcGFjZVJlcXVlc3QSGQoCaWQYASABKAlCDRgBukgI2AEBcgOwAQESIAoMbmFtZXNwYWNlX2lkGAIgASgJQgi6SAVyA7ABAUgAEhkKA2ZxbhgDIAEoCUIKukgHcgUQAYgBAUgAOqoCukimAhqiAQoQZXhjbHVzaXZlX2ZpZWxkcxJQRWl0aGVyIHVzZSBkZXByZWNhdGVkICdpZCcgZmllbGQgb3Igb25lIG9mICduYW1lc3BhY2VfaWQnIG9yICdmcW4nLCBidXQgbm90IGJvdGgaPCEoaGFzKHRoaXMuaWQpICYmIChoYXModGhpcy5uYW1lc3BhY2VfaWQpIHx8IGhhcyh0aGlzLmZxbikpKRp/Cg9yZXF1aXJlZF9maWVsZHMSM0VpdGhlciBpZCBvciBvbmUgb2YgbmFtZXNwYWNlX2lkIG9yIGZxbiBtdXN0IGJlIHNldBo3aGFzKHRoaXMuaWQpIHx8IGhhcyh0aGlzLm5hbWVzcGFjZV9pZCkgfHwgaGFzKHRoaXMuZnFuKUIMCgppZGVudGlmaWVyIjwKFEdldE5hbWVzcGFjZVJlc3BvbnNlEiQKCW5hbWVzcGFjZRgBIAEoCzIRLnBvbGljeS5OYW1lc3BhY2UicAoOTmFtZXNwYWNlc1NvcnQSNAoFZmllbGQYASABKA4yJS5wb2xpY3kubmFtZXNwYWNlcy5Tb3J0TmFtZXNwYWNlc1R5cGUSKAoJZGlyZWN0aW9uGAIgASgOMhUucG9saWN5LlNvcnREaXJlY3Rpb24iowEKFUxpc3ROYW1lc3BhY2VzUmVxdWVzdBImCgVzdGF0ZRgBIAEoDjIXLmNvbW1vbi5BY3RpdmVTdGF0ZUVudW0SJwoKcGFnaW5hdGlvbhgKIAEoCzITLnBvbGljeS5QYWdlUmVxdWVzdBI5CgRzb3J0GAsgAygLMiEucG9saWN5Lm5hbWVzcGFjZXMuTmFtZXNwYWNlc1NvcnRCCLpIBZIBAhABImkKFkxpc3ROYW1lc3BhY2VzUmVzcG9uc2USJQoKbmFtZXNwYWNlcxgBIAMoCzIRLnBvbGljeS5OYW1lc3BhY2USKAoKcGFnaW5hdGlvbhgKIAEoCzIULnBvbGljeS5QYWdlUmVzcG9uc2Ui7gQKFkNyZWF0ZU5hbWVzcGFjZVJlcXVlc3QSqAQKBG5hbWUYASABKAlCmQS6SJUEugGJBAoQbmFtZXNwYWNlX2Zvcm1hdBKhA05hbWVzcGFjZSBtdXN0IGJlIGEgdmFsaWQgaG9zdG5hbWUuIEl0IHNob3VsZCBpbmNsdWRlIGF0IGxlYXN0IG9uZSBkb3QsIHdpdGggZWFjaCBzZWdtZW50IChsYWJlbCkgc3RhcnRpbmcgYW5kIGVuZGluZyB3aXRoIGFuIGFscGhhbnVtZXJpYyBjaGFyYWN0ZXIuIEVhY2ggbGFiZWwgbXVzdCBiZSAxIHRvIDYzIGNoYXJhY3RlcnMgbG9uZywgYWxsb3dpbmcgaHlwaGVucyBidXQgbm90IGFzIHRoZSBmaXJzdCBvciBsYXN0IGNoYXJhY3Rlci4gVGhlIHRvcC1sZXZlbCBkb21haW4gKHRoZSBsYXN0IHNlZ21lbnQgYWZ0ZXIgdGhlIGZpbmFsIGRvdCkgbXVzdCBjb25zaXN0IG9mIGF0IGxlYXN0IHR3byBhbHBoYWJldGljIGNoYXJhY3RlcnMuIFRoZSBzdG9yZWQgbmFtZXNwYWNlIHdpbGwgYmUgbm9ybWFsaXplZCB0byBsb3dlciBjYXNlLhpRdGhpcy5tYXRjaGVzKCdeKFthLXpBLVowLTldKFthLXpBLVowLTlcXC1dezAsNjF9W2EtekEtWjAtOV0pP1xcLikrW2EtekEtWl17Mix9JCcpyAEBcgMY/QESKQoIbWV0YWRhdGEYZCABKAsyFy5jb21tb24uTWV0YWRhdGFNdXRhYmxlIj8KF0NyZWF0ZU5hbWVzcGFjZVJlc3BvbnNlEiQKCW5hbWVzcGFjZRgBIAEoCzIRLnBvbGljeS5OYW1lc3BhY2UilwEKFlVwZGF0ZU5hbWVzcGFjZVJlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBEikKCG1ldGFkYXRhGGQgASgLMhcuY29tbW9uLk1ldGFkYXRhTXV0YWJsZRI8ChhtZXRhZGF0YV91cGRhdGVfYmVoYXZpb3IYZSABKA4yGi5jb21tb24uTWV0YWRhdGFVcGRhdGVFbnVtIj8KF1VwZGF0ZU5hbWVzcGFjZVJlc3BvbnNlEiQKCW5hbWVzcGFjZRgBIAEoCzIRLnBvbGljeS5OYW1lc3BhY2UiMgoaRGVhY3RpdmF0ZU5hbWVzcGFjZVJlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBIh0KG0RlYWN0aXZhdGVOYW1lc3BhY2VSZXNwb25zZSJ/CidBc3NpZ25LZXlBY2Nlc3NTZXJ2ZXJUb05hbWVzcGFjZVJlcXVlc3QSUAobbmFtZXNwYWNlX2tleV9hY2Nlc3Nfc2VydmVyGAEgASgLMisucG9saWN5Lm5hbWVzcGFjZXMuTmFtZXNwYWNlS2V5QWNjZXNzU2VydmVyOgIYASJ8CihBc3NpZ25LZXlBY2Nlc3NTZXJ2ZXJUb05hbWVzcGFjZVJlc3BvbnNlElAKG25hbWVzcGFjZV9rZXlfYWNjZXNzX3NlcnZlchgBIAEoCzIrLnBvbGljeS5uYW1lc3BhY2VzLk5hbWVzcGFjZUtleUFjY2Vzc1NlcnZlciKBAQopUmVtb3ZlS2V5QWNjZXNzU2VydmVyRnJvbU5hbWVzcGFjZVJlcXVlc3QSUAobbmFtZXNwYWNlX2tleV9hY2Nlc3Nfc2VydmVyGAEgASgLMisucG9saWN5Lm5hbWVzcGFjZXMuTmFtZXNwYWNlS2V5QWNjZXNzU2VydmVyOgIYASJ+CipSZW1vdmVLZXlBY2Nlc3NTZXJ2ZXJGcm9tTmFtZXNwYWNlUmVzcG9uc2USUAobbmFtZXNwYWNlX2tleV9hY2Nlc3Nfc2VydmVyGAEgASgLMisucG9saWN5Lm5hbWVzcGFjZXMuTmFtZXNwYWNlS2V5QWNjZXNzU2VydmVyImMKIUFzc2lnblB1YmxpY0tleVRvTmFtZXNwYWNlUmVxdWVzdBI+Cg1uYW1lc3BhY2Vfa2V5GAEgASgLMh8ucG9saWN5Lm5hbWVzcGFjZXMuTmFtZXNwYWNlS2V5Qga6SAPIAQEiXAoiQXNzaWduUHVibGljS2V5VG9OYW1lc3BhY2VSZXNwb25zZRI2Cg1uYW1lc3BhY2Vfa2V5GAEgASgLMh8ucG9saWN5Lm5hbWVzcGFjZXMuTmFtZXNwYWNlS2V5ImUKI1JlbW92ZVB1YmxpY0tleUZyb21OYW1lc3BhY2VSZXF1ZXN0Ej4KDW5hbWVzcGFjZV9rZXkYASABKAsyHy5wb2xpY3kubmFtZXNwYWNlcy5OYW1lc3BhY2VLZXlCBrpIA8gBASJeCiRSZW1vdmVQdWJsaWNLZXlGcm9tTmFtZXNwYWNlUmVzcG9uc2USNgoNbmFtZXNwYWNlX2tleRgBIAEoCzIfLnBvbGljeS5uYW1lc3BhY2VzLk5hbWVzcGFjZUtleSrBAQoSU29ydE5hbWVzcGFjZXNUeXBlEiQKIFNPUlRfTkFNRVNQQUNFU19UWVBFX1VOU1BFQ0lGSUVEEAASHQoZU09SVF9OQU1FU1BBQ0VTX1RZUEVfTkFNRRABEhwKGFNPUlRfTkFNRVNQQUNFU19UWVBFX0ZRThACEiMKH1NPUlRfTkFNRVNQQUNFU19UWVBFX0NSRUFURURfQVQQAxIjCh9TT1JUX05BTUVTUEFDRVNfVFlQRV9VUERBVEVEX0FUEAQyogkKEE5hbWVzcGFjZVNlcnZpY2USZAoMR2V0TmFtZXNwYWNlEiYucG9saWN5Lm5hbWVzcGFjZXMuR2V0TmFtZXNwYWNlUmVxdWVzdBonLnBvbGljeS5uYW1lc3BhY2VzLkdldE5hbWVzcGFjZVJlc3BvbnNlIgOQAgESagoOTGlzdE5hbWVzcGFjZXMSKC5wb2xpY3kubmFtZXNwYWNlcy5MaXN0TmFtZXNwYWNlc1JlcXVlc3QaKS5wb2xpY3kubmFtZXNwYWNlcy5MaXN0TmFtZXNwYWNlc1Jlc3BvbnNlIgOQAgESagoPQ3JlYXRlTmFtZXNwYWNlEikucG9saWN5Lm5hbWVzcGFjZXMuQ3JlYXRlTmFtZXNwYWNlUmVxdWVzdBoqLnBvbGljeS5uYW1lc3BhY2VzLkNyZWF0ZU5hbWVzcGFjZVJlc3BvbnNlIgASagoPVXBkYXRlTmFtZXNwYWNlEikucG9saWN5Lm5hbWVzcGFjZXMuVXBkYXRlTmFtZXNwYWNlUmVxdWVzdBoqLnBvbGljeS5uYW1lc3BhY2VzLlVwZGF0ZU5hbWVzcGFjZVJlc3BvbnNlIgASdgoTRGVhY3RpdmF0ZU5hbWVzcGFjZRItLnBvbGljeS5uYW1lc3BhY2VzLkRlYWN0aXZhdGVOYW1lc3BhY2VSZXF1ZXN0Gi4ucG9saWN5Lm5hbWVzcGFjZXMuRGVhY3RpdmF0ZU5hbWVzcGFjZVJlc3BvbnNlIgASoAEKIEFzc2lnbktleUFjY2Vzc1NlcnZlclRvTmFtZXNwYWNlEjoucG9saWN5Lm5hbWVzcGFjZXMuQXNzaWduS2V5QWNjZXNzU2VydmVyVG9OYW1lc3BhY2VSZXF1ZXN0GjsucG9saWN5Lm5hbWVzcGFjZXMuQXNzaWduS2V5QWNjZXNzU2VydmVyVG9OYW1lc3BhY2VSZXNwb25zZSIDiAIBEqYBCiJSZW1vdmVLZXlBY2Nlc3NTZXJ2ZXJGcm9tTmFtZXNwYWNlEjwucG9saWN5Lm5hbWVzcGFjZXMuUmVtb3ZlS2V5QWNjZXNzU2VydmVyRnJvbU5hbWVzcGFjZVJlcXVlc3QaPS5wb2xpY3kubmFtZXNwYWNlcy5SZW1vdmVLZXlBY2Nlc3NTZXJ2ZXJGcm9tTmFtZXNwYWNlUmVzcG9uc2UiA4gCARKLAQoaQXNzaWduUHVibGljS2V5VG9OYW1lc3BhY2USNC5wb2xpY3kubmFtZXNwYWNlcy5Bc3NpZ25QdWJsaWNLZXlUb05hbWVzcGFjZVJlcXVlc3QaNS5wb2xpY3kubmFtZXNwYWNlcy5Bc3NpZ25QdWJsaWNLZXlUb05hbWVzcGFjZVJlc3BvbnNlIgASkQEKHFJlbW92ZVB1YmxpY0tleUZyb21OYW1lc3BhY2USNi5wb2xpY3kubmFtZXNwYWNlcy5SZW1vdmVQdWJsaWNLZXlGcm9tTmFtZXNwYWNlUmVxdWVzdBo3LnBvbGljeS5uYW1lc3BhY2VzLlJlbW92ZVB1YmxpY0tleUZyb21OYW1lc3BhY2VSZXNwb25zZSIAYgZwcm90bzM", [file_buf_validate_validate, file_common_common, file_policy_objects, file_policy_selectors]);
 
 /**
  * Deprecated
@@ -132,6 +132,28 @@ export const GetNamespaceResponseSchema: GenMessage<GetNamespaceResponse> = /*@_
   messageDesc(file_policy_namespaces_namespaces, 3);
 
 /**
+ * @generated from message policy.namespaces.NamespacesSort
+ */
+export type NamespacesSort = Message<"policy.namespaces.NamespacesSort"> & {
+  /**
+   * @generated from field: policy.namespaces.SortNamespacesType field = 1;
+   */
+  field: SortNamespacesType;
+
+  /**
+   * @generated from field: policy.SortDirection direction = 2;
+   */
+  direction: SortDirection;
+};
+
+/**
+ * Describes the message policy.namespaces.NamespacesSort.
+ * Use `create(NamespacesSortSchema)` to create a new message.
+ */
+export const NamespacesSortSchema: GenMessage<NamespacesSort> = /*@__PURE__*/
+  messageDesc(file_policy_namespaces_namespaces, 4);
+
+/**
  * @generated from message policy.namespaces.ListNamespacesRequest
  */
 export type ListNamespacesRequest = Message<"policy.namespaces.ListNamespacesRequest"> & {
@@ -149,6 +171,13 @@ export type ListNamespacesRequest = Message<"policy.namespaces.ListNamespacesReq
    * @generated from field: policy.PageRequest pagination = 10;
    */
   pagination?: PageRequest;
+
+  /**
+   * Optional
+   *
+   * @generated from field: repeated policy.namespaces.NamespacesSort sort = 11;
+   */
+  sort: NamespacesSort[];
 };
 
 /**
@@ -156,7 +185,7 @@ export type ListNamespacesRequest = Message<"policy.namespaces.ListNamespacesReq
  * Use `create(ListNamespacesRequestSchema)` to create a new message.
  */
 export const ListNamespacesRequestSchema: GenMessage<ListNamespacesRequest> = /*@__PURE__*/
-  messageDesc(file_policy_namespaces_namespaces, 4);
+  messageDesc(file_policy_namespaces_namespaces, 5);
 
 /**
  * @generated from message policy.namespaces.ListNamespacesResponse
@@ -178,7 +207,7 @@ export type ListNamespacesResponse = Message<"policy.namespaces.ListNamespacesRe
  * Use `create(ListNamespacesResponseSchema)` to create a new message.
  */
 export const ListNamespacesResponseSchema: GenMessage<ListNamespacesResponse> = /*@__PURE__*/
-  messageDesc(file_policy_namespaces_namespaces, 5);
+  messageDesc(file_policy_namespaces_namespaces, 6);
 
 /**
  * @generated from message policy.namespaces.CreateNamespaceRequest
@@ -204,7 +233,7 @@ export type CreateNamespaceRequest = Message<"policy.namespaces.CreateNamespaceR
  * Use `create(CreateNamespaceRequestSchema)` to create a new message.
  */
 export const CreateNamespaceRequestSchema: GenMessage<CreateNamespaceRequest> = /*@__PURE__*/
-  messageDesc(file_policy_namespaces_namespaces, 6);
+  messageDesc(file_policy_namespaces_namespaces, 7);
 
 /**
  * @generated from message policy.namespaces.CreateNamespaceResponse
@@ -221,7 +250,7 @@ export type CreateNamespaceResponse = Message<"policy.namespaces.CreateNamespace
  * Use `create(CreateNamespaceResponseSchema)` to create a new message.
  */
 export const CreateNamespaceResponseSchema: GenMessage<CreateNamespaceResponse> = /*@__PURE__*/
-  messageDesc(file_policy_namespaces_namespaces, 7);
+  messageDesc(file_policy_namespaces_namespaces, 8);
 
 /**
  * @generated from message policy.namespaces.UpdateNamespaceRequest
@@ -252,7 +281,7 @@ export type UpdateNamespaceRequest = Message<"policy.namespaces.UpdateNamespaceR
  * Use `create(UpdateNamespaceRequestSchema)` to create a new message.
  */
 export const UpdateNamespaceRequestSchema: GenMessage<UpdateNamespaceRequest> = /*@__PURE__*/
-  messageDesc(file_policy_namespaces_namespaces, 8);
+  messageDesc(file_policy_namespaces_namespaces, 9);
 
 /**
  * @generated from message policy.namespaces.UpdateNamespaceResponse
@@ -269,7 +298,7 @@ export type UpdateNamespaceResponse = Message<"policy.namespaces.UpdateNamespace
  * Use `create(UpdateNamespaceResponseSchema)` to create a new message.
  */
 export const UpdateNamespaceResponseSchema: GenMessage<UpdateNamespaceResponse> = /*@__PURE__*/
-  messageDesc(file_policy_namespaces_namespaces, 9);
+  messageDesc(file_policy_namespaces_namespaces, 10);
 
 /**
  * @generated from message policy.namespaces.DeactivateNamespaceRequest
@@ -288,7 +317,7 @@ export type DeactivateNamespaceRequest = Message<"policy.namespaces.DeactivateNa
  * Use `create(DeactivateNamespaceRequestSchema)` to create a new message.
  */
 export const DeactivateNamespaceRequestSchema: GenMessage<DeactivateNamespaceRequest> = /*@__PURE__*/
-  messageDesc(file_policy_namespaces_namespaces, 10);
+  messageDesc(file_policy_namespaces_namespaces, 11);
 
 /**
  * @generated from message policy.namespaces.DeactivateNamespaceResponse
@@ -301,7 +330,7 @@ export type DeactivateNamespaceResponse = Message<"policy.namespaces.DeactivateN
  * Use `create(DeactivateNamespaceResponseSchema)` to create a new message.
  */
 export const DeactivateNamespaceResponseSchema: GenMessage<DeactivateNamespaceResponse> = /*@__PURE__*/
-  messageDesc(file_policy_namespaces_namespaces, 11);
+  messageDesc(file_policy_namespaces_namespaces, 12);
 
 /**
  * Deprecated: utilize AssignPublicKeyToNamespaceRequest
@@ -322,7 +351,7 @@ export type AssignKeyAccessServerToNamespaceRequest = Message<"policy.namespaces
  * @deprecated
  */
 export const AssignKeyAccessServerToNamespaceRequestSchema: GenMessage<AssignKeyAccessServerToNamespaceRequest> = /*@__PURE__*/
-  messageDesc(file_policy_namespaces_namespaces, 12);
+  messageDesc(file_policy_namespaces_namespaces, 13);
 
 /**
  * @generated from message policy.namespaces.AssignKeyAccessServerToNamespaceResponse
@@ -339,7 +368,7 @@ export type AssignKeyAccessServerToNamespaceResponse = Message<"policy.namespace
  * Use `create(AssignKeyAccessServerToNamespaceResponseSchema)` to create a new message.
  */
 export const AssignKeyAccessServerToNamespaceResponseSchema: GenMessage<AssignKeyAccessServerToNamespaceResponse> = /*@__PURE__*/
-  messageDesc(file_policy_namespaces_namespaces, 13);
+  messageDesc(file_policy_namespaces_namespaces, 14);
 
 /**
  * Deprecated: utilize RemovePublicKeyFromNamespaceRequest
@@ -360,7 +389,7 @@ export type RemoveKeyAccessServerFromNamespaceRequest = Message<"policy.namespac
  * @deprecated
  */
 export const RemoveKeyAccessServerFromNamespaceRequestSchema: GenMessage<RemoveKeyAccessServerFromNamespaceRequest> = /*@__PURE__*/
-  messageDesc(file_policy_namespaces_namespaces, 14);
+  messageDesc(file_policy_namespaces_namespaces, 15);
 
 /**
  * @generated from message policy.namespaces.RemoveKeyAccessServerFromNamespaceResponse
@@ -377,7 +406,7 @@ export type RemoveKeyAccessServerFromNamespaceResponse = Message<"policy.namespa
  * Use `create(RemoveKeyAccessServerFromNamespaceResponseSchema)` to create a new message.
  */
 export const RemoveKeyAccessServerFromNamespaceResponseSchema: GenMessage<RemoveKeyAccessServerFromNamespaceResponse> = /*@__PURE__*/
-  messageDesc(file_policy_namespaces_namespaces, 15);
+  messageDesc(file_policy_namespaces_namespaces, 16);
 
 /**
  *
@@ -397,7 +426,7 @@ export type AssignPublicKeyToNamespaceRequest = Message<"policy.namespaces.Assig
  * Use `create(AssignPublicKeyToNamespaceRequestSchema)` to create a new message.
  */
 export const AssignPublicKeyToNamespaceRequestSchema: GenMessage<AssignPublicKeyToNamespaceRequest> = /*@__PURE__*/
-  messageDesc(file_policy_namespaces_namespaces, 16);
+  messageDesc(file_policy_namespaces_namespaces, 17);
 
 /**
  * @generated from message policy.namespaces.AssignPublicKeyToNamespaceResponse
@@ -414,7 +443,7 @@ export type AssignPublicKeyToNamespaceResponse = Message<"policy.namespaces.Assi
  * Use `create(AssignPublicKeyToNamespaceResponseSchema)` to create a new message.
  */
 export const AssignPublicKeyToNamespaceResponseSchema: GenMessage<AssignPublicKeyToNamespaceResponse> = /*@__PURE__*/
-  messageDesc(file_policy_namespaces_namespaces, 17);
+  messageDesc(file_policy_namespaces_namespaces, 18);
 
 /**
  * @generated from message policy.namespaces.RemovePublicKeyFromNamespaceRequest
@@ -431,7 +460,7 @@ export type RemovePublicKeyFromNamespaceRequest = Message<"policy.namespaces.Rem
  * Use `create(RemovePublicKeyFromNamespaceRequestSchema)` to create a new message.
  */
 export const RemovePublicKeyFromNamespaceRequestSchema: GenMessage<RemovePublicKeyFromNamespaceRequest> = /*@__PURE__*/
-  messageDesc(file_policy_namespaces_namespaces, 18);
+  messageDesc(file_policy_namespaces_namespaces, 19);
 
 /**
  * @generated from message policy.namespaces.RemovePublicKeyFromNamespaceResponse
@@ -448,7 +477,43 @@ export type RemovePublicKeyFromNamespaceResponse = Message<"policy.namespaces.Re
  * Use `create(RemovePublicKeyFromNamespaceResponseSchema)` to create a new message.
  */
 export const RemovePublicKeyFromNamespaceResponseSchema: GenMessage<RemovePublicKeyFromNamespaceResponse> = /*@__PURE__*/
-  messageDesc(file_policy_namespaces_namespaces, 19);
+  messageDesc(file_policy_namespaces_namespaces, 20);
+
+/**
+ * @generated from enum policy.namespaces.SortNamespacesType
+ */
+export enum SortNamespacesType {
+  /**
+   * @generated from enum value: SORT_NAMESPACES_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: SORT_NAMESPACES_TYPE_NAME = 1;
+   */
+  NAME = 1,
+
+  /**
+   * @generated from enum value: SORT_NAMESPACES_TYPE_FQN = 2;
+   */
+  FQN = 2,
+
+  /**
+   * @generated from enum value: SORT_NAMESPACES_TYPE_CREATED_AT = 3;
+   */
+  CREATED_AT = 3,
+
+  /**
+   * @generated from enum value: SORT_NAMESPACES_TYPE_UPDATED_AT = 4;
+   */
+  UPDATED_AT = 4,
+}
+
+/**
+ * Describes the enum policy.namespaces.SortNamespacesType.
+ */
+export const SortNamespacesTypeSchema: GenEnum<SortNamespacesType> = /*@__PURE__*/
+  enumDesc(file_policy_namespaces_namespaces, 0);
 
 /**
  * @generated from service policy.namespaces.NamespaceService
