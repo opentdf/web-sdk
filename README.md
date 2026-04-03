@@ -15,8 +15,13 @@ Use interceptors to provide authentication. The SDK does not manage tokens — y
 ```typescript
 import { authTokenInterceptor, OpenTDF } from '@opentdf/sdk';
 
+// Implementation varies by auth provider (e.g. Auth0, Keycloak, oidc-client-ts)
+async function getAccessToken(): Promise<string> {
+  return 'my-access-token';
+}
+
 const client = new OpenTDF({
-  interceptors: [authTokenInterceptor(() => myAuth.getAccessToken())],
+  interceptors: [authTokenInterceptor(getAccessToken)],
   platformUrl: 'https://platform.example.com',
 });
 
@@ -40,7 +45,7 @@ For DPoP-bound tokens, use `authTokenDPoPInterceptor`:
 import { authTokenDPoPInterceptor, OpenTDF } from '@opentdf/sdk';
 
 const dpopInterceptor = authTokenDPoPInterceptor({
-  tokenProvider: () => myAuth.getAccessToken(),
+  tokenProvider: getAccessToken,
 });
 
 const client = new OpenTDF({
@@ -77,12 +82,13 @@ import { AuthProviders, OpenTDF } from '@opentdf/sdk';
 const authProvider = await AuthProviders.refreshAuthProvider({
   clientId: 'applicationNameFromIdP',
   exchange: 'refresh',
-  refreshToken: 'refreshToken',
+  refreshToken: 'refreshTokenValueFromIdP',
   oidcOrigin: 'http://localhost:65432/auth/realms/opentdf',
 });
 
 const client = new OpenTDF({
   authProvider,
+  platformUrl: 'https://platform.example.com',
   defaultCreateOptions: {
     defaultKASEndpoint: 'http://localhost:65432/kas',
   },
@@ -116,7 +122,7 @@ import { authTokenInterceptor } from '@opentdf/sdk';
 import { PlatformClient } from '@opentdf/sdk/platform';
 
 const platform = new PlatformClient({
-  interceptors: [authTokenInterceptor(() => myAuth.getAccessToken())],
+  interceptors: [authTokenInterceptor(getAccessToken)],
   platformUrl: 'https://platform.example.com',
 });
 
