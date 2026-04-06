@@ -114,6 +114,23 @@ describe('clientCredentialsTokenProvider', () => {
     expect(fetchFake.callCount).to.equal(2);
   });
 
+  it('refreshes tokens inside the 30-second expiry buffer', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const nearExpiryToken = fakeJwt(now + 10);
+    const freshToken = fakeJwt(now + 3600);
+    const fetchFake = mockFetch([{ access_token: nearExpiryToken }, { access_token: freshToken }]);
+
+    const provider = clientCredentialsTokenProvider({
+      clientId: 'test-client',
+      clientSecret: 'test-secret',
+      oidcOrigin: 'http://localhost:8080/auth/realms/opentdf',
+    });
+
+    expect(await provider()).to.equal(nearExpiryToken);
+    expect(await provider()).to.equal(freshToken);
+    expect(fetchFake.callCount).to.equal(2);
+  });
+
   it('uses custom token endpoint when provided', async () => {
     const token = fakeJwt(Date.now() / 1000 + 3600);
     const fetchFake = mockFetch([{ access_token: token }]);
@@ -309,9 +326,12 @@ describe('externalJwtTokenProvider', () => {
     expect(result).to.equal(token);
 
     const body = (fetchFake.firstCall.args[1] as RequestInit).body as string;
-    expect(body).to.include('grant_type=urn');
-    expect(body).to.include('token-exchange');
-    expect(body).to.include('subject_token=eyJhbGciOi');
+    const params = new URLSearchParams(body);
+    expect(params.get('grant_type')).to.equal(
+      'urn:ietf:params:oauth:grant-type:token-exchange'
+    );
+    expect(params.get('subject_token')).to.equal('eyJhbGciOi...');
+    expect(params.get('subject_token_type')).to.equal('urn:ietf:params:oauth:token-type:jwt');
   });
 
   it('uses refresh token for subsequent calls after initial exchange', async () => {
@@ -374,6 +394,30 @@ describe('externalJwtTokenProvider', () => {
 
     const result = await provider();
     expect(result).to.equal(token);
+    expect(fetchFake.callCount).to.equal(2);
+  });
+
+  it('re-exchanges the external JWT when no refresh token is returned', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const expiredToken = fakeJwt(now - 60);
+    const freshToken = fakeJwt(now + 3600);
+    const fetchFake = mockFetch([{ access_token: expiredToken }, { access_token: freshToken }]);
+
+    const provider = externalJwtTokenProvider({
+      clientId: 'test-client',
+      externalJwt: 'eyJhbGciOi...',
+      oidcOrigin: 'http://localhost:8080/auth/realms/opentdf',
+    });
+
+    await provider();
+    await provider();
+
+    const secondBody = (fetchFake.secondCall.args[1] as RequestInit).body as string;
+    const params = new URLSearchParams(secondBody);
+    expect(params.get('grant_type')).to.equal(
+      'urn:ietf:params:oauth:grant-type:token-exchange'
+    );
+    expect(params.get('subject_token')).to.equal('eyJhbGciOi...');
     expect(fetchFake.callCount).to.equal(2);
   });
 });
