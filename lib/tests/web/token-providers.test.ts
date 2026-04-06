@@ -327,9 +327,7 @@ describe('externalJwtTokenProvider', () => {
 
     const body = (fetchFake.firstCall.args[1] as RequestInit).body as string;
     const params = new URLSearchParams(body);
-    expect(params.get('grant_type')).to.equal(
-      'urn:ietf:params:oauth:grant-type:token-exchange'
-    );
+    expect(params.get('grant_type')).to.equal('urn:ietf:params:oauth:grant-type:token-exchange');
     expect(params.get('subject_token')).to.equal('eyJhbGciOi...');
     expect(params.get('subject_token_type')).to.equal('urn:ietf:params:oauth:token-type:jwt');
   });
@@ -414,9 +412,7 @@ describe('externalJwtTokenProvider', () => {
 
     const secondBody = (fetchFake.secondCall.args[1] as RequestInit).body as string;
     const params = new URLSearchParams(secondBody);
-    expect(params.get('grant_type')).to.equal(
-      'urn:ietf:params:oauth:grant-type:token-exchange'
-    );
+    expect(params.get('grant_type')).to.equal('urn:ietf:params:oauth:grant-type:token-exchange');
     expect(params.get('subject_token')).to.equal('eyJhbGciOi...');
     expect(fetchFake.callCount).to.equal(2);
   });
