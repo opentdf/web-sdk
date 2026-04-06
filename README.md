@@ -15,7 +15,7 @@ Use interceptors to provide authentication. The SDK does not manage tokens — y
 ```typescript
 import { authTokenInterceptor, OpenTDF } from '@opentdf/sdk';
 
-// Implementation varies by auth provider (e.g. Auth0, Keycloak, oidc-client-ts)
+// Implementation varies by identity provider (e.g. Auth0, Keycloak, oidc-client-ts)
 async function getAccessToken(): Promise<string> {
   return 'my-access-token';
 }
