@@ -10,6 +10,14 @@ export {
   type Interceptor,
   type TokenProvider,
 } from './auth/interceptors.js';
+export {
+  clientCredentialsTokenProvider,
+  refreshTokenProvider,
+  externalJwtTokenProvider,
+  type ClientCredentialsTokenProviderOptions,
+  type RefreshTokenProviderOptions,
+  type ExternalJwtTokenProviderOptions,
+} from './auth/token-providers.js';
 export { attributeFQNsAsValues } from './policy/api.js';
 export {
   listAttributes,
