@@ -4,6 +4,9 @@ import { rstrip } from '../utils.js';
 
 /**
  * Options for client credentials token provider.
+ *
+ * **Not for browser use.** Client secrets must not be exposed in client-side code.
+ * Use this only in server-side (Node.js/Deno) environments.
  */
 export type ClientCredentialsTokenProviderOptions = {
   /** OIDC client ID. */
@@ -117,6 +120,9 @@ async function fetchToken(
 /**
  * Creates a TokenProvider that obtains tokens via the OAuth2 client credentials grant.
  * Tokens are cached and automatically refreshed when expired.
+ *
+ * **Not for browser use.** Client secrets must not be exposed in client-side code.
+ * Use this only in server-side (Node.js/Deno) environments.
  *
  * @example
  * ```ts
