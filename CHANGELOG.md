@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.14.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.13.0...sdk-v0.14.0) (2026-04-09)
+
+
+### Features
+
+* **sdk:** add EntityIdentifier convenience constructors ([#911](https://github.com/opentdf/web-sdk/issues/911)) ([0bbe549](https://github.com/opentdf/web-sdk/commit/0bbe54997f8ef00e9d75a28a115ed85c54ad5a15))
+* **sdk:** add TokenProvider factory functions for common OIDC flows ([#906](https://github.com/opentdf/web-sdk/issues/906)) ([7627b1e](https://github.com/opentdf/web-sdk/commit/7627b1e66664c4c314fa1fe41f37023e53b71df3))
+* **sdk:** deprecate AuthProvider in favor of Interceptor pattern ([#899](https://github.com/opentdf/web-sdk/issues/899)) ([1be800e](https://github.com/opentdf/web-sdk/commit/1be800ead70283a4624fb65030c1a941b6beed71))
+
+
+### Bug Fixes
+
+* **ci:** allow main scope in PR title validation ([#912](https://github.com/opentdf/web-sdk/issues/912)) ([14152c4](https://github.com/opentdf/web-sdk/commit/14152c4a4e662c66d805db811a8e9f21e89b4205))
+* **sdk:** bump lodash from 4.17.23 to 4.18.1 in /lib ([#909](https://github.com/opentdf/web-sdk/issues/909)) ([3f1799c](https://github.com/opentdf/web-sdk/commit/3f1799c3892dd850cf54ab0f00f76f3545e106c3))
+* **sdk:** gate signingKey check on dpopEnabled in withCreds ([#898](https://github.com/opentdf/web-sdk/issues/898)) ([74e350a](https://github.com/opentdf/web-sdk/commit/74e350a32c06b99f65a09377d027fecade15010d))
+
 ## [0.13.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.12.0...sdk-v0.13.0) (2026-03-27)
 
 
