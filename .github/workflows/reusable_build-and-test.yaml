@@ -42,10 +42,12 @@ jobs:
           #   - ci: anything related to ci
           #   - tests: test only changes
           #   - docs: anything related solely to documentation
+          #   - main: release-please release PRs
           scopes: |
             ci
             cli
             docs
+            main
             sdk
             tests
 
