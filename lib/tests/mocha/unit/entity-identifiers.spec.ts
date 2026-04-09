@@ -5,7 +5,7 @@ import {
   forUserName,
   forToken,
   withRequestToken,
-} from '../../../src/platform/authorization/entity-identifiers.js';
+} from '../../../src/index.js';
 import { Entity_Category } from '../../../src/platform/entity/entity_pb.js';
 import type { EntityChain, Token } from '../../../src/platform/entity/entity_pb.js';
 import type { BoolValue } from '@bufbuild/protobuf/wkt';
