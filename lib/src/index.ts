@@ -19,13 +19,7 @@ export {
   type ExternalJwtTokenProviderOptions,
 } from './auth/token-providers.js';
 export { attributeFQNsAsValues } from './policy/api.js';
-export {
-  forEmail,
-  forClientId,
-  forUserName,
-  forToken,
-  withRequestToken,
-} from './platform/authorization/entity-identifiers.js';
+export * as EntityIdentifiers from './platform/authorization/entity-identifiers.js';
 export {
   listAttributes,
   validateAttributes,
