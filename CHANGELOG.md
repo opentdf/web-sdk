@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.15.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.14.0...sdk-v0.15.0) (2026-04-10)
+
+
+### Features
+
+* **sdk:** namespace EntityIdentifier helpers under EntityIdentifiers ([#916](https://github.com/opentdf/web-sdk/issues/916)) ([d0ab115](https://github.com/opentdf/web-sdk/commit/d0ab11560a9f493b7b92fdf04408263fdac97734))
+
+
+### Bug Fixes
+
+* **ci:** remove redundant npm install in dev-artifact workflow ([#913](https://github.com/opentdf/web-sdk/issues/913)) ([015176c](https://github.com/opentdf/web-sdk/commit/015176cb56d9155b6b4a050da6688f51021365f7))
+
 ## [0.14.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.13.0...sdk-v0.14.0) (2026-04-09)
 
 
