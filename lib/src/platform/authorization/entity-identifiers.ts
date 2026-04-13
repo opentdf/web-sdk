@@ -35,7 +35,8 @@ import {
  * });
  *
  * // After
- * const eid = forEmail('jen@example.com');
+ * import { EntityIdentifiers } from '@opentdf/sdk';
+ * const eid = EntityIdentifiers.forEmail('jen@example.com');
  * ```
  */
 
