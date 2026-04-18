@@ -294,10 +294,19 @@ export const PageResponseSchema: GenMessage<PageResponse> = /*@__PURE__*/
   messageDesc(file_policy_selectors, 4);
 
 /**
+ * Sorting direction shared across list APIs.
+ * Notes:
+ * - When a sort field is provided, UNSPECIFIED is treated as ASC.
+ * - When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,
+ *   the endpoint's request message defines the default ordering; see the
+ *   specific List* request docs.
+ *
  * @generated from enum policy.SortDirection
  */
 export enum SortDirection {
   /**
+   * Treated as ASC when a sort field is provided.
+   *
    * defaults to ASC
    *
    * @generated from enum value: SORT_DIRECTION_UNSPECIFIED = 0;
