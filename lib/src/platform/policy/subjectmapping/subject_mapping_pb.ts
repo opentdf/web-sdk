@@ -2,14 +2,14 @@
 // @generated from file policy/subjectmapping/subject_mapping.proto (package policy.subjectmapping, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1";
 import { file_buf_validate_validate } from "../../buf/validate/validate_pb.js";
 import type { MetadataMutable, MetadataUpdateEnum } from "../../common/common_pb.js";
 import { file_common_common } from "../../common/common_pb.js";
 import type { Action, SubjectConditionSet, SubjectMapping, SubjectProperty, SubjectSet } from "../objects_pb.js";
 import { file_policy_objects } from "../objects_pb.js";
-import type { PageRequest, PageResponse } from "../selectors_pb.js";
+import type { PageRequest, PageResponse, SortDirection } from "../selectors_pb.js";
 import { file_policy_selectors } from "../selectors_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -17,7 +17,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file policy/subjectmapping/subject_mapping.proto.
  */
 export const file_policy_subjectmapping_subject_mapping: GenFile = /*@__PURE__*/
-  fileDesc("Citwb2xpY3kvc3ViamVjdG1hcHBpbmcvc3ViamVjdF9tYXBwaW5nLnByb3RvEhVwb2xpY3kuc3ViamVjdG1hcHBpbmciXAobTWF0Y2hTdWJqZWN0TWFwcGluZ3NSZXF1ZXN0Ej0KEnN1YmplY3RfcHJvcGVydGllcxgBIAMoCzIXLnBvbGljeS5TdWJqZWN0UHJvcGVydHlCCLpIBZIBAggBIlAKHE1hdGNoU3ViamVjdE1hcHBpbmdzUmVzcG9uc2USMAoQc3ViamVjdF9tYXBwaW5ncxgBIAMoCzIWLnBvbGljeS5TdWJqZWN0TWFwcGluZyIwChhHZXRTdWJqZWN0TWFwcGluZ1JlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBIkwKGUdldFN1YmplY3RNYXBwaW5nUmVzcG9uc2USLwoPc3ViamVjdF9tYXBwaW5nGAEgASgLMhYucG9saWN5LlN1YmplY3RNYXBwaW5nIq4BChpMaXN0U3ViamVjdE1hcHBpbmdzUmVxdWVzdBIeCgxuYW1lc3BhY2VfaWQYASABKAlCCLpIBXIDsAEBEiEKDW5hbWVzcGFjZV9mcW4YAiABKAlCCrpIB3IFEAGIAQESJwoKcGFnaW5hdGlvbhgKIAEoCzITLnBvbGljeS5QYWdlUmVxdWVzdDokukghIh8KDG5hbWVzcGFjZV9pZAoNbmFtZXNwYWNlX2ZxbhAAInkKG0xpc3RTdWJqZWN0TWFwcGluZ3NSZXNwb25zZRIwChBzdWJqZWN0X21hcHBpbmdzGAEgAygLMhYucG9saWN5LlN1YmplY3RNYXBwaW5nEigKCnBhZ2luYXRpb24YCiABKAsyFC5wb2xpY3kuUGFnZVJlc3BvbnNlIsAFChtDcmVhdGVTdWJqZWN0TWFwcGluZ1JlcXVlc3QSJAoSYXR0cmlidXRlX3ZhbHVlX2lkGAEgASgJQgi6SAVyA7ABARKvAQoHYWN0aW9ucxgCIAMoCzIOLnBvbGljeS5BY3Rpb25CjQG6SIkBugGAAQobYWN0aW9uX25hbWVfb3JfaWRfbm90X2VtcHR5Ei9BY3Rpb24gbmFtZSBvciBJRCBtdXN0IG5vdCBiZSBlbXB0eSBpZiBwcm92aWRlZBowdGhpcy5hbGwoaXRlbSwgaXRlbS5uYW1lICE9ICcnIHx8IGl0ZW0uaWQgIT0gJycpkgECCAES3wEKIWV4aXN0aW5nX3N1YmplY3RfY29uZGl0aW9uX3NldF9pZBgDIAEoCUKzAbpIrwG6AasBChRvcHRpb25hbF91dWlkX2Zvcm1hdBIjT3B0aW9uYWwgZmllbGQgbXVzdCBiZSBhIHZhbGlkIFVVSUQabnNpemUodGhpcykgPT0gMCB8fCB0aGlzLm1hdGNoZXMoJ1swLTlhLWZBLUZdezh9LVswLTlhLWZBLUZdezR9LVswLTlhLWZBLUZdezR9LVswLTlhLWZBLUZdezR9LVswLTlhLWZBLUZdezEyfScpElMKGW5ld19zdWJqZWN0X2NvbmRpdGlvbl9zZXQYBCABKAsyMC5wb2xpY3kuc3ViamVjdG1hcHBpbmcuU3ViamVjdENvbmRpdGlvblNldENyZWF0ZRIeCgxuYW1lc3BhY2VfaWQYBSABKAlCCLpIBXIDsAEBEiEKDW5hbWVzcGFjZV9mcW4YBiABKAlCCrpIB3IFEAGIAQESKQoIbWV0YWRhdGEYZCABKAsyFy5jb21tb24uTWV0YWRhdGFNdXRhYmxlOiS6SCEiHwoMbmFtZXNwYWNlX2lkCg1uYW1lc3BhY2VfZnFuEAAiTwocQ3JlYXRlU3ViamVjdE1hcHBpbmdSZXNwb25zZRIvCg9zdWJqZWN0X21hcHBpbmcYASABKAsyFi5wb2xpY3kuU3ViamVjdE1hcHBpbmcitgQKG1VwZGF0ZVN1YmplY3RNYXBwaW5nUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQES1gEKGHN1YmplY3RfY29uZGl0aW9uX3NldF9pZBgCIAEoCUKzAbpIrwG6AasBChRvcHRpb25hbF91dWlkX2Zvcm1hdBIjT3B0aW9uYWwgZmllbGQgbXVzdCBiZSBhIHZhbGlkIFVVSUQabnNpemUodGhpcykgPT0gMCB8fCB0aGlzLm1hdGNoZXMoJ1swLTlhLWZBLUZdezh9LVswLTlhLWZBLUZdezR9LVswLTlhLWZBLUZdezR9LVswLTlhLWZBLUZdezR9LVswLTlhLWZBLUZdezEyfScpEr4BCgdhY3Rpb25zGAMgAygLMg4ucG9saWN5LkFjdGlvbkKcAbpImAG6AZQBChthY3Rpb25fbmFtZV9vcl9pZF9ub3RfZW1wdHkSL0FjdGlvbiBuYW1lIG9yIElEIG11c3Qgbm90IGJlIGVtcHR5IGlmIHByb3ZpZGVkGkR0aGlzLnNpemUoKSA9PSAwIHx8IHRoaXMuYWxsKGl0ZW0sIGl0ZW0ubmFtZSAhPSAnJyB8fCBpdGVtLmlkICE9ICcnKRIpCghtZXRhZGF0YRhkIAEoCzIXLmNvbW1vbi5NZXRhZGF0YU11dGFibGUSPAoYbWV0YWRhdGFfdXBkYXRlX2JlaGF2aW9yGGUgASgOMhouY29tbW9uLk1ldGFkYXRhVXBkYXRlRW51bSJPChxVcGRhdGVTdWJqZWN0TWFwcGluZ1Jlc3BvbnNlEi8KD3N1YmplY3RfbWFwcGluZxgBIAEoCzIWLnBvbGljeS5TdWJqZWN0TWFwcGluZyIzChtEZWxldGVTdWJqZWN0TWFwcGluZ1JlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBIk8KHERlbGV0ZVN1YmplY3RNYXBwaW5nUmVzcG9uc2USLwoPc3ViamVjdF9tYXBwaW5nGAEgASgLMhYucG9saWN5LlN1YmplY3RNYXBwaW5nIjUKHUdldFN1YmplY3RDb25kaXRpb25TZXRSZXF1ZXN0EhQKAmlkGAEgASgJQgi6SAVyA7ABASKZAQoeR2V0U3ViamVjdENvbmRpdGlvblNldFJlc3BvbnNlEjoKFXN1YmplY3RfY29uZGl0aW9uX3NldBgBIAEoCzIbLnBvbGljeS5TdWJqZWN0Q29uZGl0aW9uU2V0EjsKG2Fzc29jaWF0ZWRfc3ViamVjdF9tYXBwaW5ncxgCIAMoCzIWLnBvbGljeS5TdWJqZWN0TWFwcGluZyKzAQofTGlzdFN1YmplY3RDb25kaXRpb25TZXRzUmVxdWVzdBIeCgxuYW1lc3BhY2VfaWQYASABKAlCCLpIBXIDsAEBEiEKDW5hbWVzcGFjZV9mcW4YAiABKAlCCrpIB3IFEAGIAQESJwoKcGFnaW5hdGlvbhgKIAEoCzITLnBvbGljeS5QYWdlUmVxdWVzdDokukghIh8KDG5hbWVzcGFjZV9pZAoNbmFtZXNwYWNlX2ZxbhAAIokBCiBMaXN0U3ViamVjdENvbmRpdGlvblNldHNSZXNwb25zZRI7ChZzdWJqZWN0X2NvbmRpdGlvbl9zZXRzGAEgAygLMhsucG9saWN5LlN1YmplY3RDb25kaXRpb25TZXQSKAoKcGFnaW5hdGlvbhgKIAEoCzIULnBvbGljeS5QYWdlUmVzcG9uc2UiegoZU3ViamVjdENvbmRpdGlvblNldENyZWF0ZRIyCgxzdWJqZWN0X3NldHMYASADKAsyEi5wb2xpY3kuU3ViamVjdFNldEIIukgFkgECCAESKQoIbWV0YWRhdGEYZCABKAsyFy5jb21tb24uTWV0YWRhdGFNdXRhYmxlIuQBCiBDcmVhdGVTdWJqZWN0Q29uZGl0aW9uU2V0UmVxdWVzdBJXChVzdWJqZWN0X2NvbmRpdGlvbl9zZXQYASABKAsyMC5wb2xpY3kuc3ViamVjdG1hcHBpbmcuU3ViamVjdENvbmRpdGlvblNldENyZWF0ZUIGukgDyAEBEh4KDG5hbWVzcGFjZV9pZBgCIAEoCUIIukgFcgOwAQESIQoNbmFtZXNwYWNlX2ZxbhgDIAEoCUIKukgHcgUQAYgBATokukghIh8KDG5hbWVzcGFjZV9pZAoNbmFtZXNwYWNlX2ZxbhAAIl8KIUNyZWF0ZVN1YmplY3RDb25kaXRpb25TZXRSZXNwb25zZRI6ChVzdWJqZWN0X2NvbmRpdGlvbl9zZXQYASABKAsyGy5wb2xpY3kuU3ViamVjdENvbmRpdGlvblNldCLLAQogVXBkYXRlU3ViamVjdENvbmRpdGlvblNldFJlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBEigKDHN1YmplY3Rfc2V0cxgCIAMoCzISLnBvbGljeS5TdWJqZWN0U2V0EikKCG1ldGFkYXRhGGQgASgLMhcuY29tbW9uLk1ldGFkYXRhTXV0YWJsZRI8ChhtZXRhZGF0YV91cGRhdGVfYmVoYXZpb3IYZSABKA4yGi5jb21tb24uTWV0YWRhdGFVcGRhdGVFbnVtIl8KIVVwZGF0ZVN1YmplY3RDb25kaXRpb25TZXRSZXNwb25zZRI6ChVzdWJqZWN0X2NvbmRpdGlvbl9zZXQYASABKAsyGy5wb2xpY3kuU3ViamVjdENvbmRpdGlvblNldCI4CiBEZWxldGVTdWJqZWN0Q29uZGl0aW9uU2V0UmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQEiXwohRGVsZXRlU3ViamVjdENvbmRpdGlvblNldFJlc3BvbnNlEjoKFXN1YmplY3RfY29uZGl0aW9uX3NldBgBIAEoCzIbLnBvbGljeS5TdWJqZWN0Q29uZGl0aW9uU2V0Ii4KLERlbGV0ZUFsbFVubWFwcGVkU3ViamVjdENvbmRpdGlvblNldHNSZXF1ZXN0ImwKLURlbGV0ZUFsbFVubWFwcGVkU3ViamVjdENvbmRpdGlvblNldHNSZXNwb25zZRI7ChZzdWJqZWN0X2NvbmRpdGlvbl9zZXRzGAEgAygLMhsucG9saWN5LlN1YmplY3RDb25kaXRpb25TZXQyuA0KFVN1YmplY3RNYXBwaW5nU2VydmljZRKBAQoUTWF0Y2hTdWJqZWN0TWFwcGluZ3MSMi5wb2xpY3kuc3ViamVjdG1hcHBpbmcuTWF0Y2hTdWJqZWN0TWFwcGluZ3NSZXF1ZXN0GjMucG9saWN5LnN1YmplY3RtYXBwaW5nLk1hdGNoU3ViamVjdE1hcHBpbmdzUmVzcG9uc2UiABKBAQoTTGlzdFN1YmplY3RNYXBwaW5ncxIxLnBvbGljeS5zdWJqZWN0bWFwcGluZy5MaXN0U3ViamVjdE1hcHBpbmdzUmVxdWVzdBoyLnBvbGljeS5zdWJqZWN0bWFwcGluZy5MaXN0U3ViamVjdE1hcHBpbmdzUmVzcG9uc2UiA5ACARJ7ChFHZXRTdWJqZWN0TWFwcGluZxIvLnBvbGljeS5zdWJqZWN0bWFwcGluZy5HZXRTdWJqZWN0TWFwcGluZ1JlcXVlc3QaMC5wb2xpY3kuc3ViamVjdG1hcHBpbmcuR2V0U3ViamVjdE1hcHBpbmdSZXNwb25zZSIDkAIBEoEBChRDcmVhdGVTdWJqZWN0TWFwcGluZxIyLnBvbGljeS5zdWJqZWN0bWFwcGluZy5DcmVhdGVTdWJqZWN0TWFwcGluZ1JlcXVlc3QaMy5wb2xpY3kuc3ViamVjdG1hcHBpbmcuQ3JlYXRlU3ViamVjdE1hcHBpbmdSZXNwb25zZSIAEoEBChRVcGRhdGVTdWJqZWN0TWFwcGluZxIyLnBvbGljeS5zdWJqZWN0bWFwcGluZy5VcGRhdGVTdWJqZWN0TWFwcGluZ1JlcXVlc3QaMy5wb2xpY3kuc3ViamVjdG1hcHBpbmcuVXBkYXRlU3ViamVjdE1hcHBpbmdSZXNwb25zZSIAEoEBChREZWxldGVTdWJqZWN0TWFwcGluZxIyLnBvbGljeS5zdWJqZWN0bWFwcGluZy5EZWxldGVTdWJqZWN0TWFwcGluZ1JlcXVlc3QaMy5wb2xpY3kuc3ViamVjdG1hcHBpbmcuRGVsZXRlU3ViamVjdE1hcHBpbmdSZXNwb25zZSIAEpABChhMaXN0U3ViamVjdENvbmRpdGlvblNldHMSNi5wb2xpY3kuc3ViamVjdG1hcHBpbmcuTGlzdFN1YmplY3RDb25kaXRpb25TZXRzUmVxdWVzdBo3LnBvbGljeS5zdWJqZWN0bWFwcGluZy5MaXN0U3ViamVjdENvbmRpdGlvblNldHNSZXNwb25zZSIDkAIBEooBChZHZXRTdWJqZWN0Q29uZGl0aW9uU2V0EjQucG9saWN5LnN1YmplY3RtYXBwaW5nLkdldFN1YmplY3RDb25kaXRpb25TZXRSZXF1ZXN0GjUucG9saWN5LnN1YmplY3RtYXBwaW5nLkdldFN1YmplY3RDb25kaXRpb25TZXRSZXNwb25zZSIDkAIBEpABChlDcmVhdGVTdWJqZWN0Q29uZGl0aW9uU2V0EjcucG9saWN5LnN1YmplY3RtYXBwaW5nLkNyZWF0ZVN1YmplY3RDb25kaXRpb25TZXRSZXF1ZXN0GjgucG9saWN5LnN1YmplY3RtYXBwaW5nLkNyZWF0ZVN1YmplY3RDb25kaXRpb25TZXRSZXNwb25zZSIAEpABChlVcGRhdGVTdWJqZWN0Q29uZGl0aW9uU2V0EjcucG9saWN5LnN1YmplY3RtYXBwaW5nLlVwZGF0ZVN1YmplY3RDb25kaXRpb25TZXRSZXF1ZXN0GjgucG9saWN5LnN1YmplY3RtYXBwaW5nLlVwZGF0ZVN1YmplY3RDb25kaXRpb25TZXRSZXNwb25zZSIAEpABChlEZWxldGVTdWJqZWN0Q29uZGl0aW9uU2V0EjcucG9saWN5LnN1YmplY3RtYXBwaW5nLkRlbGV0ZVN1YmplY3RDb25kaXRpb25TZXRSZXF1ZXN0GjgucG9saWN5LnN1YmplY3RtYXBwaW5nLkRlbGV0ZVN1YmplY3RDb25kaXRpb25TZXRSZXNwb25zZSIAErQBCiVEZWxldGVBbGxVbm1hcHBlZFN1YmplY3RDb25kaXRpb25TZXRzEkMucG9saWN5LnN1YmplY3RtYXBwaW5nLkRlbGV0ZUFsbFVubWFwcGVkU3ViamVjdENvbmRpdGlvblNldHNSZXF1ZXN0GkQucG9saWN5LnN1YmplY3RtYXBwaW5nLkRlbGV0ZUFsbFVubWFwcGVkU3ViamVjdENvbmRpdGlvblNldHNSZXNwb25zZSIAYgZwcm90bzM", [file_buf_validate_validate, file_common_common, file_policy_objects, file_policy_selectors]);
+  fileDesc("Citwb2xpY3kvc3ViamVjdG1hcHBpbmcvc3ViamVjdF9tYXBwaW5nLnByb3RvEhVwb2xpY3kuc3ViamVjdG1hcHBpbmciXAobTWF0Y2hTdWJqZWN0TWFwcGluZ3NSZXF1ZXN0Ej0KEnN1YmplY3RfcHJvcGVydGllcxgBIAMoCzIXLnBvbGljeS5TdWJqZWN0UHJvcGVydHlCCLpIBZIBAggBIlAKHE1hdGNoU3ViamVjdE1hcHBpbmdzUmVzcG9uc2USMAoQc3ViamVjdF9tYXBwaW5ncxgBIAMoCzIWLnBvbGljeS5TdWJqZWN0TWFwcGluZyIwChhHZXRTdWJqZWN0TWFwcGluZ1JlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBIkwKGUdldFN1YmplY3RNYXBwaW5nUmVzcG9uc2USLwoPc3ViamVjdF9tYXBwaW5nGAEgASgLMhYucG9saWN5LlN1YmplY3RNYXBwaW5nIn4KE1N1YmplY3RNYXBwaW5nc1NvcnQSPQoFZmllbGQYASABKA4yLi5wb2xpY3kuc3ViamVjdG1hcHBpbmcuU29ydFN1YmplY3RNYXBwaW5nc1R5cGUSKAoJZGlyZWN0aW9uGAIgASgOMhUucG9saWN5LlNvcnREaXJlY3Rpb24i8gEKGkxpc3RTdWJqZWN0TWFwcGluZ3NSZXF1ZXN0Eh4KDG5hbWVzcGFjZV9pZBgBIAEoCUIIukgFcgOwAQESIQoNbmFtZXNwYWNlX2ZxbhgCIAEoCUIKukgHcgUQAYgBARInCgpwYWdpbmF0aW9uGAogASgLMhMucG9saWN5LlBhZ2VSZXF1ZXN0EkIKBHNvcnQYCyADKAsyKi5wb2xpY3kuc3ViamVjdG1hcHBpbmcuU3ViamVjdE1hcHBpbmdzU29ydEIIukgFkgECEAE6JLpIISIfCgxuYW1lc3BhY2VfaWQKDW5hbWVzcGFjZV9mcW4QACJ5ChtMaXN0U3ViamVjdE1hcHBpbmdzUmVzcG9uc2USMAoQc3ViamVjdF9tYXBwaW5ncxgBIAMoCzIWLnBvbGljeS5TdWJqZWN0TWFwcGluZxIoCgpwYWdpbmF0aW9uGAogASgLMhQucG9saWN5LlBhZ2VSZXNwb25zZSLABQobQ3JlYXRlU3ViamVjdE1hcHBpbmdSZXF1ZXN0EiQKEmF0dHJpYnV0ZV92YWx1ZV9pZBgBIAEoCUIIukgFcgOwAQESrwEKB2FjdGlvbnMYAiADKAsyDi5wb2xpY3kuQWN0aW9uQo0BukiJAboBgAEKG2FjdGlvbl9uYW1lX29yX2lkX25vdF9lbXB0eRIvQWN0aW9uIG5hbWUgb3IgSUQgbXVzdCBub3QgYmUgZW1wdHkgaWYgcHJvdmlkZWQaMHRoaXMuYWxsKGl0ZW0sIGl0ZW0ubmFtZSAhPSAnJyB8fCBpdGVtLmlkICE9ICcnKZIBAggBEt8BCiFleGlzdGluZ19zdWJqZWN0X2NvbmRpdGlvbl9zZXRfaWQYAyABKAlCswG6SK8BugGrAQoUb3B0aW9uYWxfdXVpZF9mb3JtYXQSI09wdGlvbmFsIGZpZWxkIG11c3QgYmUgYSB2YWxpZCBVVUlEGm5zaXplKHRoaXMpID09IDAgfHwgdGhpcy5tYXRjaGVzKCdbMC05YS1mQS1GXXs4fS1bMC05YS1mQS1GXXs0fS1bMC05YS1mQS1GXXs0fS1bMC05YS1mQS1GXXs0fS1bMC05YS1mQS1GXXsxMn0nKRJTChluZXdfc3ViamVjdF9jb25kaXRpb25fc2V0GAQgASgLMjAucG9saWN5LnN1YmplY3RtYXBwaW5nLlN1YmplY3RDb25kaXRpb25TZXRDcmVhdGUSHgoMbmFtZXNwYWNlX2lkGAUgASgJQgi6SAVyA7ABARIhCg1uYW1lc3BhY2VfZnFuGAYgASgJQgq6SAdyBRABiAEBEikKCG1ldGFkYXRhGGQgASgLMhcuY29tbW9uLk1ldGFkYXRhTXV0YWJsZTokukghIh8KDG5hbWVzcGFjZV9pZAoNbmFtZXNwYWNlX2ZxbhAAIk8KHENyZWF0ZVN1YmplY3RNYXBwaW5nUmVzcG9uc2USLwoPc3ViamVjdF9tYXBwaW5nGAEgASgLMhYucG9saWN5LlN1YmplY3RNYXBwaW5nIrYEChtVcGRhdGVTdWJqZWN0TWFwcGluZ1JlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBEtYBChhzdWJqZWN0X2NvbmRpdGlvbl9zZXRfaWQYAiABKAlCswG6SK8BugGrAQoUb3B0aW9uYWxfdXVpZF9mb3JtYXQSI09wdGlvbmFsIGZpZWxkIG11c3QgYmUgYSB2YWxpZCBVVUlEGm5zaXplKHRoaXMpID09IDAgfHwgdGhpcy5tYXRjaGVzKCdbMC05YS1mQS1GXXs4fS1bMC05YS1mQS1GXXs0fS1bMC05YS1mQS1GXXs0fS1bMC05YS1mQS1GXXs0fS1bMC05YS1mQS1GXXsxMn0nKRK+AQoHYWN0aW9ucxgDIAMoCzIOLnBvbGljeS5BY3Rpb25CnAG6SJgBugGUAQobYWN0aW9uX25hbWVfb3JfaWRfbm90X2VtcHR5Ei9BY3Rpb24gbmFtZSBvciBJRCBtdXN0IG5vdCBiZSBlbXB0eSBpZiBwcm92aWRlZBpEdGhpcy5zaXplKCkgPT0gMCB8fCB0aGlzLmFsbChpdGVtLCBpdGVtLm5hbWUgIT0gJycgfHwgaXRlbS5pZCAhPSAnJykSKQoIbWV0YWRhdGEYZCABKAsyFy5jb21tb24uTWV0YWRhdGFNdXRhYmxlEjwKGG1ldGFkYXRhX3VwZGF0ZV9iZWhhdmlvchhlIAEoDjIaLmNvbW1vbi5NZXRhZGF0YVVwZGF0ZUVudW0iTwocVXBkYXRlU3ViamVjdE1hcHBpbmdSZXNwb25zZRIvCg9zdWJqZWN0X21hcHBpbmcYASABKAsyFi5wb2xpY3kuU3ViamVjdE1hcHBpbmciMwobRGVsZXRlU3ViamVjdE1hcHBpbmdSZXF1ZXN0EhQKAmlkGAEgASgJQgi6SAVyA7ABASJPChxEZWxldGVTdWJqZWN0TWFwcGluZ1Jlc3BvbnNlEi8KD3N1YmplY3RfbWFwcGluZxgBIAEoCzIWLnBvbGljeS5TdWJqZWN0TWFwcGluZyI1Ch1HZXRTdWJqZWN0Q29uZGl0aW9uU2V0UmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQEimQEKHkdldFN1YmplY3RDb25kaXRpb25TZXRSZXNwb25zZRI6ChVzdWJqZWN0X2NvbmRpdGlvbl9zZXQYASABKAsyGy5wb2xpY3kuU3ViamVjdENvbmRpdGlvblNldBI7Chthc3NvY2lhdGVkX3N1YmplY3RfbWFwcGluZ3MYAiADKAsyFi5wb2xpY3kuU3ViamVjdE1hcHBpbmciiAEKGFN1YmplY3RDb25kaXRpb25TZXRzU29ydBJCCgVmaWVsZBgBIAEoDjIzLnBvbGljeS5zdWJqZWN0bWFwcGluZy5Tb3J0U3ViamVjdENvbmRpdGlvblNldHNUeXBlEigKCWRpcmVjdGlvbhgCIAEoDjIVLnBvbGljeS5Tb3J0RGlyZWN0aW9uIvwBCh9MaXN0U3ViamVjdENvbmRpdGlvblNldHNSZXF1ZXN0Eh4KDG5hbWVzcGFjZV9pZBgBIAEoCUIIukgFcgOwAQESIQoNbmFtZXNwYWNlX2ZxbhgCIAEoCUIKukgHcgUQAYgBARInCgpwYWdpbmF0aW9uGAogASgLMhMucG9saWN5LlBhZ2VSZXF1ZXN0EkcKBHNvcnQYCyADKAsyLy5wb2xpY3kuc3ViamVjdG1hcHBpbmcuU3ViamVjdENvbmRpdGlvblNldHNTb3J0Qgi6SAWSAQIQATokukghIh8KDG5hbWVzcGFjZV9pZAoNbmFtZXNwYWNlX2ZxbhAAIokBCiBMaXN0U3ViamVjdENvbmRpdGlvblNldHNSZXNwb25zZRI7ChZzdWJqZWN0X2NvbmRpdGlvbl9zZXRzGAEgAygLMhsucG9saWN5LlN1YmplY3RDb25kaXRpb25TZXQSKAoKcGFnaW5hdGlvbhgKIAEoCzIULnBvbGljeS5QYWdlUmVzcG9uc2UiegoZU3ViamVjdENvbmRpdGlvblNldENyZWF0ZRIyCgxzdWJqZWN0X3NldHMYASADKAsyEi5wb2xpY3kuU3ViamVjdFNldEIIukgFkgECCAESKQoIbWV0YWRhdGEYZCABKAsyFy5jb21tb24uTWV0YWRhdGFNdXRhYmxlIuQBCiBDcmVhdGVTdWJqZWN0Q29uZGl0aW9uU2V0UmVxdWVzdBJXChVzdWJqZWN0X2NvbmRpdGlvbl9zZXQYASABKAsyMC5wb2xpY3kuc3ViamVjdG1hcHBpbmcuU3ViamVjdENvbmRpdGlvblNldENyZWF0ZUIGukgDyAEBEh4KDG5hbWVzcGFjZV9pZBgCIAEoCUIIukgFcgOwAQESIQoNbmFtZXNwYWNlX2ZxbhgDIAEoCUIKukgHcgUQAYgBATokukghIh8KDG5hbWVzcGFjZV9pZAoNbmFtZXNwYWNlX2ZxbhAAIl8KIUNyZWF0ZVN1YmplY3RDb25kaXRpb25TZXRSZXNwb25zZRI6ChVzdWJqZWN0X2NvbmRpdGlvbl9zZXQYASABKAsyGy5wb2xpY3kuU3ViamVjdENvbmRpdGlvblNldCLLAQogVXBkYXRlU3ViamVjdENvbmRpdGlvblNldFJlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBEigKDHN1YmplY3Rfc2V0cxgCIAMoCzISLnBvbGljeS5TdWJqZWN0U2V0EikKCG1ldGFkYXRhGGQgASgLMhcuY29tbW9uLk1ldGFkYXRhTXV0YWJsZRI8ChhtZXRhZGF0YV91cGRhdGVfYmVoYXZpb3IYZSABKA4yGi5jb21tb24uTWV0YWRhdGFVcGRhdGVFbnVtIl8KIVVwZGF0ZVN1YmplY3RDb25kaXRpb25TZXRSZXNwb25zZRI6ChVzdWJqZWN0X2NvbmRpdGlvbl9zZXQYASABKAsyGy5wb2xpY3kuU3ViamVjdENvbmRpdGlvblNldCI4CiBEZWxldGVTdWJqZWN0Q29uZGl0aW9uU2V0UmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQEiXwohRGVsZXRlU3ViamVjdENvbmRpdGlvblNldFJlc3BvbnNlEjoKFXN1YmplY3RfY29uZGl0aW9uX3NldBgBIAEoCzIbLnBvbGljeS5TdWJqZWN0Q29uZGl0aW9uU2V0Ii4KLERlbGV0ZUFsbFVubWFwcGVkU3ViamVjdENvbmRpdGlvblNldHNSZXF1ZXN0ImwKLURlbGV0ZUFsbFVubWFwcGVkU3ViamVjdENvbmRpdGlvblNldHNSZXNwb25zZRI7ChZzdWJqZWN0X2NvbmRpdGlvbl9zZXRzGAEgAygLMhsucG9saWN5LlN1YmplY3RDb25kaXRpb25TZXQqmwEKF1NvcnRTdWJqZWN0TWFwcGluZ3NUeXBlEioKJlNPUlRfU1VCSkVDVF9NQVBQSU5HU19UWVBFX1VOU1BFQ0lGSUVEEAASKQolU09SVF9TVUJKRUNUX01BUFBJTkdTX1RZUEVfQ1JFQVRFRF9BVBABEikKJVNPUlRfU1VCSkVDVF9NQVBQSU5HU19UWVBFX1VQREFURURfQVQQAiqyAQocU29ydFN1YmplY3RDb25kaXRpb25TZXRzVHlwZRIwCixTT1JUX1NVQkpFQ1RfQ09ORElUSU9OX1NFVFNfVFlQRV9VTlNQRUNJRklFRBAAEi8KK1NPUlRfU1VCSkVDVF9DT05ESVRJT05fU0VUU19UWVBFX0NSRUFURURfQVQQARIvCitTT1JUX1NVQkpFQ1RfQ09ORElUSU9OX1NFVFNfVFlQRV9VUERBVEVEX0FUEAIyuA0KFVN1YmplY3RNYXBwaW5nU2VydmljZRKBAQoUTWF0Y2hTdWJqZWN0TWFwcGluZ3MSMi5wb2xpY3kuc3ViamVjdG1hcHBpbmcuTWF0Y2hTdWJqZWN0TWFwcGluZ3NSZXF1ZXN0GjMucG9saWN5LnN1YmplY3RtYXBwaW5nLk1hdGNoU3ViamVjdE1hcHBpbmdzUmVzcG9uc2UiABKBAQoTTGlzdFN1YmplY3RNYXBwaW5ncxIxLnBvbGljeS5zdWJqZWN0bWFwcGluZy5MaXN0U3ViamVjdE1hcHBpbmdzUmVxdWVzdBoyLnBvbGljeS5zdWJqZWN0bWFwcGluZy5MaXN0U3ViamVjdE1hcHBpbmdzUmVzcG9uc2UiA5ACARJ7ChFHZXRTdWJqZWN0TWFwcGluZxIvLnBvbGljeS5zdWJqZWN0bWFwcGluZy5HZXRTdWJqZWN0TWFwcGluZ1JlcXVlc3QaMC5wb2xpY3kuc3ViamVjdG1hcHBpbmcuR2V0U3ViamVjdE1hcHBpbmdSZXNwb25zZSIDkAIBEoEBChRDcmVhdGVTdWJqZWN0TWFwcGluZxIyLnBvbGljeS5zdWJqZWN0bWFwcGluZy5DcmVhdGVTdWJqZWN0TWFwcGluZ1JlcXVlc3QaMy5wb2xpY3kuc3ViamVjdG1hcHBpbmcuQ3JlYXRlU3ViamVjdE1hcHBpbmdSZXNwb25zZSIAEoEBChRVcGRhdGVTdWJqZWN0TWFwcGluZxIyLnBvbGljeS5zdWJqZWN0bWFwcGluZy5VcGRhdGVTdWJqZWN0TWFwcGluZ1JlcXVlc3QaMy5wb2xpY3kuc3ViamVjdG1hcHBpbmcuVXBkYXRlU3ViamVjdE1hcHBpbmdSZXNwb25zZSIAEoEBChREZWxldGVTdWJqZWN0TWFwcGluZxIyLnBvbGljeS5zdWJqZWN0bWFwcGluZy5EZWxldGVTdWJqZWN0TWFwcGluZ1JlcXVlc3QaMy5wb2xpY3kuc3ViamVjdG1hcHBpbmcuRGVsZXRlU3ViamVjdE1hcHBpbmdSZXNwb25zZSIAEpABChhMaXN0U3ViamVjdENvbmRpdGlvblNldHMSNi5wb2xpY3kuc3ViamVjdG1hcHBpbmcuTGlzdFN1YmplY3RDb25kaXRpb25TZXRzUmVxdWVzdBo3LnBvbGljeS5zdWJqZWN0bWFwcGluZy5MaXN0U3ViamVjdENvbmRpdGlvblNldHNSZXNwb25zZSIDkAIBEooBChZHZXRTdWJqZWN0Q29uZGl0aW9uU2V0EjQucG9saWN5LnN1YmplY3RtYXBwaW5nLkdldFN1YmplY3RDb25kaXRpb25TZXRSZXF1ZXN0GjUucG9saWN5LnN1YmplY3RtYXBwaW5nLkdldFN1YmplY3RDb25kaXRpb25TZXRSZXNwb25zZSIDkAIBEpABChlDcmVhdGVTdWJqZWN0Q29uZGl0aW9uU2V0EjcucG9saWN5LnN1YmplY3RtYXBwaW5nLkNyZWF0ZVN1YmplY3RDb25kaXRpb25TZXRSZXF1ZXN0GjgucG9saWN5LnN1YmplY3RtYXBwaW5nLkNyZWF0ZVN1YmplY3RDb25kaXRpb25TZXRSZXNwb25zZSIAEpABChlVcGRhdGVTdWJqZWN0Q29uZGl0aW9uU2V0EjcucG9saWN5LnN1YmplY3RtYXBwaW5nLlVwZGF0ZVN1YmplY3RDb25kaXRpb25TZXRSZXF1ZXN0GjgucG9saWN5LnN1YmplY3RtYXBwaW5nLlVwZGF0ZVN1YmplY3RDb25kaXRpb25TZXRSZXNwb25zZSIAEpABChlEZWxldGVTdWJqZWN0Q29uZGl0aW9uU2V0EjcucG9saWN5LnN1YmplY3RtYXBwaW5nLkRlbGV0ZVN1YmplY3RDb25kaXRpb25TZXRSZXF1ZXN0GjgucG9saWN5LnN1YmplY3RtYXBwaW5nLkRlbGV0ZVN1YmplY3RDb25kaXRpb25TZXRSZXNwb25zZSIAErQBCiVEZWxldGVBbGxVbm1hcHBlZFN1YmplY3RDb25kaXRpb25TZXRzEkMucG9saWN5LnN1YmplY3RtYXBwaW5nLkRlbGV0ZUFsbFVubWFwcGVkU3ViamVjdENvbmRpdGlvblNldHNSZXF1ZXN0GkQucG9saWN5LnN1YmplY3RtYXBwaW5nLkRlbGV0ZUFsbFVubWFwcGVkU3ViamVjdENvbmRpdGlvblNldHNSZXNwb25zZSIAYgZwcm90bzM", [file_buf_validate_validate, file_common_common, file_policy_objects, file_policy_selectors]);
 
 /**
  * MatchSubjectMappingsRequest liberally returns a list of SubjectMappings based on the provided SubjectProperties.
@@ -93,6 +93,28 @@ export const GetSubjectMappingResponseSchema: GenMessage<GetSubjectMappingRespon
   messageDesc(file_policy_subjectmapping_subject_mapping, 3);
 
 /**
+ * @generated from message policy.subjectmapping.SubjectMappingsSort
+ */
+export type SubjectMappingsSort = Message<"policy.subjectmapping.SubjectMappingsSort"> & {
+  /**
+   * @generated from field: policy.subjectmapping.SortSubjectMappingsType field = 1;
+   */
+  field: SortSubjectMappingsType;
+
+  /**
+   * @generated from field: policy.SortDirection direction = 2;
+   */
+  direction: SortDirection;
+};
+
+/**
+ * Describes the message policy.subjectmapping.SubjectMappingsSort.
+ * Use `create(SubjectMappingsSortSchema)` to create a new message.
+ */
+export const SubjectMappingsSortSchema: GenMessage<SubjectMappingsSort> = /*@__PURE__*/
+  messageDesc(file_policy_subjectmapping_subject_mapping, 4);
+
+/**
  * @generated from message policy.subjectmapping.ListSubjectMappingsRequest
  */
 export type ListSubjectMappingsRequest = Message<"policy.subjectmapping.ListSubjectMappingsRequest"> & {
@@ -112,6 +134,13 @@ export type ListSubjectMappingsRequest = Message<"policy.subjectmapping.ListSubj
    * @generated from field: policy.PageRequest pagination = 10;
    */
   pagination?: PageRequest;
+
+  /**
+   * Optional - CONSTRAINT: max 1 item
+   *
+   * @generated from field: repeated policy.subjectmapping.SubjectMappingsSort sort = 11;
+   */
+  sort: SubjectMappingsSort[];
 };
 
 /**
@@ -119,7 +148,7 @@ export type ListSubjectMappingsRequest = Message<"policy.subjectmapping.ListSubj
  * Use `create(ListSubjectMappingsRequestSchema)` to create a new message.
  */
 export const ListSubjectMappingsRequestSchema: GenMessage<ListSubjectMappingsRequest> = /*@__PURE__*/
-  messageDesc(file_policy_subjectmapping_subject_mapping, 4);
+  messageDesc(file_policy_subjectmapping_subject_mapping, 5);
 
 /**
  * @generated from message policy.subjectmapping.ListSubjectMappingsResponse
@@ -141,7 +170,7 @@ export type ListSubjectMappingsResponse = Message<"policy.subjectmapping.ListSub
  * Use `create(ListSubjectMappingsResponseSchema)` to create a new message.
  */
 export const ListSubjectMappingsResponseSchema: GenMessage<ListSubjectMappingsResponse> = /*@__PURE__*/
-  messageDesc(file_policy_subjectmapping_subject_mapping, 5);
+  messageDesc(file_policy_subjectmapping_subject_mapping, 6);
 
 /**
  * @generated from message policy.subjectmapping.CreateSubjectMappingRequest
@@ -204,7 +233,7 @@ export type CreateSubjectMappingRequest = Message<"policy.subjectmapping.CreateS
  * Use `create(CreateSubjectMappingRequestSchema)` to create a new message.
  */
 export const CreateSubjectMappingRequestSchema: GenMessage<CreateSubjectMappingRequest> = /*@__PURE__*/
-  messageDesc(file_policy_subjectmapping_subject_mapping, 6);
+  messageDesc(file_policy_subjectmapping_subject_mapping, 7);
 
 /**
  * @generated from message policy.subjectmapping.CreateSubjectMappingResponse
@@ -221,7 +250,7 @@ export type CreateSubjectMappingResponse = Message<"policy.subjectmapping.Create
  * Use `create(CreateSubjectMappingResponseSchema)` to create a new message.
  */
 export const CreateSubjectMappingResponseSchema: GenMessage<CreateSubjectMappingResponse> = /*@__PURE__*/
-  messageDesc(file_policy_subjectmapping_subject_mapping, 7);
+  messageDesc(file_policy_subjectmapping_subject_mapping, 8);
 
 /**
  * @generated from message policy.subjectmapping.UpdateSubjectMappingRequest
@@ -268,7 +297,7 @@ export type UpdateSubjectMappingRequest = Message<"policy.subjectmapping.UpdateS
  * Use `create(UpdateSubjectMappingRequestSchema)` to create a new message.
  */
 export const UpdateSubjectMappingRequestSchema: GenMessage<UpdateSubjectMappingRequest> = /*@__PURE__*/
-  messageDesc(file_policy_subjectmapping_subject_mapping, 8);
+  messageDesc(file_policy_subjectmapping_subject_mapping, 9);
 
 /**
  * @generated from message policy.subjectmapping.UpdateSubjectMappingResponse
@@ -287,7 +316,7 @@ export type UpdateSubjectMappingResponse = Message<"policy.subjectmapping.Update
  * Use `create(UpdateSubjectMappingResponseSchema)` to create a new message.
  */
 export const UpdateSubjectMappingResponseSchema: GenMessage<UpdateSubjectMappingResponse> = /*@__PURE__*/
-  messageDesc(file_policy_subjectmapping_subject_mapping, 9);
+  messageDesc(file_policy_subjectmapping_subject_mapping, 10);
 
 /**
  * @generated from message policy.subjectmapping.DeleteSubjectMappingRequest
@@ -306,7 +335,7 @@ export type DeleteSubjectMappingRequest = Message<"policy.subjectmapping.DeleteS
  * Use `create(DeleteSubjectMappingRequestSchema)` to create a new message.
  */
 export const DeleteSubjectMappingRequestSchema: GenMessage<DeleteSubjectMappingRequest> = /*@__PURE__*/
-  messageDesc(file_policy_subjectmapping_subject_mapping, 10);
+  messageDesc(file_policy_subjectmapping_subject_mapping, 11);
 
 /**
  * @generated from message policy.subjectmapping.DeleteSubjectMappingResponse
@@ -325,7 +354,7 @@ export type DeleteSubjectMappingResponse = Message<"policy.subjectmapping.Delete
  * Use `create(DeleteSubjectMappingResponseSchema)` to create a new message.
  */
 export const DeleteSubjectMappingResponseSchema: GenMessage<DeleteSubjectMappingResponse> = /*@__PURE__*/
-  messageDesc(file_policy_subjectmapping_subject_mapping, 11);
+  messageDesc(file_policy_subjectmapping_subject_mapping, 12);
 
 /**
  * @generated from message policy.subjectmapping.GetSubjectConditionSetRequest
@@ -344,7 +373,7 @@ export type GetSubjectConditionSetRequest = Message<"policy.subjectmapping.GetSu
  * Use `create(GetSubjectConditionSetRequestSchema)` to create a new message.
  */
 export const GetSubjectConditionSetRequestSchema: GenMessage<GetSubjectConditionSetRequest> = /*@__PURE__*/
-  messageDesc(file_policy_subjectmapping_subject_mapping, 12);
+  messageDesc(file_policy_subjectmapping_subject_mapping, 13);
 
 /**
  * @generated from message policy.subjectmapping.GetSubjectConditionSetResponse
@@ -368,7 +397,29 @@ export type GetSubjectConditionSetResponse = Message<"policy.subjectmapping.GetS
  * Use `create(GetSubjectConditionSetResponseSchema)` to create a new message.
  */
 export const GetSubjectConditionSetResponseSchema: GenMessage<GetSubjectConditionSetResponse> = /*@__PURE__*/
-  messageDesc(file_policy_subjectmapping_subject_mapping, 13);
+  messageDesc(file_policy_subjectmapping_subject_mapping, 14);
+
+/**
+ * @generated from message policy.subjectmapping.SubjectConditionSetsSort
+ */
+export type SubjectConditionSetsSort = Message<"policy.subjectmapping.SubjectConditionSetsSort"> & {
+  /**
+   * @generated from field: policy.subjectmapping.SortSubjectConditionSetsType field = 1;
+   */
+  field: SortSubjectConditionSetsType;
+
+  /**
+   * @generated from field: policy.SortDirection direction = 2;
+   */
+  direction: SortDirection;
+};
+
+/**
+ * Describes the message policy.subjectmapping.SubjectConditionSetsSort.
+ * Use `create(SubjectConditionSetsSortSchema)` to create a new message.
+ */
+export const SubjectConditionSetsSortSchema: GenMessage<SubjectConditionSetsSort> = /*@__PURE__*/
+  messageDesc(file_policy_subjectmapping_subject_mapping, 15);
 
 /**
  * @generated from message policy.subjectmapping.ListSubjectConditionSetsRequest
@@ -390,6 +441,15 @@ export type ListSubjectConditionSetsRequest = Message<"policy.subjectmapping.Lis
    * @generated from field: policy.PageRequest pagination = 10;
    */
   pagination?: PageRequest;
+
+  /**
+   * Optional - CONSTRAINT: max 1 item
+   * Default ordering when omitted or when the first entry's field is UNSPECIFIED:
+   * created_at DESC, then id ASC (tie-breaker).
+   *
+   * @generated from field: repeated policy.subjectmapping.SubjectConditionSetsSort sort = 11;
+   */
+  sort: SubjectConditionSetsSort[];
 };
 
 /**
@@ -397,7 +457,7 @@ export type ListSubjectConditionSetsRequest = Message<"policy.subjectmapping.Lis
  * Use `create(ListSubjectConditionSetsRequestSchema)` to create a new message.
  */
 export const ListSubjectConditionSetsRequestSchema: GenMessage<ListSubjectConditionSetsRequest> = /*@__PURE__*/
-  messageDesc(file_policy_subjectmapping_subject_mapping, 14);
+  messageDesc(file_policy_subjectmapping_subject_mapping, 16);
 
 /**
  * @generated from message policy.subjectmapping.ListSubjectConditionSetsResponse
@@ -419,7 +479,7 @@ export type ListSubjectConditionSetsResponse = Message<"policy.subjectmapping.Li
  * Use `create(ListSubjectConditionSetsResponseSchema)` to create a new message.
  */
 export const ListSubjectConditionSetsResponseSchema: GenMessage<ListSubjectConditionSetsResponse> = /*@__PURE__*/
-  messageDesc(file_policy_subjectmapping_subject_mapping, 15);
+  messageDesc(file_policy_subjectmapping_subject_mapping, 17);
 
 /**
  * @generated from message policy.subjectmapping.SubjectConditionSetCreate
@@ -446,7 +506,7 @@ export type SubjectConditionSetCreate = Message<"policy.subjectmapping.SubjectCo
  * Use `create(SubjectConditionSetCreateSchema)` to create a new message.
  */
 export const SubjectConditionSetCreateSchema: GenMessage<SubjectConditionSetCreate> = /*@__PURE__*/
-  messageDesc(file_policy_subjectmapping_subject_mapping, 16);
+  messageDesc(file_policy_subjectmapping_subject_mapping, 18);
 
 /**
  * @generated from message policy.subjectmapping.CreateSubjectConditionSetRequest
@@ -473,7 +533,7 @@ export type CreateSubjectConditionSetRequest = Message<"policy.subjectmapping.Cr
  * Use `create(CreateSubjectConditionSetRequestSchema)` to create a new message.
  */
 export const CreateSubjectConditionSetRequestSchema: GenMessage<CreateSubjectConditionSetRequest> = /*@__PURE__*/
-  messageDesc(file_policy_subjectmapping_subject_mapping, 17);
+  messageDesc(file_policy_subjectmapping_subject_mapping, 19);
 
 /**
  * @generated from message policy.subjectmapping.CreateSubjectConditionSetResponse
@@ -490,7 +550,7 @@ export type CreateSubjectConditionSetResponse = Message<"policy.subjectmapping.C
  * Use `create(CreateSubjectConditionSetResponseSchema)` to create a new message.
  */
 export const CreateSubjectConditionSetResponseSchema: GenMessage<CreateSubjectConditionSetResponse> = /*@__PURE__*/
-  messageDesc(file_policy_subjectmapping_subject_mapping, 18);
+  messageDesc(file_policy_subjectmapping_subject_mapping, 20);
 
 /**
  * @generated from message policy.subjectmapping.UpdateSubjectConditionSetRequest
@@ -529,7 +589,7 @@ export type UpdateSubjectConditionSetRequest = Message<"policy.subjectmapping.Up
  * Use `create(UpdateSubjectConditionSetRequestSchema)` to create a new message.
  */
 export const UpdateSubjectConditionSetRequestSchema: GenMessage<UpdateSubjectConditionSetRequest> = /*@__PURE__*/
-  messageDesc(file_policy_subjectmapping_subject_mapping, 19);
+  messageDesc(file_policy_subjectmapping_subject_mapping, 21);
 
 /**
  * @generated from message policy.subjectmapping.UpdateSubjectConditionSetResponse
@@ -548,7 +608,7 @@ export type UpdateSubjectConditionSetResponse = Message<"policy.subjectmapping.U
  * Use `create(UpdateSubjectConditionSetResponseSchema)` to create a new message.
  */
 export const UpdateSubjectConditionSetResponseSchema: GenMessage<UpdateSubjectConditionSetResponse> = /*@__PURE__*/
-  messageDesc(file_policy_subjectmapping_subject_mapping, 20);
+  messageDesc(file_policy_subjectmapping_subject_mapping, 22);
 
 /**
  * @generated from message policy.subjectmapping.DeleteSubjectConditionSetRequest
@@ -567,7 +627,7 @@ export type DeleteSubjectConditionSetRequest = Message<"policy.subjectmapping.De
  * Use `create(DeleteSubjectConditionSetRequestSchema)` to create a new message.
  */
 export const DeleteSubjectConditionSetRequestSchema: GenMessage<DeleteSubjectConditionSetRequest> = /*@__PURE__*/
-  messageDesc(file_policy_subjectmapping_subject_mapping, 21);
+  messageDesc(file_policy_subjectmapping_subject_mapping, 23);
 
 /**
  * @generated from message policy.subjectmapping.DeleteSubjectConditionSetResponse
@@ -586,7 +646,7 @@ export type DeleteSubjectConditionSetResponse = Message<"policy.subjectmapping.D
  * Use `create(DeleteSubjectConditionSetResponseSchema)` to create a new message.
  */
 export const DeleteSubjectConditionSetResponseSchema: GenMessage<DeleteSubjectConditionSetResponse> = /*@__PURE__*/
-  messageDesc(file_policy_subjectmapping_subject_mapping, 22);
+  messageDesc(file_policy_subjectmapping_subject_mapping, 24);
 
 /**
  * Prune any Subject Condition Sets not utilized within a Subject Mapping
@@ -601,7 +661,7 @@ export type DeleteAllUnmappedSubjectConditionSetsRequest = Message<"policy.subje
  * Use `create(DeleteAllUnmappedSubjectConditionSetsRequestSchema)` to create a new message.
  */
 export const DeleteAllUnmappedSubjectConditionSetsRequestSchema: GenMessage<DeleteAllUnmappedSubjectConditionSetsRequest> = /*@__PURE__*/
-  messageDesc(file_policy_subjectmapping_subject_mapping, 23);
+  messageDesc(file_policy_subjectmapping_subject_mapping, 25);
 
 /**
  * @generated from message policy.subjectmapping.DeleteAllUnmappedSubjectConditionSetsResponse
@@ -620,7 +680,59 @@ export type DeleteAllUnmappedSubjectConditionSetsResponse = Message<"policy.subj
  * Use `create(DeleteAllUnmappedSubjectConditionSetsResponseSchema)` to create a new message.
  */
 export const DeleteAllUnmappedSubjectConditionSetsResponseSchema: GenMessage<DeleteAllUnmappedSubjectConditionSetsResponse> = /*@__PURE__*/
-  messageDesc(file_policy_subjectmapping_subject_mapping, 24);
+  messageDesc(file_policy_subjectmapping_subject_mapping, 26);
+
+/**
+ * @generated from enum policy.subjectmapping.SortSubjectMappingsType
+ */
+export enum SortSubjectMappingsType {
+  /**
+   * @generated from enum value: SORT_SUBJECT_MAPPINGS_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: SORT_SUBJECT_MAPPINGS_TYPE_CREATED_AT = 1;
+   */
+  CREATED_AT = 1,
+
+  /**
+   * @generated from enum value: SORT_SUBJECT_MAPPINGS_TYPE_UPDATED_AT = 2;
+   */
+  UPDATED_AT = 2,
+}
+
+/**
+ * Describes the enum policy.subjectmapping.SortSubjectMappingsType.
+ */
+export const SortSubjectMappingsTypeSchema: GenEnum<SortSubjectMappingsType> = /*@__PURE__*/
+  enumDesc(file_policy_subjectmapping_subject_mapping, 0);
+
+/**
+ * @generated from enum policy.subjectmapping.SortSubjectConditionSetsType
+ */
+export enum SortSubjectConditionSetsType {
+  /**
+   * @generated from enum value: SORT_SUBJECT_CONDITION_SETS_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT = 1;
+   */
+  CREATED_AT = 1,
+
+  /**
+   * @generated from enum value: SORT_SUBJECT_CONDITION_SETS_TYPE_UPDATED_AT = 2;
+   */
+  UPDATED_AT = 2,
+}
+
+/**
+ * Describes the enum policy.subjectmapping.SortSubjectConditionSetsType.
+ */
+export const SortSubjectConditionSetsTypeSchema: GenEnum<SortSubjectConditionSetsType> = /*@__PURE__*/
+  enumDesc(file_policy_subjectmapping_subject_mapping, 1);
 
 /**
  * @generated from service policy.subjectmapping.SubjectMappingService
