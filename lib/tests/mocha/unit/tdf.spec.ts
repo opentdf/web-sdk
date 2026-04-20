@@ -202,7 +202,11 @@ describe('bounded segment scheduler', () => {
 
   it('bounds scheduled work to the configured prefetch window', async () => {
     const started: Array<[number, number]> = [];
-    const deferredBatches = [createDeferred<void>(), createDeferred<void>(), createDeferred<void>()];
+    const deferredBatches = [
+      createDeferred<void>(),
+      createDeferred<void>(),
+      createDeferred<void>(),
+    ];
     let nextDeferred = 0;
     const scheduler = TDF.createBoundedSegmentScheduler({
       totalSegments: 10,

@@ -1173,7 +1173,11 @@ export function createBoundedSegmentScheduler({
           .then(() => scheduleBatch(startIndex, endIndex))
           .catch((error) => {
             stopped = true;
-            onError?.(asDecryptError(error, 'failed to schedule segment batch'), startIndex, endIndex);
+            onError?.(
+              asDecryptError(error, 'failed to schedule segment batch'),
+              startIndex,
+              endIndex
+            );
           })
           .finally(() => {
             inFlightBatches -= 1;
