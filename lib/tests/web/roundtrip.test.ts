@@ -145,4 +145,36 @@ describe('Local roundtrip Tests', () => {
     const decoded = new TextDecoder().decode(actual);
     expect(decoded).to.be.equal('hello world');
   });
+
+  it(`ztdf roundtrip chunker decrypt with bounded segment scheduler`, async () => {
+    const client = new OpenTDF({
+      authProvider,
+      defaultReadOptions: {
+        allowedKASEndpoints: [kasEndpoint],
+      },
+    });
+    const plainText = 'chunker-download-'.repeat(512);
+    const cipherTextStream = await client.createZTDF({
+      autoconfigure: false,
+      defaultKASEndpoint: kasEndpoint,
+      source: { type: 'buffer', location: new TextEncoder().encode(plainText) },
+      windowSize: 1024,
+    });
+    const cipherTextArray = new Uint8Array(await new Response(cipherTextStream).arrayBuffer());
+    const trackingChunker = async (byteStart?: number, byteEnd?: number) => {
+      if (byteStart === undefined) {
+        return cipherTextArray.slice();
+      }
+      return cipherTextArray.slice(byteStart, byteEnd);
+    };
+
+    const ztdfParsed = await client.read({
+      source: { type: 'chunker', location: trackingChunker },
+      segmentBatchSize: 2,
+      maxConcurrentSegmentBatches: 1,
+    });
+
+    const actual = await new Response(ztdfParsed).arrayBuffer();
+    expect(new TextDecoder().decode(actual)).to.be.equal(plainText);
+  });
 });

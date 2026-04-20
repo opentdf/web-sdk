@@ -536,6 +536,8 @@ export type DecryptParams = {
   streamMiddleware?: DecryptStreamMiddleware;
   assertionVerificationKeys?: AssertionVerificationKeys;
   concurrencyLimit?: number;
+  segmentBatchSize?: number;
+  maxConcurrentSegmentBatches?: number;
   noVerifyAssertions?: boolean;
   wrappingKeyAlgorithm?: KasPublicKeyAlgorithm;
   fulfillableObligationFQNs?: string[];
@@ -722,6 +724,16 @@ class DecryptParamsBuilder {
 
   withConcurrencyLimit(limit: number): DecryptParamsBuilder {
     this._params.concurrencyLimit = limit;
+    return this;
+  }
+
+  withSegmentBatchSize(size: number): DecryptParamsBuilder {
+    this._params.segmentBatchSize = size;
+    return this;
+  }
+
+  withMaxConcurrentSegmentBatches(limit: number): DecryptParamsBuilder {
+    this._params.maxConcurrentSegmentBatches = limit;
     return this;
   }
 

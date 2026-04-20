@@ -71,6 +71,10 @@ import {
 const DEFAULT_SEGMENT_SIZE = 1024 * 1024;
 
 const HEX_SEMVER_VERSION = '4.2.2';
+const LEGACY_SEGMENTS_PER_DOWNLOAD = 500;
+const LEGACY_MAX_CONCURRENT_SEGMENT_BATCHES = 3;
+const DEFAULT_BOUND_SEGMENT_BATCH_SIZE = 8;
+const DEFAULT_BOUND_MAX_CONCURRENT_SEGMENT_BATCHES = 1;
 
 /**
  * Configuration for TDF3
@@ -181,6 +185,8 @@ export type DecryptConfiguration = {
   assertionVerificationKeys?: AssertionVerificationKeys;
   noVerifyAssertions?: boolean;
   concurrencyLimit?: number;
+  segmentBatchSize?: number;
+  maxConcurrentSegmentBatches?: number;
   wrappingKeyAlgorithm?: KasPublicKeyAlgorithm;
 };
 
@@ -1005,7 +1011,7 @@ async function decryptChunk(
 }
 
 async function updateChunkQueue(
-  chunkMap: Chunk[],
+  chunks: Chunk[],
   centralDirectory: CentralDirectory[],
   zipReader: ZipReader,
   reconstructedKey: SymmetricKey,
@@ -1014,51 +1020,222 @@ async function updateChunkQueue(
   cryptoService: CryptoService,
   specVersion: string
 ) {
-  const chunksInOneDownload = 500;
   let requests = [];
-  const maxLength = 3;
 
-  for (let i = 0; i < chunkMap.length; i += chunksInOneDownload) {
-    if (requests.length === maxLength) {
+  for (let i = 0; i < chunks.length; i += LEGACY_SEGMENTS_PER_DOWNLOAD) {
+    if (requests.length === LEGACY_MAX_CONCURRENT_SEGMENT_BATCHES) {
       await Promise.all(requests);
       requests = [];
     }
     requests.push(
-      (async () => {
-        let buffer: Uint8Array | null;
-
-        const slice = chunkMap.slice(i, i + chunksInOneDownload);
-        try {
-          const bufferSize = slice.reduce(
-            (currentVal, { encryptedSegmentSize }) => currentVal + (encryptedSegmentSize as number),
-            0
-          );
-          buffer = await zipReader.getPayloadSegment(
-            centralDirectory,
-            '0.payload',
-            slice[0].encryptedOffset,
-            bufferSize
-          );
-        } catch (e) {
-          if (e instanceof InvalidFileError) {
-            throw e;
-          }
-          throw new NetworkError('unable to fetch payload segment', e);
-        }
-        if (buffer) {
-          sliceAndDecrypt({
-            buffer,
-            cryptoService,
-            reconstructedKey,
-            slice,
-            cipher,
-            segmentIntegrityAlgorithm,
-            specVersion,
-          });
-        }
-      })()
+      fetchAndDecryptChunkSlice({
+        centralDirectory,
+        zipReader,
+        reconstructedKey,
+        cipher,
+        segmentIntegrityAlgorithm,
+        cryptoService,
+        specVersion,
+        slice: chunks.slice(i, i + LEGACY_SEGMENTS_PER_DOWNLOAD),
+      })
     );
   }
+}
+
+function rejectChunks(chunks: Chunk[], error: Error) {
+  for (const chunk of chunks) {
+    chunk.decryptedChunk.reject(error);
+  }
+}
+
+function asDecryptError(error: unknown, fallbackMessage: string): Error {
+  if (error instanceof Error) {
+    return error;
+  }
+  return new DecryptError(fallbackMessage, error);
+}
+
+async function fetchAndDecryptChunkSlice({
+  centralDirectory,
+  zipReader,
+  reconstructedKey,
+  cipher,
+  segmentIntegrityAlgorithm,
+  cryptoService,
+  specVersion,
+  slice,
+}: {
+  centralDirectory: CentralDirectory[];
+  zipReader: ZipReader;
+  reconstructedKey: SymmetricKey;
+  cipher: SymmetricCipher;
+  segmentIntegrityAlgorithm: IntegrityAlgorithm;
+  cryptoService: CryptoService;
+  specVersion: string;
+  slice: Chunk[];
+}) {
+  let buffer!: Uint8Array;
+  try {
+    const bufferSize = slice.reduce(
+      (currentVal, { encryptedSegmentSize }) => currentVal + (encryptedSegmentSize as number),
+      0
+    );
+    buffer = await zipReader.getPayloadSegment(
+      centralDirectory,
+      '0.payload',
+      slice[0].encryptedOffset,
+      bufferSize
+    );
+  } catch (error) {
+    const wrappedError =
+      error instanceof InvalidFileError
+        ? error
+        : new NetworkError('unable to fetch payload segment', error);
+    rejectChunks(slice, wrappedError);
+    return;
+  }
+
+  try {
+    await sliceAndDecrypt({
+      buffer,
+      cryptoService,
+      reconstructedKey,
+      slice,
+      cipher,
+      segmentIntegrityAlgorithm,
+      specVersion,
+    });
+  } catch (error) {
+    rejectChunks(slice, asDecryptError(error, 'failed to decrypt payload segment'));
+  }
+}
+
+export type SegmentBatchSchedulerState = {
+  consumedSegments: number;
+  inFlightBatches: number;
+  maxPrefetchedSegments: number;
+  scheduledSegments: number;
+};
+
+export type SegmentBatchScheduler = {
+  fillWindow: () => void;
+  markConsumed: (count?: number) => void;
+  snapshot: () => SegmentBatchSchedulerState;
+};
+
+export function createBoundedSegmentScheduler({
+  totalSegments,
+  segmentBatchSize,
+  maxConcurrentSegmentBatches,
+  onError,
+  scheduleBatch,
+}: {
+  totalSegments: number;
+  segmentBatchSize: number;
+  maxConcurrentSegmentBatches: number;
+  onError?: (error: Error, startIndex: number, endIndex: number) => void;
+  scheduleBatch: (startIndex: number, endIndex: number) => Promise<void>;
+}): SegmentBatchScheduler {
+  const maxPrefetchedSegments = segmentBatchSize * maxConcurrentSegmentBatches;
+  let consumedSegments = 0;
+  let inFlightBatches = 0;
+  let pumping = false;
+  let scheduledSegments = 0;
+  let stopped = false;
+
+  const pump = () => {
+    if (pumping || stopped) {
+      return;
+    }
+    pumping = true;
+    try {
+      while (
+        !stopped &&
+        inFlightBatches < maxConcurrentSegmentBatches &&
+        scheduledSegments < totalSegments
+      ) {
+        const prefetchedSegments = scheduledSegments - consumedSegments;
+        const remainingWindow = maxPrefetchedSegments - prefetchedSegments;
+        if (remainingWindow <= 0) {
+          break;
+        }
+
+        const startIndex = scheduledSegments;
+        const nextBatchSize = Math.min(segmentBatchSize, totalSegments - startIndex);
+        if (remainingWindow < nextBatchSize) {
+          break;
+        }
+        const endIndex = startIndex + nextBatchSize;
+        scheduledSegments = endIndex;
+        inFlightBatches += 1;
+
+        void Promise.resolve()
+          .then(() => scheduleBatch(startIndex, endIndex))
+          .catch((error) => {
+            stopped = true;
+            onError?.(asDecryptError(error, 'failed to schedule segment batch'), startIndex, endIndex);
+          })
+          .finally(() => {
+            inFlightBatches -= 1;
+            pump();
+          });
+      }
+    } finally {
+      pumping = false;
+    }
+  };
+
+  return {
+    fillWindow() {
+      pump();
+    },
+    markConsumed(count = 1) {
+      consumedSegments = Math.min(totalSegments, consumedSegments + count);
+      pump();
+    },
+    snapshot() {
+      return {
+        consumedSegments,
+        inFlightBatches,
+        maxPrefetchedSegments,
+        scheduledSegments,
+      };
+    },
+  };
+}
+
+function normalizeSegmentBatchSetting(
+  value: number | undefined,
+  defaultValue: number,
+  name: 'segmentBatchSize' | 'maxConcurrentSegmentBatches'
+) {
+  const normalized = value ?? defaultValue;
+  if (!Number.isInteger(normalized) || normalized < 1) {
+    throw new ConfigurationError(`${name} must be a positive integer`);
+  }
+  return normalized;
+}
+
+function getBoundedSegmentSchedulerOptions({
+  segmentBatchSize,
+  maxConcurrentSegmentBatches,
+}: Pick<DecryptConfiguration, 'segmentBatchSize' | 'maxConcurrentSegmentBatches'>) {
+  if (segmentBatchSize === undefined && maxConcurrentSegmentBatches === undefined) {
+    return undefined;
+  }
+
+  return {
+    segmentBatchSize: normalizeSegmentBatchSetting(
+      segmentBatchSize,
+      DEFAULT_BOUND_SEGMENT_BATCH_SIZE,
+      'segmentBatchSize'
+    ),
+    maxConcurrentSegmentBatches: normalizeSegmentBatchSetting(
+      maxConcurrentSegmentBatches,
+      DEFAULT_BOUND_MAX_CONCURRENT_SEGMENT_BATCHES,
+      'maxConcurrentSegmentBatches'
+    ),
+  };
 }
 
 export async function sliceAndDecrypt({
@@ -1083,9 +1260,7 @@ export async function sliceAndDecrypt({
 
     const offset =
       slice[0].encryptedOffset === 0 ? encryptedOffset : encryptedOffset % slice[0].encryptedOffset;
-    const encryptedChunk = new Uint8Array(
-      buffer.slice(offset, offset + (encryptedSegmentSize as number))
-    );
+    const encryptedChunk = buffer.subarray(offset, offset + (encryptedSegmentSize as number));
 
     if (encryptedChunk.length !== encryptedSegmentSize) {
       throw new DecryptError('Failed to fetch entire segment');
@@ -1212,27 +1387,22 @@ export async function decryptStreamFrom(
   }
 
   let mapOfRequestsOffset = 0;
-  const chunkMap = new Map(
-    segments.map(
-      ({
+  const chunks = segments.map(
+    ({
+      hash,
+      encryptedSegmentSize = encryptedSegmentSizeDefault,
+      segmentSize = segmentSizeDefault,
+    }) => {
+      const chunk: Chunk = {
         hash,
-        encryptedSegmentSize = encryptedSegmentSizeDefault,
-        segmentSize = segmentSizeDefault,
-      }) => {
-        const result = (() => {
-          const chunk: Chunk = {
-            hash,
-            encryptedOffset: mapOfRequestsOffset,
-            encryptedSegmentSize,
-            decryptedChunk: mailbox<DecryptResult>(),
-            plainSegmentSize: segmentSize,
-          };
-          return chunk;
-        })();
-        mapOfRequestsOffset += encryptedSegmentSize;
-        return [hash, result];
-      }
-    )
+        encryptedOffset: mapOfRequestsOffset,
+        encryptedSegmentSize,
+        decryptedChunk: mailbox<DecryptResult>(),
+        plainSegmentSize: segmentSize,
+      };
+      mapOfRequestsOffset += encryptedSegmentSize;
+      return chunk;
+    }
   );
 
   const cipher = new AesGcmCipher(cfg.cryptoService);
@@ -1241,33 +1411,58 @@ export async function decryptStreamFrom(
     throw new UnsupportedError(`Unsupported segment hash alg [${segmentIntegrityAlg}]`);
   }
 
-  // Not waiting for Promise to resolve
-  updateChunkQueue(
-    Array.from(chunkMap.values()),
-    centralDirectory,
-    zipReader,
-    keyForDecryption,
-    cipher,
-    segmentIntegrityAlg,
-    cfg.cryptoService,
-    specVersion
-  );
+  const schedulerOptions = getBoundedSegmentSchedulerOptions(cfg);
+  let scheduler: SegmentBatchScheduler | undefined;
+  if (schedulerOptions) {
+    scheduler = createBoundedSegmentScheduler({
+      totalSegments: chunks.length,
+      ...schedulerOptions,
+      onError: (error, startIndex) => {
+        rejectChunks(chunks.slice(startIndex), error);
+      },
+      scheduleBatch: async (startIndex, endIndex) =>
+        fetchAndDecryptChunkSlice({
+          centralDirectory,
+          zipReader,
+          reconstructedKey: keyForDecryption,
+          cipher,
+          segmentIntegrityAlgorithm: segmentIntegrityAlg,
+          cryptoService: cfg.cryptoService,
+          specVersion,
+          slice: chunks.slice(startIndex, endIndex),
+        }),
+    });
+    scheduler.fillWindow();
+  } else {
+    void updateChunkQueue(
+      chunks,
+      centralDirectory,
+      zipReader,
+      keyForDecryption,
+      cipher,
+      segmentIntegrityAlg,
+      cfg.cryptoService,
+      specVersion
+    );
+  }
 
   let progress = 0;
+  let nextChunkIndex = 0;
   const underlyingSource = {
     pull: async (controller: ReadableStreamDefaultController) => {
-      if (chunkMap.size === 0) {
+      if (nextChunkIndex >= chunks.length) {
         controller.close();
         return;
       }
 
-      const [hash, chunk] = chunkMap.entries().next().value;
+      const chunk = chunks[nextChunkIndex];
       const decryptedSegment = await chunk.decryptedChunk;
 
       controller.enqueue(new Uint8Array(decryptedSegment.payload.asByteArray()));
       progress += chunk.encryptedSegmentSize;
       cfg.progressHandler?.(progress);
-      chunkMap.delete(hash);
+      nextChunkIndex += 1;
+      scheduler?.markConsumed();
     },
     ...(cfg.fileStreamServiceWorker && { fileStreamServiceWorker: cfg.fileStreamServiceWorker }),
   };

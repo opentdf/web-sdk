@@ -800,6 +800,8 @@ export class Client {
     assertionVerificationKeys,
     noVerifyAssertions,
     concurrencyLimit = 1,
+    maxConcurrentSegmentBatches,
+    segmentBatchSize,
     wrappingKeyAlgorithm,
     fulfillableObligationFQNs = [],
   }: DecryptParams): Promise<DecoratedReadableStream> {
@@ -836,7 +838,9 @@ export class Client {
         keyMiddleware,
         progressHandler: this.clientConfig.progressHandler,
         assertionVerificationKeys,
+        maxConcurrentSegmentBatches,
         noVerifyAssertions,
+        segmentBatchSize,
         wrappingKeyAlgorithm,
         fulfillableObligations: fulfillableObligationFQNs,
       })
