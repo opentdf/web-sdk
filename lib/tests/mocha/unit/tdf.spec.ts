@@ -152,6 +152,103 @@ describe('validatePolicyObject', () => {
   });
 });
 
+function createDeferred<T>() {
+  let reject!: (error: unknown) => void;
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  const promise = new Promise<T>((innerResolve, innerReject) => {
+    resolve = innerResolve;
+    reject = innerReject;
+  });
+  return { promise, reject, resolve };
+}
+
+async function flushScheduler() {
+  await Promise.resolve();
+  await Promise.resolve();
+}
+
+describe('bounded segment scheduler', () => {
+  it('honors the configured batch size', async () => {
+    const started: Array<[number, number]> = [];
+    const deferred = createDeferred<void>();
+    const scheduler = TDF.createBoundedSegmentScheduler({
+      totalSegments: 6,
+      segmentBatchSize: 2,
+      maxConcurrentSegmentBatches: 1,
+      scheduleBatch: (startIndex, endIndex) => {
+        started.push([startIndex, endIndex]);
+        return deferred.promise;
+      },
+    });
+
+    scheduler.fillWindow();
+    await flushScheduler();
+    expect(started).to.deep.equal([[0, 2]]);
+
+    deferred.resolve();
+    await flushScheduler();
+
+    scheduler.markConsumed();
+    await flushScheduler();
+    expect(started).to.deep.equal([[0, 2]]);
+
+    scheduler.markConsumed();
+    await flushScheduler();
+    expect(started).to.deep.equal([
+      [0, 2],
+      [2, 4],
+    ]);
+  });
+
+  it('bounds scheduled work to the configured prefetch window', async () => {
+    const started: Array<[number, number]> = [];
+    const deferredBatches = [
+      createDeferred<void>(),
+      createDeferred<void>(),
+      createDeferred<void>(),
+    ];
+    let nextDeferred = 0;
+    const scheduler = TDF.createBoundedSegmentScheduler({
+      totalSegments: 10,
+      segmentBatchSize: 2,
+      maxConcurrentSegmentBatches: 2,
+      scheduleBatch: (startIndex, endIndex) => {
+        started.push([startIndex, endIndex]);
+        return deferredBatches[nextDeferred++].promise;
+      },
+    });
+
+    scheduler.fillWindow();
+    await flushScheduler();
+
+    expect(started).to.deep.equal([
+      [0, 2],
+      [2, 4],
+    ]);
+    expect(scheduler.snapshot()).to.deep.equal({
+      consumedSegments: 0,
+      inFlightBatches: 2,
+      maxPrefetchedSegments: 4,
+      scheduledSegments: 4,
+    });
+
+    deferredBatches[0].resolve();
+    await flushScheduler();
+    expect(started).to.deep.equal([
+      [0, 2],
+      [2, 4],
+    ]);
+
+    scheduler.markConsumed(2);
+    await flushScheduler();
+    expect(started).to.deep.equal([
+      [0, 2],
+      [2, 4],
+      [4, 6],
+    ]);
+  });
+});
+
 describe('splitLookupTableFactory', () => {
   it('should return a correct split table for valid input', () => {
     const keyAccess: KeyAccessObject[] = [
