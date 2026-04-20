@@ -2,6 +2,8 @@ import { test, expect, type Page } from '@playwright/test';
 import fs from 'node:fs';
 import { authorize, loadFile } from './acts.js';
 
+const appUrl = 'http://localhost:65432/';
+
 test.beforeEach(async ({ page }) => {
   page.on('pageerror', (err) => {
     console.error(err);
@@ -13,6 +15,17 @@ test.beforeEach(async ({ page }) => {
 
 test('Large File', async ({ page }) => {
   await authorize(page);
+  await page.goto(`${appUrl}?segmentBatchSize=2&maxConcurrentSegmentBatches=1`);
+  await expect(page.locator('#sessionState')).toHaveText('loggedin');
+
+  const decryptTuningLogs: string[] = [];
+  page.on('console', (message) => {
+    const text = message.text();
+    if (text.includes('Using decrypt read tuning')) {
+      decryptTuningLogs.push(text);
+    }
+  });
+
   const threeGigs = 3 * 2 ** 30;
   await page.locator('#randomSelector').fill(threeGigs.toString());
 
@@ -36,6 +49,9 @@ test('Large File', async ({ page }) => {
     await page.locator('#decryptButton').click();
     const download2 = await plainDownloadPromise;
     expect(download2.suggestedFilename()).toContain('.decrypted');
+    expect(decryptTuningLogs).toEqual([
+      'Using decrypt read tuning {"segmentBatchSize":2,"maxConcurrentSegmentBatches":1}',
+    ]);
     const plainTextPath = await download2.path();
     if (!plainTextPath) {
       throw new Error();

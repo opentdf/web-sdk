@@ -82,6 +82,37 @@ type RandomInputSource = {
 
 type InputSource = FileInputSource | UrlInputSource | RandomInputSource;
 type SinkType = 'file' | 'fsapi' | 'none';
+type DecryptReadTuning = {
+  segmentBatchSize?: number;
+  maxConcurrentSegmentBatches?: number;
+};
+
+function readPositiveIntSearchParam(params: URLSearchParams, name: string): number | undefined {
+  const raw = params.get(name);
+  if (!raw) {
+    return undefined;
+  }
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    console.warn(`Ignoring invalid ${name} query param: ${raw}`);
+    return undefined;
+  }
+  return parsed;
+}
+
+function getDecryptReadTuningFromLocation(): DecryptReadTuning {
+  const params = new URLSearchParams(window.location.search);
+  const segmentBatchSize = readPositiveIntSearchParam(params, 'segmentBatchSize');
+  const maxConcurrentSegmentBatches = readPositiveIntSearchParam(
+    params,
+    'maxConcurrentSegmentBatches'
+  );
+
+  return {
+    ...(segmentBatchSize !== undefined && { segmentBatchSize }),
+    ...(maxConcurrentSegmentBatches !== undefined && { maxConcurrentSegmentBatches }),
+  };
+}
 
 function fileNameFor(inputSource: InputSource) {
   if (!inputSource) {
@@ -409,10 +440,15 @@ function App() {
     if (sinkType === 'fsapi') {
       f = await getNewFileHandle(decryptedFileExtension(fileNameFor(inputSource)), dfn);
     }
+    const decryptReadTuning = getDecryptReadTuningFromLocation();
+    if (Object.keys(decryptReadTuning).length > 0) {
+      console.info(`Using decrypt read tuning ${JSON.stringify(decryptReadTuning)}`);
+    }
     const client = new OpenTDF({
       authProvider: oidcClient,
       defaultReadOptions: {
         allowedKASEndpoints: [config.kas],
+        ...decryptReadTuning,
       },
       dpopKeys: oidcClient.getSigningKey(),
     });
