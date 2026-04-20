@@ -86,10 +86,16 @@ type DecryptReadTuning = {
   segmentBatchSize?: number;
   maxConcurrentSegmentBatches?: number;
 };
+const MAX_SEGMENT_BATCH_SIZE = 500;
+const MAX_CONCURRENT_SEGMENT_BATCHES = 3;
 
 function readPositiveIntSearchParam(params: URLSearchParams, name: string): number | undefined {
   const raw = params.get(name);
   if (!raw) {
+    return undefined;
+  }
+  if (!/^\d+$/.test(raw)) {
+    console.warn(`Ignoring invalid ${name} query param: ${raw}`);
     return undefined;
   }
   const parsed = Number.parseInt(raw, 10);
@@ -102,11 +108,19 @@ function readPositiveIntSearchParam(params: URLSearchParams, name: string): numb
 
 function getDecryptReadTuningFromLocation(): DecryptReadTuning {
   const params = new URLSearchParams(window.location.search);
-  const segmentBatchSize = readPositiveIntSearchParam(params, 'segmentBatchSize');
-  const maxConcurrentSegmentBatches = readPositiveIntSearchParam(
+  const parsedSegmentBatchSize = readPositiveIntSearchParam(params, 'segmentBatchSize');
+  const parsedMaxConcurrentSegmentBatches = readPositiveIntSearchParam(
     params,
     'maxConcurrentSegmentBatches'
   );
+  const segmentBatchSize =
+    parsedSegmentBatchSize !== undefined
+      ? Math.min(parsedSegmentBatchSize, MAX_SEGMENT_BATCH_SIZE)
+      : undefined;
+  const maxConcurrentSegmentBatches =
+    parsedMaxConcurrentSegmentBatches !== undefined
+      ? Math.min(parsedMaxConcurrentSegmentBatches, MAX_CONCURRENT_SEGMENT_BATCHES)
+      : undefined;
 
   return {
     ...(segmentBatchSize !== undefined && { segmentBatchSize }),
