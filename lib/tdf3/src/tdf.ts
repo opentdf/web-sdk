@@ -1052,7 +1052,7 @@ function asDecryptError(error: unknown, fallbackMessage: string): Error {
   if (error instanceof Error) {
     return error;
   }
-  return new DecryptError(fallbackMessage, error);
+  return new DecryptError(fallbackMessage, new Error(String(error)));
 }
 
 async function fetchAndDecryptChunkSlice({
@@ -1457,9 +1457,10 @@ export async function decryptStreamFrom(
 
       const chunk = chunks[nextChunkIndex];
       const decryptedSegment = await chunk.decryptedChunk;
+      const encryptedSegmentSize = chunk.encryptedSegmentSize ?? 0;
 
       controller.enqueue(new Uint8Array(decryptedSegment.payload.asByteArray()));
-      progress += chunk.encryptedSegmentSize;
+      progress += encryptedSegmentSize;
       cfg.progressHandler?.(progress);
       nextChunkIndex += 1;
       scheduler?.markConsumed();
