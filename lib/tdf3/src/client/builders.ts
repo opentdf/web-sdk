@@ -727,11 +727,19 @@ class DecryptParamsBuilder {
     return this;
   }
 
+  /**
+   * Set the number of payload segments to fetch and decrypt per batch.
+   * Adjust together with `withMaxConcurrentSegmentBatches()` for expected throughput.
+   */
   withSegmentBatchSize(size: number): DecryptParamsBuilder {
     this._params.segmentBatchSize = size;
     return this;
   }
 
+  /**
+   * Set the maximum number of payload segment batches to fetch concurrently.
+   * Adjust together with `withSegmentBatchSize()` for expected throughput.
+   */
   withMaxConcurrentSegmentBatches(limit: number): DecryptParamsBuilder {
     this._params.maxConcurrentSegmentBatches = limit;
     return this;

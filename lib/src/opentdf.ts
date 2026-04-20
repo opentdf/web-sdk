@@ -153,10 +153,16 @@ export type ReadOptions = {
   /** If set, prevents more than this number of concurrent requests to the KAS. */
   concurrencyLimit?: number;
 
-  /** Maximum number of payload segments to fetch and decrypt per batch. */
+  /**
+   * Maximum number of payload segments to fetch and decrypt per batch.
+   * Adjust together with `maxConcurrentSegmentBatches` for expected throughput.
+   */
   segmentBatchSize?: number;
 
-  /** Maximum number of segment batches that may be fetched concurrently. */
+  /**
+   * Maximum number of segment batches that may be fetched concurrently.
+   * Adjust together with `segmentBatchSize` for expected throughput.
+   */
   maxConcurrentSegmentBatches?: number;
 
   /** Type of key to use for wrapping responses. */

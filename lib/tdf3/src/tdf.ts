@@ -73,8 +73,8 @@ const DEFAULT_SEGMENT_SIZE = 1024 * 1024;
 const HEX_SEMVER_VERSION = '4.2.2';
 const LEGACY_SEGMENTS_PER_DOWNLOAD = 500;
 const LEGACY_MAX_CONCURRENT_SEGMENT_BATCHES = 3;
-const DEFAULT_BOUND_SEGMENT_BATCH_SIZE = 8;
-const DEFAULT_BOUND_MAX_CONCURRENT_SEGMENT_BATCHES = 1;
+const DEFAULT_BOUND_SEGMENT_BATCH_SIZE = LEGACY_SEGMENTS_PER_DOWNLOAD;
+const DEFAULT_BOUND_MAX_CONCURRENT_SEGMENT_BATCHES = LEGACY_MAX_CONCURRENT_SEGMENT_BATCHES;
 
 /**
  * Configuration for TDF3
@@ -1037,7 +1037,7 @@ async function updateChunkQueue(
         cryptoService,
         specVersion,
         slice: chunks.slice(i, i + LEGACY_SEGMENTS_PER_DOWNLOAD),
-      })
+      }).catch(() => undefined)
     );
   }
 }
@@ -1092,7 +1092,7 @@ async function fetchAndDecryptChunkSlice({
         ? error
         : new NetworkError('unable to fetch payload segment', error);
     rejectChunks(slice, wrappedError);
-    return;
+    throw wrappedError;
   }
 
   try {
@@ -1106,7 +1106,9 @@ async function fetchAndDecryptChunkSlice({
       specVersion,
     });
   } catch (error) {
-    rejectChunks(slice, asDecryptError(error, 'failed to decrypt payload segment'));
+    const wrappedError = asDecryptError(error, 'failed to decrypt payload segment');
+    rejectChunks(slice, wrappedError);
+    throw wrappedError;
   }
 }
 
@@ -1220,6 +1222,12 @@ function normalizeSegmentBatchSetting(
   return normalized;
 }
 
+/**
+ * Enables bounded scheduling only when at least one tuning knob is set.
+ * If callers set only one knob, the other falls back to the legacy value so
+ * throughput stays aligned with the pre-bounded path. Adjust both knobs together
+ * when tuning for predictable memory and performance characteristics.
+ */
 function getBoundedSegmentSchedulerOptions({
   segmentBatchSize,
   maxConcurrentSegmentBatches,
