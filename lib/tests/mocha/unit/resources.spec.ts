@@ -31,6 +31,13 @@ describe('Resource helpers', () => {
       expect(av.fqns).to.have.lengthOf(1);
       expect(av.fqns[0]).to.equal('');
     });
+
+    it('builds an attributeValues resource with zero arguments (empty FQN list)', () => {
+      const r = Resources.forAttributeValues();
+      expect(r.resource.case).to.equal('attributeValues');
+      const av = r.resource.value as Resource_AttributeValues;
+      expect(av.fqns).to.have.lengthOf(0);
+    });
   });
 
   describe('forRegisteredResourceValueFqn()', () => {

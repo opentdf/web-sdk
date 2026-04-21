@@ -6,8 +6,8 @@ import {
 } from './v2/authorization_pb.js';
 
 /**
- * Convenience constructors for {@link Resource}, mirroring the Go SDK helpers
- * (`ForAttributeValues`, `ForRegisteredResourceValueFqn`).
+ * Convenience constructors for {@link Resource}, analogous to the
+ * {@link EntityIdentifiers} helpers for {@link EntityIdentifier}.
  *
  * Each function builds a complete `Resource` so callers avoid deeply nested
  * object literals.
