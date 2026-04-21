@@ -35,7 +35,8 @@ import {
  * This is the most common Resource variant, used when authorizing against
  * attribute values attached to data (e.g. those on a TDF).
  */
-export function forAttributeValues(...fqns: string[]): Resource {
+export function forAttributeValues(fqn: string, ...moreFqns: string[]): Resource {
+  const fqns = [fqn, ...moreFqns];
   return create(ResourceSchema, {
     resource: {
       case: 'attributeValues',
