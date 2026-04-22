@@ -13,6 +13,16 @@ import { unwrapSymmetricKey, wrapSymmetricKey } from './keys.js';
 
 const ENC_DEC_METHODS: KeyUsage[] = ['encrypt', 'decrypt'];
 
+function asUint8ArrayView(buffer: BufferSource): Uint8Array {
+  if (buffer instanceof Uint8Array) {
+    return buffer;
+  }
+  if (ArrayBuffer.isView(buffer)) {
+    return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+  }
+  return new Uint8Array(buffer);
+}
+
 /**
  * Generate a random symmetric key (opaque).
  * @param length - Key length in bytes (default 32 for AES-256)
@@ -61,7 +71,23 @@ export function decrypt(
   algorithm?: AlgorithmUrn,
   authTag?: Binary
 ): Promise<DecryptResult> {
-  return _doDecrypt(payload, key, iv, algorithm, authTag);
+  return _doDecryptBufferSource(
+    payload.asArrayBuffer(),
+    key,
+    iv.asArrayBuffer(),
+    algorithm,
+    authTag?.asArrayBuffer()
+  );
+}
+
+export function decryptBufferSource(
+  payload: BufferSource,
+  key: SymmetricKey,
+  iv: BufferSource,
+  algorithm?: AlgorithmUrn,
+  authTag?: BufferSource
+): Promise<DecryptResult> {
+  return _doDecryptBufferSource(payload, key, iv, algorithm, authTag);
 }
 
 /**
@@ -115,32 +141,34 @@ async function _doEncrypt(
   };
 }
 
-async function _doDecrypt(
-  payload: Binary,
+async function _doDecryptBufferSource(
+  payload: BufferSource,
   key: SymmetricKey,
-  iv: Binary,
+  iv: BufferSource,
   algorithm?: AlgorithmUrn,
-  authTag?: Binary
+  authTag?: BufferSource
 ): Promise<DecryptResult> {
   console.assert(payload != null);
   console.assert(key != null);
   console.assert(iv != null);
 
-  let payloadBuffer = payload.asArrayBuffer();
+  let payloadBuffer: BufferSource = payload;
 
   // Concat the the auth tag to the payload for decryption
   if (authTag) {
-    const authTagBuffer = authTag.asArrayBuffer();
-    const gcmPayload = new Uint8Array(payloadBuffer.byteLength + authTagBuffer.byteLength);
-    gcmPayload.set(new Uint8Array(payloadBuffer), 0);
-    gcmPayload.set(new Uint8Array(authTagBuffer), payloadBuffer.byteLength);
-    payloadBuffer = gcmPayload.buffer;
+    const payloadBytes = asUint8ArrayView(payloadBuffer);
+    const authTagBytes = asUint8ArrayView(authTag);
+    const gcmPayload = new Uint8Array(payloadBytes.byteLength + authTagBytes.byteLength);
+    gcmPayload.set(payloadBytes, 0);
+    gcmPayload.set(authTagBytes, payloadBytes.byteLength);
+    payloadBuffer = gcmPayload;
   }
 
-  const algoDomString = getSymmetricAlgoDomString(iv, algorithm);
+  const ivBytes = asUint8ArrayView(iv);
+  const algoDomString = getSymmetricAlgoDomStringFromIv(ivBytes, algorithm);
   const keyBytes = unwrapSymmetricKey(key);
   const importedKey = await _importKey(keyBytes, algoDomString);
-  algoDomString.iv = iv.asArrayBuffer();
+  algoDomString.iv = ivBytes;
 
   const decrypted = await crypto.subtle
     .decrypt(algoDomString, importedKey, payloadBuffer)
@@ -169,6 +197,13 @@ function getSymmetricAlgoDomString(
   iv: Binary,
   algorithm?: AlgorithmUrn
 ): AesCbcParams | AesGcmParams {
+  return getSymmetricAlgoDomStringFromIv(asUint8ArrayView(iv.asArrayBuffer()), algorithm);
+}
+
+function getSymmetricAlgoDomStringFromIv(
+  iv: Uint8Array,
+  algorithm?: AlgorithmUrn
+): AesCbcParams | AesGcmParams {
   let nativeAlgorithm = 'AES-CBC';
   if (algorithm === Algorithms.AES_256_GCM) {
     nativeAlgorithm = 'AES-GCM';
@@ -176,7 +211,7 @@ function getSymmetricAlgoDomString(
 
   return {
     name: nativeAlgorithm,
-    iv: iv.asArrayBuffer(),
+    iv,
   };
 }
 

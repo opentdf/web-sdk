@@ -1,6 +1,7 @@
 import { Binary } from '../binary.js';
 import { Algorithms } from './algorithms.js';
 import { SymmetricCipher } from './symmetric-cipher-base.js';
+import { decryptBufferSource } from '../crypto/core/symmetric.js';
 import { concatUint8 } from '../utils/index.js';
 
 import {
@@ -16,20 +17,17 @@ const IV_LENGTH = 12;
 type ProcessGcmPayload = {
   payload: Binary;
   payloadIv: Binary;
-  payloadAuthTag: Binary;
 };
 // Should this be a Binary, Buffer, or... both?
 function processGcmPayload(source: ArrayBuffer): ProcessGcmPayload {
   // Read the 12 byte IV from the beginning of the stream
   const payloadIv = Binary.fromArrayBuffer(source.slice(0, 12));
 
-  // Slice the final 16 bytes of the buffer for the authentication tag
-  const payloadAuthTag = Binary.fromArrayBuffer(source.slice(-16));
-
   return {
-    payload: Binary.fromArrayBuffer(source.slice(12, -16)),
+    // WebCrypto AES-GCM expects ciphertext with the auth tag appended, so keep
+    // the tag attached instead of splitting and re-concatenating it later.
+    payload: Binary.fromArrayBuffer(source.slice(12)),
     payloadIv,
-    payloadAuthTag,
   };
 }
 
@@ -64,18 +62,24 @@ export class AesGcmCipher extends SymmetricCipher {
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   override async decrypt(
-    buffer: ArrayBuffer,
+    buffer: Uint8Array,
     key: SymmetricKey,
     iv?: Binary
   ): Promise<DecryptResult> {
-    const { payload, payloadIv, payloadAuthTag } = processGcmPayload(buffer);
+    if (this.cryptoService.name === 'BrowserNativeCryptoService') {
+      return decryptBufferSource(
+        buffer.subarray(12),
+        key,
+        buffer.subarray(0, 12),
+        Algorithms.AES_256_GCM
+      );
+    }
 
-    return this.cryptoService.decrypt(
-      payload,
-      key,
-      payloadIv,
-      Algorithms.AES_256_GCM,
-      payloadAuthTag
-    );
+    const { payload, payloadIv } = processGcmPayload(buffer.buffer.slice(
+      buffer.byteOffset,
+      buffer.byteOffset + buffer.byteLength
+    ));
+
+    return this.cryptoService.decrypt(payload, key, payloadIv, Algorithms.AES_256_GCM);
   }
 }
