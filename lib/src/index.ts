@@ -20,6 +20,7 @@ export {
 } from './auth/token-providers.js';
 export { attributeFQNsAsValues } from './policy/api.js';
 export * as EntityIdentifiers from './platform/authorization/entity-identifiers.js';
+export * as Resources from './platform/authorization/resources.js';
 /** @deprecated Use `EntityIdentifiers.forEmail()` instead. Will be removed in a future release. */
 export { forEmail } from './platform/authorization/entity-identifiers.js';
 /** @deprecated Use `EntityIdentifiers.forClientId()` instead. Will be removed in a future release. */
