@@ -168,7 +168,6 @@ async function _doDecryptBufferSource(
   const algoDomString = getSymmetricAlgoDomStringFromIv(ivBytes, algorithm);
   const keyBytes = unwrapSymmetricKey(key);
   const importedKey = await _importKey(keyBytes, algoDomString);
-  algoDomString.iv = ivBytes;
 
   const decrypted = await crypto.subtle
     .decrypt(algoDomString, importedKey, payloadBuffer)
