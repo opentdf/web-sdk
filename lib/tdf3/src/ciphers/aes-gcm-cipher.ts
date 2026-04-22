@@ -75,10 +75,9 @@ export class AesGcmCipher extends SymmetricCipher {
       );
     }
 
-    const { payload, payloadIv } = processGcmPayload(buffer.buffer.slice(
-      buffer.byteOffset,
-      buffer.byteOffset + buffer.byteLength
-    ));
+    const { payload, payloadIv } = processGcmPayload(
+      buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
+    );
 
     return this.cryptoService.decrypt(payload, key, payloadIv, Algorithms.AES_256_GCM);
   }
