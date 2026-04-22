@@ -11,10 +11,6 @@ const LOCAL_FILE_HEADER_FIXED_SIZE = 30;
 const VERSION_NEEDED_TO_EXTRACT_ZIP64 = 45;
 const manifestMaxSize = 1024 * 1024 * 10; // 10 MB
 
-function logLargeDecryptZipDebug(event: string, details: Record<string, unknown>) {
-  console.debug(`[opentdf][decrypt-debug] ${event}`, details);
-}
-
 const cp437 =
   '\u0000☺☻♥♦♣♠•◘○◙♂♀♪♫☼►◄↕‼¶§▬↨↑↓→←∟↔▲▼ !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~⌂ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■ ';
 
@@ -137,40 +133,7 @@ export class ZipReader {
       cdObj.relativeOffsetOfLocalHeader + cdObj.headerLength + encrpytedSegmentOffset;
     // TODO: what's the exact byte start?
     const byteEnd = byteStart + encryptedSegmentSize;
-    const requestedRangeLength = byteEnd - byteStart;
-    logLargeDecryptZipDebug('zip-reader:get-payload-segment:start', {
-      payloadName,
-      encryptedSegmentOffset: encrpytedSegmentOffset,
-      encryptedSegmentSize,
-      byteStart,
-      byteEnd,
-      requestedRangeLength,
-    });
-    try {
-      const payload = await this.getChunk(byteStart, byteEnd);
-      logLargeDecryptZipDebug('zip-reader:get-payload-segment:complete', {
-        payloadName,
-        encryptedSegmentOffset: encrpytedSegmentOffset,
-        encryptedSegmentSize,
-        byteStart,
-        byteEnd,
-        requestedRangeLength,
-        actualReturnedBufferLength: payload.length,
-      });
-      return payload;
-    } catch (error) {
-      logLargeDecryptZipDebug('zip-reader:get-payload-segment:error', {
-        payloadName,
-        encryptedSegmentOffset: encrpytedSegmentOffset,
-        encryptedSegmentSize,
-        byteStart,
-        byteEnd,
-        requestedRangeLength,
-        errorName: error instanceof Error ? error.name : typeof error,
-        errorMessage: error instanceof Error ? error.message : String(error),
-      });
-      throw error;
-    }
+    return this.getChunk(byteStart, byteEnd);
   }
 
   /**

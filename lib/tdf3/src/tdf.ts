@@ -138,7 +138,6 @@ function mailbox<T>(): Mailbox<T> {
 
 type Chunk = {
   hash: string;
-  index?: number;
   plainSegmentSize?: number;
   encryptedOffset: number;
   encryptedSegmentSize?: number;
@@ -146,30 +145,6 @@ type Chunk = {
 };
 
 export type IntegrityAlgorithm = 'GMAC' | 'HS256';
-
-function logLargeDecryptDebug(event: string, details: Record<string, unknown>) {
-  console.debug(`[opentdf][decrypt-debug] ${event}`, details);
-}
-
-function getBinaryStorageType(payload: DecryptResult['payload']) {
-  if (payload.isArrayBuffer()) {
-    return 'ArrayBuffer';
-  }
-  if (payload.isByteArray()) {
-    return 'ByteArray';
-  }
-  if (payload.isString()) {
-    return 'String';
-  }
-  return 'Unknown';
-}
-
-function shouldLogTailSegment(index: number | undefined, totalSegmentCount: number | undefined) {
-  if (index === undefined || totalSegmentCount === undefined) {
-    return false;
-  }
-  return index >= Math.max(0, totalSegmentCount - 32);
-}
 
 export type EncryptConfiguration = {
   allowList?: OriginAllowList;
@@ -1062,9 +1037,6 @@ async function updateChunkQueue(
         cryptoService,
         specVersion,
         slice: chunks.slice(i, i + LEGACY_SEGMENTS_PER_DOWNLOAD),
-        sliceEndIndex: Math.min(chunks.length, i + LEGACY_SEGMENTS_PER_DOWNLOAD),
-        sliceStartIndex: i,
-        totalSegmentCount: chunks.length,
       }).catch(() => undefined)
     );
   }
@@ -1092,9 +1064,6 @@ async function fetchAndDecryptChunkSlice({
   cryptoService,
   specVersion,
   slice,
-  sliceEndIndex,
-  sliceStartIndex,
-  totalSegmentCount,
 }: {
   centralDirectory: CentralDirectory[];
   zipReader: ZipReader;
@@ -1104,30 +1073,13 @@ async function fetchAndDecryptChunkSlice({
   cryptoService: CryptoService;
   specVersion: string;
   slice: Chunk[];
-  sliceEndIndex?: number;
-  sliceStartIndex?: number;
-  totalSegmentCount?: number;
 }) {
   const firstChunk = slice[0];
-  const lastChunk = slice[slice.length - 1];
-  const encryptedSegmentSizes = slice.map(({ encryptedSegmentSize }) => encryptedSegmentSize);
-  const plainSegmentSizes = slice.map(({ plainSegmentSize }) => plainSegmentSize);
   let buffer!: Uint8Array;
   const bufferSize = slice.reduce(
     (currentVal, { encryptedSegmentSize }) => currentVal + (encryptedSegmentSize as number),
     0
   );
-  logLargeDecryptDebug('fetch-slice:start', {
-    sliceLength: slice.length,
-    firstSegmentIndex: sliceStartIndex ?? firstChunk.index,
-    lastSegmentIndex:
-      sliceEndIndex !== undefined ? sliceEndIndex - 1 : lastChunk.index,
-    firstEncryptedOffset: firstChunk.encryptedOffset,
-    lastEncryptedOffset: lastChunk.encryptedOffset,
-    bufferSize,
-    encryptedSegmentSizes,
-    plainSegmentSizes,
-  });
   try {
     buffer = await zipReader.getPayloadSegment(
       centralDirectory,
@@ -1135,28 +1087,11 @@ async function fetchAndDecryptChunkSlice({
       firstChunk.encryptedOffset,
       bufferSize
     );
-    logLargeDecryptDebug('fetch-slice:complete', {
-      sliceLength: slice.length,
-      firstSegmentIndex: sliceStartIndex ?? firstChunk.index,
-      lastSegmentIndex:
-        sliceEndIndex !== undefined ? sliceEndIndex - 1 : lastChunk.index,
-      bufferSize,
-      actualReturnedBufferLength: buffer.length,
-    });
   } catch (error) {
     const wrappedError =
       error instanceof InvalidFileError
         ? error
         : new NetworkError('unable to fetch payload segment', error);
-    logLargeDecryptDebug('fetch-slice:error', {
-      sliceLength: slice.length,
-      firstSegmentIndex: sliceStartIndex ?? firstChunk.index,
-      lastSegmentIndex:
-        sliceEndIndex !== undefined ? sliceEndIndex - 1 : lastChunk.index,
-      bufferSize,
-      errorName: wrappedError.name,
-      errorMessage: wrappedError.message,
-    });
     rejectChunks(slice, wrappedError);
     throw wrappedError;
   }
@@ -1170,20 +1105,9 @@ async function fetchAndDecryptChunkSlice({
       cipher,
       segmentIntegrityAlgorithm,
       specVersion,
-      totalSegmentCount,
     });
   } catch (error) {
     const wrappedError = asDecryptError(error, 'failed to decrypt payload segment');
-    logLargeDecryptDebug('decrypt-slice:error', {
-      sliceLength: slice.length,
-      firstSegmentIndex: sliceStartIndex ?? firstChunk.index,
-      lastSegmentIndex:
-        sliceEndIndex !== undefined ? sliceEndIndex - 1 : lastChunk.index,
-      bufferSize,
-      actualReturnedBufferLength: buffer.length,
-      errorName: wrappedError.name,
-      errorMessage: wrappedError.message,
-    });
     rejectChunks(slice, wrappedError);
     throw wrappedError;
   }
@@ -1335,7 +1259,6 @@ export async function sliceAndDecrypt({
   cryptoService,
   segmentIntegrityAlgorithm,
   specVersion,
-  totalSegmentCount,
 }: {
   buffer: Uint8Array;
   reconstructedKey: SymmetricKey;
@@ -1344,20 +1267,7 @@ export async function sliceAndDecrypt({
   cryptoService: CryptoService;
   segmentIntegrityAlgorithm: IntegrityAlgorithm;
   specVersion: string;
-  totalSegmentCount?: number;
 }) {
-  const firstChunk = slice[0];
-  const lastChunk = slice[slice.length - 1];
-  logLargeDecryptDebug('decrypt-slice:start', {
-    sliceLength: slice.length,
-    firstSegmentIndex: firstChunk.index,
-    lastSegmentIndex: lastChunk.index,
-    firstEncryptedOffset: firstChunk.encryptedOffset,
-    lastEncryptedOffset: lastChunk.encryptedOffset,
-    bufferLength: buffer.length,
-    encryptedSegmentSizes: slice.map(({ encryptedSegmentSize }) => encryptedSegmentSize),
-    plainSegmentSizes: slice.map(({ plainSegmentSize }) => plainSegmentSize),
-  });
   for (const index in slice) {
     const chunk = slice[index];
     const { encryptedOffset, encryptedSegmentSize, plainSegmentSize } = chunk;
@@ -1371,20 +1281,6 @@ export async function sliceAndDecrypt({
     }
 
     try {
-      if (shouldLogTailSegment(chunk.index, totalSegmentCount)) {
-        logLargeDecryptDebug('decrypt-segment:start', {
-          sliceLength: slice.length,
-          firstSegmentIndex: firstChunk.index,
-          lastSegmentIndex: lastChunk.index,
-          segmentIndex: chunk.index,
-          segmentOffsetWithinSlice: offset,
-          encryptedOffset,
-          encryptedSegmentSize,
-          plainSegmentSize,
-          bufferLength: buffer.length,
-          encryptedChunkLength: encryptedChunk.length,
-        });
-      }
       const result = await decryptChunk(
         encryptedChunk,
         reconstructedKey,
@@ -1399,36 +1295,8 @@ export async function sliceAndDecrypt({
           `incorrect segment size: found [${result.payload.length()}], expected [${plainSegmentSize}]`
         );
       }
-      if (shouldLogTailSegment(chunk.index, totalSegmentCount)) {
-        logLargeDecryptDebug('decrypt-segment:complete', {
-          sliceLength: slice.length,
-          firstSegmentIndex: firstChunk.index,
-          lastSegmentIndex: lastChunk.index,
-          segmentIndex: chunk.index,
-          segmentOffsetWithinSlice: offset,
-          encryptedOffset,
-          encryptedSegmentSize,
-          plainSegmentSize,
-          payloadLength: result.payload.length(),
-          payloadStorageType: getBinaryStorageType(result.payload),
-        });
-      }
       chunk.decryptedChunk.set(result);
     } catch (e) {
-      logLargeDecryptDebug('decrypt-segment:error', {
-        sliceLength: slice.length,
-        firstSegmentIndex: firstChunk.index,
-        lastSegmentIndex: lastChunk.index,
-        segmentIndex: chunk.index,
-        segmentOffsetWithinSlice: offset,
-        encryptedOffset,
-        encryptedSegmentSize,
-        plainSegmentSize,
-        bufferLength: buffer.length,
-        encryptedChunkLength: encryptedChunk.length,
-        errorName: e instanceof Error ? e.name : typeof e,
-        errorMessage: e instanceof Error ? e.message : String(e),
-      });
       chunk.decryptedChunk.reject(e);
     }
   }
@@ -1538,10 +1406,9 @@ export async function decryptStreamFrom(
       hash,
       encryptedSegmentSize = encryptedSegmentSizeDefault,
       segmentSize = segmentSizeDefault,
-    }, index) => {
+    }) => {
       const chunk: Chunk = {
         hash,
-        index,
         encryptedOffset: mapOfRequestsOffset,
         encryptedSegmentSize,
         decryptedChunk: mailbox<DecryptResult>(),
@@ -1577,9 +1444,6 @@ export async function decryptStreamFrom(
           cryptoService: cfg.cryptoService,
           specVersion,
           slice: chunks.slice(startIndex, endIndex),
-          sliceEndIndex: endIndex,
-          sliceStartIndex: startIndex,
-          totalSegmentCount: chunks.length,
         }),
     });
     scheduler.fillWindow();
@@ -1601,10 +1465,6 @@ export async function decryptStreamFrom(
   const underlyingSource = {
     pull: async (controller: ReadableStreamDefaultController) => {
       if (nextChunkIndex >= chunks.length) {
-        logLargeDecryptDebug('stream-enqueue:complete', {
-          totalSegments: chunks.length,
-          totalEncryptedProgress: progress,
-        });
         controller.close();
         return;
       }
@@ -1612,40 +1472,7 @@ export async function decryptStreamFrom(
       const chunk = chunks[nextChunkIndex];
       const decryptedSegment = await chunk.decryptedChunk;
       const encryptedSegmentSize = chunk.encryptedSegmentSize ?? 0;
-      const payloadStorageType = getBinaryStorageType(decryptedSegment.payload);
-      let plainChunk: Uint8Array;
-      try {
-        plainChunk = new Uint8Array(decryptedSegment.payload.asArrayBuffer());
-      } catch (error) {
-        logLargeDecryptDebug('stream-enqueue:error', {
-          chunkIndex: chunk.index,
-          encryptedOffset: chunk.encryptedOffset,
-          encryptedSegmentSize,
-          plainSegmentSize: chunk.plainSegmentSize,
-          payloadLength: decryptedSegment.payload.length(),
-          payloadStorageType,
-          progress,
-          errorName: error instanceof Error ? error.name : typeof error,
-          errorMessage: error instanceof Error ? error.message : String(error),
-        });
-        throw error;
-      }
-
-      if (
-        chunk.index === 0 ||
-        chunk.index === chunks.length - 1 ||
-        (chunk.index !== undefined && chunk.index >= chunks.length - 4)
-      ) {
-        logLargeDecryptDebug('stream-enqueue:chunk', {
-          chunkIndex: chunk.index,
-          encryptedOffset: chunk.encryptedOffset,
-          encryptedSegmentSize,
-          plainSegmentSize: chunk.plainSegmentSize,
-          payloadLength: decryptedSegment.payload.length(),
-          payloadStorageType,
-          progress,
-        });
-      }
+      const plainChunk = new Uint8Array(decryptedSegment.payload.asArrayBuffer());
 
       controller.enqueue(plainChunk);
       progress += encryptedSegmentSize;
