@@ -2,6 +2,12 @@ import { test, expect, type Page } from '@playwright/test';
 import fs from 'node:fs';
 import { authorize, loadFile } from './acts.js';
 
+test.use({
+  launchOptions: {
+    args: ['--js-flags=--max-old-space-size=512'],
+  },
+});
+
 test.beforeEach(async ({ page }) => {
   page.on('pageerror', (err) => {
     console.error(err);
