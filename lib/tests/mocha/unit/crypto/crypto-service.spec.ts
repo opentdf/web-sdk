@@ -262,6 +262,23 @@ describe('Crypto Service', () => {
     expect(decrypted.payload.asString()).to.equal(rawData);
   });
 
+  it('should decrypt aes_256_gcm ciphertext from ArrayBuffer input', async () => {
+    const rawData = 'hello world';
+    const payload = Binary.fromString(rawData);
+
+    const keyBytes = new Uint8Array(
+      decodeArrayBuffer('cvR6X2vLG5ap13ssLxRjOV1KOjJfraYpD8D+97zdtY4=')
+    );
+    const key = await importSymmetricKey(keyBytes);
+    const iv = Binary.fromArrayBuffer(crypto.getRandomValues(new Uint8Array(12)).buffer);
+    const cipher = new AesGcmCipher(DefaultCryptoService);
+
+    const encrypted = await cipher.encrypt(payload, key, iv);
+    const decrypted = await cipher.decrypt(encrypted.payload.asArrayBuffer(), key);
+
+    expect(decrypted.payload.asString()).to.equal(rawData);
+  });
+
   describe('generateECKeyPair', () => {
     it('should generate P-256 key pair', async () => {
       const keyPair = await generateECKeyPair('P-256');

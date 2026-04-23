@@ -62,21 +62,23 @@ export class AesGcmCipher extends SymmetricCipher {
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   override async decrypt(
-    buffer: Uint8Array,
+    buffer: ArrayBuffer | Uint8Array,
     key: SymmetricKey,
     iv?: Binary
   ): Promise<DecryptResult> {
+    const input = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+
     if (this.cryptoService.name === 'BrowserNativeCryptoService') {
       return decryptBufferSource(
-        buffer.subarray(12),
+        input.subarray(12),
         key,
-        buffer.subarray(0, 12),
+        input.subarray(0, 12),
         Algorithms.AES_256_GCM
       );
     }
 
     const { payload, payloadIv } = processGcmPayload(
-      buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
+      input.buffer.slice(input.byteOffset, input.byteOffset + input.byteLength)
     );
 
     return this.cryptoService.decrypt(payload, key, payloadIv, Algorithms.AES_256_GCM);
