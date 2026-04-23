@@ -216,7 +216,7 @@ jobs:
           go env GOWORK
       - run: docker compose up -d --wait --wait-timeout 240
       - env:
-          PLAYWRIGHT_TESTS_TO_RUN: roundtrip
+          PLAYWRIGHT_TESTS_TO_RUN: roundtrip huge
         run: |-
           ./wait-and-test.sh platform
 
