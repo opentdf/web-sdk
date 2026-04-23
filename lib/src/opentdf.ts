@@ -153,6 +153,18 @@ export type ReadOptions = {
   /** If set, prevents more than this number of concurrent requests to the KAS. */
   concurrencyLimit?: number;
 
+  /**
+   * Maximum number of payload segments to fetch and decrypt per batch.
+   * Adjust together with `maxConcurrentSegmentBatches` for expected throughput.
+   */
+  segmentBatchSize?: number;
+
+  /**
+   * Maximum number of segment batches that may be fetched concurrently.
+   * Adjust together with `segmentBatchSize` for expected throughput.
+   */
+  maxConcurrentSegmentBatches?: number;
+
   /** Type of key to use for wrapping responses. */
   wrappingKeyAlgorithm?: KasPublicKeyAlgorithm;
 };
@@ -495,7 +507,9 @@ class ZTDFReader {
   async decrypt(): Promise<DecoratedStream> {
     const {
       assertionVerificationKeys,
+      maxConcurrentSegmentBatches,
       noVerify: noVerifyAssertions,
+      segmentBatchSize,
       wrappingKeyAlgorithm,
     } = this.opts;
 
@@ -534,7 +548,9 @@ class ZTDFReader {
         keyMiddleware: async (k) => k,
         progressHandler: this.client.clientConfig.progressHandler,
         assertionVerificationKeys,
+        maxConcurrentSegmentBatches,
         noVerifyAssertions,
+        segmentBatchSize,
         wrappingKeyAlgorithm,
         fulfillableObligations: this.opts.fulfillableObligationFQNs || [],
       },

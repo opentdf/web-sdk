@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 
 import { type AttributeObject } from '../../../tdf3/src/models/attribute.js';
-import { EncryptParamsBuilder } from '../../../tdf3/src/client/builders.js';
+import { DecryptParamsBuilder, EncryptParamsBuilder } from '../../../tdf3/src/client/builders.js';
 
 const aex = {
   kasUrl: 'https://kas',
@@ -54,5 +54,18 @@ describe('EncryptParamsBuilder', () => {
         /attribute is in invalid format/
       );
     });
+  });
+});
+
+describe('DecryptParamsBuilder', () => {
+  it('should store segment scheduler tuning', () => {
+    const params = new DecryptParamsBuilder()
+      .withStringSource('ciphertext')
+      .withSegmentBatchSize(4)
+      .withMaxConcurrentSegmentBatches(2)
+      .build();
+
+    expect(params.segmentBatchSize).to.equal(4);
+    expect(params.maxConcurrentSegmentBatches).to.equal(2);
   });
 });
