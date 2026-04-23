@@ -9,12 +9,6 @@ import { authorize, loadFile } from './acts.js';
 // upload files: https://timdeschryver.dev/blog/how-to-upload-files-with-playwright
 
 
-test.use({
-  launchOptions: {
-    args: ['--js-flags=--max-old-space-size=512'],
-  },
-});
-
 test.beforeEach(async ({ page }) => {
   page.on('pageerror', (err) => {
     console.error(err);
