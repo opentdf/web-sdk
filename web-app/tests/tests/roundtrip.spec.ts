@@ -8,7 +8,6 @@ import { authorize, loadFile } from './acts.js';
 // Playwright assertions: https://playwright.dev/docs/test-assertions
 // upload files: https://timdeschryver.dev/blog/how-to-upload-files-with-playwright
 
-
 test.beforeEach(async ({ page }) => {
   page.on('pageerror', (err) => {
     console.error(err);
@@ -101,8 +100,6 @@ test('Remote Source Streaming', async ({ page }) => {
     server.close();
   }
 });
-
-
 
 test('Large File', async ({ page }) => {
   await authorize(page);
