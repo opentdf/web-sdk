@@ -8,6 +8,13 @@ import { authorize, loadFile } from './acts.js';
 // Playwright assertions: https://playwright.dev/docs/test-assertions
 // upload files: https://timdeschryver.dev/blog/how-to-upload-files-with-playwright
 
+
+test.use({
+  launchOptions: {
+    args: ['--js-flags=--max-old-space-size=512'],
+  },
+});
+
 test.beforeEach(async ({ page }) => {
   page.on('pageerror', (err) => {
     console.error(err);
@@ -98,5 +105,61 @@ test('Remote Source Streaming', async ({ page }) => {
     expect(text).toContain('try encrypting some of your own files');
   } finally {
     server.close();
+  }
+});
+
+
+
+test('Large File', async ({ page }) => {
+  await authorize(page);
+  await page.goto(`${appUrl}?segmentBatchSize=2&maxConcurrentSegmentBatches=1`);
+  await expect(page.locator('#sessionState')).toHaveText('loggedin');
+
+  const decryptTuningLogs: string[] = [];
+  page.on('console', (message) => {
+    const text = message.text();
+    if (text.includes('Using decrypt read tuning')) {
+      decryptTuningLogs.push(text);
+    }
+  });
+
+  const threeGigs = 3 * 2 ** 30;
+  await page.locator('#randomSelector').fill(threeGigs.toString());
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.locator('#fileSink').click();
+  await page.locator('#encryptButton').click();
+
+  const download = await downloadPromise;
+  const cipherTextPath = await download.path();
+  try {
+    expect(download.suggestedFilename()).toContain('bytes');
+    expect(cipherTextPath).toBeTruthy();
+    if (!cipherTextPath) {
+      throw new Error();
+    }
+
+    await page.locator('#randomSelector').clear();
+    await loadFile(page, cipherTextPath);
+    const plainDownloadPromise = await page.waitForEvent('download', { timeout: 60000 });
+    await page.locator('#fileSink').click();
+    await page.locator('#decryptButton').click();
+    const download2 = await plainDownloadPromise;
+    expect(download2.suggestedFilename()).toContain('.decrypted');
+    expect(decryptTuningLogs).toEqual([
+      'Using decrypt read tuning {"segmentBatchSize":2,"maxConcurrentSegmentBatches":1}',
+    ]);
+    const plainTextPath = await download2.path();
+    if (!plainTextPath) {
+      throw new Error();
+    }
+    try {
+      const stats = fs.statSync(plainTextPath);
+      expect(stats).toHaveProperty('size', threeGigs);
+    } finally {
+      plainTextPath && fs.unlinkSync(plainTextPath);
+    }
+  } finally {
+    cipherTextPath && fs.unlinkSync(cipherTextPath);
   }
 });
