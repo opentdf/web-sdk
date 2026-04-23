@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import fs from 'node:fs';
-import { authorize, loadFile } from './acts.js';
+import { appUrl, authorize, loadFile } from './acts.js';
 
 test.beforeEach(async ({ page }) => {
   page.on('pageerror', (err) => {
@@ -42,7 +42,7 @@ test('Large File', async ({ page }) => {
 
     await page.locator('#randomSelector').clear();
     await loadFile(page, cipherTextPath);
-    const plainDownloadPromise = await page.waitForEvent('download', { timeout: 60000 });
+    const plainDownloadPromise = page.waitForEvent('download', { timeout: 60000 });
     await page.locator('#fileSink').click();
     await page.locator('#decryptButton').click();
     const download2 = await plainDownloadPromise;

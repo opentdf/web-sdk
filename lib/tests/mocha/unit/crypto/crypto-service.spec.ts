@@ -1,6 +1,7 @@
 import { assert, expect } from 'chai';
 
 import { Algorithms } from '../../../../tdf3/src/ciphers/index.js';
+import { AesGcmCipher } from '../../../../tdf3/src/ciphers/aes-gcm-cipher.js';
 import {
   decrypt,
   decryptWithPrivateKey,
@@ -24,6 +25,7 @@ import {
   verifyHmac,
   verify,
 } from '../../../../tdf3/src/crypto/index.js';
+import * as DefaultCryptoService from '../../../../tdf3/src/crypto/index.js';
 import { hex } from '../../../../src/encodings/index.js';
 import { Binary } from '../../../../tdf3/src/binary.js';
 import { decodeArrayBuffer, encodeArrayBuffer } from '../../../../src/encodings/base64.js';
@@ -241,6 +243,40 @@ describe('Crypto Service', () => {
     expect(encrypted).to.have.property('authTag');
     const decrypted = await decrypt(encrypted.payload, key, iv, algo, encrypted.authTag);
     expect(decrypted.payload.asString()).to.be.equal(rawData);
+  });
+
+  it('should decrypt aes_256_gcm ciphertext from Uint8Array input', async () => {
+    const rawData = 'hello world';
+    const payload = Binary.fromString(rawData);
+
+    const keyBytes = new Uint8Array(
+      decodeArrayBuffer('cvR6X2vLG5ap13ssLxRjOV1KOjJfraYpD8D+97zdtY4=')
+    );
+    const key = await importSymmetricKey(keyBytes);
+    const iv = Binary.fromArrayBuffer(crypto.getRandomValues(new Uint8Array(12)).buffer);
+    const cipher = new AesGcmCipher(DefaultCryptoService);
+
+    const encrypted = await cipher.encrypt(payload, key, iv);
+    const decrypted = await cipher.decrypt(new Uint8Array(encrypted.payload.asArrayBuffer()), key);
+
+    expect(decrypted.payload.asString()).to.equal(rawData);
+  });
+
+  it('should decrypt aes_256_gcm ciphertext from ArrayBuffer input', async () => {
+    const rawData = 'hello world';
+    const payload = Binary.fromString(rawData);
+
+    const keyBytes = new Uint8Array(
+      decodeArrayBuffer('cvR6X2vLG5ap13ssLxRjOV1KOjJfraYpD8D+97zdtY4=')
+    );
+    const key = await importSymmetricKey(keyBytes);
+    const iv = Binary.fromArrayBuffer(crypto.getRandomValues(new Uint8Array(12)).buffer);
+    const cipher = new AesGcmCipher(DefaultCryptoService);
+
+    const encrypted = await cipher.encrypt(payload, key, iv);
+    const decrypted = await cipher.decrypt(encrypted.payload.asArrayBuffer(), key);
+
+    expect(decrypted.payload.asString()).to.equal(rawData);
   });
 
   describe('generateECKeyPair', () => {

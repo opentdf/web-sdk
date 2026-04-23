@@ -133,8 +133,7 @@ export class ZipReader {
       cdObj.relativeOffsetOfLocalHeader + cdObj.headerLength + encrpytedSegmentOffset;
     // TODO: what's the exact byte start?
     const byteEnd = byteStart + encryptedSegmentSize;
-
-    return await this.getChunk(byteStart, byteEnd);
+    return this.getChunk(byteStart, byteEnd);
   }
 
   /**

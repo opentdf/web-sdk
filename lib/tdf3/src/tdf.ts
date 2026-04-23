@@ -1074,16 +1074,17 @@ async function fetchAndDecryptChunkSlice({
   specVersion: string;
   slice: Chunk[];
 }) {
+  const firstChunk = slice[0];
   let buffer!: Uint8Array;
+  const bufferSize = slice.reduce(
+    (currentVal, { encryptedSegmentSize }) => currentVal + (encryptedSegmentSize as number),
+    0
+  );
   try {
-    const bufferSize = slice.reduce(
-      (currentVal, { encryptedSegmentSize }) => currentVal + (encryptedSegmentSize as number),
-      0
-    );
     buffer = await zipReader.getPayloadSegment(
       centralDirectory,
       '0.payload',
-      slice[0].encryptedOffset,
+      firstChunk.encryptedOffset,
       bufferSize
     );
   } catch (error) {
@@ -1268,7 +1269,8 @@ export async function sliceAndDecrypt({
   specVersion: string;
 }) {
   for (const index in slice) {
-    const { encryptedOffset, encryptedSegmentSize, plainSegmentSize } = slice[index];
+    const chunk = slice[index];
+    const { encryptedOffset, encryptedSegmentSize, plainSegmentSize } = chunk;
 
     const offset =
       slice[0].encryptedOffset === 0 ? encryptedOffset : encryptedOffset % slice[0].encryptedOffset;
@@ -1282,7 +1284,7 @@ export async function sliceAndDecrypt({
       const result = await decryptChunk(
         encryptedChunk,
         reconstructedKey,
-        slice[index]['hash'],
+        chunk.hash,
         cipher,
         segmentIntegrityAlgorithm,
         specVersion,
@@ -1293,9 +1295,9 @@ export async function sliceAndDecrypt({
           `incorrect segment size: found [${result.payload.length()}], expected [${plainSegmentSize}]`
         );
       }
-      slice[index].decryptedChunk.set(result);
+      chunk.decryptedChunk.set(result);
     } catch (e) {
-      slice[index].decryptedChunk.reject(e);
+      chunk.decryptedChunk.reject(e);
     }
   }
 }
@@ -1470,10 +1472,17 @@ export async function decryptStreamFrom(
       const chunk = chunks[nextChunkIndex];
       const decryptedSegment = await chunk.decryptedChunk;
       const encryptedSegmentSize = chunk.encryptedSegmentSize ?? 0;
+      const plainChunk = new Uint8Array(decryptedSegment.payload.asArrayBuffer());
 
-      controller.enqueue(new Uint8Array(decryptedSegment.payload.asByteArray()));
+      controller.enqueue(plainChunk);
       progress += encryptedSegmentSize;
       cfg.progressHandler?.(progress);
+      // Release the resolved plaintext held by the consumed mailbox so long
+      // browser decrypts do not retain every prior segment in memory.
+      chunks[nextChunkIndex] = {
+        ...chunk,
+        decryptedChunk: mailbox<DecryptResult>(),
+      };
       nextChunkIndex += 1;
       scheduler?.markConsumed();
     },
