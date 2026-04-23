@@ -103,7 +103,10 @@ test('Remote Source Streaming', async ({ page }) => {
 
 test('Large File', async ({ page }) => {
   await authorize(page);
-  await page.goto(`${appUrl}?segmentBatchSize=2&maxConcurrentSegmentBatches=1`);
+  const currentUrl = new URL(page.url());
+  currentUrl.searchParams.set('segmentBatchSize', '2');
+  currentUrl.searchParams.set('maxConcurrentSegmentBatches', '1');
+  await page.goto(currentUrl.toString());
   await expect(page.locator('#sessionState')).toHaveText('loggedin');
 
   const decryptTuningLogs: string[] = [];
