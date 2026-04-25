@@ -9,13 +9,39 @@ import type { Entity, EntityChain, Token } from "../../entity/entity_pb.js";
 import { file_entity_entity } from "../../entity/entity_pb.js";
 import type { Any } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_any, file_google_protobuf_struct } from "@bufbuild/protobuf/wkt";
+import type { Resource } from "../../authorization/v2/authorization_pb.js";
+import { file_authorization_v2_authorization } from "../../authorization/v2/authorization_pb.js";
 import type { JsonObject, Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file entityresolution/v2/entity_resolution.proto.
  */
 export const file_entityresolution_v2_entity_resolution: GenFile = /*@__PURE__*/
-  fileDesc("CitlbnRpdHlyZXNvbHV0aW9uL3YyL2VudGl0eV9yZXNvbHV0aW9uLnByb3RvEhNlbnRpdHlyZXNvbHV0aW9uLnYyIl4KFEVudGl0eVJlcHJlc2VudGF0aW9uEhMKC29yaWdpbmFsX2lkGAEgASgJEjEKEGFkZGl0aW9uYWxfcHJvcHMYAiADKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0IkcKFlJlc29sdmVFbnRpdGllc1JlcXVlc3QSLQoIZW50aXRpZXMYASADKAsyDi5lbnRpdHkuRW50aXR5Qgu6SAjIAQGSAQIIASJkChdSZXNvbHZlRW50aXRpZXNSZXNwb25zZRJJChZlbnRpdHlfcmVwcmVzZW50YXRpb25zGAEgAygLMikuZW50aXR5cmVzb2x1dGlvbi52Mi5FbnRpdHlSZXByZXNlbnRhdGlvbiJrChNFbnRpdHlOb3RGb3VuZEVycm9yEgwKBGNvZGUYASABKAUSDwoHbWVzc2FnZRgCIAEoCRIlCgdkZXRhaWxzGAMgAygLMhQuZ29vZ2xlLnByb3RvYnVmLkFueRIOCgZlbnRpdHkYBCABKAkiRAojQ3JlYXRlRW50aXR5Q2hhaW5zRnJvbVRva2Vuc1JlcXVlc3QSHQoGdG9rZW5zGAEgAygLMg0uZW50aXR5LlRva2VuIlIKJENyZWF0ZUVudGl0eUNoYWluc0Zyb21Ub2tlbnNSZXNwb25zZRIqCg1lbnRpdHlfY2hhaW5zGAEgAygLMhMuZW50aXR5LkVudGl0eUNoYWluMqECChdFbnRpdHlSZXNvbHV0aW9uU2VydmljZRJuCg9SZXNvbHZlRW50aXRpZXMSKy5lbnRpdHlyZXNvbHV0aW9uLnYyLlJlc29sdmVFbnRpdGllc1JlcXVlc3QaLC5lbnRpdHlyZXNvbHV0aW9uLnYyLlJlc29sdmVFbnRpdGllc1Jlc3BvbnNlIgASlQEKHENyZWF0ZUVudGl0eUNoYWluc0Zyb21Ub2tlbnMSOC5lbnRpdHlyZXNvbHV0aW9uLnYyLkNyZWF0ZUVudGl0eUNoYWluc0Zyb21Ub2tlbnNSZXF1ZXN0GjkuZW50aXR5cmVzb2x1dGlvbi52Mi5DcmVhdGVFbnRpdHlDaGFpbnNGcm9tVG9rZW5zUmVzcG9uc2UiAGIGcHJvdG8z", [file_buf_validate_validate, file_entity_entity, file_google_protobuf_any, file_google_protobuf_struct]);
+  fileDesc("CitlbnRpdHlyZXNvbHV0aW9uL3YyL2VudGl0eV9yZXNvbHV0aW9uLnByb3RvEhNlbnRpdHlyZXNvbHV0aW9uLnYyIkEKEURpcmVjdEVudGl0bGVtZW50EhsKE2F0dHJpYnV0ZV92YWx1ZV9mcW4YASABKAkSDwoHYWN0aW9ucxgCIAMoCSKjAQoURW50aXR5UmVwcmVzZW50YXRpb24SEwoLb3JpZ2luYWxfaWQYASABKAkSMQoQYWRkaXRpb25hbF9wcm9wcxgCIAMoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSQwoTZGlyZWN0X2VudGl0bGVtZW50cxgDIAMoCzImLmVudGl0eXJlc29sdXRpb24udjIuRGlyZWN0RW50aXRsZW1lbnQiRwoWUmVzb2x2ZUVudGl0aWVzUmVxdWVzdBItCghlbnRpdGllcxgBIAMoCzIOLmVudGl0eS5FbnRpdHlCC7pICMgBAZIBAggBImQKF1Jlc29sdmVFbnRpdGllc1Jlc3BvbnNlEkkKFmVudGl0eV9yZXByZXNlbnRhdGlvbnMYASADKAsyKS5lbnRpdHlyZXNvbHV0aW9uLnYyLkVudGl0eVJlcHJlc2VudGF0aW9uImsKE0VudGl0eU5vdEZvdW5kRXJyb3ISDAoEY29kZRgBIAEoBRIPCgdtZXNzYWdlGAIgASgJEiUKB2RldGFpbHMYAyADKAsyFC5nb29nbGUucHJvdG9idWYuQW55Eg4KBmVudGl0eRgEIAEoCSJzCiNDcmVhdGVFbnRpdHlDaGFpbnNGcm9tVG9rZW5zUmVxdWVzdBIdCgZ0b2tlbnMYASADKAsyDS5lbnRpdHkuVG9rZW4SLQoJcmVzb3VyY2VzGAIgAygLMhouYXV0aG9yaXphdGlvbi52Mi5SZXNvdXJjZSJSCiRDcmVhdGVFbnRpdHlDaGFpbnNGcm9tVG9rZW5zUmVzcG9uc2USKgoNZW50aXR5X2NoYWlucxgBIAMoCzITLmVudGl0eS5FbnRpdHlDaGFpbjKhAgoXRW50aXR5UmVzb2x1dGlvblNlcnZpY2USbgoPUmVzb2x2ZUVudGl0aWVzEisuZW50aXR5cmVzb2x1dGlvbi52Mi5SZXNvbHZlRW50aXRpZXNSZXF1ZXN0GiwuZW50aXR5cmVzb2x1dGlvbi52Mi5SZXNvbHZlRW50aXRpZXNSZXNwb25zZSIAEpUBChxDcmVhdGVFbnRpdHlDaGFpbnNGcm9tVG9rZW5zEjguZW50aXR5cmVzb2x1dGlvbi52Mi5DcmVhdGVFbnRpdHlDaGFpbnNGcm9tVG9rZW5zUmVxdWVzdBo5LmVudGl0eXJlc29sdXRpb24udjIuQ3JlYXRlRW50aXR5Q2hhaW5zRnJvbVRva2Vuc1Jlc3BvbnNlIgBiBnByb3RvMw", [file_buf_validate_validate, file_entity_entity, file_google_protobuf_any, file_google_protobuf_struct, file_authorization_v2_authorization]);
+
+/**
+ * Entity Entitlements that do not require subject mappings (experimental)
+ *
+ * @generated from message entityresolution.v2.DirectEntitlement
+ */
+export type DirectEntitlement = Message<"entityresolution.v2.DirectEntitlement"> & {
+  /**
+   * @generated from field: string attribute_value_fqn = 1;
+   */
+  attributeValueFqn: string;
+
+  /**
+   * @generated from field: repeated string actions = 2;
+   */
+  actions: string[];
+};
+
+/**
+ * Describes the message entityresolution.v2.DirectEntitlement.
+ * Use `create(DirectEntitlementSchema)` to create a new message.
+ */
+export const DirectEntitlementSchema: GenMessage<DirectEntitlement> = /*@__PURE__*/
+  messageDesc(file_entityresolution_v2_entity_resolution, 0);
 
 /**
  * @generated from message entityresolution.v2.EntityRepresentation
@@ -32,6 +58,13 @@ export type EntityRepresentation = Message<"entityresolution.v2.EntityRepresenta
    * @generated from field: repeated google.protobuf.Struct additional_props = 2;
    */
   additionalProps: JsonObject[];
+
+  /**
+   * direct entitlements applied to Entity (experimental)
+   *
+   * @generated from field: repeated entityresolution.v2.DirectEntitlement direct_entitlements = 3;
+   */
+  directEntitlements: DirectEntitlement[];
 };
 
 /**
@@ -39,7 +72,7 @@ export type EntityRepresentation = Message<"entityresolution.v2.EntityRepresenta
  * Use `create(EntityRepresentationSchema)` to create a new message.
  */
 export const EntityRepresentationSchema: GenMessage<EntityRepresentation> = /*@__PURE__*/
-  messageDesc(file_entityresolution_v2_entity_resolution, 0);
+  messageDesc(file_entityresolution_v2_entity_resolution, 1);
 
 /**
  * Resolve a set of entities to their representations.
@@ -58,7 +91,7 @@ export type ResolveEntitiesRequest = Message<"entityresolution.v2.ResolveEntitie
  * Use `create(ResolveEntitiesRequestSchema)` to create a new message.
  */
 export const ResolveEntitiesRequestSchema: GenMessage<ResolveEntitiesRequest> = /*@__PURE__*/
-  messageDesc(file_entityresolution_v2_entity_resolution, 1);
+  messageDesc(file_entityresolution_v2_entity_resolution, 2);
 
 /**
  * @generated from message entityresolution.v2.ResolveEntitiesResponse
@@ -75,7 +108,7 @@ export type ResolveEntitiesResponse = Message<"entityresolution.v2.ResolveEntiti
  * Use `create(ResolveEntitiesResponseSchema)` to create a new message.
  */
 export const ResolveEntitiesResponseSchema: GenMessage<ResolveEntitiesResponse> = /*@__PURE__*/
-  messageDesc(file_entityresolution_v2_entity_resolution, 2);
+  messageDesc(file_entityresolution_v2_entity_resolution, 3);
 
 /**
  * @generated from message entityresolution.v2.EntityNotFoundError
@@ -107,7 +140,7 @@ export type EntityNotFoundError = Message<"entityresolution.v2.EntityNotFoundErr
  * Use `create(EntityNotFoundErrorSchema)` to create a new message.
  */
 export const EntityNotFoundErrorSchema: GenMessage<EntityNotFoundError> = /*@__PURE__*/
-  messageDesc(file_entityresolution_v2_entity_resolution, 3);
+  messageDesc(file_entityresolution_v2_entity_resolution, 4);
 
 /**
  * Create an entity chain for each token (JWT) in the request.
@@ -119,6 +152,13 @@ export type CreateEntityChainsFromTokensRequest = Message<"entityresolution.v2.C
    * @generated from field: repeated entity.Token tokens = 1;
    */
   tokens: Token[];
+
+  /**
+   * resources to consider for direct entitlements (experimental)
+   *
+   * @generated from field: repeated authorization.v2.Resource resources = 2;
+   */
+  resources: Resource[];
 };
 
 /**
@@ -126,7 +166,7 @@ export type CreateEntityChainsFromTokensRequest = Message<"entityresolution.v2.C
  * Use `create(CreateEntityChainsFromTokensRequestSchema)` to create a new message.
  */
 export const CreateEntityChainsFromTokensRequestSchema: GenMessage<CreateEntityChainsFromTokensRequest> = /*@__PURE__*/
-  messageDesc(file_entityresolution_v2_entity_resolution, 4);
+  messageDesc(file_entityresolution_v2_entity_resolution, 5);
 
 /**
  * @generated from message entityresolution.v2.CreateEntityChainsFromTokensResponse
@@ -143,7 +183,7 @@ export type CreateEntityChainsFromTokensResponse = Message<"entityresolution.v2.
  * Use `create(CreateEntityChainsFromTokensResponseSchema)` to create a new message.
  */
 export const CreateEntityChainsFromTokensResponseSchema: GenMessage<CreateEntityChainsFromTokensResponse> = /*@__PURE__*/
-  messageDesc(file_entityresolution_v2_entity_resolution, 5);
+  messageDesc(file_entityresolution_v2_entity_resolution, 6);
 
 /**
  * @generated from service entityresolution.v2.EntityResolutionService
