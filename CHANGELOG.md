@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.16.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.15.0...sdk-v0.16.0) (2026-04-23)
+
+
+### Bug Fixes
+
+* **sdk:** bound browser decrypt memory for large chunker downloads ([#922](https://github.com/opentdf/web-sdk/issues/922)) ([66aad4e](https://github.com/opentdf/web-sdk/commit/66aad4e2f398a3ada7683f4a74d38d68eb682b6a))
+* **sdk:** bump uuid from 13.0.0 to 14.0.0 in /lib ([#923](https://github.com/opentdf/web-sdk/issues/923)) ([7c02e1f](https://github.com/opentdf/web-sdk/commit/7c02e1fccf619c1f877192327d3a23e794d36dd3))
+
 ## [0.15.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.14.0...sdk-v0.15.0) (2026-04-22)
 
 
