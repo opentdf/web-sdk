@@ -19,6 +19,12 @@ export {
   type ExternalJwtTokenProviderOptions,
 } from './auth/token-providers.js';
 export { attributeFQNsAsValues } from './policy/api.js';
+export {
+  AttributeRuleTypeEnum,
+  ConditionBooleanTypeEnum,
+  SubjectMappingOperatorEnum,
+} from './platform/policy/objects_pb.js';
+export { ActiveStateEnum } from './platform/common/common_pb.js';
 export * as EntityIdentifiers from './platform/authorization/entity-identifiers.js';
 export * as Resources from './platform/authorization/resources.js';
 /** @deprecated Use `EntityIdentifiers.forEmail()` instead. Will be removed in a future release. */
