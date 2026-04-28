@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.16.0...sdk-v0.17.0) (2026-04-28)
+
+
+### Features
+
+* **sdk:** re-export policy enums from barrel for convenient imports ([#928](https://github.com/opentdf/web-sdk/issues/928)) ([d43919c](https://github.com/opentdf/web-sdk/commit/d43919cd86d96f66ad0eb9de2d6df42b501c5942))
+
 ## [0.16.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.15.0...sdk-v0.16.0) (2026-04-23)
 
 
