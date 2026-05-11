@@ -4,6 +4,7 @@ import * as TDF from '../../../tdf3/src/tdf.js';
 import { KeyAccessObject } from '../../../tdf3/src/models/key-access.js';
 import { PolicyBody, type Policy } from '../../../tdf3/src/models/policy.js';
 import { OriginAllowList } from '../../../src/access.js';
+import { base64 } from '../../../src/encodings/index.js';
 import { ConfigurationError, InvalidFileError, UnsafeUrlError } from '../../../src/errors.js';
 import { getMocks } from '../../mocks/index.js';
 import * as DefaultCryptoService from '../../../tdf3/src/crypto/index.js';
@@ -68,6 +69,12 @@ describe('TDF', () => {
     const pem = await TDF.extractPemFromKeyString(kasECCert, 'ec:secp256r1', cryptoService);
     expect(pem).to.include('-----BEGIN PUBLIC KEY-----');
     expect(pem).to.include('-----END PUBLIC KEY-----');
+  });
+
+  it('should preserve raw ML-KEM public key encoding', async () => {
+    const rawPublicKey = base64.encodeArrayBuffer(new Uint8Array(1184).buffer);
+    const key = await TDF.extractPemFromKeyString(rawPublicKey, 'mlkem:768', cryptoService);
+    expect(key).to.equal(rawPublicKey);
   });
 });
 

@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 
-import { ECWrapped, Wrapped } from '../../../tdf3/src/models/key-access.js';
+import { ECWrapped, MlKemWrapped, Wrapped } from '../../../tdf3/src/models/key-access.js';
 import { Policy } from '../../../tdf3/src/models/policy.js';
 import { base64 } from '../../../src/encodings/index.js';
 import type { CryptoService, KeyPair } from '../../../tdf3/src/crypto/declarations.js';
@@ -19,8 +19,26 @@ const mockCryptoService: CryptoService = {
     const keyBytes = new Uint8Array(32);
     return await importSymmetricKey(keyBytes);
   },
+  async generateMlKemKeyPair(): Promise<KeyPair> {
+    return {
+      publicKey: { _brand: 'PublicKey', algorithm: 'mlkem:768', mlKemLevel: 768 } as any,
+      privateKey: { _brand: 'PrivateKey', algorithm: 'mlkem:768', mlKemLevel: 768 } as any,
+    };
+  },
+  async mlKemEncapsulate() {
+    return {
+      ciphertext: new Uint8Array([1, 2, 3, 4]),
+      sharedSecret: await importSymmetricKey(new Uint8Array(32)),
+    };
+  },
+  async mlKemDecapsulate() {
+    return await importSymmetricKey(new Uint8Array(32));
+  },
   async randomBytes(length: number): Promise<Uint8Array> {
     return new Uint8Array(length);
+  },
+  async digest() {
+    return new Uint8Array(32);
   },
   async encrypt() {
     return {
@@ -28,11 +46,14 @@ const mockCryptoService: CryptoService = {
       authTag: Binary.fromArrayBuffer(new Uint8Array(16).buffer),
     };
   },
-  async hmac(): Promise<string> {
-    return 'mock-hmac-hash';
+  async hmac(): Promise<Uint8Array> {
+    return new Uint8Array(32);
   },
   async encryptWithPublicKey() {
     return Binary.fromString('mock-wrapped-key');
+  },
+  async importPublicKey() {
+    return { _brand: 'PublicKey', algorithm: 'rsa:2048' } as any;
   },
   async exportPublicKeyPem() {
     return 'ephemeral-public-key-pem';
@@ -101,6 +122,27 @@ describe('ECWrapped', () => {
   it('should initialize Wrapped with correct properties', async () => {
     const wrapped = new Wrapped(url, kid, publicKey, metadata, mockCryptoService, sid);
     expect(wrapped.type).to.equal('wrapped');
+  });
+
+  it('should write and preserve the ML-KEM wrapped key layout', async () => {
+    const wrapped = new MlKemWrapped(
+      url,
+      kid,
+      base64.encodeArrayBuffer(new Uint8Array(1184).buffer),
+      'mlkem:768',
+      metadata,
+      mockCryptoService,
+      sid
+    );
+
+    const dek = await importSymmetricKey(dekBytes);
+    const keyAccessObject = await wrapped.write(policy, dek, encryptedMetadataStr);
+    const wrappedKey = new Uint8Array(base64.decodeArrayBuffer(keyAccessObject.wrappedKey || ''));
+
+    expect(keyAccessObject.type).to.equal('wrapped');
+    expect(wrappedKey.byteLength).to.equal(4 + 12 + 16 + 16);
+    expect(Array.from(wrappedKey.slice(0, 4))).to.deep.equal([1, 2, 3, 4]);
+    expect(Array.from(wrappedKey.slice(4))).to.deep.equal(Array.from(new Uint8Array(44)));
   });
 
   it(`should handle undefined kid for ECWrapped`, () => {

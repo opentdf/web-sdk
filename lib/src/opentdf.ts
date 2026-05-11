@@ -190,7 +190,7 @@ export type OpenTDFOptions = {
   authProvider?: AuthProvider;
 
   /** Default settings for 'encrypt' type requests. */
-  defaultCreateOptions?: Omit<CreateOptions, 'source'>;
+  defaultCreateOptions?: Omit<CreateTDFOptions, 'source'>;
 
   /** Default settings for 'decrypt' type requests. */
   defaultReadOptions?: Omit<ReadOptions, 'source'>;
@@ -285,7 +285,7 @@ export class OpenTDF {
   /** If DPoP is enabled for this instance. */
   readonly dpopEnabled: boolean;
   /** Default options for creating TDF objects. */
-  defaultCreateOptions: Omit<CreateOptions, 'source'>;
+  defaultCreateOptions: Omit<CreateTDFOptions, 'source'>;
   /** Default options for reading TDF objects. */
   defaultReadOptions: Omit<ReadOptions, 'source'>;
   /** The DPoP keys for this instance, if any. */

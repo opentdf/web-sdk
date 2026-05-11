@@ -1,17 +1,15 @@
 import * as jose from 'jose';
 import { createServer, IncomingMessage, RequestListener } from 'node:http';
 
-import { base64 } from '../src/encodings/index.js';
+import { Algorithms, Binary } from '../tdf3/index.js';
 import { decryptWithPrivateKey, encryptWithPublicKey } from '../tdf3/src/crypto/index.js';
 import { getMocks } from './mocks/index.js';
-import { keyAgreement, pemPublicToCrypto } from '../src/crypto/index.js';
-import { generateRandomNumber } from '../src/crypto/generateRandomNumber.js';
-import { removePemFormatting } from '../tdf3/src/crypto/crypto-utils.js';
-import { Binary } from '../tdf3/index.js';
 import { valueFor } from './web/policy/mock-attrs.js';
 import { AttributeAndValue } from '../src/policy/attributes.js';
 import { getZtdfSalt } from '../tdf3/src/crypto/salt.js';
 import { DefaultCryptoService } from '../tdf3/src/crypto/index.js';
+import type { MlKemAlgorithm } from '../tdf3/src/crypto/declarations.js';
+import { mlKemCiphertextLengthForAlgorithm } from '../tdf3/src/crypto/core/mlkem.js';
 
 import { create, toJsonString, fromJson } from '@bufbuild/protobuf';
 import { ValueSchema } from '@bufbuild/protobuf/wkt';
@@ -23,6 +21,79 @@ import {
 } from '../src/platform/kas/kas_pb.js';
 
 const Mocks = getMocks();
+
+const ML_KEM_KIDS: Record<MlKemAlgorithm, string> = {
+  'mlkem:512': 'm512',
+  'mlkem:768': 'm768',
+  'mlkem:1024': 'm1024',
+};
+
+const ML_KEM_ALGORITHMS_BY_KID: Record<string, MlKemAlgorithm> = Object.fromEntries(
+  Object.entries(ML_KEM_KIDS).map(([algorithm, kid]) => [kid, algorithm as MlKemAlgorithm])
+) as Record<string, MlKemAlgorithm>;
+
+const mlKemKasKeyPairs = {
+  'mlkem:512': DefaultCryptoService.generateMlKemKeyPair(512),
+  'mlkem:768': DefaultCryptoService.generateMlKemKeyPair(768),
+  'mlkem:1024': DefaultCryptoService.generateMlKemKeyPair(1024),
+} as const;
+
+async function mlKemKasPublicKey(algorithm: MlKemAlgorithm): Promise<string> {
+  const keyPair = await mlKemKasKeyPairs[algorithm];
+  return DefaultCryptoService.exportPublicKeyPem(keyPair.publicKey);
+}
+
+async function unwrapMlKemWrappedKey(
+  wrappedKey: Uint8Array,
+  algorithm: MlKemAlgorithm
+): Promise<Binary> {
+  const keyPair = await mlKemKasKeyPairs[algorithm];
+  const mlKemCiphertextLength = mlKemCiphertextLengthForAlgorithm(algorithm);
+  const mlKemCiphertext = wrappedKey.slice(0, mlKemCiphertextLength);
+  const wrappedKeyAndNonce = wrappedKey.slice(mlKemCiphertextLength);
+  const iv = wrappedKeyAndNonce.slice(0, 12);
+  const encryptedDek = wrappedKeyAndNonce.slice(12);
+  const kek = await DefaultCryptoService.mlKemDecapsulate(keyPair.privateKey, mlKemCiphertext);
+  const decryptResult = await DefaultCryptoService.decrypt(
+    Binary.fromArrayBuffer(encryptedDek.buffer),
+    kek,
+    Binary.fromArrayBuffer(iv.buffer),
+    Algorithms.AES_256_GCM
+  );
+  return decryptResult.payload;
+}
+
+async function wrapDekForMlKemClient(
+  dek: Binary,
+  clientPublicKeyRaw: string,
+  algorithm: MlKemAlgorithm
+): Promise<Uint8Array> {
+  const clientPublicKey = await DefaultCryptoService.importPublicKey(clientPublicKeyRaw, {
+    usage: 'encrypt',
+    algorithmHint: algorithm,
+  });
+  const { ciphertext: mlKemCiphertext, sharedSecret } =
+    await DefaultCryptoService.mlKemEncapsulate(clientPublicKey);
+  const iv = await DefaultCryptoService.randomBytes(12);
+  const encryptResult = await DefaultCryptoService.encrypt(
+    dek,
+    sharedSecret,
+    Binary.fromArrayBuffer(iv.buffer),
+    Algorithms.AES_256_GCM
+  );
+  const ciphertext = new Uint8Array(encryptResult.payload.asArrayBuffer());
+  const authTag = encryptResult.authTag
+    ? new Uint8Array(encryptResult.authTag.asArrayBuffer())
+    : new Uint8Array(0);
+  const entityWrappedKey = new Uint8Array(
+    mlKemCiphertext.length + iv.length + ciphertext.length + authTag.length
+  );
+  entityWrappedKey.set(mlKemCiphertext);
+  entityWrappedKey.set(iv, mlKemCiphertext.length);
+  entityWrappedKey.set(ciphertext, mlKemCiphertext.length + iv.length);
+  entityWrappedKey.set(authTag, mlKemCiphertext.length + iv.length + ciphertext.length);
+  return entityWrappedKey;
+}
 
 function range(start: number, end: number): Uint8Array {
   const result = [];
@@ -95,7 +166,9 @@ const kas: RequestListener = async (req, res) => {
       const params = JSON.parse(bodyText);
       const algorithm = params.algorithm || 'rsa:2048';
 
-      if (!['ec:secp256r1', 'rsa:2048'].includes(algorithm)) {
+      if (
+        !['ec:secp256r1', 'rsa:2048', 'mlkem:512', 'mlkem:768', 'mlkem:1024'].includes(algorithm)
+      ) {
         console.log(`[DEBUG] invalid algorithm [${algorithm}]`);
         res.writeHead(400);
         res.end(`{"error": "Invalid algorithm [${algorithm}]"}`);
@@ -110,8 +183,18 @@ const kas: RequestListener = async (req, res) => {
       }
       res.setHeader('Content-Type', 'application/json');
       res.statusCode = 200;
-      const publicKey = 'ec:secp256r1' == algorithm ? Mocks.kasECCert : Mocks.kasPublicKey;
-      const kid = 'ec:secp256r1' == algorithm ? 'e1' : 'r1';
+      const publicKey =
+        algorithm === 'ec:secp256r1'
+          ? Mocks.kasECCert
+          : algorithm === 'rsa:2048'
+            ? Mocks.kasPublicKey
+            : await mlKemKasPublicKey(algorithm as MlKemAlgorithm);
+      const kid =
+        algorithm === 'ec:secp256r1'
+          ? 'e1'
+          : algorithm === 'rsa:2048'
+            ? 'r1'
+            : ML_KEM_KIDS[algorithm as MlKemAlgorithm];
       res.end(JSON.stringify({ kid, publicKey }));
       return;
     } else if (url.pathname === '/kas.AccessService/Rewrap') {
@@ -209,12 +292,9 @@ const kas: RequestListener = async (req, res) => {
 
       const rewrap = fromJson(UnsignedRewrapRequestSchema, JSON.parse(requestBody as string));
       console.log('[INFO]: rewrap request body: ', rewrap);
-      const clientPublicKey = await pemPublicToCrypto(rewrap.clientPublicKey);
-      if (!clientPublicKey || clientPublicKey.type !== 'public') {
-        res.writeHead(400);
-        res.end('{"error": "Invalid client public key"}');
-        return;
-      }
+      const clientPublicKeyInfo = await DefaultCryptoService.parsePublicKeyPem(
+        rewrap.clientPublicKey
+      );
       const keyAccessObject = rewrap.requests?.[0]?.keyAccessObjects?.[0]?.keyAccessObject;
       const kaoheader = keyAccessObject?.header;
       const isZTDF = !kaoheader || kaoheader.length === 0;
@@ -225,40 +305,50 @@ const kas: RequestListener = async (req, res) => {
           res.end('{"error": "Invalid wrapped key"}');
           return;
         }
-        const isECWrapped = keyAccessObject?.kid == 'e1';
         // Decrypt the wrapped key from TDF3
         let dek: Binary;
-        if (isECWrapped) {
+        if (keyAccessObject?.keyType === 'ec-wrapped') {
           if (!keyAccessObject?.ephemeralPublicKey) {
             res.writeHead(400);
             res.end('{"error": "Nil ephemeral public key"}');
             return;
           }
-          const ephemeralKey: CryptoKey = await pemPublicToCrypto(
-            keyAccessObject?.ephemeralPublicKey
+          const ephemeralKey = await DefaultCryptoService.importPublicKey(
+            keyAccessObject.ephemeralPublicKey,
+            { usage: 'derive' }
           );
-          const kasPrivateKeyBytes = base64.decodeArrayBuffer(
-            removePemFormatting(Mocks.kasECPrivateKey)
+          const kasPrivateKey = await DefaultCryptoService.importPrivateKey!(
+            Mocks.kasECPrivateKey,
+            {
+              usage: 'derive',
+              algorithmHint: 'ec:secp256r1',
+            }
           );
-          const kasPrivateKey = await crypto.subtle.importKey(
-            'pkcs8',
-            kasPrivateKeyBytes,
-            { name: 'ECDH', namedCurve: 'P-256' },
-            false,
-            ['deriveBits', 'deriveKey']
-          );
-          const kek = await keyAgreement(kasPrivateKey, ephemeralKey, {
-            hkdfSalt: await getZtdfSalt(DefaultCryptoService),
-            hkdfHash: 'SHA-256',
+          const kek = await DefaultCryptoService.deriveKeyFromECDH(kasPrivateKey, ephemeralKey, {
+            hash: 'SHA-256',
+            salt: await getZtdfSalt(DefaultCryptoService),
           });
           const iv = wk.slice(0, 12);
           const wrappedKey = wk.slice(12);
-          const dekab = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, kek, wrappedKey);
-          dek = Binary.fromArrayBuffer(dekab);
+          const decryptResult = await DefaultCryptoService.decrypt(
+            Binary.fromArrayBuffer(wrappedKey.buffer),
+            kek,
+            Binary.fromArrayBuffer(iv.buffer),
+            Algorithms.AES_256_GCM
+          );
+          dek = decryptResult.payload;
+        } else if (keyAccessObject?.kid && keyAccessObject.kid in ML_KEM_ALGORITHMS_BY_KID) {
+          dek = await unwrapMlKemWrappedKey(
+            wk,
+            ML_KEM_ALGORITHMS_BY_KID[keyAccessObject.kid] as MlKemAlgorithm
+          );
         } else {
-          dek = await decryptWithPrivateKey(Binary.fromArrayBuffer(wk), Mocks.kasPrivateKey);
+          const kasPrivateKey = await DefaultCryptoService.importPrivateKey!(Mocks.kasPrivateKey, {
+            usage: 'encrypt',
+          });
+          dek = await decryptWithPrivateKey(Binary.fromArrayBuffer(wk), kasPrivateKey);
         }
-        if (clientPublicKey.algorithm.name == 'RSA-OAEP') {
+        if (clientPublicKeyInfo.algorithm.startsWith('rsa:')) {
           // Import the client public key as opaque PublicKey for encryptWithPublicKey
           const clientPubKeyOpaque = await DefaultCryptoService.importPublicKey(
             rewrap.clientPublicKey,
@@ -291,24 +381,67 @@ const kas: RequestListener = async (req, res) => {
           res.end(toJsonString(RewrapResponseSchema, reply));
           return;
         }
-        const sessionKeyPair = await crypto.subtle.generateKey(
-          {
-            name: 'ECDH',
-            namedCurve: 'P-256',
-          },
-          false,
-          ['deriveBits', 'deriveKey']
-        );
-        const kek = await keyAgreement(sessionKeyPair.privateKey, clientPublicKey, {
-          hkdfSalt: await getZtdfSalt(DefaultCryptoService),
-          hkdfHash: 'SHA-256',
+        if (clientPublicKeyInfo.algorithm.startsWith('mlkem:')) {
+          const entityWrappedKey = await wrapDekForMlKemClient(
+            dek,
+            rewrap.clientPublicKey,
+            clientPublicKeyInfo.algorithm as MlKemAlgorithm
+          );
+          const reply = create(RewrapResponseSchema, {
+            responses: [
+              create(PolicyRewrapResultSchema, {
+                results: [
+                  create(KeyAccessRewrapResultSchema, {
+                    metadata: {
+                      hello: create(ValueSchema, {
+                        kind: { case: 'stringValue', value: 'world' },
+                      }),
+                    },
+                    result: {
+                      case: 'kasWrappedKey',
+                      value: entityWrappedKey,
+                    },
+                    keyAccessObjectId:
+                      rewrap.requests?.[0]?.keyAccessObjects?.[0]?.keyAccessObjectId || '',
+                  }),
+                ],
+              }),
+            ],
+          });
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(toJsonString(RewrapResponseSchema, reply));
+          return;
+        }
+        const clientPublicKey = await DefaultCryptoService.importPublicKey(rewrap.clientPublicKey, {
+          usage: 'derive',
         });
-        const iv = generateRandomNumber(12);
-        const cek = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, kek, dek.asArrayBuffer());
-        const entityWrappedKey = new Uint8Array(iv.length + cek.byteLength);
+        const sessionKeyPair = await DefaultCryptoService.generateECKeyPair('P-256');
+        const kek = await DefaultCryptoService.deriveKeyFromECDH(
+          sessionKeyPair.privateKey,
+          clientPublicKey,
+          {
+            hash: 'SHA-256',
+            salt: await getZtdfSalt(DefaultCryptoService),
+          }
+        );
+        const iv = await DefaultCryptoService.randomBytes(12);
+        const encryptResult = await DefaultCryptoService.encrypt(
+          dek,
+          kek,
+          Binary.fromArrayBuffer(iv.buffer),
+          Algorithms.AES_256_GCM
+        );
+        const ciphertext = new Uint8Array(encryptResult.payload.asArrayBuffer());
+        const authTag = encryptResult.authTag
+          ? new Uint8Array(encryptResult.authTag.asArrayBuffer())
+          : new Uint8Array(0);
+        const entityWrappedKey = new Uint8Array(iv.length + ciphertext.length + authTag.length);
         entityWrappedKey.set(iv);
-        entityWrappedKey.set(new Uint8Array(cek), iv.length);
+        entityWrappedKey.set(ciphertext, iv.length);
+        entityWrappedKey.set(authTag, iv.length + ciphertext.length);
         const reply = create(RewrapResponseSchema, {
+          sessionPublicKey: await DefaultCryptoService.exportPublicKeyPem(sessionKeyPair.publicKey),
           responses: [
             create(PolicyRewrapResultSchema, {
               results: [

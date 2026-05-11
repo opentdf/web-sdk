@@ -146,6 +146,42 @@ describe('Local roundtrip Tests', () => {
     expect(decoded).to.be.equal('hello world');
   });
 
+  for (const algorithm of ['mlkem:768', 'mlkem:1024'] as const) {
+    it(`ztdf roundtrip string with ${algorithm}`, async () => {
+      const client = new OpenTDF({
+        authProvider,
+        defaultReadOptions: {
+          allowedKASEndpoints: [kasEndpoint],
+          wrappingKeyAlgorithm: algorithm,
+        },
+      });
+      const cipherTextStream = await client.createZTDF({
+        autoconfigure: false,
+        defaultKASEndpoint: kasEndpoint,
+        wrappingKeyAlgorithm: algorithm,
+        source: { type: 'chunker', location: fromString('hello world') },
+      });
+      const cipherManifest = await cipherTextStream.manifest;
+      const kao = cipherManifest?.encryptionInformation?.keyAccess[0];
+      expect(kao).to.contain({
+        url: kasEndpoint,
+        kid: algorithm === 'mlkem:768' ? 'm768' : 'm1024',
+        type: 'wrapped',
+        protocol: 'kas',
+        schemaVersion: '1.0',
+      });
+      const cipherTextArray = new Uint8Array(await new Response(cipherTextStream).arrayBuffer());
+
+      const ztdfParsed = await client.read({
+        source: { type: 'buffer', location: cipherTextArray },
+        wrappingKeyAlgorithm: algorithm,
+      });
+
+      const actual = await new Response(ztdfParsed).arrayBuffer();
+      expect(new TextDecoder().decode(actual)).to.be.equal('hello world');
+    });
+  }
+
   it(`ztdf roundtrip chunker decrypt with bounded segment scheduler`, async () => {
     const client = new OpenTDF({
       authProvider,

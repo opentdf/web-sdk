@@ -13,9 +13,12 @@ import {
   generateECKeyPair,
   generateKey,
   generateKeyPair,
+  generateMlKemKeyPair,
   generateSigningKeyPair,
   hex2Ab,
   importPublicKey,
+  mlKemDecapsulate,
+  mlKemEncapsulate,
   parsePublicKeyPem,
   importSymmetricKey,
   jwkToPublicKeyPem,
@@ -316,6 +319,34 @@ describe('Crypto Service', () => {
     });
   });
 
+  describe('generateMlKemKeyPair', () => {
+    for (const [level, algorithm] of [
+      [512, 'mlkem:512'],
+      [768, 'mlkem:768'],
+      [1024, 'mlkem:1024'],
+    ] as const) {
+      it(`should generate ${algorithm} key pair`, async () => {
+        const keyPair = await generateMlKemKeyPair(level);
+        const exported = await exportPublicKeyPem(keyPair.publicKey);
+        const parsed = await parsePublicKeyPem(exported);
+        const imported = await importPublicKey(exported, {
+          usage: 'encrypt',
+          algorithmHint: algorithm,
+        });
+
+        expect(keyPair.publicKey).to.have.property('_brand', 'PublicKey');
+        expect(keyPair.publicKey).to.have.property('algorithm', algorithm);
+        expect(keyPair.publicKey).to.have.property('mlKemLevel', level);
+        expect(keyPair.privateKey).to.have.property('_brand', 'PrivateKey');
+        expect(keyPair.privateKey).to.have.property('algorithm', algorithm);
+        expect(keyPair.privateKey).to.have.property('mlKemLevel', level);
+        expect(exported).to.not.include('BEGIN PUBLIC KEY');
+        expect(parsed.algorithm).to.equal(algorithm);
+        expect(imported.algorithm).to.equal(algorithm);
+      });
+    }
+  });
+
   describe('deriveKeyFromECDH', () => {
     it('should derive key from ECDH with P-256', async () => {
       const aliceKeys = await generateECKeyPair('P-256');
@@ -363,6 +394,25 @@ describe('Crypto Service', () => {
       expect(aliceDerivedKey).to.deep.equal(bobDerivedKey);
       expect(aliceDerivedKey).to.have.property('length', 256); // 256 bits
     });
+  });
+
+  describe('mlKemEncapsulate / mlKemDecapsulate', () => {
+    for (const [level, algorithm] of [
+      [512, 'mlkem:512'],
+      [768, 'mlkem:768'],
+      [1024, 'mlkem:1024'],
+    ] as const) {
+      it(`should round-trip ${algorithm} shared secret`, async () => {
+        const keyPair = await generateMlKemKeyPair(level);
+        const { ciphertext, sharedSecret } = await mlKemEncapsulate(keyPair.publicKey);
+        const decapsulated = await mlKemDecapsulate(keyPair.privateKey, ciphertext);
+
+        expect(ciphertext).to.be.instanceOf(Uint8Array);
+        expect(sharedSecret).to.have.property('_brand', 'SymmetricKey');
+        expect(sharedSecret).to.have.property('length', 256);
+        expect(decapsulated).to.deep.equal(sharedSecret);
+      });
+    }
   });
 
   describe('hmac and verifyHmac', () => {
@@ -438,6 +488,15 @@ describe('Crypto Service', () => {
       const result = await parsePublicKeyPem(publicKeyPem);
       expect(result.algorithm).to.equal('ec:secp521r1');
       expect(result.pem).to.equal(publicKeyPem);
+    });
+
+    it('should import raw ML-KEM public key', async () => {
+      const mlKemKeyPair = await generateMlKemKeyPair(768);
+      const rawPublicKey = await exportPublicKeyPem(mlKemKeyPair.publicKey);
+
+      const result = await parsePublicKeyPem(rawPublicKey);
+      expect(result.algorithm).to.equal('mlkem:768');
+      expect(result.pem).to.equal(rawPublicKey);
     });
   });
 

@@ -1,9 +1,19 @@
 import {
   type KeyAlgorithm,
+  type MlKemAlgorithm,
   type PrivateKey,
   type PublicKey,
   type SymmetricKey,
 } from '../declarations.js';
+import { ConfigurationError } from '../../../../src/errors.js';
+
+function isMlKemAlgorithm(algorithm: string): algorithm is MlKemAlgorithm {
+  return algorithm === 'mlkem:512' || algorithm === 'mlkem:768' || algorithm === 'mlkem:1024';
+}
+
+function mlKemLevelFromAlgorithm(algorithm: MlKemAlgorithm) {
+  return Number.parseInt(algorithm.split(':')[1], 10) as 512 | 768 | 1024;
+}
 
 /**
  * Wrap a CryptoKey as an opaque PublicKey.
@@ -29,6 +39,19 @@ export function wrapPublicKey(key: CryptoKey, algorithm: KeyAlgorithm): PublicKe
             : undefined;
   }
   return result as PublicKey;
+}
+
+/**
+ * Wrap raw ML-KEM public key bytes as an opaque PublicKey.
+ * @internal
+ */
+export function wrapMlKemPublicKey(key: Uint8Array, algorithm: MlKemAlgorithm): PublicKey {
+  return {
+    _brand: 'PublicKey',
+    algorithm,
+    mlKemLevel: mlKemLevelFromAlgorithm(algorithm),
+    _internal: new Uint8Array(key),
+  } as PublicKey;
 }
 
 /**
@@ -58,10 +81,48 @@ export function wrapPrivateKey(key: CryptoKey, algorithm: KeyAlgorithm): Private
 }
 
 /**
+ * Wrap raw ML-KEM private key bytes as an opaque PrivateKey.
+ * @internal
+ */
+export function wrapMlKemPrivateKey(key: Uint8Array, algorithm: MlKemAlgorithm): PrivateKey {
+  return {
+    _brand: 'PrivateKey',
+    algorithm,
+    mlKemLevel: mlKemLevelFromAlgorithm(algorithm),
+    _internal: new Uint8Array(key),
+  } as PrivateKey;
+}
+
+/**
  * Unwrap an opaque key to get the internal CryptoKey.
  * @internal
  */
 export function unwrapKey(key: PublicKey | PrivateKey): CryptoKey {
+  if (isMlKemAlgorithm(key.algorithm)) {
+    throw new ConfigurationError(`Key algorithm ${key.algorithm} is not a WebCrypto CryptoKey`);
+  }
+  return (key as any)._internal;
+}
+
+/**
+ * Unwrap an ML-KEM public key to raw bytes.
+ * @internal
+ */
+export function unwrapMlKemPublicKey(key: PublicKey): Uint8Array {
+  if (!isMlKemAlgorithm(key.algorithm)) {
+    throw new ConfigurationError(`Key algorithm ${key.algorithm} is not an ML-KEM public key`);
+  }
+  return (key as any)._internal;
+}
+
+/**
+ * Unwrap an ML-KEM private key to raw bytes.
+ * @internal
+ */
+export function unwrapMlKemPrivateKey(key: PrivateKey): Uint8Array {
+  if (!isMlKemAlgorithm(key.algorithm)) {
+    throw new ConfigurationError(`Key algorithm ${key.algorithm} is not an ML-KEM private key`);
+  }
   return (key as any)._internal;
 }
 
