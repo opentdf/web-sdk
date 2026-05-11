@@ -1,4 +1,5 @@
 import { base64, hex } from '../../../src/encodings/index.js';
+import { ConfigurationError } from '../../../src/errors.js';
 import { Binary } from '../binary.js';
 import type {
   CryptoService,
@@ -163,13 +164,17 @@ export class MlKemWrapped {
 
   constructor(
     public readonly url: string,
-    public readonly kid: string | undefined,
+    public readonly kid: string,
     public readonly publicKey: string,
     public readonly algorithm: MlKemAlgorithm,
     public readonly metadata: unknown,
     public readonly cryptoService: CryptoService,
     public readonly sid?: string
-  ) {}
+  ) {
+    if (typeof kid !== 'string' || kid.trim().length === 0) {
+      throw new ConfigurationError('ML-KEM wrapped key access requires a non-empty kid');
+    }
+  }
 
   async write(
     policy: Policy,
@@ -213,6 +218,7 @@ export class MlKemWrapped {
       type: 'wrapped',
       url: this.url,
       protocol: 'kas',
+      kid: this.kid,
       wrappedKey: base64.encodeArrayBuffer(entityWrappedKey),
       encryptedMetadata: base64.encode(encryptedMetadataStr),
       policyBinding: {
@@ -221,9 +227,6 @@ export class MlKemWrapped {
       },
       schemaVersion,
     };
-    if (this.kid) {
-      this.keyAccessObject.kid = this.kid;
-    }
     if (this.sid?.length) {
       this.keyAccessObject.sid = this.sid;
     }

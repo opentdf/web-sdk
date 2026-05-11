@@ -3,9 +3,11 @@ import { expect } from 'chai';
 import { ECWrapped, MlKemWrapped, Wrapped } from '../../../tdf3/src/models/key-access.js';
 import { Policy } from '../../../tdf3/src/models/policy.js';
 import { base64 } from '../../../src/encodings/index.js';
+import { ConfigurationError } from '../../../src/errors.js';
 import type { CryptoService, KeyPair } from '../../../tdf3/src/crypto/declarations.js';
 import { Binary } from '../../../tdf3/src/binary.js';
 import { importSymmetricKey } from '../../../tdf3/src/crypto/index.js';
+import { buildKeyAccess } from '../../../tdf3/src/tdf.js';
 
 // Mock CryptoService for testing
 const mockCryptoService: CryptoService = {
@@ -64,6 +66,7 @@ describe('ECWrapped', () => {
   const url = 'https://example.com';
   const kid = 'test-kid';
   const publicKey = 'test-public-key';
+  const rawMlKemPublicKey = base64.encodeArrayBuffer(new Uint8Array(1184).buffer);
   const metadata = { key: 'value' };
   const sid = 'test-sid';
   const policy: Policy = { uuid: 'test-policy' };
@@ -128,7 +131,7 @@ describe('ECWrapped', () => {
     const wrapped = new MlKemWrapped(
       url,
       kid,
-      base64.encodeArrayBuffer(new Uint8Array(1184).buffer),
+      rawMlKemPublicKey,
       'mlkem:768',
       metadata,
       mockCryptoService,
@@ -143,6 +146,93 @@ describe('ECWrapped', () => {
     expect(wrappedKey.byteLength).to.equal(4 + 12 + 16 + 16);
     expect(Array.from(wrappedKey.slice(0, 4))).to.deep.equal([1, 2, 3, 4]);
     expect(Array.from(wrappedKey.slice(4))).to.deep.equal(Array.from(new Uint8Array(44)));
+  });
+
+  it('should require a non-empty kid for MlKemWrapped', () => {
+    expect(
+      () =>
+        new MlKemWrapped(
+          url,
+          '',
+          rawMlKemPublicKey,
+          'mlkem:768',
+          metadata,
+          mockCryptoService,
+          sid
+        )
+    ).to.throw(ConfigurationError, 'ML-KEM wrapped key access requires a non-empty kid');
+  });
+
+  it('should reject undefined kid for MlKemWrapped', () => {
+    expect(
+      () =>
+        new MlKemWrapped(
+          url,
+          undefined as unknown as string,
+          rawMlKemPublicKey,
+          'mlkem:768',
+          metadata,
+          mockCryptoService,
+          sid
+        )
+    ).to.throw(ConfigurationError, 'ML-KEM wrapped key access requires a non-empty kid');
+  });
+
+  it('should build an ML-KEM key access when kid is present', async () => {
+    const wrapped = await buildKeyAccess({
+      type: 'wrapped',
+      alg: 'mlkem:768',
+      url,
+      kid,
+      publicKey: rawMlKemPublicKey,
+      metadata,
+      sid,
+      cryptoService: mockCryptoService,
+    });
+
+    expect(wrapped).to.be.instanceOf(MlKemWrapped);
+    expect(wrapped.kid).to.equal(kid);
+  });
+
+  it('should reject missing kid when building ML-KEM key access', async () => {
+    try {
+      await buildKeyAccess({
+        type: 'wrapped',
+        alg: 'mlkem:768',
+        url,
+        publicKey: rawMlKemPublicKey,
+        metadata,
+        sid,
+        cryptoService: mockCryptoService,
+      });
+      expect.fail('Expected buildKeyAccess to throw');
+    } catch (error) {
+      expect(error).to.be.instanceOf(ConfigurationError);
+      expect((error as Error).message).to.include(
+        'ML-KEM wrapped key access requires a non-empty kid'
+      );
+    }
+  });
+
+  it('should reject empty kid when building ML-KEM key access', async () => {
+    try {
+      await buildKeyAccess({
+        type: 'wrapped',
+        alg: 'mlkem:768',
+        url,
+        kid: '',
+        publicKey: rawMlKemPublicKey,
+        metadata,
+        sid,
+        cryptoService: mockCryptoService,
+      });
+      expect.fail('Expected buildKeyAccess to throw');
+    } catch (error) {
+      expect(error).to.be.instanceOf(ConfigurationError);
+      expect((error as Error).message).to.include(
+        'ML-KEM wrapped key access requires a non-empty kid'
+      );
+    }
   });
 
   it(`should handle undefined kid for ECWrapped`, () => {

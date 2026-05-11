@@ -287,6 +287,11 @@ export async function buildKeyAccess({
   switch (type) {
     case 'wrapped':
       if (alg.startsWith('mlkem:')) {
+        if (!kid?.trim()) {
+          throw new ConfigurationError(
+            'TDF.buildKeyAccess: ML-KEM wrapped key access requires a non-empty kid'
+          );
+        }
         return new MlKemWrapped(
           url,
           kid,
