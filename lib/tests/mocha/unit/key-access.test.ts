@@ -151,15 +151,7 @@ describe('ECWrapped', () => {
   it('should require a non-empty kid for MlKemWrapped', () => {
     expect(
       () =>
-        new MlKemWrapped(
-          url,
-          '',
-          rawMlKemPublicKey,
-          'mlkem:768',
-          metadata,
-          mockCryptoService,
-          sid
-        )
+        new MlKemWrapped(url, '', rawMlKemPublicKey, 'mlkem:768', metadata, mockCryptoService, sid)
     ).to.throw(ConfigurationError, 'ML-KEM wrapped key access requires a non-empty kid');
   });
 

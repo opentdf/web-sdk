@@ -98,7 +98,7 @@ const PUBLIC_KEY_ALGORITHMS = [
   'mlkem:1024',
 ] as const;
 
-export type KasPublicKeyAlgorithm = typeof PUBLIC_KEY_ALGORITHMS[number];
+export type KasPublicKeyAlgorithm = (typeof PUBLIC_KEY_ALGORITHMS)[number];
 
 export const isPublicKeyAlgorithm = (a: string): a is KasPublicKeyAlgorithm => {
   return PUBLIC_KEY_ALGORITHMS.includes(a as KasPublicKeyAlgorithm);
