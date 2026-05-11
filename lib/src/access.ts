@@ -87,17 +87,7 @@ export const rewrapAdditionalContextHeader = (
   return base64.encode(JSON.stringify(context));
 };
 
-export type KasPublicKeyAlgorithm =
-  | 'ec:secp256r1'
-  | 'ec:secp384r1'
-  | 'ec:secp521r1'
-  | 'rsa:2048'
-  | 'rsa:4096'
-  | 'mlkem:512'
-  | 'mlkem:768'
-  | 'mlkem:1024';
-
-const PUBLIC_KEY_ALGORITHMS: readonly KasPublicKeyAlgorithm[] = [
+const PUBLIC_KEY_ALGORITHMS = [
   'ec:secp256r1',
   'ec:secp384r1',
   'ec:secp521r1',
@@ -106,7 +96,9 @@ const PUBLIC_KEY_ALGORITHMS: readonly KasPublicKeyAlgorithm[] = [
   'mlkem:512',
   'mlkem:768',
   'mlkem:1024',
-];
+] as const;
+
+export type KasPublicKeyAlgorithm = typeof PUBLIC_KEY_ALGORITHMS[number];
 
 export const isPublicKeyAlgorithm = (a: string): a is KasPublicKeyAlgorithm => {
   return PUBLIC_KEY_ALGORITHMS.includes(a as KasPublicKeyAlgorithm);
