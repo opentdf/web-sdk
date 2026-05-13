@@ -16,7 +16,8 @@ import {
   guessCurveName,
   toJwsAlg,
 } from '../../../../src/crypto/pemPublicToCrypto.js';
-import { unwrapKey, wrapPrivateKey, wrapPublicKey } from './keys.js';
+import { unwrapKey, wrapMlKemPublicKey, unwrapMlKemKey, wrapPrivateKey, wrapPublicKey } from './keys.js';
+import { encodeArrayBuffer as base64Encode } from '../../../../src/encodings/base64.js';
 import { rsaOaepSha1 } from './rsa.js';
 
 /**
@@ -222,9 +223,21 @@ export async function publicKeyPemToJwk(publicKeyPem: string): Promise<JsonWebKe
 
 /**
  * Import a PEM public key as an opaque key.
+ * For ML-KEM keys, `pem` is raw base64-encoded encapsulation key bytes (not a PEM envelope),
+ * and `options.algorithmHint` must be set to the appropriate `mlkem:*` value.
  */
 export async function importPublicKey(pem: string, options: KeyOptions): Promise<PublicKey> {
   const { usage = 'encrypt', extractable = true, algorithmHint } = options;
+
+  // ML-KEM keys are raw base64 bytes, not PEM — bypass WebCrypto entirely.
+  if (algorithmHint?.startsWith('mlkem:')) {
+    const level = parseInt(algorithmHint.split(':')[1], 10) as 512 | 768 | 1024;
+    if (level !== 512 && level !== 768 && level !== 1024) {
+      throw new ConfigurationError(`Unsupported ML-KEM level: ${level}`);
+    }
+    const rawBytes = new Uint8Array(base64Decode(pem));
+    return wrapMlKemPublicKey(rawBytes, level);
+  }
 
   // Detect algorithm from PEM; also normalises certificates → plain SPKI PEM.
   const keyInfo = await parsePublicKeyPem(pem);
@@ -393,9 +406,14 @@ export async function importPrivateKey(pem: string, options: KeyOptions): Promis
 }
 
 /**
- * Export an opaque public key to PEM format.
+ * Export an opaque public key to PEM format (or raw base64 for ML-KEM).
+ * ML-KEM encapsulation keys have no standardised PEM OID; they are returned
+ * as raw base64-encoded bytes for transmission to/from the KAS.
  */
 export async function exportPublicKeyPem(key: PublicKey): Promise<string> {
+  if (key.algorithm.startsWith('mlkem:')) {
+    return base64Encode(unwrapMlKemKey(key).buffer);
+  }
   const cryptoKey = unwrapKey(key);
   const keyBuffer = await crypto.subtle.exportKey('spki', cryptoKey);
   return formatAsPem(keyBuffer, 'PUBLIC KEY');

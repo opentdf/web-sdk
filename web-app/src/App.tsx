@@ -3,7 +3,7 @@ import { useState, useEffect, type ChangeEvent } from 'react';
 import streamsaver from 'streamsaver';
 import { showSaveFilePicker } from 'native-file-system-adapter';
 import './App.css';
-import { type Chunker, type Source, OpenTDF } from '@opentdf/sdk';
+import { type Chunker, type KasPublicKeyAlgorithm, type Source, OpenTDF } from '@opentdf/sdk';
 import { type SessionInformation, OidcClient } from './session.js';
 import { config } from './config.js';
 
@@ -242,6 +242,7 @@ function App() {
   const [downloadState, setDownloadState] = useState<string | undefined>();
   const [inputSource, setInputSource] = useState<InputSource | undefined>();
   const [sinkType, setSinkType] = useState<SinkType>('file');
+  const [encapAlgorithm, setEncapAlgorithm] = useState<KasPublicKeyAlgorithm>('ec:secp256r1');
   const [streamController, setStreamController] = useState<CurrentDataController>();
 
   useEffect(() => {
@@ -408,6 +409,7 @@ function App() {
       cipherText = await client.createZTDF({
         autoconfigure: false,
         source: { type: 'stream', location: source.pipeThrough(progressTransformers.reader) },
+        wrappingKeyAlgorithm: encapAlgorithm,
       });
     } catch (e) {
       setDownloadState(`Encrypt Failed: ${e}`);
@@ -643,6 +645,23 @@ function App() {
                 checked={sinkType === 'none'}
               />{' '}
               <label htmlFor="noneSink">Dump</label>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>Encapsulation Algorithm</legend>
+            <div>
+              <label htmlFor="encapAlgorithm">Key wrap algorithm:</label>{' '}
+              <select
+                id="encapAlgorithm"
+                value={encapAlgorithm}
+                onChange={(e) => setEncapAlgorithm(e.target.value as KasPublicKeyAlgorithm)}
+              >
+                <option value="ec:secp256r1">EC P-256</option>
+                <option value="rsa:2048">RSA-2048</option>
+                <option value="mlkem:512">ML-KEM-512</option>
+                <option value="mlkem:768">ML-KEM-768</option>
+                <option value="mlkem:1024">ML-KEM-1024</option>
+              </select>
             </div>
           </fieldset>
         </div>

@@ -92,10 +92,22 @@ export type KasPublicKeyAlgorithm =
   | 'ec:secp384r1'
   | 'ec:secp521r1'
   | 'rsa:2048'
-  | 'rsa:4096';
+  | 'rsa:4096'
+  | 'mlkem:512'
+  | 'mlkem:768'
+  | 'mlkem:1024';
 
 export const isPublicKeyAlgorithm = (a: string): a is KasPublicKeyAlgorithm => {
-  return a === 'ec:secp256r1' || a === 'rsa:2048';
+  return (
+    a === 'ec:secp256r1' ||
+    a === 'ec:secp384r1' ||
+    a === 'ec:secp521r1' ||
+    a === 'rsa:2048' ||
+    a === 'rsa:4096' ||
+    a === 'mlkem:512' ||
+    a === 'mlkem:768' ||
+    a === 'mlkem:1024'
+  );
 };
 
 export const keyAlgorithmToPublicKeyAlgorithm = (k: CryptoKey): KasPublicKeyAlgorithm => {
@@ -142,6 +154,10 @@ export const publicKeyAlgorithmToJwa = (a: KasPublicKeyAlgorithm): string => {
       return 'ES384';
     case 'ec:secp521r1':
       return 'ES512';
+    case 'mlkem:512':
+    case 'mlkem:768':
+    case 'mlkem:1024':
+      throw new Error(`ML-KEM keys do not have a JWA algorithm string; callers must branch on algorithm before calling publicKeyAlgorithmToJwa`);
     default:
       throw new Error(`unsupported public key algorithm: ${a}`);
   }
@@ -212,7 +228,10 @@ export async function fetchKasPubKey(
   algorithm?: KasPublicKeyAlgorithm
 ): Promise<KasPublicKeyInfo> {
   try {
-    return await fetchKasBasePubKey(kasEndpoint);
+    // ML-KEM keys are never published as the platform base key; skip to the algorithm-specific fetch.
+    if (!algorithm?.startsWith('mlkem:')) {
+      return await fetchKasBasePubKey(kasEndpoint);
+    }
   } catch (e) {
     console.log(e);
   }

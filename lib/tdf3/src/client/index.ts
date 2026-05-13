@@ -38,6 +38,7 @@ import {
 import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 import {
   fetchKeyAccessServers,
+  type KasPublicKeyAlgorithm,
   type KasPublicKeyInfo,
   OriginAllowList,
 } from '../../../src/access.js';
@@ -723,11 +724,21 @@ export class Client {
     }
     encryptionInformation.keyAccess = await Promise.all(
       splitPlan.map(async ({ kas, kid, pem, sid }) => {
-        const algorithm = await algorithmFromPEM(pem, this.cryptoService);
-        if (algorithm !== wrappingKeyAlgorithm) {
-          console.warn(
-            `Mismatched wrapping key algorithm: [${algorithm}] is not requested type, [${wrappingKeyAlgorithm}]`
-          );
+        // ML-KEM keys are raw base64, not PEM — trust the explicitly-specified algorithm.
+        let algorithm: KasPublicKeyAlgorithm;
+        if (
+          wrappingKeyAlgorithm === 'mlkem:512' ||
+          wrappingKeyAlgorithm === 'mlkem:768' ||
+          wrappingKeyAlgorithm === 'mlkem:1024'
+        ) {
+          algorithm = wrappingKeyAlgorithm;
+        } else {
+          algorithm = await algorithmFromPEM(pem, this.cryptoService);
+          if (algorithm !== wrappingKeyAlgorithm) {
+            console.warn(
+              `Mismatched wrapping key algorithm: [${algorithm}] is not requested type, [${wrappingKeyAlgorithm}]`
+            );
+          }
         }
         let type: KeyAccessType;
         switch (algorithm) {
@@ -739,6 +750,11 @@ export class Client {
           case 'ec:secp521r1':
           case 'ec:secp256r1':
             type = 'ec-wrapped';
+            break;
+          case 'mlkem:512':
+          case 'mlkem:768':
+          case 'mlkem:1024':
+            type = 'wrapped';
             break;
           default:
             throw new ConfigurationError(`Unsupported algorithm ${algorithm}`);
