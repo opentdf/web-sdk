@@ -56,9 +56,7 @@ describe('ML-KEM crypto', () => {
 
   describe('hkdfDerive', () => {
     it('produces deterministic 32-byte output for fixed inputs', async () => {
-      const { sharedSecret } = await mlKemEncapsulate(
-        (await generateMlKemKeyPair(512)).publicKey
-      );
+      const { sharedSecret } = await mlKemEncapsulate((await generateMlKemKeyPair(512)).publicKey);
       const salt = new Uint8Array(32);
       const derived1 = await hkdfDerive(sharedSecret, { hash: 'SHA-256', salt });
       const derived2 = await hkdfDerive(sharedSecret, { hash: 'SHA-256', salt });
@@ -69,13 +67,15 @@ describe('ML-KEM crypto', () => {
     });
 
     it('produces different keys for different salts', async () => {
-      const { sharedSecret } = await mlKemEncapsulate(
-        (await generateMlKemKeyPair(512)).publicKey
-      );
+      const { sharedSecret } = await mlKemEncapsulate((await generateMlKemKeyPair(512)).publicKey);
       const salt1 = new Uint8Array(32).fill(1);
       const salt2 = new Uint8Array(32).fill(2);
-      const key1 = unwrapSymmetricKey(await hkdfDerive(sharedSecret, { hash: 'SHA-256', salt: salt1 }));
-      const key2 = unwrapSymmetricKey(await hkdfDerive(sharedSecret, { hash: 'SHA-256', salt: salt2 }));
+      const key1 = unwrapSymmetricKey(
+        await hkdfDerive(sharedSecret, { hash: 'SHA-256', salt: salt1 })
+      );
+      const key2 = unwrapSymmetricKey(
+        await hkdfDerive(sharedSecret, { hash: 'SHA-256', salt: salt2 })
+      );
       expect(key1).to.not.deep.equal(key2);
     });
   });
@@ -83,9 +83,14 @@ describe('ML-KEM crypto', () => {
   describe('isPublicKeyAlgorithm', () => {
     it('returns true for all 8 valid tokens', () => {
       const valid = [
-        'ec:secp256r1', 'ec:secp384r1', 'ec:secp521r1',
-        'rsa:2048', 'rsa:4096',
-        'mlkem:512', 'mlkem:768', 'mlkem:1024',
+        'ec:secp256r1',
+        'ec:secp384r1',
+        'ec:secp521r1',
+        'rsa:2048',
+        'rsa:4096',
+        'mlkem:512',
+        'mlkem:768',
+        'mlkem:1024',
       ];
       for (const alg of valid) {
         expect(isPublicKeyAlgorithm(alg), alg).to.be.true;

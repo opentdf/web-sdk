@@ -157,7 +157,9 @@ export const publicKeyAlgorithmToJwa = (a: KasPublicKeyAlgorithm): string => {
     case 'mlkem:512':
     case 'mlkem:768':
     case 'mlkem:1024':
-      throw new Error(`ML-KEM keys do not have a JWA algorithm string; callers must branch on algorithm before calling publicKeyAlgorithmToJwa`);
+      throw new Error(
+        `ML-KEM keys do not have a JWA algorithm string; callers must branch on algorithm before calling publicKeyAlgorithmToJwa`
+      );
     default:
       throw new Error(`unsupported public key algorithm: ${a}`);
   }

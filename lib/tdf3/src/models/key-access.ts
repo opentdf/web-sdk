@@ -207,9 +207,7 @@ export class MlKemWrapped {
       : new Uint8Array(0);
 
     // wrappedKey = base64( mlkem_ct || iv(12) || aes_ct(32) || tag(16) )
-    const blob = new Uint8Array(
-      kemCiphertext.length + iv.length + aesCt.length + authTag.length
-    );
+    const blob = new Uint8Array(kemCiphertext.length + iv.length + aesCt.length + authTag.length);
     blob.set(kemCiphertext);
     blob.set(iv, kemCiphertext.length);
     blob.set(aesCt, kemCiphertext.length + iv.length);

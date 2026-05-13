@@ -430,7 +430,9 @@ export type CryptoService = {
    * @param pk - Opaque ML-KEM public key (encapsulation key)
    * @returns KEM ciphertext and raw shared secret (32 bytes, not yet HKDF-derived)
    */
-  mlKemEncapsulate: (pk: PublicKey) => Promise<{ ciphertext: Uint8Array; sharedSecret: SymmetricKey }>;
+  mlKemEncapsulate: (
+    pk: PublicKey
+  ) => Promise<{ ciphertext: Uint8Array; sharedSecret: SymmetricKey }>;
 
   /**
    * Decapsulate an ML-KEM ciphertext with the private key.

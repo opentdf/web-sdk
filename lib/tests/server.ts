@@ -263,8 +263,7 @@ const kas: RequestListener = async (req, res) => {
         }
         const kid = keyAccessObject?.kid || '';
         const isECWrapped = kid == 'e1';
-        const isMlKemWrapped =
-          kid === 'mlkem512' || kid === 'mlkem768' || kid === 'mlkem1024';
+        const isMlKemWrapped = kid === 'mlkem512' || kid === 'mlkem768' || kid === 'mlkem1024';
         // Decrypt the wrapped key from TDF3
         let dek: Binary;
         if (isMlKemWrapped) {
@@ -290,11 +289,7 @@ const kas: RequestListener = async (req, res) => {
             false,
             ['decrypt']
           );
-          const dekAb = await crypto.subtle.decrypt(
-            { name: 'AES-GCM', iv },
-            aesKey,
-            wrappedDek
-          );
+          const dekAb = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, aesKey, wrappedDek);
           dek = Binary.fromArrayBuffer(dekAb);
         } else if (isECWrapped) {
           if (!keyAccessObject?.ephemeralPublicKey) {
@@ -327,7 +322,8 @@ const kas: RequestListener = async (req, res) => {
           dek = await decryptWithPrivateKey(Binary.fromArrayBuffer(wk), Mocks.kasPrivateKey);
         }
         if (isMLKEMClient && clientMlKemLevel !== undefined && clientKeyRaw !== undefined) {
-          const { cipherText, sharedSecret } = MLKEM_APIS[clientMlKemLevel].encapsulate(clientKeyRaw);
+          const { cipherText, sharedSecret } =
+            MLKEM_APIS[clientMlKemLevel].encapsulate(clientKeyRaw);
           const hkdfKey = await crypto.subtle.importKey('raw', sharedSecret, 'HKDF', false, [
             'deriveKey',
           ]);
