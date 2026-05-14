@@ -508,9 +508,7 @@ function App() {
       try {
         const manifest = await reader.manifest();
         const kaos = manifest.encryptionInformation.keyAccess.map((kao) => {
-          const wrappedKeyBytes = kao.wrappedKey
-            ? Math.floor((kao.wrappedKey.length * 3) / 4)
-            : 0;
+          const wrappedKeyBytes = kao.wrappedKey ? Math.floor((kao.wrappedKey.length * 3) / 4) : 0;
           return {
             kid: kao.kid ?? '(no kid)',
             type: kao.type,

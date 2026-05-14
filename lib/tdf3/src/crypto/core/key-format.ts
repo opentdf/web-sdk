@@ -447,7 +447,10 @@ export async function exportPublicKeyPem(key: PublicKey): Promise<string> {
   if (key.algorithm.startsWith('mlkem:')) {
     const level = parseInt(key.algorithm.split(':')[1], 10) as 512 | 768 | 1024;
     const der = encodeMlKemSpkiDer(unwrapMlKemKey(key), level);
-    return formatAsPem(der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength), 'PUBLIC KEY');
+    return formatAsPem(
+      der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength),
+      'PUBLIC KEY'
+    );
   }
   const cryptoKey = unwrapKey(key);
   const keyBuffer = await crypto.subtle.exportKey('spki', cryptoKey);

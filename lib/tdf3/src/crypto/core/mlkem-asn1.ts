@@ -31,7 +31,10 @@ function encodeLength(len: number): Uint8Array {
   throw new Error(`ASN.1 length too large for ML-KEM SPKI: ${len}`);
 }
 
-function decodeLength(bytes: Uint8Array, offset: number): { length: number; bytesConsumed: number } {
+function decodeLength(
+  bytes: Uint8Array,
+  offset: number
+): { length: number; bytesConsumed: number } {
   const first = bytes[offset];
   if (first < 0x80) return { length: first, bytesConsumed: 1 };
   const numOctets = first & 0x7f;
@@ -54,12 +57,7 @@ export function encodeMlKemSpkiDer(rawKey: Uint8Array, level: 512 | 768 | 1024):
   }
 
   // OID: 06 09 60 86 48 01 65 03 04 04 <variant>
-  const oidBytes = new Uint8Array([
-    0x06,
-    0x09,
-    ...ML_KEM_OID_ARC_PREFIX,
-    OID_VARIANT_BYTE[level],
-  ]);
+  const oidBytes = new Uint8Array([0x06, 0x09, ...ML_KEM_OID_ARC_PREFIX, OID_VARIANT_BYTE[level]]);
 
   // AlgorithmIdentifier ::= SEQUENCE { OID }  (no parameters per FIPS 203)
   const algIdLen = encodeLength(oidBytes.length);
