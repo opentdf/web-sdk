@@ -7,12 +7,17 @@ import { decryptWithPrivateKey, encryptWithPublicKey } from '../tdf3/src/crypto/
 import { getMocks } from './mocks/index.js';
 import { keyAgreement, pemPublicToCrypto } from '../src/crypto/index.js';
 import { generateRandomNumber } from '../src/crypto/generateRandomNumber.js';
-import { removePemFormatting } from '../tdf3/src/crypto/crypto-utils.js';
+import { formatAsPem, removePemFormatting } from '../tdf3/src/crypto/crypto-utils.js';
 import { Binary } from '../tdf3/index.js';
 import { valueFor } from './web/policy/mock-attrs.js';
 import { AttributeAndValue } from '../src/policy/attributes.js';
 import { getZtdfSalt } from '../tdf3/src/crypto/salt.js';
 import { DefaultCryptoService } from '../tdf3/src/crypto/index.js';
+import {
+  decodeMlKemSpkiDer,
+  encodeMlKemSpkiDer,
+  isMlKemSpkiDer,
+} from '../tdf3/src/crypto/core/mlkem-asn1.js';
 
 // ML-KEM server-side key pairs, generated once at startup.
 const KAS_ML_KEM_KEYS = {
@@ -22,8 +27,18 @@ const KAS_ML_KEM_KEYS = {
 } as const;
 
 const MLKEM_CT_SIZES: Record<512 | 768 | 1024, number> = { 512: 768, 768: 1088, 1024: 1568 };
-const MLKEM_EK_SIZES: Record<number, 512 | 768 | 1024> = { 800: 512, 1184: 768, 1568: 1024 };
 const MLKEM_APIS = { 512: ml_kem512, 768: ml_kem768, 1024: ml_kem1024 } as const;
+
+function mlKemPublicKeyPem(level: 512 | 768 | 1024): string {
+  const der = encodeMlKemSpkiDer(KAS_ML_KEM_KEYS[level].publicKey, level);
+  // formatAsPem expects an ArrayBuffer; copy out of the underlying buffer.
+  const ab = der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength);
+  return formatAsPem(ab, 'PUBLIC KEY');
+}
+
+// Allow tests to flip the WellKnown base key by setting BASE_KEY_ALG=mlkem:768
+// (or any other supported algorithm) before importing this module. Default stays EC.
+const BASE_KEY_ALG = process.env.BASE_KEY_ALG || 'ec:secp256r1';
 
 import { create, toJsonString, fromJson } from '@bufbuild/protobuf';
 import { ValueSchema } from '@bufbuild/protobuf/wkt';
@@ -116,10 +131,9 @@ const kas: RequestListener = async (req, res) => {
       }
       if (algorithm.startsWith('mlkem:')) {
         const level = parseInt(algorithm.split(':')[1], 10) as 512 | 768 | 1024;
-        const ek = KAS_ML_KEM_KEYS[level].publicKey;
         res.setHeader('Content-Type', 'application/json');
         res.statusCode = 200;
-        res.end(JSON.stringify({ kid: `mlkem${level}`, publicKey: base64.encodeArrayBuffer(ek) }));
+        res.end(JSON.stringify({ kid: `mlkem${level}`, publicKey: mlKemPublicKeyPem(level) }));
         return;
       }
       const fmt = params.fmt || 'pkcs8';
@@ -231,13 +245,17 @@ const kas: RequestListener = async (req, res) => {
       const rewrap = fromJson(UnsignedRewrapRequestSchema, JSON.parse(requestBody as string));
       console.log('[INFO]: rewrap request body: ', rewrap);
 
-      // ML-KEM public keys are raw base64 bytes; RSA/EC keys arrive as PEM (with -----BEGIN header).
-      const clientKeyIsPem = rewrap.clientPublicKey.startsWith('-----');
+      // All clientPublicKey strings now arrive as PEM SPKI. Decode once and decide
+      // whether it's ML-KEM (by OID) or a WebCrypto-friendly RSA/EC key.
+      const clientDer = new Uint8Array(
+        base64.decodeArrayBuffer(removePemFormatting(rewrap.clientPublicKey))
+      );
       let clientKeyRaw: Uint8Array | undefined;
       let clientMlKemLevel: 512 | 768 | 1024 | undefined;
-      if (!clientKeyIsPem) {
-        clientKeyRaw = new Uint8Array(base64.decodeArrayBuffer(rewrap.clientPublicKey));
-        clientMlKemLevel = MLKEM_EK_SIZES[clientKeyRaw.length];
+      if (isMlKemSpkiDer(clientDer)) {
+        const decoded = decodeMlKemSpkiDer(clientDer);
+        clientMlKemLevel = decoded.level;
+        clientKeyRaw = decoded.rawKey;
       }
       const isMLKEMClient = clientMlKemLevel !== undefined;
 
@@ -551,17 +569,24 @@ const kas: RequestListener = async (req, res) => {
     ) {
       res.statusCode = 200;
       res.setHeader('Content-Type', 'application/json');
+      let publicKey: { algorithm: string; kid: string; pem: string };
+      if (BASE_KEY_ALG.startsWith('mlkem:')) {
+        const level = parseInt(BASE_KEY_ALG.split(':')[1], 10) as 512 | 768 | 1024;
+        publicKey = {
+          algorithm: BASE_KEY_ALG,
+          kid: `mlkem${level}`,
+          pem: mlKemPublicKeyPem(level),
+        };
+      } else {
+        publicKey = { algorithm: 'ec:secp256r1', kid: 'e1', pem: Mocks.kasECCert };
+      }
       res.end(
         JSON.stringify({
           configuration: {
             base_key: {
               kas_id: '34f2acdc-3d9c-4e92-80b6-90fe4dc9afcb',
               kas_uri: 'http://localhost:3000',
-              public_key: {
-                algorithm: 'ec:secp256r1',
-                kid: 'e1',
-                pem: Mocks.kasECCert,
-              },
+              public_key: publicKey,
             },
           },
         })

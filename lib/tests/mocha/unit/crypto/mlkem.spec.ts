@@ -7,11 +7,16 @@ import {
 } from '../../../../tdf3/src/crypto/core/mlkem.js';
 import { unwrapMlKemKey } from '../../../../tdf3/src/crypto/core/keys.js';
 import { unwrapSymmetricKey } from '../../../../tdf3/src/crypto/core/keys.js';
-import { isPublicKeyAlgorithm } from '../../../../src/access.js';
+import { isPublicKeyAlgorithm, publicKeyAlgorithmToJwa } from '../../../../src/access.js';
 import {
   importPublicKey,
   exportPublicKeyPem,
+  parsePublicKeyPem,
 } from '../../../../tdf3/src/crypto/core/key-format.js';
+import {
+  decodeMlKemSpkiDer,
+  encodeMlKemSpkiDer,
+} from '../../../../tdf3/src/crypto/core/mlkem-asn1.js';
 
 describe('ML-KEM crypto', () => {
   for (const level of [512, 768, 1024] as const) {
@@ -42,14 +47,39 @@ describe('ML-KEM crypto', () => {
         expect(ss1Bytes.length).to.equal(32);
       });
 
-      it('exportPublicKeyPem / importPublicKey round-trip', async () => {
+      it('exportPublicKeyPem / importPublicKey round-trip via PEM SPKI', async () => {
         const { publicKey } = await generateMlKemKeyPair(level);
         const pem = await exportPublicKeyPem(publicKey);
-        // Should be raw base64 (no PEM header)
-        expect(pem).to.not.include('BEGIN');
+        expect(pem).to.include('-----BEGIN PUBLIC KEY-----');
+        expect(pem).to.include('-----END PUBLIC KEY-----');
+
         const reimported = await importPublicKey(pem, { algorithmHint: `mlkem:${level}` });
         expect(reimported.algorithm).to.equal(`mlkem:${level}`);
         expect(unwrapMlKemKey(reimported)).to.deep.equal(unwrapMlKemKey(publicKey));
+
+        // parsePublicKeyPem should also identify the variant from the OID
+        const info = await parsePublicKeyPem(pem);
+        expect(info.algorithm).to.equal(`mlkem:${level}`);
+      });
+
+      it('SPKI DER round-trip preserves raw key bytes', () => {
+        const expectedRawSize = { 512: 800, 768: 1184, 1024: 1568 }[level];
+        const raw = new Uint8Array(expectedRawSize).map((_, i) => i & 0xff);
+        const der = encodeMlKemSpkiDer(raw, level);
+        const decoded = decodeMlKemSpkiDer(der);
+        expect(decoded.level).to.equal(level);
+        expect(decoded.rawKey).to.deep.equal(raw);
+        // Re-encoding the decoded form must yield the same DER bytes
+        expect(encodeMlKemSpkiDer(decoded.rawKey, decoded.level)).to.deep.equal(der);
+      });
+
+      it('publicKeyAlgorithmToJwa returns the draft-JOSE PQ KEM name', () => {
+        const expected = {
+          512: 'ML-KEM-512+A128KW',
+          768: 'ML-KEM-768+A192KW',
+          1024: 'ML-KEM-1024+A256KW',
+        }[level];
+        expect(publicKeyAlgorithmToJwa(`mlkem:${level}`)).to.equal(expected);
       });
     });
   }

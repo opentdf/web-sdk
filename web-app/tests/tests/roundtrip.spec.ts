@@ -60,6 +60,7 @@ test('roundtrip ztdf', async ({ page }) => {
 });
 
 for (const algorithm of ['mlkem:512', 'mlkem:768', 'mlkem:1024'] as const) {
+  const expectedKid = algorithm.replace(':', '');
   test(`roundtrip ztdf with ${algorithm}`, async ({ page }) => {
     page.on('download', (download) =>
       download.path().then((r) => console.log(`Saves ${download.suggestedFilename()} as ${r}`))
@@ -95,6 +96,11 @@ for (const algorithm of ['mlkem:512', 'mlkem:768', 'mlkem:1024'] as const) {
     expect(text, `Looking for clone command in ${plainTextPath}`).toContain(
       'try encrypting some of your own files'
     );
+
+    // Manifest inspector should display the expected ML-KEM kid (mlkem512/768/1024)
+    // populated during the decrypt flow above.
+    await expect(page.locator('#kao-kid-0')).toHaveText(expectedKid);
+    await expect(page.locator('#kao-type-0')).toHaveText('wrapped');
   });
 }
 

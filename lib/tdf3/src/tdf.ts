@@ -233,10 +233,6 @@ export async function extractPemFromKeyString(
   alg: KasPublicKeyAlgorithm,
   cryptoService: CryptoService
 ): Promise<string> {
-  // ML-KEM keys are raw base64 bytes — no PEM/certificate processing needed.
-  if (alg.startsWith('mlkem:')) {
-    return keyString;
-  }
   // Convert KAS algorithm to JWA algorithm if provided
   const jwaAlgorithm = publicKeyAlgorithmToJwa(alg);
   // extractPublicKeyPem handles both X.509 certificates and raw PEM keys
