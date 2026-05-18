@@ -29,7 +29,8 @@ export type KeyAlgorithm =
   | 'rsa:4096'
   | 'ec:secp256r1'
   | 'ec:secp384r1'
-  | 'ec:secp521r1';
+  | 'ec:secp521r1'
+  | 'mlkem:768';
 
 /**
  * Options for key generation and import.
@@ -156,7 +157,7 @@ export type HkdfParams = {
  */
 export type PublicKeyInfo = {
   /** Detected algorithm of the key. */
-  algorithm: 'rsa:2048' | 'rsa:4096' | 'ec:secp256r1' | 'ec:secp384r1' | 'ec:secp521r1';
+  algorithm: 'rsa:2048' | 'rsa:4096' | 'ec:secp256r1' | 'ec:secp384r1' | 'ec:secp521r1' | 'mlkem:768';
   /** Normalized PEM string. */
   pem: string;
 };

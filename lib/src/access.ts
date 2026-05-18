@@ -91,11 +91,12 @@ export type KasPublicKeyAlgorithm =
   | 'ec:secp256r1'
   | 'ec:secp384r1'
   | 'ec:secp521r1'
+  | 'mlkem:768'
   | 'rsa:2048'
   | 'rsa:4096';
 
 export const isPublicKeyAlgorithm = (a: string): a is KasPublicKeyAlgorithm => {
-  return a === 'ec:secp256r1' || a === 'rsa:2048';
+  return a === 'ec:secp256r1' || a === 'mlkem:768' || a === 'rsa:2048';
 };
 
 export const keyAlgorithmToPublicKeyAlgorithm = (k: CryptoKey): KasPublicKeyAlgorithm => {
@@ -142,6 +143,8 @@ export const publicKeyAlgorithmToJwa = (a: KasPublicKeyAlgorithm): string => {
       return 'ES384';
     case 'ec:secp521r1':
       return 'ES512';
+    case 'mlkem:768':
+      return 'ML-KEM-768';
     default:
       throw new Error(`unsupported public key algorithm: ${a}`);
   }

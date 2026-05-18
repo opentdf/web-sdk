@@ -4,6 +4,13 @@ import type { CryptoService, KeyPair, SymmetricKey } from '../crypto/declaration
 import { getZtdfSalt } from '../crypto/salt.js';
 import { Algorithms } from '../ciphers/index.js';
 import { Policy } from './policy.js';
+import { unwrapSymmetricKey } from '../crypto/core/keys.js';
+import {
+  mlkem768Encapsulate,
+  parseMLKEM768PublicKeyPem,
+  aesKwWrap,
+  MLKEM768_CT_BYTES,
+} from '../../../src/crypto/mlkem.js';
 
 export type KeyAccessType = 'remote' | 'wrapped' | 'ec-wrapped';
 
@@ -152,7 +159,74 @@ export class Wrapped {
   }
 }
 
-export type KeyAccess = ECWrapped | Wrapped;
+/**
+ * ML-KEM-768 post-quantum key encapsulation mechanism.
+ * Wire format: type="wrapped", wrappedKey=base64(ciphertext[1088] || aes_kw_wrapped_dek), no ephemeralPublicKey.
+ */
+export class MLKEMWrapped {
+  readonly type = 'wrapped' as const;
+  keyAccessObject?: KeyAccessObject;
+
+  constructor(
+    public readonly url: string,
+    public readonly kid: string | undefined,
+    public readonly publicKey: string,
+    public readonly metadata: unknown,
+    public readonly cryptoService: CryptoService,
+    public readonly sid?: string
+  ) {}
+
+  async write(
+    policy: Policy,
+    dek: SymmetricKey,
+    encryptedMetadataStr: string
+  ): Promise<KeyAccessObject> {
+    const policyStr = JSON.stringify(policy);
+
+    // Parse ML-KEM-768 encapsulation key from PEM
+    const ek = parseMLKEM768PublicKeyPem(this.publicKey);
+
+    // ML-KEM-768 encapsulation: produces 1088-byte ciphertext and 32-byte shared secret
+    const { cipherText, sharedSecret } = mlkem768Encapsulate(ek);
+
+    // AES-256 Key Wrap the DEK with the shared secret
+    const dekBytes = unwrapSymmetricKey(dek);
+    const wrappedDek = await aesKwWrap(dekBytes, sharedSecret);
+
+    // Wire format: ciphertext || aes_kw_wrapped_dek
+    const wrappedKeyBytes = new Uint8Array(MLKEM768_CT_BYTES + wrappedDek.length);
+    wrappedKeyBytes.set(cipherText, 0);
+    wrappedKeyBytes.set(wrappedDek, MLKEM768_CT_BYTES);
+
+    const policyBinding = hex.encodeArrayBuffer(
+      (await this.cryptoService.hmac(new TextEncoder().encode(base64.encode(policyStr)), dek))
+        .buffer
+    );
+
+    this.keyAccessObject = {
+      type: 'wrapped',
+      url: this.url,
+      protocol: 'kas',
+      wrappedKey: base64.encodeArrayBuffer(wrappedKeyBytes.buffer),
+      encryptedMetadata: base64.encode(encryptedMetadataStr),
+      policyBinding: {
+        alg: 'HS256',
+        hash: base64.encode(policyBinding),
+      },
+      schemaVersion,
+    };
+    if (this.kid) {
+      this.keyAccessObject.kid = this.kid;
+    }
+    if (this.sid?.length) {
+      this.keyAccessObject.sid = this.sid;
+    }
+
+    return this.keyAccessObject;
+  }
+}
+
+export type KeyAccess = ECWrapped | MLKEMWrapped | Wrapped;
 
 /**
  * A KeyAccess object stores all information about how an object key OR one key split is stored.
