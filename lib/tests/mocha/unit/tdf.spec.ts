@@ -295,8 +295,22 @@ describe('splitLookupTableFactory', () => {
 
   it('preserves duplicate URLs in the same splitId as a list', () => {
     const keyAccess: KeyAccessObject[] = [
-      { sid: 'split1', type: 'wrapped', url: 'https://kas1', kid: 'k1', wrappedKey: 'a', protocol: 'kas' },
-      { sid: 'split1', type: 'wrapped', url: 'https://kas1', kid: 'k1', wrappedKey: 'b', protocol: 'kas' },
+      {
+        sid: 'split1',
+        type: 'wrapped',
+        url: 'https://kas1',
+        kid: 'k1',
+        wrappedKey: 'a',
+        protocol: 'kas',
+      },
+      {
+        sid: 'split1',
+        type: 'wrapped',
+        url: 'https://kas1',
+        kid: 'k1',
+        wrappedKey: 'b',
+        protocol: 'kas',
+      },
     ];
     const allowedKases = new OriginAllowList(['https://kas1']);
 
