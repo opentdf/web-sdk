@@ -295,8 +295,8 @@ describe('splitLookupTableFactory', () => {
 
   it('preserves duplicate URLs in the same splitId as a list', () => {
     const keyAccess: KeyAccessObject[] = [
-      { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas' },
-      { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas' },
+      { sid: 'split1', type: 'wrapped', url: 'https://kas1', kid: 'k1', wrappedKey: 'a', protocol: 'kas' },
+      { sid: 'split1', type: 'wrapped', url: 'https://kas1', kid: 'k1', wrappedKey: 'b', protocol: 'kas' },
     ];
     const allowedKases = new OriginAllowList(['https://kas1']);
 
@@ -352,5 +352,32 @@ describe('splitLookupTableFactory', () => {
     expect(result).to.deep.equal({
       '': { 'https://kas1': [keyAccess[0]] },
     });
+  });
+
+  it('detects disallowed splits when sids mix undefined and empty string', () => {
+    const keyAccess: KeyAccessObject[] = [
+      { sid: undefined, type: 'remote', url: 'https://kas1', protocol: 'kas' },
+      { sid: '', type: 'remote', url: 'https://kas1', protocol: 'kas' },
+      { sid: 'split1', type: 'remote', url: 'https://kas3', protocol: 'kas' },
+    ];
+    const allowedKases = new OriginAllowList(['https://kas1']);
+
+    expect(() => TDF.splitLookupTableFactory(keyAccess, allowedKases)).to.throw(UnsafeUrlError);
+  });
+
+  it('deduplicates fully identical KAOs on the same KAS and split', () => {
+    const kao: KeyAccessObject = {
+      sid: 'split1',
+      type: 'wrapped',
+      url: 'https://kas1',
+      kid: 'k1',
+      wrappedKey: 'abc',
+      protocol: 'kas',
+    };
+    const allowedKases = new OriginAllowList(['https://kas1']);
+
+    const result = TDF.splitLookupTableFactory([kao, { ...kao }], allowedKases);
+
+    expect(result['split1']['https://kas1']).to.have.length(1);
   });
 });

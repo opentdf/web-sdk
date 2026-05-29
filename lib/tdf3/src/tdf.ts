@@ -710,7 +710,7 @@ export function splitLookupTableFactory(
   const allowed = (k: KeyAccessObject) => allowedKases.allows(k.url);
   const splitIds = new Set(keyAccess.map(({ sid }) => sid ?? ''));
 
-  const accessibleSplits = new Set(keyAccess.filter(allowed).map(({ sid }) => sid));
+  const accessibleSplits = new Set(keyAccess.filter(allowed).map(({ sid }) => sid ?? ''));
   if (splitIds.size > accessibleSplits.size) {
     const disallowedKases = new Set(keyAccess.filter((k) => !allowed(k)).map(({ url }) => url));
     throw new UnsafeUrlError(
@@ -730,6 +730,12 @@ export function splitLookupTableFactory(
     const disjunction = splitPotentials[kao.sid ?? ''];
     const existing = disjunction[kao.url];
     if (existing) {
+      const isDuplicate = existing.some(
+        (e) => e.kid === kao.kid && e.wrappedKey === kao.wrappedKey
+      );
+      if (isDuplicate) {
+        continue;
+      }
       existing.push(kao);
     } else {
       disjunction[kao.url] = [kao];
