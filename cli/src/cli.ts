@@ -511,6 +511,27 @@ export const handleArgs = (args: string[]) => {
       })
 
       .command(
+        'supports <feature>',
+        'Check if a feature is supported',
+        (yargs) => {
+          yargs.strict().positional('feature', {
+            describe: 'feature name to check',
+            type: 'string',
+            choices: ['dpop'],
+          });
+        },
+        async (argv) => {
+          const feature = argv.feature as string;
+          if (feature === 'dpop') {
+            // DPoP is supported - exit 0
+            process.exit(0);
+          }
+          // Unknown feature - exit 1
+          process.exit(1);
+        }
+      )
+
+      .command(
         'inspect [file]',
         'Inspect TDF and extract header information, without decrypting',
         (yargs) => {

@@ -5,6 +5,7 @@ import * as DefaultCryptoService from '../../tdf3/src/crypto/index.js';
 import DPoP from './dpop.js';
 import { type AuthProvider } from './auth.js';
 import { base64 } from '../encodings/index.js';
+import { globalNonceCache } from './dpop-nonce.js';
 
 /**
  * A function that returns a valid access token string.
@@ -86,10 +87,14 @@ export function authTokenDPoPInterceptor(options: DPoPInterceptorOptions): DPoPI
     const [token, keys] = await Promise.all([options.tokenProvider(), dpopKeysPromise]);
 
     const url = new URL(req.url);
-    const httpUri = `${url.origin}${url.pathname}`;
+    const origin = url.origin;
+    const httpUri = `${origin}${url.pathname}`;
+
+    // Check for cached nonce
+    const cachedNonce = globalNonceCache.get(origin);
 
     // Generate DPoP proof JWT for this request
-    const dpopProof = await DPoP(keys, cryptoService, httpUri, 'POST');
+    const dpopProof = await DPoP(keys, cryptoService, httpUri, 'POST', cachedNonce, token);
 
     // Export public key PEM for X-VirtruPubKey header
     const publicKeyPem = await cryptoService.exportPublicKeyPem(keys.publicKey);
@@ -98,7 +103,60 @@ export function authTokenDPoPInterceptor(options: DPoPInterceptorOptions): DPoPI
     req.header.set('DPoP', dpopProof);
     req.header.set('X-VirtruPubKey', base64.encode(publicKeyPem));
 
-    return next(req);
+    // Call next and handle DPoP-Nonce retry
+    try {
+      const response = await next(req);
+
+      // Extract and cache nonce from successful responses
+      const responseNonce = response.header.get('dpop-nonce');
+      if (responseNonce) {
+        globalNonceCache.set(origin, responseNonce);
+      }
+
+      return response;
+    } catch (err) {
+      // Check if this is a 401 with DPoP-Nonce challenge
+      if (
+        err &&
+        typeof err === 'object' &&
+        'code' in err &&
+        err.code === 16 && // Code.Unauthenticated
+        'metadata' in err
+      ) {
+        const metadata = err.metadata as { get?: (key: string) => string | null };
+        const serverNonce = metadata.get?.('dpop-nonce');
+
+        if (serverNonce && !cachedNonce) {
+          // Server sent a nonce and we didn't have one cached
+          // Cache it and retry once
+          globalNonceCache.set(origin, serverNonce);
+
+          // Regenerate proof with server nonce
+          const retryDpopProof = await DPoP(
+            keys,
+            cryptoService,
+            httpUri,
+            'POST',
+            serverNonce,
+            token
+          );
+          req.header.set('DPoP', retryDpopProof);
+
+          const retryResponse = await next(req);
+
+          // Update cache from retry response if present
+          const retryNonce = retryResponse.header.get('dpop-nonce');
+          if (retryNonce) {
+            globalNonceCache.set(origin, retryNonce);
+          }
+
+          return retryResponse;
+        }
+      }
+
+      // Re-throw if not a nonce challenge or retry failed
+      throw err;
+    }
   };
 
   // Attach dpopKeys to the interceptor function
