@@ -125,7 +125,10 @@ export async function loadDPoPKeyPairFromPem(pemPath: string): Promise<KeyPair> 
 async function buildKeyPairFromCryptoKey(
   privatePem: string,
   privCK: webcrypto.CryptoKey,
-  algorithm: webcrypto.AlgorithmIdentifier | webcrypto.RsaHashedImportParams | webcrypto.EcKeyImportParams
+  algorithm:
+    | webcrypto.AlgorithmIdentifier
+    | webcrypto.RsaHashedImportParams
+    | webcrypto.EcKeyImportParams
 ): Promise<KeyPair> {
   // Export private key as JWK; strip private components to build the public JWK
   const privJwk = await crypto.subtle.exportKey('jwk', privCK);

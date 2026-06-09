@@ -590,7 +590,7 @@ export const handleArgs = (args: string[]) => {
           const authProvider = await processAuth(argv);
           log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
           const guessedPolicyEndpoint = guessPolicyUrl(argv);
-          const dpopAlg = argv.dpop === undefined ? undefined : (argv.dpop || 'ES256');
+          const dpopAlg = argv.dpop === undefined ? undefined : argv.dpop || 'ES256';
           const dpopEnabled = dpopAlg !== undefined || !!argv.dpopKey;
           const dpopKeyPair = await _resolveDPoPKeyPair(dpopAlg, argv.dpopKey);
 
@@ -659,7 +659,7 @@ export const handleArgs = (args: string[]) => {
           log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
           const guessedPolicyEndpoint = guessPolicyUrl(argv);
 
-          const dpopAlg = argv.dpop === undefined ? undefined : (argv.dpop || 'ES256');
+          const dpopAlg = argv.dpop === undefined ? undefined : argv.dpop || 'ES256';
           const dpopEnabled = dpopAlg !== undefined || !!argv.dpopKey;
           const dpopKeyPair = await _resolveDPoPKeyPair(dpopAlg, argv.dpopKey);
 
