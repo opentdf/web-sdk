@@ -590,6 +590,10 @@ export const handleArgs = (args: string[]) => {
           const authProvider = await processAuth(argv);
           log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
           const guessedPolicyEndpoint = guessPolicyUrl(argv);
+          const dpopAlg = argv.dpop === undefined ? undefined : (argv.dpop || 'ES256');
+          const dpopEnabled = dpopAlg !== undefined || !!argv.dpopKey;
+          const dpopKeyPair = await _resolveDPoPKeyPair(dpopAlg, argv.dpopKey);
+
           const client = new OpenTDF({
             authProvider,
             defaultCreateOptions: {
@@ -600,7 +604,8 @@ export const handleArgs = (args: string[]) => {
               ignoreAllowlist: ignoreAllowList,
               noVerify: !!argv.noVerifyAssertions,
             },
-            disableDPoP: !argv.dpop,
+            disableDPoP: !dpopEnabled,
+            dpopKeys: dpopKeyPair ? Promise.resolve(dpopKeyPair) : undefined,
             policyEndpoint: guessedPolicyEndpoint,
             platformUrl: argv.platformUrl || guessedPolicyEndpoint,
           });
@@ -626,14 +631,14 @@ export const handleArgs = (args: string[]) => {
                   console.assert(!accessToken, 'Multiple authorization headers found');
                   accessToken = parseJwt(lastRequest.headers[h].split(' ')[1]);
                   log('INFO', `Access Token: ${JSON.stringify(accessToken)}`);
-                  if (argv.dpop) {
+                  if (dpopEnabled) {
                     console.assert(accessToken.cnf?.jkt, 'Access token must have a cnf.jkt');
                   }
                   break;
               }
             }
             console.assert(accessToken, 'No access_token found');
-            console.assert(!argv.dpop || dpopToken, 'DPoP requested but absent');
+            console.assert(!dpopEnabled || dpopToken, 'DPoP requested but absent');
           } finally {
             client.close();
           }
@@ -654,12 +659,17 @@ export const handleArgs = (args: string[]) => {
           log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
           const guessedPolicyEndpoint = guessPolicyUrl(argv);
 
+          const dpopAlg = argv.dpop === undefined ? undefined : (argv.dpop || 'ES256');
+          const dpopEnabled = dpopAlg !== undefined || !!argv.dpopKey;
+          const dpopKeyPair = await _resolveDPoPKeyPair(dpopAlg, argv.dpopKey);
+
           const client = new OpenTDF({
             authProvider,
             defaultCreateOptions: {
               defaultKASEndpoint: argv.kasEndpoint,
             },
-            disableDPoP: !argv.dpop,
+            disableDPoP: !dpopEnabled,
+            dpopKeys: dpopKeyPair ? Promise.resolve(dpopKeyPair) : undefined,
             policyEndpoint: guessedPolicyEndpoint,
             platformUrl: argv.platformUrl || guessedPolicyEndpoint,
           });
