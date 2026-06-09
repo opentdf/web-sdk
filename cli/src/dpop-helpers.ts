@@ -17,7 +17,7 @@ const EC_CURVE_MAP: Record<string, string> = {
 export function derToPem(der: Uint8Array | ArrayBuffer, type: string): string {
   const bytes = der instanceof ArrayBuffer ? new Uint8Array(der) : der;
   const b64 = btoa(String.fromCharCode(...bytes));
-  const lines = b64.match(/.{1,64}/g)!.join('\n');
+  const lines = b64.match(/.{1,64}/g)?.join('\n') ?? b64;
   return `-----BEGIN ${type}-----\n${lines}\n-----END ${type}-----`;
 }
 
@@ -31,6 +31,12 @@ export async function generateEphemeralDPoPKeyPair(alg: string): Promise<KeyPair
     throw new CLIError(
       'CRITICAL',
       `Unsupported DPoP algorithm: ${alg}. Valid values: ${VALID_DPOP_ALGS.join(', ')}`
+    );
+  }
+
+  if (alg === 'RS384' || alg === 'RS512') {
+    console.warn(
+      `[WARN] DPoP algorithm ${alg} requested but the SDK only supports RS256 for RSA keys; generating RSA-2048 (RS256) key.`
     );
   }
 
