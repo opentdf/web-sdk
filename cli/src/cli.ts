@@ -21,6 +21,8 @@ import { CLIError, Level, log } from './logger.js';
 import * as assertions from '@opentdf/sdk/assertions';
 import { base64 } from '@opentdf/sdk/encodings';
 import { type KeyPair } from '@opentdf/sdk/singlecontainer';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used in Task 4+5
+import { resolveDPoPKeyPair as _resolveDPoPKeyPair } from './dpop-helpers.js';
 
 type AuthToProcess = {
   auth?: string;
@@ -393,8 +395,14 @@ export const handleArgs = (args: string[]) => {
       })
       .option('dpop', {
         group: 'Security:',
-        desc: 'Use DPoP for token binding',
-        type: 'boolean',
+        desc: 'Enable DPoP token binding. Optional value selects algorithm: ES256 (default), ES384, ES512, RS256. Use --dpop=ES512 to specify.',
+        type: 'string',
+      })
+      .option('dpopKey', {
+        alias: 'dpop-key',
+        group: 'Security:',
+        desc: 'Path to PEM-encoded PKCS8 private key for DPoP signing. Enables DPoP alone if --dpop is omitted.',
+        type: 'string',
       })
       .implies('auth', '--no-clientId')
       .implies('auth', '--no-clientSecret')
