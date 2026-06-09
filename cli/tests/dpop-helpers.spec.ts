@@ -1,10 +1,6 @@
 // cli/tests/dpop-helpers.spec.ts
 import { expect } from '@esm-bundle/chai';
-import {
-  derToPem,
-  generateEphemeralDPoPKeyPair,
-  resolveDPoPKeyPair,
-} from '../src/dpop-helpers.js';
+import { derToPem, generateEphemeralDPoPKeyPair, resolveDPoPKeyPair } from '../src/dpop-helpers.js';
 
 describe('derToPem', function () {
   it('wraps DER bytes in PEM armor with the given type', function () {
