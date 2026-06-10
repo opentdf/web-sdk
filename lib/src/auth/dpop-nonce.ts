@@ -31,9 +31,8 @@ export class DPoPNonceCache {
   /**
    * Extract DPoP-Nonce from response headers (case-insensitive).
    */
-  static extractNonce(headers: Headers): string | undefined {
-    // Headers.get() is case-insensitive per spec
-    return headers.get('dpop-nonce') || undefined;
+  static extractNonce(headers?: Headers): string | undefined {
+    return typeof headers?.get === 'function' ? headers.get('dpop-nonce') || undefined : undefined;
   }
 }
 

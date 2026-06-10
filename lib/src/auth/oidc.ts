@@ -185,6 +185,7 @@ export class AccessToken {
       Accept: 'application/json',
     };
     // add DPoP headers if configured
+    let cachedNonce: string | undefined;
     if (this.config.dpopEnabled) {
       if (!this.signingKey) {
         throw new ConfigurationError('No signature configured');
@@ -195,8 +196,7 @@ export class AccessToken {
       // platform Keycloak mapper (lib/fixtures/keycloak.go `client.publickey`).
       headers['X-VirtruPubKey'] = base64.encode(publicKeyPem);
 
-      // Get cached nonce for token endpoint
-      const cachedNonce = globalNonceCache.get(origin);
+      cachedNonce = globalNonceCache.get(origin);
       headers.DPoP = await dpopFn(this.signingKey, this.cryptoService, url, 'POST', cachedNonce);
     }
 
@@ -209,7 +209,7 @@ export class AccessToken {
     // Handle DPoP-Nonce retry on 401
     if (this.config.dpopEnabled && response.status === 401) {
       const responseNonce = DPoPNonceCache.extractNonce(response.headers);
-      if (responseNonce) {
+      if (responseNonce && responseNonce !== cachedNonce) {
         // Cache the server-provided nonce and retry
         globalNonceCache.set(origin, responseNonce);
 

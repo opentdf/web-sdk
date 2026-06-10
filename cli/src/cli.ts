@@ -528,14 +528,8 @@ export const handleArgs = (args: string[]) => {
             choices: ['dpop'],
           });
         },
-        async (argv) => {
-          const feature = argv.feature as string;
-          if (feature === 'dpop') {
-            // DPoP is supported - exit 0
-            process.exit(0);
-          }
-          // Unknown feature - exit 1
-          process.exit(1);
+        async () => {
+          // yargs choices validation ensures feature is supported; return naturally exits 0
         }
       )
 
