@@ -29,6 +29,13 @@ export class DPoPNonceCache {
   }
 
   /**
+   * Clear all cached nonces. Useful for test teardown.
+   */
+  clearAll(): void {
+    this.cache.clear();
+  }
+
+  /**
    * Extract DPoP-Nonce from response headers (case-insensitive).
    */
   static extractNonce(headers?: Headers): string | undefined {

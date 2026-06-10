@@ -470,6 +470,30 @@ const kas: RequestListener = async (req, res) => {
       res.setHeader('Content-Type', 'application/json');
       res.end(JSON.stringify({ status: 'ok' }));
       return;
+    } else if (url.pathname === '/protocol/openid-connect/token') {
+      // DPoP nonce challenge test endpoint — simulates a Keycloak token endpoint.
+      // Always challenges the first request (no nonce in DPoP JWT) with a fixed nonce.
+      // Accepts the retry once the DPoP proof includes the expected nonce.
+      const DPOP_TEST_NONCE = 'dpop-test-nonce-abc';
+      const dpopHeader = req.headers['dpop'] as string | undefined;
+      if (!dpopHeader) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'invalid_request', error_description: 'DPoP header required' }));
+        return;
+      }
+      const dpopPayload = jose.decodeJwt(dpopHeader);
+      if (dpopPayload.nonce !== DPOP_TEST_NONCE) {
+        res.writeHead(401, {
+          'Content-Type': 'application/json',
+          'DPoP-Nonce': DPOP_TEST_NONCE,
+        });
+        res.end(JSON.stringify({ error: 'use_dpop_nonce', error_description: 'DPoP nonce required' }));
+        return;
+      }
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ access_token: 'test-dpop-token', token_type: 'DPoP', expires_in: 3600 }));
+      return;
     } else {
       console.log(`[DEBUG] invalid path [${url.pathname}]`);
       res.statusCode = 404;
