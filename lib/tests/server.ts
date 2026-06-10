@@ -73,9 +73,11 @@ const kas: RequestListener = async (req, res) => {
       'roundtrip-test-response',
       'connect-protocol-version',
       'connect-streaming-protocol-version',
+      'x-virtrupubkey',
     ].join(', ')
   );
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Expose-Headers', 'DPoP-Nonce');
   // GET should be allowed for everything except rewrap, POST only for rewrap but IDC
   res.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET, POST');
   try {
