@@ -478,7 +478,9 @@ const kas: RequestListener = async (req, res) => {
       const dpopHeader = req.headers['dpop'] as string | undefined;
       if (!dpopHeader) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'invalid_request', error_description: 'DPoP header required' }));
+        res.end(
+          JSON.stringify({ error: 'invalid_request', error_description: 'DPoP header required' })
+        );
         return;
       }
       const dpopPayload = jose.decodeJwt(dpopHeader);
@@ -487,12 +489,16 @@ const kas: RequestListener = async (req, res) => {
           'Content-Type': 'application/json',
           'DPoP-Nonce': DPOP_TEST_NONCE,
         });
-        res.end(JSON.stringify({ error: 'use_dpop_nonce', error_description: 'DPoP nonce required' }));
+        res.end(
+          JSON.stringify({ error: 'use_dpop_nonce', error_description: 'DPoP nonce required' })
+        );
         return;
       }
       res.statusCode = 200;
       res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ access_token: 'test-dpop-token', token_type: 'DPoP', expires_in: 3600 }));
+      res.end(
+        JSON.stringify({ access_token: 'test-dpop-token', token_type: 'DPoP', expires_in: 3600 })
+      );
       return;
     } else {
       console.log(`[DEBUG] invalid path [${url.pathname}]`);
