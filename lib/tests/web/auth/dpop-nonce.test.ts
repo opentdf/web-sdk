@@ -127,9 +127,14 @@ describe('authTokenDPoPInterceptor DPoP-Nonce retry', () => {
   it('retries with nonce when interceptor catches a code-16 error with dpop-nonce metadata', async () => {
     const mockNext = stub();
     // First call: simulate server rejecting with Unauthenticated + dpop-nonce metadata
-    mockNext.onFirstCall().callsFake(() =>
-      Promise.reject({ code: 16, metadata: { get: (k: string) => (k === 'dpop-nonce' ? NONCE : null) } })
-    );
+    mockNext
+      .onFirstCall()
+      .callsFake(() =>
+        Promise.reject({
+          code: 16,
+          metadata: { get: (k: string) => (k === 'dpop-nonce' ? NONCE : null) },
+        })
+      );
     // Second call: success
     mockNext.onSecondCall().resolves({ header: { get: () => null } });
 
@@ -150,7 +155,10 @@ describe('authTokenDPoPInterceptor DPoP-Nonce retry', () => {
     globalNonceCache.set(ORIGIN, NONCE);
 
     const mockNext = stub().callsFake(() =>
-      Promise.reject({ code: 16, metadata: { get: (k: string) => (k === 'dpop-nonce' ? NONCE : null) } })
+      Promise.reject({
+        code: 16,
+        metadata: { get: (k: string) => (k === 'dpop-nonce' ? NONCE : null) },
+      })
     );
 
     const interceptor = makeInterceptor();
