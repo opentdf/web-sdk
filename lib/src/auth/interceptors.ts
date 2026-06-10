@@ -123,11 +123,11 @@ export function authTokenDPoPInterceptor(options: DPoPInterceptorOptions): DPoPI
         err.code === 16 && // Code.Unauthenticated
         'metadata' in err
       ) {
-        const metadata = err.metadata as { get?: (key: string) => string | null };
-        const serverNonce = metadata.get?.('dpop-nonce');
+        const metadata = err.metadata as { get?: (key: string) => string | null } | undefined;
+        const serverNonce = metadata?.get?.('dpop-nonce');
 
-        if (serverNonce && !cachedNonce) {
-          // Server sent a nonce and we didn't have one cached
+        if (serverNonce && serverNonce !== cachedNonce) {
+          // Server sent a new nonce (or we didn't have one cached)
           // Cache it and retry once
           globalNonceCache.set(origin, serverNonce);
 
