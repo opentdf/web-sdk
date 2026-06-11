@@ -99,7 +99,7 @@ export function authTokenDPoPInterceptor(options: DPoPInterceptorOptions): DPoPI
     // Export public key PEM for X-VirtruPubKey header
     const publicKeyPem = await cryptoService.exportPublicKeyPem(keys.publicKey);
 
-    req.header.set('Authorization', `Bearer ${token}`);
+    req.header.set('Authorization', `DPoP ${token}`);
     req.header.set('DPoP', dpopProof);
     req.header.set('X-VirtruPubKey', base64.encode(publicKeyPem));
 

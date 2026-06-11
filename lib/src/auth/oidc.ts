@@ -149,7 +149,6 @@ export class AccessToken {
     const origin = new URL(this.userInfoEndpoint).origin;
     const headers = {
       ...this.extraHeaders,
-      Authorization: `Bearer ${accessToken}`,
     } as Record<string, string>;
     if (this.config.dpopEnabled && this.signingKey) {
       const cachedNonce = globalNonceCache.get(origin);
@@ -161,6 +160,9 @@ export class AccessToken {
         cachedNonce,
         accessToken
       );
+      headers.Authorization = `DPoP ${accessToken}`;
+    } else {
+      headers.Authorization = `Bearer ${accessToken}`;
     }
     const response = await (this.request || fetch)(this.userInfoEndpoint, {
       headers,
@@ -405,7 +407,7 @@ export class AccessToken {
         accessToken
       );
       // TODO: Consider: only set DPoP if cnf.jkt is present in access token?
-      return withHeaders(httpReq, { Authorization: `Bearer ${accessToken}`, DPoP: dpopToken });
+      return withHeaders(httpReq, { Authorization: `DPoP ${accessToken}`, DPoP: dpopToken });
     }
     return withHeaders(httpReq, { Authorization: `Bearer ${accessToken}` });
   }
