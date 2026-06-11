@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Start the web-app dev server pointed at a local otdf-local instance.
+#
+# Prerequisites:
+#   - otdf-local backend is running (tests/ dir):
+#       uv run otdf-local --instance DSPX-3397 up --services platform,kas
+#   - Local lib is built and installed:
+#       ./scripts/rebuild-local-lib.sh
+#
+# DPoP is active by default (the lib sends DPoP tokens on every request).
+# To see enforcement (platform rejects non-DPoP tokens), set enforceDPoP: true
+# in tests/instances/DSPX-3397/opentdf.yaml, then restart platform:
+#   uv run otdf-local --instance DSPX-3397 up --services platform --no-provision
+set -euo pipefail
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+PLATFORM_URL="${PLATFORM_URL:-http://localhost:8080}"
+KC_URL="${KC_URL:-http://localhost:8888}"
+KC_REALM="${KC_REALM:-opentdf}"
+KC_CLIENT_ID="${KC_CLIENT_ID:-browsertest}"
+
+export VITE_TDF_CFG="{\"oidc\":{\"host\":\"${KC_URL}/auth/realms/${KC_REALM}\",\"clientId\":\"${KC_CLIENT_ID}\"},\"kas\":\"${PLATFORM_URL}/api/kas\",\"reader\":\"https://secure.virtru.com/start?htmlProtocol=1\"}"
+
+echo "Starting web-app dev server with:"
+echo "  OIDC: ${KC_URL}/auth/realms/${KC_REALM}  client=${KC_CLIENT_ID}"
+echo "  KAS:  ${PLATFORM_URL}/api/kas"
+echo ""
+
+cd "$REPO_ROOT/web-app"
+npm run dev
