@@ -61,7 +61,7 @@ describe('authTokenDPoPInterceptor', () => {
 
     const headers = await captureHeaders(interceptor);
 
-    expect(headers.get('Authorization')).to.equal('Bearer dpop-token');
+    expect(headers.get('Authorization')).to.equal('DPoP dpop-token');
     expect(headers.get('DPoP')).to.be.a('string');
     expect(headers.get('DPoP')!.split('.')).to.have.length(3); // JWT format
     expect(headers.get('X-VirtruPubKey')).to.be.a('string');

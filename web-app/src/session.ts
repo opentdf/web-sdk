@@ -524,6 +524,6 @@ export class OidcClient implements AuthProvider {
       accessToken
     );
     // TODO: Consider: only set DPoP if cnf.jkt is present in access token?
-    return withHeaders(httpReq, { Authorization: `Bearer ${accessToken}`, DPoP: dpopToken });
+    return withHeaders(httpReq, { Authorization: `DPoP ${accessToken}`, DPoP: dpopToken });
   }
 }
