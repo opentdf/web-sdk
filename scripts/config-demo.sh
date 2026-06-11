@@ -65,6 +65,22 @@ else
   echo "Created browsertest client (DPoP-bound, audience=${PLATFORM_URL})"
 fi
 
+# Create demo user (user1 / testuser123) if not already present.
+if _kc "${KC_URL}/auth/admin/realms/${KC_REALM}/users?username=user1" \
+    | python3 -c "import sys,json; exit(0 if json.load(sys.stdin) else 1)" 2>/dev/null; then
+  echo "user1 already exists, skipping creation"
+else
+  USER_ID=$(_kc -X POST "${KC_URL}/auth/admin/realms/${KC_REALM}/users" \
+    -H "Content-Type: application/json" \
+    -D - \
+    -d '{"username":"user1","enabled":true,"firstName":"Alice","lastName":"User"}' \
+    | grep -i "^location:" | grep -o '[^/]*$' | tr -d '\r')
+  _kc -X PUT "${KC_URL}/auth/admin/realms/${KC_REALM}/users/${USER_ID}/reset-password" \
+    -H "Content-Type: application/json" \
+    -d '{"type":"password","value":"testuser123","temporary":false}'
+  echo "Created user1 (password: testuser123)"
+fi
+
 echo ""
 echo "Keycloak configured. Starting dev server..."
 echo ""
