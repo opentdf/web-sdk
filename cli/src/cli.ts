@@ -21,8 +21,7 @@ import { CLIError, Level, log } from './logger.js';
 import * as assertions from '@opentdf/sdk/assertions';
 import { base64 } from '@opentdf/sdk/encodings';
 import { type KeyPair } from '@opentdf/sdk/singlecontainer';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used in Task 4+5
-import { resolveDPoPKeyPair as _resolveDPoPKeyPair } from './dpop-helpers.js';
+import { resolveDPoPFromArgs } from './dpop-helpers.js';
 
 type AuthToProcess = {
   auth?: string;
@@ -584,9 +583,7 @@ export const handleArgs = (args: string[]) => {
           const authProvider = await processAuth(argv);
           log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
           const guessedPolicyEndpoint = guessPolicyUrl(argv);
-          const dpopAlg = argv.dpop === undefined ? undefined : argv.dpop || 'ES256';
-          const dpopEnabled = dpopAlg !== undefined || !!argv.dpopKey;
-          const dpopKeyPair = await _resolveDPoPKeyPair(dpopAlg, argv.dpopKey);
+          const { dpopEnabled, dpopKeyPair } = await resolveDPoPFromArgs(argv);
 
           const client = new OpenTDF({
             authProvider,
@@ -653,9 +650,7 @@ export const handleArgs = (args: string[]) => {
           log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
           const guessedPolicyEndpoint = guessPolicyUrl(argv);
 
-          const dpopAlg = argv.dpop === undefined ? undefined : argv.dpop || 'ES256';
-          const dpopEnabled = dpopAlg !== undefined || !!argv.dpopKey;
-          const dpopKeyPair = await _resolveDPoPKeyPair(dpopAlg, argv.dpopKey);
+          const { dpopEnabled, dpopKeyPair } = await resolveDPoPFromArgs(argv);
 
           const client = new OpenTDF({
             authProvider,

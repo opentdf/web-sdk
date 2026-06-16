@@ -1,4 +1,4 @@
-import { type Interceptor } from '@connectrpc/connect';
+import { Code, ConnectError, type Interceptor } from '@connectrpc/connect';
 export type { Interceptor } from '@connectrpc/connect';
 import { type CryptoService, type KeyPair } from '../../tdf3/src/crypto/declarations.js';
 import * as DefaultCryptoService from '../../tdf3/src/crypto/index.js';
@@ -115,16 +115,9 @@ export function authTokenDPoPInterceptor(options: DPoPInterceptorOptions): DPoPI
 
       return response;
     } catch (err) {
-      // Check if this is a 401 with DPoP-Nonce challenge
-      if (
-        err &&
-        typeof err === 'object' &&
-        'code' in err &&
-        err.code === 16 && // Code.Unauthenticated
-        'metadata' in err
-      ) {
-        const metadata = err.metadata as { get?: (key: string) => string | null } | undefined;
-        const serverNonce = metadata?.get?.('dpop-nonce');
+      // Check for a Connect Unauthenticated error carrying a DPoP-Nonce challenge
+      if (err instanceof ConnectError && err.code === Code.Unauthenticated) {
+        const serverNonce = err.metadata.get('dpop-nonce');
 
         if (serverNonce && serverNonce !== cachedNonce) {
           // Server sent a new nonce (or we didn't have one cached)
