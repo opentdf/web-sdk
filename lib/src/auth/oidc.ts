@@ -144,13 +144,14 @@ export class AccessToken {
     const headers = {
       ...this.extraHeaders,
     } as Record<string, string>;
+    let cachedNonce: string | undefined;
     if (this.config.dpopEnabled && this.signingKey) {
-      const cachedNonce = globalNonceCache.get(origin);
+      cachedNonce = globalNonceCache.get(origin);
       headers.DPoP = await dpopFn(
         this.signingKey,
         this.cryptoService,
         this.userInfoEndpoint,
-        'POST',
+        'GET',
         cachedNonce,
         accessToken
       );
@@ -158,11 +159,30 @@ export class AccessToken {
     } else {
       headers.Authorization = `Bearer ${accessToken}`;
     }
-    const response = await (this.request || fetch)(this.userInfoEndpoint, {
+    let response = await (this.request || fetch)(this.userInfoEndpoint, {
       headers,
     });
 
-    // Update nonce cache from response
+    // Handle DPoP-Nonce challenge per RFC 9449 §9: retry once with the server-supplied nonce.
+    if (this.config.dpopEnabled && this.signingKey && !response.ok) {
+      const challengeNonce = DPoPNonceCache.extractNonce(response.headers);
+      if (challengeNonce && challengeNonce !== cachedNonce) {
+        globalNonceCache.set(origin, challengeNonce);
+        headers.DPoP = await dpopFn(
+          this.signingKey,
+          this.cryptoService,
+          this.userInfoEndpoint,
+          'GET',
+          challengeNonce,
+          accessToken
+        );
+        response = await (this.request || fetch)(this.userInfoEndpoint, {
+          headers,
+        });
+      }
+    }
+
+    // Update nonce cache from final response
     if (this.config.dpopEnabled) {
       const responseNonce = DPoPNonceCache.extractNonce(response.headers);
       if (responseNonce) {
@@ -208,8 +228,10 @@ export class AccessToken {
       body: qstringify(o),
     });
 
-    // Handle DPoP-Nonce retry on 401
-    if (this.config.dpopEnabled && response.status === 401) {
+    // Handle DPoP-Nonce challenge. RFC 9449 §8: authorization servers return
+    // HTTP 400 with error=use_dpop_nonce; §9: resource servers return 401.
+    // Trigger on any non-OK response that carries a fresh DPoP-Nonce header.
+    if (this.config.dpopEnabled && !response.ok) {
       const responseNonce = DPoPNonceCache.extractNonce(response.headers);
       if (responseNonce && responseNonce !== cachedNonce) {
         // Cache the server-provided nonce and retry
