@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import { Code, ConnectError } from '@connectrpc/connect';
 import { stub } from 'sinon';
 import { AccessToken } from '../../../src/auth/oidc.js';
 import { globalNonceCache } from '../../../src/auth/dpop-nonce.js';
@@ -128,10 +129,13 @@ describe('authTokenDPoPInterceptor DPoP-Nonce retry', () => {
     const mockNext = stub();
     // First call: simulate server rejecting with Unauthenticated + dpop-nonce metadata
     mockNext.onFirstCall().callsFake(() =>
-      Promise.reject({
-        code: 16,
-        metadata: { get: (k: string) => (k === 'dpop-nonce' ? NONCE : null) },
-      })
+      Promise.reject(
+        new ConnectError(
+          'unauthenticated',
+          Code.Unauthenticated,
+          new Headers({ 'dpop-nonce': NONCE })
+        )
+      )
     );
     // Second call: success
     mockNext.onSecondCall().resolves({ header: { get: () => null } });
@@ -153,10 +157,13 @@ describe('authTokenDPoPInterceptor DPoP-Nonce retry', () => {
     globalNonceCache.set(ORIGIN, NONCE);
 
     const mockNext = stub().callsFake(() =>
-      Promise.reject({
-        code: 16,
-        metadata: { get: (k: string) => (k === 'dpop-nonce' ? NONCE : null) },
-      })
+      Promise.reject(
+        new ConnectError(
+          'unauthenticated',
+          Code.Unauthenticated,
+          new Headers({ 'dpop-nonce': NONCE })
+        )
+      )
     );
 
     const interceptor = makeInterceptor();
