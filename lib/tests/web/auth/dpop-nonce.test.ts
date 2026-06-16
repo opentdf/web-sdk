@@ -128,15 +128,17 @@ describe('authTokenDPoPInterceptor DPoP-Nonce retry', () => {
   it('retries with nonce when interceptor catches a code-16 error with dpop-nonce metadata', async () => {
     const mockNext = stub();
     // First call: simulate server rejecting with Unauthenticated + dpop-nonce metadata
-    mockNext.onFirstCall().callsFake(() =>
-      Promise.reject(
-        new ConnectError(
-          'unauthenticated',
-          Code.Unauthenticated,
-          new Headers({ 'dpop-nonce': NONCE })
+    mockNext
+      .onFirstCall()
+      .callsFake(() =>
+        Promise.reject(
+          new ConnectError(
+            'unauthenticated',
+            Code.Unauthenticated,
+            new Headers({ 'dpop-nonce': NONCE })
+          )
         )
-      )
-    );
+      );
     // Second call: success
     mockNext.onSecondCall().resolves({ header: { get: () => null } });
 
