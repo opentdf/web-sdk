@@ -13,10 +13,21 @@ const EC_CURVE_MAP: Record<string, string> = {
   ES512: 'P-521',
 };
 
+/** Resolve the optional WebCryptoService.importPrivateKey method, failing with a clear CLIError if absent. */
+function requireImportPrivateKey() {
+  if (!WebCryptoService.importPrivateKey) {
+    throw new CLIError(
+      'CRITICAL',
+      'WebCryptoService.importPrivateKey is unavailable in this SDK build; cannot load DPoP private keys'
+    );
+  }
+  return WebCryptoService.importPrivateKey;
+}
+
 /** Convert a DER buffer to a PEM string with the given type label. */
 export function derToPem(der: Uint8Array | ArrayBuffer, type: string): string {
   const bytes = der instanceof ArrayBuffer ? new Uint8Array(der) : der;
-  const b64 = btoa(String.fromCharCode(...bytes));
+  const b64 = Buffer.from(bytes).toString('base64');
   const lines = b64.match(/.{1,64}/g)?.join('\n') ?? b64;
   return `-----BEGIN ${type}-----\n${lines}\n-----END ${type}-----`;
 }
@@ -52,8 +63,9 @@ export async function generateEphemeralDPoPKeyPair(alg: string): Promise<KeyPair
     ]);
     const privPem = derToPem(privDer, 'PRIVATE KEY');
     const pubPem = derToPem(pubDer, 'PUBLIC KEY');
+    const importPriv = requireImportPrivateKey();
     const [privateKey, publicKey] = await Promise.all([
-      WebCryptoService.importPrivateKey!(privPem, { usage: 'sign', extractable: true }),
+      importPriv(privPem, { usage: 'sign', extractable: true }),
       WebCryptoService.importPublicKey(pubPem, { usage: 'sign', extractable: true }),
     ]);
     return { publicKey, privateKey };
@@ -76,40 +88,52 @@ export async function loadDPoPKeyPairFromPem(pemPath: string): Promise<KeyPair> 
     throw new CLIError('CRITICAL', `Cannot read DPoP key file: ${pemPath}`, err as Error);
   }
 
-  const b64 = privatePem.replace(/-----[\w\s]+-----|[\r\n]/g, '');
-  const der = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  let der: Uint8Array;
+  try {
+    const b64 = privatePem.replace(/-----[\w\s]+-----|[\r\n\s]/g, '');
+    der = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  } catch (err) {
+    throw new CLIError(
+      'CRITICAL',
+      `Cannot decode DPoP key file as PEM/base64: ${pemPath}. Ensure the file is a PKCS8 PEM-encoded private key.`,
+      err as Error
+    );
+  }
 
-  // Try EC curves (P-256, P-384, P-521)
+  // Try EC curves (P-256, P-384, P-521). Catch only the importKey call so that
+  // any SDK-layer errors from buildKeyPairFromCryptoKey propagate with full context.
   for (const namedCurve of ['P-256', 'P-384', 'P-521']) {
+    let privCK: webcrypto.CryptoKey | undefined;
     try {
-      const privCK = await crypto.subtle.importKey(
-        'pkcs8',
-        der,
-        { name: 'ECDSA', namedCurve },
-        true,
-        ['sign']
-      );
-      return await buildKeyPairFromCryptoKey(privatePem, privCK, { name: 'ECDSA', namedCurve });
+      privCK = await crypto.subtle.importKey('pkcs8', der, { name: 'ECDSA', namedCurve }, true, [
+        'sign',
+      ]);
     } catch {
       // wrong curve or not an EC key — try next
     }
+    if (privCK) {
+      return await buildKeyPairFromCryptoKey(privatePem, privCK, { name: 'ECDSA', namedCurve });
+    }
   }
 
-  // Try RSA (PKCS1-v1_5 SHA-256)
+  // Try RSA (PKCS1-v1_5 SHA-256). Same narrowing rationale as above.
+  let rsaCK: webcrypto.CryptoKey | undefined;
   try {
-    const privCK = await crypto.subtle.importKey(
+    rsaCK = await crypto.subtle.importKey(
       'pkcs8',
       der,
       { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
       true,
       ['sign']
     );
-    return await buildKeyPairFromCryptoKey(privatePem, privCK, {
+  } catch {
+    // not RSA either
+  }
+  if (rsaCK) {
+    return await buildKeyPairFromCryptoKey(privatePem, rsaCK, {
       name: 'RSASSA-PKCS1-v1_5',
       hash: 'SHA-256',
     });
-  } catch {
-    // not RSA either
   }
 
   throw new CLIError(
@@ -140,8 +164,9 @@ async function buildKeyPairFromCryptoKey(
   const pubDer = await crypto.subtle.exportKey('spki', pubCK);
   const pubPem = derToPem(pubDer, 'PUBLIC KEY');
 
+  const importPriv = requireImportPrivateKey();
   const [privateKey, publicKey] = await Promise.all([
-    WebCryptoService.importPrivateKey!(privatePem, { usage: 'sign', extractable: true }),
+    importPriv(privatePem, { usage: 'sign', extractable: true }),
     WebCryptoService.importPublicKey(pubPem, { usage: 'sign', extractable: true }),
   ]);
   return { publicKey, privateKey };
@@ -162,4 +187,18 @@ export async function resolveDPoPKeyPair(
     return generateEphemeralDPoPKeyPair(alg);
   }
   return undefined;
+}
+
+/**
+ * Resolve DPoP configuration from CLI argv. Bare `--dpop` defaults to ES256;
+ * `--dpopKey` enables DPoP even without `--dpop`.
+ */
+export async function resolveDPoPFromArgs(argv: {
+  dpop?: string;
+  dpopKey?: string;
+}): Promise<{ dpopEnabled: boolean; dpopKeyPair: KeyPair | undefined }> {
+  const dpopAlg = argv.dpop === undefined ? undefined : argv.dpop || 'ES256';
+  const dpopEnabled = dpopAlg !== undefined || !!argv.dpopKey;
+  const dpopKeyPair = await resolveDPoPKeyPair(dpopAlg, argv.dpopKey);
+  return { dpopEnabled, dpopKeyPair };
 }
