@@ -128,36 +128,16 @@ jobs:
         if: steps.check-pr.outputs.EXISTING_PR == '' && steps.update-platform-protos.outputs.changes == 'true'
         run: |
           git checkout -b $BRANCH_NAME
-          git push origin $BRANCH_NAME
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BRANCH_NAME: update-platform-protos
 
-      - name: Update files
+      - name: Commit and push changes
         working-directory: ./web-sdk
         if: steps.update-platform-protos.outputs.changes == 'true'
         run: |
-          echo "Committing changes..."
-          FILES_CHANGED=$(git status --porcelain | awk '{print $2}')
-          for file in $FILES_CHANGED; do
-            echo "Committing file: $file"
-
-            # Write base64 to a temp file to avoid "Argument list too long" on large generated files
-            base64 -w 0 $file > /tmp/b64content
-            FILENAME=$(basename $file)
-            MESSAGE="Update $FILENAME to match platform tag $LATEST_TAG"
-
-            SHA=$( git rev-parse $BRANCH_NAME:$file 2>/dev/null | grep -E '^[0-9a-f]{40}$' || echo "" )
-            if [ -z "$SHA" ]; then
-              SHA=""
-            fi
-
-            gh api --method PUT /repos/opentdf/web-sdk/contents/$file \
-              --field message="$MESSAGE" \
-              --raw-field content=@/tmp/b64content \
-              --field branch="$BRANCH_NAME" \
-              --field sha="$SHA"
-          done
+          git add lib/src/platform/ lib/platform-proto-version.json
+          git commit -m "fix(sdk): update proto bindings to $LATEST_TAG"
+          git push origin $BRANCH_NAME
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BRANCH_NAME: update-platform-protos
