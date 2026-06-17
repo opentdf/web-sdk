@@ -9,14 +9,30 @@ import {
 import { ConfigurationError } from '../../../../src/errors.js';
 import { formatAsPem, removePemFormatting } from '../crypto-utils.js';
 import { encodeArrayBuffer as hexEncode } from '../../../../src/encodings/hex.js';
-import { decodeArrayBuffer as base64Decode } from '../../../../src/encodings/base64.js';
+import {
+  decodeArrayBuffer as base64Decode,
+  encodeArrayBuffer as base64Encode,
+} from '../../../../src/encodings/base64.js';
 import { exportSPKI, importX509 } from 'jose';
 import {
   guessAlgorithmName,
   guessCurveName,
   toJwsAlg,
 } from '../../../../src/crypto/pemPublicToCrypto.js';
-import { unwrapKey, wrapPrivateKey, wrapPublicKey } from './keys.js';
+import {
+  unwrapKey,
+  unwrapMlKemPrivateKey,
+  unwrapMlKemPublicKey,
+  wrapMlKemPrivateKey,
+  wrapMlKemPublicKey,
+  wrapPrivateKey,
+  wrapPublicKey,
+} from './keys.js';
+import {
+  isMlKemAlgorithm,
+  mlKemPrivateKeyAlgorithmFromLength,
+  mlKemPublicKeyAlgorithmFromLength,
+} from './mlkem.js';
 import { rsaOaepSha1 } from './rsa.js';
 
 /**
@@ -50,6 +66,10 @@ export async function extractPublicKeyPem(
 
 const SUPPORTED_EC_CURVES = ['P-256', 'P-384', 'P-521'] as const;
 type SupportedEcCurve = (typeof SUPPORTED_EC_CURVES)[number];
+
+function normalizeRawKeyString(key: string): string {
+  return key.replace(/[\r\n\s]/g, '');
+}
 
 /**
  * Decode base64url string and return byte length.
@@ -107,7 +127,19 @@ export async function parsePublicKeyPem(pem: string): Promise<PublicKeyInfo> {
   }
 
   if (!publicKeyPem.includes('-----BEGIN PUBLIC KEY-----')) {
-    throw new ConfigurationError('Input must be a PEM-encoded public key or certificate');
+    try {
+      const normalized = normalizeRawKeyString(publicKeyPem);
+      const keyData = base64Decode(normalized);
+      const algorithm = mlKemPublicKeyAlgorithmFromLength(keyData.byteLength);
+      if (algorithm) {
+        return { algorithm, pem: normalized };
+      }
+    } catch {
+      // Fall through to the standard validation error below.
+    }
+    throw new ConfigurationError(
+      'Input must be a PEM-encoded public key, certificate, or raw ML-KEM public key'
+    );
   }
 
   const keyData = base64Decode(removePemFormatting(publicKeyPem));
@@ -229,6 +261,17 @@ export async function importPublicKey(pem: string, options: KeyOptions): Promise
   // Detect algorithm from PEM; also normalises certificates → plain SPKI PEM.
   const keyInfo = await parsePublicKeyPem(pem);
   const algorithm = algorithmHint || keyInfo.algorithm;
+  if (isMlKemAlgorithm(algorithm)) {
+    const keyBuffer = base64Decode(normalizeRawKeyString(keyInfo.pem));
+    const detectedAlgorithm = mlKemPublicKeyAlgorithmFromLength(keyBuffer.byteLength);
+    if (detectedAlgorithm !== algorithm) {
+      throw new ConfigurationError(
+        `ML-KEM public key length does not match ${algorithm}: detected ${detectedAlgorithm ?? 'unknown'}`
+      );
+    }
+    return wrapMlKemPublicKey(new Uint8Array(keyBuffer), algorithm);
+  }
+
   // Use keyInfo.pem (normalised SPKI) not the original pem, which may be a certificate.
   // Passing raw X.509 DER bytes to crypto.subtle.importKey('spki') would throw DataError.
   const keyData = removePemFormatting(keyInfo.pem);
@@ -295,13 +338,38 @@ export async function importPrivateKey(pem: string, options: KeyOptions): Promis
   // Detect algorithm from PEM structure (similar to public key detection)
   // For now, use algorithmHint if provided, otherwise detect from key structure
   let algorithm: KeyAlgorithm;
-
-  const keyData = removePemFormatting(pem);
-  const keyBuffer = base64Decode(keyData);
+  let keyData: string;
+  let keyBuffer: ArrayBuffer;
 
   if (algorithmHint) {
     algorithm = algorithmHint;
+    if (isMlKemAlgorithm(algorithm)) {
+      keyData = normalizeRawKeyString(pem);
+      keyBuffer = base64Decode(keyData);
+      const detectedAlgorithm = mlKemPrivateKeyAlgorithmFromLength(keyBuffer.byteLength);
+      if (detectedAlgorithm !== algorithm) {
+        throw new ConfigurationError(
+          `ML-KEM private key length does not match ${algorithm}: detected ${detectedAlgorithm ?? 'unknown'}`
+        );
+      }
+      return wrapMlKemPrivateKey(new Uint8Array(keyBuffer), algorithm);
+    }
   } else {
+    if (!pem.includes('-----BEGIN PRIVATE KEY-----')) {
+      keyData = normalizeRawKeyString(pem);
+      keyBuffer = base64Decode(keyData);
+      const rawAlgorithm = mlKemPrivateKeyAlgorithmFromLength(keyBuffer.byteLength);
+      if (!rawAlgorithm) {
+        throw new ConfigurationError(
+          'Input must be a PEM-encoded private key or raw ML-KEM private key'
+        );
+      }
+      return wrapMlKemPrivateKey(new Uint8Array(keyBuffer), rawAlgorithm);
+    }
+
+    keyData = removePemFormatting(pem);
+    keyBuffer = base64Decode(keyData);
+
     // PKCS#8 PrivateKeyInfo embeds the same AlgorithmIdentifier OIDs as SPKI,
     // so guessAlgorithmName / guessCurveName work on private key bytes too.
     const hex = hexEncode(keyBuffer);
@@ -339,6 +407,9 @@ export async function importPrivateKey(pem: string, options: KeyOptions): Promis
       algorithm = modulusBits <= 2048 ? 'rsa:2048' : 'rsa:4096';
     }
   }
+
+  keyData = removePemFormatting(pem);
+  keyBuffer = base64Decode(keyData);
 
   // Determine Web Crypto algorithm and usages
   let cryptoAlgorithm: RsaHashedImportParams | EcKeyImportParams;
@@ -396,6 +467,9 @@ export async function importPrivateKey(pem: string, options: KeyOptions): Promis
  * Export an opaque public key to PEM format.
  */
 export async function exportPublicKeyPem(key: PublicKey): Promise<string> {
+  if (isMlKemAlgorithm(key.algorithm)) {
+    return base64Encode(unwrapMlKemPublicKey(key).buffer);
+  }
   const cryptoKey = unwrapKey(key);
   const keyBuffer = await crypto.subtle.exportKey('spki', cryptoKey);
   return formatAsPem(keyBuffer, 'PUBLIC KEY');
@@ -406,6 +480,9 @@ export async function exportPublicKeyPem(key: PublicKey): Promise<string> {
  * ONLY USE FOR TESTING/DEVELOPMENT. Private keys should NOT be exportable in secure environments.
  */
 export async function exportPrivateKeyPem(key: PrivateKey): Promise<string> {
+  if (isMlKemAlgorithm(key.algorithm)) {
+    return base64Encode(unwrapMlKemPrivateKey(key).buffer);
+  }
   const cryptoKey = unwrapKey(key);
   const keyBuffer = await crypto.subtle.exportKey('pkcs8', cryptoKey);
   return formatAsPem(keyBuffer, 'PRIVATE KEY');
@@ -415,6 +492,9 @@ export async function exportPrivateKeyPem(key: PrivateKey): Promise<string> {
  * Export an opaque public key to JWK format.
  */
 export async function exportPublicKeyJwk(key: PublicKey): Promise<JsonWebKey> {
+  if (isMlKemAlgorithm(key.algorithm)) {
+    throw new ConfigurationError('ML-KEM public keys do not have a JWK export format');
+  }
   const cryptoKey = unwrapKey(key);
   return await crypto.subtle.exportKey('jwk', cryptoKey);
 }

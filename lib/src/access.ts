@@ -87,15 +87,21 @@ export const rewrapAdditionalContextHeader = (
   return base64.encode(JSON.stringify(context));
 };
 
-export type KasPublicKeyAlgorithm =
-  | 'ec:secp256r1'
-  | 'ec:secp384r1'
-  | 'ec:secp521r1'
-  | 'rsa:2048'
-  | 'rsa:4096';
+const PUBLIC_KEY_ALGORITHMS = [
+  'ec:secp256r1',
+  'ec:secp384r1',
+  'ec:secp521r1',
+  'rsa:2048',
+  'rsa:4096',
+  'mlkem:512',
+  'mlkem:768',
+  'mlkem:1024',
+] as const;
+
+export type KasPublicKeyAlgorithm = (typeof PUBLIC_KEY_ALGORITHMS)[number];
 
 export const isPublicKeyAlgorithm = (a: string): a is KasPublicKeyAlgorithm => {
-  return a === 'ec:secp256r1' || a === 'rsa:2048';
+  return PUBLIC_KEY_ALGORITHMS.includes(a as KasPublicKeyAlgorithm);
 };
 
 export const keyAlgorithmToPublicKeyAlgorithm = (k: CryptoKey): KasPublicKeyAlgorithm => {
@@ -142,6 +148,10 @@ export const publicKeyAlgorithmToJwa = (a: KasPublicKeyAlgorithm): string => {
       return 'ES384';
     case 'ec:secp521r1':
       return 'ES512';
+    case 'mlkem:512':
+    case 'mlkem:768':
+    case 'mlkem:1024':
+      throw new Error(`unsupported public key algorithm for JWA conversion: ${a}`);
     default:
       throw new Error(`unsupported public key algorithm: ${a}`);
   }
@@ -161,7 +171,7 @@ export type KasPublicKeyInfo = {
   /** If present, an identifier which is tied to this specific key. */
   kid?: string;
 
-  /** The key value, encoded within a PEM envelope */
+  /** The key value, encoded as PEM for classical keys or raw base64 for ML-KEM. */
   publicKey: string;
 };
 
@@ -212,7 +222,10 @@ export async function fetchKasPubKey(
   algorithm?: KasPublicKeyAlgorithm
 ): Promise<KasPublicKeyInfo> {
   try {
-    return await fetchKasBasePubKey(kasEndpoint);
+    const baseKey = await fetchKasBasePubKey(kasEndpoint);
+    if (!algorithm || baseKey.algorithm === algorithm) {
+      return baseKey;
+    }
   } catch (e) {
     console.log(e);
   }

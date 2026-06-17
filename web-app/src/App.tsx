@@ -408,6 +408,9 @@ function App() {
       cipherText = await client.createZTDF({
         autoconfigure: false,
         source: { type: 'stream', location: source.pipeThrough(progressTransformers.reader) },
+        ...(config.wrappingKeyAlgorithm && {
+          wrappingKeyAlgorithm: config.wrappingKeyAlgorithm,
+        }),
       });
     } catch (e) {
       setDownloadState(`Encrypt Failed: ${e}`);
@@ -462,6 +465,9 @@ function App() {
       authProvider: oidcClient,
       defaultReadOptions: {
         allowedKASEndpoints: [config.kas],
+        ...(config.rewrapWrappingKeyAlgorithm && {
+          wrappingKeyAlgorithm: config.rewrapWrappingKeyAlgorithm,
+        }),
         ...decryptReadTuning,
       },
       dpopKeys: oidcClient.getSigningKey(),

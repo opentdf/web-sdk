@@ -1,3 +1,5 @@
+import type { KasPublicKeyAlgorithm } from '@opentdf/sdk';
+
 export type TDFConfig = {
   oidc: {
     // eg 'http://localhost:65432/auth/realms/opentdf'
@@ -7,6 +9,8 @@ export type TDFConfig = {
   };
   kas: string;
   reader: string;
+  wrappingKeyAlgorithm?: KasPublicKeyAlgorithm;
+  rewrapWrappingKeyAlgorithm?: KasPublicKeyAlgorithm;
 };
 
 function cfg(): TDFConfig {

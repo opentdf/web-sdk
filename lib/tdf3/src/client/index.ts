@@ -733,6 +733,9 @@ export class Client {
         switch (algorithm) {
           case 'rsa:2048':
           case 'rsa:4096':
+          case 'mlkem:512':
+          case 'mlkem:768':
+          case 'mlkem:1024':
             type = 'wrapped';
             break;
           case 'ec:secp384r1':

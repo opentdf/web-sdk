@@ -244,9 +244,16 @@ describe('rewrap error cases', function () {
 describe('encrypt decrypt test', async function () {
   const expectedVal = 'hello world';
   const kasUrl = `http://localhost:3000`;
+  const wrappingAlgorithms: KasPublicKeyAlgorithm[] = [
+    'ec:secp256r1',
+    'rsa:2048',
+    'mlkem:512',
+    'mlkem:768',
+    'mlkem:1024',
+  ];
 
-  for (const encapKeyType of ['ec:secp256r1', 'rsa:2048'] as KasPublicKeyAlgorithm[]) {
-    for (const rewrapKeyType of ['ec:secp256r1', 'rsa:2048'] as KasPublicKeyAlgorithm[]) {
+  for (const encapKeyType of wrappingAlgorithms) {
+    for (const rewrapKeyType of wrappingAlgorithms) {
       it(`encrypt-decrypt stream source happy path {encap: ${encapKeyType}, rewrap: ${rewrapKeyType}}`, async function () {
         const cipher = new AesGcmCipher(WebCryptoService);
         const encryptionInformation = new SplitKey(cipher);

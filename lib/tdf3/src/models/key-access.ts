@@ -1,6 +1,12 @@
 import { base64, hex } from '../../../src/encodings/index.js';
+import { ConfigurationError } from '../../../src/errors.js';
 import { Binary } from '../binary.js';
-import type { CryptoService, KeyPair, SymmetricKey } from '../crypto/declarations.js';
+import type {
+  CryptoService,
+  KeyPair,
+  MlKemAlgorithm,
+  SymmetricKey,
+} from '../crypto/declarations.js';
 import { getZtdfSalt } from '../crypto/salt.js';
 import { Algorithms } from '../ciphers/index.js';
 import { Policy } from './policy.js';
@@ -152,7 +158,83 @@ export class Wrapped {
   }
 }
 
-export type KeyAccess = ECWrapped | Wrapped;
+export class MlKemWrapped {
+  readonly type = 'wrapped';
+  keyAccessObject?: KeyAccessObject;
+
+  constructor(
+    public readonly url: string,
+    public readonly kid: string,
+    public readonly publicKey: string,
+    public readonly algorithm: MlKemAlgorithm,
+    public readonly metadata: unknown,
+    public readonly cryptoService: CryptoService,
+    public readonly sid?: string
+  ) {
+    if (typeof kid !== 'string' || kid.trim().length === 0) {
+      throw new ConfigurationError('ML-KEM wrapped key access requires a non-empty kid');
+    }
+  }
+
+  async write(
+    policy: Policy,
+    dek: SymmetricKey,
+    encryptedMetadataStr: string
+  ): Promise<KeyAccessObject> {
+    const policyStr = JSON.stringify(policy);
+    const kasPublicKey = await this.cryptoService.importPublicKey(this.publicKey, {
+      usage: 'encrypt',
+      algorithmHint: this.algorithm,
+    });
+    const { ciphertext: mlKemCiphertext, sharedSecret } =
+      await this.cryptoService.mlKemEncapsulate(kasPublicKey);
+
+    const iv = await this.cryptoService.randomBytes(12);
+    const encryptResult = await this.cryptoService.encrypt(
+      dek,
+      sharedSecret,
+      Binary.fromArrayBuffer(iv.buffer),
+      Algorithms.AES_256_GCM
+    );
+
+    const ciphertext = new Uint8Array(encryptResult.payload.asArrayBuffer());
+    const authTag = encryptResult.authTag
+      ? new Uint8Array(encryptResult.authTag.asArrayBuffer())
+      : new Uint8Array(0);
+    const entityWrappedKey = new Uint8Array(
+      mlKemCiphertext.length + iv.length + ciphertext.length + authTag.length
+    );
+    entityWrappedKey.set(mlKemCiphertext);
+    entityWrappedKey.set(iv, mlKemCiphertext.length);
+    entityWrappedKey.set(ciphertext, mlKemCiphertext.length + iv.length);
+    entityWrappedKey.set(authTag, mlKemCiphertext.length + iv.length + ciphertext.length);
+
+    const policyBinding = hex.encodeArrayBuffer(
+      (await this.cryptoService.hmac(new TextEncoder().encode(base64.encode(policyStr)), dek))
+        .buffer
+    );
+
+    this.keyAccessObject = {
+      type: 'wrapped',
+      url: this.url,
+      protocol: 'kas',
+      kid: this.kid,
+      wrappedKey: base64.encodeArrayBuffer(entityWrappedKey),
+      encryptedMetadata: base64.encode(encryptedMetadataStr),
+      policyBinding: {
+        alg: 'HS256',
+        hash: base64.encode(policyBinding),
+      },
+      schemaVersion,
+    };
+    if (this.sid?.length) {
+      this.keyAccessObject.sid = this.sid;
+    }
+    return this.keyAccessObject;
+  }
+}
+
+export type KeyAccess = ECWrapped | Wrapped | MlKemWrapped;
 
 /**
  * A KeyAccess object stores all information about how an object key OR one key split is stored.

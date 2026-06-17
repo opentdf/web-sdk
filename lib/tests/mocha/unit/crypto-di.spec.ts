@@ -98,10 +98,24 @@ describe('CryptoService DI', () => {
       generateECKeyPair: function (curve?: ECCurve): Promise<KeyPair> {
         throw new Error(NOT_IMPLEMENTED);
       },
+      generateMlKemKeyPair: function (): Promise<KeyPair> {
+        throw new Error(NOT_IMPLEMENTED);
+      },
       deriveKeyFromECDH: function (
         privateKey: PrivateKey,
         publicKey: PublicKey,
         hkdfParams: HkdfParams
+      ): Promise<SymmetricKey> {
+        throw new Error(NOT_IMPLEMENTED);
+      },
+      mlKemEncapsulate: function (
+        publicKey: PublicKey
+      ): Promise<{ ciphertext: Uint8Array; sharedSecret: SymmetricKey }> {
+        throw new Error(NOT_IMPLEMENTED);
+      },
+      mlKemDecapsulate: function (
+        privateKey: PrivateKey,
+        ciphertext: Uint8Array
       ): Promise<SymmetricKey> {
         throw new Error(NOT_IMPLEMENTED);
       },
@@ -267,10 +281,24 @@ describe('CryptoService DI', () => {
       generateECKeyPair: function (curve?: ECCurve): Promise<KeyPair> {
         throw new Error(NOT_IMPLEMENTED);
       },
+      generateMlKemKeyPair: function (): Promise<KeyPair> {
+        throw new Error(NOT_IMPLEMENTED);
+      },
       deriveKeyFromECDH: function (
         privateKey: PrivateKey,
         publicKey: PublicKey,
         hkdfParams: HkdfParams
+      ): Promise<SymmetricKey> {
+        throw new Error(NOT_IMPLEMENTED);
+      },
+      mlKemEncapsulate: function (
+        publicKey: PublicKey
+      ): Promise<{ ciphertext: Uint8Array; sharedSecret: SymmetricKey }> {
+        throw new Error(NOT_IMPLEMENTED);
+      },
+      mlKemDecapsulate: function (
+        privateKey: PrivateKey,
+        ciphertext: Uint8Array
       ): Promise<SymmetricKey> {
         throw new Error(NOT_IMPLEMENTED);
       },

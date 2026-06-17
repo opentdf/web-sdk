@@ -41,6 +41,7 @@ import {
   type CryptoService,
   type DecryptResult,
   type KeyPair,
+  type MlKemAlgorithm,
   type SymmetricKey,
 } from './crypto/declarations.js';
 import { Algorithms } from './ciphers/index.js';
@@ -49,6 +50,7 @@ import {
   KeyAccessType,
   KeyInfo,
   Manifest,
+  MlKemWrapped,
   Policy,
   SplitKey,
   Wrapped,
@@ -59,6 +61,7 @@ import {
 import { unsigned } from './utils/buffer-crc32.js';
 import { ZipReader, ZipWriter, concatUint8, buffToString } from './utils/index.js';
 import { CentralDirectory } from './utils/zip-reader.js';
+import { mlKemCiphertextLengthForAlgorithm } from './crypto/core/mlkem.js';
 import { getZtdfSalt } from './crypto/salt.js';
 import { Payload } from './models/payload.js';
 import {
@@ -231,6 +234,9 @@ export async function extractPemFromKeyString(
   alg: KasPublicKeyAlgorithm,
   cryptoService: CryptoService
 ): Promise<string> {
+  if (alg.startsWith('mlkem:')) {
+    return keyString.replace(/[\r\n\s]/g, '');
+  }
   // Convert KAS algorithm to JWA algorithm if provided
   const jwaAlgorithm = publicKeyAlgorithmToJwa(alg);
   // extractPublicKeyPem handles both X.509 certificates and raw PEM keys
@@ -280,6 +286,22 @@ export async function buildKeyAccess({
   }
   switch (type) {
     case 'wrapped':
+      if (alg.startsWith('mlkem:')) {
+        if (!kid?.trim()) {
+          throw new ConfigurationError(
+            'TDF.buildKeyAccess: ML-KEM wrapped key access requires a non-empty kid'
+          );
+        }
+        return new MlKemWrapped(
+          url,
+          kid,
+          pubKey,
+          alg as MlKemAlgorithm,
+          metadata,
+          cryptoService,
+          sid
+        );
+      }
       return new Wrapped(url, kid, pubKey, metadata, cryptoService, sid);
     case 'ec-wrapped':
       return new ECWrapped(url, kid, pubKey, metadata, cryptoService, sid);
@@ -776,6 +798,14 @@ async function unwrapKey({
     if (wrappingKeyAlgorithm === 'ec:secp256r1') {
       // Generate EC key pair via CryptoService (returns opaque keys)
       ephemeralEncryptionKeys = await cryptoService.generateECKeyPair('P-256');
+    } else if (
+      wrappingKeyAlgorithm === 'mlkem:512' ||
+      wrappingKeyAlgorithm === 'mlkem:768' ||
+      wrappingKeyAlgorithm === 'mlkem:1024'
+    ) {
+      ephemeralEncryptionKeys = await cryptoService.generateMlKemKeyPair(
+        Number.parseInt(wrappingKeyAlgorithm.split(':')[1], 10) as 512 | 768 | 1024
+      );
     } else if (wrappingKeyAlgorithm === 'rsa:2048' || !wrappingKeyAlgorithm) {
       // generateKeyPair() returns opaque keys
       ephemeralEncryptionKeys = await cryptoService.generateKeyPair();
@@ -882,6 +912,33 @@ async function unwrapKey({
           const decryptResult = await cryptoService.decrypt(
             Binary.fromArrayBuffer(wrappedKey.buffer),
             derivedKey, // SymmetricKey (opaque)
+            Binary.fromArrayBuffer(iv.buffer),
+            Algorithms.AES_256_GCM
+          );
+
+          return {
+            key: new Uint8Array(decryptResult.payload.asArrayBuffer()),
+            metadata,
+            requiredObligations,
+          };
+        }
+        if (
+          wrappingKeyAlgorithm === 'mlkem:512' ||
+          wrappingKeyAlgorithm === 'mlkem:768' ||
+          wrappingKeyAlgorithm === 'mlkem:1024'
+        ) {
+          const mlKemCiphertextLength = mlKemCiphertextLengthForAlgorithm(wrappingKeyAlgorithm);
+          const mlKemCiphertext = entityWrappedKey.slice(0, mlKemCiphertextLength);
+          const wrappedKeyAndNonce = entityWrappedKey.slice(mlKemCiphertextLength);
+          const iv = wrappedKeyAndNonce.slice(0, 12);
+          const wrappedKey = wrappedKeyAndNonce.slice(12);
+          const derivedKey = await cryptoService.mlKemDecapsulate(
+            ephemeralEncryptionKeys.privateKey,
+            mlKemCiphertext
+          );
+          const decryptResult = await cryptoService.decrypt(
+            Binary.fromArrayBuffer(wrappedKey.buffer),
+            derivedKey,
             Binary.fromArrayBuffer(iv.buffer),
             Algorithms.AES_256_GCM
           );

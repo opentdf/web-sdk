@@ -24,19 +24,30 @@ export type PemKeyPair = {
 /**
  * Key algorithm identifier combining key type and parameters.
  */
+export type MlKemLevel = 512 | 768 | 1024;
+
+/**
+ * Supported ML-KEM algorithm identifiers.
+ */
+export type MlKemAlgorithm = 'mlkem:512' | 'mlkem:768' | 'mlkem:1024';
+
+/**
+ * Key algorithm identifier combining key type and parameters.
+ */
 export type KeyAlgorithm =
   | 'rsa:2048'
   | 'rsa:4096'
   | 'ec:secp256r1'
   | 'ec:secp384r1'
-  | 'ec:secp521r1';
+  | 'ec:secp521r1'
+  | MlKemAlgorithm;
 
 /**
  * Options for key generation and import.
  */
 export type KeyOptions = {
   /**
-   * Key usage: 'encrypt' for RSA-OAEP, 'sign' for RSA/ECDSA signing, 'derive' for ECDH.
+   * Key usage: 'encrypt' for RSA-OAEP / ML-KEM, 'sign' for RSA/ECDSA signing, 'derive' for ECDH.
    * If not specified, defaults based on the generation method or key type.
    */
   usage?: 'encrypt' | 'sign' | 'derive';
@@ -62,12 +73,14 @@ export type KeyOptions = {
  */
 export type PublicKey = {
   readonly _brand: 'PublicKey';
-  /** Algorithm identifier (e.g., 'rsa:2048', 'ec:secp256r1') */
+  /** Algorithm identifier (e.g., 'rsa:2048', 'ec:secp256r1', 'mlkem:768') */
   readonly algorithm: KeyAlgorithm;
   /** RSA modulus bit length (only for RSA keys) */
   readonly modulusBits?: number;
   /** EC curve name (only for EC keys) */
   readonly curve?: ECCurve;
+  /** ML-KEM security level (only for ML-KEM keys) */
+  readonly mlKemLevel?: MlKemLevel;
 };
 
 /**
@@ -78,12 +91,14 @@ export type PublicKey = {
  */
 export type PrivateKey = {
   readonly _brand: 'PrivateKey';
-  /** Algorithm identifier (e.g., 'rsa:2048', 'ec:secp256r1') */
+  /** Algorithm identifier (e.g., 'rsa:2048', 'ec:secp256r1', 'mlkem:768') */
   readonly algorithm: KeyAlgorithm;
   /** RSA modulus bit length (only for RSA keys) */
   readonly modulusBits?: number;
   /** EC curve name (only for EC keys) */
   readonly curve?: ECCurve;
+  /** ML-KEM security level (only for ML-KEM keys) */
+  readonly mlKemLevel?: MlKemLevel;
 };
 
 /**
@@ -156,8 +171,8 @@ export type HkdfParams = {
  */
 export type PublicKeyInfo = {
   /** Detected algorithm of the key. */
-  algorithm: 'rsa:2048' | 'rsa:4096' | 'ec:secp256r1' | 'ec:secp384r1' | 'ec:secp521r1';
-  /** Normalized PEM string. */
+  algorithm: KeyAlgorithm;
+  /** Normalized public key string: PEM for classical keys, raw base64 for ML-KEM. */
   pem: string;
 };
 
@@ -274,6 +289,12 @@ export type CryptoService = {
   generateECKeyPair: (curve?: ECCurve) => Promise<KeyPair>;
 
   /**
+   * Generate an ML-KEM key pair for encapsulation/decapsulation.
+   * @param level - ML-KEM level to use
+   */
+  generateMlKemKeyPair: (level: MlKemLevel) => Promise<KeyPair>;
+
+  /**
    * Perform ECDH key agreement followed by HKDF key derivation.
    * Returns opaque symmetric key suitable for symmetric encryption.
    *
@@ -289,11 +310,25 @@ export type CryptoService = {
     hkdfParams: HkdfParams
   ) => Promise<SymmetricKey>;
 
+  /**
+   * Encapsulate a shared secret to an ML-KEM public key.
+   * Implementations return the derived AES-256 key material used for wrapping.
+   */
+  mlKemEncapsulate: (
+    publicKey: PublicKey
+  ) => Promise<{ ciphertext: Uint8Array; sharedSecret: SymmetricKey }>;
+
+  /**
+   * Decapsulate an ML-KEM ciphertext with an ML-KEM private key.
+   * Implementations return the derived AES-256 key material used for wrapping.
+   */
+  mlKemDecapsulate: (privateKey: PrivateKey, ciphertext: Uint8Array) => Promise<SymmetricKey>;
+
   // === Key Import (PEM → opaque) ===
 
   /**
-   * Import a PEM public key as an opaque key.
-   * @param pem - PEM-encoded public key
+   * Import a public key as an opaque key.
+   * @param pem - PEM-encoded public key, certificate, or raw base64 ML-KEM public key
    * @param options - Import options (usage required for RSA keys to disambiguate encrypt vs sign)
    * @returns Opaque public key with metadata
    */
@@ -303,17 +338,17 @@ export type CryptoService = {
    * Import a PEM private key as an opaque key.
    * Optional - intended for use in tests or by downstream integrators who need to bring
    * their own PEM key material. Main SDK code should use opaque PrivateKey objects directly.
-   * @param pem - PEM-encoded private key
+   * @param pem - PEM-encoded private key or raw base64 ML-KEM private key
    * @param options - Import options (usage required for RSA keys to disambiguate encrypt vs sign)
    * @returns Opaque private key with metadata
    */
   importPrivateKey?: (pem: string, options: KeyOptions) => Promise<PrivateKey>;
 
   /**
-   * Parse and validate a PEM public key, returning algorithm info.
+   * Parse and validate a public key, returning algorithm info.
    *
-   * @param pem - PEM-encoded public key or X.509 certificate
-   * @returns Validated PEM and detected algorithm
+   * @param pem - PEM-encoded public key, X.509 certificate, or raw base64 ML-KEM public key
+   * @returns Validated public key string and detected algorithm
    * @throws ConfigurationError if key format invalid or algorithm not supported
    */
   parsePublicKeyPem: (pem: string) => Promise<PublicKeyInfo>;
@@ -323,7 +358,7 @@ export type CryptoService = {
   /**
    * Export an opaque public key to PEM format.
    * @param key - Opaque public key
-   * @returns PEM-encoded public key (SPKI format)
+   * @returns PEM-encoded public key (SPKI format) or raw base64 for ML-KEM
    */
   exportPublicKeyPem: (key: PublicKey) => Promise<string>;
 
@@ -331,7 +366,7 @@ export type CryptoService = {
    * OPTIONAL -- ONLY USE FOR TESTING/DEVELOPMENT. Private keys should NOT be exportable in secure environments.
    * Export an opaque private key to PEM format.
    * @param key - Opaque private key
-   * @returns PEM-encoded private key (PKCS8 format)
+   * @returns PEM-encoded private key (PKCS8 format) or raw base64 for ML-KEM
    */
   exportPrivateKeyPem?: (key: PrivateKey) => Promise<string>;
   /**
