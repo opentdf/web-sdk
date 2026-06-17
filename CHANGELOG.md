@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.18.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.17.0...sdk-v0.18.0) (2026-06-17)
+
+
+### Bug Fixes
+
+* **ci:** fix update-protos workflow failing on large generated files ([#940](https://github.com/opentdf/web-sdk/issues/940)) ([04f3ae4](https://github.com/opentdf/web-sdk/commit/04f3ae4d3e6dc5501871788c215d2ef83b7d27b0))
+* **sdk:** update proto bindings to protocol/go/v0.33.1 ([#948](https://github.com/opentdf/web-sdk/issues/948)) ([19bed9d](https://github.com/opentdf/web-sdk/commit/19bed9d22b689b8e9a86a2e74f1a934a79b2b38d))
+
 ## [0.17.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.16.0...sdk-v0.17.0) (2026-04-28)
 
 
