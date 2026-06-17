@@ -54,14 +54,7 @@ const parseJwtComplete = (jwt: string) => {
 };
 
 async function processAuth(
-  {
-    auth,
-    clientId,
-    clientSecret,
-    concurrencyLimit,
-    oidcEndpoint,
-    userId,
-  }: AuthToProcess,
+  { auth, clientId, clientSecret, concurrencyLimit, oidcEndpoint, userId }: AuthToProcess,
   dpopKeyPair?: KeyPair
 ): Promise<LoggedAuthProvider> {
   log('DEBUG', 'Processing auth params');
