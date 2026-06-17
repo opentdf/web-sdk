@@ -357,11 +357,12 @@ export class AccessToken {
     }
     delete this.currentAccessToken;
     this.signingKey = signingKey;
-    // Binding a signing key implies DPoP. Enable it on the config so the
-    // next token request includes a DPoP proof (RFC 9449 §5), and drop any
-    // cached token from a prior non-DPoP fetch since it won't carry cnf.jkt.
-    this.config = { ...this.config, dpopEnabled: true, signingKey };
-    delete this.data;
+    // A DPoP-bound token (cnf.jkt) is tied to a specific key; rotating the
+    // signing key invalidates any cached token. Non-DPoP tokens are key-
+    // independent and can stay cached.
+    if (this.config.dpopEnabled) {
+      delete this.data;
+    }
   }
 
   /**

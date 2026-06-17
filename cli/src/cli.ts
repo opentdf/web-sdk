@@ -75,17 +75,20 @@ async function processAuth(
       'Auth expects clientId and clientSecret, or combined auth param'
     );
   }
+  // Pass DPoP key into the provider config so the AccessToken is born with
+  // DPoP enabled (config.dpopEnabled + signingKey). Without this, the very
+  // first POST /token would go out without a DPoP proof — Keycloak clients
+  // with dpop_bound_access_tokens=true reject that with 400 invalid_request.
+  // Without a key, DPoP stays off so non-DPoP clients still get plain Bearer
+  // tokens that the platform will accept.
   const actual = await AuthProviders.clientSecretAuthProvider({
     clientId,
     oidcOrigin: oidcEndpoint,
     exchange: 'client',
     clientSecret,
+    dpopEnabled: !!dpopKeyPair,
+    signingKey: dpopKeyPair,
   });
-  // Bind DPoP key before any token fetch so the initial POST /token carries a
-  // DPoP proof (required by clients with dpop_bound_access_tokens=true).
-  if (dpopKeyPair) {
-    await actual.updateClientPublicKey(dpopKeyPair);
-  }
   if (concurrencyLimit !== 1) {
     await actual.oidcAuth.get();
   }
