@@ -79,21 +79,41 @@ describe('DPoP nonce challenge — integration with mock server', function (this
     expect(response.status).to.equal(200);
   });
 
-  it('initial token fetch via clientSecretAuthProvider includes DPoP proof after updateClientPublicKey', async () => {
-    // Mirrors the CLI path: provider is created without DPoP awareness, then a
-    // DPoP key is bound via updateClientPublicKey. The very next token POST
-    // must carry a DPoP header (RFC 9449 §5) and survive the nonce challenge.
+  it('initial token fetch via clientSecretAuthProvider sends DPoP proof when configured with a signing key', async () => {
+    // Mirrors the CLI path: when --dpop is set, the provider is constructed
+    // with dpopEnabled + signingKey so the very first POST /token carries a
+    // DPoP header (RFC 9449 §5) and survives the nonce challenge.
     const provider = await clientSecretAuthProvider({
       clientId: 'test-client',
       clientSecret: 'test-secret',
       oidcOrigin: SERVER_ORIGIN,
       oidcTokenEndpoint: TOKEN_URL,
       exchange: 'client',
+      dpopEnabled: true,
+      signingKey: keyPair,
     });
-    await provider.updateClientPublicKey(keyPair);
 
     const token = await provider.oidcAuth.get(false);
     expect(token).to.equal('test-dpop-token');
     expect(globalNonceCache.get(SERVER_ORIGIN)).to.equal(SERVER_NONCE);
+  });
+
+  it('omits DPoP header when no signing key is configured, even after updateClientPublicKey binds one for body signing', async () => {
+    // Mirrors the legacy/non-DPoP CLI path: no --dpop flag, but TDF3Client.
+    // createSessionKeys still calls updateClientPublicKey to bind a key used
+    // for TDF body signing. The token POST must NOT include a DPoP header,
+    // otherwise Keycloak issues a DPoP-bound token that the platform's
+    // Connect-RPC interceptors then present as plain Bearer → 401.
+    const provider = await clientSecretAuthProvider({
+      clientId: 'test-client',
+      clientSecret: 'test-secret',
+      oidcOrigin: 'http://localhost:3000', // any origin; we never hit token endpoint here
+      oidcTokenEndpoint: 'http://localhost:3000/protocol/openid-connect/non-dpop-token',
+      exchange: 'client',
+      // No dpopEnabled / signingKey — non-DPoP flow.
+    });
+    await provider.updateClientPublicKey(keyPair);
+    // The exposed AccessToken config must remain non-DPoP after the bind.
+    expect(provider.oidcAuth.config.dpopEnabled).to.not.equal(true);
   });
 });
