@@ -1,5 +1,6 @@
 import { expect } from 'chai';
 import { AccessToken } from '../../src/auth/oidc.js';
+import { clientSecretAuthProvider } from '../../src/auth/providers.js';
 import { globalNonceCache } from '../../src/auth/dpop-nonce.js';
 import { DefaultCryptoService, generateSigningKeyPair } from '../../tdf3/src/crypto/index.js';
 import type { KeyPair } from '../../tdf3/src/crypto/declarations.js';
@@ -76,5 +77,23 @@ describe('DPoP nonce challenge — integration with mock server', function (this
     });
 
     expect(response.status).to.equal(200);
+  });
+
+  it('initial token fetch via clientSecretAuthProvider includes DPoP proof after updateClientPublicKey', async () => {
+    // Mirrors the CLI path: provider is created without DPoP awareness, then a
+    // DPoP key is bound via updateClientPublicKey. The very next token POST
+    // must carry a DPoP header (RFC 9449 §5) and survive the nonce challenge.
+    const provider = await clientSecretAuthProvider({
+      clientId: 'test-client',
+      clientSecret: 'test-secret',
+      oidcOrigin: SERVER_ORIGIN,
+      oidcTokenEndpoint: TOKEN_URL,
+      exchange: 'client',
+    });
+    await provider.updateClientPublicKey(keyPair);
+
+    const token = await provider.oidcAuth.get(false);
+    expect(token).to.equal('test-dpop-token');
+    expect(globalNonceCache.get(SERVER_ORIGIN)).to.equal(SERVER_NONCE);
   });
 });

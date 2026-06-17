@@ -54,14 +54,17 @@ const parseJwtComplete = (jwt: string) => {
   return { header: parseJwt(jwt, 0), payload: parseJwt(jwt) };
 };
 
-async function processAuth({
-  auth,
-  clientId,
-  clientSecret,
-  concurrencyLimit,
-  oidcEndpoint,
-  userId,
-}: AuthToProcess): Promise<LoggedAuthProvider> {
+async function processAuth(
+  {
+    auth,
+    clientId,
+    clientSecret,
+    concurrencyLimit,
+    oidcEndpoint,
+    userId,
+  }: AuthToProcess,
+  dpopKeyPair?: KeyPair
+): Promise<LoggedAuthProvider> {
   log('DEBUG', 'Processing auth params');
   if (!oidcEndpoint) {
     throw new CLIError('CRITICAL', 'oidcEndpoint must be specified');
@@ -86,6 +89,11 @@ async function processAuth({
     exchange: 'client',
     clientSecret,
   });
+  // Bind DPoP key before any token fetch so the initial POST /token carries a
+  // DPoP proof (required by clients with dpop_bound_access_tokens=true).
+  if (dpopKeyPair) {
+    await actual.updateClientPublicKey(dpopKeyPair);
+  }
   if (concurrencyLimit !== 1) {
     await actual.oidcAuth.get();
   }
@@ -583,10 +591,10 @@ export const handleArgs = (args: string[]) => {
           if (!argv.oidcEndpoint) {
             throw new CLIError('CRITICAL', 'oidcEndpoint must be specified');
           }
-          const authProvider = await processAuth(argv);
+          const { dpopEnabled, dpopKeyPair } = await resolveDPoPFromArgs(argv);
+          const authProvider = await processAuth(argv, dpopKeyPair);
           log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
           const guessedPolicyEndpoint = guessPolicyUrl(argv);
-          const { dpopEnabled, dpopKeyPair } = await resolveDPoPFromArgs(argv);
 
           const client = new OpenTDF({
             authProvider,
@@ -649,11 +657,10 @@ export const handleArgs = (args: string[]) => {
         },
         async (argv) => {
           log('DEBUG', 'Running encrypt command');
-          const authProvider = await processAuth(argv);
+          const { dpopEnabled, dpopKeyPair } = await resolveDPoPFromArgs(argv);
+          const authProvider = await processAuth(argv, dpopKeyPair);
           log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
           const guessedPolicyEndpoint = guessPolicyUrl(argv);
-
-          const { dpopEnabled, dpopKeyPair } = await resolveDPoPFromArgs(argv);
 
           const client = new OpenTDF({
             authProvider,

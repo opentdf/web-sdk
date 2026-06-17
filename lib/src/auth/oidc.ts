@@ -381,6 +381,11 @@ export class AccessToken {
     delete this.cachedExpiry;
     delete this.inFlight;
     this.signingKey = signingKey;
+    // Binding a signing key implies DPoP. Enable it on the config so the
+    // next token request includes a DPoP proof (RFC 9449 §5), and drop any
+    // cached token from a prior non-DPoP fetch since it won't carry cnf.jkt.
+    this.config = { ...this.config, dpopEnabled: true, signingKey };
+    delete this.data;
   }
 
   /**
