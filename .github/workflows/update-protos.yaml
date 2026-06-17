@@ -135,7 +135,7 @@ jobs:
         working-directory: ./web-sdk
         if: steps.update-platform-protos.outputs.changes == 'true'
         run: |
-          git add -A
+          git add lib/src/platform/ lib/platform-proto-version.json
           git commit -m "fix(sdk): update proto bindings to $LATEST_TAG"
           git push origin $BRANCH_NAME
         env:
