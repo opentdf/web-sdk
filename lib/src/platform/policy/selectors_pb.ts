@@ -4,13 +4,14 @@
 
 import type { GenEnum, GenFile, GenMessage } from "@bufbuild/protobuf/codegenv1";
 import { enumDesc, fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv1";
+import { file_buf_validate_validate } from "../buf/validate/validate_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file policy/selectors.proto.
  */
 export const file_policy_selectors: GenFile = /*@__PURE__*/
-  fileDesc("ChZwb2xpY3kvc2VsZWN0b3JzLnByb3RvEgZwb2xpY3ki4gIKGkF0dHJpYnV0ZU5hbWVzcGFjZVNlbGVjdG9yEk0KD3dpdGhfYXR0cmlidXRlcxgKIAEoCzI0LnBvbGljeS5BdHRyaWJ1dGVOYW1lc3BhY2VTZWxlY3Rvci5BdHRyaWJ1dGVTZWxlY3Rvchr0AQoRQXR0cmlidXRlU2VsZWN0b3ISHgoWd2l0aF9rZXlfYWNjZXNzX2dyYW50cxgBIAEoCBJXCgt3aXRoX3ZhbHVlcxgKIAEoCzJCLnBvbGljeS5BdHRyaWJ1dGVOYW1lc3BhY2VTZWxlY3Rvci5BdHRyaWJ1dGVTZWxlY3Rvci5WYWx1ZVNlbGVjdG9yGmYKDVZhbHVlU2VsZWN0b3ISHgoWd2l0aF9rZXlfYWNjZXNzX2dyYW50cxgBIAEoCBIZChF3aXRoX3N1YmplY3RfbWFwcxgCIAEoCBIaChJ3aXRoX3Jlc291cmNlX21hcHMYAyABKAgi0QIKG0F0dHJpYnV0ZURlZmluaXRpb25TZWxlY3RvchIeChZ3aXRoX2tleV9hY2Nlc3NfZ3JhbnRzGAEgASgIEk0KDndpdGhfbmFtZXNwYWNlGAogASgLMjUucG9saWN5LkF0dHJpYnV0ZURlZmluaXRpb25TZWxlY3Rvci5OYW1lc3BhY2VTZWxlY3RvchJGCgt3aXRoX3ZhbHVlcxgLIAEoCzIxLnBvbGljeS5BdHRyaWJ1dGVEZWZpbml0aW9uU2VsZWN0b3IuVmFsdWVTZWxlY3RvchoTChFOYW1lc3BhY2VTZWxlY3RvchpmCg1WYWx1ZVNlbGVjdG9yEh4KFndpdGhfa2V5X2FjY2Vzc19ncmFudHMYASABKAgSGQoRd2l0aF9zdWJqZWN0X21hcHMYAiABKAgSGgoSd2l0aF9yZXNvdXJjZV9tYXBzGAMgASgIIuACChZBdHRyaWJ1dGVWYWx1ZVNlbGVjdG9yEh4KFndpdGhfa2V5X2FjY2Vzc19ncmFudHMYASABKAgSGQoRd2l0aF9zdWJqZWN0X21hcHMYAiABKAgSGgoSd2l0aF9yZXNvdXJjZV9tYXBzGAMgASgIEkgKDndpdGhfYXR0cmlidXRlGAogASgLMjAucG9saWN5LkF0dHJpYnV0ZVZhbHVlU2VsZWN0b3IuQXR0cmlidXRlU2VsZWN0b3IapAEKEUF0dHJpYnV0ZVNlbGVjdG9yEh4KFndpdGhfa2V5X2FjY2Vzc19ncmFudHMYASABKAgSWgoOd2l0aF9uYW1lc3BhY2UYCiABKAsyQi5wb2xpY3kuQXR0cmlidXRlVmFsdWVTZWxlY3Rvci5BdHRyaWJ1dGVTZWxlY3Rvci5OYW1lc3BhY2VTZWxlY3RvchoTChFOYW1lc3BhY2VTZWxlY3RvciIsCgtQYWdlUmVxdWVzdBINCgVsaW1pdBgBIAEoBRIOCgZvZmZzZXQYAiABKAUiSgoMUGFnZVJlc3BvbnNlEhYKDmN1cnJlbnRfb2Zmc2V0GAEgASgFEhMKC25leHRfb2Zmc2V0GAIgASgFEg0KBXRvdGFsGAMgASgFKmAKDVNvcnREaXJlY3Rpb24SHgoaU09SVF9ESVJFQ1RJT05fVU5TUEVDSUZJRUQQABIWChJTT1JUX0RJUkVDVElPTl9BU0MQARIXChNTT1JUX0RJUkVDVElPTl9ERVNDEAJiBnByb3RvMw");
+  fileDesc("ChZwb2xpY3kvc2VsZWN0b3JzLnByb3RvEgZwb2xpY3ki4gIKGkF0dHJpYnV0ZU5hbWVzcGFjZVNlbGVjdG9yEk0KD3dpdGhfYXR0cmlidXRlcxgKIAEoCzI0LnBvbGljeS5BdHRyaWJ1dGVOYW1lc3BhY2VTZWxlY3Rvci5BdHRyaWJ1dGVTZWxlY3Rvchr0AQoRQXR0cmlidXRlU2VsZWN0b3ISHgoWd2l0aF9rZXlfYWNjZXNzX2dyYW50cxgBIAEoCBJXCgt3aXRoX3ZhbHVlcxgKIAEoCzJCLnBvbGljeS5BdHRyaWJ1dGVOYW1lc3BhY2VTZWxlY3Rvci5BdHRyaWJ1dGVTZWxlY3Rvci5WYWx1ZVNlbGVjdG9yGmYKDVZhbHVlU2VsZWN0b3ISHgoWd2l0aF9rZXlfYWNjZXNzX2dyYW50cxgBIAEoCBIZChF3aXRoX3N1YmplY3RfbWFwcxgCIAEoCBIaChJ3aXRoX3Jlc291cmNlX21hcHMYAyABKAgi0QIKG0F0dHJpYnV0ZURlZmluaXRpb25TZWxlY3RvchIeChZ3aXRoX2tleV9hY2Nlc3NfZ3JhbnRzGAEgASgIEk0KDndpdGhfbmFtZXNwYWNlGAogASgLMjUucG9saWN5LkF0dHJpYnV0ZURlZmluaXRpb25TZWxlY3Rvci5OYW1lc3BhY2VTZWxlY3RvchJGCgt3aXRoX3ZhbHVlcxgLIAEoCzIxLnBvbGljeS5BdHRyaWJ1dGVEZWZpbml0aW9uU2VsZWN0b3IuVmFsdWVTZWxlY3RvchoTChFOYW1lc3BhY2VTZWxlY3RvchpmCg1WYWx1ZVNlbGVjdG9yEh4KFndpdGhfa2V5X2FjY2Vzc19ncmFudHMYASABKAgSGQoRd2l0aF9zdWJqZWN0X21hcHMYAiABKAgSGgoSd2l0aF9yZXNvdXJjZV9tYXBzGAMgASgIIuACChZBdHRyaWJ1dGVWYWx1ZVNlbGVjdG9yEh4KFndpdGhfa2V5X2FjY2Vzc19ncmFudHMYASABKAgSGQoRd2l0aF9zdWJqZWN0X21hcHMYAiABKAgSGgoSd2l0aF9yZXNvdXJjZV9tYXBzGAMgASgIEkgKDndpdGhfYXR0cmlidXRlGAogASgLMjAucG9saWN5LkF0dHJpYnV0ZVZhbHVlU2VsZWN0b3IuQXR0cmlidXRlU2VsZWN0b3IapAEKEUF0dHJpYnV0ZVNlbGVjdG9yEh4KFndpdGhfa2V5X2FjY2Vzc19ncmFudHMYASABKAgSWgoOd2l0aF9uYW1lc3BhY2UYCiABKAsyQi5wb2xpY3kuQXR0cmlidXRlVmFsdWVTZWxlY3Rvci5BdHRyaWJ1dGVTZWxlY3Rvci5OYW1lc3BhY2VTZWxlY3RvchoTChFOYW1lc3BhY2VTZWxlY3RvciIiCgZTZWFyY2gSGAoEdGVybRgBIAEoCUIKukgHcgUQARj9ASIsCgtQYWdlUmVxdWVzdBINCgVsaW1pdBgBIAEoBRIOCgZvZmZzZXQYAiABKAUiSgoMUGFnZVJlc3BvbnNlEhYKDmN1cnJlbnRfb2Zmc2V0GAEgASgFEhMKC25leHRfb2Zmc2V0GAIgASgFEg0KBXRvdGFsGAMgASgFKmAKDVNvcnREaXJlY3Rpb24SHgoaU09SVF9ESVJFQ1RJT05fVU5TUEVDSUZJRUQQABIWChJTT1JUX0RJUkVDVElPTl9BU0MQARIXChNTT1JUX0RJUkVDVElPTl9ERVNDEAJiBnByb3RvMw", [file_buf_validate_validate]);
 
 /**
  * Deprecated: never utilized
@@ -231,6 +232,23 @@ export const AttributeValueSelector_AttributeSelector_NamespaceSelectorSchema: G
   messageDesc(file_policy_selectors, 2, 0, 0);
 
 /**
+ * @generated from message policy.Search
+ */
+export type Search = Message<"policy.Search"> & {
+  /**
+   * @generated from field: string term = 1;
+   */
+  term: string;
+};
+
+/**
+ * Describes the message policy.Search.
+ * Use `create(SearchSchema)` to create a new message.
+ */
+export const SearchSchema: GenMessage<Search> = /*@__PURE__*/
+  messageDesc(file_policy_selectors, 3);
+
+/**
  * @generated from message policy.PageRequest
  */
 export type PageRequest = Message<"policy.PageRequest"> & {
@@ -257,7 +275,7 @@ export type PageRequest = Message<"policy.PageRequest"> & {
  * Use `create(PageRequestSchema)` to create a new message.
  */
 export const PageRequestSchema: GenMessage<PageRequest> = /*@__PURE__*/
-  messageDesc(file_policy_selectors, 3);
+  messageDesc(file_policy_selectors, 4);
 
 /**
  * @generated from message policy.PageResponse
@@ -291,7 +309,7 @@ export type PageResponse = Message<"policy.PageResponse"> & {
  * Use `create(PageResponseSchema)` to create a new message.
  */
 export const PageResponseSchema: GenMessage<PageResponse> = /*@__PURE__*/
-  messageDesc(file_policy_selectors, 4);
+  messageDesc(file_policy_selectors, 5);
 
 /**
  * Sorting direction shared across list APIs.
