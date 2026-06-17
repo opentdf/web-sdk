@@ -48,7 +48,6 @@ const buildValue = ({
     id: '',
     grants: [],
     kasKeys: namespaceKasKeys,
-    rootCerts: [],
   });
   const attribute = create(AttributeSchema, {
     fqn: `${namespace.fqn}/attr/${attributeName}`,
