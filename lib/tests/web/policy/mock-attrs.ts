@@ -118,7 +118,6 @@ for (const ns of [nsStandard, nsGranted, nsUngranted]) {
     grants: [],
     id: '',
     kasKeys: [],
-    rootCerts: [],
   };
   if (ns == nsGranted) {
     namespaces[ns]!.grants = [kases[lessSpecificKas]];
