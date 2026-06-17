@@ -78,7 +78,6 @@ describe('Client Caching Behavior', () => {
           grants: [],
           id: 'ns-one.example',
           kasKeys: [],
-          rootCerts: [],
         };
 
         const kasOne: KeyAccessServer = {
@@ -226,7 +225,6 @@ describe('Client Caching Behavior', () => {
         grants: [],
         id: 'ns-one.example',
         kasKeys: [],
-        rootCerts: [],
       };
 
       const kasOne: KeyAccessServer = {
@@ -375,7 +373,6 @@ describe('Client Caching Behavior', () => {
         grants: [],
         id: 'ns-one.example',
         kasKeys: [],
-        rootCerts: [],
       };
 
       const kasOne: KeyAccessServer = {
