@@ -1,5 +1,75 @@
 # Changelog
 
+## [0.17.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.16.0...sdk-v0.17.0) (2026-04-28)
+
+
+### Features
+
+* **sdk:** re-export policy enums from barrel for convenient imports ([#928](https://github.com/opentdf/web-sdk/issues/928)) ([d43919c](https://github.com/opentdf/web-sdk/commit/d43919cd86d96f66ad0eb9de2d6df42b501c5942))
+
+## [0.16.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.15.0...sdk-v0.16.0) (2026-04-23)
+
+
+### Bug Fixes
+
+* **sdk:** bound browser decrypt memory for large chunker downloads ([#922](https://github.com/opentdf/web-sdk/issues/922)) ([66aad4e](https://github.com/opentdf/web-sdk/commit/66aad4e2f398a3ada7683f4a74d38d68eb682b6a))
+* **sdk:** bump uuid from 13.0.0 to 14.0.0 in /lib ([#923](https://github.com/opentdf/web-sdk/issues/923)) ([7c02e1f](https://github.com/opentdf/web-sdk/commit/7c02e1fccf619c1f877192327d3a23e794d36dd3))
+
+## [0.15.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.14.0...sdk-v0.15.0) (2026-04-22)
+
+
+### Features
+
+* **sdk:** add ergonomic Resource constructors for authorization ([#921](https://github.com/opentdf/web-sdk/issues/921)) ([a14b777](https://github.com/opentdf/web-sdk/commit/a14b7771021271e6648d331fbd345dd89bcf13b4))
+* **sdk:** add segment batch size and max concurrent segment batches options ([#920](https://github.com/opentdf/web-sdk/issues/920)) ([376c780](https://github.com/opentdf/web-sdk/commit/376c780d17355053348a832006bcdd90bddb00e2))
+* **sdk:** namespace EntityIdentifier helpers under EntityIdentifiers ([#916](https://github.com/opentdf/web-sdk/issues/916)) ([d0ab115](https://github.com/opentdf/web-sdk/commit/d0ab11560a9f493b7b92fdf04408263fdac97734))
+
+
+### Bug Fixes
+
+* **ci:** remove redundant npm install in dev-artifact workflow ([#913](https://github.com/opentdf/web-sdk/issues/913)) ([015176c](https://github.com/opentdf/web-sdk/commit/015176cb56d9155b6b4a050da6688f51021365f7))
+
+## [0.14.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.13.0...sdk-v0.14.0) (2026-04-09)
+
+
+### Features
+
+* **sdk:** add EntityIdentifier convenience constructors ([#911](https://github.com/opentdf/web-sdk/issues/911)) ([0bbe549](https://github.com/opentdf/web-sdk/commit/0bbe54997f8ef00e9d75a28a115ed85c54ad5a15))
+* **sdk:** add TokenProvider factory functions for common OIDC flows ([#906](https://github.com/opentdf/web-sdk/issues/906)) ([7627b1e](https://github.com/opentdf/web-sdk/commit/7627b1e66664c4c314fa1fe41f37023e53b71df3))
+* **sdk:** deprecate AuthProvider in favor of Interceptor pattern ([#899](https://github.com/opentdf/web-sdk/issues/899)) ([1be800e](https://github.com/opentdf/web-sdk/commit/1be800ead70283a4624fb65030c1a941b6beed71))
+
+
+### Bug Fixes
+
+* **ci:** allow main scope in PR title validation ([#912](https://github.com/opentdf/web-sdk/issues/912)) ([14152c4](https://github.com/opentdf/web-sdk/commit/14152c4a4e662c66d805db811a8e9f21e89b4205))
+* **sdk:** bump lodash from 4.17.23 to 4.18.1 in /lib ([#909](https://github.com/opentdf/web-sdk/issues/909)) ([3f1799c](https://github.com/opentdf/web-sdk/commit/3f1799c3892dd850cf54ab0f00f76f3545e106c3))
+* **sdk:** gate signingKey check on dpopEnabled in withCreds ([#898](https://github.com/opentdf/web-sdk/issues/898)) ([74e350a](https://github.com/opentdf/web-sdk/commit/74e350a32c06b99f65a09377d027fecade15010d))
+
+## [0.13.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.12.0...sdk-v0.13.0) (2026-03-27)
+
+
+### Bug Fixes
+
+* **sdk:** bump picomatch in /lib ([#893](https://github.com/opentdf/web-sdk/issues/893)) ([29fb0be](https://github.com/opentdf/web-sdk/commit/29fb0be5fc7c0c0811a94ec48c965e08042160fb))
+* **sdk:** Only use crypto service randomBytes where necessary ([#889](https://github.com/opentdf/web-sdk/issues/889)) ([1818a74](https://github.com/opentdf/web-sdk/commit/1818a74a3529cd3f681410c15c2895412178b084))
+
+## [0.12.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.11.0...sdk-v0.12.0) (2026-03-18)
+
+
+### Bug Fixes
+
+* **ci:** use 'sdk' scope in release-please PR title pattern ([#867](https://github.com/opentdf/web-sdk/issues/867)) ([a1acca2](https://github.com/opentdf/web-sdk/commit/a1acca2ad77db1d043fecb9a2cf6b66868321645))
+* **sdk:** correct disableDPoP flag and add eager DPoP key binding ([#883](https://github.com/opentdf/web-sdk/issues/883)) ([bfb23f8](https://github.com/opentdf/web-sdk/commit/bfb23f84ded2ec9efb05e2a1a278eebed7b5dcfa))
+* **sdk:** update lib README with current SDK usage patterns ([#886](https://github.com/opentdf/web-sdk/issues/886)) ([8f1c0ec](https://github.com/opentdf/web-sdk/commit/8f1c0ec5def6309996d9a8548bef77887c22e1df))
+
+## [0.11.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.10.0...sdk-v0.11.0) (2026-03-17)
+
+
+### Bug Fixes
+
+* **ci:** update tests to cover sdk-v* tag format for npm latest dist-tag ([#868](https://github.com/opentdf/web-sdk/issues/868)) ([4d9058d](https://github.com/opentdf/web-sdk/commit/4d9058d7a78b9951675849b0fb27585e25876ae7))
+* **sdk:** await sleep in retry backoff; fix CI deliver and dev-artifact ([#858](https://github.com/opentdf/web-sdk/issues/858)) ([f14d6eb](https://github.com/opentdf/web-sdk/commit/f14d6eb09605e65855b69bed39dbbd1241276d63))
+
 ## [0.10.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.9.0...sdk-v0.10.0) (2026-03-10)
 
 

@@ -1,5 +1,5 @@
 import { NetworkError } from '../errors.js';
-import { AuthProvider } from '../auth/auth.js';
+import { type AuthConfig, resolveInterceptors } from '../auth/interceptors.js';
 import { extractRpcErrorMessage, getPlatformUrlFromKasEndpoint } from '../utils.js';
 import { PlatformClient } from '../platform.js';
 import { Value } from './attributes.js';
@@ -12,11 +12,11 @@ import { ValueSchema } from '../platform/policy/objects_pb.js';
 // TODO KAS: go over web-sdk and remove policyEndpoint that is only defined to be used here
 export async function attributeFQNsAsValues(
   platformUrl: string,
-  authProvider: AuthProvider,
+  auth: AuthConfig,
   ...fqns: string[]
 ): Promise<Value[]> {
   platformUrl = getPlatformUrlFromKasEndpoint(platformUrl);
-  const platform = new PlatformClient({ authProvider, platformUrl });
+  const platform = new PlatformClient({ interceptors: resolveInterceptors(auth), platformUrl });
 
   let response: GetAttributeValuesByFqnsResponse;
   try {
@@ -52,7 +52,7 @@ export async function attributeFQNsAsValues(
 // Get root certificates from a namespace
 export async function getRootCertsFromNamespace(
   platformUrl: string,
-  authProvider?: AuthProvider,
+  auth?: AuthConfig,
   namespaceId?: string,
   fqn?: string
 ): Promise<Certificate[]> {
@@ -63,7 +63,10 @@ export async function getRootCertsFromNamespace(
     throw new Error('Either namespaceId or fqn must be provided');
   }
 
-  const platform = new PlatformClient({ authProvider, platformUrl });
+  const platform = new PlatformClient({
+    ...(auth ? { interceptors: resolveInterceptors(auth) } : {}),
+    platformUrl,
+  });
 
   let response: GetNamespaceResponse;
   try {
