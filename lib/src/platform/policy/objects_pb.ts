@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file policy/objects.proto.
  */
 export const file_policy_objects: GenFile = /*@__PURE__*/
-  fileDesc("ChRwb2xpY3kvb2JqZWN0cy5wcm90bxIGcG9saWN5IlQKElNpbXBsZUthc1B1YmxpY0tleRIkCglhbGdvcml0aG0YASABKA4yES5wb2xpY3kuQWxnb3JpdGhtEgsKA2tpZBgCIAEoCRILCgNwZW0YAyABKAkiXwoMU2ltcGxlS2FzS2V5Eg8KB2thc191cmkYASABKAkSLgoKcHVibGljX2tleRgCIAEoCzIaLnBvbGljeS5TaW1wbGVLYXNQdWJsaWNLZXkSDgoGa2FzX2lkGAMgASgJIncKEUtleVByb3ZpZGVyQ29uZmlnEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSEwoLY29uZmlnX2pzb24YAyABKAwSDwoHbWFuYWdlchgEIAEoCRIiCghtZXRhZGF0YRhkIAEoCzIQLmNvbW1vbi5NZXRhZGF0YSLTAQoJTmFtZXNwYWNlEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSCwoDZnFuGAMgASgJEioKBmFjdGl2ZRgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5Cb29sVmFsdWUSIgoIbWV0YWRhdGEYBSABKAsyEC5jb21tb24uTWV0YWRhdGESJwoGZ3JhbnRzGAYgAygLMhcucG9saWN5LktleUFjY2Vzc1NlcnZlchImCghrYXNfa2V5cxgHIAMoCzIULnBvbGljeS5TaW1wbGVLYXNLZXkihwMKCUF0dHJpYnV0ZRIKCgJpZBgBIAEoCRIkCgluYW1lc3BhY2UYAiABKAsyES5wb2xpY3kuTmFtZXNwYWNlEgwKBG5hbWUYAyABKAkSOAoEcnVsZRgEIAEoDjIdLnBvbGljeS5BdHRyaWJ1dGVSdWxlVHlwZUVudW1CC7pICMgBAYIBAhABEh0KBnZhbHVlcxgFIAMoCzINLnBvbGljeS5WYWx1ZRInCgZncmFudHMYBiADKAsyFy5wb2xpY3kuS2V5QWNjZXNzU2VydmVyEgsKA2ZxbhgHIAEoCRIqCgZhY3RpdmUYCCABKAsyGi5nb29nbGUucHJvdG9idWYuQm9vbFZhbHVlEiYKCGthc19rZXlzGAkgAygLMhQucG9saWN5LlNpbXBsZUthc0tleRIzCg9hbGxvd190cmF2ZXJzYWwYCiABKAsyGi5nb29nbGUucHJvdG9idWYuQm9vbFZhbHVlEiIKCG1ldGFkYXRhGGQgASgLMhAuY29tbW9uLk1ldGFkYXRhIpQDCgVWYWx1ZRIKCgJpZBgBIAEoCRIkCglhdHRyaWJ1dGUYAiABKAsyES5wb2xpY3kuQXR0cmlidXRlEg0KBXZhbHVlGAMgASgJEicKBmdyYW50cxgFIAMoCzIXLnBvbGljeS5LZXlBY2Nlc3NTZXJ2ZXISCwoDZnFuGAYgASgJEioKBmFjdGl2ZRgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5Cb29sVmFsdWUSMAoQc3ViamVjdF9tYXBwaW5ncxgIIAMoCzIWLnBvbGljeS5TdWJqZWN0TWFwcGluZxImCghrYXNfa2V5cxgJIAMoCzIULnBvbGljeS5TaW1wbGVLYXNLZXkSMgoRcmVzb3VyY2VfbWFwcGluZ3MYCiADKAsyFy5wb2xpY3kuUmVzb3VyY2VNYXBwaW5nEicKC29ibGlnYXRpb25zGAsgAygLMhIucG9saWN5Lk9ibGlnYXRpb24SIgoIbWV0YWRhdGEYZCABKAsyEC5jb21tb24uTWV0YWRhdGFKBAgEEAVSB21lbWJlcnMiqAIKBkFjdGlvbhIKCgJpZBgDIAEoCRIxCghzdGFuZGFyZBgBIAEoDjIdLnBvbGljeS5BY3Rpb24uU3RhbmRhcmRBY3Rpb25IABIQCgZjdXN0b20YAiABKAlIABIMCgRuYW1lGAQgASgJEiQKCW5hbWVzcGFjZRgFIAEoCzIRLnBvbGljeS5OYW1lc3BhY2USIgoIbWV0YWRhdGEYZCABKAsyEC5jb21tb24uTWV0YWRhdGEibAoOU3RhbmRhcmRBY3Rpb24SHwobU1RBTkRBUkRfQUNUSU9OX1VOU1BFQ0lGSUVEEAASGwoXU1RBTkRBUkRfQUNUSU9OX0RFQ1JZUFQQARIcChhTVEFOREFSRF9BQ1RJT05fVFJBTlNNSVQQAkIHCgV2YWx1ZSLrAQoOU3ViamVjdE1hcHBpbmcSCgoCaWQYASABKAkSJgoPYXR0cmlidXRlX3ZhbHVlGAIgASgLMg0ucG9saWN5LlZhbHVlEjoKFXN1YmplY3RfY29uZGl0aW9uX3NldBgDIAEoCzIbLnBvbGljeS5TdWJqZWN0Q29uZGl0aW9uU2V0Eh8KB2FjdGlvbnMYBCADKAsyDi5wb2xpY3kuQWN0aW9uEiQKCW5hbWVzcGFjZRgFIAEoCzIRLnBvbGljeS5OYW1lc3BhY2USIgoIbWV0YWRhdGEYZCABKAsyEC5jb21tb24uTWV0YWRhdGEiqgEKCUNvbmRpdGlvbhIvCh9zdWJqZWN0X2V4dGVybmFsX3NlbGVjdG9yX3ZhbHVlGAEgASgJQga6SAPIAQESQQoIb3BlcmF0b3IYAiABKA4yIi5wb2xpY3kuU3ViamVjdE1hcHBpbmdPcGVyYXRvckVudW1CC7pICMgBAYIBAhABEikKF3N1YmplY3RfZXh0ZXJuYWxfdmFsdWVzGAMgAygJQgi6SAWSAQIIASKKAQoOQ29uZGl0aW9uR3JvdXASLwoKY29uZGl0aW9ucxgBIAMoCzIRLnBvbGljeS5Db25kaXRpb25CCLpIBZIBAggBEkcKEGJvb2xlYW5fb3BlcmF0b3IYAiABKA4yIC5wb2xpY3kuQ29uZGl0aW9uQm9vbGVhblR5cGVFbnVtQgu6SAjIAQGCAQIQASJICgpTdWJqZWN0U2V0EjoKEGNvbmRpdGlvbl9ncm91cHMYASADKAsyFi5wb2xpY3kuQ29uZGl0aW9uR3JvdXBCCLpIBZIBAggBIp8BChNTdWJqZWN0Q29uZGl0aW9uU2V0EgoKAmlkGAEgASgJEiQKCW5hbWVzcGFjZRgCIAEoCzIRLnBvbGljeS5OYW1lc3BhY2USMgoMc3ViamVjdF9zZXRzGAMgAygLMhIucG9saWN5LlN1YmplY3RTZXRCCLpIBZIBAggBEiIKCG1ldGFkYXRhGGQgASgLMhAuY29tbW9uLk1ldGFkYXRhIlYKD1N1YmplY3RQcm9wZXJ0eRIrChdleHRlcm5hbF9zZWxlY3Rvcl92YWx1ZRgBIAEoCUIKukgHyAEBcgIQARIWCg5leHRlcm5hbF92YWx1ZRgCIAEoCSKHAQoUUmVzb3VyY2VNYXBwaW5nR3JvdXASCgoCaWQYASABKAkSHAoMbmFtZXNwYWNlX2lkGAIgASgJQga6SAPIAQESFAoEbmFtZRgDIAEoCUIGukgDyAEBEgsKA2ZxbhgEIAEoCRIiCghtZXRhZGF0YRhkIAEoCzIQLmNvbW1vbi5NZXRhZGF0YSLTAQoPUmVzb3VyY2VNYXBwaW5nEgoKAmlkGAEgASgJEiIKCG1ldGFkYXRhGAIgASgLMhAuY29tbW9uLk1ldGFkYXRhEi4KD2F0dHJpYnV0ZV92YWx1ZRgDIAEoCzINLnBvbGljeS5WYWx1ZUIGukgDyAEBEg0KBXRlcm1zGAQgAygJEisKBWdyb3VwGAUgASgLMhwucG9saWN5LlJlc291cmNlTWFwcGluZ0dyb3VwEiQKCW5hbWVzcGFjZRgGIAEoCzIRLnBvbGljeS5OYW1lc3BhY2UizAQKD0tleUFjY2Vzc1NlcnZlchIKCgJpZBgBIAEoCRKCAwoDdXJpGAIgASgJQvQCukjwAroB7AIKCnVyaV9mb3JtYXQSzwFVUkkgbXVzdCBiZSBhIHZhbGlkIFVSTCAoZS5nLiwgJ2h0dHBzOi8vZGVtby5jb20vJykgZm9sbG93ZWQgYnkgYWRkaXRpb25hbCBzZWdtZW50cy4gRWFjaCBzZWdtZW50IG11c3Qgc3RhcnQgYW5kIGVuZCB3aXRoIGFuIGFscGhhbnVtZXJpYyBjaGFyYWN0ZXIsIGNhbiBjb250YWluIGh5cGhlbnMsIGFscGhhbnVtZXJpYyBjaGFyYWN0ZXJzLCBhbmQgc2xhc2hlcy4aiwF0aGlzLm1hdGNoZXMoJ15odHRwcz86Ly9bYS16QS1aMC05XShbYS16QS1aMC05XFwtXXswLDYxfVthLXpBLVowLTldKT8oXFwuW2EtekEtWjAtOV0oW2EtekEtWjAtOVxcLV17MCw2MX1bYS16QS1aMC05XSk/KSooOlswLTldKyk/KC8uKik/JCcpEiUKCnB1YmxpY19rZXkYAyABKAsyES5wb2xpY3kuUHVibGljS2V5EicKC3NvdXJjZV90eXBlGAQgASgOMhIucG9saWN5LlNvdXJjZVR5cGUSJgoIa2FzX2tleXMYBSADKAsyFC5wb2xpY3kuU2ltcGxlS2FzS2V5EgwKBG5hbWUYFCABKAkSIgoIbWV0YWRhdGEYZCABKAsyEC5jb21tb24uTWV0YWRhdGEi5AEKA0tleRIKCgJpZBgBIAEoCRItCglpc19hY3RpdmUYAiABKAsyGi5nb29nbGUucHJvdG9idWYuQm9vbFZhbHVlEi4KCndhc19tYXBwZWQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuQm9vbFZhbHVlEigKCnB1YmxpY19rZXkYBCABKAsyFC5wb2xpY3kuS2FzUHVibGljS2V5EiQKA2thcxgFIAEoCzIXLnBvbGljeS5LZXlBY2Nlc3NTZXJ2ZXISIgoIbWV0YWRhdGEYZCABKAsyEC5jb21tb24uTWV0YWRhdGEidQoMS2FzUHVibGljS2V5EhcKA3BlbRgBIAEoCUIKukgHcgUQARiAQBIWCgNraWQYAiABKAlCCbpIBnIEEAEYIBI0CgNhbGcYAyABKA4yGy5wb2xpY3kuS2FzUHVibGljS2V5QWxnRW51bUIKukgHggEEEAEgACI1Cg9LYXNQdWJsaWNLZXlTZXQSIgoEa2V5cxgBIAMoCzIULnBvbGljeS5LYXNQdWJsaWNLZXki0AMKCVB1YmxpY0tleRL8AgoGcmVtb3RlGAEgASgJQukCukjlAroB4QIKCnVyaV9mb3JtYXQSzwFVUkkgbXVzdCBiZSBhIHZhbGlkIFVSTCAoZS5nLiwgJ2h0dHBzOi8vZGVtby5jb20vJykgZm9sbG93ZWQgYnkgYWRkaXRpb25hbCBzZWdtZW50cy4gRWFjaCBzZWdtZW50IG11c3Qgc3RhcnQgYW5kIGVuZCB3aXRoIGFuIGFscGhhbnVtZXJpYyBjaGFyYWN0ZXIsIGNhbiBjb250YWluIGh5cGhlbnMsIGFscGhhbnVtZXJpYyBjaGFyYWN0ZXJzLCBhbmQgc2xhc2hlcy4agAF0aGlzLm1hdGNoZXMoJ15odHRwczovL1thLXpBLVowLTldKFthLXpBLVowLTlcXC1dezAsNjF9W2EtekEtWjAtOV0pPyhcXC5bYS16QS1aMC05XShbYS16QS1aMC05XFwtXXswLDYxfVthLXpBLVowLTldKT8pKigvLiopPyQnKUgAEikKBmNhY2hlZBgDIAEoCzIXLnBvbGljeS5LYXNQdWJsaWNLZXlTZXRIAEIMCgpwdWJsaWNfa2V5SgQIAhADUgVsb2NhbCKpAQoSUmVnaXN0ZXJlZFJlc291cmNlEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSLwoGdmFsdWVzGAMgAygLMh8ucG9saWN5LlJlZ2lzdGVyZWRSZXNvdXJjZVZhbHVlEiQKCW5hbWVzcGFjZRgEIAEoCzIRLnBvbGljeS5OYW1lc3BhY2USIgoIbWV0YWRhdGEYZCABKAsyEC5jb21tb24uTWV0YWRhdGEi+wIKF1JlZ2lzdGVyZWRSZXNvdXJjZVZhbHVlEgoKAmlkGAEgASgJEg0KBXZhbHVlGAIgASgJEiwKCHJlc291cmNlGAMgASgLMhoucG9saWN5LlJlZ2lzdGVyZWRSZXNvdXJjZRJVChdhY3Rpb25fYXR0cmlidXRlX3ZhbHVlcxgEIAMoCzI0LnBvbGljeS5SZWdpc3RlcmVkUmVzb3VyY2VWYWx1ZS5BY3Rpb25BdHRyaWJ1dGVWYWx1ZRILCgNmcW4YBSABKAkSIgoIbWV0YWRhdGEYZCABKAsyEC5jb21tb24uTWV0YWRhdGEajgEKFEFjdGlvbkF0dHJpYnV0ZVZhbHVlEgoKAmlkGAEgASgJEh4KBmFjdGlvbhgCIAEoCzIOLnBvbGljeS5BY3Rpb24SJgoPYXR0cmlidXRlX3ZhbHVlGAMgASgLMg0ucG9saWN5LlZhbHVlEiIKCG1ldGFkYXRhGGQgASgLMhAuY29tbW9uLk1ldGFkYXRhIjQKFlBvbGljeUVuZm9yY2VtZW50UG9pbnQSGgoJY2xpZW50X2lkGAEgASgJQge6SARyAhABIkUKDlJlcXVlc3RDb250ZXh0EjMKA3BlcBgBIAEoCzIeLnBvbGljeS5Qb2xpY3lFbmZvcmNlbWVudFBvaW50Qga6SAPIAQEipgEKCk9ibGlnYXRpb24SCgoCaWQYASABKAkSJAoJbmFtZXNwYWNlGAIgASgLMhEucG9saWN5Lk5hbWVzcGFjZRIMCgRuYW1lGAMgASgJEicKBnZhbHVlcxgEIAMoCzIXLnBvbGljeS5PYmxpZ2F0aW9uVmFsdWUSCwoDZnFuGAUgASgJEiIKCG1ldGFkYXRhGGQgASgLMhAuY29tbW9uLk1ldGFkYXRhIrIBCg9PYmxpZ2F0aW9uVmFsdWUSCgoCaWQYASABKAkSJgoKb2JsaWdhdGlvbhgCIAEoCzISLnBvbGljeS5PYmxpZ2F0aW9uEg0KBXZhbHVlGAMgASgJEisKCHRyaWdnZXJzGAQgAygLMhkucG9saWN5Lk9ibGlnYXRpb25UcmlnZ2VyEgsKA2ZxbhgFIAEoCRIiCghtZXRhZGF0YRhkIAEoCzIQLmNvbW1vbi5NZXRhZGF0YSKNAgoRT2JsaWdhdGlvblRyaWdnZXISCgoCaWQYASABKAkSMQoQb2JsaWdhdGlvbl92YWx1ZRgCIAEoCzIXLnBvbGljeS5PYmxpZ2F0aW9uVmFsdWUSHgoGYWN0aW9uGAMgASgLMg4ucG9saWN5LkFjdGlvbhImCg9hdHRyaWJ1dGVfdmFsdWUYBCABKAsyDS5wb2xpY3kuVmFsdWUSJwoHY29udGV4dBgFIAMoCzIWLnBvbGljeS5SZXF1ZXN0Q29udGV4dBIkCgluYW1lc3BhY2UYCyABKAsyES5wb2xpY3kuTmFtZXNwYWNlEiIKCG1ldGFkYXRhGGQgASgLMhAuY29tbW9uLk1ldGFkYXRhIk0KBkthc0tleRIOCgZrYXNfaWQYASABKAkSIgoDa2V5GAIgASgLMhUucG9saWN5LkFzeW1tZXRyaWNLZXkSDwoHa2FzX3VyaRgDIAEoCSIkCgxQdWJsaWNLZXlDdHgSFAoDcGVtGAEgASgJQge6SARyAhABIj0KDVByaXZhdGVLZXlDdHgSFwoGa2V5X2lkGAEgASgJQge6SARyAhABEhMKC3dyYXBwZWRfa2V5GAIgASgJIuUCCg1Bc3ltbWV0cmljS2V5EgoKAmlkGAEgASgJEg4KBmtleV9pZBgCIAEoCRIoCg1rZXlfYWxnb3JpdGhtGAMgASgOMhEucG9saWN5LkFsZ29yaXRobRIlCgprZXlfc3RhdHVzGAQgASgOMhEucG9saWN5LktleVN0YXR1cxIhCghrZXlfbW9kZRgFIAEoDjIPLnBvbGljeS5LZXlNb2RlEiwKDnB1YmxpY19rZXlfY3R4GAYgASgLMhQucG9saWN5LlB1YmxpY0tleUN0eBIuCg9wcml2YXRlX2tleV9jdHgYByABKAsyFS5wb2xpY3kuUHJpdmF0ZUtleUN0eBIyCg9wcm92aWRlcl9jb25maWcYCCABKAsyGS5wb2xpY3kuS2V5UHJvdmlkZXJDb25maWcSDgoGbGVnYWN5GAkgASgIEiIKCG1ldGFkYXRhGGQgASgLMhAuY29tbW9uLk1ldGFkYXRhIt0BCgxTeW1tZXRyaWNLZXkSCgoCaWQYASABKAkSDgoGa2V5X2lkGAIgASgJEiUKCmtleV9zdGF0dXMYAyABKA4yES5wb2xpY3kuS2V5U3RhdHVzEiEKCGtleV9tb2RlGAQgASgOMg8ucG9saWN5LktleU1vZGUSDwoHa2V5X2N0eBgFIAEoDBIyCg9wcm92aWRlcl9jb25maWcYBiABKAsyGS5wb2xpY3kuS2V5UHJvdmlkZXJDb25maWcSIgoIbWV0YWRhdGEYZCABKAsyEC5jb21tb24uTWV0YWRhdGEqswEKFUF0dHJpYnV0ZVJ1bGVUeXBlRW51bRIoCiRBVFRSSUJVVEVfUlVMRV9UWVBFX0VOVU1fVU5TUEVDSUZJRUQQABIjCh9BVFRSSUJVVEVfUlVMRV9UWVBFX0VOVU1fQUxMX09GEAESIwofQVRUUklCVVRFX1JVTEVfVFlQRV9FTlVNX0FOWV9PRhACEiYKIkFUVFJJQlVURV9SVUxFX1RZUEVfRU5VTV9ISUVSQVJDSFkQAyrKAQoaU3ViamVjdE1hcHBpbmdPcGVyYXRvckVudW0SLQopU1VCSkVDVF9NQVBQSU5HX09QRVJBVE9SX0VOVU1fVU5TUEVDSUZJRUQQABIkCiBTVUJKRUNUX01BUFBJTkdfT1BFUkFUT1JfRU5VTV9JThABEigKJFNVQkpFQ1RfTUFQUElOR19PUEVSQVRPUl9FTlVNX05PVF9JThACEi0KKVNVQkpFQ1RfTUFQUElOR19PUEVSQVRPUl9FTlVNX0lOX0NPTlRBSU5TEAMqkAEKGENvbmRpdGlvbkJvb2xlYW5UeXBlRW51bRIrCidDT05ESVRJT05fQk9PTEVBTl9UWVBFX0VOVU1fVU5TUEVDSUZJRUQQABIjCh9DT05ESVRJT05fQk9PTEVBTl9UWVBFX0VOVU1fQU5EEAESIgoeQ09ORElUSU9OX0JPT0xFQU5fVFlQRV9FTlVNX09SEAIqXQoKU291cmNlVHlwZRIbChdTT1VSQ0VfVFlQRV9VTlNQRUNJRklFRBAAEhgKFFNPVVJDRV9UWVBFX0lOVEVSTkFMEAESGAoUU09VUkNFX1RZUEVfRVhURVJOQUwQAiqbAwoTS2FzUHVibGljS2V5QWxnRW51bRInCiNLQVNfUFVCTElDX0tFWV9BTEdfRU5VTV9VTlNQRUNJRklFRBAAEiQKIEtBU19QVUJMSUNfS0VZX0FMR19FTlVNX1JTQV8yMDQ4EAESJAogS0FTX1BVQkxJQ19LRVlfQUxHX0VOVU1fUlNBXzQwOTYQAhIoCiRLQVNfUFVCTElDX0tFWV9BTEdfRU5VTV9FQ19TRUNQMjU2UjEQBRIoCiRLQVNfUFVCTElDX0tFWV9BTEdfRU5VTV9FQ19TRUNQMzg0UjEQBhIoCiRLQVNfUFVCTElDX0tFWV9BTEdfRU5VTV9FQ19TRUNQNTIxUjEQBxImCiJLQVNfUFVCTElDX0tFWV9BTEdfRU5VTV9IUFFUX1hXSU5HEAoSMwovS0FTX1BVQkxJQ19LRVlfQUxHX0VOVU1fSFBRVF9TRUNQMjU2UjFfTUxLRU03NjgQCxI0CjBLQVNfUFVCTElDX0tFWV9BTEdfRU5VTV9IUFFUX1NFQ1AzODRSMV9NTEtFTTEwMjQQDCqEAgoJQWxnb3JpdGhtEhkKFUFMR09SSVRITV9VTlNQRUNJRklFRBAAEhYKEkFMR09SSVRITV9SU0FfMjA0OBABEhYKEkFMR09SSVRITV9SU0FfNDA5NhACEhUKEUFMR09SSVRITV9FQ19QMjU2EAMSFQoRQUxHT1JJVEhNX0VDX1AzODQQBBIVChFBTEdPUklUSE1fRUNfUDUyMRAFEhgKFEFMR09SSVRITV9IUFFUX1hXSU5HEAYSJQohQUxHT1JJVEhNX0hQUVRfU0VDUDI1NlIxX01MS0VNNzY4EAcSJgoiQUxHT1JJVEhNX0hQUVRfU0VDUDM4NFIxX01MS0VNMTAyNBAIKlYKCUtleVN0YXR1cxIaChZLRVlfU1RBVFVTX1VOU1BFQ0lGSUVEEAASFQoRS0VZX1NUQVRVU19BQ1RJVkUQARIWChJLRVlfU1RBVFVTX1JPVEFURUQQAiqUAQoHS2V5TW9kZRIYChRLRVlfTU9ERV9VTlNQRUNJRklFRBAAEhwKGEtFWV9NT0RFX0NPTkZJR19ST09UX0tFWRABEh4KGktFWV9NT0RFX1BST1ZJREVSX1JPT1RfS0VZEAISEwoPS0VZX01PREVfUkVNT1RFEAMSHAoYS0VZX01PREVfUFVCTElDX0tFWV9PTkxZEARiBnByb3RvMw", [file_buf_validate_validate, file_common_common, file_google_protobuf_wrappers]);
+  fileDesc("ChRwb2xpY3kvb2JqZWN0cy5wcm90bxIGcG9saWN5IlQKElNpbXBsZUthc1B1YmxpY0tleRIkCglhbGdvcml0aG0YASABKA4yES5wb2xpY3kuQWxnb3JpdGhtEgsKA2tpZBgCIAEoCRILCgNwZW0YAyABKAkiXwoMU2ltcGxlS2FzS2V5Eg8KB2thc191cmkYASABKAkSLgoKcHVibGljX2tleRgCIAEoCzIaLnBvbGljeS5TaW1wbGVLYXNQdWJsaWNLZXkSDgoGa2FzX2lkGAMgASgJIncKEUtleVByb3ZpZGVyQ29uZmlnEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSEwoLY29uZmlnX2pzb24YAyABKAwSDwoHbWFuYWdlchgEIAEoCRIiCghtZXRhZGF0YRhkIAEoCzIQLmNvbW1vbi5NZXRhZGF0YSLTAQoJTmFtZXNwYWNlEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSCwoDZnFuGAMgASgJEioKBmFjdGl2ZRgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5Cb29sVmFsdWUSIgoIbWV0YWRhdGEYBSABKAsyEC5jb21tb24uTWV0YWRhdGESJwoGZ3JhbnRzGAYgAygLMhcucG9saWN5LktleUFjY2Vzc1NlcnZlchImCghrYXNfa2V5cxgHIAMoCzIULnBvbGljeS5TaW1wbGVLYXNLZXkihwMKCUF0dHJpYnV0ZRIKCgJpZBgBIAEoCRIkCgluYW1lc3BhY2UYAiABKAsyES5wb2xpY3kuTmFtZXNwYWNlEgwKBG5hbWUYAyABKAkSOAoEcnVsZRgEIAEoDjIdLnBvbGljeS5BdHRyaWJ1dGVSdWxlVHlwZUVudW1CC7pICMgBAYIBAhABEh0KBnZhbHVlcxgFIAMoCzINLnBvbGljeS5WYWx1ZRInCgZncmFudHMYBiADKAsyFy5wb2xpY3kuS2V5QWNjZXNzU2VydmVyEgsKA2ZxbhgHIAEoCRIqCgZhY3RpdmUYCCABKAsyGi5nb29nbGUucHJvdG9idWYuQm9vbFZhbHVlEiYKCGthc19rZXlzGAkgAygLMhQucG9saWN5LlNpbXBsZUthc0tleRIzCg9hbGxvd190cmF2ZXJzYWwYCiABKAsyGi5nb29nbGUucHJvdG9idWYuQm9vbFZhbHVlEiIKCG1ldGFkYXRhGGQgASgLMhAuY29tbW9uLk1ldGFkYXRhIpQDCgVWYWx1ZRIKCgJpZBgBIAEoCRIkCglhdHRyaWJ1dGUYAiABKAsyES5wb2xpY3kuQXR0cmlidXRlEg0KBXZhbHVlGAMgASgJEicKBmdyYW50cxgFIAMoCzIXLnBvbGljeS5LZXlBY2Nlc3NTZXJ2ZXISCwoDZnFuGAYgASgJEioKBmFjdGl2ZRgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5Cb29sVmFsdWUSMAoQc3ViamVjdF9tYXBwaW5ncxgIIAMoCzIWLnBvbGljeS5TdWJqZWN0TWFwcGluZxImCghrYXNfa2V5cxgJIAMoCzIULnBvbGljeS5TaW1wbGVLYXNLZXkSMgoRcmVzb3VyY2VfbWFwcGluZ3MYCiADKAsyFy5wb2xpY3kuUmVzb3VyY2VNYXBwaW5nEicKC29ibGlnYXRpb25zGAsgAygLMhIucG9saWN5Lk9ibGlnYXRpb24SIgoIbWV0YWRhdGEYZCABKAsyEC5jb21tb24uTWV0YWRhdGFKBAgEEAVSB21lbWJlcnMiqAIKBkFjdGlvbhIKCgJpZBgDIAEoCRIxCghzdGFuZGFyZBgBIAEoDjIdLnBvbGljeS5BY3Rpb24uU3RhbmRhcmRBY3Rpb25IABIQCgZjdXN0b20YAiABKAlIABIMCgRuYW1lGAQgASgJEiQKCW5hbWVzcGFjZRgFIAEoCzIRLnBvbGljeS5OYW1lc3BhY2USIgoIbWV0YWRhdGEYZCABKAsyEC5jb21tb24uTWV0YWRhdGEibAoOU3RhbmRhcmRBY3Rpb24SHwobU1RBTkRBUkRfQUNUSU9OX1VOU1BFQ0lGSUVEEAASGwoXU1RBTkRBUkRfQUNUSU9OX0RFQ1JZUFQQARIcChhTVEFOREFSRF9BQ1RJT05fVFJBTlNNSVQQAkIHCgV2YWx1ZSLrAQoOU3ViamVjdE1hcHBpbmcSCgoCaWQYASABKAkSJgoPYXR0cmlidXRlX3ZhbHVlGAIgASgLMg0ucG9saWN5LlZhbHVlEjoKFXN1YmplY3RfY29uZGl0aW9uX3NldBgDIAEoCzIbLnBvbGljeS5TdWJqZWN0Q29uZGl0aW9uU2V0Eh8KB2FjdGlvbnMYBCADKAsyDi5wb2xpY3kuQWN0aW9uEiQKCW5hbWVzcGFjZRgFIAEoCzIRLnBvbGljeS5OYW1lc3BhY2USIgoIbWV0YWRhdGEYZCABKAsyEC5jb21tb24uTWV0YWRhdGEixwEKFER5bmFtaWNWYWx1ZVJlc29sdmVyEi8KH3N1YmplY3RfZXh0ZXJuYWxfc2VsZWN0b3JfdmFsdWUYASABKAlCBrpIA8gBARJICgpjb21wYXJpc29uGAIgASgOMicucG9saWN5LkNvbmRpdGlvbkNvbXBhcmlzb25PcGVyYXRvckVudW1CC7pICMgBAYIBAhABEjQKEGNhc2VfaW5zZW5zaXRpdmUYAyABKAsyGi5nb29nbGUucHJvdG9idWYuQm9vbFZhbHVlIq8CChNEeW5hbWljVmFsdWVNYXBwaW5nEgoKAmlkGAEgASgJEi8KFGF0dHJpYnV0ZV9kZWZpbml0aW9uGAIgASgLMhEucG9saWN5LkF0dHJpYnV0ZRI0Cg52YWx1ZV9yZXNvbHZlchgDIAEoCzIcLnBvbGljeS5EeW5hbWljVmFsdWVSZXNvbHZlchI6ChVzdWJqZWN0X2NvbmRpdGlvbl9zZXQYBCABKAsyGy5wb2xpY3kuU3ViamVjdENvbmRpdGlvblNldBIfCgdhY3Rpb25zGAUgAygLMg4ucG9saWN5LkFjdGlvbhIkCgluYW1lc3BhY2UYBiABKAsyES5wb2xpY3kuTmFtZXNwYWNlEiIKCG1ldGFkYXRhGGQgASgLMhAuY29tbW9uLk1ldGFkYXRhIugCCglDb25kaXRpb24SLwofc3ViamVjdF9leHRlcm5hbF9zZWxlY3Rvcl92YWx1ZRgBIAEoCUIGukgDyAEBEkMKCG9wZXJhdG9yGAIgASgOMiIucG9saWN5LlN1YmplY3RNYXBwaW5nT3BlcmF0b3JFbnVtQg0YAbpICNgBAYIBAhABEikKF3N1YmplY3RfZXh0ZXJuYWxfdmFsdWVzGAMgAygJQgi6SAWSAQIIARJFCgpjb21wYXJpc29uGAQgASgOMicucG9saWN5LkNvbmRpdGlvbkNvbXBhcmlzb25PcGVyYXRvckVudW1CCLpIBYIBAhABEj0KCnF1YW50aWZpZXIYBSABKA4yHy5wb2xpY3kuQ29uZGl0aW9uUXVhbnRpZmllckVudW1CCLpIBYIBAhABEjQKEGNhc2VfaW5zZW5zaXRpdmUYBiABKAsyGi5nb29nbGUucHJvdG9idWYuQm9vbFZhbHVlIooBCg5Db25kaXRpb25Hcm91cBIvCgpjb25kaXRpb25zGAEgAygLMhEucG9saWN5LkNvbmRpdGlvbkIIukgFkgECCAESRwoQYm9vbGVhbl9vcGVyYXRvchgCIAEoDjIgLnBvbGljeS5Db25kaXRpb25Cb29sZWFuVHlwZUVudW1CC7pICMgBAYIBAhABIkgKClN1YmplY3RTZXQSOgoQY29uZGl0aW9uX2dyb3VwcxgBIAMoCzIWLnBvbGljeS5Db25kaXRpb25Hcm91cEIIukgFkgECCAEinwEKE1N1YmplY3RDb25kaXRpb25TZXQSCgoCaWQYASABKAkSJAoJbmFtZXNwYWNlGAIgASgLMhEucG9saWN5Lk5hbWVzcGFjZRIyCgxzdWJqZWN0X3NldHMYAyADKAsyEi5wb2xpY3kuU3ViamVjdFNldEIIukgFkgECCAESIgoIbWV0YWRhdGEYZCABKAsyEC5jb21tb24uTWV0YWRhdGEiVgoPU3ViamVjdFByb3BlcnR5EisKF2V4dGVybmFsX3NlbGVjdG9yX3ZhbHVlGAEgASgJQgq6SAfIAQFyAhABEhYKDmV4dGVybmFsX3ZhbHVlGAIgASgJIocBChRSZXNvdXJjZU1hcHBpbmdHcm91cBIKCgJpZBgBIAEoCRIcCgxuYW1lc3BhY2VfaWQYAiABKAlCBrpIA8gBARIUCgRuYW1lGAMgASgJQga6SAPIAQESCwoDZnFuGAQgASgJEiIKCG1ldGFkYXRhGGQgASgLMhAuY29tbW9uLk1ldGFkYXRhItMBCg9SZXNvdXJjZU1hcHBpbmcSCgoCaWQYASABKAkSIgoIbWV0YWRhdGEYAiABKAsyEC5jb21tb24uTWV0YWRhdGESLgoPYXR0cmlidXRlX3ZhbHVlGAMgASgLMg0ucG9saWN5LlZhbHVlQga6SAPIAQESDQoFdGVybXMYBCADKAkSKwoFZ3JvdXAYBSABKAsyHC5wb2xpY3kuUmVzb3VyY2VNYXBwaW5nR3JvdXASJAoJbmFtZXNwYWNlGAYgASgLMhEucG9saWN5Lk5hbWVzcGFjZSLMBAoPS2V5QWNjZXNzU2VydmVyEgoKAmlkGAEgASgJEoIDCgN1cmkYAiABKAlC9AK6SPACugHsAgoKdXJpX2Zvcm1hdBLPAVVSSSBtdXN0IGJlIGEgdmFsaWQgVVJMIChlLmcuLCAnaHR0cHM6Ly9kZW1vLmNvbS8nKSBmb2xsb3dlZCBieSBhZGRpdGlvbmFsIHNlZ21lbnRzLiBFYWNoIHNlZ21lbnQgbXVzdCBzdGFydCBhbmQgZW5kIHdpdGggYW4gYWxwaGFudW1lcmljIGNoYXJhY3RlciwgY2FuIGNvbnRhaW4gaHlwaGVucywgYWxwaGFudW1lcmljIGNoYXJhY3RlcnMsIGFuZCBzbGFzaGVzLhqLAXRoaXMubWF0Y2hlcygnXmh0dHBzPzovL1thLXpBLVowLTldKFthLXpBLVowLTlcXC1dezAsNjF9W2EtekEtWjAtOV0pPyhcXC5bYS16QS1aMC05XShbYS16QS1aMC05XFwtXXswLDYxfVthLXpBLVowLTldKT8pKig6WzAtOV0rKT8oLy4qKT8kJykSJQoKcHVibGljX2tleRgDIAEoCzIRLnBvbGljeS5QdWJsaWNLZXkSJwoLc291cmNlX3R5cGUYBCABKA4yEi5wb2xpY3kuU291cmNlVHlwZRImCghrYXNfa2V5cxgFIAMoCzIULnBvbGljeS5TaW1wbGVLYXNLZXkSDAoEbmFtZRgUIAEoCRIiCghtZXRhZGF0YRhkIAEoCzIQLmNvbW1vbi5NZXRhZGF0YSLkAQoDS2V5EgoKAmlkGAEgASgJEi0KCWlzX2FjdGl2ZRgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5Cb29sVmFsdWUSLgoKd2FzX21hcHBlZBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5Cb29sVmFsdWUSKAoKcHVibGljX2tleRgEIAEoCzIULnBvbGljeS5LYXNQdWJsaWNLZXkSJAoDa2FzGAUgASgLMhcucG9saWN5LktleUFjY2Vzc1NlcnZlchIiCghtZXRhZGF0YRhkIAEoCzIQLmNvbW1vbi5NZXRhZGF0YSJ1CgxLYXNQdWJsaWNLZXkSFwoDcGVtGAEgASgJQgq6SAdyBRABGIBAEhYKA2tpZBgCIAEoCUIJukgGcgQQARggEjQKA2FsZxgDIAEoDjIbLnBvbGljeS5LYXNQdWJsaWNLZXlBbGdFbnVtQgq6SAeCAQQQASAAIjUKD0thc1B1YmxpY0tleVNldBIiCgRrZXlzGAEgAygLMhQucG9saWN5Lkthc1B1YmxpY0tleSLQAwoJUHVibGljS2V5EvwCCgZyZW1vdGUYASABKAlC6QK6SOUCugHhAgoKdXJpX2Zvcm1hdBLPAVVSSSBtdXN0IGJlIGEgdmFsaWQgVVJMIChlLmcuLCAnaHR0cHM6Ly9kZW1vLmNvbS8nKSBmb2xsb3dlZCBieSBhZGRpdGlvbmFsIHNlZ21lbnRzLiBFYWNoIHNlZ21lbnQgbXVzdCBzdGFydCBhbmQgZW5kIHdpdGggYW4gYWxwaGFudW1lcmljIGNoYXJhY3RlciwgY2FuIGNvbnRhaW4gaHlwaGVucywgYWxwaGFudW1lcmljIGNoYXJhY3RlcnMsIGFuZCBzbGFzaGVzLhqAAXRoaXMubWF0Y2hlcygnXmh0dHBzOi8vW2EtekEtWjAtOV0oW2EtekEtWjAtOVxcLV17MCw2MX1bYS16QS1aMC05XSk/KFxcLlthLXpBLVowLTldKFthLXpBLVowLTlcXC1dezAsNjF9W2EtekEtWjAtOV0pPykqKC8uKik/JCcpSAASKQoGY2FjaGVkGAMgASgLMhcucG9saWN5Lkthc1B1YmxpY0tleVNldEgAQgwKCnB1YmxpY19rZXlKBAgCEANSBWxvY2FsIqkBChJSZWdpc3RlcmVkUmVzb3VyY2USCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRIvCgZ2YWx1ZXMYAyADKAsyHy5wb2xpY3kuUmVnaXN0ZXJlZFJlc291cmNlVmFsdWUSJAoJbmFtZXNwYWNlGAQgASgLMhEucG9saWN5Lk5hbWVzcGFjZRIiCghtZXRhZGF0YRhkIAEoCzIQLmNvbW1vbi5NZXRhZGF0YSL7AgoXUmVnaXN0ZXJlZFJlc291cmNlVmFsdWUSCgoCaWQYASABKAkSDQoFdmFsdWUYAiABKAkSLAoIcmVzb3VyY2UYAyABKAsyGi5wb2xpY3kuUmVnaXN0ZXJlZFJlc291cmNlElUKF2FjdGlvbl9hdHRyaWJ1dGVfdmFsdWVzGAQgAygLMjQucG9saWN5LlJlZ2lzdGVyZWRSZXNvdXJjZVZhbHVlLkFjdGlvbkF0dHJpYnV0ZVZhbHVlEgsKA2ZxbhgFIAEoCRIiCghtZXRhZGF0YRhkIAEoCzIQLmNvbW1vbi5NZXRhZGF0YRqOAQoUQWN0aW9uQXR0cmlidXRlVmFsdWUSCgoCaWQYASABKAkSHgoGYWN0aW9uGAIgASgLMg4ucG9saWN5LkFjdGlvbhImCg9hdHRyaWJ1dGVfdmFsdWUYAyABKAsyDS5wb2xpY3kuVmFsdWUSIgoIbWV0YWRhdGEYZCABKAsyEC5jb21tb24uTWV0YWRhdGEiNAoWUG9saWN5RW5mb3JjZW1lbnRQb2ludBIaCgljbGllbnRfaWQYASABKAlCB7pIBHICEAEiRQoOUmVxdWVzdENvbnRleHQSMwoDcGVwGAEgASgLMh4ucG9saWN5LlBvbGljeUVuZm9yY2VtZW50UG9pbnRCBrpIA8gBASKmAQoKT2JsaWdhdGlvbhIKCgJpZBgBIAEoCRIkCgluYW1lc3BhY2UYAiABKAsyES5wb2xpY3kuTmFtZXNwYWNlEgwKBG5hbWUYAyABKAkSJwoGdmFsdWVzGAQgAygLMhcucG9saWN5Lk9ibGlnYXRpb25WYWx1ZRILCgNmcW4YBSABKAkSIgoIbWV0YWRhdGEYZCABKAsyEC5jb21tb24uTWV0YWRhdGEisgEKD09ibGlnYXRpb25WYWx1ZRIKCgJpZBgBIAEoCRImCgpvYmxpZ2F0aW9uGAIgASgLMhIucG9saWN5Lk9ibGlnYXRpb24SDQoFdmFsdWUYAyABKAkSKwoIdHJpZ2dlcnMYBCADKAsyGS5wb2xpY3kuT2JsaWdhdGlvblRyaWdnZXISCwoDZnFuGAUgASgJEiIKCG1ldGFkYXRhGGQgASgLMhAuY29tbW9uLk1ldGFkYXRhIo0CChFPYmxpZ2F0aW9uVHJpZ2dlchIKCgJpZBgBIAEoCRIxChBvYmxpZ2F0aW9uX3ZhbHVlGAIgASgLMhcucG9saWN5Lk9ibGlnYXRpb25WYWx1ZRIeCgZhY3Rpb24YAyABKAsyDi5wb2xpY3kuQWN0aW9uEiYKD2F0dHJpYnV0ZV92YWx1ZRgEIAEoCzINLnBvbGljeS5WYWx1ZRInCgdjb250ZXh0GAUgAygLMhYucG9saWN5LlJlcXVlc3RDb250ZXh0EiQKCW5hbWVzcGFjZRgLIAEoCzIRLnBvbGljeS5OYW1lc3BhY2USIgoIbWV0YWRhdGEYZCABKAsyEC5jb21tb24uTWV0YWRhdGEiTQoGS2FzS2V5Eg4KBmthc19pZBgBIAEoCRIiCgNrZXkYAiABKAsyFS5wb2xpY3kuQXN5bW1ldHJpY0tleRIPCgdrYXNfdXJpGAMgASgJIiQKDFB1YmxpY0tleUN0eBIUCgNwZW0YASABKAlCB7pIBHICEAEiPQoNUHJpdmF0ZUtleUN0eBIXCgZrZXlfaWQYASABKAlCB7pIBHICEAESEwoLd3JhcHBlZF9rZXkYAiABKAki5QIKDUFzeW1tZXRyaWNLZXkSCgoCaWQYASABKAkSDgoGa2V5X2lkGAIgASgJEigKDWtleV9hbGdvcml0aG0YAyABKA4yES5wb2xpY3kuQWxnb3JpdGhtEiUKCmtleV9zdGF0dXMYBCABKA4yES5wb2xpY3kuS2V5U3RhdHVzEiEKCGtleV9tb2RlGAUgASgOMg8ucG9saWN5LktleU1vZGUSLAoOcHVibGljX2tleV9jdHgYBiABKAsyFC5wb2xpY3kuUHVibGljS2V5Q3R4Ei4KD3ByaXZhdGVfa2V5X2N0eBgHIAEoCzIVLnBvbGljeS5Qcml2YXRlS2V5Q3R4EjIKD3Byb3ZpZGVyX2NvbmZpZxgIIAEoCzIZLnBvbGljeS5LZXlQcm92aWRlckNvbmZpZxIOCgZsZWdhY3kYCSABKAgSIgoIbWV0YWRhdGEYZCABKAsyEC5jb21tb24uTWV0YWRhdGEi3QEKDFN5bW1ldHJpY0tleRIKCgJpZBgBIAEoCRIOCgZrZXlfaWQYAiABKAkSJQoKa2V5X3N0YXR1cxgDIAEoDjIRLnBvbGljeS5LZXlTdGF0dXMSIQoIa2V5X21vZGUYBCABKA4yDy5wb2xpY3kuS2V5TW9kZRIPCgdrZXlfY3R4GAUgASgMEjIKD3Byb3ZpZGVyX2NvbmZpZxgGIAEoCzIZLnBvbGljeS5LZXlQcm92aWRlckNvbmZpZxIiCghtZXRhZGF0YRhkIAEoCzIQLmNvbW1vbi5NZXRhZGF0YSqzAQoVQXR0cmlidXRlUnVsZVR5cGVFbnVtEigKJEFUVFJJQlVURV9SVUxFX1RZUEVfRU5VTV9VTlNQRUNJRklFRBAAEiMKH0FUVFJJQlVURV9SVUxFX1RZUEVfRU5VTV9BTExfT0YQARIjCh9BVFRSSUJVVEVfUlVMRV9UWVBFX0VOVU1fQU5ZX09GEAISJgoiQVRUUklCVVRFX1JVTEVfVFlQRV9FTlVNX0hJRVJBUkNIWRADKsoBChpTdWJqZWN0TWFwcGluZ09wZXJhdG9yRW51bRItCilTVUJKRUNUX01BUFBJTkdfT1BFUkFUT1JfRU5VTV9VTlNQRUNJRklFRBAAEiQKIFNVQkpFQ1RfTUFQUElOR19PUEVSQVRPUl9FTlVNX0lOEAESKAokU1VCSkVDVF9NQVBQSU5HX09QRVJBVE9SX0VOVU1fTk9UX0lOEAISLQopU1VCSkVDVF9NQVBQSU5HX09QRVJBVE9SX0VOVU1fSU5fQ09OVEFJTlMQAyqQAQoYQ29uZGl0aW9uQm9vbGVhblR5cGVFbnVtEisKJ0NPTkRJVElPTl9CT09MRUFOX1RZUEVfRU5VTV9VTlNQRUNJRklFRBAAEiMKH0NPTkRJVElPTl9CT09MRUFOX1RZUEVfRU5VTV9BTkQQARIiCh5DT05ESVRJT05fQk9PTEVBTl9UWVBFX0VOVU1fT1IQAiqbAgofQ29uZGl0aW9uQ29tcGFyaXNvbk9wZXJhdG9yRW51bRIyCi5DT05ESVRJT05fQ09NUEFSSVNPTl9PUEVSQVRPUl9FTlVNX1VOU1BFQ0lGSUVEEAASLQopQ09ORElUSU9OX0NPTVBBUklTT05fT1BFUkFUT1JfRU5VTV9FUVVBTFMQARIvCitDT05ESVRJT05fQ09NUEFSSVNPTl9PUEVSQVRPUl9FTlVNX0NPTlRBSU5TEAISMgouQ09ORElUSU9OX0NPTVBBUklTT05fT1BFUkFUT1JfRU5VTV9TVEFSVFNfV0lUSBADEjAKLENPTkRJVElPTl9DT01QQVJJU09OX09QRVJBVE9SX0VOVU1fRU5EU19XSVRIEAQqrgEKF0NvbmRpdGlvblF1YW50aWZpZXJFbnVtEikKJUNPTkRJVElPTl9RVUFOVElGSUVSX0VOVU1fVU5TUEVDSUZJRUQQABIhCh1DT05ESVRJT05fUVVBTlRJRklFUl9FTlVNX0FOWRABEiEKHUNPTkRJVElPTl9RVUFOVElGSUVSX0VOVU1fQUxMEAISIgoeQ09ORElUSU9OX1FVQU5USUZJRVJfRU5VTV9OT05FEAMqXQoKU291cmNlVHlwZRIbChdTT1VSQ0VfVFlQRV9VTlNQRUNJRklFRBAAEhgKFFNPVVJDRV9UWVBFX0lOVEVSTkFMEAESGAoUU09VUkNFX1RZUEVfRVhURVJOQUwQAiqbAwoTS2FzUHVibGljS2V5QWxnRW51bRInCiNLQVNfUFVCTElDX0tFWV9BTEdfRU5VTV9VTlNQRUNJRklFRBAAEiQKIEtBU19QVUJMSUNfS0VZX0FMR19FTlVNX1JTQV8yMDQ4EAESJAogS0FTX1BVQkxJQ19LRVlfQUxHX0VOVU1fUlNBXzQwOTYQAhIoCiRLQVNfUFVCTElDX0tFWV9BTEdfRU5VTV9FQ19TRUNQMjU2UjEQBRIoCiRLQVNfUFVCTElDX0tFWV9BTEdfRU5VTV9FQ19TRUNQMzg0UjEQBhIoCiRLQVNfUFVCTElDX0tFWV9BTEdfRU5VTV9FQ19TRUNQNTIxUjEQBxImCiJLQVNfUFVCTElDX0tFWV9BTEdfRU5VTV9IUFFUX1hXSU5HEAoSMwovS0FTX1BVQkxJQ19LRVlfQUxHX0VOVU1fSFBRVF9TRUNQMjU2UjFfTUxLRU03NjgQCxI0CjBLQVNfUFVCTElDX0tFWV9BTEdfRU5VTV9IUFFUX1NFQ1AzODRSMV9NTEtFTTEwMjQQDCqEAgoJQWxnb3JpdGhtEhkKFUFMR09SSVRITV9VTlNQRUNJRklFRBAAEhYKEkFMR09SSVRITV9SU0FfMjA0OBABEhYKEkFMR09SSVRITV9SU0FfNDA5NhACEhUKEUFMR09SSVRITV9FQ19QMjU2EAMSFQoRQUxHT1JJVEhNX0VDX1AzODQQBBIVChFBTEdPUklUSE1fRUNfUDUyMRAFEhgKFEFMR09SSVRITV9IUFFUX1hXSU5HEAYSJQohQUxHT1JJVEhNX0hQUVRfU0VDUDI1NlIxX01MS0VNNzY4EAcSJgoiQUxHT1JJVEhNX0hQUVRfU0VDUDM4NFIxX01MS0VNMTAyNBAIKlYKCUtleVN0YXR1cxIaChZLRVlfU1RBVFVTX1VOU1BFQ0lGSUVEEAASFQoRS0VZX1NUQVRVU19BQ1RJVkUQARIWChJLRVlfU1RBVFVTX1JPVEFURUQQAiqUAQoHS2V5TW9kZRIYChRLRVlfTU9ERV9VTlNQRUNJRklFRBAAEhwKGEtFWV9NT0RFX0NPTkZJR19ST09UX0tFWRABEh4KGktFWV9NT0RFX1BST1ZJREVSX1JPT1RfS0VZEAISEwoPS0VZX01PREVfUkVNT1RFEAMSHAoYS0VZX01PREVfUFVCTElDX0tFWV9PTkxZEARiBnByb3RvMw", [file_buf_validate_validate, file_common_common, file_google_protobuf_wrappers]);
 
 /**
  * @generated from message policy.SimpleKasPublicKey
@@ -484,6 +484,114 @@ export const SubjectMappingSchema: GenMessage<SubjectMapping> = /*@__PURE__*/
   messageDesc(file_policy_objects, 7);
 
 /**
+ *
+ * Dynamic Value Resolver: the dynamic half of a DynamicValueMapping. It resolves a selector
+ * against the entity representation, then tests whether any resolved entity value matches the
+ * requested resource value segment under comparison. The match is inherently existential over
+ * the resolved entity values, so no quantifier is carried here.
+ *
+ * @generated from message policy.DynamicValueResolver
+ */
+export type DynamicValueResolver = Message<"policy.DynamicValueResolver"> & {
+  /**
+   * a selector for a field value on a flattened Entity Representation (such as from
+   * idP/LDAP), e.g. ".patientAssignments[]"
+   *
+   * @generated from field: string subject_external_selector_value = 1;
+   */
+  subjectExternalSelectorValue: string;
+
+  /**
+   * how the requested resource value segment is compared against each value the selector
+   * resolves from the entity representation
+   *
+   * @generated from field: policy.ConditionComparisonOperatorEnum comparison = 2;
+   */
+  comparison: ConditionComparisonOperatorEnum;
+
+  /**
+   * when set true, comparison is case-insensitive; unset is treated as case-sensitive. Modeled as
+   * BoolValue so an explicit false is distinguishable from unset, leaving room to change the default.
+   *
+   * @generated from field: google.protobuf.BoolValue case_insensitive = 3;
+   */
+  caseInsensitive?: boolean;
+};
+
+/**
+ * Describes the message policy.DynamicValueResolver.
+ * Use `create(DynamicValueResolverSchema)` to create a new message.
+ */
+export const DynamicValueResolverSchema: GenMessage<DynamicValueResolver> = /*@__PURE__*/
+  messageDesc(file_policy_objects, 8);
+
+/**
+ *
+ * Dynamic Value Mapping: a Policy assigning permitted action(s) to
+ * dynamically-requested values under an Attribute Definition. It raises entitlement
+ * authority from a concrete Attribute Value to the Attribute Definition: at decision time
+ * the value_resolver compares the requested resource value segment against the entity
+ * representation, avoiding pre-provisioning a value + subject mapping per discrete value.
+ *
+ * @generated from message policy.DynamicValueMapping
+ */
+export type DynamicValueMapping = Message<"policy.DynamicValueMapping"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * the Attribute Definition whose values are entitled dynamically
+   *
+   * @generated from field: policy.Attribute attribute_definition = 2;
+   */
+  attributeDefinition?: Attribute;
+
+  /**
+   * the dynamic resolver matched against the requested resource value segment
+   *
+   * @generated from field: policy.DynamicValueResolver value_resolver = 3;
+   */
+  valueResolver?: DynamicValueResolver;
+
+  /**
+   * optional static pre-gate on the entity, evaluated with normal SubjectConditionSet
+   * semantics (no dynamic overload). When present, both the gate and the resolver must
+   * pass for entitlement.
+   *
+   * @generated from field: policy.SubjectConditionSet subject_condition_set = 4;
+   */
+  subjectConditionSet?: SubjectConditionSet;
+
+  /**
+   * the actions permitted by subjects in this mapping
+   *
+   * @generated from field: repeated policy.Action actions = 5;
+   */
+  actions: Action[];
+
+  /**
+   * the namespace containing this mapping
+   *
+   * @generated from field: policy.Namespace namespace = 6;
+   */
+  namespace?: Namespace;
+
+  /**
+   * @generated from field: common.Metadata metadata = 100;
+   */
+  metadata?: Metadata;
+};
+
+/**
+ * Describes the message policy.DynamicValueMapping.
+ * Use `create(DynamicValueMappingSchema)` to create a new message.
+ */
+export const DynamicValueMappingSchema: GenMessage<DynamicValueMapping> = /*@__PURE__*/
+  messageDesc(file_policy_objects, 9);
+
+/**
  * *
  * A Condition defines a rule of <the value at the flattened 'selector value'
  * location> <operator> <subject external values>
@@ -500,9 +608,11 @@ export type Condition = Message<"policy.Condition"> & {
   subjectExternalSelectorValue: string;
 
   /**
-   * the evaluation operator of relation
+   * Deprecated: use comparison + quantifier (+ case_insensitive) instead. Normalized to the
+   * decomposed fields in the service layer for backward compatibility.
    *
-   * @generated from field: policy.SubjectMappingOperatorEnum operator = 2;
+   * @generated from field: policy.SubjectMappingOperatorEnum operator = 2 [deprecated = true];
+   * @deprecated
    */
   operator: SubjectMappingOperatorEnum;
 
@@ -514,6 +624,28 @@ export type Condition = Message<"policy.Condition"> & {
    * @generated from field: repeated string subject_external_values = 3;
    */
   subjectExternalValues: string[];
+
+  /**
+   * how each selector result is compared to subject_external_values entries
+   *
+   * @generated from field: policy.ConditionComparisonOperatorEnum comparison = 4;
+   */
+  comparison: ConditionComparisonOperatorEnum;
+
+  /**
+   * how matches are aggregated across subject_external_values
+   *
+   * @generated from field: policy.ConditionQuantifierEnum quantifier = 5;
+   */
+  quantifier: ConditionQuantifierEnum;
+
+  /**
+   * when set true, comparison is case-insensitive; unset is treated as case-sensitive. Modeled as
+   * BoolValue so an explicit false is distinguishable from unset, leaving room to change the default.
+   *
+   * @generated from field: google.protobuf.BoolValue case_insensitive = 6;
+   */
+  caseInsensitive?: boolean;
 };
 
 /**
@@ -521,7 +653,7 @@ export type Condition = Message<"policy.Condition"> & {
  * Use `create(ConditionSchema)` to create a new message.
  */
 export const ConditionSchema: GenMessage<Condition> = /*@__PURE__*/
-  messageDesc(file_policy_objects, 8);
+  messageDesc(file_policy_objects, 10);
 
 /**
  * A collection of Conditions evaluated by the boolean_operator provided
@@ -547,7 +679,7 @@ export type ConditionGroup = Message<"policy.ConditionGroup"> & {
  * Use `create(ConditionGroupSchema)` to create a new message.
  */
 export const ConditionGroupSchema: GenMessage<ConditionGroup> = /*@__PURE__*/
-  messageDesc(file_policy_objects, 9);
+  messageDesc(file_policy_objects, 11);
 
 /**
  * A collection of Condition Groups
@@ -568,7 +700,7 @@ export type SubjectSet = Message<"policy.SubjectSet"> & {
  * Use `create(SubjectSetSchema)` to create a new message.
  */
 export const SubjectSetSchema: GenMessage<SubjectSet> = /*@__PURE__*/
-  messageDesc(file_policy_objects, 10);
+  messageDesc(file_policy_objects, 12);
 
 /**
  *
@@ -611,7 +743,7 @@ export type SubjectConditionSet = Message<"policy.SubjectConditionSet"> & {
  * Use `create(SubjectConditionSetSchema)` to create a new message.
  */
 export const SubjectConditionSetSchema: GenMessage<SubjectConditionSet> = /*@__PURE__*/
-  messageDesc(file_policy_objects, 11);
+  messageDesc(file_policy_objects, 13);
 
 /**
  *
@@ -646,7 +778,7 @@ export type SubjectProperty = Message<"policy.SubjectProperty"> & {
  * Use `create(SubjectPropertySchema)` to create a new message.
  */
 export const SubjectPropertySchema: GenMessage<SubjectProperty> = /*@__PURE__*/
-  messageDesc(file_policy_objects, 12);
+  messageDesc(file_policy_objects, 14);
 
 /**
  *
@@ -696,7 +828,7 @@ export type ResourceMappingGroup = Message<"policy.ResourceMappingGroup"> & {
  * Use `create(ResourceMappingGroupSchema)` to create a new message.
  */
 export const ResourceMappingGroupSchema: GenMessage<ResourceMappingGroup> = /*@__PURE__*/
-  messageDesc(file_policy_objects, 13);
+  messageDesc(file_policy_objects, 15);
 
 /**
  *
@@ -746,7 +878,7 @@ export type ResourceMapping = Message<"policy.ResourceMapping"> & {
  * Use `create(ResourceMappingSchema)` to create a new message.
  */
 export const ResourceMappingSchema: GenMessage<ResourceMapping> = /*@__PURE__*/
-  messageDesc(file_policy_objects, 14);
+  messageDesc(file_policy_objects, 16);
 
 /**
  *
@@ -809,7 +941,7 @@ export type KeyAccessServer = Message<"policy.KeyAccessServer"> & {
  * Use `create(KeyAccessServerSchema)` to create a new message.
  */
 export const KeyAccessServerSchema: GenMessage<KeyAccessServer> = /*@__PURE__*/
-  messageDesc(file_policy_objects, 15);
+  messageDesc(file_policy_objects, 17);
 
 /**
  * @generated from message policy.Key
@@ -855,7 +987,7 @@ export type Key = Message<"policy.Key"> & {
  * Use `create(KeySchema)` to create a new message.
  */
 export const KeySchema: GenMessage<Key> = /*@__PURE__*/
-  messageDesc(file_policy_objects, 16);
+  messageDesc(file_policy_objects, 18);
 
 /**
  * Deprecated
@@ -893,7 +1025,7 @@ export type KasPublicKey = Message<"policy.KasPublicKey"> & {
  * Use `create(KasPublicKeySchema)` to create a new message.
  */
 export const KasPublicKeySchema: GenMessage<KasPublicKey> = /*@__PURE__*/
-  messageDesc(file_policy_objects, 17);
+  messageDesc(file_policy_objects, 19);
 
 /**
  * Deprecated
@@ -913,7 +1045,7 @@ export type KasPublicKeySet = Message<"policy.KasPublicKeySet"> & {
  * Use `create(KasPublicKeySetSchema)` to create a new message.
  */
 export const KasPublicKeySetSchema: GenMessage<KasPublicKeySet> = /*@__PURE__*/
-  messageDesc(file_policy_objects, 18);
+  messageDesc(file_policy_objects, 20);
 
 /**
  * Deprecated
@@ -948,7 +1080,7 @@ export type PublicKey = Message<"policy.PublicKey"> & {
  * Use `create(PublicKeySchema)` to create a new message.
  */
 export const PublicKeySchema: GenMessage<PublicKey> = /*@__PURE__*/
-  messageDesc(file_policy_objects, 19);
+  messageDesc(file_policy_objects, 21);
 
 /**
  * @generated from message policy.RegisteredResource
@@ -987,7 +1119,7 @@ export type RegisteredResource = Message<"policy.RegisteredResource"> & {
  * Use `create(RegisteredResourceSchema)` to create a new message.
  */
 export const RegisteredResourceSchema: GenMessage<RegisteredResource> = /*@__PURE__*/
-  messageDesc(file_policy_objects, 20);
+  messageDesc(file_policy_objects, 22);
 
 /**
  * @generated from message policy.RegisteredResourceValue
@@ -1031,7 +1163,7 @@ export type RegisteredResourceValue = Message<"policy.RegisteredResourceValue"> 
  * Use `create(RegisteredResourceValueSchema)` to create a new message.
  */
 export const RegisteredResourceValueSchema: GenMessage<RegisteredResourceValue> = /*@__PURE__*/
-  messageDesc(file_policy_objects, 21);
+  messageDesc(file_policy_objects, 23);
 
 /**
  * @generated from message policy.RegisteredResourceValue.ActionAttributeValue
@@ -1065,7 +1197,7 @@ export type RegisteredResourceValue_ActionAttributeValue = Message<"policy.Regis
  * Use `create(RegisteredResourceValue_ActionAttributeValueSchema)` to create a new message.
  */
 export const RegisteredResourceValue_ActionAttributeValueSchema: GenMessage<RegisteredResourceValue_ActionAttributeValue> = /*@__PURE__*/
-  messageDesc(file_policy_objects, 21, 0);
+  messageDesc(file_policy_objects, 23, 0);
 
 /**
  * @generated from message policy.PolicyEnforcementPoint
@@ -1082,7 +1214,7 @@ export type PolicyEnforcementPoint = Message<"policy.PolicyEnforcementPoint"> & 
  * Use `create(PolicyEnforcementPointSchema)` to create a new message.
  */
 export const PolicyEnforcementPointSchema: GenMessage<PolicyEnforcementPoint> = /*@__PURE__*/
-  messageDesc(file_policy_objects, 22);
+  messageDesc(file_policy_objects, 24);
 
 /**
  * Holds the context needed for obligation fulfillment
@@ -1101,7 +1233,7 @@ export type RequestContext = Message<"policy.RequestContext"> & {
  * Use `create(RequestContextSchema)` to create a new message.
  */
 export const RequestContextSchema: GenMessage<RequestContext> = /*@__PURE__*/
-  messageDesc(file_policy_objects, 23);
+  messageDesc(file_policy_objects, 25);
 
 /**
  * @generated from message policy.Obligation
@@ -1143,7 +1275,7 @@ export type Obligation = Message<"policy.Obligation"> & {
  * Use `create(ObligationSchema)` to create a new message.
  */
 export const ObligationSchema: GenMessage<Obligation> = /*@__PURE__*/
-  messageDesc(file_policy_objects, 24);
+  messageDesc(file_policy_objects, 26);
 
 /**
  * @generated from message policy.ObligationValue
@@ -1185,7 +1317,7 @@ export type ObligationValue = Message<"policy.ObligationValue"> & {
  * Use `create(ObligationValueSchema)` to create a new message.
  */
 export const ObligationValueSchema: GenMessage<ObligationValue> = /*@__PURE__*/
-  messageDesc(file_policy_objects, 25);
+  messageDesc(file_policy_objects, 27);
 
 /**
  * @generated from message policy.ObligationTrigger
@@ -1234,7 +1366,7 @@ export type ObligationTrigger = Message<"policy.ObligationTrigger"> & {
  * Use `create(ObligationTriggerSchema)` to create a new message.
  */
 export const ObligationTriggerSchema: GenMessage<ObligationTrigger> = /*@__PURE__*/
-  messageDesc(file_policy_objects, 26);
+  messageDesc(file_policy_objects, 28);
 
 /**
  * @generated from message policy.KasKey
@@ -1261,7 +1393,7 @@ export type KasKey = Message<"policy.KasKey"> & {
  * Use `create(KasKeySchema)` to create a new message.
  */
 export const KasKeySchema: GenMessage<KasKey> = /*@__PURE__*/
-  messageDesc(file_policy_objects, 27);
+  messageDesc(file_policy_objects, 29);
 
 /**
  * @generated from message policy.PublicKeyCtx
@@ -1282,7 +1414,7 @@ export type PublicKeyCtx = Message<"policy.PublicKeyCtx"> & {
  * Use `create(PublicKeyCtxSchema)` to create a new message.
  */
 export const PublicKeyCtxSchema: GenMessage<PublicKeyCtx> = /*@__PURE__*/
-  messageDesc(file_policy_objects, 28);
+  messageDesc(file_policy_objects, 30);
 
 /**
  * @generated from message policy.PrivateKeyCtx
@@ -1312,7 +1444,7 @@ export type PrivateKeyCtx = Message<"policy.PrivateKeyCtx"> & {
  * Use `create(PrivateKeyCtxSchema)` to create a new message.
  */
 export const PrivateKeyCtxSchema: GenMessage<PrivateKeyCtx> = /*@__PURE__*/
-  messageDesc(file_policy_objects, 29);
+  messageDesc(file_policy_objects, 31);
 
 /**
  * @generated from message policy.AsymmetricKey
@@ -1404,7 +1536,7 @@ export type AsymmetricKey = Message<"policy.AsymmetricKey"> & {
  * Use `create(AsymmetricKeySchema)` to create a new message.
  */
 export const AsymmetricKeySchema: GenMessage<AsymmetricKey> = /*@__PURE__*/
-  messageDesc(file_policy_objects, 30);
+  messageDesc(file_policy_objects, 32);
 
 /**
  * @generated from message policy.SymmetricKey
@@ -1459,7 +1591,7 @@ export type SymmetricKey = Message<"policy.SymmetricKey"> & {
  * Use `create(SymmetricKeySchema)` to create a new message.
  */
 export const SymmetricKeySchema: GenMessage<SymmetricKey> = /*@__PURE__*/
-  messageDesc(file_policy_objects, 31);
+  messageDesc(file_policy_objects, 33);
 
 /**
  * @generated from enum policy.AttributeRuleTypeEnum
@@ -1557,6 +1689,93 @@ export const ConditionBooleanTypeEnumSchema: GenEnum<ConditionBooleanTypeEnum> =
   enumDesc(file_policy_objects, 2);
 
 /**
+ * How a selector result is compared against a comparison value. Replaces the all-in-one
+ * SubjectMappingOperatorEnum by separating the comparison from the quantifier (see
+ * ConditionQuantifierEnum) and case sensitivity.
+ *
+ * @generated from enum policy.ConditionComparisonOperatorEnum
+ */
+export enum ConditionComparisonOperatorEnum {
+  /**
+   * @generated from enum value: CONDITION_COMPARISON_OPERATOR_ENUM_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * exact string equality
+   *
+   * @generated from enum value: CONDITION_COMPARISON_OPERATOR_ENUM_EQUALS = 1;
+   */
+  EQUALS = 1,
+
+  /**
+   * substring containment
+   *
+   * @generated from enum value: CONDITION_COMPARISON_OPERATOR_ENUM_CONTAINS = 2;
+   */
+  CONTAINS = 2,
+
+  /**
+   * prefix match
+   *
+   * @generated from enum value: CONDITION_COMPARISON_OPERATOR_ENUM_STARTS_WITH = 3;
+   */
+  STARTS_WITH = 3,
+
+  /**
+   * suffix match; the safe operator for domain matching (e.g. email domains)
+   *
+   * @generated from enum value: CONDITION_COMPARISON_OPERATOR_ENUM_ENDS_WITH = 4;
+   */
+  ENDS_WITH = 4,
+}
+
+/**
+ * Describes the enum policy.ConditionComparisonOperatorEnum.
+ */
+export const ConditionComparisonOperatorEnumSchema: GenEnum<ConditionComparisonOperatorEnum> = /*@__PURE__*/
+  enumDesc(file_policy_objects, 3);
+
+/**
+ * How matches are aggregated across the comparison set (subject_external_values).
+ *
+ * @generated from enum policy.ConditionQuantifierEnum
+ */
+export enum ConditionQuantifierEnum {
+  /**
+   * @generated from enum value: CONDITION_QUANTIFIER_ENUM_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * at least one match (legacy IN behavior)
+   *
+   * @generated from enum value: CONDITION_QUANTIFIER_ENUM_ANY = 1;
+   */
+  ANY = 1,
+
+  /**
+   * every expected value matches
+   *
+   * @generated from enum value: CONDITION_QUANTIFIER_ENUM_ALL = 2;
+   */
+  ALL = 2,
+
+  /**
+   * no matches (legacy NOT_IN behavior)
+   *
+   * @generated from enum value: CONDITION_QUANTIFIER_ENUM_NONE = 3;
+   */
+  NONE = 3,
+}
+
+/**
+ * Describes the enum policy.ConditionQuantifierEnum.
+ */
+export const ConditionQuantifierEnumSchema: GenEnum<ConditionQuantifierEnum> = /*@__PURE__*/
+  enumDesc(file_policy_objects, 4);
+
+/**
  * Describes whether this kas is managed by the organization or if they imported
  * the kas information from an external party. These two modes are necessary in order
  * to encrypt a tdf dek with an external parties kas public key.
@@ -1588,7 +1807,7 @@ export enum SourceType {
  * Describes the enum policy.SourceType.
  */
 export const SourceTypeSchema: GenEnum<SourceType> = /*@__PURE__*/
-  enumDesc(file_policy_objects, 3);
+  enumDesc(file_policy_objects, 5);
 
 /**
  * @generated from enum policy.KasPublicKeyAlgEnum
@@ -1644,7 +1863,7 @@ export enum KasPublicKeyAlgEnum {
  * Describes the enum policy.KasPublicKeyAlgEnum.
  */
 export const KasPublicKeyAlgEnumSchema: GenEnum<KasPublicKeyAlgEnum> = /*@__PURE__*/
-  enumDesc(file_policy_objects, 4);
+  enumDesc(file_policy_objects, 6);
 
 /**
  * Supported key algorithms.
@@ -1702,7 +1921,7 @@ export enum Algorithm {
  * Describes the enum policy.Algorithm.
  */
 export const AlgorithmSchema: GenEnum<Algorithm> = /*@__PURE__*/
-  enumDesc(file_policy_objects, 5);
+  enumDesc(file_policy_objects, 7);
 
 /**
  * The status of the key
@@ -1730,7 +1949,7 @@ export enum KeyStatus {
  * Describes the enum policy.KeyStatus.
  */
 export const KeyStatusSchema: GenEnum<KeyStatus> = /*@__PURE__*/
-  enumDesc(file_policy_objects, 6);
+  enumDesc(file_policy_objects, 8);
 
 /**
  * Describes the management and operational mode of a cryptographic key.
@@ -1786,5 +2005,5 @@ export enum KeyMode {
  * Describes the enum policy.KeyMode.
  */
 export const KeyModeSchema: GenEnum<KeyMode> = /*@__PURE__*/
-  enumDesc(file_policy_objects, 7);
+  enumDesc(file_policy_objects, 9);
 
