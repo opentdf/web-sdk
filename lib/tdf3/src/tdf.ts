@@ -706,11 +706,11 @@ export async function loadTDFStream(chunker: Chunker): Promise<InspectedTDFOverv
 export function splitLookupTableFactory(
   keyAccess: KeyAccessObject[],
   allowedKases: OriginAllowList
-): Record<string, Record<string, KeyAccessObject>> {
+): Record<string, Record<string, KeyAccessObject[]>> {
   const allowed = (k: KeyAccessObject) => allowedKases.allows(k.url);
   const splitIds = new Set(keyAccess.map(({ sid }) => sid ?? ''));
 
-  const accessibleSplits = new Set(keyAccess.filter(allowed).map(({ sid }) => sid));
+  const accessibleSplits = new Set(keyAccess.filter(allowed).map(({ sid }) => sid ?? ''));
   if (splitIds.size > accessibleSplits.size) {
     const disallowedKases = new Set(keyAccess.filter((k) => !allowed(k)).map(({ url }) => url));
     throw new UnsafeUrlError(
@@ -720,18 +720,25 @@ export function splitLookupTableFactory(
       ...disallowedKases
     );
   }
-  const splitPotentials: Record<string, Record<string, KeyAccessObject>> = Object.fromEntries(
+  const splitPotentials: Record<string, Record<string, KeyAccessObject[]>> = Object.fromEntries(
     [...splitIds].map((s) => [s, {}])
   );
   for (const kao of keyAccess) {
-    const disjunction = splitPotentials[kao.sid ?? ''];
-    if (kao.url in disjunction) {
-      throw new InvalidFileError(
-        `TODO: Fallback to no split ids. Repetition found for [${kao.url}] on split [${kao.sid}]`
-      );
+    if (!allowed(kao)) {
+      continue;
     }
-    if (allowed(kao)) {
-      disjunction[kao.url] = kao;
+    const disjunction = splitPotentials[kao.sid ?? ''];
+    const existing = disjunction[kao.url];
+    if (existing) {
+      const isDuplicate = existing.some(
+        (e) => e.kid === kao.kid && e.wrappedKey === kao.wrappedKey
+      );
+      if (isDuplicate) {
+        continue;
+      }
+      existing.push(kao);
+    } else {
+      disjunction[kao.url] = [kao];
     }
   }
   return splitPotentials;
@@ -933,14 +940,17 @@ async function unwrapKey({
       );
     }
     const anyPromises: Record<string, () => Promise<RewrapResponseData>> = {};
-    for (const [kas, keySplitInfo] of Object.entries(potentials)) {
-      anyPromises[kas] = async () => {
-        try {
-          return await tryKasRewrap(keySplitInfo);
-        } catch (e) {
-          throw handleRewrapError(e as Error);
-        }
-      };
+    for (const [kas, kaoList] of Object.entries(potentials)) {
+      kaoList.forEach((keySplitInfo, idx) => {
+        const key = kaoList.length === 1 ? kas : `${kas}#${idx}`;
+        anyPromises[key] = async () => {
+          try {
+            return await tryKasRewrap(keySplitInfo);
+          } catch (e) {
+            throw handleRewrapError(e as Error);
+          }
+        };
+      });
     }
     splitPromises[splitId] = () => anyPool(poolSize, anyPromises);
   }

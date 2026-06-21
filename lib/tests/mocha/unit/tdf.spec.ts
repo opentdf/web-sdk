@@ -260,8 +260,8 @@ describe('splitLookupTableFactory', () => {
     const result = TDF.splitLookupTableFactory(keyAccess, allowedKases);
 
     expect(result).to.deep.equal({
-      split1: { 'https://kas1': keyAccess[0] },
-      split2: { 'https://kas2': keyAccess[1] },
+      split1: { 'https://kas1': [keyAccess[0]] },
+      split2: { 'https://kas2': [keyAccess[1]] },
     });
   });
 
@@ -275,8 +275,8 @@ describe('splitLookupTableFactory', () => {
     const result = TDF.splitLookupTableFactory(keyAccess, allowedKases);
 
     expect(result).to.deep.equal({
-      split1: { 'https://kas1': keyAccess[0] },
-      split2: { 'https://kas2': keyAccess[1] },
+      split1: { 'https://kas1': [keyAccess[0]] },
+      split2: { 'https://kas2': [keyAccess[1]] },
     });
   });
 
@@ -293,17 +293,45 @@ describe('splitLookupTableFactory', () => {
     );
   });
 
-  it('should throw for duplicate URLs in the same splitId', () => {
+  it('preserves duplicate URLs in the same splitId as a list', () => {
     const keyAccess: KeyAccessObject[] = [
-      { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas' },
-      { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas' }, // duplicate URL in same splitId
+      {
+        sid: 'split1',
+        type: 'wrapped',
+        url: 'https://kas1',
+        kid: 'k1',
+        wrappedKey: 'a',
+        protocol: 'kas',
+      },
+      {
+        sid: 'split1',
+        type: 'wrapped',
+        url: 'https://kas1',
+        kid: 'k1',
+        wrappedKey: 'b',
+        protocol: 'kas',
+      },
     ];
     const allowedKases = new OriginAllowList(['https://kas1']);
 
-    expect(() => TDF.splitLookupTableFactory(keyAccess, allowedKases)).to.throw(
-      InvalidFileError,
-      'TODO: Fallback to no split ids. Repetition found for [https://kas1] on split [split1]'
-    );
+    const result = TDF.splitLookupTableFactory(keyAccess, allowedKases);
+
+    expect(result).to.deep.equal({
+      split1: { 'https://kas1': [keyAccess[0], keyAccess[1]] },
+    });
+  });
+
+  it('preserves multiple keys with distinct kids on the same KAS and split', () => {
+    const keyAccess: KeyAccessObject[] = [
+      { sid: 'split1', type: 'wrapped', url: 'https://kas1', kid: 'k1', protocol: 'kas' },
+      { sid: 'split1', type: 'wrapped', url: 'https://kas1', kid: 'k2', protocol: 'kas' },
+    ];
+    const allowedKases = new OriginAllowList(['https://kas1']);
+
+    const result = TDF.splitLookupTableFactory(keyAccess, allowedKases);
+
+    expect(result['split1']['https://kas1']).to.have.length(2);
+    expect(result['split1']['https://kas1'].map((k) => k.kid)).to.deep.equal(['k1', 'k2']);
   });
 
   it('should handle empty keyAccess array', () => {
@@ -336,7 +364,34 @@ describe('splitLookupTableFactory', () => {
     const result = TDF.splitLookupTableFactory(keyAccess, new OriginAllowList(allowedKases));
 
     expect(result).to.deep.equal({
-      '': { 'https://kas1': keyAccess[0] },
+      '': { 'https://kas1': [keyAccess[0]] },
     });
+  });
+
+  it('detects disallowed splits when sids mix undefined and empty string', () => {
+    const keyAccess: KeyAccessObject[] = [
+      { sid: undefined, type: 'remote', url: 'https://kas1', protocol: 'kas' },
+      { sid: '', type: 'remote', url: 'https://kas1', protocol: 'kas' },
+      { sid: 'split1', type: 'remote', url: 'https://kas3', protocol: 'kas' },
+    ];
+    const allowedKases = new OriginAllowList(['https://kas1']);
+
+    expect(() => TDF.splitLookupTableFactory(keyAccess, allowedKases)).to.throw(UnsafeUrlError);
+  });
+
+  it('deduplicates fully identical KAOs on the same KAS and split', () => {
+    const kao: KeyAccessObject = {
+      sid: 'split1',
+      type: 'wrapped',
+      url: 'https://kas1',
+      kid: 'k1',
+      wrappedKey: 'abc',
+      protocol: 'kas',
+    };
+    const allowedKases = new OriginAllowList(['https://kas1']);
+
+    const result = TDF.splitLookupTableFactory([kao, { ...kao }], allowedKases);
+
+    expect(result['split1']['https://kas1']).to.have.length(1);
   });
 });
