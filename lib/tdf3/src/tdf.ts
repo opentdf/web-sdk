@@ -726,8 +726,12 @@ export function splitLookupTableFactory(
   for (const kao of keyAccess) {
     const disjunction = splitPotentials[kao.sid ?? ''];
     if (kao.url in disjunction) {
+      // TODO(DSPX-3454): Implement fallback to no split ids when repetition is detected.
+      // Repetition occurs when multiple KAS keys share the same URL within a split.
+      // A proper fix would handle this by deduplicating or selecting the appropriate key.
       throw new InvalidFileError(
-        `TODO: Fallback to no split ids. Repetition found for [${kao.url}] on split [${kao.sid}]`
+        `Unable to decrypt: Multiple keys detected for Key Access Server [${kao.url}]. ` +
+        `Please contact your administrator.`
       );
     }
     if (allowed(kao)) {
