@@ -731,7 +731,7 @@ export function splitLookupTableFactory(
       // A proper fix would handle this by deduplicating or selecting the appropriate key.
       throw new InvalidFileError(
         `Unable to decrypt: Multiple keys detected for Key Access Server [${kao.url}]. ` +
-        `Please contact your administrator.`
+          `Please contact your administrator.`
       );
     }
     if (allowed(kao)) {
