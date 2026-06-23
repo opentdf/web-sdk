@@ -16,7 +16,6 @@ jobs:
   deliver:
     permissions:
       contents: write
+      id-token: write
       packages: write
     uses: opentdf/web-sdk/.github/workflows/reusable_deliver.yaml@main
-    secrets:
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
