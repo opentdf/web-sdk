@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.19.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.18.0...sdk-v0.19.0) (2026-06-23)
+
+
+### Bug Fixes
+
+* **ci:** switch npm publish to OIDC trusted publishing ([#950](https://github.com/opentdf/web-sdk/issues/950)) ([ecd41ec](https://github.com/opentdf/web-sdk/commit/ecd41ecb222e67665580f0b4a2ff509f1d8206a7))
+* **cli:** bump js-yaml from 4.1.1 to 4.2.0 in /cli ([#943](https://github.com/opentdf/web-sdk/issues/943)) ([f9109bf](https://github.com/opentdf/web-sdk/commit/f9109bfc0aee5527086242f18c47f17152fa6aa3))
+* **sdk:** bump markdown-it from 14.1.1 to 14.2.0 in /lib ([#944](https://github.com/opentdf/web-sdk/issues/944)) ([2dc4d91](https://github.com/opentdf/web-sdk/commit/2dc4d918bcd7f1351252e36a4ce53e914bebd2f4))
+* **sdk:** bump qs and body-parser in /lib ([#935](https://github.com/opentdf/web-sdk/issues/935)) ([a0ad0c2](https://github.com/opentdf/web-sdk/commit/a0ad0c28df04e14f7217761767fec0e3216a37d6))
+
 ## [0.18.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.17.0...sdk-v0.18.0) (2026-06-17)
 
 
