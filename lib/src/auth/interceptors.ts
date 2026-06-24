@@ -172,13 +172,15 @@ export function authTokenDPoPInterceptor(options: DPoPInterceptorOptions): DPoPI
  */
 export function authProviderInterceptor(authProvider: AuthProvider): Interceptor {
   return (next) => async (req) => {
-    const url = new URL(req.url);
-    const pathOnly = url.pathname;
-    // Signs only the path of the url in the request
+    // Pass the full request URL to withCreds. DPoP-enabled providers need the
+    // absolute URL to compute the proof's `htu` claim and the origin for the
+    // nonce cache; `new URL()` on a bare path throws "Invalid URL". Non-DPoP
+    // providers ignore the URL (they only add a Bearer header), so this stays
+    // backwards-compatible with legacy AuthProviders.
     let token;
     try {
       token = await authProvider.withCreds({
-        url: pathOnly,
+        url: req.url,
         method: 'POST',
         // Start with any headers Connect already has
         headers: {

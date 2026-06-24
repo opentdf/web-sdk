@@ -142,6 +142,27 @@ describe('authProviderInterceptor', () => {
     expect(headers.get('X-Custom')).to.equal('custom-value');
   });
 
+  it('passes the full request URL to withCreds (not just the path)', async () => {
+    // Regression: a DPoP-enabled provider computes the proof `htu` and nonce
+    // origin via `new URL(req.url)`, which throws on a bare path. The
+    // interceptor must hand withCreds the absolute URL.
+    let seenUrl: string | undefined;
+    const mockAuthProvider: AuthProvider = {
+      updateClientPublicKey: async () => {},
+      withCreds: async (req: HttpRequest) => {
+        seenUrl = req.url;
+        // Mimic a DPoP provider that parses the URL; a bare path throws here.
+        new URL(req.url);
+        return withHeaders(req, { Authorization: 'DPoP token' });
+      },
+    };
+
+    const interceptor = authProviderInterceptor(mockAuthProvider);
+    await captureHeaders(interceptor, 'https://platform.example.com/policy.attributes/Get');
+
+    expect(seenUrl).to.equal('https://platform.example.com/policy.attributes/Get');
+  });
+
   it('wraps updateClientPublicKey errors with helpful message', async () => {
     const failingProvider: AuthProvider = {
       updateClientPublicKey: async () => {},
