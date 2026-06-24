@@ -50,7 +50,10 @@ async function ecdsaKeyPair(namedCurve: 'P-256' | 'P-384' | 'P-521'): Promise<Ke
 function derToPem(der: Uint8Array, label: string): string {
   let b = '';
   for (let i = 0; i < der.length; i++) b += String.fromCharCode(der[i]);
-  const b64 = btoa(b).match(/.{1,64}/g)?.join('\n') ?? btoa(b);
+  const b64 =
+    btoa(b)
+      .match(/.{1,64}/g)
+      ?.join('\n') ?? btoa(b);
   return `-----BEGIN ${label}-----\n${b64}\n-----END ${label}-----`;
 }
 
@@ -61,9 +64,7 @@ const CURVES: Array<{ namedCurve: 'P-256' | 'P-384' | 'P-521'; alg: 'ES256' | 'E
     { namedCurve: 'P-521', alg: 'ES512' },
   ];
 
-describe('DPoP proof — JWS conformance vs jose.jwtVerify (RFC 9449 + RFC 7518 §3.4)', function (
-  this: Mocha.Suite
-) {
+describe('DPoP proof — JWS conformance vs jose.jwtVerify (RFC 9449 + RFC 7518 §3.4)', function (this: Mocha.Suite) {
   this.timeout(10_000);
 
   for (const { namedCurve, alg } of CURVES) {
@@ -117,10 +118,7 @@ describe('DPoP proof — JWS conformance vs jose.jwtVerify (RFC 9449 + RFC 7518 
       ) as jose.ProtectedHeaderParameters;
       const fakeJwk = await crypto.subtle.exportKey(
         'jwk',
-        await jose.importJWK(
-          (await proofHeaderJwkFor(kp2, alg)) as jose.JWK,
-          alg
-        ) as CryptoKey
+        (await jose.importJWK((await proofHeaderJwkFor(kp2, alg)) as jose.JWK, alg)) as CryptoKey
       );
       delete (fakeJwk as Record<string, unknown>).d;
       delete (fakeJwk as Record<string, unknown>).key_ops;
@@ -147,10 +145,7 @@ describe('DPoP proof — JWS conformance vs jose.jwtVerify (RFC 9449 + RFC 7518 
  * Round-tripping through `dpopFn` ensures the JWK shape matches what the
  * SDK emits in real proofs.
  */
-async function proofHeaderJwkFor(
-  kp: KeyPair,
-  alg: 'ES256' | 'ES384' | 'ES512'
-): Promise<unknown> {
+async function proofHeaderJwkFor(kp: KeyPair, alg: 'ES256' | 'ES384' | 'ES512'): Promise<unknown> {
   const proof = await dpopFn(kp, DefaultCryptoService, HTU, HTM);
   const header = jose.decodeProtectedHeader(proof);
   void alg; // alg unused; kept in signature for caller clarity

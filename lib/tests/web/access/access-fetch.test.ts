@@ -274,13 +274,15 @@ describe('access-fetch.js', () => {
       fetchStub
         .onCall(0)
         .returns(responseWithNonce({ error: 'use_dpop_nonce' }, false, 401, challengeNonce));
-      fetchStub.onCall(1).returns(
-        responseWithNonce(
-          { keyAccessServers: [{ uri: 'https://kas1.example.com' }], pagination: {} },
-          true,
-          200
-        )
-      );
+      fetchStub
+        .onCall(1)
+        .returns(
+          responseWithNonce(
+            { keyAccessServers: [{ uri: 'https://kas1.example.com' }], pagination: {} },
+            true,
+            200
+          )
+        );
 
       const result = await fetchKeyAccessServers(platformUrl, dpopAuthProvider);
 
