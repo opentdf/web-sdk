@@ -1,5 +1,5 @@
 import * as jose from 'jose';
-import { createServer, IncomingMessage, RequestListener } from 'node:http';
+import { createServer, IncomingMessage, RequestListener, ServerResponse } from 'node:http';
 
 import { base64 } from '../src/encodings/index.js';
 import { decryptWithPrivateKey, encryptWithPublicKey } from '../tdf3/src/crypto/index.js';
@@ -247,6 +247,53 @@ function requestHtu(req: IncomingMessage): string {
   return `${url.origin}${url.pathname}`;
 }
 
+/**
+ * RFC 9449 resource-server DPoP gate for Connect-RPC endpoints. A no-op
+ * (returns true) unless the request carries `Authorization: DPoP <token>`, so
+ * Bearer / unauthenticated callers pass through unchanged and the many non-DPoP
+ * tests keep working.
+ *
+ * On a proof failure it writes a Connect-correct response and returns false; the
+ * caller MUST `return` immediately. The status is always 401 so connect-web maps
+ * it to Code.Unauthenticated (HTTP 400 would map to Code.Internal, which the
+ * SDK's nonce-retry interceptor does not act on). The nonce travels in the
+ * `DPoP-Nonce` response header (surfaced to the client via ConnectError.metadata),
+ * and the JSON body uses the Connect `{code, message}` envelope.
+ *
+ * The proof's `htm` is always 'POST': both SDK interceptors hard-code POST when
+ * minting the proof regardless of the verb the Connect transport uses, so we must
+ * NOT derive htm from req.method here.
+ */
+async function enforceRsDpop(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
+  const authHeader = (req.headers['authorization'] as string | undefined) ?? '';
+  const dpopMatch = /^DPoP\s+(.+)$/.exec(authHeader);
+  if (!dpopMatch) return true; // non-DPoP request → unchanged behavior
+
+  const accessToken = dpopMatch[1];
+  const proofCheck = await verifyDpopProof(req.headers['dpop'] as string | undefined, {
+    htm: 'POST',
+    htu: requestHtu(req),
+    requireAth: { accessToken },
+    requireBoundJkt: dpopBoundJkts.get(accessToken),
+    requireNonce: DPOP_RS_NONCE,
+  });
+  if (proofCheck.ok) return true;
+
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (proofCheck.challengeNonce) {
+    headers['DPoP-Nonce'] = proofCheck.challengeNonce;
+    headers['WWW-Authenticate'] = `DPoP error="${proofCheck.error}"`;
+  }
+  res.writeHead(401, headers);
+  res.end(
+    JSON.stringify({
+      code: 'unauthenticated',
+      message: proofCheck.error_description || proofCheck.error,
+    })
+  );
+  return false;
+}
+
 function range(start: number, end: number): Uint8Array {
   const result = [];
   for (let i = start; i <= end; i++) {
@@ -424,39 +471,7 @@ const kas: RequestListener = async (req, res) => {
       // request actually carries `Authorization: DPoP <token>`; non-DPoP
       // (Bearer or unauthenticated) callers pass through unchanged so the
       // many non-DPoP rewrap tests keep working.
-      const authHeader = (req.headers['authorization'] as string | undefined) ?? '';
-      const dpopMatch = /^DPoP\s+(.+)$/.exec(authHeader);
-      if (dpopMatch) {
-        const accessToken = dpopMatch[1];
-        const boundJkt = dpopBoundJkts.get(accessToken);
-        const proofCheck = await verifyDpopProof(req.headers['dpop'] as string | undefined, {
-          htm: 'POST',
-          htu: requestHtu(req),
-          requireAth: { accessToken },
-          requireBoundJkt: boundJkt,
-          requireNonce: DPOP_RS_NONCE,
-        });
-        if (!proofCheck.ok) {
-          // RFC 9449 §8: RS uses 401 + WWW-Authenticate: DPoP error="..." for
-          // nonce challenges (vs AS which uses 400). Other proof failures get
-          // 401 invalid_token (downstream platforms vary; tests can match on the
-          // error code rather than status).
-          const status = proofCheck.error === 'use_dpop_nonce' ? 401 : proofCheck.status || 401;
-          const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-          if (proofCheck.challengeNonce) {
-            headers['DPoP-Nonce'] = proofCheck.challengeNonce;
-            headers['WWW-Authenticate'] = `DPoP error="${proofCheck.error}"`;
-          }
-          res.writeHead(status, headers);
-          res.end(
-            JSON.stringify({
-              error: proofCheck.error,
-              error_description: proofCheck.error_description,
-            })
-          );
-          return;
-        }
-      }
+      if (!(await enforceRsDpop(req, res))) return;
 
       const body = await getBody(req);
       const bodyText = new TextDecoder().decode(body);
@@ -645,9 +660,12 @@ const kas: RequestListener = async (req, res) => {
         res.end(fullRange);
       }
     } else if (url.pathname === '/policy.attributes.AttributesService/GetAttributeValuesByFqns') {
+      // DPoP callers are authenticated by the RS gate; Bearer callers fall
+      // through to the legacy `Bearer dummy-auth-token` check below.
+      if (!(await enforceRsDpop(req, res))) return;
       res.setHeader('Content-Type', 'application/json');
       const token = req.headers['authorization'] as string;
-      if (!token || !token.startsWith('Bearer dummy-auth-token')) {
+      if (!token || !(token.startsWith('Bearer dummy-auth-token') || token.startsWith('DPoP '))) {
         res.statusCode = 401;
         res.end(JSON.stringify({ code: 'unauthenticated', message: 'unauthenticated' }));
         return;
@@ -695,6 +713,7 @@ const kas: RequestListener = async (req, res) => {
     } else if (
       url.pathname === '/policy.kasregistry.KeyAccessServerRegistryService/ListKeyAccessServers'
     ) {
+      if (!(await enforceRsDpop(req, res))) return;
       res.statusCode = 200;
       res.setHeader('Content-Type', 'application/json');
       res.end(
@@ -723,8 +742,11 @@ const kas: RequestListener = async (req, res) => {
       );
       return;
     } else if (url.pathname === '/policy.attributes.AttributesService/ListAttributes') {
+      // DPoP callers are authenticated by the RS gate; Bearer callers fall
+      // through to the legacy `Bearer dummy-auth-token` check below.
+      if (!(await enforceRsDpop(req, res))) return;
       const token = req.headers['authorization'] as string;
-      if (!token || !token.startsWith('Bearer dummy-auth-token')) {
+      if (!token || !(token.startsWith('Bearer dummy-auth-token') || token.startsWith('DPoP '))) {
         res.statusCode = 401;
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify({ status: 'error' }));
