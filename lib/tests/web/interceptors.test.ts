@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import { type Interceptor } from '@connectrpc/connect';
+import { Code, ConnectError, type Interceptor } from '@connectrpc/connect';
 import type { AuthProvider } from '../../src/auth/auth.js';
 import { HttpRequest, withHeaders } from '../../src/auth/auth.js';
 import {
@@ -10,6 +10,7 @@ import {
   resolveAuthConfig,
   isInterceptorConfig,
 } from '../../src/auth/interceptors.js';
+import { globalNonceCache } from '../../src/auth/dpop-nonce.js';
 
 // --- helpers ---
 
@@ -161,6 +162,43 @@ describe('authProviderInterceptor', () => {
     await captureHeaders(interceptor, 'https://platform.example.com/policy.attributes/Get');
 
     expect(seenUrl).to.equal('https://platform.example.com/policy.attributes/Get');
+  });
+
+  it('retries once with the server-issued DPoP-Nonce on an Unauthenticated challenge', async () => {
+    const origin = 'https://platform.example.com';
+    const url = `${origin}/policy.kasregistry/ListKeyAccessServers`;
+    globalNonceCache.clear(origin);
+
+    // Provider records the nonce it sees so we can assert the retry carried it.
+    const seenNonces: (string | undefined)[] = [];
+    const mockAuthProvider: AuthProvider = {
+      updateClientPublicKey: async () => {},
+      withCreds: async (req: HttpRequest) => {
+        seenNonces.push(globalNonceCache.get(new URL(req.url).origin));
+        return withHeaders(req, { Authorization: 'DPoP token' });
+      },
+    };
+
+    let attempts = 0;
+    const mockNext = async () => {
+      attempts++;
+      if (attempts === 1) {
+        // First attempt: server issues a nonce challenge.
+        throw new ConnectError('unauthenticated', Code.Unauthenticated, {
+          'dpop-nonce': 'server-nonce-xyz',
+        });
+      }
+      return { header: new Headers(), message: {} } as Awaited<ReturnType<ReturnType<Interceptor>>>;
+    };
+
+    const interceptor = authProviderInterceptor(mockAuthProvider);
+    const mockReq = { header: new Headers(), url } as Parameters<ReturnType<Interceptor>>[0];
+    await interceptor(mockNext)(mockReq);
+
+    expect(attempts).to.equal(2);
+    expect(seenNonces).to.deep.equal([undefined, 'server-nonce-xyz']);
+    expect(globalNonceCache.get(origin)).to.equal('server-nonce-xyz');
+    globalNonceCache.clear(origin);
   });
 
   it('wraps updateClientPublicKey errors with helpful message', async () => {

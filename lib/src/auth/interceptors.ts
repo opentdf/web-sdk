@@ -177,35 +177,80 @@ export function authProviderInterceptor(authProvider: AuthProvider): Interceptor
     // nonce cache; `new URL()` on a bare path throws "Invalid URL". Non-DPoP
     // providers ignore the URL (they only add a Bearer header), so this stays
     // backwards-compatible with legacy AuthProviders.
-    let token;
-    try {
-      token = await authProvider.withCreds({
-        url: req.url,
-        method: 'POST',
-        // Start with any headers Connect already has
-        headers: {
-          ...Object.fromEntries(req.header.entries()),
-          'Content-Type': 'application/json',
-        },
+
+    // Re-sign the request via withCreds and apply the resulting headers. Called
+    // once normally, and again on a DPoP-Nonce challenge so the provider mints a
+    // fresh proof carrying the server-issued nonce (read from globalNonceCache).
+    const sign = async (): Promise<void> => {
+      let token;
+      try {
+        token = await authProvider.withCreds({
+          url: req.url,
+          method: 'POST',
+          // Start with any headers Connect already has
+          headers: {
+            ...Object.fromEntries(req.header.entries()),
+            'Content-Type': 'application/json',
+          },
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes('public key') || msg.includes('updateClientPublicKey')) {
+          throw new Error(
+            'PlatformClient: DPoP key binding is not complete. ' +
+              'If you are using OpenTDF with PlatformClient, create OpenTDF first and ' +
+              '`await client.ready` before constructing PlatformClient. ' +
+              `Original error: ${msg}`
+          );
+        }
+        throw err;
+      }
+
+      Object.entries(token.headers).forEach(([key, value]) => {
+        req.header.set(key, value);
       });
+    };
+
+    let origin: string | undefined;
+    try {
+      origin = new URL(req.url).origin;
+    } catch {
+      // Non-absolute URL: nonce caching is keyed by origin, so just pass through.
+    }
+
+    await sign();
+
+    try {
+      const response = await next(req);
+      // Keep the nonce cache warm from successful responses (RFC 9449 §8).
+      if (origin) {
+        const responseNonce = response.header.get('dpop-nonce');
+        if (responseNonce) {
+          globalNonceCache.set(origin, responseNonce);
+        }
+      }
+      return response;
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes('public key') || msg.includes('updateClientPublicKey')) {
-        throw new Error(
-          'PlatformClient: DPoP key binding is not complete. ' +
-            'If you are using OpenTDF with PlatformClient, create OpenTDF first and ' +
-            '`await client.ready` before constructing PlatformClient. ' +
-            `Original error: ${msg}`
-        );
+      // A DPoP resource server rejects a proof minted without (or with a stale)
+      // nonce by returning Unauthenticated with a fresh `DPoP-Nonce`. Cache the
+      // nonce, re-sign so withCreds embeds it, and retry once (RFC 9449 §9).
+      // Non-DPoP providers/servers never emit a DPoP-Nonce, so this is a no-op
+      // for them.
+      if (origin && err instanceof ConnectError && err.code === Code.Unauthenticated) {
+        const serverNonce = err.metadata.get('dpop-nonce');
+        if (serverNonce && serverNonce !== globalNonceCache.get(origin)) {
+          globalNonceCache.set(origin, serverNonce);
+          await sign();
+          const retryResponse = await next(req);
+          const retryNonce = retryResponse.header.get('dpop-nonce');
+          if (retryNonce) {
+            globalNonceCache.set(origin, retryNonce);
+          }
+          return retryResponse;
+        }
       }
       throw err;
     }
-
-    Object.entries(token.headers).forEach(([key, value]) => {
-      req.header.set(key, value);
-    });
-
-    return await next(req);
   };
 }
 
