@@ -16,6 +16,7 @@ import {
   UnauthenticatedError,
 } from '../../../src/errors.js';
 import { OriginAllowList } from '../../../src/access.js';
+import { globalNonceCache } from '../../../src/auth/dpop-nonce.js';
 import type { AuthProvider } from '../../../src/index.js';
 // -------------------------------------------------------------
 
@@ -227,6 +228,91 @@ describe('access-fetch.js', () => {
         expect(e.message).to.include('unable to fetch kas list');
         expect(e.message).to.include('status: 503');
       }
+    });
+  });
+
+  describe('DPoP-Nonce challenge retry (RFC 9449 §9)', () => {
+    const platformUrl = 'https://platform.example.com';
+    const origin = 'https://platform.example.com';
+    const challengeNonce = 'server-issued-nonce-123';
+
+    // A response carrying real Headers so DPoPNonceCache.extractNonce works.
+    // @ts-expect-error test helper, loose body typing
+    const responseWithNonce = (body, ok, status, nonce?: string) =>
+      Promise.resolve({
+        ok,
+        status,
+        statusText: ok ? 'OK' : 'Unauthorized',
+        headers: new Headers(nonce ? { 'DPoP-Nonce': nonce } : {}),
+        json: () => Promise.resolve(body),
+        text: () => Promise.resolve(typeof body === 'string' ? body : JSON.stringify(body)),
+      } as Response);
+
+    // withCreds that signs each request with whatever nonce is currently cached
+    // for the origin, recording it so the test can confirm the retry saw the
+    // server challenge.
+    const noncesSeen: (string | undefined)[] = [];
+    const dpopAuthProvider: AuthProvider = {
+      withCreds: sinon.stub().callsFake(async (req) => {
+        noncesSeen.push(globalNonceCache.get(origin));
+        return { ...req, headers: { ...req.headers, Authorization: 'DPoP test-token' } };
+      }),
+    } as unknown as AuthProvider;
+
+    beforeEach(() => {
+      noncesSeen.length = 0;
+      globalNonceCache.clear(origin);
+      // @ts-expect-error stub
+      dpopAuthProvider.withCreds.resetHistory();
+    });
+
+    afterEach(() => {
+      globalNonceCache.clear(origin);
+    });
+
+    it('retries once with the server nonce and succeeds', async () => {
+      fetchStub
+        .onCall(0)
+        .returns(responseWithNonce({ error: 'use_dpop_nonce' }, false, 401, challengeNonce));
+      fetchStub.onCall(1).returns(
+        responseWithNonce(
+          { keyAccessServers: [{ uri: 'https://kas1.example.com' }], pagination: {} },
+          true,
+          200
+        )
+      );
+
+      const result = await fetchKeyAccessServers(platformUrl, dpopAuthProvider);
+
+      expect(fetchStub.calledTwice).to.be.true;
+      // First proof had no nonce; the retry proof was minted after caching it.
+      expect(noncesSeen).to.deep.equal([undefined, challengeNonce]);
+      expect(result.origins).to.include('https://kas1.example.com');
+    });
+
+    it('does not retry when the 401 carries no DPoP-Nonce', async () => {
+      fetchStub.returns(responseWithNonce('nope', false, 401));
+
+      try {
+        await fetchKeyAccessServers(platformUrl, dpopAuthProvider);
+        expect.fail('Should have thrown');
+      } catch (e) {
+        expect(e).to.be.instanceOf(ServiceError);
+      }
+      expect(fetchStub.calledOnce).to.be.true;
+    });
+
+    it('does not retry again when the same nonce is returned twice', async () => {
+      // Server keeps rejecting with the same nonce: retry once, then give up.
+      fetchStub.returns(responseWithNonce({ error: 'use_dpop_nonce' }, false, 401, challengeNonce));
+
+      try {
+        await fetchKeyAccessServers(platformUrl, dpopAuthProvider);
+        expect.fail('Should have thrown');
+      } catch (e) {
+        expect(e).to.be.instanceOf(ServiceError);
+      }
+      expect(fetchStub.calledTwice).to.be.true;
     });
   });
 

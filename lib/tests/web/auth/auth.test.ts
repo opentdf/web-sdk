@@ -386,5 +386,38 @@ describe('AccessToken', () => {
         expect(e.message).to.match(/required when DPoP is enabled/);
       }
     });
+
+    it('strips query and fragment from the DPoP proof htu (RFC 9449 §4.2)', async () => {
+      const signingKey = await generateTestSigningKey();
+      const mf = mockFetch({ access_token: 'test_token' });
+      const accessToken = new AccessToken(
+        {
+          exchange: 'refresh',
+          oidcOrigin: 'https://auth.invalid/auth/realms/test/',
+          clientId: 'myid',
+          refreshToken: 'refresh',
+          signingKey,
+          dpopEnabled: true,
+        },
+        DefaultCryptoService,
+        mf
+      );
+      const result = await accessToken.withCreds({
+        url: 'https://platform.invalid/key-access-servers?pagination.offset=0',
+        method: 'GET',
+        headers: {},
+      });
+
+      const decodeJwtPayload = (jwt: string): Record<string, unknown> => {
+        let b64 = jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        while (b64.length % 4 !== 0) {
+          b64 += '=';
+        }
+        return JSON.parse(atob(b64));
+      };
+      const payload = decodeJwtPayload(result.headers.DPoP);
+      expect(payload.htu).to.equal('https://platform.invalid/key-access-servers');
+      expect(payload.htm).to.equal('GET');
+    });
   });
 });

@@ -400,12 +400,17 @@ export class AccessToken {
     }
     const accessToken = (this.currentAccessToken ??= await this.get());
     if (this.config.dpopEnabled && this.signingKey) {
-      const origin = new URL(httpReq.url).origin;
+      const url = new URL(httpReq.url);
+      const origin = url.origin;
+      // RFC 9449 §4.2: the `htu` claim is the request URI without query and
+      // fragment. Resource servers (and the mock) recompute and compare it, so
+      // a proof carrying the query string is rejected.
+      const htu = `${origin}${url.pathname}`;
       const cachedNonce = globalNonceCache.get(origin);
       const dpopToken = await dpopFn(
         this.signingKey,
         this.cryptoService,
-        httpReq.url,
+        htu,
         httpReq.method,
         cachedNonce,
         accessToken
