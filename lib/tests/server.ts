@@ -97,12 +97,7 @@ async function verifyDpopProof(
     };
   }
   const alg = protectedHeader.alg;
-  if (
-    !alg ||
-    alg === 'none' ||
-    alg.startsWith('HS') ||
-    !/^(ES|RS|PS|EdDSA)/.test(alg)
-  ) {
+  if (!alg || alg === 'none' || alg.startsWith('HS') || !/^(ES|RS|PS|EdDSA)/.test(alg)) {
     return {
       ok: false,
       status: 400,
@@ -757,9 +752,7 @@ const kas: RequestListener = async (req, res) => {
         const headers: Record<string, string> = { 'Content-Type': 'application/json' };
         if (check.challengeNonce) headers['DPoP-Nonce'] = check.challengeNonce;
         res.writeHead(status, headers);
-        res.end(
-          JSON.stringify({ error: check.error, error_description: check.error_description })
-        );
+        res.end(JSON.stringify({ error: check.error, error_description: check.error_description }));
         return;
       }
 
@@ -770,9 +763,7 @@ const kas: RequestListener = async (req, res) => {
 
       res.statusCode = 200;
       res.setHeader('Content-Type', 'application/json');
-      res.end(
-        JSON.stringify({ access_token: accessToken, token_type: 'DPoP', expires_in: 3600 })
-      );
+      res.end(JSON.stringify({ access_token: accessToken, token_type: 'DPoP', expires_in: 3600 }));
       return;
     } else {
       console.log(`[DEBUG] invalid path [${url.pathname}]`);
