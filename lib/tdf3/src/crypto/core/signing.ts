@@ -40,10 +40,13 @@ function getSigningAlgorithmParams(algorithm: AsymmetricSigningAlgorithm): {
 }
 
 /**
- * Convert IEEE P1363 signature format (used by WebCrypto ECDSA) to DER format (used by JWT).
+ * Convert IEEE P1363 signature format (used by WebCrypto ECDSA) to DER format.
  * RS256 signatures don't need conversion.
  */
-function ieeeP1363ToDer(signature: Uint8Array, algorithm: AsymmetricSigningAlgorithm): Uint8Array {
+export function ieeeP1363ToDer(
+  signature: Uint8Array,
+  algorithm: AsymmetricSigningAlgorithm
+): Uint8Array {
   if (algorithm === 'RS256') {
     return signature;
   }

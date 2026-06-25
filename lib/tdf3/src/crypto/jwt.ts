@@ -17,6 +17,7 @@ import {
 } from 'jose';
 import jwtClaimsSet from './jose/jwt-claims-set.js';
 import validateCrit from './jose/validate-crit.js';
+import { derToIeeeP1363, ieeeP1363ToDer } from './core/signing.js';
 
 export type JwtHeader = JWTHeaderParameters & { alg: SigningAlgorithm };
 export type JwtPayload = JWTPayload;
@@ -134,11 +135,16 @@ export async function signJwt(
     if (key._brand !== 'PrivateKey') {
       throw new Error(`${header.alg} requires a PrivateKey`);
     }
-    signature = await cryptoService.sign(
-      signingInputBytes,
-      key,
-      header.alg as AsymmetricSigningAlgorithm
-    );
+    const alg = header.alg as AsymmetricSigningAlgorithm;
+    signature = await cryptoService.sign(signingInputBytes, key, alg);
+    // JWS requires raw IEEE P1363 (R || S) for ECDSA per RFC 7518 §3.4, but
+    // cryptoService.sign returns DER. Convert here so the JWT (e.g. the KAS
+    // rewrap request token) is accepted by RFC-conformant verifiers. RSA/EdDSA
+    // signatures are already raw bytes — no conversion. Mirrors the DPoP proof
+    // signer in src/auth/dpop.ts.
+    if (alg.startsWith('ES')) {
+      signature = derToIeeeP1363(signature, alg);
+    }
   }
 
   // Return compact JWT
@@ -232,12 +238,12 @@ export async function verifyJwt(
       typeof key === 'string'
         ? await cryptoService.importPublicKey(key, { usage: 'sign' })
         : (key as PublicKey);
-    valid = await cryptoService.verify(
-      signingInputBytes,
-      signature,
-      publicKey,
-      header.alg as AsymmetricSigningAlgorithm
-    );
+    const alg = header.alg as AsymmetricSigningAlgorithm;
+    // JWS carries ECDSA signatures as raw IEEE P1363 (RFC 7518 §3.4), but
+    // cryptoService.verify expects DER. Convert here so we accept RFC-conformant
+    // ES* JWTs (matches the signJwt signer above). RSA is unchanged.
+    const verifySignature = alg.startsWith('ES') ? ieeeP1363ToDer(signature, alg) : signature;
+    valid = await cryptoService.verify(signingInputBytes, verifySignature, publicKey, alg);
   }
 
   if (!valid) {
