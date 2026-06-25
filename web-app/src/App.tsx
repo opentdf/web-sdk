@@ -82,6 +82,51 @@ type RandomInputSource = {
 
 type InputSource = FileInputSource | UrlInputSource | RandomInputSource;
 type SinkType = 'file' | 'fsapi' | 'none';
+type DecryptReadTuning = {
+  segmentBatchSize?: number;
+  maxConcurrentSegmentBatches?: number;
+};
+const MAX_SEGMENT_BATCH_SIZE = 500;
+const MAX_CONCURRENT_SEGMENT_BATCHES = 3;
+
+function readPositiveIntSearchParam(params: URLSearchParams, name: string): number | undefined {
+  const raw = params.get(name);
+  if (!raw) {
+    return undefined;
+  }
+  if (!/^\d+$/.test(raw)) {
+    console.warn(`Ignoring invalid ${name} query param: ${raw}`);
+    return undefined;
+  }
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    console.warn(`Ignoring invalid ${name} query param: ${raw}`);
+    return undefined;
+  }
+  return parsed;
+}
+
+function getDecryptReadTuningFromLocation(): DecryptReadTuning {
+  const params = new URLSearchParams(window.location.search);
+  const parsedSegmentBatchSize = readPositiveIntSearchParam(params, 'segmentBatchSize');
+  const parsedMaxConcurrentSegmentBatches = readPositiveIntSearchParam(
+    params,
+    'maxConcurrentSegmentBatches'
+  );
+  const segmentBatchSize =
+    parsedSegmentBatchSize !== undefined
+      ? Math.min(parsedSegmentBatchSize, MAX_SEGMENT_BATCH_SIZE)
+      : undefined;
+  const maxConcurrentSegmentBatches =
+    parsedMaxConcurrentSegmentBatches !== undefined
+      ? Math.min(parsedMaxConcurrentSegmentBatches, MAX_CONCURRENT_SEGMENT_BATCHES)
+      : undefined;
+
+  return {
+    ...(segmentBatchSize !== undefined && { segmentBatchSize }),
+    ...(maxConcurrentSegmentBatches !== undefined && { maxConcurrentSegmentBatches }),
+  };
+}
 
 function fileNameFor(inputSource: InputSource) {
   if (!inputSource) {
@@ -409,10 +454,15 @@ function App() {
     if (sinkType === 'fsapi') {
       f = await getNewFileHandle(decryptedFileExtension(fileNameFor(inputSource)), dfn);
     }
+    const decryptReadTuning = getDecryptReadTuningFromLocation();
+    if (Object.keys(decryptReadTuning).length > 0) {
+      console.info(`Using decrypt read tuning ${JSON.stringify(decryptReadTuning)}`);
+    }
     const client = new OpenTDF({
       authProvider: oidcClient,
       defaultReadOptions: {
         allowedKASEndpoints: [config.kas],
+        ...decryptReadTuning,
       },
       dpopKeys: oidcClient.getSigningKey(),
     });

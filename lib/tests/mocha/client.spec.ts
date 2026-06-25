@@ -190,7 +190,6 @@ describe('client wrapper tests', function () {
           fqn: 'http://example.com',
           grants: [],
           kasKeys: [],
-          rootCerts: [],
         },
       },
       value: 'one',
@@ -229,7 +228,6 @@ describe('client wrapper tests', function () {
         fqn: 'http://example.com',
         grants: [],
         kasKeys: [],
-        rootCerts: [],
       },
     };
 

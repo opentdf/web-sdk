@@ -1,22 +1,20 @@
 import { NetworkError } from '../errors.js';
-import { AuthProvider } from '../auth/auth.js';
+import { type AuthConfig, resolveInterceptors } from '../auth/interceptors.js';
 import { extractRpcErrorMessage, getPlatformUrlFromKasEndpoint } from '../utils.js';
 import { PlatformClient } from '../platform.js';
 import { Value } from './attributes.js';
 import { GetAttributeValuesByFqnsResponse } from '../platform/policy/attributes/attributes_pb.js';
-import { GetNamespaceResponse } from '../platform/policy/namespaces/namespaces_pb.js';
-import { Certificate } from '../platform/policy/objects_pb.js';
 import { create } from '@bufbuild/protobuf';
 import { ValueSchema } from '../platform/policy/objects_pb.js';
 
 // TODO KAS: go over web-sdk and remove policyEndpoint that is only defined to be used here
 export async function attributeFQNsAsValues(
   platformUrl: string,
-  authProvider: AuthProvider,
+  auth: AuthConfig,
   ...fqns: string[]
 ): Promise<Value[]> {
   platformUrl = getPlatformUrlFromKasEndpoint(platformUrl);
-  const platform = new PlatformClient({ authProvider, platformUrl });
+  const platform = new PlatformClient({ interceptors: resolveInterceptors(auth), platformUrl });
 
   let response: GetAttributeValuesByFqnsResponse;
   try {
@@ -47,39 +45,4 @@ export async function attributeFQNsAsValues(
     values.push(value);
   }
   return values;
-}
-
-// Get root certificates from a namespace
-export async function getRootCertsFromNamespace(
-  platformUrl: string,
-  authProvider?: AuthProvider,
-  namespaceId?: string,
-  fqn?: string
-): Promise<Certificate[]> {
-  platformUrl = getPlatformUrlFromKasEndpoint(platformUrl);
-
-  // Ensure at least one identifier is provided to avoid guaranteed API failure
-  if (!namespaceId && !fqn) {
-    throw new Error('Either namespaceId or fqn must be provided');
-  }
-
-  const platform = new PlatformClient({ authProvider, platformUrl });
-
-  let response: GetNamespaceResponse;
-  try {
-    response = await platform.v1.namespace.getNamespace({
-      id: '', // deprecated field, but required
-      identifier: namespaceId
-        ? { case: 'namespaceId', value: namespaceId }
-        : { case: 'fqn', value: fqn! },
-    });
-  } catch (e) {
-    throw new NetworkError(`[${platformUrl}] [GetNamespace] ${extractRpcErrorMessage(e)}`);
-  }
-
-  if (!response.namespace) {
-    throw new NetworkError(`[${platformUrl}] [GetNamespace] Namespace not found`);
-  }
-
-  return response.namespace.rootCerts || [];
 }

@@ -1,4 +1,4 @@
-import { type AuthProvider } from './auth/auth.js';
+import { type AuthConfig, resolveAuthConfig } from './auth/interceptors.js';
 import { RewrapResponse } from './platform/kas/kas_pb.js';
 import { getPlatformUrlFromKasEndpoint, validateSecureUrl } from './utils.js';
 import { base64 } from './encodings/index.js';
@@ -37,19 +37,28 @@ export type RewrapRequest = {
 export async function fetchWrappedKey(
   url: string,
   signedRequestToken: string,
-  authProvider: AuthProvider,
+  auth: AuthConfig,
   fulfillableObligationFQNs: string[]
 ): Promise<RewrapResponse> {
   const platformUrl = getPlatformUrlFromKasEndpoint(url);
+  const { interceptors, authProvider } = resolveAuthConfig(auth);
+
+  const rpcCall = () =>
+    fetchWrappedKeysRpc(
+      platformUrl,
+      signedRequestToken,
+      { interceptors },
+      rewrapAdditionalContextHeader(fulfillableObligationFQNs)
+    );
+
+  // When no AuthProvider is available, skip the legacy fallback so the real
+  // RPC error propagates instead of being masked by tryPromisesUntilFirstSuccess.
+  if (!authProvider) {
+    return await rpcCall();
+  }
 
   return await tryPromisesUntilFirstSuccess(
-    () =>
-      fetchWrappedKeysRpc(
-        platformUrl,
-        signedRequestToken,
-        authProvider,
-        rewrapAdditionalContextHeader(fulfillableObligationFQNs)
-      ),
+    rpcCall,
     // We intentionally do not provide the rewrap additional context to legacy requests destined for older platforms.
     // Platforms new enough to have knowledge of obligations will be handling RPC requests successfully.
     () =>
@@ -164,11 +173,18 @@ export type KasPublicKeyInfo = {
  */
 export async function fetchKeyAccessServers(
   platformUrl: string,
-  authProvider: AuthProvider
+  auth: AuthConfig
 ): Promise<OriginAllowList> {
-  return await tryPromisesUntilFirstSuccess(
-    () => fetchKeyAccessServersRpc(platformUrl, authProvider),
-    () => fetchKeyAccessServersLegacy(platformUrl, authProvider)
+  const { interceptors, authProvider } = resolveAuthConfig(auth);
+
+  const rpcCall = () => fetchKeyAccessServersRpc(platformUrl, { interceptors });
+
+  if (!authProvider) {
+    return await rpcCall();
+  }
+
+  return await tryPromisesUntilFirstSuccess(rpcCall, () =>
+    fetchKeyAccessServersLegacy(platformUrl, authProvider)
   );
 }
 

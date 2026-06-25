@@ -2,13 +2,13 @@
 // @generated from file policy/obligations/obligations.proto (package policy.obligations, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1";
 import type { IdFqnIdentifier, IdNameIdentifier, MetadataMutable, MetadataUpdateEnum } from "../../common/common_pb.js";
 import { file_common_common } from "../../common/common_pb.js";
 import type { Obligation, ObligationTrigger, ObligationValue, RequestContext } from "../objects_pb.js";
 import { file_policy_objects } from "../objects_pb.js";
-import type { PageRequest, PageResponse } from "../selectors_pb.js";
+import type { PageRequest, PageResponse, Search, SortDirection } from "../selectors_pb.js";
 import { file_policy_selectors } from "../selectors_pb.js";
 import { file_buf_validate_validate } from "../../buf/validate/validate_pb.js";
 import type { Message } from "@bufbuild/protobuf";
@@ -17,11 +17,31 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file policy/obligations/obligations.proto.
  */
 export const file_policy_obligations_obligations: GenFile = /*@__PURE__*/
-  fileDesc("CiRwb2xpY3kvb2JsaWdhdGlvbnMvb2JsaWdhdGlvbnMucHJvdG8SEnBvbGljeS5vYmxpZ2F0aW9ucyJXChRHZXRPYmxpZ2F0aW9uUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQESFwoDZnFuGAIgASgJQgq6SAdyBRABiAEBOhC6SA0iCwoCaWQKA2ZxbhABIqoBChNWYWx1ZVRyaWdnZXJSZXF1ZXN0EjAKBmFjdGlvbhgBIAEoCzIYLmNvbW1vbi5JZE5hbWVJZGVudGlmaWVyQga6SAPIAQESOAoPYXR0cmlidXRlX3ZhbHVlGAIgASgLMhcuY29tbW9uLklkRnFuSWRlbnRpZmllckIGukgDyAEBEicKB2NvbnRleHQYAyABKAsyFi5wb2xpY3kuUmVxdWVzdENvbnRleHQiPwoVR2V0T2JsaWdhdGlvblJlc3BvbnNlEiYKCm9ibGlnYXRpb24YASABKAsyEi5wb2xpY3kuT2JsaWdhdGlvbiJDChtHZXRPYmxpZ2F0aW9uc0J5RlFOc1JlcXVlc3QSJAoEZnFucxgBIAMoCUIWukgTkgEQCAEQ+gEYASIHcgUQAYgBASLPAQocR2V0T2JsaWdhdGlvbnNCeUZRTnNSZXNwb25zZRJiChJmcW5fb2JsaWdhdGlvbl9tYXAYASADKAsyRi5wb2xpY3kub2JsaWdhdGlvbnMuR2V0T2JsaWdhdGlvbnNCeUZRTnNSZXNwb25zZS5GcW5PYmxpZ2F0aW9uTWFwRW50cnkaSwoVRnFuT2JsaWdhdGlvbk1hcEVudHJ5EgsKA2tleRgBIAEoCRIhCgV2YWx1ZRgCIAEoCzISLnBvbGljeS5PYmxpZ2F0aW9uOgI4ASKhBAoXQ3JlYXRlT2JsaWdhdGlvblJlcXVlc3QSHgoMbmFtZXNwYWNlX2lkGAEgASgJQgi6SAVyA7ABARIhCg1uYW1lc3BhY2VfZnFuGAIgASgJQgq6SAdyBRABiAEBEqECCgRuYW1lGAMgASgJQpICukiOAroBggIKFm9ibGlnYXRpb25fbmFtZV9mb3JtYXQSqgFPYmxpZ2F0aW9uIG5hbWUgbXVzdCBiZSBhbiBhbHBoYW51bWVyaWMgc3RyaW5nLCBhbGxvd2luZyBoeXBoZW5zIGFuZCB1bmRlcnNjb3JlcyBidXQgbm90IGFzIHRoZSBmaXJzdCBvciBsYXN0IGNoYXJhY3Rlci4gVGhlIHN0b3JlZCBuYW1lIHdpbGwgYmUgbm9ybWFsaXplZCB0byBsb3dlciBjYXNlLho7dGhpcy5tYXRjaGVzKCdeW2EtekEtWjAtOV0oPzpbYS16QS1aMC05Xy1dKlthLXpBLVowLTldKT8kJynIAQFyAxj9ARJOCgZ2YWx1ZXMYBCADKAlCPrpIO5IBOAgAGAEiMnIwGP0BMiteW2EtekEtWjAtOV0oPzpbYS16QS1aMC05Xy1dKlthLXpBLVowLTldKT8kEikKCG1ldGFkYXRhGGQgASgLMhcuY29tbW9uLk1ldGFkYXRhTXV0YWJsZTokukghIh8KDG5hbWVzcGFjZV9pZAoNbmFtZXNwYWNlX2ZxbhABIkIKGENyZWF0ZU9ibGlnYXRpb25SZXNwb25zZRImCgpvYmxpZ2F0aW9uGAEgASgLMhIucG9saWN5Lk9ibGlnYXRpb24i1AMKF1VwZGF0ZU9ibGlnYXRpb25SZXF1ZXN0EhQKAmlkGAEgASgJQgi6SAVyA7ABARK5AgoEbmFtZRgCIAEoCUKqArpIpgK6AZoCChZvYmxpZ2F0aW9uX25hbWVfZm9ybWF0EqoBT2JsaWdhdGlvbiBuYW1lIG11c3QgYmUgYW4gYWxwaGFudW1lcmljIHN0cmluZywgYWxsb3dpbmcgaHlwaGVucyBhbmQgdW5kZXJzY29yZXMgYnV0IG5vdCBhcyB0aGUgZmlyc3Qgb3IgbGFzdCBjaGFyYWN0ZXIuIFRoZSBzdG9yZWQgbmFtZSB3aWxsIGJlIG5vcm1hbGl6ZWQgdG8gbG93ZXIgY2FzZS4aU3NpemUodGhpcykgPiAwID8gdGhpcy5tYXRjaGVzKCdeW2EtekEtWjAtOV0oPzpbYS16QS1aMC05Xy1dKlthLXpBLVowLTldKT8kJykgOiB0cnVlyAEAcgMY/QESKQoIbWV0YWRhdGEYZCABKAsyFy5jb21tb24uTWV0YWRhdGFNdXRhYmxlEjwKGG1ldGFkYXRhX3VwZGF0ZV9iZWhhdmlvchhlIAEoDjIaLmNvbW1vbi5NZXRhZGF0YVVwZGF0ZUVudW0iQgoYVXBkYXRlT2JsaWdhdGlvblJlc3BvbnNlEiYKCm9ibGlnYXRpb24YASABKAsyEi5wb2xpY3kuT2JsaWdhdGlvbiJaChdEZWxldGVPYmxpZ2F0aW9uUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQESFwoDZnFuGAIgASgJQgq6SAdyBRABiAEBOhC6SA0iCwoCaWQKA2ZxbhABIkIKGERlbGV0ZU9ibGlnYXRpb25SZXNwb25zZRImCgpvYmxpZ2F0aW9uGAEgASgLMhIucG9saWN5Lk9ibGlnYXRpb24iqgEKFkxpc3RPYmxpZ2F0aW9uc1JlcXVlc3QSHgoMbmFtZXNwYWNlX2lkGAEgASgJQgi6SAVyA7ABARIhCg1uYW1lc3BhY2VfZnFuGAIgASgJQgq6SAdyBRABiAEBEicKCnBhZ2luYXRpb24YCiABKAsyEy5wb2xpY3kuUGFnZVJlcXVlc3Q6JLpIISIfCgxuYW1lc3BhY2VfaWQKDW5hbWVzcGFjZV9mcW4QACJsChdMaXN0T2JsaWdhdGlvbnNSZXNwb25zZRInCgtvYmxpZ2F0aW9ucxgBIAMoCzISLnBvbGljeS5PYmxpZ2F0aW9uEigKCnBhZ2luYXRpb24YCiABKAsyFC5wb2xpY3kuUGFnZVJlc3BvbnNlIlwKGUdldE9ibGlnYXRpb25WYWx1ZVJlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBEhcKA2ZxbhgCIAEoCUIKukgHcgUQAYgBAToQukgNIgsKAmlkCgNmcW4QASJEChpHZXRPYmxpZ2F0aW9uVmFsdWVSZXNwb25zZRImCgV2YWx1ZRgBIAEoCzIXLnBvbGljeS5PYmxpZ2F0aW9uVmFsdWUiSAogR2V0T2JsaWdhdGlvblZhbHVlc0J5RlFOc1JlcXVlc3QSJAoEZnFucxgBIAMoCUIWukgTkgEQCAEQ+gEYASIHcgUQAYgBASLPAQohR2V0T2JsaWdhdGlvblZhbHVlc0J5RlFOc1Jlc3BvbnNlEl0KDWZxbl92YWx1ZV9tYXAYASADKAsyRi5wb2xpY3kub2JsaWdhdGlvbnMuR2V0T2JsaWdhdGlvblZhbHVlc0J5RlFOc1Jlc3BvbnNlLkZxblZhbHVlTWFwRW50cnkaSwoQRnFuVmFsdWVNYXBFbnRyeRILCgNrZXkYASABKAkSJgoFdmFsdWUYAiABKAsyFy5wb2xpY3kuT2JsaWdhdGlvblZhbHVlOgI4ASKZBAocQ3JlYXRlT2JsaWdhdGlvblZhbHVlUmVxdWVzdBIfCg1vYmxpZ2F0aW9uX2lkGAEgASgJQgi6SAVyA7ABARIiCg5vYmxpZ2F0aW9uX2ZxbhgCIAEoCUIKukgHcgUQAYgBARKlAgoFdmFsdWUYAyABKAlClQK6SJECugGFAgoXb2JsaWdhdGlvbl92YWx1ZV9mb3JtYXQSrAFPYmxpZ2F0aW9uIHZhbHVlIG11c3QgYmUgYW4gYWxwaGFudW1lcmljIHN0cmluZywgYWxsb3dpbmcgaHlwaGVucyBhbmQgdW5kZXJzY29yZXMgYnV0IG5vdCBhcyB0aGUgZmlyc3Qgb3IgbGFzdCBjaGFyYWN0ZXIuIFRoZSBzdG9yZWQgdmFsdWUgd2lsbCBiZSBub3JtYWxpemVkIHRvIGxvd2VyIGNhc2UuGjt0aGlzLm1hdGNoZXMoJ15bYS16QS1aMC05XSg/OlthLXpBLVowLTlfLV0qW2EtekEtWjAtOV0pPyQnKcgBAXIDGP0BEjkKCHRyaWdnZXJzGAQgAygLMicucG9saWN5Lm9ibGlnYXRpb25zLlZhbHVlVHJpZ2dlclJlcXVlc3QSKQoIbWV0YWRhdGEYZCABKAsyFy5jb21tb24uTWV0YWRhdGFNdXRhYmxlOia6SCMiIQoNb2JsaWdhdGlvbl9pZAoOb2JsaWdhdGlvbl9mcW4QASJHCh1DcmVhdGVPYmxpZ2F0aW9uVmFsdWVSZXNwb25zZRImCgV2YWx1ZRgBIAEoCzIXLnBvbGljeS5PYmxpZ2F0aW9uVmFsdWUimAQKHFVwZGF0ZU9ibGlnYXRpb25WYWx1ZVJlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBEr0CCgV2YWx1ZRgCIAEoCUKtArpIqQK6AZ0CChdvYmxpZ2F0aW9uX3ZhbHVlX2Zvcm1hdBKsAU9ibGlnYXRpb24gdmFsdWUgbXVzdCBiZSBhbiBhbHBoYW51bWVyaWMgc3RyaW5nLCBhbGxvd2luZyBoeXBoZW5zIGFuZCB1bmRlcnNjb3JlcyBidXQgbm90IGFzIHRoZSBmaXJzdCBvciBsYXN0IGNoYXJhY3Rlci4gVGhlIHN0b3JlZCB2YWx1ZSB3aWxsIGJlIG5vcm1hbGl6ZWQgdG8gbG93ZXIgY2FzZS4aU3NpemUodGhpcykgPiAwID8gdGhpcy5tYXRjaGVzKCdeW2EtekEtWjAtOV0oPzpbYS16QS1aMC05Xy1dKlthLXpBLVowLTldKT8kJykgOiB0cnVlyAEAcgMY/QESOQoIdHJpZ2dlcnMYAyADKAsyJy5wb2xpY3kub2JsaWdhdGlvbnMuVmFsdWVUcmlnZ2VyUmVxdWVzdBIpCghtZXRhZGF0YRhkIAEoCzIXLmNvbW1vbi5NZXRhZGF0YU11dGFibGUSPAoYbWV0YWRhdGFfdXBkYXRlX2JlaGF2aW9yGGUgASgOMhouY29tbW9uLk1ldGFkYXRhVXBkYXRlRW51bSJHCh1VcGRhdGVPYmxpZ2F0aW9uVmFsdWVSZXNwb25zZRImCgV2YWx1ZRgBIAEoCzIXLnBvbGljeS5PYmxpZ2F0aW9uVmFsdWUiXwocRGVsZXRlT2JsaWdhdGlvblZhbHVlUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQESFwoDZnFuGAIgASgJQgq6SAdyBRABiAEBOhC6SA0iCwoCaWQKA2ZxbhABIkcKHURlbGV0ZU9ibGlnYXRpb25WYWx1ZVJlc3BvbnNlEiYKBXZhbHVlGAEgASgLMhcucG9saWN5Lk9ibGlnYXRpb25WYWx1ZSKYAgobQWRkT2JsaWdhdGlvblRyaWdnZXJSZXF1ZXN0EjkKEG9ibGlnYXRpb25fdmFsdWUYASABKAsyFy5jb21tb24uSWRGcW5JZGVudGlmaWVyQga6SAPIAQESMAoGYWN0aW9uGAIgASgLMhguY29tbW9uLklkTmFtZUlkZW50aWZpZXJCBrpIA8gBARI4Cg9hdHRyaWJ1dGVfdmFsdWUYAyABKAsyFy5jb21tb24uSWRGcW5JZGVudGlmaWVyQga6SAPIAQESJwoHY29udGV4dBgEIAEoCzIWLnBvbGljeS5SZXF1ZXN0Q29udGV4dBIpCghtZXRhZGF0YRhkIAEoCzIXLmNvbW1vbi5NZXRhZGF0YU11dGFibGUiSgocQWRkT2JsaWdhdGlvblRyaWdnZXJSZXNwb25zZRIqCgd0cmlnZ2VyGAEgASgLMhkucG9saWN5Lk9ibGlnYXRpb25UcmlnZ2VyIjYKHlJlbW92ZU9ibGlnYXRpb25UcmlnZ2VyUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQEiTQofUmVtb3ZlT2JsaWdhdGlvblRyaWdnZXJSZXNwb25zZRIqCgd0cmlnZ2VyGAEgASgLMhkucG9saWN5Lk9ibGlnYXRpb25UcmlnZ2VyMsYMCgdTZXJ2aWNlEm8KD0xpc3RPYmxpZ2F0aW9ucxIqLnBvbGljeS5vYmxpZ2F0aW9ucy5MaXN0T2JsaWdhdGlvbnNSZXF1ZXN0GisucG9saWN5Lm9ibGlnYXRpb25zLkxpc3RPYmxpZ2F0aW9uc1Jlc3BvbnNlIgOQAgESaQoNR2V0T2JsaWdhdGlvbhIoLnBvbGljeS5vYmxpZ2F0aW9ucy5HZXRPYmxpZ2F0aW9uUmVxdWVzdBopLnBvbGljeS5vYmxpZ2F0aW9ucy5HZXRPYmxpZ2F0aW9uUmVzcG9uc2UiA5ACARJ+ChRHZXRPYmxpZ2F0aW9uc0J5RlFOcxIvLnBvbGljeS5vYmxpZ2F0aW9ucy5HZXRPYmxpZ2F0aW9uc0J5RlFOc1JlcXVlc3QaMC5wb2xpY3kub2JsaWdhdGlvbnMuR2V0T2JsaWdhdGlvbnNCeUZRTnNSZXNwb25zZSIDkAIBEm8KEENyZWF0ZU9ibGlnYXRpb24SKy5wb2xpY3kub2JsaWdhdGlvbnMuQ3JlYXRlT2JsaWdhdGlvblJlcXVlc3QaLC5wb2xpY3kub2JsaWdhdGlvbnMuQ3JlYXRlT2JsaWdhdGlvblJlc3BvbnNlIgASbwoQVXBkYXRlT2JsaWdhdGlvbhIrLnBvbGljeS5vYmxpZ2F0aW9ucy5VcGRhdGVPYmxpZ2F0aW9uUmVxdWVzdBosLnBvbGljeS5vYmxpZ2F0aW9ucy5VcGRhdGVPYmxpZ2F0aW9uUmVzcG9uc2UiABJvChBEZWxldGVPYmxpZ2F0aW9uEisucG9saWN5Lm9ibGlnYXRpb25zLkRlbGV0ZU9ibGlnYXRpb25SZXF1ZXN0GiwucG9saWN5Lm9ibGlnYXRpb25zLkRlbGV0ZU9ibGlnYXRpb25SZXNwb25zZSIAEngKEkdldE9ibGlnYXRpb25WYWx1ZRItLnBvbGljeS5vYmxpZ2F0aW9ucy5HZXRPYmxpZ2F0aW9uVmFsdWVSZXF1ZXN0Gi4ucG9saWN5Lm9ibGlnYXRpb25zLkdldE9ibGlnYXRpb25WYWx1ZVJlc3BvbnNlIgOQAgESjQEKGUdldE9ibGlnYXRpb25WYWx1ZXNCeUZRTnMSNC5wb2xpY3kub2JsaWdhdGlvbnMuR2V0T2JsaWdhdGlvblZhbHVlc0J5RlFOc1JlcXVlc3QaNS5wb2xpY3kub2JsaWdhdGlvbnMuR2V0T2JsaWdhdGlvblZhbHVlc0J5RlFOc1Jlc3BvbnNlIgOQAgESfgoVQ3JlYXRlT2JsaWdhdGlvblZhbHVlEjAucG9saWN5Lm9ibGlnYXRpb25zLkNyZWF0ZU9ibGlnYXRpb25WYWx1ZVJlcXVlc3QaMS5wb2xpY3kub2JsaWdhdGlvbnMuQ3JlYXRlT2JsaWdhdGlvblZhbHVlUmVzcG9uc2UiABJ+ChVVcGRhdGVPYmxpZ2F0aW9uVmFsdWUSMC5wb2xpY3kub2JsaWdhdGlvbnMuVXBkYXRlT2JsaWdhdGlvblZhbHVlUmVxdWVzdBoxLnBvbGljeS5vYmxpZ2F0aW9ucy5VcGRhdGVPYmxpZ2F0aW9uVmFsdWVSZXNwb25zZSIAEn4KFURlbGV0ZU9ibGlnYXRpb25WYWx1ZRIwLnBvbGljeS5vYmxpZ2F0aW9ucy5EZWxldGVPYmxpZ2F0aW9uVmFsdWVSZXF1ZXN0GjEucG9saWN5Lm9ibGlnYXRpb25zLkRlbGV0ZU9ibGlnYXRpb25WYWx1ZVJlc3BvbnNlIgASewoUQWRkT2JsaWdhdGlvblRyaWdnZXISLy5wb2xpY3kub2JsaWdhdGlvbnMuQWRkT2JsaWdhdGlvblRyaWdnZXJSZXF1ZXN0GjAucG9saWN5Lm9ibGlnYXRpb25zLkFkZE9ibGlnYXRpb25UcmlnZ2VyUmVzcG9uc2UiABKEAQoXUmVtb3ZlT2JsaWdhdGlvblRyaWdnZXISMi5wb2xpY3kub2JsaWdhdGlvbnMuUmVtb3ZlT2JsaWdhdGlvblRyaWdnZXJSZXF1ZXN0GjMucG9saWN5Lm9ibGlnYXRpb25zLlJlbW92ZU9ibGlnYXRpb25UcmlnZ2VyUmVzcG9uc2UiAGIGcHJvdG8z", [file_common_common, file_policy_objects, file_policy_selectors, file_buf_validate_validate]);
+  fileDesc("CiRwb2xpY3kvb2JsaWdhdGlvbnMvb2JsaWdhdGlvbnMucHJvdG8SEnBvbGljeS5vYmxpZ2F0aW9ucyKHAQoPT2JsaWdhdGlvbnNTb3J0EkAKBWZpZWxkGAEgASgOMicucG9saWN5Lm9ibGlnYXRpb25zLlNvcnRPYmxpZ2F0aW9uc1R5cGVCCLpIBYIBAhABEjIKCWRpcmVjdGlvbhgCIAEoDjIVLnBvbGljeS5Tb3J0RGlyZWN0aW9uQgi6SAWCAQIQASJXChRHZXRPYmxpZ2F0aW9uUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQESFwoDZnFuGAIgASgJQgq6SAdyBRABiAEBOhC6SA0iCwoCaWQKA2ZxbhABIqoBChNWYWx1ZVRyaWdnZXJSZXF1ZXN0EjAKBmFjdGlvbhgBIAEoCzIYLmNvbW1vbi5JZE5hbWVJZGVudGlmaWVyQga6SAPIAQESOAoPYXR0cmlidXRlX3ZhbHVlGAIgASgLMhcuY29tbW9uLklkRnFuSWRlbnRpZmllckIGukgDyAEBEicKB2NvbnRleHQYAyABKAsyFi5wb2xpY3kuUmVxdWVzdENvbnRleHQiPwoVR2V0T2JsaWdhdGlvblJlc3BvbnNlEiYKCm9ibGlnYXRpb24YASABKAsyEi5wb2xpY3kuT2JsaWdhdGlvbiJDChtHZXRPYmxpZ2F0aW9uc0J5RlFOc1JlcXVlc3QSJAoEZnFucxgBIAMoCUIWukgTkgEQCAEQ+gEYASIHcgUQAYgBASLPAQocR2V0T2JsaWdhdGlvbnNCeUZRTnNSZXNwb25zZRJiChJmcW5fb2JsaWdhdGlvbl9tYXAYASADKAsyRi5wb2xpY3kub2JsaWdhdGlvbnMuR2V0T2JsaWdhdGlvbnNCeUZRTnNSZXNwb25zZS5GcW5PYmxpZ2F0aW9uTWFwRW50cnkaSwoVRnFuT2JsaWdhdGlvbk1hcEVudHJ5EgsKA2tleRgBIAEoCRIhCgV2YWx1ZRgCIAEoCzISLnBvbGljeS5PYmxpZ2F0aW9uOgI4ASKhBAoXQ3JlYXRlT2JsaWdhdGlvblJlcXVlc3QSHgoMbmFtZXNwYWNlX2lkGAEgASgJQgi6SAVyA7ABARIhCg1uYW1lc3BhY2VfZnFuGAIgASgJQgq6SAdyBRABiAEBEqECCgRuYW1lGAMgASgJQpICukiOAroBggIKFm9ibGlnYXRpb25fbmFtZV9mb3JtYXQSqgFPYmxpZ2F0aW9uIG5hbWUgbXVzdCBiZSBhbiBhbHBoYW51bWVyaWMgc3RyaW5nLCBhbGxvd2luZyBoeXBoZW5zIGFuZCB1bmRlcnNjb3JlcyBidXQgbm90IGFzIHRoZSBmaXJzdCBvciBsYXN0IGNoYXJhY3Rlci4gVGhlIHN0b3JlZCBuYW1lIHdpbGwgYmUgbm9ybWFsaXplZCB0byBsb3dlciBjYXNlLho7dGhpcy5tYXRjaGVzKCdeW2EtekEtWjAtOV0oPzpbYS16QS1aMC05Xy1dKlthLXpBLVowLTldKT8kJynIAQFyAxj9ARJOCgZ2YWx1ZXMYBCADKAlCPrpIO5IBOAgAGAEiMnIwGP0BMiteW2EtekEtWjAtOV0oPzpbYS16QS1aMC05Xy1dKlthLXpBLVowLTldKT8kEikKCG1ldGFkYXRhGGQgASgLMhcuY29tbW9uLk1ldGFkYXRhTXV0YWJsZTokukghIh8KDG5hbWVzcGFjZV9pZAoNbmFtZXNwYWNlX2ZxbhABIkIKGENyZWF0ZU9ibGlnYXRpb25SZXNwb25zZRImCgpvYmxpZ2F0aW9uGAEgASgLMhIucG9saWN5Lk9ibGlnYXRpb24i1AMKF1VwZGF0ZU9ibGlnYXRpb25SZXF1ZXN0EhQKAmlkGAEgASgJQgi6SAVyA7ABARK5AgoEbmFtZRgCIAEoCUKqArpIpgK6AZoCChZvYmxpZ2F0aW9uX25hbWVfZm9ybWF0EqoBT2JsaWdhdGlvbiBuYW1lIG11c3QgYmUgYW4gYWxwaGFudW1lcmljIHN0cmluZywgYWxsb3dpbmcgaHlwaGVucyBhbmQgdW5kZXJzY29yZXMgYnV0IG5vdCBhcyB0aGUgZmlyc3Qgb3IgbGFzdCBjaGFyYWN0ZXIuIFRoZSBzdG9yZWQgbmFtZSB3aWxsIGJlIG5vcm1hbGl6ZWQgdG8gbG93ZXIgY2FzZS4aU3NpemUodGhpcykgPiAwID8gdGhpcy5tYXRjaGVzKCdeW2EtekEtWjAtOV0oPzpbYS16QS1aMC05Xy1dKlthLXpBLVowLTldKT8kJykgOiB0cnVlyAEAcgMY/QESKQoIbWV0YWRhdGEYZCABKAsyFy5jb21tb24uTWV0YWRhdGFNdXRhYmxlEjwKGG1ldGFkYXRhX3VwZGF0ZV9iZWhhdmlvchhlIAEoDjIaLmNvbW1vbi5NZXRhZGF0YVVwZGF0ZUVudW0iQgoYVXBkYXRlT2JsaWdhdGlvblJlc3BvbnNlEiYKCm9ibGlnYXRpb24YASABKAsyEi5wb2xpY3kuT2JsaWdhdGlvbiJaChdEZWxldGVPYmxpZ2F0aW9uUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQESFwoDZnFuGAIgASgJQgq6SAdyBRABiAEBOhC6SA0iCwoCaWQKA2ZxbhABIkIKGERlbGV0ZU9ibGlnYXRpb25SZXNwb25zZRImCgpvYmxpZ2F0aW9uGAEgASgLMhIucG9saWN5Lk9ibGlnYXRpb24ihwIKFkxpc3RPYmxpZ2F0aW9uc1JlcXVlc3QSHgoMbmFtZXNwYWNlX2lkGAEgASgJQgi6SAVyA7ABARIhCg1uYW1lc3BhY2VfZnFuGAIgASgJQgq6SAdyBRABiAEBEicKCnBhZ2luYXRpb24YCiABKAsyEy5wb2xpY3kuUGFnZVJlcXVlc3QSOwoEc29ydBgLIAMoCzIjLnBvbGljeS5vYmxpZ2F0aW9ucy5PYmxpZ2F0aW9uc1NvcnRCCLpIBZIBAhABEh4KBnNlYXJjaBgMIAEoCzIOLnBvbGljeS5TZWFyY2g6JLpIISIfCgxuYW1lc3BhY2VfaWQKDW5hbWVzcGFjZV9mcW4QACJsChdMaXN0T2JsaWdhdGlvbnNSZXNwb25zZRInCgtvYmxpZ2F0aW9ucxgBIAMoCzISLnBvbGljeS5PYmxpZ2F0aW9uEigKCnBhZ2luYXRpb24YCiABKAsyFC5wb2xpY3kuUGFnZVJlc3BvbnNlIlwKGUdldE9ibGlnYXRpb25WYWx1ZVJlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBEhcKA2ZxbhgCIAEoCUIKukgHcgUQAYgBAToQukgNIgsKAmlkCgNmcW4QASJEChpHZXRPYmxpZ2F0aW9uVmFsdWVSZXNwb25zZRImCgV2YWx1ZRgBIAEoCzIXLnBvbGljeS5PYmxpZ2F0aW9uVmFsdWUiSAogR2V0T2JsaWdhdGlvblZhbHVlc0J5RlFOc1JlcXVlc3QSJAoEZnFucxgBIAMoCUIWukgTkgEQCAEQ+gEYASIHcgUQAYgBASLPAQohR2V0T2JsaWdhdGlvblZhbHVlc0J5RlFOc1Jlc3BvbnNlEl0KDWZxbl92YWx1ZV9tYXAYASADKAsyRi5wb2xpY3kub2JsaWdhdGlvbnMuR2V0T2JsaWdhdGlvblZhbHVlc0J5RlFOc1Jlc3BvbnNlLkZxblZhbHVlTWFwRW50cnkaSwoQRnFuVmFsdWVNYXBFbnRyeRILCgNrZXkYASABKAkSJgoFdmFsdWUYAiABKAsyFy5wb2xpY3kuT2JsaWdhdGlvblZhbHVlOgI4ASKZBAocQ3JlYXRlT2JsaWdhdGlvblZhbHVlUmVxdWVzdBIfCg1vYmxpZ2F0aW9uX2lkGAEgASgJQgi6SAVyA7ABARIiCg5vYmxpZ2F0aW9uX2ZxbhgCIAEoCUIKukgHcgUQAYgBARKlAgoFdmFsdWUYAyABKAlClQK6SJECugGFAgoXb2JsaWdhdGlvbl92YWx1ZV9mb3JtYXQSrAFPYmxpZ2F0aW9uIHZhbHVlIG11c3QgYmUgYW4gYWxwaGFudW1lcmljIHN0cmluZywgYWxsb3dpbmcgaHlwaGVucyBhbmQgdW5kZXJzY29yZXMgYnV0IG5vdCBhcyB0aGUgZmlyc3Qgb3IgbGFzdCBjaGFyYWN0ZXIuIFRoZSBzdG9yZWQgdmFsdWUgd2lsbCBiZSBub3JtYWxpemVkIHRvIGxvd2VyIGNhc2UuGjt0aGlzLm1hdGNoZXMoJ15bYS16QS1aMC05XSg/OlthLXpBLVowLTlfLV0qW2EtekEtWjAtOV0pPyQnKcgBAXIDGP0BEjkKCHRyaWdnZXJzGAQgAygLMicucG9saWN5Lm9ibGlnYXRpb25zLlZhbHVlVHJpZ2dlclJlcXVlc3QSKQoIbWV0YWRhdGEYZCABKAsyFy5jb21tb24uTWV0YWRhdGFNdXRhYmxlOia6SCMiIQoNb2JsaWdhdGlvbl9pZAoOb2JsaWdhdGlvbl9mcW4QASJHCh1DcmVhdGVPYmxpZ2F0aW9uVmFsdWVSZXNwb25zZRImCgV2YWx1ZRgBIAEoCzIXLnBvbGljeS5PYmxpZ2F0aW9uVmFsdWUimAQKHFVwZGF0ZU9ibGlnYXRpb25WYWx1ZVJlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBEr0CCgV2YWx1ZRgCIAEoCUKtArpIqQK6AZ0CChdvYmxpZ2F0aW9uX3ZhbHVlX2Zvcm1hdBKsAU9ibGlnYXRpb24gdmFsdWUgbXVzdCBiZSBhbiBhbHBoYW51bWVyaWMgc3RyaW5nLCBhbGxvd2luZyBoeXBoZW5zIGFuZCB1bmRlcnNjb3JlcyBidXQgbm90IGFzIHRoZSBmaXJzdCBvciBsYXN0IGNoYXJhY3Rlci4gVGhlIHN0b3JlZCB2YWx1ZSB3aWxsIGJlIG5vcm1hbGl6ZWQgdG8gbG93ZXIgY2FzZS4aU3NpemUodGhpcykgPiAwID8gdGhpcy5tYXRjaGVzKCdeW2EtekEtWjAtOV0oPzpbYS16QS1aMC05Xy1dKlthLXpBLVowLTldKT8kJykgOiB0cnVlyAEAcgMY/QESOQoIdHJpZ2dlcnMYAyADKAsyJy5wb2xpY3kub2JsaWdhdGlvbnMuVmFsdWVUcmlnZ2VyUmVxdWVzdBIpCghtZXRhZGF0YRhkIAEoCzIXLmNvbW1vbi5NZXRhZGF0YU11dGFibGUSPAoYbWV0YWRhdGFfdXBkYXRlX2JlaGF2aW9yGGUgASgOMhouY29tbW9uLk1ldGFkYXRhVXBkYXRlRW51bSJHCh1VcGRhdGVPYmxpZ2F0aW9uVmFsdWVSZXNwb25zZRImCgV2YWx1ZRgBIAEoCzIXLnBvbGljeS5PYmxpZ2F0aW9uVmFsdWUiXwocRGVsZXRlT2JsaWdhdGlvblZhbHVlUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQESFwoDZnFuGAIgASgJQgq6SAdyBRABiAEBOhC6SA0iCwoCaWQKA2ZxbhABIkcKHURlbGV0ZU9ibGlnYXRpb25WYWx1ZVJlc3BvbnNlEiYKBXZhbHVlGAEgASgLMhcucG9saWN5Lk9ibGlnYXRpb25WYWx1ZSIzChtHZXRPYmxpZ2F0aW9uVHJpZ2dlclJlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBIkoKHEdldE9ibGlnYXRpb25UcmlnZ2VyUmVzcG9uc2USKgoHdHJpZ2dlchgBIAEoCzIZLnBvbGljeS5PYmxpZ2F0aW9uVHJpZ2dlciKYAgobQWRkT2JsaWdhdGlvblRyaWdnZXJSZXF1ZXN0EjkKEG9ibGlnYXRpb25fdmFsdWUYASABKAsyFy5jb21tb24uSWRGcW5JZGVudGlmaWVyQga6SAPIAQESMAoGYWN0aW9uGAIgASgLMhguY29tbW9uLklkTmFtZUlkZW50aWZpZXJCBrpIA8gBARI4Cg9hdHRyaWJ1dGVfdmFsdWUYAyABKAsyFy5jb21tb24uSWRGcW5JZGVudGlmaWVyQga6SAPIAQESJwoHY29udGV4dBgEIAEoCzIWLnBvbGljeS5SZXF1ZXN0Q29udGV4dBIpCghtZXRhZGF0YRhkIAEoCzIXLmNvbW1vbi5NZXRhZGF0YU11dGFibGUiSgocQWRkT2JsaWdhdGlvblRyaWdnZXJSZXNwb25zZRIqCgd0cmlnZ2VyGAEgASgLMhkucG9saWN5Lk9ibGlnYXRpb25UcmlnZ2VyIjYKHlJlbW92ZU9ibGlnYXRpb25UcmlnZ2VyUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQEiTQofUmVtb3ZlT2JsaWdhdGlvblRyaWdnZXJSZXNwb25zZRIqCgd0cmlnZ2VyGAEgASgLMhkucG9saWN5Lk9ibGlnYXRpb25UcmlnZ2VyIrEBCh1MaXN0T2JsaWdhdGlvblRyaWdnZXJzUmVxdWVzdBIeCgxuYW1lc3BhY2VfaWQYASABKAlCCLpIBXIDsAEBEiEKDW5hbWVzcGFjZV9mcW4YAiABKAlCCrpIB3IFEAGIAQESJwoKcGFnaW5hdGlvbhgKIAEoCzITLnBvbGljeS5QYWdlUmVxdWVzdDokukghIh8KDG5hbWVzcGFjZV9pZAoNbmFtZXNwYWNlX2ZxbhAAIncKHkxpc3RPYmxpZ2F0aW9uVHJpZ2dlcnNSZXNwb25zZRIrCgh0cmlnZ2VycxgBIAMoCzIZLnBvbGljeS5PYmxpZ2F0aW9uVHJpZ2dlchIoCgpwYWdpbmF0aW9uGAogASgLMhQucG9saWN5LlBhZ2VSZXNwb25zZSrHAQoTU29ydE9ibGlnYXRpb25zVHlwZRIlCiFTT1JUX09CTElHQVRJT05TX1RZUEVfVU5TUEVDSUZJRUQQABIeChpTT1JUX09CTElHQVRJT05TX1RZUEVfTkFNRRABEh0KGVNPUlRfT0JMSUdBVElPTlNfVFlQRV9GUU4QAhIkCiBTT1JUX09CTElHQVRJT05TX1RZUEVfQ1JFQVRFRF9BVBADEiQKIFNPUlRfT0JMSUdBVElPTlNfVFlQRV9VUERBVEVEX0FUEAQyzQ4KB1NlcnZpY2USbwoPTGlzdE9ibGlnYXRpb25zEioucG9saWN5Lm9ibGlnYXRpb25zLkxpc3RPYmxpZ2F0aW9uc1JlcXVlc3QaKy5wb2xpY3kub2JsaWdhdGlvbnMuTGlzdE9ibGlnYXRpb25zUmVzcG9uc2UiA5ACARJpCg1HZXRPYmxpZ2F0aW9uEigucG9saWN5Lm9ibGlnYXRpb25zLkdldE9ibGlnYXRpb25SZXF1ZXN0GikucG9saWN5Lm9ibGlnYXRpb25zLkdldE9ibGlnYXRpb25SZXNwb25zZSIDkAIBEn4KFEdldE9ibGlnYXRpb25zQnlGUU5zEi8ucG9saWN5Lm9ibGlnYXRpb25zLkdldE9ibGlnYXRpb25zQnlGUU5zUmVxdWVzdBowLnBvbGljeS5vYmxpZ2F0aW9ucy5HZXRPYmxpZ2F0aW9uc0J5RlFOc1Jlc3BvbnNlIgOQAgESbwoQQ3JlYXRlT2JsaWdhdGlvbhIrLnBvbGljeS5vYmxpZ2F0aW9ucy5DcmVhdGVPYmxpZ2F0aW9uUmVxdWVzdBosLnBvbGljeS5vYmxpZ2F0aW9ucy5DcmVhdGVPYmxpZ2F0aW9uUmVzcG9uc2UiABJvChBVcGRhdGVPYmxpZ2F0aW9uEisucG9saWN5Lm9ibGlnYXRpb25zLlVwZGF0ZU9ibGlnYXRpb25SZXF1ZXN0GiwucG9saWN5Lm9ibGlnYXRpb25zLlVwZGF0ZU9ibGlnYXRpb25SZXNwb25zZSIAEm8KEERlbGV0ZU9ibGlnYXRpb24SKy5wb2xpY3kub2JsaWdhdGlvbnMuRGVsZXRlT2JsaWdhdGlvblJlcXVlc3QaLC5wb2xpY3kub2JsaWdhdGlvbnMuRGVsZXRlT2JsaWdhdGlvblJlc3BvbnNlIgASeAoSR2V0T2JsaWdhdGlvblZhbHVlEi0ucG9saWN5Lm9ibGlnYXRpb25zLkdldE9ibGlnYXRpb25WYWx1ZVJlcXVlc3QaLi5wb2xpY3kub2JsaWdhdGlvbnMuR2V0T2JsaWdhdGlvblZhbHVlUmVzcG9uc2UiA5ACARKNAQoZR2V0T2JsaWdhdGlvblZhbHVlc0J5RlFOcxI0LnBvbGljeS5vYmxpZ2F0aW9ucy5HZXRPYmxpZ2F0aW9uVmFsdWVzQnlGUU5zUmVxdWVzdBo1LnBvbGljeS5vYmxpZ2F0aW9ucy5HZXRPYmxpZ2F0aW9uVmFsdWVzQnlGUU5zUmVzcG9uc2UiA5ACARJ+ChVDcmVhdGVPYmxpZ2F0aW9uVmFsdWUSMC5wb2xpY3kub2JsaWdhdGlvbnMuQ3JlYXRlT2JsaWdhdGlvblZhbHVlUmVxdWVzdBoxLnBvbGljeS5vYmxpZ2F0aW9ucy5DcmVhdGVPYmxpZ2F0aW9uVmFsdWVSZXNwb25zZSIAEn4KFVVwZGF0ZU9ibGlnYXRpb25WYWx1ZRIwLnBvbGljeS5vYmxpZ2F0aW9ucy5VcGRhdGVPYmxpZ2F0aW9uVmFsdWVSZXF1ZXN0GjEucG9saWN5Lm9ibGlnYXRpb25zLlVwZGF0ZU9ibGlnYXRpb25WYWx1ZVJlc3BvbnNlIgASfgoVRGVsZXRlT2JsaWdhdGlvblZhbHVlEjAucG9saWN5Lm9ibGlnYXRpb25zLkRlbGV0ZU9ibGlnYXRpb25WYWx1ZVJlcXVlc3QaMS5wb2xpY3kub2JsaWdhdGlvbnMuRGVsZXRlT2JsaWdhdGlvblZhbHVlUmVzcG9uc2UiABJ+ChRHZXRPYmxpZ2F0aW9uVHJpZ2dlchIvLnBvbGljeS5vYmxpZ2F0aW9ucy5HZXRPYmxpZ2F0aW9uVHJpZ2dlclJlcXVlc3QaMC5wb2xpY3kub2JsaWdhdGlvbnMuR2V0T2JsaWdhdGlvblRyaWdnZXJSZXNwb25zZSIDkAIBEnsKFEFkZE9ibGlnYXRpb25UcmlnZ2VyEi8ucG9saWN5Lm9ibGlnYXRpb25zLkFkZE9ibGlnYXRpb25UcmlnZ2VyUmVxdWVzdBowLnBvbGljeS5vYmxpZ2F0aW9ucy5BZGRPYmxpZ2F0aW9uVHJpZ2dlclJlc3BvbnNlIgAShAEKF1JlbW92ZU9ibGlnYXRpb25UcmlnZ2VyEjIucG9saWN5Lm9ibGlnYXRpb25zLlJlbW92ZU9ibGlnYXRpb25UcmlnZ2VyUmVxdWVzdBozLnBvbGljeS5vYmxpZ2F0aW9ucy5SZW1vdmVPYmxpZ2F0aW9uVHJpZ2dlclJlc3BvbnNlIgAShAEKFkxpc3RPYmxpZ2F0aW9uVHJpZ2dlcnMSMS5wb2xpY3kub2JsaWdhdGlvbnMuTGlzdE9ibGlnYXRpb25UcmlnZ2Vyc1JlcXVlc3QaMi5wb2xpY3kub2JsaWdhdGlvbnMuTGlzdE9ibGlnYXRpb25UcmlnZ2Vyc1Jlc3BvbnNlIgOQAgFiBnByb3RvMw", [file_common_common, file_policy_objects, file_policy_selectors, file_buf_validate_validate]);
 
 /**
- * Definitions
- *
+ * @generated from message policy.obligations.ObligationsSort
+ */
+export type ObligationsSort = Message<"policy.obligations.ObligationsSort"> & {
+  /**
+   * @generated from field: policy.obligations.SortObligationsType field = 1;
+   */
+  field: SortObligationsType;
+
+  /**
+   * @generated from field: policy.SortDirection direction = 2;
+   */
+  direction: SortDirection;
+};
+
+/**
+ * Describes the message policy.obligations.ObligationsSort.
+ * Use `create(ObligationsSortSchema)` to create a new message.
+ */
+export const ObligationsSortSchema: GenMessage<ObligationsSort> = /*@__PURE__*/
+  messageDesc(file_policy_obligations_obligations, 0);
+
+/**
  * @generated from message policy.obligations.GetObligationRequest
  */
 export type GetObligationRequest = Message<"policy.obligations.GetObligationRequest"> & {
@@ -41,7 +61,7 @@ export type GetObligationRequest = Message<"policy.obligations.GetObligationRequ
  * Use `create(GetObligationRequestSchema)` to create a new message.
  */
 export const GetObligationRequestSchema: GenMessage<GetObligationRequest> = /*@__PURE__*/
-  messageDesc(file_policy_obligations_obligations, 0);
+  messageDesc(file_policy_obligations_obligations, 1);
 
 /**
  * @generated from message policy.obligations.ValueTriggerRequest
@@ -74,7 +94,7 @@ export type ValueTriggerRequest = Message<"policy.obligations.ValueTriggerReques
  * Use `create(ValueTriggerRequestSchema)` to create a new message.
  */
 export const ValueTriggerRequestSchema: GenMessage<ValueTriggerRequest> = /*@__PURE__*/
-  messageDesc(file_policy_obligations_obligations, 1);
+  messageDesc(file_policy_obligations_obligations, 2);
 
 /**
  * @generated from message policy.obligations.GetObligationResponse
@@ -91,7 +111,7 @@ export type GetObligationResponse = Message<"policy.obligations.GetObligationRes
  * Use `create(GetObligationResponseSchema)` to create a new message.
  */
 export const GetObligationResponseSchema: GenMessage<GetObligationResponse> = /*@__PURE__*/
-  messageDesc(file_policy_obligations_obligations, 2);
+  messageDesc(file_policy_obligations_obligations, 3);
 
 /**
  * @generated from message policy.obligations.GetObligationsByFQNsRequest
@@ -108,7 +128,7 @@ export type GetObligationsByFQNsRequest = Message<"policy.obligations.GetObligat
  * Use `create(GetObligationsByFQNsRequestSchema)` to create a new message.
  */
 export const GetObligationsByFQNsRequestSchema: GenMessage<GetObligationsByFQNsRequest> = /*@__PURE__*/
-  messageDesc(file_policy_obligations_obligations, 3);
+  messageDesc(file_policy_obligations_obligations, 4);
 
 /**
  * @generated from message policy.obligations.GetObligationsByFQNsResponse
@@ -125,7 +145,7 @@ export type GetObligationsByFQNsResponse = Message<"policy.obligations.GetObliga
  * Use `create(GetObligationsByFQNsResponseSchema)` to create a new message.
  */
 export const GetObligationsByFQNsResponseSchema: GenMessage<GetObligationsByFQNsResponse> = /*@__PURE__*/
-  messageDesc(file_policy_obligations_obligations, 4);
+  messageDesc(file_policy_obligations_obligations, 5);
 
 /**
  * @generated from message policy.obligations.CreateObligationRequest
@@ -167,7 +187,7 @@ export type CreateObligationRequest = Message<"policy.obligations.CreateObligati
  * Use `create(CreateObligationRequestSchema)` to create a new message.
  */
 export const CreateObligationRequestSchema: GenMessage<CreateObligationRequest> = /*@__PURE__*/
-  messageDesc(file_policy_obligations_obligations, 5);
+  messageDesc(file_policy_obligations_obligations, 6);
 
 /**
  * @generated from message policy.obligations.CreateObligationResponse
@@ -184,7 +204,7 @@ export type CreateObligationResponse = Message<"policy.obligations.CreateObligat
  * Use `create(CreateObligationResponseSchema)` to create a new message.
  */
 export const CreateObligationResponseSchema: GenMessage<CreateObligationResponse> = /*@__PURE__*/
-  messageDesc(file_policy_obligations_obligations, 6);
+  messageDesc(file_policy_obligations_obligations, 7);
 
 /**
  * @generated from message policy.obligations.UpdateObligationRequest
@@ -220,7 +240,7 @@ export type UpdateObligationRequest = Message<"policy.obligations.UpdateObligati
  * Use `create(UpdateObligationRequestSchema)` to create a new message.
  */
 export const UpdateObligationRequestSchema: GenMessage<UpdateObligationRequest> = /*@__PURE__*/
-  messageDesc(file_policy_obligations_obligations, 7);
+  messageDesc(file_policy_obligations_obligations, 8);
 
 /**
  * @generated from message policy.obligations.UpdateObligationResponse
@@ -237,7 +257,7 @@ export type UpdateObligationResponse = Message<"policy.obligations.UpdateObligat
  * Use `create(UpdateObligationResponseSchema)` to create a new message.
  */
 export const UpdateObligationResponseSchema: GenMessage<UpdateObligationResponse> = /*@__PURE__*/
-  messageDesc(file_policy_obligations_obligations, 8);
+  messageDesc(file_policy_obligations_obligations, 9);
 
 /**
  * @generated from message policy.obligations.DeleteObligationRequest
@@ -259,7 +279,7 @@ export type DeleteObligationRequest = Message<"policy.obligations.DeleteObligati
  * Use `create(DeleteObligationRequestSchema)` to create a new message.
  */
 export const DeleteObligationRequestSchema: GenMessage<DeleteObligationRequest> = /*@__PURE__*/
-  messageDesc(file_policy_obligations_obligations, 9);
+  messageDesc(file_policy_obligations_obligations, 10);
 
 /**
  * @generated from message policy.obligations.DeleteObligationResponse
@@ -276,7 +296,7 @@ export type DeleteObligationResponse = Message<"policy.obligations.DeleteObligat
  * Use `create(DeleteObligationResponseSchema)` to create a new message.
  */
 export const DeleteObligationResponseSchema: GenMessage<DeleteObligationResponse> = /*@__PURE__*/
-  messageDesc(file_policy_obligations_obligations, 10);
+  messageDesc(file_policy_obligations_obligations, 11);
 
 /**
  * @generated from message policy.obligations.ListObligationsRequest
@@ -298,6 +318,24 @@ export type ListObligationsRequest = Message<"policy.obligations.ListObligations
    * @generated from field: policy.PageRequest pagination = 10;
    */
   pagination?: PageRequest;
+
+  /**
+   * Optional - CONSTRAINT: max 1 item
+   * Sort defaults:
+   *   - direction UNSPECIFIED defaults to DESC for the specified field
+   *   - field UNSPECIFIED defaults to created_at with the specified direction
+   *   - both UNSPECIFIED or sort omitted defaults to created_at DESC
+   *
+   * @generated from field: repeated policy.obligations.ObligationsSort sort = 11;
+   */
+  sort: ObligationsSort[];
+
+  /**
+   * Optional
+   *
+   * @generated from field: policy.Search search = 12;
+   */
+  search?: Search;
 };
 
 /**
@@ -305,7 +343,7 @@ export type ListObligationsRequest = Message<"policy.obligations.ListObligations
  * Use `create(ListObligationsRequestSchema)` to create a new message.
  */
 export const ListObligationsRequestSchema: GenMessage<ListObligationsRequest> = /*@__PURE__*/
-  messageDesc(file_policy_obligations_obligations, 11);
+  messageDesc(file_policy_obligations_obligations, 12);
 
 /**
  * @generated from message policy.obligations.ListObligationsResponse
@@ -327,7 +365,7 @@ export type ListObligationsResponse = Message<"policy.obligations.ListObligation
  * Use `create(ListObligationsResponseSchema)` to create a new message.
  */
 export const ListObligationsResponseSchema: GenMessage<ListObligationsResponse> = /*@__PURE__*/
-  messageDesc(file_policy_obligations_obligations, 12);
+  messageDesc(file_policy_obligations_obligations, 13);
 
 /**
  * Values
@@ -351,7 +389,7 @@ export type GetObligationValueRequest = Message<"policy.obligations.GetObligatio
  * Use `create(GetObligationValueRequestSchema)` to create a new message.
  */
 export const GetObligationValueRequestSchema: GenMessage<GetObligationValueRequest> = /*@__PURE__*/
-  messageDesc(file_policy_obligations_obligations, 13);
+  messageDesc(file_policy_obligations_obligations, 14);
 
 /**
  * @generated from message policy.obligations.GetObligationValueResponse
@@ -368,7 +406,7 @@ export type GetObligationValueResponse = Message<"policy.obligations.GetObligati
  * Use `create(GetObligationValueResponseSchema)` to create a new message.
  */
 export const GetObligationValueResponseSchema: GenMessage<GetObligationValueResponse> = /*@__PURE__*/
-  messageDesc(file_policy_obligations_obligations, 14);
+  messageDesc(file_policy_obligations_obligations, 15);
 
 /**
  * @generated from message policy.obligations.GetObligationValuesByFQNsRequest
@@ -385,7 +423,7 @@ export type GetObligationValuesByFQNsRequest = Message<"policy.obligations.GetOb
  * Use `create(GetObligationValuesByFQNsRequestSchema)` to create a new message.
  */
 export const GetObligationValuesByFQNsRequestSchema: GenMessage<GetObligationValuesByFQNsRequest> = /*@__PURE__*/
-  messageDesc(file_policy_obligations_obligations, 15);
+  messageDesc(file_policy_obligations_obligations, 16);
 
 /**
  * @generated from message policy.obligations.GetObligationValuesByFQNsResponse
@@ -402,7 +440,7 @@ export type GetObligationValuesByFQNsResponse = Message<"policy.obligations.GetO
  * Use `create(GetObligationValuesByFQNsResponseSchema)` to create a new message.
  */
 export const GetObligationValuesByFQNsResponseSchema: GenMessage<GetObligationValuesByFQNsResponse> = /*@__PURE__*/
-  messageDesc(file_policy_obligations_obligations, 16);
+  messageDesc(file_policy_obligations_obligations, 17);
 
 /**
  * @generated from message policy.obligations.CreateObligationValueRequest
@@ -445,7 +483,7 @@ export type CreateObligationValueRequest = Message<"policy.obligations.CreateObl
  * Use `create(CreateObligationValueRequestSchema)` to create a new message.
  */
 export const CreateObligationValueRequestSchema: GenMessage<CreateObligationValueRequest> = /*@__PURE__*/
-  messageDesc(file_policy_obligations_obligations, 17);
+  messageDesc(file_policy_obligations_obligations, 18);
 
 /**
  * @generated from message policy.obligations.CreateObligationValueResponse
@@ -462,7 +500,7 @@ export type CreateObligationValueResponse = Message<"policy.obligations.CreateOb
  * Use `create(CreateObligationValueResponseSchema)` to create a new message.
  */
 export const CreateObligationValueResponseSchema: GenMessage<CreateObligationValueResponse> = /*@__PURE__*/
-  messageDesc(file_policy_obligations_obligations, 18);
+  messageDesc(file_policy_obligations_obligations, 19);
 
 /**
  * @generated from message policy.obligations.UpdateObligationValueRequest
@@ -509,7 +547,7 @@ export type UpdateObligationValueRequest = Message<"policy.obligations.UpdateObl
  * Use `create(UpdateObligationValueRequestSchema)` to create a new message.
  */
 export const UpdateObligationValueRequestSchema: GenMessage<UpdateObligationValueRequest> = /*@__PURE__*/
-  messageDesc(file_policy_obligations_obligations, 19);
+  messageDesc(file_policy_obligations_obligations, 20);
 
 /**
  * @generated from message policy.obligations.UpdateObligationValueResponse
@@ -526,7 +564,7 @@ export type UpdateObligationValueResponse = Message<"policy.obligations.UpdateOb
  * Use `create(UpdateObligationValueResponseSchema)` to create a new message.
  */
 export const UpdateObligationValueResponseSchema: GenMessage<UpdateObligationValueResponse> = /*@__PURE__*/
-  messageDesc(file_policy_obligations_obligations, 20);
+  messageDesc(file_policy_obligations_obligations, 21);
 
 /**
  * @generated from message policy.obligations.DeleteObligationValueRequest
@@ -548,7 +586,7 @@ export type DeleteObligationValueRequest = Message<"policy.obligations.DeleteObl
  * Use `create(DeleteObligationValueRequestSchema)` to create a new message.
  */
 export const DeleteObligationValueRequestSchema: GenMessage<DeleteObligationValueRequest> = /*@__PURE__*/
-  messageDesc(file_policy_obligations_obligations, 21);
+  messageDesc(file_policy_obligations_obligations, 22);
 
 /**
  * @generated from message policy.obligations.DeleteObligationValueResponse
@@ -565,10 +603,50 @@ export type DeleteObligationValueResponse = Message<"policy.obligations.DeleteOb
  * Use `create(DeleteObligationValueResponseSchema)` to create a new message.
  */
 export const DeleteObligationValueResponseSchema: GenMessage<DeleteObligationValueResponse> = /*@__PURE__*/
-  messageDesc(file_policy_obligations_obligations, 22);
+  messageDesc(file_policy_obligations_obligations, 23);
 
 /**
  * Triggers
+ *
+ * @generated from message policy.obligations.GetObligationTriggerRequest
+ */
+export type GetObligationTriggerRequest = Message<"policy.obligations.GetObligationTriggerRequest"> & {
+  /**
+   * Required
+   *
+   * @generated from field: string id = 1;
+   */
+  id: string;
+};
+
+/**
+ * Describes the message policy.obligations.GetObligationTriggerRequest.
+ * Use `create(GetObligationTriggerRequestSchema)` to create a new message.
+ */
+export const GetObligationTriggerRequestSchema: GenMessage<GetObligationTriggerRequest> = /*@__PURE__*/
+  messageDesc(file_policy_obligations_obligations, 24);
+
+/**
+ * @generated from message policy.obligations.GetObligationTriggerResponse
+ */
+export type GetObligationTriggerResponse = Message<"policy.obligations.GetObligationTriggerResponse"> & {
+  /**
+   * @generated from field: policy.ObligationTrigger trigger = 1;
+   */
+  trigger?: ObligationTrigger;
+};
+
+/**
+ * Describes the message policy.obligations.GetObligationTriggerResponse.
+ * Use `create(GetObligationTriggerResponseSchema)` to create a new message.
+ */
+export const GetObligationTriggerResponseSchema: GenMessage<GetObligationTriggerResponse> = /*@__PURE__*/
+  messageDesc(file_policy_obligations_obligations, 25);
+
+/**
+ * Obligation Triggers are owned by the namespace that owns the action and attribute value, which must
+ * be the same. In this way, a trigger can intentionally cross namespace boundaries: associating
+ * obligation values of a different namespace than the one that owns the action being taken or the attribute value.
  *
  * @generated from message policy.obligations.AddObligationTriggerRequest
  */
@@ -616,7 +694,7 @@ export type AddObligationTriggerRequest = Message<"policy.obligations.AddObligat
  * Use `create(AddObligationTriggerRequestSchema)` to create a new message.
  */
 export const AddObligationTriggerRequestSchema: GenMessage<AddObligationTriggerRequest> = /*@__PURE__*/
-  messageDesc(file_policy_obligations_obligations, 23);
+  messageDesc(file_policy_obligations_obligations, 26);
 
 /**
  * @generated from message policy.obligations.AddObligationTriggerResponse
@@ -633,7 +711,7 @@ export type AddObligationTriggerResponse = Message<"policy.obligations.AddObliga
  * Use `create(AddObligationTriggerResponseSchema)` to create a new message.
  */
 export const AddObligationTriggerResponseSchema: GenMessage<AddObligationTriggerResponse> = /*@__PURE__*/
-  messageDesc(file_policy_obligations_obligations, 24);
+  messageDesc(file_policy_obligations_obligations, 27);
 
 /**
  * @generated from message policy.obligations.RemoveObligationTriggerRequest
@@ -652,7 +730,7 @@ export type RemoveObligationTriggerRequest = Message<"policy.obligations.RemoveO
  * Use `create(RemoveObligationTriggerRequestSchema)` to create a new message.
  */
 export const RemoveObligationTriggerRequestSchema: GenMessage<RemoveObligationTriggerRequest> = /*@__PURE__*/
-  messageDesc(file_policy_obligations_obligations, 25);
+  messageDesc(file_policy_obligations_obligations, 28);
 
 /**
  * @generated from message policy.obligations.RemoveObligationTriggerResponse
@@ -669,7 +747,94 @@ export type RemoveObligationTriggerResponse = Message<"policy.obligations.Remove
  * Use `create(RemoveObligationTriggerResponseSchema)` to create a new message.
  */
 export const RemoveObligationTriggerResponseSchema: GenMessage<RemoveObligationTriggerResponse> = /*@__PURE__*/
-  messageDesc(file_policy_obligations_obligations, 26);
+  messageDesc(file_policy_obligations_obligations, 29);
+
+/**
+ * @generated from message policy.obligations.ListObligationTriggersRequest
+ */
+export type ListObligationTriggersRequest = Message<"policy.obligations.ListObligationTriggersRequest"> & {
+  /**
+   * @generated from field: string namespace_id = 1;
+   */
+  namespaceId: string;
+
+  /**
+   * @generated from field: string namespace_fqn = 2;
+   */
+  namespaceFqn: string;
+
+  /**
+   * Optional
+   *
+   * @generated from field: policy.PageRequest pagination = 10;
+   */
+  pagination?: PageRequest;
+};
+
+/**
+ * Describes the message policy.obligations.ListObligationTriggersRequest.
+ * Use `create(ListObligationTriggersRequestSchema)` to create a new message.
+ */
+export const ListObligationTriggersRequestSchema: GenMessage<ListObligationTriggersRequest> = /*@__PURE__*/
+  messageDesc(file_policy_obligations_obligations, 30);
+
+/**
+ * @generated from message policy.obligations.ListObligationTriggersResponse
+ */
+export type ListObligationTriggersResponse = Message<"policy.obligations.ListObligationTriggersResponse"> & {
+  /**
+   * @generated from field: repeated policy.ObligationTrigger triggers = 1;
+   */
+  triggers: ObligationTrigger[];
+
+  /**
+   * @generated from field: policy.PageResponse pagination = 10;
+   */
+  pagination?: PageResponse;
+};
+
+/**
+ * Describes the message policy.obligations.ListObligationTriggersResponse.
+ * Use `create(ListObligationTriggersResponseSchema)` to create a new message.
+ */
+export const ListObligationTriggersResponseSchema: GenMessage<ListObligationTriggersResponse> = /*@__PURE__*/
+  messageDesc(file_policy_obligations_obligations, 31);
+
+/**
+ * @generated from enum policy.obligations.SortObligationsType
+ */
+export enum SortObligationsType {
+  /**
+   * @generated from enum value: SORT_OBLIGATIONS_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: SORT_OBLIGATIONS_TYPE_NAME = 1;
+   */
+  NAME = 1,
+
+  /**
+   * @generated from enum value: SORT_OBLIGATIONS_TYPE_FQN = 2;
+   */
+  FQN = 2,
+
+  /**
+   * @generated from enum value: SORT_OBLIGATIONS_TYPE_CREATED_AT = 3;
+   */
+  CREATED_AT = 3,
+
+  /**
+   * @generated from enum value: SORT_OBLIGATIONS_TYPE_UPDATED_AT = 4;
+   */
+  UPDATED_AT = 4,
+}
+
+/**
+ * Describes the enum policy.obligations.SortObligationsType.
+ */
+export const SortObligationsTypeSchema: GenEnum<SortObligationsType> = /*@__PURE__*/
+  enumDesc(file_policy_obligations_obligations, 0);
 
 /**
  * /
@@ -768,6 +933,14 @@ export const Service: GenService<{
     output: typeof DeleteObligationValueResponseSchema;
   },
   /**
+   * @generated from rpc policy.obligations.Service.GetObligationTrigger
+   */
+  getObligationTrigger: {
+    methodKind: "unary";
+    input: typeof GetObligationTriggerRequestSchema;
+    output: typeof GetObligationTriggerResponseSchema;
+  },
+  /**
    * @generated from rpc policy.obligations.Service.AddObligationTrigger
    */
   addObligationTrigger: {
@@ -782,6 +955,14 @@ export const Service: GenService<{
     methodKind: "unary";
     input: typeof RemoveObligationTriggerRequestSchema;
     output: typeof RemoveObligationTriggerResponseSchema;
+  },
+  /**
+   * @generated from rpc policy.obligations.Service.ListObligationTriggers
+   */
+  listObligationTriggers: {
+    methodKind: "unary";
+    input: typeof ListObligationTriggersRequestSchema;
+    output: typeof ListObligationTriggersResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_policy_obligations_obligations, 0);
