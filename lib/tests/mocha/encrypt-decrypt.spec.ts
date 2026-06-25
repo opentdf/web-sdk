@@ -13,7 +13,12 @@ import {
   Assertion,
 } from '../../tdf3/src/assertions.js';
 import { Scope } from '../../tdf3/src/client/builders.js';
-import { NetworkError } from '../../src/errors.js';
+import {
+  NetworkError,
+  PermissionDeniedError,
+  ServiceError,
+  UnauthenticatedError,
+} from '../../src/errors.js';
 
 const Mocks = getMocks();
 
@@ -101,7 +106,9 @@ describe('rewrap error cases', function () {
       });
       assert.fail('Expected Error');
     } catch (error) {
-      assert.instanceOf(error, NetworkError);
+      // The real RPC auth error must surface; the legacy REST fallback no longer
+      // masks it with a 404/NetworkError (RFC 9449 §9 / DSPX-3397).
+      assert.instanceOf(error, UnauthenticatedError);
     }
   });
 
@@ -125,7 +132,7 @@ describe('rewrap error cases', function () {
       });
       assert.fail('Expected Error');
     } catch (error) {
-      assert.instanceOf(error, NetworkError);
+      assert.instanceOf(error, PermissionDeniedError);
     }
   });
 
@@ -154,7 +161,7 @@ describe('rewrap error cases', function () {
       });
       assert.fail('Expected Error');
     } catch (error) {
-      assert.instanceOf(error, NetworkError);
+      assert.instanceOf(error, ServiceError);
     }
   });
 
@@ -178,7 +185,7 @@ describe('rewrap error cases', function () {
       });
       assert.fail('Expected ServiceError');
     } catch (error) {
-      assert.instanceOf(error, NetworkError);
+      assert.instanceOf(error, ServiceError);
     }
   });
 
@@ -233,10 +240,12 @@ describe('rewrap error cases', function () {
           location: encryptedStream.stream,
         },
       });
-      assert.fail('Expected InvalidFileError');
+      assert.fail('Expected ServiceError');
     } catch (error) {
-      assert.instanceOf(error, NetworkError);
-      assert.include(error.message, '404 Not Found');
+      // Previously the legacy REST fallback masked the real RPC error with a
+      // "404 Not Found" NetworkError; now the RPC error surfaces directly.
+      assert.instanceOf(error, ServiceError);
+      assert.notInclude((error as Error).message, '404 Not Found');
     }
   });
 });

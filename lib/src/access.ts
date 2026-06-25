@@ -2,6 +2,7 @@ import { type AuthConfig, resolveAuthConfig } from './auth/interceptors.js';
 import { RewrapResponse } from './platform/kas/kas_pb.js';
 import { getPlatformUrlFromKasEndpoint, validateSecureUrl } from './utils.js';
 import { base64 } from './encodings/index.js';
+import { InvalidFileError, PermissionDeniedError, UnauthenticatedError } from './errors.js';
 
 import {
   fetchKasBasePubKey,
@@ -52,21 +53,52 @@ export async function fetchWrappedKey(
     );
 
   // When no AuthProvider is available, skip the legacy fallback so the real
-  // RPC error propagates instead of being masked by tryPromisesUntilFirstSuccess.
+  // RPC error propagates instead of being masked.
   if (!authProvider) {
     return await rpcCall();
   }
 
-  return await tryPromisesUntilFirstSuccess(
-    rpcCall,
+  // Try the modern Connect-RPC rewrap first.
+  try {
+    return await rpcCall();
+  } catch (rpcError) {
+    // A definitive auth/validation answer from KAS (401/403/400 — including a
+    // post-nonce-challenge 401, RFC 9449 §9) must surface as-is. Falling back to
+    // the legacy REST endpoint here would mask it with a 404 on Connect-only
+    // platforms.
+    if (isRewrapAuthError(rpcError)) {
+      throw rpcError;
+    }
+    // Otherwise (transport/network error, or a platform old enough to be missing
+    // the Connect rewrap endpoint) fall back to the legacy REST rewrap for
+    // backwards compatibility. If that also fails, surface the original RPC error
+    // rather than the legacy 404.
     // We intentionally do not provide the rewrap additional context to legacy requests destined for older platforms.
     // Platforms new enough to have knowledge of obligations will be handling RPC requests successfully.
-    () =>
-      fetchWrappedKeysLegacy(
+    console.info('v2 rewrap request error', rpcError);
+    try {
+      return (await fetchWrappedKeysLegacy(
         url,
         { signedRequestToken },
         authProvider
-      ) as unknown as Promise<RewrapResponse>
+      )) as unknown as RewrapResponse;
+    } catch {
+      throw rpcError;
+    }
+  }
+}
+
+/**
+ * An auth/validation error from the RPC rewrap represents a definitive answer
+ * from KAS and must not be masked by the legacy REST fallback (which 404s on
+ * Connect-only platforms). Other errors (network failures, or an old platform
+ * missing the Connect endpoint) remain eligible for the legacy fallback.
+ */
+function isRewrapAuthError(e: unknown): boolean {
+  return (
+    e instanceof UnauthenticatedError ||
+    e instanceof PermissionDeniedError ||
+    e instanceof InvalidFileError
   );
 }
 
