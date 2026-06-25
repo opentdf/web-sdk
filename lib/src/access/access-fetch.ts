@@ -68,7 +68,7 @@ export async function fetchWrappedKey(
       case 401:
         throw new UnauthenticatedError(`401 for [${req.url}]; rewrap auth failure`);
       case 403:
-        throw new PermissionDeniedError(`403 for [${req.url}]; rewrap permission denied`);
+        throw new PermissionDeniedError(`403 forbidden for [${req.url}]; rewrap permission denied`);
       default:
         if (response.status >= 500) {
           throw new ServiceError(
