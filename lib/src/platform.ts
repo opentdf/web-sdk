@@ -18,38 +18,6 @@ const nonceCapturingFetch: typeof globalThis.fetch = async (input, init) => {
   const response = await fetch(input, init);
   const requestUrl =
     typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
-  // TEMP DSPX-3397 DEBUG: dump request proof + response body for rewrap calls.
-  if (requestUrl.includes('Rewrap')) {
-    try {
-      const h = init?.headers;
-      let dpopHdr: string | undefined;
-      let authHdr: string | undefined;
-      if (h instanceof Headers) {
-        dpopHdr = h.get('dpop') ?? undefined;
-        authHdr = h.get('authorization') ?? undefined;
-      } else if (h && typeof h === 'object') {
-        const rec = h as Record<string, string>;
-        dpopHdr = rec['dpop'] ?? rec['DPoP'];
-        authHdr = rec['authorization'] ?? rec['Authorization'];
-      }
-      let proof = '';
-      if (dpopHdr) {
-        const parts = dpopHdr.split('.');
-        if (parts.length === 3) {
-          proof = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
-        }
-      }
-      let body = '';
-      if (response.status === 401 || response.status === 400) {
-        body = await response.clone().text();
-      }
-      console.error(
-        `[DPOP-DEBUG2] ${response.status} ${requestUrl} authScheme=[${authHdr?.slice(0, 12)}] proof=${proof} respNonce=[${response.headers.get('dpop-nonce')}] body=${body}`
-      );
-    } catch (e) {
-      console.error('[DPOP-DEBUG2] dump failed', e);
-    }
-  }
   captureNonce(requestUrl, response.headers);
   return response;
 };
