@@ -18,6 +18,20 @@ const nonceCapturingFetch: typeof globalThis.fetch = async (input, init) => {
   const response = await fetch(input, init);
   const requestUrl =
     typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+  // TEMP DSPX-3397 DEBUG: dump what the fetch layer sees on auth failures.
+  if (response.status === 401 || response.status === 400) {
+    try {
+      const hdrs: Record<string, string> = {};
+      response.headers.forEach((v, k) => {
+        hdrs[k] = v;
+      });
+      console.error(
+        `[DPOP-DEBUG] ${response.status} ${requestUrl} dpop-nonce=[${response.headers.get('dpop-nonce')}] headers=${JSON.stringify(hdrs)}`
+      );
+    } catch (e) {
+      console.error('[DPOP-DEBUG] header dump failed', e);
+    }
+  }
   captureNonce(requestUrl, response.headers);
   return response;
 };
