@@ -48,3 +48,26 @@ export class DPoPNonceCache {
  * Shared across all instances to maintain nonce state per-origin.
  */
 export const globalNonceCache = new DPoPNonceCache();
+
+/**
+ * Record a `DPoP-Nonce` response header into {@link globalNonceCache}, keyed by
+ * the request's origin.
+ *
+ * This works directly off the raw `Response`, so it captures the nonce even when
+ * a transport (e.g. Connect-RPC) does not surface response headers on its error
+ * type. Some resource servers (KAS) reject a proof minted without a nonce with a
+ * raw HTTP 401 carrying `DPoP-Nonce` + `WWW-Authenticate: DPoP error="use_dpop_nonce"`
+ * (RFC 9449 §9); capturing here lets the auth layer mint a nonce-bearing proof on
+ * retry.
+ */
+export function captureNonce(requestUrl: string, headers?: Headers): void {
+  const nonce = DPoPNonceCache.extractNonce(headers);
+  if (!nonce) {
+    return;
+  }
+  try {
+    globalNonceCache.set(new URL(requestUrl).origin, nonce);
+  } catch {
+    // Non-absolute URL: the nonce cache is origin-keyed, so nothing to store.
+  }
+}

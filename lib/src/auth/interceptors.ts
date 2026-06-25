@@ -115,9 +115,13 @@ export function authTokenDPoPInterceptor(options: DPoPInterceptorOptions): DPoPI
 
       return response;
     } catch (err) {
-      // Check for a Connect Unauthenticated error carrying a DPoP-Nonce challenge
+      // Check for a Connect Unauthenticated error carrying a DPoP-Nonce challenge.
+      // The transport's fetch wrapper captures the nonce from the raw 401 response
+      // into the cache (Connect errors don't reliably surface response headers);
+      // error metadata is a fallback for transports that do expose it.
       if (err instanceof ConnectError && err.code === Code.Unauthenticated) {
-        const serverNonce = err.metadata.get('dpop-nonce');
+        const serverNonce =
+          globalNonceCache.get(origin) ?? err.metadata.get('dpop-nonce') ?? undefined;
 
         if (serverNonce && serverNonce !== cachedNonce) {
           // Server sent a new nonce (or we didn't have one cached)
@@ -219,6 +223,9 @@ export function authProviderInterceptor(authProvider: AuthProvider): Interceptor
     }
 
     await sign();
+    // Snapshot the nonce we just signed with (withCreds reads it from the cache)
+    // so a 401 can tell us whether the server handed back a *new* one to retry.
+    const sentNonce = origin ? globalNonceCache.get(origin) : undefined;
 
     try {
       const response = await next(req);
@@ -232,13 +239,16 @@ export function authProviderInterceptor(authProvider: AuthProvider): Interceptor
       return response;
     } catch (err) {
       // A DPoP resource server rejects a proof minted without (or with a stale)
-      // nonce by returning Unauthenticated with a fresh `DPoP-Nonce`. Cache the
-      // nonce, re-sign so withCreds embeds it, and retry once (RFC 9449 §9).
-      // Non-DPoP providers/servers never emit a DPoP-Nonce, so this is a no-op
-      // for them.
+      // nonce by returning Unauthenticated with a fresh `DPoP-Nonce`. The
+      // transport's fetch wrapper captures that header from the raw response into
+      // the cache (Connect errors don't reliably surface response headers); we
+      // also fall back to error metadata. Re-sign so withCreds embeds the nonce
+      // and retry once (RFC 9449 §9). Non-DPoP providers/servers never emit a
+      // DPoP-Nonce, so this is a no-op for them.
       if (origin && err instanceof ConnectError && err.code === Code.Unauthenticated) {
-        const serverNonce = err.metadata.get('dpop-nonce');
-        if (serverNonce && serverNonce !== globalNonceCache.get(origin)) {
+        const serverNonce =
+          globalNonceCache.get(origin) ?? err.metadata.get('dpop-nonce') ?? undefined;
+        if (serverNonce && serverNonce !== sentNonce) {
           globalNonceCache.set(origin, serverNonce);
           await sign();
           const retryResponse = await next(req);
