@@ -101,7 +101,9 @@ export function handleRpcRewrapErrorString(
         requiredObligations
       );
     }
-    throw new PermissionDeniedError(`403 for [${platformUrl}]; rewrap permission denied: forbidden`);
+    throw new PermissionDeniedError(
+      `403 for [${platformUrl}]; rewrap permission denied: forbidden`
+    );
   }
   if (e.includes(Code[Code.Unauthenticated])) {
     // 401 Unauthorized
