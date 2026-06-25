@@ -6,7 +6,7 @@ import {
   OriginAllowList,
 } from '../access.js';
 
-import { type AuthProvider } from '../auth/auth.js';
+import { type AuthConfig, resolveInterceptors } from '../auth/interceptors.js';
 import {
   ConfigurationError,
   InvalidFileError,
@@ -37,11 +37,11 @@ import { ConnectError, Code } from '@connectrpc/connect';
 export async function fetchWrappedKey(
   url: string,
   signedRequestToken: string,
-  authProvider: AuthProvider,
+  auth: AuthConfig,
   rewrapAdditionalContextHeader?: string
 ): Promise<RewrapResponse> {
   const platformUrl = getPlatformUrlFromKasEndpoint(url);
-  const platform = new PlatformClient({ authProvider, platformUrl });
+  const platform = new PlatformClient({ interceptors: resolveInterceptors(auth), platformUrl });
   const options: CallOptions = {};
   if (rewrapAdditionalContextHeader) {
     options.headers = {
@@ -121,11 +121,11 @@ export function handleRpcRewrapErrorString(
 
 export async function fetchKeyAccessServers(
   platformUrl: string,
-  authProvider: AuthProvider
+  auth: AuthConfig
 ): Promise<OriginAllowList> {
   let nextOffset = 0;
   const allServers = [];
-  const platform = new PlatformClient({ authProvider, platformUrl });
+  const platform = new PlatformClient({ interceptors: resolveInterceptors(auth), platformUrl });
 
   do {
     let response: ListKeyAccessServersResponse;

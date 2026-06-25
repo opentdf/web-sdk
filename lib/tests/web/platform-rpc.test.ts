@@ -1,5 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import { type AuthProvider, HttpRequest, withHeaders } from '../../src/auth/auth.js';
+import { authTokenInterceptor } from '../../src/auth/interceptors.js';
 import { PlatformClient } from '../../src/platform.js';
 import { attributeFQNsAsValues } from '../../src/policy/api.js';
 import { fetchWrappedKey } from '../../src/access/access-rpc.js';
@@ -148,6 +149,73 @@ describe('Local Platform Connect RPC Client Tests', () => {
       }
     } catch (e) {
       console.log(e);
+    }
+  });
+});
+
+describe('PlatformClient with interceptors (no authProvider)', () => {
+  const dummyToken =
+    'dummy-auth-token eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ0ZGYiLCJzdWIiOiJKb2huIERvZSIsImlhdCI6MTUxNjIzOTAyMn0.XFu4sQxAd6n-b7urqTdQ-I9zKqKSQtC04unHsMSpJjc';
+
+  it('wellknown configuration via interceptor', async () => {
+    const platform = new PlatformClient({
+      interceptors: [authTokenInterceptor(async () => dummyToken)],
+      platformUrl,
+    });
+
+    try {
+      const response = await platform.v1.wellknown.getWellKnownConfiguration({});
+      expect(response.$typeName).to.equal(
+        'wellknownconfiguration.GetWellKnownConfigurationResponse'
+      );
+    } catch (e) {
+      expect.fail('Test failed', e);
+    }
+  });
+
+  it('policy attribute method via interceptor', async () => {
+    const platform = new PlatformClient({
+      interceptors: [authTokenInterceptor(async () => dummyToken)],
+      platformUrl,
+    });
+
+    try {
+      const response = await platform.v1.attributes.listAttributes({});
+      expect(response.$typeName).to.equal('policy.attributes.ListAttributesResponse');
+    } catch (e) {
+      expect.fail('Test failed', e);
+    }
+  });
+
+  it('attributeFQNsAsValues via interceptor auth config', async () => {
+    const fqns = ['https://granted.ns/attr/granted/value/granted'];
+
+    try {
+      const response = await attributeFQNsAsValues(
+        platformUrl,
+        { interceptors: [authTokenInterceptor(async () => dummyToken)] },
+        ...fqns
+      );
+      expect(response[0].$typeName).to.equal('policy.Value');
+    } catch (e) {
+      expect.fail('Test failed', e);
+    }
+  });
+
+  it('rewrap key via interceptor', async () => {
+    const platform = new PlatformClient({
+      interceptors: [authTokenInterceptor(async () => dummyToken)],
+      platformUrl,
+    });
+
+    try {
+      const response = await platform.v1.access.rewrap({
+        signedRequestToken:
+          'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJyZXF1ZXN0Qm9keSI6Im1vY2stcmVxdWVzdC1ib2R5In0.0O9eyg-zC5Ztf78mPaa61n6INtpTdJv6iQQ_3tg2TRlzA73Md-JDTedGKwQ_J6QQycR5AMY5UqrsQvkcK50jfQ',
+      });
+      expect(response.$typeName).to.equal('kas.RewrapResponse');
+    } catch (e) {
+      expect.fail('Test failed', e);
     }
   });
 });

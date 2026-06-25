@@ -1,6 +1,6 @@
 import { ConnectError, Code } from '@connectrpc/connect';
 import { AttributeNotFoundError, ConfigurationError, NetworkError } from '../errors.js';
-import { type AuthProvider } from '../auth/auth.js';
+import { type AuthConfig, resolveInterceptors } from '../auth/interceptors.js';
 import { extractRpcErrorMessage, validateSecureUrl } from '../utils.js';
 import { PlatformClient } from '../platform.js';
 import type { Attribute } from '../platform/policy/objects_pb.js';
@@ -49,13 +49,13 @@ const ATTRIBUTE_FQN_RE = /^https?:\/\/[a-zA-Z0-9._~%-]+\/attr\/[a-zA-Z0-9._~%-]+
  */
 export async function listAttributes(
   platformUrl: string,
-  authProvider: AuthProvider,
+  auth: AuthConfig,
   namespace?: string
 ): Promise<Attribute[]> {
   if (!validateSecureUrl(platformUrl)) {
     throw new ConfigurationError('platformUrl must use HTTPS protocol');
   }
-  const platform = new PlatformClient({ authProvider, platformUrl });
+  const platform = new PlatformClient({ interceptors: resolveInterceptors(auth), platformUrl });
   const result: Attribute[] = [];
   let nextOffset = 0;
 
@@ -106,7 +106,7 @@ export async function listAttributes(
  */
 export async function validateAttributes(
   platformUrl: string,
-  authProvider: AuthProvider,
+  auth: AuthConfig,
   fqns: string[]
 ): Promise<void> {
   if (!fqns || fqns.length === 0) {
@@ -129,7 +129,7 @@ export async function validateAttributes(
     }
   }
 
-  const platform = new PlatformClient({ authProvider, platformUrl });
+  const platform = new PlatformClient({ interceptors: resolveInterceptors(auth), platformUrl });
   let resp;
   try {
     resp = await platform.v1.attributes.getAttributeValuesByFqns({ fqns });
@@ -159,7 +159,7 @@ export async function validateAttributes(
  */
 export async function attributeExists(
   platformUrl: string,
-  authProvider: AuthProvider,
+  auth: AuthConfig,
   attributeFqn: string
 ): Promise<boolean> {
   if (!validateSecureUrl(platformUrl)) {
@@ -170,7 +170,7 @@ export async function attributeExists(
     throw new ConfigurationError('invalid attribute FQN format');
   }
 
-  const platform = new PlatformClient({ authProvider, platformUrl });
+  const platform = new PlatformClient({ interceptors: resolveInterceptors(auth), platformUrl });
   try {
     await platform.v1.attributes.getAttribute({
       identifier: { case: 'fqn', value: attributeFqn },
@@ -199,7 +199,7 @@ export async function attributeExists(
  */
 export async function attributeValueExists(
   platformUrl: string,
-  authProvider: AuthProvider,
+  auth: AuthConfig,
   valueFqn: string
 ): Promise<boolean> {
   if (!validateSecureUrl(platformUrl)) {
@@ -210,7 +210,7 @@ export async function attributeValueExists(
     throw new ConfigurationError('invalid attribute value FQN format');
   }
 
-  const platform = new PlatformClient({ authProvider, platformUrl });
+  const platform = new PlatformClient({ interceptors: resolveInterceptors(auth), platformUrl });
   let resp;
   try {
     resp = await platform.v1.attributes.getAttributeValuesByFqns({ fqns: [valueFqn] });
