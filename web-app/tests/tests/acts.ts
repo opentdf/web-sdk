@@ -1,5 +1,7 @@
+export const appUrl = 'http://localhost:65432/';
+
 export const authorize = async (page: Page) => {
-  await page.goto('http://localhost:65432/');
+  await page.goto(appUrl);
   // If we are logged in, return early.
   const sessionState = await page.locator('#sessionState').textContent();
   if (sessionState === 'loggedin') {

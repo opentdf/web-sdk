@@ -1,6 +1,8 @@
 import { expect } from '@esm-bundle/chai';
 import { OpenTDF } from '../../src/opentdf.js';
 import type { AuthProvider } from '../../src/auth/auth.js';
+import type { Interceptor } from '@connectrpc/connect';
+import { authTokenInterceptor } from '../../src/auth/interceptors.js';
 
 const stubAuthProvider: AuthProvider = {
   updateClientPublicKey: async () => {},
@@ -97,6 +99,62 @@ describe('OpenTDF constructor', () => {
       } catch (e) {
         expect(e).to.have.property('message', 'IdP unreachable');
       }
+    });
+  });
+
+  describe('interceptors (new path)', () => {
+    const stubInterceptor: Interceptor = (next) => (req) => next(req);
+
+    it('accepts interceptors instead of authProvider', () => {
+      const client = new OpenTDF({
+        interceptors: [stubInterceptor],
+        platformUrl: 'https://example.com',
+      });
+      expect(client.interceptors).to.deep.equal([stubInterceptor]);
+      expect(client.authProvider).to.equal(undefined);
+    });
+
+    it('ready resolves immediately with interceptors', async () => {
+      const client = new OpenTDF({
+        interceptors: [stubInterceptor],
+      });
+      // Should not hang or throw
+      await client.ready;
+    });
+
+    it('does not call updateClientPublicKey with interceptors', async () => {
+      const client = new OpenTDF({
+        interceptors: [authTokenInterceptor(async () => 'token')],
+      });
+      await client.ready;
+      // No updateClientPublicKey to call — if we got here, no error was thrown
+      expect(client.dpopEnabled).to.equal(true);
+    });
+
+    it('throws if neither authProvider nor interceptors provided', () => {
+      try {
+        new OpenTDF({});
+        expect.fail('should have thrown');
+      } catch (e) {
+        expect((e as Error).message).to.include('Either authProvider or interceptors');
+      }
+    });
+
+    it('resolves auth config in tdf3Client', () => {
+      const client = new OpenTDF({
+        interceptors: [stubInterceptor],
+        platformUrl: 'https://example.com',
+      });
+      expect(client.tdf3Client.auth).to.deep.equal({ interceptors: [stubInterceptor] });
+    });
+
+    it('generates dpopKeys even with interceptors', async () => {
+      const client = new OpenTDF({
+        interceptors: [stubInterceptor],
+      });
+      const keys = await client.dpopKeys;
+      expect(keys).to.have.property('publicKey');
+      expect(keys).to.have.property('privateKey');
     });
   });
 });
