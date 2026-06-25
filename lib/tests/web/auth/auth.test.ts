@@ -346,6 +346,38 @@ describe('AccessToken', () => {
       expect(res).to.eql('a');
       expect(mf.callCount).to.eql(1);
     });
+    it('should dedupe concurrent refreshes into a single token exchange', async () => {
+      const signingKey = await generateTestSigningKey();
+      const json = fake.resolves({ access_token: 'a' });
+      const mf = fake((url: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+        if (!init) {
+          return Promise.reject('No init found');
+        }
+        if (init.method === 'POST') {
+          return Promise.resolve({ ...ok, json });
+        }
+        return Promise.reject(`yee [${url}] [${JSON.stringify(init.headers)}]`);
+      });
+      const accessTokenClient = new AccessToken(
+        {
+          oidcOrigin: 'https://auth.invalid',
+          clientId: 'myid',
+          clientSecret: 'mysecret',
+          exchange: 'client',
+          signingKey,
+        },
+        DefaultCryptoService,
+        mf
+      );
+      // Fire several gets before any resolves; only one exchange should happen.
+      const results = await Promise.all([
+        accessTokenClient.get(),
+        accessTokenClient.get(),
+        accessTokenClient.get(),
+      ]);
+      expect(results).to.eql(['a', 'a', 'a']);
+      expect(mf.callCount).to.eql(1);
+    });
   });
 
   describe('withCreds', () => {

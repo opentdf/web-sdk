@@ -27,12 +27,12 @@ export function getJwtExpiration(token: string): number | undefined {
  */
 export function resolveTokenExpiry(accessToken: string, expiresIn?: number): number | undefined {
   if (typeof expiresIn === 'number') {
-    return Date.now() / 1000 + expiresIn;
+    return Math.floor(Date.now() / 1000) + expiresIn;
   }
   return getJwtExpiration(accessToken);
 }
 
 export function isTokenExpired(expiry: number | undefined, bufferSeconds = 30): boolean {
   if (expiry === undefined) return true;
-  return Date.now() / 1000 >= expiry - bufferSeconds;
+  return Math.floor(Date.now() / 1000) >= expiry - bufferSeconds;
 }

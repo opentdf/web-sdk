@@ -104,6 +104,9 @@ export class AccessToken {
   /** Absolute expiry (seconds since epoch) of the cached access token in `data`. */
   cachedExpiry?: number;
 
+  /** In-flight token exchange, used to dedupe concurrent `get()` calls. */
+  inFlight?: Promise<string>;
+
   cryptoService: CryptoService;
 
   constructor(cfg: OIDCCredentials, cryptoService: CryptoService, request?: typeof fetch) {
@@ -243,20 +246,36 @@ export class AccessToken {
       return this.data.access_token;
     }
 
-    if (this.data?.refresh_token) {
-      // Prefer the latest refresh_token if present over creds passed in
-      // to constructor
-      this.config = {
-        ...this.config,
-        exchange: 'refresh',
-        refreshToken: this.data.refresh_token,
-      };
+    // Dedupe concurrent refreshes so a burst of requests triggers one exchange.
+    if (this.inFlight) {
+      return this.inFlight;
     }
-    delete this.data;
 
-    const tokenResponse = (this.data = await this.accessTokenLookup(this.config));
-    this.cachedExpiry = resolveTokenExpiry(tokenResponse.access_token, tokenResponse.expires_in);
-    return tokenResponse.access_token;
+    this.inFlight = (async () => {
+      try {
+        if (this.data?.refresh_token) {
+          // Prefer the latest refresh_token if present over creds passed in
+          // to constructor
+          this.config = {
+            ...this.config,
+            exchange: 'refresh',
+            refreshToken: this.data.refresh_token,
+          };
+        }
+        delete this.data;
+
+        const tokenResponse = (this.data = await this.accessTokenLookup(this.config));
+        this.cachedExpiry = resolveTokenExpiry(
+          tokenResponse.access_token,
+          tokenResponse.expires_in
+        );
+        return tokenResponse.access_token;
+      } finally {
+        delete this.inFlight;
+      }
+    })();
+
+    return this.inFlight;
   }
 
   /**
@@ -275,6 +294,7 @@ export class AccessToken {
     }
     delete this.data;
     delete this.cachedExpiry;
+    delete this.inFlight;
     this.signingKey = signingKey;
   }
 
