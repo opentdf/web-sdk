@@ -5,6 +5,22 @@ export * as platformConnect from '@connectrpc/connect';
 import { createConnectTransport } from '@connectrpc/connect-web';
 import type { AuthProvider } from '../tdf3/index.js';
 import { authProviderInterceptor } from './auth/interceptors.js';
+import { captureNonce } from './auth/dpop-nonce.js';
+
+/**
+ * A `fetch` wrapper that records any `DPoP-Nonce` response header into the global
+ * nonce cache before handing the response back to the Connect transport. The
+ * Connect error type does not reliably surface response headers, so capturing at
+ * the transport layer is what lets the DPoP auth interceptors mint a
+ * nonce-bearing proof and retry a rewrap challenged per RFC 9449 §9.
+ */
+const nonceCapturingFetch: typeof globalThis.fetch = async (input, init) => {
+  const response = await fetch(input, init);
+  const requestUrl =
+    typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+  captureNonce(requestUrl, response.headers);
+  return response;
+};
 
 import { Client, createClient, Interceptor } from '@connectrpc/connect';
 import { WellKnownService } from './platform/wellknownconfiguration/wellknown_configuration_pb.js';
@@ -99,6 +115,7 @@ export class PlatformClient {
     const transport = createConnectTransport({
       baseUrl: options.platformUrl,
       interceptors,
+      fetch: nonceCapturingFetch,
     });
 
     this.v1 = {
