@@ -49,6 +49,7 @@ import {
   KeyAccessType,
   KeyInfo,
   Manifest,
+  MLKEMWrapped,
   Policy,
   SplitKey,
   Wrapped,
@@ -280,6 +281,9 @@ export async function buildKeyAccess({
   }
   switch (type) {
     case 'wrapped':
+      if (alg === 'mlkem:768') {
+        return new MLKEMWrapped(url, kid, pubKey, metadata, cryptoService, sid);
+      }
       return new Wrapped(url, kid, pubKey, metadata, cryptoService, sid);
     case 'ec-wrapped':
       return new ECWrapped(url, kid, pubKey, metadata, cryptoService, sid);

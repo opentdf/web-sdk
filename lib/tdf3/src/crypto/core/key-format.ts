@@ -95,6 +95,28 @@ async function extractRsaModulusBitLength(keyData: ArrayBuffer): Promise<number>
   return base64urlByteLength(jwk.n) * 8;
 }
 
+// ML-KEM-768 OID: 2.16.840.1.101.3.4.4.2 encoded in DER as tag (06) + length (09) + value
+const MLKEM768_OID_HEX = '0609608648016503040402';
+const MLKEM768_EK_BYTES = 1184;
+// Bytes before the raw key in a well-formed ML-KEM-768 SPKI blob:
+//   4 outer SEQUENCE header + 13 AlgorithmIdentifier + 4 BIT STRING header + 1 unused-bits = 22
+const MLKEM768_SPKI_EK_OFFSET = 22;
+
+/**
+ * Extract the 1184-byte ML-KEM-768 encapsulation key from a SPKI-encoded public key.
+ */
+export function extractMLKEM768EkFromSpki(spkiBytes: ArrayBuffer): Uint8Array {
+  const hex = hexEncode(spkiBytes);
+  if (!hex.includes(MLKEM768_OID_HEX)) {
+    throw new ConfigurationError('Not an ML-KEM-768 SPKI public key');
+  }
+  const view = new Uint8Array(spkiBytes);
+  if (view.length !== MLKEM768_SPKI_EK_OFFSET + MLKEM768_EK_BYTES) {
+    throw new ConfigurationError(`Invalid ML-KEM-768 SPKI length: ${view.length}`);
+  }
+  return view.slice(MLKEM768_SPKI_EK_OFFSET);
+}
+
 /**
  * Import and validate a PEM public key, returning algorithm info.
  * Uses JWK export for robust key parameter detection.
@@ -111,6 +133,12 @@ export async function parsePublicKeyPem(pem: string): Promise<PublicKeyInfo> {
   }
 
   const keyData = base64Decode(removePemFormatting(publicKeyPem));
+
+  // Check for ML-KEM-768 by OID before attempting WebCrypto import
+  const keyHex = hexEncode(keyData);
+  if (keyHex.includes(MLKEM768_OID_HEX)) {
+    return { algorithm: 'mlkem:768', pem: publicKeyPem };
+  }
 
   // Try RSA first - use JWK export to get modulus size
   try {

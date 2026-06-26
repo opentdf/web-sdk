@@ -3,6 +3,7 @@ export enum AlgorithmName {
   ECDSA = 'ECDSA',
   ES256 = 'ES256',
   HKDF = 'HKDF',
+  MLKEM_768 = 'ML-KEM-768',
   RSA_OAEP = 'RSA-OAEP',
   RSA_PSS = 'RSA-PSS',
 }
