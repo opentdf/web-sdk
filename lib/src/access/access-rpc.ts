@@ -64,7 +64,9 @@ export function handleRpcRewrapError(e: unknown, platformUrl: string): never {
       case Code.InvalidArgument: // 400 Bad Request
         throw new InvalidFileError(`400 for [${platformUrl}]: rewrap bad request [${e.message}]`);
       case Code.PermissionDenied: // 403 Forbidden
-        throw new PermissionDeniedError(`403 for [${platformUrl}]; rewrap permission denied`);
+        throw new PermissionDeniedError(
+          `403 for [${platformUrl}]; rewrap permission denied: forbidden`
+        );
       case Code.Unauthenticated: // 401 Unauthorized
         throw new UnauthenticatedError(`401 for [${platformUrl}]; rewrap auth failure`);
       case Code.Internal:
@@ -95,11 +97,13 @@ export function handleRpcRewrapErrorString(
   if (e.includes(Code[Code.PermissionDenied])) {
     if (requiredObligations && requiredObligations.length > 0) {
       throw new PermissionDeniedError(
-        `403 for [${platformUrl}]; rewrap permission denied`,
+        `403 for [${platformUrl}]; rewrap permission denied: forbidden`,
         requiredObligations
       );
     }
-    throw new PermissionDeniedError(`403 for [${platformUrl}]; rewrap permission denied`);
+    throw new PermissionDeniedError(
+      `403 for [${platformUrl}]; rewrap permission denied: forbidden`
+    );
   }
   if (e.includes(Code[Code.Unauthenticated])) {
     // 401 Unauthorized
