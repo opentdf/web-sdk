@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.20.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.19.0...sdk-v0.20.0) (2026-06-26)
+
+
+### Bug Fixes
+
+* **sdk:** bump uuid and nyc in /lib ([#955](https://github.com/opentdf/web-sdk/issues/955)) ([e0201cd](https://github.com/opentdf/web-sdk/commit/e0201cd19e41267d3880ba287c0340284a0d7e57))
+* **sdk:** bump uuid from 14.0.0 to 14.0.1 in /lib ([#953](https://github.com/opentdf/web-sdk/issues/953)) ([acf26fd](https://github.com/opentdf/web-sdk/commit/acf26fd2f0b70b5f4959752d29309f04f9b9ffba))
+* **sdk:** Drops user_info check, does local `exp` check ([#956](https://github.com/opentdf/web-sdk/issues/956)) ([d1c88fd](https://github.com/opentdf/web-sdk/commit/d1c88fd8e54e680f8a12a7e177475678ed05bbd9))
+* **tdf3:** remove TODO from customer-facing error message ([#952](https://github.com/opentdf/web-sdk/issues/952)) ([19f8d53](https://github.com/opentdf/web-sdk/commit/19f8d53d9c3acec8beaf1a5a3022a3fafaac20f5))
+
 ## [0.19.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.18.0...sdk-v0.19.0) (2026-06-23)
 
 
