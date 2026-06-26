@@ -726,8 +726,13 @@ export function splitLookupTableFactory(
   for (const kao of keyAccess) {
     const disjunction = splitPotentials[kao.sid ?? ''];
     if (kao.url in disjunction) {
+      // TODO(DSPX-3454): Handle duplicate KAS URLs with different KIDs.
+      // Each KAO contains a KID - the function should be updated to use this
+      // information to differentiate between keys from the same KAS.
+      // Cross-SDK validation needed via xtest.
       throw new InvalidFileError(
-        `TODO: Fallback to no split ids. Repetition found for [${kao.url}] on split [${kao.sid}]`
+        `Unable to decrypt: Multiple keys detected for Key Access Server [${kao.url}]. ` +
+          `Please contact your administrator.`
       );
     }
     if (allowed(kao)) {
