@@ -14,10 +14,27 @@ import { exportSPKI, importX509 } from 'jose';
 import {
   guessAlgorithmName,
   guessCurveName,
+  ML_KEM_512_OID,
+  ML_KEM_768_OID,
+  ML_KEM_1024_OID,
   toJwsAlg,
 } from '../../../../src/crypto/pemPublicToCrypto.js';
-import { unwrapKey, wrapPrivateKey, wrapPublicKey } from './keys.js';
+import {
+  unwrapKey,
+  wrapMlKemPublicKey,
+  unwrapMlKemKey,
+  wrapPrivateKey,
+  wrapPublicKey,
+} from './keys.js';
+import { decodeMlKemSpkiDer, encodeMlKemSpkiDer } from './mlkem-asn1.js';
 import { rsaOaepSha1 } from './rsa.js';
+
+function detectMlKemLevelFromHex(hex: string): 512 | 768 | 1024 | undefined {
+  if (hex.includes(ML_KEM_512_OID)) return 512;
+  if (hex.includes(ML_KEM_768_OID)) return 768;
+  if (hex.includes(ML_KEM_1024_OID)) return 1024;
+  return undefined;
+}
 
 /**
  * Extract PEM public key from X.509 certificate or return PEM key as-is.
@@ -111,6 +128,14 @@ export async function parsePublicKeyPem(pem: string): Promise<PublicKeyInfo> {
   }
 
   const keyData = base64Decode(removePemFormatting(publicKeyPem));
+
+  // ML-KEM: detect by OID before falling through to RSA/EC.
+  // decodeMlKemSpkiDer also validates length so this rejects mis-encoded keys.
+  const mlKemLevel = detectMlKemLevelFromHex(hexEncode(keyData));
+  if (mlKemLevel !== undefined) {
+    decodeMlKemSpkiDer(new Uint8Array(keyData));
+    return { algorithm: `mlkem:${mlKemLevel}`, pem: publicKeyPem };
+  }
 
   // Try RSA first - use JWK export to get modulus size
   try {
@@ -222,12 +247,31 @@ export async function publicKeyPemToJwk(publicKeyPem: string): Promise<JsonWebKe
 
 /**
  * Import a PEM public key as an opaque key.
+ *
+ * Accepts standard `-----BEGIN PUBLIC KEY-----` SPKI envelopes for RSA, EC, and
+ * ML-KEM (per draft-ietf-lamps-kyber-certificates, OIDs id-alg-ml-kem-{512,768,1024}).
+ * ML-KEM keys produced by `openssl pkey -pubout` round-trip without translation.
  */
 export async function importPublicKey(pem: string, options: KeyOptions): Promise<PublicKey> {
   const { usage = 'encrypt', extractable = true, algorithmHint } = options;
 
-  // Detect algorithm from PEM; also normalises certificates → plain SPKI PEM.
+  // Detect algorithm from PEM; also normalises certificates → plain SPKI PEM
+  // and identifies ML-KEM keys by OID.
   const keyInfo = await parsePublicKeyPem(pem);
+
+  // ML-KEM: import via SPKI codec. WebCrypto has no ML-KEM support, so we keep
+  // the key as an opaque `PublicKey` carrying the raw encapsulation key bytes.
+  if (keyInfo.algorithm.startsWith('mlkem:')) {
+    const der = new Uint8Array(base64Decode(removePemFormatting(keyInfo.pem)));
+    const { level, rawKey } = decodeMlKemSpkiDer(der);
+    if (algorithmHint && algorithmHint !== `mlkem:${level}`) {
+      throw new ConfigurationError(
+        `ML-KEM SPKI advertises mlkem:${level} but algorithmHint is ${algorithmHint}`
+      );
+    }
+    return wrapMlKemPublicKey(rawKey, level);
+  }
+
   const algorithm = algorithmHint || keyInfo.algorithm;
   // Use keyInfo.pem (normalised SPKI) not the original pem, which may be a certificate.
   // Passing raw X.509 DER bytes to crypto.subtle.importKey('spki') would throw DataError.
@@ -393,9 +437,21 @@ export async function importPrivateKey(pem: string, options: KeyOptions): Promis
 }
 
 /**
- * Export an opaque public key to PEM format.
+ * Export an opaque public key to PEM SPKI format.
+ *
+ * ML-KEM keys are wrapped in a SubjectPublicKeyInfo envelope using the NIST
+ * OIDs id-alg-ml-kem-{512,768,1024} (per draft-ietf-lamps-kyber-certificates),
+ * so the resulting PEM is byte-compatible with `openssl pkey -pubout`.
  */
 export async function exportPublicKeyPem(key: PublicKey): Promise<string> {
+  if (key.algorithm.startsWith('mlkem:')) {
+    const level = parseInt(key.algorithm.split(':')[1], 10) as 512 | 768 | 1024;
+    const der = encodeMlKemSpkiDer(unwrapMlKemKey(key), level);
+    return formatAsPem(
+      der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength),
+      'PUBLIC KEY'
+    );
+  }
   const cryptoKey = unwrapKey(key);
   const keyBuffer = await crypto.subtle.exportKey('spki', cryptoKey);
   return formatAsPem(keyBuffer, 'PUBLIC KEY');

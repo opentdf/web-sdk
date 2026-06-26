@@ -1,17 +1,44 @@
 import * as jose from 'jose';
 import { createServer, IncomingMessage, RequestListener } from 'node:http';
+import { ml_kem512, ml_kem768, ml_kem1024 } from '@noble/post-quantum/ml-kem.js';
 
 import { base64 } from '../src/encodings/index.js';
 import { decryptWithPrivateKey, encryptWithPublicKey } from '../tdf3/src/crypto/index.js';
 import { getMocks } from './mocks/index.js';
 import { keyAgreement, pemPublicToCrypto } from '../src/crypto/index.js';
 import { generateRandomNumber } from '../src/crypto/generateRandomNumber.js';
-import { removePemFormatting } from '../tdf3/src/crypto/crypto-utils.js';
+import { formatAsPem, removePemFormatting } from '../tdf3/src/crypto/crypto-utils.js';
 import { Binary } from '../tdf3/index.js';
 import { valueFor } from './web/policy/mock-attrs.js';
 import { AttributeAndValue } from '../src/policy/attributes.js';
 import { getZtdfSalt } from '../tdf3/src/crypto/salt.js';
 import { DefaultCryptoService } from '../tdf3/src/crypto/index.js';
+import {
+  decodeMlKemSpkiDer,
+  encodeMlKemSpkiDer,
+  isMlKemSpkiDer,
+} from '../tdf3/src/crypto/core/mlkem-asn1.js';
+
+// ML-KEM server-side key pairs, generated once at startup.
+const KAS_ML_KEM_KEYS = {
+  512: ml_kem512.keygen(),
+  768: ml_kem768.keygen(),
+  1024: ml_kem1024.keygen(),
+} as const;
+
+const MLKEM_CT_SIZES: Record<512 | 768 | 1024, number> = { 512: 768, 768: 1088, 1024: 1568 };
+const MLKEM_APIS = { 512: ml_kem512, 768: ml_kem768, 1024: ml_kem1024 } as const;
+
+function mlKemPublicKeyPem(level: 512 | 768 | 1024): string {
+  const der = encodeMlKemSpkiDer(KAS_ML_KEM_KEYS[level].publicKey, level);
+  // formatAsPem expects an ArrayBuffer; copy out of the underlying buffer.
+  const ab = der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength);
+  return formatAsPem(ab, 'PUBLIC KEY');
+}
+
+// Allow tests to flip the WellKnown base key by setting BASE_KEY_ALG=mlkem:768
+// (or any other supported algorithm) before importing this module. Default stays EC.
+const BASE_KEY_ALG = process.env.BASE_KEY_ALG || 'ec:secp256r1';
 
 import { create, toJsonString, fromJson } from '@bufbuild/protobuf';
 import { ValueSchema } from '@bufbuild/protobuf/wkt';
@@ -95,10 +122,18 @@ const kas: RequestListener = async (req, res) => {
       const params = JSON.parse(bodyText);
       const algorithm = params.algorithm || 'rsa:2048';
 
-      if (!['ec:secp256r1', 'rsa:2048'].includes(algorithm)) {
+      const validAlgorithms = ['ec:secp256r1', 'rsa:2048', 'mlkem:512', 'mlkem:768', 'mlkem:1024'];
+      if (!validAlgorithms.includes(algorithm)) {
         console.log(`[DEBUG] invalid algorithm [${algorithm}]`);
         res.writeHead(400);
         res.end(`{"error": "Invalid algorithm [${algorithm}]"}`);
+        return;
+      }
+      if (algorithm.startsWith('mlkem:')) {
+        const level = parseInt(algorithm.split(':')[1], 10) as 512 | 768 | 1024;
+        res.setHeader('Content-Type', 'application/json');
+        res.statusCode = 200;
+        res.end(JSON.stringify({ kid: `mlkem${level}`, publicKey: mlKemPublicKeyPem(level) }));
         return;
       }
       const fmt = params.fmt || 'pkcs8';
@@ -209,12 +244,31 @@ const kas: RequestListener = async (req, res) => {
 
       const rewrap = fromJson(UnsignedRewrapRequestSchema, JSON.parse(requestBody as string));
       console.log('[INFO]: rewrap request body: ', rewrap);
-      const clientPublicKey = await pemPublicToCrypto(rewrap.clientPublicKey);
-      if (!clientPublicKey || clientPublicKey.type !== 'public') {
-        res.writeHead(400);
-        res.end('{"error": "Invalid client public key"}');
-        return;
+
+      // All clientPublicKey strings now arrive as PEM SPKI. Decode once and decide
+      // whether it's ML-KEM (by OID) or a WebCrypto-friendly RSA/EC key.
+      const clientDer = new Uint8Array(
+        base64.decodeArrayBuffer(removePemFormatting(rewrap.clientPublicKey))
+      );
+      let clientKeyRaw: Uint8Array | undefined;
+      let clientMlKemLevel: 512 | 768 | 1024 | undefined;
+      if (isMlKemSpkiDer(clientDer)) {
+        const decoded = decodeMlKemSpkiDer(clientDer);
+        clientMlKemLevel = decoded.level;
+        clientKeyRaw = decoded.rawKey;
       }
+      const isMLKEMClient = clientMlKemLevel !== undefined;
+
+      let clientPublicKey: CryptoKey | undefined;
+      if (!isMLKEMClient) {
+        clientPublicKey = await pemPublicToCrypto(rewrap.clientPublicKey);
+        if (!clientPublicKey || clientPublicKey.type !== 'public') {
+          res.writeHead(400);
+          res.end('{"error": "Invalid client public key"}');
+          return;
+        }
+      }
+
       const keyAccessObject = rewrap.requests?.[0]?.keyAccessObjects?.[0]?.keyAccessObject;
       const kaoheader = keyAccessObject?.header;
       const isZTDF = !kaoheader || kaoheader.length === 0;
@@ -225,10 +279,37 @@ const kas: RequestListener = async (req, res) => {
           res.end('{"error": "Invalid wrapped key"}');
           return;
         }
-        const isECWrapped = keyAccessObject?.kid == 'e1';
+        const kid = keyAccessObject?.kid || '';
+        const isECWrapped = kid == 'e1';
+        const isMlKemWrapped = kid === 'mlkem512' || kid === 'mlkem768' || kid === 'mlkem1024';
         // Decrypt the wrapped key from TDF3
         let dek: Binary;
-        if (isECWrapped) {
+        if (isMlKemWrapped) {
+          const kasLevel = parseInt(kid.replace('mlkem', ''), 10) as 512 | 768 | 1024;
+          const ctLen = MLKEM_CT_SIZES[kasLevel];
+          const kemCt = wk.slice(0, ctLen);
+          const iv = wk.slice(ctLen, ctLen + 12);
+          const wrappedDek = wk.slice(ctLen + 12);
+
+          const sharedSecret = MLKEM_APIS[kasLevel].decapsulate(
+            kemCt,
+            KAS_ML_KEM_KEYS[kasLevel].secretKey
+          );
+
+          const hkdfKey = await crypto.subtle.importKey('raw', sharedSecret, 'HKDF', false, [
+            'deriveKey',
+          ]);
+          const salt = await getZtdfSalt(DefaultCryptoService);
+          const aesKey = await crypto.subtle.deriveKey(
+            { name: 'HKDF', hash: 'SHA-256', salt, info: new Uint8Array(0) },
+            hkdfKey,
+            { name: 'AES-GCM', length: 256 },
+            false,
+            ['decrypt']
+          );
+          const dekAb = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, aesKey, wrappedDek);
+          dek = Binary.fromArrayBuffer(dekAb);
+        } else if (isECWrapped) {
           if (!keyAccessObject?.ephemeralPublicKey) {
             res.writeHead(400);
             res.end('{"error": "Nil ephemeral public key"}');
@@ -258,7 +339,53 @@ const kas: RequestListener = async (req, res) => {
         } else {
           dek = await decryptWithPrivateKey(Binary.fromArrayBuffer(wk), Mocks.kasPrivateKey);
         }
-        if (clientPublicKey.algorithm.name == 'RSA-OAEP') {
+        if (isMLKEMClient && clientMlKemLevel !== undefined && clientKeyRaw !== undefined) {
+          const { cipherText, sharedSecret } =
+            MLKEM_APIS[clientMlKemLevel].encapsulate(clientKeyRaw);
+          const hkdfKey = await crypto.subtle.importKey('raw', sharedSecret, 'HKDF', false, [
+            'deriveKey',
+          ]);
+          const salt = await getZtdfSalt(DefaultCryptoService);
+          const newAesKey = await crypto.subtle.deriveKey(
+            { name: 'HKDF', hash: 'SHA-256', salt, info: new Uint8Array(0) },
+            hkdfKey,
+            { name: 'AES-GCM', length: 256 },
+            false,
+            ['encrypt']
+          );
+          const iv = generateRandomNumber(12);
+          const aesCt = await crypto.subtle.encrypt(
+            { name: 'AES-GCM', iv },
+            newAesKey,
+            dek.asArrayBuffer()
+          );
+          const entityWrappedKey = concat([cipherText, iv, new Uint8Array(aesCt)]);
+          const reply = create(RewrapResponseSchema, {
+            responses: [
+              create(PolicyRewrapResultSchema, {
+                results: [
+                  create(KeyAccessRewrapResultSchema, {
+                    metadata: {
+                      hello: create(ValueSchema, {
+                        kind: { case: 'stringValue', value: 'world' },
+                      }),
+                    },
+                    result: {
+                      case: 'kasWrappedKey',
+                      value: entityWrappedKey,
+                    },
+                    keyAccessObjectId:
+                      rewrap.requests?.[0]?.keyAccessObjects?.[0]?.keyAccessObjectId || '',
+                  }),
+                ],
+              }),
+            ],
+          });
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(toJsonString(RewrapResponseSchema, reply));
+          return;
+        } else if (clientPublicKey!.algorithm.name == 'RSA-OAEP') {
           // Import the client public key as opaque PublicKey for encryptWithPublicKey
           const clientPubKeyOpaque = await DefaultCryptoService.importPublicKey(
             rewrap.clientPublicKey,
@@ -299,7 +426,7 @@ const kas: RequestListener = async (req, res) => {
           false,
           ['deriveBits', 'deriveKey']
         );
-        const kek = await keyAgreement(sessionKeyPair.privateKey, clientPublicKey, {
+        const kek = await keyAgreement(sessionKeyPair.privateKey, clientPublicKey!, {
           hkdfSalt: await getZtdfSalt(DefaultCryptoService),
           hkdfHash: 'SHA-256',
         });
@@ -442,17 +569,24 @@ const kas: RequestListener = async (req, res) => {
     ) {
       res.statusCode = 200;
       res.setHeader('Content-Type', 'application/json');
+      let publicKey: { algorithm: string; kid: string; pem: string };
+      if (BASE_KEY_ALG.startsWith('mlkem:')) {
+        const level = parseInt(BASE_KEY_ALG.split(':')[1], 10) as 512 | 768 | 1024;
+        publicKey = {
+          algorithm: BASE_KEY_ALG,
+          kid: `mlkem${level}`,
+          pem: mlKemPublicKeyPem(level),
+        };
+      } else {
+        publicKey = { algorithm: 'ec:secp256r1', kid: 'e1', pem: Mocks.kasECCert };
+      }
       res.end(
         JSON.stringify({
           configuration: {
             base_key: {
               kas_id: '34f2acdc-3d9c-4e92-80b6-90fe4dc9afcb',
               kas_uri: 'http://localhost:3000',
-              public_key: {
-                algorithm: 'ec:secp256r1',
-                kid: 'e1',
-                pem: Mocks.kasECCert,
-              },
+              public_key: publicKey,
             },
           },
         })

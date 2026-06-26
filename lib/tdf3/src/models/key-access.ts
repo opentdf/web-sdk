@@ -4,6 +4,7 @@ import type { CryptoService, KeyPair, SymmetricKey } from '../crypto/declaration
 import { getZtdfSalt } from '../crypto/salt.js';
 import { Algorithms } from '../ciphers/index.js';
 import { Policy } from './policy.js';
+import { MLKEM_CT_SIZES } from '../crypto/core/mlkem.js';
 
 export type KeyAccessType = 'remote' | 'wrapped' | 'ec-wrapped';
 
@@ -152,7 +153,97 @@ export class Wrapped {
   }
 }
 
-export type KeyAccess = ECWrapped | Wrapped;
+export class MlKemWrapped {
+  readonly type = 'wrapped';
+  readonly level: 512 | 768 | 1024;
+  keyAccessObject?: KeyAccessObject;
+
+  constructor(
+    public readonly url: string,
+    public readonly kid: string | undefined,
+    public readonly publicKey: string,
+    public readonly metadata: unknown,
+    public readonly cryptoService: CryptoService,
+    public readonly sid: string | undefined,
+    public readonly alg: 'mlkem:512' | 'mlkem:768' | 'mlkem:1024'
+  ) {
+    this.level = parseInt(alg.split(':')[1], 10) as 512 | 768 | 1024;
+  }
+
+  async write(
+    policy: Policy,
+    dek: SymmetricKey,
+    encryptedMetadataStr: string
+  ): Promise<KeyAccessObject> {
+    const policyStr = JSON.stringify(policy);
+
+    // Import KAS ML-KEM encapsulation key from raw base64
+    const kasPublicKey = await this.cryptoService.importPublicKey(this.publicKey, {
+      algorithmHint: this.alg,
+    });
+
+    // ML-KEM encapsulate → KEM ciphertext + raw shared secret
+    const { ciphertext: kemCiphertext, sharedSecret } =
+      await this.cryptoService.mlKemEncapsulate(kasPublicKey);
+
+    // Derive AES-256 key from shared secret via HKDF-SHA256
+    const derivedKey = await this.cryptoService.hkdfDerive(sharedSecret, {
+      hash: 'SHA-256',
+      salt: await getZtdfSalt(this.cryptoService),
+    });
+
+    // AES-256-GCM wrap the DEK
+    const iv = await this.cryptoService.randomBytes(12);
+    const encryptResult = await this.cryptoService.encrypt(
+      dek,
+      derivedKey,
+      Binary.fromArrayBuffer(iv.buffer),
+      Algorithms.AES_256_GCM
+    );
+
+    const aesCt = new Uint8Array(encryptResult.payload.asArrayBuffer());
+    const authTag = encryptResult.authTag
+      ? new Uint8Array(encryptResult.authTag.asArrayBuffer())
+      : new Uint8Array(0);
+
+    // wrappedKey = base64( mlkem_ct || iv(12) || aes_ct(32) || tag(16) )
+    const blob = new Uint8Array(kemCiphertext.length + iv.length + aesCt.length + authTag.length);
+    blob.set(kemCiphertext);
+    blob.set(iv, kemCiphertext.length);
+    blob.set(aesCt, kemCiphertext.length + iv.length);
+    blob.set(authTag, kemCiphertext.length + iv.length + aesCt.length);
+
+    const policyBinding = hex.encodeArrayBuffer(
+      (await this.cryptoService.hmac(new TextEncoder().encode(base64.encode(policyStr)), dek))
+        .buffer
+    );
+
+    const kao: KeyAccessObject = {
+      type: 'wrapped',
+      url: this.url,
+      protocol: 'kas',
+      wrappedKey: base64.encodeArrayBuffer(blob),
+      encryptedMetadata: base64.encode(encryptedMetadataStr),
+      policyBinding: {
+        alg: 'HS256',
+        hash: base64.encode(policyBinding),
+      },
+      schemaVersion,
+    };
+    if (this.kid) {
+      kao.kid = this.kid;
+    }
+    if (this.sid?.length) {
+      kao.sid = this.sid;
+    }
+    this.keyAccessObject = kao;
+    return kao;
+  }
+}
+
+export { MLKEM_CT_SIZES };
+
+export type KeyAccess = ECWrapped | MlKemWrapped | Wrapped;
 
 /**
  * A KeyAccess object stores all information about how an object key OR one key split is stored.

@@ -724,7 +724,7 @@ export class Client {
     encryptionInformation.keyAccess = await Promise.all(
       splitPlan.map(async ({ kas, kid, pem, sid }) => {
         const algorithm = await algorithmFromPEM(pem, this.cryptoService);
-        if (algorithm !== wrappingKeyAlgorithm) {
+        if (wrappingKeyAlgorithm && algorithm !== wrappingKeyAlgorithm) {
           console.warn(
             `Mismatched wrapping key algorithm: [${algorithm}] is not requested type, [${wrappingKeyAlgorithm}]`
           );
@@ -739,6 +739,11 @@ export class Client {
           case 'ec:secp521r1':
           case 'ec:secp256r1':
             type = 'ec-wrapped';
+            break;
+          case 'mlkem:512':
+          case 'mlkem:768':
+          case 'mlkem:1024':
+            type = 'wrapped';
             break;
           default:
             throw new ConfigurationError(`Unsupported algorithm ${algorithm}`);

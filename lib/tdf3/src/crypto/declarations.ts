@@ -29,7 +29,10 @@ export type KeyAlgorithm =
   | 'rsa:4096'
   | 'ec:secp256r1'
   | 'ec:secp384r1'
-  | 'ec:secp521r1';
+  | 'ec:secp521r1'
+  | 'mlkem:512'
+  | 'mlkem:768'
+  | 'mlkem:1024';
 
 /**
  * Options for key generation and import.
@@ -68,6 +71,8 @@ export type PublicKey = {
   readonly modulusBits?: number;
   /** EC curve name (only for EC keys) */
   readonly curve?: ECCurve;
+  /** ML-KEM security level (only for mlkem:* keys) */
+  readonly mlKemLevel?: 512 | 768 | 1024;
 };
 
 /**
@@ -84,6 +89,8 @@ export type PrivateKey = {
   readonly modulusBits?: number;
   /** EC curve name (only for EC keys) */
   readonly curve?: ECCurve;
+  /** ML-KEM security level (only for mlkem:* keys) */
+  readonly mlKemLevel?: 512 | 768 | 1024;
 };
 
 /**
@@ -156,8 +163,16 @@ export type HkdfParams = {
  */
 export type PublicKeyInfo = {
   /** Detected algorithm of the key. */
-  algorithm: 'rsa:2048' | 'rsa:4096' | 'ec:secp256r1' | 'ec:secp384r1' | 'ec:secp521r1';
-  /** Normalized PEM string. */
+  algorithm:
+    | 'rsa:2048'
+    | 'rsa:4096'
+    | 'ec:secp256r1'
+    | 'ec:secp384r1'
+    | 'ec:secp521r1'
+    | 'mlkem:512'
+    | 'mlkem:768'
+    | 'mlkem:1024';
+  /** Normalized PEM string (or raw base64 for ML-KEM keys). */
   pem: string;
 };
 
@@ -402,4 +417,38 @@ export type CryptoService = {
    * @throws ConfigurationError if not supported by the implementation
    */
   mergeSymmetricKeys: (shares: SymmetricKey[]) => Promise<SymmetricKey>;
+
+  /**
+   * Generate an ML-KEM key pair (NIST FIPS 203).
+   * @param level - Security level: 512, 768, or 1024
+   * @returns Opaque key pair; publicKey carries the encapsulation key bytes, privateKey the decapsulation key bytes
+   */
+  generateMlKemKeyPair: (level: 512 | 768 | 1024) => Promise<KeyPair>;
+
+  /**
+   * Encapsulate a shared secret to an ML-KEM public key.
+   * @param pk - Opaque ML-KEM public key (encapsulation key)
+   * @returns KEM ciphertext and raw shared secret (32 bytes, not yet HKDF-derived)
+   */
+  mlKemEncapsulate: (
+    pk: PublicKey
+  ) => Promise<{ ciphertext: Uint8Array; sharedSecret: SymmetricKey }>;
+
+  /**
+   * Decapsulate an ML-KEM ciphertext with the private key.
+   * Relies on @noble/post-quantum implicit rejection on failure (FIPS 203 mandate).
+   * @param sk - Opaque ML-KEM private key (decapsulation key)
+   * @param ct - KEM ciphertext bytes
+   * @returns Raw shared secret (32 bytes, not yet HKDF-derived)
+   */
+  mlKemDecapsulate: (sk: PrivateKey, ct: Uint8Array) => Promise<SymmetricKey>;
+
+  /**
+   * Derive a symmetric key from input key material using HKDF.
+   * Used to derive an AES-256-GCM key from an ML-KEM shared secret.
+   * @param ikm - Input key material (e.g., ML-KEM shared secret)
+   * @param params - HKDF parameters (hash, salt, optional info/keyLength)
+   * @returns Opaque 256-bit AES symmetric key
+   */
+  hkdfDerive: (ikm: SymmetricKey, params: HkdfParams) => Promise<SymmetricKey>;
 };

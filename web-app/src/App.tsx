@@ -3,7 +3,7 @@ import { useState, useEffect, type ChangeEvent } from 'react';
 import streamsaver from 'streamsaver';
 import { showSaveFilePicker } from 'native-file-system-adapter';
 import './App.css';
-import { type Chunker, type Source, OpenTDF } from '@opentdf/sdk';
+import { type Chunker, type KasPublicKeyAlgorithm, type Source, OpenTDF } from '@opentdf/sdk';
 import { type SessionInformation, OidcClient } from './session.js';
 import { config } from './config.js';
 
@@ -128,6 +128,14 @@ function getDecryptReadTuningFromLocation(): DecryptReadTuning {
   };
 }
 
+type KaoMetadata = {
+  kid: string;
+  type: string;
+  url: string;
+  protocol: string;
+  wrappedKeyBytes: number;
+};
+
 function fileNameFor(inputSource: InputSource) {
   if (!inputSource) {
     return 'undefined.bin';
@@ -242,6 +250,8 @@ function App() {
   const [downloadState, setDownloadState] = useState<string | undefined>();
   const [inputSource, setInputSource] = useState<InputSource | undefined>();
   const [sinkType, setSinkType] = useState<SinkType>('file');
+  const [encapAlgorithm, setEncapAlgorithm] = useState<KasPublicKeyAlgorithm>('ec:secp256r1');
+  const [kaoMetadata, setKaoMetadata] = useState<KaoMetadata[] | undefined>();
   const [streamController, setStreamController] = useState<CurrentDataController>();
 
   useEffect(() => {
@@ -396,6 +406,7 @@ function App() {
       dpopKeys: oidcClient.getSigningKey(),
     });
     setDownloadState('Encrypting...');
+    setKaoMetadata(undefined);
     let f: FileSystemFileHandle | undefined;
     const downloadName = `${inputFileName}.tdf`;
     if (sinkType === 'fsapi') {
@@ -408,6 +419,7 @@ function App() {
       cipherText = await client.createZTDF({
         autoconfigure: false,
         source: { type: 'stream', location: source.pipeThrough(progressTransformers.reader) },
+        wrappingKeyAlgorithm: encapAlgorithm,
       });
     } catch (e) {
       setDownloadState(`Encrypt Failed: ${e}`);
@@ -493,6 +505,23 @@ function App() {
     // strictly be smaller than the input file.
     try {
       const reader = client.open({ source });
+      try {
+        const manifest = await reader.manifest();
+        const kaos = manifest.encryptionInformation.keyAccess.map((kao) => {
+          const wrappedKeyBytes = kao.wrappedKey ? Math.floor((kao.wrappedKey.length * 3) / 4) : 0;
+          return {
+            kid: kao.kid ?? '(no kid)',
+            type: kao.type,
+            url: kao.url,
+            protocol: kao.protocol,
+            wrappedKeyBytes,
+          } satisfies KaoMetadata;
+        });
+        setKaoMetadata(kaos);
+      } catch (e) {
+        console.warn('failed to read manifest for KAO inspection', e);
+        setKaoMetadata(undefined);
+      }
       const plainText = await reader.decrypt();
       const plainTextStream = plainText
         .pipeThrough(progressTransformers.reader)
@@ -645,6 +674,52 @@ function App() {
               <label htmlFor="noneSink">Dump</label>
             </div>
           </fieldset>
+          <fieldset>
+            <legend>Encapsulation Algorithm</legend>
+            <div>
+              <label htmlFor="encapAlgorithm">Key wrap algorithm:</label>{' '}
+              <select
+                id="encapAlgorithm"
+                value={encapAlgorithm}
+                onChange={(e) => setEncapAlgorithm(e.target.value as KasPublicKeyAlgorithm)}
+              >
+                <option value="ec:secp256r1">EC P-256</option>
+                <option value="rsa:2048">RSA-2048</option>
+                <option value="mlkem:512">ML-KEM-512</option>
+                <option value="mlkem:768">ML-KEM-768</option>
+                <option value="mlkem:1024">ML-KEM-1024</option>
+              </select>
+            </div>
+          </fieldset>
+          {kaoMetadata && kaoMetadata.length > 0 && (
+            <fieldset>
+              <legend>Manifest Inspector</legend>
+              <table id="kaoMetadata">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>kid</th>
+                    <th>type</th>
+                    <th>protocol</th>
+                    <th>wrappedKey bytes</th>
+                    <th>kas url</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {kaoMetadata.map((kao, idx) => (
+                    <tr key={idx} id={`kao-row-${idx}`}>
+                      <td>{idx}</td>
+                      <td id={`kao-kid-${idx}`}>{kao.kid}</td>
+                      <td id={`kao-type-${idx}`}>{kao.type}</td>
+                      <td id={`kao-protocol-${idx}`}>{kao.protocol}</td>
+                      <td id={`kao-wrapped-bytes-${idx}`}>{kao.wrappedKeyBytes}</td>
+                      <td id={`kao-url-${idx}`}>{kao.url}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </fieldset>
+          )}
         </div>
 
         {streamController && (

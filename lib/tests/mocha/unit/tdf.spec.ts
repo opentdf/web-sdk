@@ -94,8 +94,13 @@ describe('fetchKasPublicKey', async () => {
 
   it('localhost kas is valid', async () => {
     const pk2 = await TDF.fetchKasPublicKey('http://localhost:3000');
-    expect(pk2.publicKey).to.include('BEGIN CERTIFICATE');
-    expect(pk2.kid).to.equal('e1');
+    if ((process.env.BASE_KEY_ALG || '').startsWith('mlkem:')) {
+      expect(pk2.publicKey).to.include('BEGIN PUBLIC KEY');
+      expect(pk2.kid).to.match(/^mlkem(512|768|1024)$/);
+    } else {
+      expect(pk2.publicKey).to.include('BEGIN CERTIFICATE');
+      expect(pk2.kid).to.equal('e1');
+    }
   });
 
   it('invalid algorithms', async () => {
@@ -110,8 +115,13 @@ describe('fetchKasPublicKey', async () => {
 
   it('localhost BaseKey', async () => {
     const pk2 = await TDF.fetchKasPublicKey('http://localhost:3000');
-    expect(pk2.publicKey).to.include('BEGIN CERTIFICATE');
-    expect(pk2.kid).to.equal('e1');
+    if ((process.env.BASE_KEY_ALG || '').startsWith('mlkem:')) {
+      expect(pk2.publicKey).to.include('BEGIN PUBLIC KEY');
+      expect(pk2.kid).to.match(/^mlkem(512|768|1024)$/);
+    } else {
+      expect(pk2.publicKey).to.include('BEGIN CERTIFICATE');
+      expect(pk2.kid).to.equal('e1');
+    }
   });
 });
 

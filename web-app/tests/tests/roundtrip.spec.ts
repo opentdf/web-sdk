@@ -59,6 +59,51 @@ test('roundtrip ztdf', async ({ page }) => {
   );
 });
 
+for (const algorithm of ['mlkem:512', 'mlkem:768', 'mlkem:1024'] as const) {
+  const expectedKid = algorithm.replace(':', '');
+  test(`roundtrip ztdf with ${algorithm}`, async ({ page }) => {
+    page.on('download', (download) =>
+      download.path().then((r) => console.log(`Saves ${download.suggestedFilename()} as ${r}`))
+    );
+
+    await authorize(page);
+    await loadFile(page, 'README.md');
+    await page.locator('#encapAlgorithm').selectOption(algorithm);
+
+    const downloadPromise = page.waitForEvent('download');
+    await page.locator('#fileSink').click();
+    await page.locator('#encryptButton').click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toContain('README.md.');
+    const cipherTextPath = await download.path();
+    expect(cipherTextPath).toBeTruthy();
+    if (!cipherTextPath) {
+      throw new Error();
+    }
+
+    await page.locator('#clearFile').click();
+    await loadFile(page, cipherTextPath);
+    const plainDownloadPromise = page.waitForEvent('download');
+    await page.locator('#fileSink').click();
+    await page.locator('#decryptButton').click();
+    const download2 = await plainDownloadPromise;
+    expect(download2.suggestedFilename()).toContain('.decrypted');
+    const plainTextPath = await download2.path();
+    if (!plainTextPath) {
+      throw new Error();
+    }
+    const text = await readFile(plainTextPath, 'utf8');
+    expect(text, `Looking for clone command in ${plainTextPath}`).toContain(
+      'try encrypting some of your own files'
+    );
+
+    // Manifest inspector should display the expected ML-KEM kid (mlkem512/768/1024)
+    // populated during the decrypt flow above.
+    await expect(page.locator('#kao-kid-0')).toHaveText(expectedKid);
+    await expect(page.locator('#kao-type-0')).toHaveText('wrapped');
+  });
+}
+
 test('Remote Source Streaming', async ({ page }) => {
   const server = await serve('.', 8086);
 

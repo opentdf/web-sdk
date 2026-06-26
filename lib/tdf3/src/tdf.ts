@@ -48,6 +48,8 @@ import {
   ECWrapped,
   KeyAccessType,
   KeyInfo,
+  MLKEM_CT_SIZES,
+  MlKemWrapped,
   Manifest,
   Policy,
   SplitKey,
@@ -280,6 +282,9 @@ export async function buildKeyAccess({
   }
   switch (type) {
     case 'wrapped':
+      if (alg === 'mlkem:512' || alg === 'mlkem:768' || alg === 'mlkem:1024') {
+        return new MlKemWrapped(url, kid, pubKey, metadata, cryptoService, sid, alg);
+      }
       return new Wrapped(url, kid, pubKey, metadata, cryptoService, sid);
     case 'ec-wrapped':
       return new ECWrapped(url, kid, pubKey, metadata, cryptoService, sid);
@@ -779,6 +784,13 @@ async function unwrapKey({
     } else if (wrappingKeyAlgorithm === 'rsa:2048' || !wrappingKeyAlgorithm) {
       // generateKeyPair() returns opaque keys
       ephemeralEncryptionKeys = await cryptoService.generateKeyPair();
+    } else if (
+      wrappingKeyAlgorithm === 'mlkem:512' ||
+      wrappingKeyAlgorithm === 'mlkem:768' ||
+      wrappingKeyAlgorithm === 'mlkem:1024'
+    ) {
+      const level = parseInt(wrappingKeyAlgorithm.split(':')[1], 10) as 512 | 768 | 1024;
+      ephemeralEncryptionKeys = await cryptoService.generateMlKemKeyPair(level);
     } else {
       throw new ConfigurationError(`Unsupported wrapping key algorithm [${wrappingKeyAlgorithm}]`);
     }
@@ -892,6 +904,43 @@ async function unwrapKey({
             requiredObligations,
           };
         }
+
+        if (
+          wrappingKeyAlgorithm === 'mlkem:512' ||
+          wrappingKeyAlgorithm === 'mlkem:768' ||
+          wrappingKeyAlgorithm === 'mlkem:1024'
+        ) {
+          // entityWrappedKey = mlkem_ct || iv(12) || aes_ct(32) || tag(16)
+          const level = parseInt(wrappingKeyAlgorithm.split(':')[1], 10) as 512 | 768 | 1024;
+          const ctLen = MLKEM_CT_SIZES[level];
+          const kemCt = entityWrappedKey.slice(0, ctLen);
+          const rest = entityWrappedKey.slice(ctLen);
+          const iv = rest.slice(0, 12);
+          const wrappedKey = rest.slice(12);
+
+          const sharedSecret = await cryptoService.mlKemDecapsulate(
+            ephemeralEncryptionKeys.privateKey,
+            kemCt
+          );
+          const derivedKey = await cryptoService.hkdfDerive(sharedSecret, {
+            hash: 'SHA-256',
+            salt: await getZtdfSalt(cryptoService),
+          });
+
+          const decryptResult = await cryptoService.decrypt(
+            Binary.fromArrayBuffer(wrappedKey.buffer),
+            derivedKey,
+            Binary.fromArrayBuffer(iv.buffer),
+            Algorithms.AES_256_GCM
+          );
+
+          return {
+            key: new Uint8Array(decryptResult.payload.asArrayBuffer()),
+            metadata,
+            requiredObligations,
+          };
+        }
+
         const key = Binary.fromArrayBuffer(entityWrappedKey);
         const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(
           key,

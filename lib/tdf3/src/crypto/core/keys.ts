@@ -84,3 +84,37 @@ export function wrapSymmetricKey(keyBytes: Uint8Array): SymmetricKey {
 export function unwrapSymmetricKey(key: SymmetricKey): Uint8Array {
   return (key as any)._internal;
 }
+
+/**
+ * Wrap raw ML-KEM encapsulation key bytes as an opaque PublicKey.
+ * @internal
+ */
+export function wrapMlKemPublicKey(bytes: Uint8Array, level: 512 | 768 | 1024): PublicKey {
+  return {
+    _brand: 'PublicKey',
+    algorithm: `mlkem:${level}` as KeyAlgorithm,
+    mlKemLevel: level,
+    _internal: bytes,
+  } as unknown as PublicKey;
+}
+
+/**
+ * Wrap raw ML-KEM decapsulation key bytes as an opaque PrivateKey.
+ * @internal
+ */
+export function wrapMlKemPrivateKey(bytes: Uint8Array, level: 512 | 768 | 1024): PrivateKey {
+  return {
+    _brand: 'PrivateKey',
+    algorithm: `mlkem:${level}` as KeyAlgorithm,
+    mlKemLevel: level,
+    _internal: bytes,
+  } as unknown as PrivateKey;
+}
+
+/**
+ * Unwrap an opaque ML-KEM PublicKey or PrivateKey to get raw bytes.
+ * @internal
+ */
+export function unwrapMlKemKey(key: PublicKey | PrivateKey): Uint8Array {
+  return (key as any)._internal as Uint8Array;
+}
