@@ -14,6 +14,8 @@ export class OIDCClientCredentialsProvider implements AuthProvider {
       oidcOrigin,
       oidcTokenEndpoint,
       oidcUserInfoEndpoint,
+      dpopEnabled,
+      signingKey,
     }: Partial<ClientSecretCredentials> & Omit<ClientSecretCredentials, 'exchange'>,
     cryptoService: CryptoService = defaultCryptoService
   ) {
@@ -29,6 +31,8 @@ export class OIDCClientCredentialsProvider implements AuthProvider {
         oidcOrigin,
         oidcTokenEndpoint,
         oidcUserInfoEndpoint,
+        dpopEnabled,
+        signingKey,
       },
       cryptoService
     );

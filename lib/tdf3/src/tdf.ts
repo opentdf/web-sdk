@@ -38,8 +38,10 @@ import { SymmetricCipher } from './ciphers/symmetric-cipher-base.js';
 import { DecryptParams } from './client/builders.js';
 import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
 import {
+  type AsymmetricSigningAlgorithm,
   type CryptoService,
   type DecryptResult,
+  type KeyAlgorithm,
   type KeyPair,
   type SymmetricKey,
 } from './crypto/declarations.js';
@@ -748,6 +750,27 @@ type RewrapResponseData = {
   requiredObligations: string[];
 };
 
+/**
+ * Map an opaque key's algorithm to the JWS signing algorithm used to sign the
+ * rewrap request token. RSA keys sign with RS256; EC keys sign with the ECDSA
+ * algorithm matching their curve.
+ */
+function signingAlgForKeyAlgorithm(algorithm: KeyAlgorithm): AsymmetricSigningAlgorithm {
+  switch (algorithm) {
+    case 'rsa:2048':
+    case 'rsa:4096':
+      return 'RS256';
+    case 'ec:secp256r1':
+      return 'ES256';
+    case 'ec:secp384r1':
+      return 'ES384';
+    case 'ec:secp521r1':
+      return 'ES512';
+    default:
+      throw new ConfigurationError(`Unsupported signing key algorithm [${algorithm}]`);
+  }
+}
+
 async function unwrapKey({
   manifest,
   allowedKases,
@@ -838,7 +861,12 @@ async function unwrapKey({
     const requestBodyStr = toJsonString(UnsignedRewrapRequestSchema, unsignedRequest);
 
     const jwtPayload = { requestBody: requestBodyStr };
-    const signedRequestToken = await reqSignature(jwtPayload, dpopKeys.privateKey, cryptoService);
+    // The request token must be signed with the algorithm matching the dpop key
+    // type. Defaulting to RS256 breaks EC keys (e.g. DPoP ES256), since WebCrypto
+    // rejects signing an EC key with RSA params ("Unable to use this key to sign").
+    const signedRequestToken = await reqSignature(jwtPayload, dpopKeys.privateKey, cryptoService, {
+      alg: signingAlgForKeyAlgorithm(dpopKeys.privateKey.algorithm),
+    });
 
     const rewrapResp = await fetchWrappedKey(
       url,

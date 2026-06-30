@@ -1,5 +1,5 @@
 import * as jose from 'jose';
-import { createServer, IncomingMessage, RequestListener } from 'node:http';
+import { createServer, IncomingMessage, RequestListener, ServerResponse } from 'node:http';
 
 import { base64 } from '../src/encodings/index.js';
 import { decryptWithPrivateKey, encryptWithPublicKey } from '../tdf3/src/crypto/index.js';
@@ -23,6 +23,276 @@ import {
 } from '../src/platform/kas/kas_pb.js';
 
 const Mocks = getMocks();
+
+// =============================================================================
+// DPoP proof verification (RFC 9449 + RFC 7518 §3.4) for the mock server.
+// Strict on purpose: this is what real Keycloak / panva-jose do, so when a
+// regression in our SDK's proof minting (e.g. DER-encoded ECDSA) lands, the
+// integration tests fail locally instead of only at xtest time.
+// =============================================================================
+
+const DPOP_TOKEN_NONCE = 'dpop-test-nonce-abc';
+const DPOP_RS_NONCE = 'dpop-test-rs-nonce-xyz';
+const DPOP_IAT_SKEW_SECONDS = 60;
+
+// access_token → JWK SHA-256 thumbprint of the key it was bound to.
+// Populated by the token endpoint when minting a DPoP-bound token; consulted
+// by the KAS rewrap handler to enforce RFC 9449 §6.1 jkt binding.
+const dpopBoundJkts = new Map<string, string>();
+
+// Seen jti values per minted-by-this-server lifetime to detect replay.
+// Real servers would TTL-evict; this is a test mock, full clear on shutdown is fine.
+const seenJtis = new Set<string>();
+
+type DPoPCheckOpts = {
+  htm: string;
+  htu: string;
+  requireAth?: { accessToken: string };
+  requireBoundJkt?: string;
+  requireNonce?: string;
+};
+
+type DPoPCheckResult =
+  | { ok: true; jkt: string; jti: string; payload: jose.JWTPayload }
+  | {
+      ok: false;
+      status: number;
+      error: string;
+      error_description: string;
+      // If set, the server must include this DPoP-Nonce header so the client retries.
+      challengeNonce?: string;
+    };
+
+/** Strict-mode parse and verify a DPoP proof per RFC 9449 + RFC 7518 §3.4. */
+async function verifyDpopProof(
+  rawProof: string | undefined,
+  opts: DPoPCheckOpts
+): Promise<DPoPCheckResult> {
+  if (!rawProof) {
+    return {
+      ok: false,
+      status: 400,
+      error: 'invalid_request',
+      error_description: 'DPoP header required',
+    };
+  }
+
+  let protectedHeader: jose.ProtectedHeaderParameters;
+  try {
+    protectedHeader = jose.decodeProtectedHeader(rawProof);
+  } catch (err) {
+    return {
+      ok: false,
+      status: 400,
+      error: 'invalid_dpop_proof',
+      error_description: `cannot decode DPoP header: ${(err as Error).message}`,
+    };
+  }
+  if (protectedHeader.typ !== 'dpop+jwt') {
+    return {
+      ok: false,
+      status: 400,
+      error: 'invalid_dpop_proof',
+      error_description: `typ must be "dpop+jwt", got ${String(protectedHeader.typ)}`,
+    };
+  }
+  const alg = protectedHeader.alg;
+  if (!alg || alg === 'none' || alg.startsWith('HS') || !/^(ES|RS|PS|EdDSA)/.test(alg)) {
+    return {
+      ok: false,
+      status: 400,
+      error: 'invalid_dpop_proof',
+      error_description: `alg "${String(alg)}" is not an allowed asymmetric JWS alg`,
+    };
+  }
+  const jwk = protectedHeader.jwk;
+  if (!jwk || typeof jwk !== 'object') {
+    return {
+      ok: false,
+      status: 400,
+      error: 'invalid_dpop_proof',
+      error_description: 'jwk header parameter missing',
+    };
+  }
+  for (const forbidden of ['d', 'p', 'q', 'dp', 'dq', 'qi', 'k']) {
+    if (forbidden in (jwk as Record<string, unknown>)) {
+      return {
+        ok: false,
+        status: 400,
+        error: 'invalid_dpop_proof',
+        error_description: `jwk must not contain private parameter "${forbidden}"`,
+      };
+    }
+  }
+
+  let key: jose.CryptoKey | Uint8Array;
+  try {
+    key = (await jose.importJWK(jwk as jose.JWK, alg)) as jose.CryptoKey;
+  } catch (err) {
+    return {
+      ok: false,
+      status: 400,
+      error: 'invalid_dpop_proof',
+      error_description: `cannot import jwk: ${(err as Error).message}`,
+    };
+  }
+
+  let payload: jose.JWTPayload;
+  try {
+    ({ payload } = await jose.jwtVerify(rawProof, key));
+  } catch (err) {
+    return {
+      ok: false,
+      status: 400,
+      error: 'invalid_dpop_proof',
+      error_description: `signature verification failed: ${(err as Error).message}`,
+    };
+  }
+
+  if (payload.htm !== opts.htm) {
+    return {
+      ok: false,
+      status: 400,
+      error: 'invalid_dpop_proof',
+      error_description: `htm mismatch: expected ${opts.htm}, got ${String(payload.htm)}`,
+    };
+  }
+  if (payload.htu !== opts.htu) {
+    return {
+      ok: false,
+      status: 400,
+      error: 'invalid_dpop_proof',
+      error_description: `htu mismatch: expected ${opts.htu}, got ${String(payload.htu)}`,
+    };
+  }
+  const now = Math.floor(Date.now() / 1000);
+  if (typeof payload.iat !== 'number' || Math.abs(now - payload.iat) > DPOP_IAT_SKEW_SECONDS) {
+    return {
+      ok: false,
+      status: 400,
+      error: 'invalid_dpop_proof',
+      error_description: `iat out of window (${String(payload.iat)} vs server now ${now})`,
+    };
+  }
+  if (typeof payload.jti !== 'string' || payload.jti.length === 0) {
+    return {
+      ok: false,
+      status: 400,
+      error: 'invalid_dpop_proof',
+      error_description: 'jti claim required',
+    };
+  }
+  if (seenJtis.has(payload.jti)) {
+    return {
+      ok: false,
+      status: 400,
+      error: 'invalid_dpop_proof',
+      error_description: 'jti replay detected',
+    };
+  }
+
+  if (opts.requireNonce && payload.nonce !== opts.requireNonce) {
+    return {
+      ok: false,
+      status: 0, // caller decides 400 (AS) vs 401 (RS)
+      error: 'use_dpop_nonce',
+      error_description: 'DPoP nonce required',
+      challengeNonce: opts.requireNonce,
+    };
+  }
+
+  if (opts.requireAth) {
+    const expected = await athClaim(opts.requireAth.accessToken);
+    if (payload.ath !== expected) {
+      return {
+        ok: false,
+        status: 401,
+        error: 'invalid_dpop_proof',
+        error_description: `ath mismatch: expected ${expected}, got ${String(payload.ath)}`,
+      };
+    }
+  }
+
+  const jkt = await jose.calculateJwkThumbprint(jwk as jose.JWK);
+  if (opts.requireBoundJkt && opts.requireBoundJkt !== jkt) {
+    return {
+      ok: false,
+      status: 401,
+      error: 'invalid_token',
+      error_description: 'access token cnf.jkt does not match DPoP proof jkt',
+    };
+  }
+
+  seenJtis.add(payload.jti);
+  return { ok: true, jkt, jti: payload.jti, payload };
+}
+
+/** RFC 9449 §6.1: ath = base64url-nopad(SHA-256(ASCII(access_token))). */
+async function athClaim(accessToken: string): Promise<string> {
+  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(accessToken));
+  return base64UrlNoPad(new Uint8Array(hash));
+}
+
+function base64UrlNoPad(bytes: Uint8Array): string {
+  let s = '';
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+}
+
+/** Build the htu (target URI sans query and fragment) for a server request. */
+function requestHtu(req: IncomingMessage): string {
+  // The test server listens on http://localhost:3000; URL fields beyond
+  // pathname (query, fragment) MUST be stripped per RFC 9449 §4.2.
+  const url = new URL(req.url ?? '/', 'http://localhost:3000');
+  return `${url.origin}${url.pathname}`;
+}
+
+/**
+ * RFC 9449 resource-server DPoP gate for Connect-RPC endpoints. A no-op
+ * (returns true) unless the request carries `Authorization: DPoP <token>`, so
+ * Bearer / unauthenticated callers pass through unchanged and the many non-DPoP
+ * tests keep working.
+ *
+ * On a proof failure it writes a Connect-correct response and returns false; the
+ * caller MUST `return` immediately. The status is always 401 so connect-web maps
+ * it to Code.Unauthenticated (HTTP 400 would map to Code.Internal, which the
+ * SDK's nonce-retry interceptor does not act on). The nonce travels in the
+ * `DPoP-Nonce` response header (surfaced to the client via ConnectError.metadata),
+ * and the JSON body uses the Connect `{code, message}` envelope.
+ *
+ * The proof's `htm` is always 'POST': both SDK interceptors hard-code POST when
+ * minting the proof regardless of the verb the Connect transport uses, so we must
+ * NOT derive htm from req.method here.
+ */
+async function enforceRsDpop(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
+  const authHeader = (req.headers['authorization'] as string | undefined) ?? '';
+  const dpopMatch = /^DPoP\s+(.+)$/.exec(authHeader);
+  if (!dpopMatch) return true; // non-DPoP request → unchanged behavior
+
+  const accessToken = dpopMatch[1];
+  const proofCheck = await verifyDpopProof(req.headers['dpop'] as string | undefined, {
+    htm: 'POST',
+    htu: requestHtu(req),
+    requireAth: { accessToken },
+    requireBoundJkt: dpopBoundJkts.get(accessToken),
+    requireNonce: DPOP_RS_NONCE,
+  });
+  if (proofCheck.ok) return true;
+
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (proofCheck.challengeNonce) {
+    headers['DPoP-Nonce'] = proofCheck.challengeNonce;
+    headers['WWW-Authenticate'] = `DPoP error="${proofCheck.error}"`;
+  }
+  res.writeHead(401, headers);
+  res.end(
+    JSON.stringify({
+      code: 'unauthenticated',
+      message: proofCheck.error_description || proofCheck.error,
+    })
+  );
+  return false;
+}
 
 function range(start: number, end: number): Uint8Array {
   const result = [];
@@ -73,9 +343,11 @@ const kas: RequestListener = async (req, res) => {
       'roundtrip-test-response',
       'connect-protocol-version',
       'connect-streaming-protocol-version',
+      'x-virtrupubkey',
     ].join(', ')
   );
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Expose-Headers', 'DPoP-Nonce');
   // GET should be allowed for everything except rewrap, POST only for rewrap but IDC
   res.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET, POST');
   try {
@@ -194,6 +466,13 @@ const kas: RequestListener = async (req, res) => {
         res.end(JSON.stringify({ code: 'unauthenticated', message: 'unauthenticated' }));
         return;
       }
+
+      // Strict RFC 9449 DPoP resource-server check. Only triggers when the
+      // request actually carries `Authorization: DPoP <token>`; non-DPoP
+      // (Bearer or unauthenticated) callers pass through unchanged so the
+      // many non-DPoP rewrap tests keep working.
+      if (!(await enforceRsDpop(req, res))) return;
+
       const body = await getBody(req);
       const bodyText = new TextDecoder().decode(body);
       const { signedRequestToken } = JSON.parse(bodyText);
@@ -381,9 +660,12 @@ const kas: RequestListener = async (req, res) => {
         res.end(fullRange);
       }
     } else if (url.pathname === '/policy.attributes.AttributesService/GetAttributeValuesByFqns') {
+      // DPoP callers are authenticated by the RS gate; Bearer callers fall
+      // through to the legacy `Bearer dummy-auth-token` check below.
+      if (!(await enforceRsDpop(req, res))) return;
       res.setHeader('Content-Type', 'application/json');
       const token = req.headers['authorization'] as string;
-      if (!token || !token.startsWith('Bearer dummy-auth-token')) {
+      if (!token || !(token.startsWith('Bearer dummy-auth-token') || token.startsWith('DPoP '))) {
         res.statusCode = 401;
         res.end(JSON.stringify({ code: 'unauthenticated', message: 'unauthenticated' }));
         return;
@@ -431,6 +713,7 @@ const kas: RequestListener = async (req, res) => {
     } else if (
       url.pathname === '/policy.kasregistry.KeyAccessServerRegistryService/ListKeyAccessServers'
     ) {
+      if (!(await enforceRsDpop(req, res))) return;
       res.statusCode = 200;
       res.setHeader('Content-Type', 'application/json');
       res.end(
@@ -459,8 +742,11 @@ const kas: RequestListener = async (req, res) => {
       );
       return;
     } else if (url.pathname === '/policy.attributes.AttributesService/ListAttributes') {
+      // DPoP callers are authenticated by the RS gate; Bearer callers fall
+      // through to the legacy `Bearer dummy-auth-token` check below.
+      if (!(await enforceRsDpop(req, res))) return;
       const token = req.headers['authorization'] as string;
-      if (!token || !token.startsWith('Bearer dummy-auth-token')) {
+      if (!token || !(token.startsWith('Bearer dummy-auth-token') || token.startsWith('DPoP '))) {
         res.statusCode = 401;
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify({ status: 'error' }));
@@ -469,6 +755,37 @@ const kas: RequestListener = async (req, res) => {
       res.statusCode = 200;
       res.setHeader('Content-Type', 'application/json');
       res.end(JSON.stringify({ status: 'ok' }));
+      return;
+    } else if (url.pathname === '/protocol/openid-connect/token') {
+      // Mock Keycloak token endpoint with strict RFC 9449 DPoP verification.
+      // First request gets a nonce challenge (400 + use_dpop_nonce + DPoP-Nonce header
+      // per RFC 9449 §8 — note: AS uses 400, RS uses 401). The retry must include
+      // a proof whose `nonce` claim matches.
+      const dpopHeader = req.headers['dpop'] as string | undefined;
+      const htu = requestHtu(req);
+      const check = await verifyDpopProof(dpopHeader, {
+        htm: 'POST',
+        htu,
+        requireNonce: DPOP_TOKEN_NONCE,
+      });
+      if (!check.ok) {
+        const status =
+          check.error === 'use_dpop_nonce' ? 400 : check.status > 0 ? check.status : 400;
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (check.challengeNonce) headers['DPoP-Nonce'] = check.challengeNonce;
+        res.writeHead(status, headers);
+        res.end(JSON.stringify({ error: check.error, error_description: check.error_description }));
+        return;
+      }
+
+      // Mint an opaque access token; bind it to the DPoP proof's JWK thumbprint
+      // so the rewrap handler (RS-side, below) can enforce cnf.jkt binding.
+      const accessToken = 'test-dpop-token';
+      dpopBoundJkts.set(accessToken, check.jkt);
+
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ access_token: accessToken, token_type: 'DPoP', expires_in: 3600 }));
       return;
     } else {
       console.log(`[DEBUG] invalid path [${url.pathname}]`);

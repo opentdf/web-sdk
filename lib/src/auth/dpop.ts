@@ -7,6 +7,7 @@ import type {
   PrivateKey,
   AsymmetricSigningAlgorithm,
 } from '../../tdf3/src/crypto/declarations.js';
+import { derToIeeeP1363 } from '../../tdf3/src/crypto/core/signing.js';
 
 export type JsonObject = { [Key in string]?: JsonValue };
 export type JsonArray = JsonValue[];
@@ -35,11 +36,16 @@ async function jwt(
   cryptoService: CryptoService
 ) {
   const input = `${b64u(buf(JSON.stringify(header)))}.${b64u(buf(JSON.stringify(claimsSet)))}`;
-  const signature = await cryptoService.sign(
-    buf(input),
-    privateKey,
-    header.alg as AsymmetricSigningAlgorithm
-  );
+  const alg = header.alg as AsymmetricSigningAlgorithm;
+  let signature = await cryptoService.sign(buf(input), privateKey, alg);
+  // JWS requires raw IEEE P1363 (R || S) for ECDSA per RFC 7518 §3.4, but
+  // cryptoService.sign currently returns DER. Convert here so DPoP proofs are
+  // accepted by RFC-conformant verifiers (Keycloak, panva-jose). RSA/EdDSA
+  // signatures are already raw bytes — no conversion. See DSPX-3634 for the
+  // broader cleanup that would make this transform unnecessary.
+  if (alg.startsWith('ES')) {
+    signature = derToIeeeP1363(signature, alg);
+  }
   return `${input}.${b64u(signature)}`;
 }
 

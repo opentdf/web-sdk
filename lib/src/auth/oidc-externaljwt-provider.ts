@@ -15,6 +15,8 @@ export class OIDCExternalJwtProvider implements AuthProvider {
       oidcOrigin,
       oidcTokenEndpoint,
       oidcUserInfoEndpoint,
+      dpopEnabled,
+      signingKey,
     }: Partial<ExternalJwtCredentials> & Omit<ExternalJwtCredentials, 'exchange'>,
     cryptoService: CryptoService = defaultCryptoService
   ) {
@@ -30,6 +32,8 @@ export class OIDCExternalJwtProvider implements AuthProvider {
         oidcOrigin,
         oidcTokenEndpoint,
         oidcUserInfoEndpoint,
+        dpopEnabled,
+        signingKey,
       },
       cryptoService
     );

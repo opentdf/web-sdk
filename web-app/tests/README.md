@@ -3,6 +3,10 @@
 This folder contains playwright, e2e tests for web-app,
 running against a local or remote backend in proxy mode.
 
+DPoP nonce challenges are enabled for all test clients (`browsertest` and `testclient`),
+so the e2e tests and CLI roundtrip tests exercise the full DPoP challenge/retry path.
+Keycloak 26.2 is required (configured in `.github/workflows/roundtrip/docker-compose.yaml`).
+
 ## Bring up the platform behind local (vite dev server) proxy
 
 Bring up test backend services (identity provider, database, etc.):

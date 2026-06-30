@@ -1,5 +1,6 @@
 import { KasPublicKeyAlgorithm, KasPublicKeyInfo, OriginAllowList } from '../access.js';
-import { type AuthProvider } from '../auth/auth.js';
+import { type AuthProvider, type HttpRequest } from '../auth/auth.js';
+import { DPoPNonceCache, globalNonceCache } from '../auth/dpop-nonce.js';
 import {
   ConfigurationError,
   InvalidFileError,
@@ -9,6 +10,67 @@ import {
   UnauthenticatedError,
 } from '../errors.js';
 import { validateSecureUrl } from '../utils.js';
+
+/** fetch() options shared by the authenticated legacy requests. */
+type FetchInit = Omit<RequestInit, 'method' | 'headers' | 'body'>;
+
+/**
+ * Signs `httpReq` via the AuthProvider, sends it, and handles a single
+ * DPoP-Nonce challenge (RFC 9449 §9): if a resource server rejects the request
+ * with a fresh `DPoP-Nonce` header, cache the nonce and retry once so
+ * `withCreds` can mint a proof carrying it. Non-DPoP providers and servers
+ * never emit a `DPoP-Nonce`, so they take the single-request path unchanged.
+ *
+ * The caller keeps ownership of status-code handling; this only owns transport
+ * and the nonce retry.
+ */
+async function fetchWithCredsAndNonceRetry(
+  authProvider: AuthProvider,
+  httpReq: HttpRequest,
+  init: FetchInit,
+  networkErrorMessage: string
+): Promise<Response> {
+  const send = async (): Promise<Response> => {
+    const req = await authProvider.withCreds(httpReq);
+    try {
+      return await fetch(req.url, {
+        ...init,
+        method: req.method,
+        headers: req.headers,
+        body: req.body as BodyInit,
+      });
+    } catch (e) {
+      throw new NetworkError(`${networkErrorMessage} [${req.url}]`, e);
+    }
+  };
+
+  let origin: string | undefined;
+  try {
+    origin = new URL(httpReq.url).origin;
+  } catch {
+    // Non-absolute URL: nonce caching is keyed by origin, so just pass through.
+  }
+
+  let response = await send();
+
+  if (!response.ok && origin) {
+    const challengeNonce = DPoPNonceCache.extractNonce(response.headers);
+    if (challengeNonce && challengeNonce !== globalNonceCache.get(origin)) {
+      globalNonceCache.set(origin, challengeNonce);
+      response = await send();
+    }
+  }
+
+  // Keep the cache warm from whichever response we end on.
+  if (origin) {
+    const responseNonce = DPoPNonceCache.extractNonce(response.headers);
+    if (responseNonce) {
+      globalNonceCache.set(origin, responseNonce);
+    }
+  }
+
+  return response;
+}
 
 export type RewrapRequest = {
   signedRequestToken: string;
@@ -33,53 +95,43 @@ export async function fetchWrappedKey(
   requestBody: RewrapRequest,
   authProvider: AuthProvider
 ): Promise<RewrapResponseLegacy> {
-  const req = await authProvider.withCreds({
-    url,
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(requestBody),
-  });
-
-  let response: Response;
-
-  try {
-    response = await fetch(req.url, {
-      method: req.method,
+  const response = await fetchWithCredsAndNonceRetry(
+    authProvider,
+    {
+      url,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    } as HttpRequest,
+    {
       mode: 'cors', // no-cors, *cors, same-origin
       cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
       credentials: 'same-origin', // include, *same-origin, omit
-      headers: req.headers,
       redirect: 'follow', // manual, *follow, error
       referrerPolicy: 'no-referrer', // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
-      body: req.body as BodyInit,
-    });
-  } catch (e) {
-    throw new NetworkError(`unable to fetch wrapped key from [${url}]`, e);
-  }
+    },
+    'unable to fetch wrapped key from'
+  );
 
   if (!response.ok) {
     switch (response.status) {
       case 400:
         throw new InvalidFileError(
-          `400 for [${req.url}]: rewrap bad request [${await response.text()}]`
+          `400 for [${url}]: rewrap bad request [${await response.text()}]`
         );
       case 401:
-        throw new UnauthenticatedError(`401 for [${req.url}]; rewrap auth failure`);
+        throw new UnauthenticatedError(`401 for [${url}]; rewrap auth failure`);
       case 403:
-        throw new PermissionDeniedError(
-          `403 for [${req.url}]; rewrap permission denied: forbidden`
-        );
+        throw new PermissionDeniedError(`403 for [${url}]; rewrap permission denied: forbidden`);
       default:
         if (response.status >= 500) {
           throw new ServiceError(
-            `${response.status} for [${req.url}]: rewrap failure due to service error [${await response.text()}]`
+            `${response.status} for [${url}]: rewrap failure due to service error [${await response.text()}]`
           );
         }
-        throw new NetworkError(
-          `${req.method} ${req.url} => ${response.status} ${response.statusText}`
-        );
+        throw new NetworkError(`POST ${url} => ${response.status} ${response.statusText}`);
     }
   }
 
@@ -93,32 +145,29 @@ export async function fetchKeyAccessServers(
   let nextOffset = 0;
   const allServers = [];
   do {
-    const req = await authProvider.withCreds({
-      url: `${platformUrl}/key-access-servers?pagination.offset=${nextOffset}`,
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-    let response: Response;
-    try {
-      response = await fetch(req.url, {
-        method: req.method,
-        headers: req.headers,
-        body: req.body as BodyInit,
+    const requestUrl = `${platformUrl}/key-access-servers?pagination.offset=${nextOffset}`;
+    const response = await fetchWithCredsAndNonceRetry(
+      authProvider,
+      {
+        url: requestUrl,
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      } as HttpRequest,
+      {
         mode: 'cors',
         cache: 'no-cache',
         credentials: 'same-origin',
         redirect: 'follow',
         referrerPolicy: 'no-referrer',
-      });
-    } catch (e) {
-      throw new NetworkError(`unable to fetch kas list from [${req.url}]`, e);
-    }
+      },
+      'unable to fetch kas list from'
+    );
     // if we get an error from the kas registry, throw an error
     if (!response.ok) {
       throw new ServiceError(
-        `unable to fetch kas list from [${req.url}], status: ${response.status}`
+        `unable to fetch kas list from [${requestUrl}], status: ${response.status}`
       );
     }
     const { keyAccessServers = [], pagination = {} } = await response.json();

@@ -40,10 +40,13 @@ function getSigningAlgorithmParams(algorithm: AsymmetricSigningAlgorithm): {
 }
 
 /**
- * Convert IEEE P1363 signature format (used by WebCrypto ECDSA) to DER format (used by JWT).
+ * Convert IEEE P1363 signature format (used by WebCrypto ECDSA) to DER format.
  * RS256 signatures don't need conversion.
  */
-function ieeeP1363ToDer(signature: Uint8Array, algorithm: AsymmetricSigningAlgorithm): Uint8Array {
+export function ieeeP1363ToDer(
+  signature: Uint8Array,
+  algorithm: AsymmetricSigningAlgorithm
+): Uint8Array {
   if (algorithm === 'RS256') {
     return signature;
   }
@@ -94,10 +97,17 @@ function ieeeP1363ToDer(signature: Uint8Array, algorithm: AsymmetricSigningAlgor
 }
 
 /**
- * Convert DER signature format (used by JWT) to IEEE P1363 format (used by WebCrypto ECDSA).
- * RS256 signatures don't need conversion.
+ * Convert DER-encoded ECDSA signature to raw IEEE P1363 (R||S) format.
+ * RS256 signatures pass through unchanged.
+ *
+ * Exported because callers that emit JWS (e.g. DPoP proofs in lib/src/auth/dpop.ts)
+ * must produce raw R||S per RFC 7518 §3.4, while cryptoService.sign() currently
+ * returns DER. See DSPX-3634 for the broader cleanup.
  */
-function derToIeeeP1363(signature: Uint8Array, algorithm: AsymmetricSigningAlgorithm): Uint8Array {
+export function derToIeeeP1363(
+  signature: Uint8Array,
+  algorithm: AsymmetricSigningAlgorithm
+): Uint8Array {
   if (algorithm === 'RS256') {
     return signature;
   }
