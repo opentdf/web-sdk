@@ -126,7 +126,7 @@ describe('access-fetch.js', () => {
         expect.fail('Should have thrown');
       } catch (e) {
         expect(e).to.be.instanceOf(PermissionDeniedError);
-        expect(e.message).to.equal(`403 for [${url}]; rewrap permission denied`);
+        expect(e.message).to.equal(`403 for [${url}]; rewrap permission denied: forbidden`);
       }
     });
 

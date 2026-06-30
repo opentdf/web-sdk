@@ -302,7 +302,7 @@ describe('splitLookupTableFactory', () => {
 
     expect(() => TDF.splitLookupTableFactory(keyAccess, allowedKases)).to.throw(
       InvalidFileError,
-      'TODO: Fallback to no split ids. Repetition found for [https://kas1] on split [split1]'
+      'Unable to decrypt: Multiple keys detected for Key Access Server [https://kas1]. Please contact your administrator.'
     );
   });
 

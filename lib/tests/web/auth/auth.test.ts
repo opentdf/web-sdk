@@ -35,6 +35,13 @@ async function generateTestSigningKey(): Promise<KeyPair> {
   return generateSigningKeyPair();
 }
 
+// Build a minimal unsigned JWT carrying just an `exp` claim (seconds since epoch).
+function makeJwt(exp: number): string {
+  const b64u = (o: object) =>
+    btoa(JSON.stringify(o)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return `${b64u({ alg: 'none' })}.${b64u({ exp })}.sig`;
+}
+
 // Due to Jest mocks not working with ESModules currently,
 // these tests use poor man's mocking
 describe('AccessToken', () => {
@@ -281,7 +288,7 @@ describe('AccessToken', () => {
   });
 
   describe('cached tokenset', () => {
-    it('should call userinfo endpoint and return cached tokenset', async () => {
+    it('should return a fresh cached token without any network call', async () => {
       const signingKey = await generateTestSigningKey();
       const mf = mockFetch({ access_token: 'notreal' });
       const accessTokenClient = new AccessToken(
@@ -295,17 +302,18 @@ describe('AccessToken', () => {
         DefaultCryptoService,
         mf
       );
+      const fresh = makeJwt(Date.now() / 1000 + 300);
       accessTokenClient.data = {
         refresh_token: 'r',
-        access_token: 'a',
+        access_token: fresh,
       };
-      // Do a refresh to cache tokenset
+      accessTokenClient.cachedExpiry = Date.now() / 1000 + 300;
+      // Freshness is now decided locally; no userinfo round trip.
       const res = await accessTokenClient.get();
-      expect(res).to.eql('a');
-      // TODO Why do we do an info call here?
-      // expect(mf.callCount).to.eql(0);
+      expect(res).to.eql(fresh);
+      expect(mf.callCount).to.eql(0);
     });
-    it('should attempt to refresh token if userinfo call throws error', async () => {
+    it('should refresh the token when the cached token is expired', async () => {
       const signingKey = await generateTestSigningKey();
       const json = fake.resolves({ access_token: 'a' });
       const mf = fake((url: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -330,12 +338,45 @@ describe('AccessToken', () => {
       );
       accessTokenClient.data = {
         refresh_token: 'r',
-        access_token: 'a',
+        access_token: 'old',
       };
-      // Do a refresh to cache tokenset
+      accessTokenClient.cachedExpiry = Date.now() / 1000 - 10; // already expired
+      // Only the token endpoint (POST) is hit - the userinfo GET is gone.
       const res = await accessTokenClient.get();
       expect(res).to.eql('a');
-      expect(mf.callCount).to.eql(2);
+      expect(mf.callCount).to.eql(1);
+    });
+    it('should dedupe concurrent refreshes into a single token exchange', async () => {
+      const signingKey = await generateTestSigningKey();
+      const json = fake.resolves({ access_token: 'a' });
+      const mf = fake((url: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+        if (!init) {
+          return Promise.reject('No init found');
+        }
+        if (init.method === 'POST') {
+          return Promise.resolve({ ...ok, json });
+        }
+        return Promise.reject(`yee [${url}] [${JSON.stringify(init.headers)}]`);
+      });
+      const accessTokenClient = new AccessToken(
+        {
+          oidcOrigin: 'https://auth.invalid',
+          clientId: 'myid',
+          clientSecret: 'mysecret',
+          exchange: 'client',
+          signingKey,
+        },
+        DefaultCryptoService,
+        mf
+      );
+      // Fire several gets before any resolves; only one exchange should happen.
+      const results = await Promise.all([
+        accessTokenClient.get(),
+        accessTokenClient.get(),
+        accessTokenClient.get(),
+      ]);
+      expect(results).to.eql(['a', 'a', 'a']);
+      expect(mf.callCount).to.eql(1);
     });
   });
 

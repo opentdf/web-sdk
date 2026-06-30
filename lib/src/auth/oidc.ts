@@ -1,5 +1,6 @@
 import { default as dpopFn } from './dpop.js';
 import { HttpRequest, withHeaders } from './auth.js';
+import { isTokenExpired, resolveTokenExpiry } from './tokenExpiry.js';
 import { base64 } from '../encodings/index.js';
 import { ConfigurationError, TdfError } from '../errors.js';
 import { rstrip } from '../utils.js';
@@ -61,6 +62,7 @@ const qstringify = (obj: Record<string, string>) => new URLSearchParams(obj).toS
 export type AccessTokenResponse = {
   access_token: string;
   refresh_token?: string;
+  expires_in?: number;
 };
 
 /**
@@ -100,7 +102,11 @@ export class AccessToken {
 
   extraHeaders: Record<string, string> = {};
 
-  currentAccessToken?: string;
+  /** Absolute expiry (seconds since epoch) of the cached access token in `data`. */
+  cachedExpiry?: number;
+
+  /** In-flight token exchange, used to dedupe concurrent `get()` calls. */
+  inFlight?: Promise<string>;
 
   cryptoService: CryptoService;
 
@@ -312,18 +318,26 @@ export class AccessToken {
 
   /**
    * Gets an access token; operates lazily/cached, with an optional check for freshness.
-   * @param validate if we should run a inline check against the OIDC 'userinfo' endpoint to make sure any cached access token is still valid
+   *
+   * Freshness is determined locally from the token's `exp` claim (or the OAuth
+   * `expires_in` from the token response) — no network round trip. This replaces an
+   * earlier scheme that validated cached tokens against the OIDC `userinfo` endpoint.
+   * @param validate if we should check that any cached access token is still fresh
+   *   before returning it; when false, a cached token is returned regardless of expiry
    * @returns
    */
   async get(validate = true): Promise<string> {
-    if (this.data?.access_token) {
+    if (this.data?.access_token && (!validate || !isTokenExpired(this.cachedExpiry))) {
+      return this.data.access_token;
+    }
+
+    // Dedupe concurrent refreshes so a burst of requests triggers one exchange.
+    if (this.inFlight) {
+      return this.inFlight;
+    }
+
+    this.inFlight = (async () => {
       try {
-        if (validate) {
-          await this.info(this.data.access_token);
-        }
-        return this.data.access_token;
-      } catch (e) {
-        console.log('access_token fails on user_info endpoint; attempting to renew', e);
         if (this.data?.refresh_token) {
           // Prefer the latest refresh_token if present over creds passed in
           // to constructor
@@ -334,11 +348,19 @@ export class AccessToken {
           };
         }
         delete this.data;
-      }
-    }
 
-    const tokenResponse = (this.data = await this.accessTokenLookup(this.config));
-    return tokenResponse.access_token;
+        const tokenResponse = (this.data = await this.accessTokenLookup(this.config));
+        this.cachedExpiry = resolveTokenExpiry(
+          tokenResponse.access_token,
+          tokenResponse.expires_in
+        );
+        return tokenResponse.access_token;
+      } finally {
+        delete this.inFlight;
+      }
+    })();
+
+    return this.inFlight;
   }
 
   /**
@@ -349,13 +371,15 @@ export class AccessToken {
    * Calling this function will trigger a forcible token refresh using the cached refresh token, and contact the auth server.
    */
   async refreshTokenClaimsWithClientPubkeyIfNeeded(signingKey: KeyPair): Promise<void> {
-    // If we already have a token, and the pubkey changes,
-    // we need to force a refresh now - otherwise
-    // we can wait until we create the token for the first time
-    if (this.currentAccessToken && signingKey === this.signingKey) {
+    // If we already have a token, and the pubkey is unchanged,
+    // we can keep the cached token - otherwise drop it so the next `get()`
+    // refetches a token bound to the new public key.
+    if (this.data?.access_token && signingKey === this.signingKey) {
       return;
     }
-    delete this.currentAccessToken;
+    delete this.data;
+    delete this.cachedExpiry;
+    delete this.inFlight;
     this.signingKey = signingKey;
     // A DPoP-bound token (cnf.jkt) is tied to a specific key; rotating the
     // signing key invalidates any cached token. Non-DPoP tokens are key-
@@ -398,7 +422,7 @@ export class AccessToken {
         'Client public key was not set via `updateClientPublicKey` or passed in via constructor; required when DPoP is enabled'
       );
     }
-    const accessToken = (this.currentAccessToken ??= await this.get());
+    const accessToken = await this.get();
     if (this.config.dpopEnabled && this.signingKey) {
       const url = new URL(httpReq.url);
       const origin = url.origin;
