@@ -13,6 +13,57 @@ import { base64 } from '../encodings/index.js';
 export type TokenProvider = () => Promise<string>;
 
 /**
+ * Read a JWT's `exp` claim as epoch-milliseconds, WITHOUT verifying the signature.
+ * Returns undefined for opaque (non-JWT) tokens or an unreadable payload — so the
+ * expiry footgun check below is skipped rather than firing a false positive.
+ */
+function readJwtExpMs(token: string): number | undefined {
+  const parts = token.split('.');
+  if (parts.length !== 3) return undefined;
+  try {
+    let b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4 !== 0) b64 += '=';
+    const { exp } = JSON.parse(atob(b64)) as { exp?: number };
+    return typeof exp === 'number' ? exp * 1000 : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * A common footgun: passing a *static* token getter (e.g. `() => myToken`) to an interceptor.
+ * The interceptor faithfully stamps that token on every request, but a static getter never
+ * refreshes — so once the (typically short-lived) access token expires, every request goes out
+ * with a dead Bearer and the platform answers HTTP 401. Callers routinely mis-diagnose that 401
+ * as an authorization / "access denied" failure and lose hours to it.
+ *
+ * A correctly-refreshing provider NEVER returns an already-expired token, so an expired token is
+ * an unambiguous, zero-false-positive signal of the footgun. This factory returns a guard that
+ * emits ONE actionable `console.warn` the first time it sees an expired JWT and then stays quiet
+ * (no log spam). It never throws and silently ignores opaque tokens whose expiry can't be read.
+ */
+function makeExpiredTokenWarner(interceptorName: string): (token: string) => void {
+  let warned = false;
+  return (token: string) => {
+    if (warned) return;
+    const expMs = readJwtExpMs(token);
+    if (expMs !== undefined && expMs <= Date.now()) {
+      warned = true;
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[OpenTDF] ${interceptorName} received an already-EXPIRED access token. Your ` +
+          '`tokenProvider` is returning a token it never refreshes, so platform requests will ' +
+          'fail with HTTP 401 — frequently mis-diagnosed as an authorization / "access denied" ' +
+          'error. Fix: wrap a refreshing provider — refreshTokenProvider(), ' +
+          'clientCredentialsTokenProvider(), or externalJwtTokenProvider() — or refresh inside ' +
+          'your own tokenProvider so it never returns an expired token. ' +
+          'Docs: https://github.com/opentdf/web-sdk#authentication'
+      );
+    }
+  };
+}
+
+/**
  * Options for creating a DPoP-aware auth interceptor.
  */
 export type DPoPInterceptorOptions = {
@@ -49,8 +100,10 @@ export type DPoPInterceptor = Interceptor & {
  * ```
  */
 export function authTokenInterceptor(tokenProvider: TokenProvider): Interceptor {
+  const warnIfExpired = makeExpiredTokenWarner('authTokenInterceptor');
   return (next) => async (req) => {
     const token = await tokenProvider();
+    warnIfExpired(token);
     req.header.set('Authorization', `Bearer ${token}`);
     return next(req);
   };
@@ -81,9 +134,11 @@ export function authTokenDPoPInterceptor(options: DPoPInterceptorOptions): DPoPI
   const dpopKeysPromise: Promise<KeyPair> = options.dpopKeys
     ? Promise.resolve(options.dpopKeys)
     : cryptoService.generateSigningKeyPair();
+  const warnIfExpired = makeExpiredTokenWarner('authTokenDPoPInterceptor');
 
   const interceptor: Interceptor = (next) => async (req) => {
     const [token, keys] = await Promise.all([options.tokenProvider(), dpopKeysPromise]);
+    warnIfExpired(token);
 
     const url = new URL(req.url);
     const httpUri = `${url.origin}${url.pathname}`;
