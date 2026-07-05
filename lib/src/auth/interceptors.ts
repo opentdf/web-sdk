@@ -17,7 +17,7 @@ export type TokenProvider = () => Promise<string>;
  * Returns undefined for opaque (non-JWT) tokens or an unreadable payload — so the
  * expiry footgun check below is skipped rather than firing a false positive.
  */
-function readJwtExpMs(token: string): number | undefined {
+export function readJwtExpMs(token: string): number | undefined {
   const parts = token.split('.');
   if (parts.length !== 3) return undefined;
   try {
