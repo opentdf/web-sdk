@@ -5,7 +5,11 @@ import * as DefaultCryptoService from '../../tdf3/src/crypto/index.js';
 import DPoP from './dpop.js';
 import { type AuthProvider } from './auth.js';
 import { base64 } from '../encodings/index.js';
-import { globalNonceCache } from './dpop-nonce.js';
+import {
+  adoptChallengeNonceFromConnectError,
+  globalNonceCache,
+  warmNonceFromResponse,
+} from './dpop-nonce.js';
 
 /**
  * A function that returns a valid access token string.
@@ -106,29 +110,22 @@ export function authTokenDPoPInterceptor(options: DPoPInterceptorOptions): DPoPI
     // Call next and handle DPoP-Nonce retry
     try {
       const response = await next(req);
-
-      // Extract and cache nonce from successful responses
-      const responseNonce = response.header.get('dpop-nonce');
-      if (responseNonce) {
-        globalNonceCache.set(origin, responseNonce);
-      }
-
+      warmNonceFromResponse(globalNonceCache, origin, response.header);
       return response;
     } catch (err) {
-      // Check for a Connect Unauthenticated error carrying a DPoP-Nonce challenge.
-      // The transport's fetch wrapper captures the nonce from the raw 401 response
+      // A Connect Unauthenticated error may carry a DPoP-Nonce challenge. The
+      // transport's fetch wrapper records the nonce from the raw 401 response
       // into the cache (Connect errors don't reliably surface response headers);
       // error metadata is a fallback for transports that do expose it.
       if (err instanceof ConnectError && err.code === Code.Unauthenticated) {
-        const serverNonce =
-          globalNonceCache.get(origin) ?? err.metadata.get('dpop-nonce') ?? undefined;
-
-        if (serverNonce && serverNonce !== cachedNonce) {
-          // Server sent a new nonce (or we didn't have one cached)
-          // Cache it and retry once
-          globalNonceCache.set(origin, serverNonce);
-
-          // Regenerate proof with server nonce
+        const serverNonce = adoptChallengeNonceFromConnectError(
+          globalNonceCache,
+          origin,
+          err.metadata,
+          cachedNonce
+        );
+        if (serverNonce) {
+          // Regenerate proof with the server nonce and retry once.
           const retryDpopProof = await DPoP(
             keys,
             cryptoService,
@@ -140,13 +137,7 @@ export function authTokenDPoPInterceptor(options: DPoPInterceptorOptions): DPoPI
           req.header.set('DPoP', retryDpopProof);
 
           const retryResponse = await next(req);
-
-          // Update cache from retry response if present
-          const retryNonce = retryResponse.header.get('dpop-nonce');
-          if (retryNonce) {
-            globalNonceCache.set(origin, retryNonce);
-          }
-
+          warmNonceFromResponse(globalNonceCache, origin, retryResponse.header);
           return retryResponse;
         }
       }
@@ -231,10 +222,7 @@ export function authProviderInterceptor(authProvider: AuthProvider): Interceptor
       const response = await next(req);
       // Keep the nonce cache warm from successful responses (RFC 9449 §8).
       if (origin) {
-        const responseNonce = response.header.get('dpop-nonce');
-        if (responseNonce) {
-          globalNonceCache.set(origin, responseNonce);
-        }
+        warmNonceFromResponse(globalNonceCache, origin, response.header);
       }
       return response;
     } catch (err) {
@@ -246,16 +234,16 @@ export function authProviderInterceptor(authProvider: AuthProvider): Interceptor
       // and retry once (RFC 9449 §9). Non-DPoP providers/servers never emit a
       // DPoP-Nonce, so this is a no-op for them.
       if (origin && err instanceof ConnectError && err.code === Code.Unauthenticated) {
-        const serverNonce =
-          globalNonceCache.get(origin) ?? err.metadata.get('dpop-nonce') ?? undefined;
-        if (serverNonce && serverNonce !== sentNonce) {
-          globalNonceCache.set(origin, serverNonce);
+        const serverNonce = adoptChallengeNonceFromConnectError(
+          globalNonceCache,
+          origin,
+          err.metadata,
+          sentNonce
+        );
+        if (serverNonce) {
           await sign();
           const retryResponse = await next(req);
-          const retryNonce = retryResponse.header.get('dpop-nonce');
-          if (retryNonce) {
-            globalNonceCache.set(origin, retryNonce);
-          }
+          warmNonceFromResponse(globalNonceCache, origin, retryResponse.header);
           return retryResponse;
         }
       }

@@ -44,6 +44,67 @@ export class DPoPNonceCache {
 }
 
 /**
+ * A `DPoP-Nonce` header source: a raw `Response`'s headers or a Connect error's
+ * metadata (both are `Headers`, whose `get` is case-insensitive).
+ */
+type NonceHeaders = Headers | undefined;
+
+/**
+ * Given a response's headers, return a *fresh* challenge nonce that differs from
+ * the one we just sent (`sentNonce`), recording it in `cache`. Returns
+ * `undefined` when there is no nonce or it matches what we already used — i.e.
+ * when the caller should NOT retry. RFC 9449 §9.
+ */
+export function adoptChallengeNonce(
+  cache: DPoPNonceCache,
+  origin: string,
+  headers: NonceHeaders,
+  sentNonce: string | undefined
+): string | undefined {
+  const challenge = DPoPNonceCache.extractNonce(headers);
+  if (challenge && challenge !== sentNonce) {
+    cache.set(origin, challenge);
+    return challenge;
+  }
+  return undefined;
+}
+
+/**
+ * Connect-error variant of {@link adoptChallengeNonce}. The transport `fetch`
+ * wrapper usually records the nonce off the raw 401, but Connect errors don't
+ * reliably surface response headers, so we also consult the cache and the error
+ * metadata. Returns a fresh nonce to retry with, or `undefined`.
+ */
+export function adoptChallengeNonceFromConnectError(
+  cache: DPoPNonceCache,
+  origin: string,
+  metadata: NonceHeaders,
+  sentNonce: string | undefined
+): string | undefined {
+  const serverNonce = cache.get(origin) ?? DPoPNonceCache.extractNonce(metadata);
+  if (serverNonce && serverNonce !== sentNonce) {
+    cache.set(origin, serverNonce);
+    return serverNonce;
+  }
+  return undefined;
+}
+
+/**
+ * Warm the cache from a response's `DPoP-Nonce` header (RFC 9449 §8). No-op when
+ * the response carries no nonce.
+ */
+export function warmNonceFromResponse(
+  cache: DPoPNonceCache,
+  origin: string,
+  headers: NonceHeaders
+): void {
+  const nonce = DPoPNonceCache.extractNonce(headers);
+  if (nonce) {
+    cache.set(origin, nonce);
+  }
+}
+
+/**
  * Global nonce cache singleton.
  * Shared across all instances to maintain nonce state per-origin.
  */

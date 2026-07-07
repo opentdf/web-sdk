@@ -1,6 +1,10 @@
 import { KasPublicKeyAlgorithm, KasPublicKeyInfo, OriginAllowList } from '../access.js';
 import { type AuthProvider, type HttpRequest } from '../auth/auth.js';
-import { DPoPNonceCache, globalNonceCache } from '../auth/dpop-nonce.js';
+import {
+  adoptChallengeNonce,
+  globalNonceCache,
+  warmNonceFromResponse,
+} from '../auth/dpop-nonce.js';
 import {
   ConfigurationError,
   InvalidFileError,
@@ -54,19 +58,15 @@ async function fetchWithCredsAndNonceRetry(
   let response = await send();
 
   if (!response.ok && origin) {
-    const challengeNonce = DPoPNonceCache.extractNonce(response.headers);
-    if (challengeNonce && challengeNonce !== globalNonceCache.get(origin)) {
-      globalNonceCache.set(origin, challengeNonce);
+    const sentNonce = globalNonceCache.get(origin);
+    if (adoptChallengeNonce(globalNonceCache, origin, response.headers, sentNonce)) {
       response = await send();
     }
   }
 
   // Keep the cache warm from whichever response we end on.
   if (origin) {
-    const responseNonce = DPoPNonceCache.extractNonce(response.headers);
-    if (responseNonce) {
-      globalNonceCache.set(origin, responseNonce);
-    }
+    warmNonceFromResponse(globalNonceCache, origin, response.headers);
   }
 
   return response;

@@ -5,7 +5,7 @@ import { base64 } from '../encodings/index.js';
 import { ConfigurationError, TdfError } from '../errors.js';
 import { rstrip } from '../utils.js';
 import { type CryptoService, type KeyPair } from '../../tdf3/src/crypto/declarations.js';
-import { globalNonceCache, DPoPNonceCache } from './dpop-nonce.js';
+import { adoptChallengeNonce, globalNonceCache, warmNonceFromResponse } from './dpop-nonce.js';
 
 /**
  * Common fields used by all OIDC credentialing flows.
@@ -171,9 +171,13 @@ export class AccessToken {
 
     // Handle DPoP-Nonce challenge per RFC 9449 §9: retry once with the server-supplied nonce.
     if (this.config.dpopEnabled && this.signingKey && !response.ok) {
-      const challengeNonce = DPoPNonceCache.extractNonce(response.headers);
-      if (challengeNonce && challengeNonce !== cachedNonce) {
-        globalNonceCache.set(origin, challengeNonce);
+      const challengeNonce = adoptChallengeNonce(
+        globalNonceCache,
+        origin,
+        response.headers,
+        cachedNonce
+      );
+      if (challengeNonce) {
         headers.DPoP = await dpopFn(
           this.signingKey,
           this.cryptoService,
@@ -190,10 +194,7 @@ export class AccessToken {
 
     // Update nonce cache from final response
     if (this.config.dpopEnabled) {
-      const responseNonce = DPoPNonceCache.extractNonce(response.headers);
-      if (responseNonce) {
-        globalNonceCache.set(origin, responseNonce);
-      }
+      warmNonceFromResponse(globalNonceCache, origin, response.headers);
     }
 
     if (!response.ok) {
@@ -238,18 +239,20 @@ export class AccessToken {
     // HTTP 400 with error=use_dpop_nonce; §9: resource servers return 401.
     // Trigger on any non-OK response that carries a fresh DPoP-Nonce header.
     if (this.config.dpopEnabled && !response.ok) {
-      const responseNonce = DPoPNonceCache.extractNonce(response.headers);
-      if (responseNonce && responseNonce !== cachedNonce) {
-        // Cache the server-provided nonce and retry
-        globalNonceCache.set(origin, responseNonce);
-
-        // Regenerate DPoP proof with nonce
+      const challengeNonce = adoptChallengeNonce(
+        globalNonceCache,
+        origin,
+        response.headers,
+        cachedNonce
+      );
+      if (challengeNonce) {
+        // Regenerate DPoP proof with the server-provided nonce and retry.
         headers.DPoP = await dpopFn(
           this.signingKey!,
           this.cryptoService,
           url,
           'POST',
-          responseNonce
+          challengeNonce
         );
 
         const retryResponse = await (this.request || fetch)(url, {
@@ -258,22 +261,14 @@ export class AccessToken {
           body: qstringify(o),
         });
 
-        // Update cache from retry response
-        const retryNonce = DPoPNonceCache.extractNonce(retryResponse.headers);
-        if (retryNonce) {
-          globalNonceCache.set(origin, retryNonce);
-        }
-
+        warmNonceFromResponse(globalNonceCache, origin, retryResponse.headers);
         return retryResponse;
       }
     }
 
     // Update nonce cache from successful responses
     if (this.config.dpopEnabled && response.ok) {
-      const responseNonce = DPoPNonceCache.extractNonce(response.headers);
-      if (responseNonce) {
-        globalNonceCache.set(origin, responseNonce);
-      }
+      warmNonceFromResponse(globalNonceCache, origin, response.headers);
     }
 
     return response;
