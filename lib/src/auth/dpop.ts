@@ -22,11 +22,11 @@ function buf(input: string): Uint8Array {
   return encoder.encode(input);
 }
 
-interface DPoPJwtHeaderParameters {
+type DPoPJwtHeaderParameters = {
   alg: JWSAlgorithm;
   typ: string;
   jwk: JsonWebKey;
-}
+};
 
 /**
  * Minimal JWT sign() implementation using CryptoService.
