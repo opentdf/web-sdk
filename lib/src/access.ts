@@ -90,7 +90,10 @@ export async function fetchWrappedKey(
         { signedRequestToken },
         authProvider
       )) as unknown as RewrapResponse;
-    } catch {
+    } catch (legacyError) {
+      // Surface the (more meaningful) RPC error, but don't silently drop the
+      // legacy failure — log it so the fallback path is debuggable.
+      console.info('legacy rewrap fallback also failed', legacyError);
       throw rpcError;
     }
   }
