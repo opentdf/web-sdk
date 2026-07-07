@@ -12,9 +12,8 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "The new tag for targeting the RPC protocol buffers."
-        required: true
-        default: "protocol/go/v0.13.0"
+        description: "The new tag for targeting the RPC protocol buffers. Leave empty to auto-detect latest."
+        required: false
 
 jobs:
   update-platform-protos:
