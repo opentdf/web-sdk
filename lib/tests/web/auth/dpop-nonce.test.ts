@@ -2,7 +2,7 @@ import { expect } from '@esm-bundle/chai';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { stub } from 'sinon';
 import { AccessToken } from '../../../src/auth/oidc.js';
-import { globalNonceCache } from '../../../src/auth/dpop-nonce.js';
+import { DPoPNonceCache } from '../../../src/auth/dpop-nonce.js';
 import { authTokenDPoPInterceptor } from '../../../src/auth/interceptors.js';
 import { DefaultCryptoService, generateSigningKeyPair } from '../../../tdf3/src/crypto/index.js';
 import type { KeyPair } from '../../../tdf3/src/crypto/declarations.js';
@@ -27,9 +27,7 @@ describe('AccessToken.doPost DPoP-Nonce retry', () => {
     keyPair = await generateSigningKeyPair();
   });
 
-  afterEach(() => {
-    globalNonceCache.clearAll();
-  });
+  // Each AccessToken owns its own per-client nonce cache — tests are isolated.
 
   function makeAccessToken(fetchStub: typeof fetch) {
     return new AccessToken(
@@ -67,7 +65,7 @@ describe('AccessToken.doPost DPoP-Nonce retry', () => {
 
     expect(fetchStub.callCount).to.equal(2);
     expect(result.status).to.equal(200);
-    expect(globalNonceCache.get(ORIGIN)).to.equal(NONCE);
+    expect(accessToken.nonceCache.get(ORIGIN)).to.equal(NONCE);
 
     // Second request's DPoP proof must include the nonce
     const secondInit = fetchStub.secondCall.args[1] as RequestInit;
@@ -77,9 +75,6 @@ describe('AccessToken.doPost DPoP-Nonce retry', () => {
   });
 
   it('does not retry when server returns the same nonce already cached', async () => {
-    // Pre-seed the cache with the same nonce the server will return
-    globalNonceCache.set(ORIGIN, NONCE);
-
     const fetchStub = stub().resolves({
       status: 401,
       ok: false,
@@ -87,6 +82,8 @@ describe('AccessToken.doPost DPoP-Nonce retry', () => {
     } as Response);
 
     const accessToken = makeAccessToken(fetchStub as unknown as typeof fetch);
+    // Pre-seed this client's cache with the same nonce the server will return
+    accessToken.nonceCache.set(ORIGIN, NONCE);
     const result = await accessToken.doPost(TOKEN_URL, { grant_type: 'client_credentials' });
 
     // No retry — same nonce means we'd loop; return the 401 to the caller
@@ -108,14 +105,11 @@ describe('authTokenDPoPInterceptor DPoP-Nonce retry', () => {
     keyPair = await generateSigningKeyPair();
   });
 
-  afterEach(() => {
-    globalNonceCache.clearAll();
-  });
-
-  function makeInterceptor() {
+  function makeInterceptor(nonceCache: DPoPNonceCache) {
     return authTokenDPoPInterceptor({
       tokenProvider: async () => 'dummy-access-token',
       dpopKeys: Promise.resolve(keyPair),
+      nonceCache,
     });
   }
 
@@ -142,11 +136,12 @@ describe('authTokenDPoPInterceptor DPoP-Nonce retry', () => {
     // Second call: success
     mockNext.onSecondCall().resolves({ header: { get: () => null } });
 
-    const interceptor = makeInterceptor();
+    const nonceCache = new DPoPNonceCache();
+    const interceptor = makeInterceptor(nonceCache);
     await interceptor(mockNext as Parameters<typeof interceptor>[0])(makeMockReq());
 
     expect(mockNext.callCount).to.equal(2);
-    expect(globalNonceCache.get(ORIGIN)).to.equal(NONCE);
+    expect(nonceCache.get(ORIGIN)).to.equal(NONCE);
 
     // Retry request must have nonce in its DPoP proof
     const retryReq = mockNext.secondCall.firstArg as { header: Headers };
@@ -156,7 +151,8 @@ describe('authTokenDPoPInterceptor DPoP-Nonce retry', () => {
   });
 
   it('does not retry when server returns the same nonce already cached', async () => {
-    globalNonceCache.set(ORIGIN, NONCE);
+    const nonceCache = new DPoPNonceCache();
+    nonceCache.set(ORIGIN, NONCE);
 
     const mockNext = stub().callsFake(() =>
       Promise.reject(
@@ -168,11 +164,11 @@ describe('authTokenDPoPInterceptor DPoP-Nonce retry', () => {
       )
     );
 
-    const interceptor = makeInterceptor();
+    const interceptor = makeInterceptor(nonceCache);
     try {
       await interceptor(mockNext as Parameters<typeof interceptor>[0])(makeMockReq());
       expect.fail('should have thrown');
-    } catch (err) {
+    } catch {
       // Expected: interceptor re-throws when nonce unchanged
     }
 

@@ -7,7 +7,8 @@ import { type AuthProvider } from './auth.js';
 import { base64 } from '../encodings/index.js';
 import {
   adoptChallengeNonceFromConnectError,
-  globalNonceCache,
+  DPoPNonceCache,
+  defaultNonceCache,
   warmNonceFromResponse,
 } from './dpop-nonce.js';
 
@@ -27,6 +28,12 @@ export type DPoPInterceptorOptions = {
   dpopKeys?: KeyPair | Promise<KeyPair>;
   /** CryptoService for signing. Defaults to DefaultCryptoService. */
   cryptoService?: CryptoService;
+  /**
+   * Per-client DPoP-Nonce cache (RFC 9449 §8). Defaults to the shared
+   * {@link defaultNonceCache}; pass the same instance to `PlatformClient` for
+   * strict per-client isolation on the interceptor-only path.
+   */
+  nonceCache?: DPoPNonceCache;
 };
 
 /**
@@ -83,6 +90,7 @@ export function authTokenInterceptor(tokenProvider: TokenProvider): Interceptor 
  */
 export function authTokenDPoPInterceptor(options: DPoPInterceptorOptions): DPoPInterceptor {
   const cryptoService = options.cryptoService ?? DefaultCryptoService;
+  const nonceCache = options.nonceCache ?? defaultNonceCache;
   const dpopKeysPromise: Promise<KeyPair> = options.dpopKeys
     ? Promise.resolve(options.dpopKeys)
     : cryptoService.generateSigningKeyPair();
@@ -95,7 +103,7 @@ export function authTokenDPoPInterceptor(options: DPoPInterceptorOptions): DPoPI
     const httpUri = `${origin}${url.pathname}`;
 
     // Check for cached nonce
-    const cachedNonce = globalNonceCache.get(origin);
+    const cachedNonce = nonceCache.get(origin);
 
     // Generate DPoP proof JWT for this request
     const dpopProof = await DPoP(keys, cryptoService, httpUri, 'POST', cachedNonce, token);
@@ -110,7 +118,7 @@ export function authTokenDPoPInterceptor(options: DPoPInterceptorOptions): DPoPI
     // Call next and handle DPoP-Nonce retry
     try {
       const response = await next(req);
-      warmNonceFromResponse(globalNonceCache, origin, response.header);
+      warmNonceFromResponse(nonceCache, origin, response.header);
       return response;
     } catch (err) {
       // A Connect Unauthenticated error may carry a DPoP-Nonce challenge. The
@@ -119,7 +127,7 @@ export function authTokenDPoPInterceptor(options: DPoPInterceptorOptions): DPoPI
       // error metadata is a fallback for transports that do expose it.
       if (err instanceof ConnectError && err.code === Code.Unauthenticated) {
         const serverNonce = adoptChallengeNonceFromConnectError(
-          globalNonceCache,
+          nonceCache,
           origin,
           err.metadata,
           cachedNonce
@@ -137,7 +145,7 @@ export function authTokenDPoPInterceptor(options: DPoPInterceptorOptions): DPoPI
           req.header.set('DPoP', retryDpopProof);
 
           const retryResponse = await next(req);
-          warmNonceFromResponse(globalNonceCache, origin, retryResponse.header);
+          warmNonceFromResponse(nonceCache, origin, retryResponse.header);
           return retryResponse;
         }
       }
@@ -175,7 +183,7 @@ export function authProviderInterceptor(authProvider: AuthProvider): Interceptor
 
     // Re-sign the request via withCreds and apply the resulting headers. Called
     // once normally, and again on a DPoP-Nonce challenge so the provider mints a
-    // fresh proof carrying the server-issued nonce (read from globalNonceCache).
+    // fresh proof carrying the server-issued nonce (read from nonceCache).
     const sign = async (): Promise<void> => {
       let token;
       try {
@@ -206,6 +214,11 @@ export function authProviderInterceptor(authProvider: AuthProvider): Interceptor
       });
     };
 
+    // Share the provider's per-client cache so the nonce withCreds embeds and the
+    // one we read back on a 401 are the same instance (falls back to the shared
+    // default for custom providers that don't expose one).
+    const nonceCache = authProvider.nonceCache ?? defaultNonceCache;
+
     let origin: string | undefined;
     try {
       origin = new URL(req.url).origin;
@@ -216,13 +229,13 @@ export function authProviderInterceptor(authProvider: AuthProvider): Interceptor
     await sign();
     // Snapshot the nonce we just signed with (withCreds reads it from the cache)
     // so a 401 can tell us whether the server handed back a *new* one to retry.
-    const sentNonce = origin ? globalNonceCache.get(origin) : undefined;
+    const sentNonce = origin ? nonceCache.get(origin) : undefined;
 
     try {
       const response = await next(req);
       // Keep the nonce cache warm from successful responses (RFC 9449 §8).
       if (origin) {
-        warmNonceFromResponse(globalNonceCache, origin, response.header);
+        warmNonceFromResponse(nonceCache, origin, response.header);
       }
       return response;
     } catch (err) {
@@ -235,7 +248,7 @@ export function authProviderInterceptor(authProvider: AuthProvider): Interceptor
       // DPoP-Nonce, so this is a no-op for them.
       if (origin && err instanceof ConnectError && err.code === Code.Unauthenticated) {
         const serverNonce = adoptChallengeNonceFromConnectError(
-          globalNonceCache,
+          nonceCache,
           origin,
           err.metadata,
           sentNonce
@@ -243,7 +256,7 @@ export function authProviderInterceptor(authProvider: AuthProvider): Interceptor
         if (serverNonce) {
           await sign();
           const retryResponse = await next(req);
-          warmNonceFromResponse(globalNonceCache, origin, retryResponse.header);
+          warmNonceFromResponse(nonceCache, origin, retryResponse.header);
           return retryResponse;
         }
       }

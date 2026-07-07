@@ -5,22 +5,29 @@ export * as platformConnect from '@connectrpc/connect';
 import { createConnectTransport } from '@connectrpc/connect-web';
 import type { AuthProvider } from '../tdf3/index.js';
 import { authProviderInterceptor } from './auth/interceptors.js';
-import { captureNonce } from './auth/dpop-nonce.js';
+import { captureNonce, DPoPNonceCache, defaultNonceCache } from './auth/dpop-nonce.js';
 
 /**
- * A `fetch` wrapper that records any `DPoP-Nonce` response header into the global
- * nonce cache before handing the response back to the Connect transport. The
+ * Build a `fetch` wrapper that records any `DPoP-Nonce` response header into
+ * `nonceCache` before handing the response back to the Connect transport. The
  * Connect error type does not reliably surface response headers, so capturing at
  * the transport layer is what lets the DPoP auth interceptors mint a
- * nonce-bearing proof and retry a rewrap challenged per RFC 9449 §9.
+ * nonce-bearing proof and retry a rewrap challenged per RFC 9449 §9. `nonceCache`
+ * must be the same instance the auth interceptor reads.
  */
-const nonceCapturingFetch: typeof globalThis.fetch = async (input, init) => {
-  const response = await fetch(input, init);
-  const requestUrl =
-    typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
-  captureNonce(requestUrl, response.headers);
-  return response;
-};
+function makeNonceCapturingFetch(nonceCache: DPoPNonceCache): typeof globalThis.fetch {
+  return async (input, init) => {
+    const response = await fetch(input, init);
+    const requestUrl =
+      typeof input === 'string'
+        ? input
+        : input instanceof URL
+          ? input.href
+          : (input as Request).url;
+    captureNonce(nonceCache, requestUrl, response.headers);
+    return response;
+  };
+}
 
 import { Client, createClient, Interceptor } from '@connectrpc/connect';
 import { WellKnownService } from './platform/wellknownconfiguration/wellknown_configuration_pb.js';
@@ -70,6 +77,13 @@ export interface PlatformClientOptions {
   interceptors?: Interceptor[];
   /** Base URL of the platform API. */
   platformUrl: string;
+  /**
+   * Per-client DPoP-Nonce cache (RFC 9449 §8) for the transport's nonce capture.
+   * When an `authProvider` is supplied its own `nonceCache` is used; otherwise
+   * pass the same instance given to `authTokenDPoPInterceptor` for the
+   * interceptor-only path. Defaults to the shared {@link defaultNonceCache}.
+   */
+  nonceCache?: DPoPNonceCache;
 }
 
 /**
@@ -112,10 +126,14 @@ export class PlatformClient {
       interceptors.push(...options.interceptors);
     }
 
+    // Capture nonces into the same cache the auth interceptor reads: the auth
+    // provider's own cache when present, else the caller-supplied/default one.
+    const nonceCache = options.authProvider?.nonceCache ?? options.nonceCache ?? defaultNonceCache;
+
     const transport = createConnectTransport({
       baseUrl: options.platformUrl,
       interceptors,
-      fetch: nonceCapturingFetch,
+      fetch: makeNonceCapturingFetch(nonceCache),
     });
 
     this.v1 = {

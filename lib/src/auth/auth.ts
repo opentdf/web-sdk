@@ -4,6 +4,7 @@ import {
   type PrivateKey,
 } from '../../tdf3/src/crypto/declarations.js';
 import { signJwt, type JwtHeader, type JwtPayload } from '../../tdf3/src/crypto/jwt.js';
+import { type DPoPNonceCache } from './dpop-nonce.js';
 
 export type HttpMethod =
   | 'GET'
@@ -110,6 +111,15 @@ export type AuthProvider = {
    * @param httpReq - Required. An http request pre-populated with the data public key.
    */
   withCreds(httpReq: HttpRequest): Promise<HttpRequest>;
+
+  /**
+   * Per-client DPoP-Nonce cache (RFC 9449 §8), keyed by origin. Optional so that
+   * custom/legacy providers remain valid; consumers fall back to a shared default
+   * when it is absent. Providers created by this SDK expose the cache their own
+   * proofs read and write, so the auth interceptor and the transport share one
+   * instance.
+   */
+  nonceCache?: DPoPNonceCache;
 };
 
 export function isAuthProvider(a?: unknown): a is AuthProvider {

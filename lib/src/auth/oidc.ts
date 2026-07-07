@@ -5,7 +5,7 @@ import { base64 } from '../encodings/index.js';
 import { ConfigurationError, TdfError } from '../errors.js';
 import { rstrip } from '../utils.js';
 import { type CryptoService, type KeyPair } from '../../tdf3/src/crypto/declarations.js';
-import { adoptChallengeNonce, globalNonceCache, warmNonceFromResponse } from './dpop-nonce.js';
+import { adoptChallengeNonce, DPoPNonceCache, warmNonceFromResponse } from './dpop-nonce.js';
 
 /**
  * Common fields used by all OIDC credentialing flows.
@@ -110,7 +110,18 @@ export class AccessToken {
 
   cryptoService: CryptoService;
 
-  constructor(cfg: OIDCCredentials, cryptoService: CryptoService, request?: typeof fetch) {
+  /**
+   * Per-client DPoP-Nonce cache (RFC 9449 §8). Owned here — the interceptor and
+   * legacy fetch path read the same instance via the provider's `nonceCache`.
+   */
+  readonly nonceCache: DPoPNonceCache;
+
+  constructor(
+    cfg: OIDCCredentials,
+    cryptoService: CryptoService,
+    request?: typeof fetch,
+    nonceCache: DPoPNonceCache = new DPoPNonceCache()
+  ) {
     if (!cfg.clientId) {
       throw new ConfigurationError(
         'A Keycloak client identifier is currently required for all auth mechanisms'
@@ -138,6 +149,7 @@ export class AccessToken {
     this.userInfoEndpoint =
       cfg.oidcUserInfoEndpoint || `${this.baseUrl}/protocol/openid-connect/userinfo`;
     this.signingKey = cfg.signingKey;
+    this.nonceCache = nonceCache;
   }
 
   /**
@@ -152,7 +164,7 @@ export class AccessToken {
     } as Record<string, string>;
     let cachedNonce: string | undefined;
     if (this.config.dpopEnabled && this.signingKey) {
-      cachedNonce = globalNonceCache.get(origin);
+      cachedNonce = this.nonceCache.get(origin);
       headers.DPoP = await dpopFn(
         this.signingKey,
         this.cryptoService,
@@ -172,7 +184,7 @@ export class AccessToken {
     // Handle DPoP-Nonce challenge per RFC 9449 §9: retry once with the server-supplied nonce.
     if (this.config.dpopEnabled && this.signingKey && !response.ok) {
       const challengeNonce = adoptChallengeNonce(
-        globalNonceCache,
+        this.nonceCache,
         origin,
         response.headers,
         cachedNonce
@@ -194,7 +206,7 @@ export class AccessToken {
 
     // Update nonce cache from final response
     if (this.config.dpopEnabled) {
-      warmNonceFromResponse(globalNonceCache, origin, response.headers);
+      warmNonceFromResponse(this.nonceCache, origin, response.headers);
     }
 
     if (!response.ok) {
@@ -225,7 +237,7 @@ export class AccessToken {
       // platform Keycloak mapper (lib/fixtures/keycloak.go `client.publickey`).
       headers['X-VirtruPubKey'] = base64.encode(publicKeyPem);
 
-      cachedNonce = globalNonceCache.get(origin);
+      cachedNonce = this.nonceCache.get(origin);
       headers.DPoP = await dpopFn(this.signingKey, this.cryptoService, url, 'POST', cachedNonce);
     }
 
@@ -240,7 +252,7 @@ export class AccessToken {
     // Trigger on any non-OK response that carries a fresh DPoP-Nonce header.
     if (this.config.dpopEnabled && !response.ok) {
       const challengeNonce = adoptChallengeNonce(
-        globalNonceCache,
+        this.nonceCache,
         origin,
         response.headers,
         cachedNonce
@@ -261,14 +273,14 @@ export class AccessToken {
           body: qstringify(o),
         });
 
-        warmNonceFromResponse(globalNonceCache, origin, retryResponse.headers);
+        warmNonceFromResponse(this.nonceCache, origin, retryResponse.headers);
         return retryResponse;
       }
     }
 
     // Update nonce cache from successful responses
     if (this.config.dpopEnabled && response.ok) {
-      warmNonceFromResponse(globalNonceCache, origin, response.headers);
+      warmNonceFromResponse(this.nonceCache, origin, response.headers);
     }
 
     return response;
@@ -425,7 +437,7 @@ export class AccessToken {
       // fragment. Resource servers (and the mock) recompute and compare it, so
       // a proof carrying the query string is rejected.
       const htu = `${origin}${url.pathname}`;
-      const cachedNonce = globalNonceCache.get(origin);
+      const cachedNonce = this.nonceCache.get(origin);
       const dpopToken = await dpopFn(
         this.signingKey,
         this.cryptoService,

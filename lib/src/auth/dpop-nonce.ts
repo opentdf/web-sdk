@@ -105,14 +105,22 @@ export function warmNonceFromResponse(
 }
 
 /**
- * Global nonce cache singleton.
- * Shared across all instances to maintain nonce state per-origin.
+ * Fallback nonce cache used when a caller (e.g. a custom/legacy `AuthProvider`,
+ * or the interceptor-only wiring) does not supply its own. SDK-built providers
+ * each own a per-client {@link DPoPNonceCache} instead, so nonces don't leak
+ * across clients; this shared instance only backs the paths that opt out of that.
  */
-export const globalNonceCache = new DPoPNonceCache();
+export const defaultNonceCache = new DPoPNonceCache();
 
 /**
- * Record a `DPoP-Nonce` response header into {@link globalNonceCache}, keyed by
- * the request's origin.
+ * @deprecated Prefer a per-client {@link DPoPNonceCache} (SDK providers expose
+ * one via `nonceCache`). Retained as an alias of {@link defaultNonceCache} for
+ * backwards compatibility — it is the *same object*, not a second cache.
+ */
+export const globalNonceCache = defaultNonceCache;
+
+/**
+ * Record a `DPoP-Nonce` response header into `cache`, keyed by the request's origin.
  *
  * This works directly off the raw `Response`, so it captures the nonce even when
  * a transport (e.g. Connect-RPC) does not surface response headers on its error
@@ -121,13 +129,13 @@ export const globalNonceCache = new DPoPNonceCache();
  * (RFC 9449 §9); capturing here lets the auth layer mint a nonce-bearing proof on
  * retry.
  */
-export function captureNonce(requestUrl: string, headers?: Headers): void {
+export function captureNonce(cache: DPoPNonceCache, requestUrl: string, headers?: Headers): void {
   const nonce = DPoPNonceCache.extractNonce(headers);
   if (!nonce) {
     return;
   }
   try {
-    globalNonceCache.set(new URL(requestUrl).origin, nonce);
+    cache.set(new URL(requestUrl).origin, nonce);
   } catch {
     // Non-absolute URL: the nonce cache is origin-keyed, so nothing to store.
   }

@@ -10,7 +10,7 @@ import {
   resolveAuthConfig,
   isInterceptorConfig,
 } from '../../src/auth/interceptors.js';
-import { globalNonceCache } from '../../src/auth/dpop-nonce.js';
+import { DPoPNonceCache } from '../../src/auth/dpop-nonce.js';
 
 // --- helpers ---
 
@@ -167,14 +167,15 @@ describe('authProviderInterceptor', () => {
   it('retries once with the server-issued DPoP-Nonce on an Unauthenticated challenge', async () => {
     const origin = 'https://platform.example.com';
     const url = `${origin}/policy.kasregistry/ListKeyAccessServers`;
-    globalNonceCache.clear(origin);
+    const nonceCache = new DPoPNonceCache();
 
     // Provider records the nonce it sees so we can assert the retry carried it.
     const seenNonces: (string | undefined)[] = [];
     const mockAuthProvider: AuthProvider = {
       updateClientPublicKey: async () => {},
+      nonceCache,
       withCreds: async (req: HttpRequest) => {
-        seenNonces.push(globalNonceCache.get(new URL(req.url).origin));
+        seenNonces.push(nonceCache.get(new URL(req.url).origin));
         return withHeaders(req, { Authorization: 'DPoP token' });
       },
     };
@@ -197,8 +198,7 @@ describe('authProviderInterceptor', () => {
 
     expect(attempts).to.equal(2);
     expect(seenNonces).to.deep.equal([undefined, 'server-nonce-xyz']);
-    expect(globalNonceCache.get(origin)).to.equal('server-nonce-xyz');
-    globalNonceCache.clear(origin);
+    expect(nonceCache.get(origin)).to.equal('server-nonce-xyz');
   });
 
   it('wraps updateClientPublicKey errors with helpful message', async () => {

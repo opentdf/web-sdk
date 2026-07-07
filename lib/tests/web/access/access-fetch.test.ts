@@ -16,7 +16,7 @@ import {
   UnauthenticatedError,
 } from '../../../src/errors.js';
 import { OriginAllowList } from '../../../src/access.js';
-import { globalNonceCache } from '../../../src/auth/dpop-nonce.js';
+import { DPoPNonceCache } from '../../../src/auth/dpop-nonce.js';
 import type { AuthProvider } from '../../../src/index.js';
 // -------------------------------------------------------------
 
@@ -252,22 +252,25 @@ describe('access-fetch.js', () => {
     // for the origin, recording it so the test can confirm the retry saw the
     // server challenge.
     const noncesSeen: (string | undefined)[] = [];
+    // The provider owns its per-client cache; the retry path reads it back.
+    const nonceCache = new DPoPNonceCache();
     const dpopAuthProvider: AuthProvider = {
+      nonceCache,
       withCreds: sinon.stub().callsFake(async (req) => {
-        noncesSeen.push(globalNonceCache.get(origin));
+        noncesSeen.push(nonceCache.get(origin));
         return { ...req, headers: { ...req.headers, Authorization: 'DPoP test-token' } };
       }),
     } as unknown as AuthProvider;
 
     beforeEach(() => {
       noncesSeen.length = 0;
-      globalNonceCache.clear(origin);
+      nonceCache.clear(origin);
       // @ts-expect-error stub
       dpopAuthProvider.withCreds.resetHistory();
     });
 
     afterEach(() => {
-      globalNonceCache.clear(origin);
+      nonceCache.clear(origin);
     });
 
     it('retries once with the server nonce and succeeds', async () => {

@@ -2,7 +2,7 @@ import { KasPublicKeyAlgorithm, KasPublicKeyInfo, OriginAllowList } from '../acc
 import { type AuthProvider, type HttpRequest } from '../auth/auth.js';
 import {
   adoptChallengeNonce,
-  globalNonceCache,
+  defaultNonceCache,
   warmNonceFromResponse,
 } from '../auth/dpop-nonce.js';
 import {
@@ -48,6 +48,10 @@ async function fetchWithCredsAndNonceRetry(
     }
   };
 
+  // Use the provider's per-client cache so the retry proof carries the nonce
+  // withCreds reads back (falls back to the shared default for custom providers).
+  const nonceCache = authProvider.nonceCache ?? defaultNonceCache;
+
   let origin: string | undefined;
   try {
     origin = new URL(httpReq.url).origin;
@@ -58,15 +62,15 @@ async function fetchWithCredsAndNonceRetry(
   let response = await send();
 
   if (!response.ok && origin) {
-    const sentNonce = globalNonceCache.get(origin);
-    if (adoptChallengeNonce(globalNonceCache, origin, response.headers, sentNonce)) {
+    const sentNonce = nonceCache.get(origin);
+    if (adoptChallengeNonce(nonceCache, origin, response.headers, sentNonce)) {
       response = await send();
     }
   }
 
   // Keep the cache warm from whichever response we end on.
   if (origin) {
-    warmNonceFromResponse(globalNonceCache, origin, response.headers);
+    warmNonceFromResponse(nonceCache, origin, response.headers);
   }
 
   return response;

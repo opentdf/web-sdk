@@ -47,13 +47,16 @@ export async function fetchWrappedKey(
   fulfillableObligationFQNs: string[]
 ): Promise<RewrapResponse> {
   const platformUrl = getPlatformUrlFromKasEndpoint(url);
-  const { interceptors, authProvider } = resolveAuthConfig(auth);
+  const { authProvider } = resolveAuthConfig(auth);
 
+  // Pass the original AuthConfig (not just its interceptors) so the RPC layer can
+  // recover the provider's per-client DPoP nonce cache and keep the transport's
+  // nonce capture and the interceptor's retry on the same instance (RFC 9449 §9).
   const rpcCall = () =>
     fetchWrappedKeysRpc(
       platformUrl,
       signedRequestToken,
-      { interceptors },
+      auth,
       rewrapAdditionalContextHeader(fulfillableObligationFQNs)
     );
 
@@ -214,9 +217,11 @@ export async function fetchKeyAccessServers(
   platformUrl: string,
   auth: AuthConfig
 ): Promise<OriginAllowList> {
-  const { interceptors, authProvider } = resolveAuthConfig(auth);
+  const { authProvider } = resolveAuthConfig(auth);
 
-  const rpcCall = () => fetchKeyAccessServersRpc(platformUrl, { interceptors });
+  // Pass the original AuthConfig so the RPC layer shares the provider's per-client
+  // DPoP nonce cache with the transport (see fetchWrappedKey).
+  const rpcCall = () => fetchKeyAccessServersRpc(platformUrl, auth);
 
   if (!authProvider) {
     return await rpcCall();

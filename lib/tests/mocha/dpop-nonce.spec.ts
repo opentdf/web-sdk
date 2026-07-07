@@ -1,7 +1,6 @@
 import { expect } from 'chai';
 import { AccessToken } from '../../src/auth/oidc.js';
 import { clientSecretAuthProvider } from '../../src/auth/providers.js';
-import { globalNonceCache } from '../../src/auth/dpop-nonce.js';
 import { DefaultCryptoService, generateSigningKeyPair } from '../../tdf3/src/crypto/index.js';
 import type { KeyPair } from '../../tdf3/src/crypto/declarations.js';
 
@@ -19,9 +18,8 @@ describe('DPoP nonce challenge — integration with mock server', function (this
     keyPair = await generateSigningKeyPair();
   });
 
-  afterEach(() => {
-    globalNonceCache.clearAll();
-  });
+  // Each AccessToken/provider owns its own per-client nonce cache, so tests are
+  // naturally isolated — no shared-cache teardown needed.
 
   it('transparently retries with server-issued nonce and returns 200', async () => {
     const accessToken = new AccessToken(
@@ -50,13 +48,10 @@ describe('DPoP nonce challenge — integration with mock server', function (this
     expect(body.access_token).to.equal('test-dpop-token');
 
     // Cache must be populated with the server's nonce after the round-trip
-    expect(globalNonceCache.get(SERVER_ORIGIN)).to.equal(SERVER_NONCE);
+    expect(accessToken.nonceCache.get(SERVER_ORIGIN)).to.equal(SERVER_NONCE);
   });
 
   it('uses cached nonce on the first request after a prior successful challenge', async () => {
-    // Pre-seed cache as if a prior request already populated it
-    globalNonceCache.set(SERVER_ORIGIN, SERVER_NONCE);
-
     const accessToken = new AccessToken(
       {
         clientId: 'test-client',
@@ -68,6 +63,9 @@ describe('DPoP nonce challenge — integration with mock server', function (this
       },
       DefaultCryptoService
     );
+
+    // Pre-seed this client's cache as if a prior request already populated it
+    accessToken.nonceCache.set(SERVER_ORIGIN, SERVER_NONCE);
 
     // With the correct nonce already cached, the first request should succeed directly (no retry).
     const response = await accessToken.doPost(TOKEN_URL, {
@@ -95,7 +93,7 @@ describe('DPoP nonce challenge — integration with mock server', function (this
 
     const token = await provider.oidcAuth.get(false);
     expect(token).to.equal('test-dpop-token');
-    expect(globalNonceCache.get(SERVER_ORIGIN)).to.equal(SERVER_NONCE);
+    expect(provider.nonceCache.get(SERVER_ORIGIN)).to.equal(SERVER_NONCE);
   });
 
   it('omits DPoP header when no signing key is configured, even after updateClientPublicKey binds one for body signing', async () => {
