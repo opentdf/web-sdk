@@ -96,6 +96,12 @@ async function processAuth(
   const requestLog: AuthProviders.HttpRequest[] = [];
   return {
     requestLog,
+    // Forward the wrapped provider's per-client DPoP-Nonce cache. Without this,
+    // the auth interceptor/transport fall back to the shared default cache while
+    // `withCreds` (delegated below) mints proofs from the wrapped provider's own
+    // cache — the two diverge and the DPoP-Nonce challenge retry never carries
+    // the server nonce (RFC 9449 §9).
+    nonceCache: actual.nonceCache,
     updateClientPublicKey: async (signingKey: KeyPair) => {
       actual.updateClientPublicKey(signingKey);
       log('DEBUG', `updateClientPublicKey: [${signingKey?.publicKey}]`);
