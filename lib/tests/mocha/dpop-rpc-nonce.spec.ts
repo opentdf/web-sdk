@@ -1,5 +1,6 @@
 import { expect } from 'chai';
 import { clientSecretAuthProvider } from '../../src/auth/providers.js';
+import { defaultNonceCache } from '../../src/auth/dpop-nonce.js';
 import { PlatformClient } from '../../src/platform.js';
 import { generateSigningKeyPair } from '../../tdf3/src/crypto/index.js';
 import type { KeyPair } from '../../tdf3/src/crypto/declarations.js';
@@ -28,7 +29,10 @@ describe('DPoP RS nonce retry over Connect-RPC — integration with mock server'
     keyPair = await generateSigningKeyPair();
   });
 
-  // The provider owns its per-client nonce cache, so each test is isolated.
+  // Providers default to the shared defaultNonceCache; clear between tests.
+  afterEach(() => {
+    defaultNonceCache.clearAll();
+  });
 
   it('ListKeyAccessServers: interceptor retries once on the RS nonce challenge and succeeds', async () => {
     const authProvider = await clientSecretAuthProvider({

@@ -2,7 +2,7 @@ import { expect } from '@esm-bundle/chai';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { stub } from 'sinon';
 import { AccessToken } from '../../../src/auth/oidc.js';
-import { DPoPNonceCache } from '../../../src/auth/dpop-nonce.js';
+import { defaultNonceCache, DPoPNonceCache } from '../../../src/auth/dpop-nonce.js';
 import { authTokenDPoPInterceptor } from '../../../src/auth/interceptors.js';
 import { DefaultCryptoService, generateSigningKeyPair } from '../../../tdf3/src/crypto/index.js';
 import type { KeyPair } from '../../../tdf3/src/crypto/declarations.js';
@@ -27,7 +27,10 @@ describe('AccessToken.doPost DPoP-Nonce retry', () => {
     keyPair = await generateSigningKeyPair();
   });
 
-  // Each AccessToken owns its own per-client nonce cache — tests are isolated.
+  // AccessToken defaults to the shared defaultNonceCache; clear between tests.
+  afterEach(() => {
+    defaultNonceCache.clearAll();
+  });
 
   function makeAccessToken(fetchStub: typeof fetch) {
     return new AccessToken(

@@ -113,11 +113,12 @@ export type AuthProvider = {
   withCreds(httpReq: HttpRequest): Promise<HttpRequest>;
 
   /**
-   * Per-client DPoP-Nonce cache (RFC 9449 §8), keyed by origin. Optional so that
-   * custom/legacy providers remain valid; consumers fall back to a shared default
-   * when it is absent. Providers created by this SDK expose the cache their own
-   * proofs read and write, so the auth interceptor and the transport share one
-   * instance.
+   * DPoP-Nonce cache (RFC 9449 §8), keyed by origin. Optional: consumers fall
+   * back to the shared `defaultNonceCache` when it is absent, so custom/legacy
+   * providers keep working. SDK providers expose the cache their own proofs read
+   * and write (the shared default unless a dedicated cache was injected for
+   * per-client isolation), so the auth interceptor and the transport read the
+   * same instance. Decorators that wrap a provider should forward this.
    */
   nonceCache?: DPoPNonceCache;
 };

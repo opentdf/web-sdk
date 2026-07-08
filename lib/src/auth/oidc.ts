@@ -5,7 +5,12 @@ import { base64 } from '../encodings/index.js';
 import { ConfigurationError, TdfError } from '../errors.js';
 import { rstrip } from '../utils.js';
 import { type CryptoService, type KeyPair } from '../../tdf3/src/crypto/declarations.js';
-import { adoptChallengeNonce, DPoPNonceCache, warmNonceFromResponse } from './dpop-nonce.js';
+import {
+  adoptChallengeNonce,
+  defaultNonceCache,
+  DPoPNonceCache,
+  warmNonceFromResponse,
+} from './dpop-nonce.js';
 
 /**
  * Common fields used by all OIDC credentialing flows.
@@ -111,8 +116,11 @@ export class AccessToken {
   cryptoService: CryptoService;
 
   /**
-   * Per-client DPoP-Nonce cache (RFC 9449 §8). Owned here — the interceptor and
-   * legacy fetch path read the same instance via the provider's `nonceCache`.
+   * DPoP-Nonce cache (RFC 9449 §8). Defaults to the shared {@link defaultNonceCache}
+   * so the interceptor, transport, and `withCreds` stay consistent even when a
+   * provider is wrapped by a decorator that doesn't forward `nonceCache`. Pass a
+   * dedicated {@link DPoPNonceCache} to the constructor for per-client isolation;
+   * it is exposed on providers via `nonceCache` so the auth layer reads the same instance.
    */
   readonly nonceCache: DPoPNonceCache;
 
@@ -120,7 +128,7 @@ export class AccessToken {
     cfg: OIDCCredentials,
     cryptoService: CryptoService,
     request?: typeof fetch,
-    nonceCache: DPoPNonceCache = new DPoPNonceCache()
+    nonceCache: DPoPNonceCache = defaultNonceCache
   ) {
     if (!cfg.clientId) {
       throw new ConfigurationError(

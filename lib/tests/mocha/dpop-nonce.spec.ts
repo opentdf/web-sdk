@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { AccessToken } from '../../src/auth/oidc.js';
 import { clientSecretAuthProvider } from '../../src/auth/providers.js';
+import { defaultNonceCache } from '../../src/auth/dpop-nonce.js';
 import { DefaultCryptoService, generateSigningKeyPair } from '../../tdf3/src/crypto/index.js';
 import type { KeyPair } from '../../tdf3/src/crypto/declarations.js';
 
@@ -18,8 +19,11 @@ describe('DPoP nonce challenge — integration with mock server', function (this
     keyPair = await generateSigningKeyPair();
   });
 
-  // Each AccessToken/provider owns its own per-client nonce cache, so tests are
-  // naturally isolated — no shared-cache teardown needed.
+  // AccessToken/providers default to the shared defaultNonceCache; clear it
+  // between tests so a cached nonce doesn't leak across cases.
+  afterEach(() => {
+    defaultNonceCache.clearAll();
+  });
 
   it('transparently retries with server-issued nonce and returns 200', async () => {
     const accessToken = new AccessToken(

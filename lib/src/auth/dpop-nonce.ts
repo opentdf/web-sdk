@@ -105,16 +105,19 @@ export function warmNonceFromResponse(
 }
 
 /**
- * Fallback nonce cache used when a caller (e.g. a custom/legacy `AuthProvider`,
- * or the interceptor-only wiring) does not supply its own. SDK-built providers
- * each own a per-client {@link DPoPNonceCache} instead, so nonces don't leak
- * across clients; this shared instance only backs the paths that opt out of that.
+ * Shared, process-wide nonce cache — the default for every DPoP path (the
+ * `AccessToken` cache, the auth interceptor, the Connect transport, and the
+ * legacy fetch retry) unless a dedicated cache is injected. Keeping one default
+ * instance means those layers stay consistent even when a provider is wrapped by
+ * a decorator that doesn't forward `nonceCache`. For per-client isolation, pass a
+ * dedicated {@link DPoPNonceCache} to the `AccessToken` constructor,
+ * `PlatformClientOptions.nonceCache`, or `DPoPInterceptorOptions.nonceCache`.
  */
 export const defaultNonceCache = new DPoPNonceCache();
 
 /**
- * @deprecated Prefer a per-client {@link DPoPNonceCache} (SDK providers expose
- * one via `nonceCache`). Retained as an alias of {@link defaultNonceCache} for
+ * @deprecated Prefer {@link defaultNonceCache} (or an injected per-client
+ * {@link DPoPNonceCache}). Retained as an alias of {@link defaultNonceCache} for
  * backwards compatibility — it is the *same object*, not a second cache.
  */
 export const globalNonceCache = defaultNonceCache;

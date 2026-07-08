@@ -3,6 +3,7 @@ import { assert, expect } from 'chai';
 import { getMocks } from '../mocks/index.js';
 import { Client } from '../../tdf3/src/index.js';
 import { clientSecretAuthProvider } from '../../src/auth/providers.js';
+import { defaultNonceCache } from '../../src/auth/dpop-nonce.js';
 import { generateSigningKeyPair } from '../../tdf3/src/crypto/index.js';
 import type { KeyPair } from '../../tdf3/src/crypto/declarations.js';
 import type { Scope } from '../../tdf3/src/client/builders.js';
@@ -36,7 +37,10 @@ describe('DPoP RS nonce retry on the KAS rewrap path — integration with mock s
     dpopKeyPair = await generateSigningKeyPair();
   });
 
-  // The provider owns its per-client nonce cache, so each test is isolated.
+  // Providers default to the shared defaultNonceCache; clear between tests.
+  afterEach(() => {
+    defaultNonceCache.clearAll();
+  });
 
   it('decrypt survives the rewrap nonce challenge and returns the plaintext', async () => {
     const expectedVal = 'rewrap nonce roundtrip';
