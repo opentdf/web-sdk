@@ -145,6 +145,7 @@
   },
   "overrides": {
     "serialize-javascript": "^7.0.4",
-    "koa": "^2.16.4"
+    "koa": "^2.16.4",
+    "diff": "^8.0.3"
   }
 }
