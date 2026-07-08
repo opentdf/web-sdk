@@ -208,6 +208,12 @@ jobs:
             .github/workflows/roundtrip/platform/protocol/go/go.sum
             .github/workflows/roundtrip/platform/sdk/go.sum
             .github/workflows/roundtrip/platform/service/go.sum
+      - name: Allow Go toolchain auto-download
+        # setup-go pins GOTOOLCHAIN=local; the platform's go.work may require a
+        # newer Go toolchain than the version installed from service/go.mod.
+        # Let Go fetch the required toolchain automatically so platform
+        # provisioning (e.g. keycloak) doesn't fail on a version mismatch.
+        run: echo "GOTOOLCHAIN=auto" >> "$GITHUB_ENV"
       - run: find ./ -name go.mod
       - name: verify platform go.work
         run: |-
