@@ -128,6 +128,14 @@ export function derToIeeeP1363(
       throw new ConfigurationError(`Unsupported algorithm for DER conversion: ${algorithm}`);
   }
 
+  // Smallest well-formed ECDSA DER SEQUENCE is 8 bytes:
+  //   0x30 seqLen 0x02 rLen r(>=1) 0x02 sLen s(>=1)
+  // Anything shorter cannot be parsed; reject before indexing so a malformed
+  // input throws a clean ConfigurationError rather than coercing undefined.
+  if (signature.length < 8) {
+    throw new ConfigurationError('Invalid DER signature: too short');
+  }
+
   if (signature[0] !== 0x30) {
     throw new ConfigurationError('Invalid DER signature: expected SEQUENCE');
   }
@@ -141,40 +149,51 @@ export function derToIeeeP1363(
       throw new ConfigurationError('Invalid DER signature: invalid long-form length');
     }
     offset += 1 + lenBytesCount;
-    if (offset > signature.length) {
-      throw new ConfigurationError('Invalid DER signature: length bytes exceed signature length');
-    }
   } else {
     // Short-form: single length byte.
     offset += 1;
   }
 
-  // Parse r INTEGER
-  if (signature[offset] !== 0x02) {
-    throw new ConfigurationError('Invalid DER signature: expected INTEGER for r');
-  }
-  const rLen = signature[offset + 1];
-  offset += 2;
-  let r = signature.slice(offset, offset + rLen);
-  offset += rLen;
+  // Parse a DER INTEGER at `offset`, advancing past it. Every read is
+  // bounds-checked so a truncated or over-long length field throws a clean
+  // ConfigurationError instead of silently slicing a short/empty component.
+  const readInteger = (label: 'r' | 's'): Uint8Array => {
+    if (offset + 1 >= signature.length) {
+      throw new ConfigurationError(`Invalid DER signature: truncated before ${label} INTEGER`);
+    }
+    if (signature[offset] !== 0x02) {
+      throw new ConfigurationError(`Invalid DER signature: expected INTEGER for ${label}`);
+    }
+    const len = signature[offset + 1];
+    const start = offset + 2;
+    const end = start + len;
+    if (len === 0 || end > signature.length) {
+      throw new ConfigurationError(`Invalid DER signature: ${label} INTEGER length out of range`);
+    }
+    offset = end;
+    return signature.slice(start, end);
+  };
 
-  // Parse s INTEGER
-  if (signature[offset] !== 0x02) {
-    throw new ConfigurationError('Invalid DER signature: expected INTEGER for s');
-  }
-  const sLen = signature[offset + 1];
-  offset += 2;
-  let s = signature.slice(offset, offset + sLen);
+  let r = readInteger('r');
+  let s = readInteger('s');
 
-  // Remove leading zero padding if present
-  if (r[0] === 0 && r.length > componentLen) {
-    r = r.slice(1);
-  }
-  if (s[0] === 0 && s.length > componentLen) {
-    s = s.slice(1);
+  // Strip DER's leading zero padding (INTEGERs are zero-prefixed to stay positive).
+  const stripLeadingZeros = (arr: Uint8Array): Uint8Array => {
+    let i = 0;
+    while (i < arr.length - 1 && arr[i] === 0) i++;
+    return arr.slice(i);
+  };
+  r = stripLeadingZeros(r);
+  s = stripLeadingZeros(s);
+
+  // After stripping, each component must fit its fixed-width slot; a larger value
+  // means the signature does not belong to this curve (and would otherwise produce
+  // a negative offset in result.set below).
+  if (r.length > componentLen || s.length > componentLen) {
+    throw new ConfigurationError('Invalid DER signature: component larger than expected for curve');
   }
 
-  // Pad to component length
+  // Pad to component length (right-aligned): result = r_padded || s_padded.
   const result = new Uint8Array(componentLen * 2);
   result.set(r, componentLen - r.length);
   result.set(s, componentLen * 2 - s.length);
