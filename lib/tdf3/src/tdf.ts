@@ -706,11 +706,11 @@ export async function loadTDFStream(chunker: Chunker): Promise<InspectedTDFOverv
 export function splitLookupTableFactory(
   keyAccess: KeyAccessObject[],
   allowedKases: OriginAllowList
-): Record<string, Record<string, KeyAccessObject>> {
+): Record<string, KeyAccessObject[]> {
   const allowed = (k: KeyAccessObject) => allowedKases.allows(k.url);
   const splitIds = new Set(keyAccess.map(({ sid }) => sid ?? ''));
 
-  const accessibleSplits = new Set(keyAccess.filter(allowed).map(({ sid }) => sid));
+  const accessibleSplits = new Set(keyAccess.filter(allowed).map(({ sid }) => sid ?? ''));
   if (splitIds.size > accessibleSplits.size) {
     const disallowedKases = new Set(keyAccess.filter((k) => !allowed(k)).map(({ url }) => url));
     throw new UnsafeUrlError(
@@ -720,23 +720,17 @@ export function splitLookupTableFactory(
       ...disallowedKases
     );
   }
-  const splitPotentials: Record<string, Record<string, KeyAccessObject>> = Object.fromEntries(
-    [...splitIds].map((s) => [s, {}])
+  // Each split id maps to the list of KAOs that can unwrap it (a disjunction:
+  // any one succeeding unwraps the split). The same KAS may legitimately appear
+  // more than once for a split - an authoring mistake (same key used twice) or
+  // intentional multiple keys on one KAS - so we keep every allowed KAO as an
+  // alternative rather than rejecting duplicates. See DSPX-3379.
+  const splitPotentials: Record<string, KeyAccessObject[]> = Object.fromEntries(
+    [...splitIds].map((s) => [s, []])
   );
   for (const kao of keyAccess) {
-    const disjunction = splitPotentials[kao.sid ?? ''];
-    if (kao.url in disjunction) {
-      // TODO(DSPX-3454): Handle duplicate KAS URLs with different KIDs.
-      // Each KAO contains a KID - the function should be updated to use this
-      // information to differentiate between keys from the same KAS.
-      // Cross-SDK validation needed via xtest.
-      throw new InvalidFileError(
-        `Unable to decrypt: Multiple keys detected for Key Access Server [${kao.url}]. ` +
-          `Please contact your administrator.`
-      );
-    }
     if (allowed(kao)) {
-      disjunction[kao.url] = kao;
+      splitPotentials[kao.sid ?? ''].push(kao);
     }
   }
   return splitPotentials;
@@ -931,22 +925,26 @@ async function unwrapKey({
   const splitPromises: Record<string, () => Promise<RewrapResponseData>> = {};
   for (const splitId of Object.keys(splitPotentials)) {
     const potentials = splitPotentials[splitId];
-    if (!potentials || !Object.keys(potentials).length) {
+    if (!potentials?.length) {
       throw new UnsafeUrlError(
         `Unreconstructable key - no valid KAS found for split ${JSON.stringify(splitId)}`,
         ''
       );
     }
     const anyPromises: Record<string, () => Promise<RewrapResponseData>> = {};
-    for (const [kas, keySplitInfo] of Object.entries(potentials)) {
-      anyPromises[kas] = async () => {
+    potentials.forEach((keySplitInfo, i) => {
+      // Key by url+kid+index so multiple KAOs on the same KAS stay distinct
+      // alternatives within the split's disjunction (anyPool tries each until
+      // one succeeds). See DSPX-3379.
+      const alternativeKey = `${keySplitInfo.url}#${keySplitInfo.kid ?? ''}#${i}`;
+      anyPromises[alternativeKey] = async () => {
         try {
           return await tryKasRewrap(keySplitInfo);
         } catch (e) {
           throw handleRewrapError(e as Error);
         }
       };
-    }
+    });
     splitPromises[splitId] = () => anyPool(poolSize, anyPromises);
   }
   try {
