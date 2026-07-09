@@ -122,7 +122,7 @@ import { readFile } from 'node:fs/promises';
 import { type KeyPair, WebCryptoService } from '@opentdf/sdk/singlecontainer';
 import { CLIError } from './logger.js';
 
-const VALID_DPOP_ALGS = ['ES256', 'ES384', 'ES512', 'RS256', 'RS384', 'RS512'] as const;
+const VALID_DPOP_ALGS = ['ES256', 'ES384', 'ES512', 'RS256'] as const;
 export type DPoPAlg = (typeof VALID_DPOP_ALGS)[number];
 
 const EC_CURVE_MAP: Record<string, string> = {
@@ -142,7 +142,7 @@ export function derToPem(der: Uint8Array | ArrayBuffer, type: string): string {
 /**
  * Generate an ephemeral DPoP key pair for the given JWS algorithm.
  * ES256/ES384/ES512 → ECDSA key via WebCrypto + SDK import.
- * RS256/RS384/RS512 → RSA-2048 via SDK's generateSigningKeyPair() (all map to RS256 in DPoP proof).
+ * RS256 → RSA-2048 via SDK's generateSigningKeyPair(). RS384/RS512 are rejected (all RSA proofs sign as RS256).
  */
 export async function generateEphemeralDPoPKeyPair(alg: string): Promise<KeyPair> {
   if (!VALID_DPOP_ALGS.includes(alg as DPoPAlg)) {

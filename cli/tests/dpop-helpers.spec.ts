@@ -59,6 +59,17 @@ describe('generateEphemeralDPoPKeyPair', function () {
       expect((err as Error).message).to.include('Unsupported DPoP algorithm');
     }
   });
+
+  for (const alg of ['RS384', 'RS512']) {
+    it(`rejects ${alg} (unsupported; not silently downgraded to RS256)`, async function () {
+      try {
+        await generateEphemeralDPoPKeyPair(alg);
+        expect.fail('should have thrown');
+      } catch (err) {
+        expect((err as Error).message).to.include('Unsupported DPoP algorithm');
+      }
+    });
+  }
 });
 
 type GeneratedPair = { privateKey: webcrypto.CryptoKey; publicKey: webcrypto.CryptoKey };
@@ -196,11 +207,30 @@ describe('resolveDPoPKeyPair', function () {
     expect(result!.publicKey.algorithm).to.equal('ec:secp256r1');
   });
 
-  it('prefers keyPath over alg when both are provided', async function () {
+  it('infers the key algorithm, ignoring a non-explicit (default) alg', async function () {
+    // algWasExplicit defaults to false: a bare --dpop must not conflict with a key.
     const path = join(tmpDir, 'p384-pref.pem');
     await writeFile(path, await ecPrivatePem('P-384'));
     const result = await resolveDPoPKeyPair('ES256', path);
     expect(result).to.not.be.undefined;
+    expect(result!.publicKey.algorithm).to.equal('ec:secp384r1');
+  });
+
+  it('errors when an explicit --dpop alg conflicts with the key file', async function () {
+    const path = join(tmpDir, 'p384-conflict.pem');
+    await writeFile(path, await ecPrivatePem('P-384'));
+    try {
+      await resolveDPoPKeyPair('ES256', path, true);
+      expect.fail('should have thrown');
+    } catch (err) {
+      expect((err as Error).message).to.include('conflicts with the key');
+    }
+  });
+
+  it('accepts an explicit --dpop alg that matches the key file', async function () {
+    const path = join(tmpDir, 'p384-match.pem');
+    await writeFile(path, await ecPrivatePem('P-384'));
+    const result = await resolveDPoPKeyPair('ES384', path, true);
     expect(result!.publicKey.algorithm).to.equal('ec:secp384r1');
   });
 });
@@ -250,5 +280,24 @@ describe('resolveDPoPFromArgs', function () {
     } catch (err) {
       expect((err as Error).message).to.include('Unsupported DPoP algorithm');
     }
+  });
+
+  it('errors when an explicit --dpop conflicts with --dpopKey', async function () {
+    const path = join(tmpDir, 'args-conflict.pem');
+    await writeFile(path, await ecPrivatePem('P-384'));
+    try {
+      await resolveDPoPFromArgs({ dpop: 'ES256', dpopKey: path });
+      expect.fail('should have thrown');
+    } catch (err) {
+      expect((err as Error).message).to.include('conflicts with the key');
+    }
+  });
+
+  it('bare --dpop with --dpopKey infers the key algorithm (no conflict)', async function () {
+    const path = join(tmpDir, 'args-bare.pem');
+    await writeFile(path, await ecPrivatePem('P-384'));
+    const result = await resolveDPoPFromArgs({ dpop: '', dpopKey: path });
+    expect(result.dpopEnabled).to.be.true;
+    expect(result.dpopKeyPair?.publicKey.algorithm).to.equal('ec:secp384r1');
   });
 });

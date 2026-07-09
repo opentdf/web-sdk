@@ -1,3 +1,4 @@
+import { Code, ConnectError } from '@connectrpc/connect';
 import { type AuthConfig, resolveAuthConfig } from './auth/interceptors.js';
 import { RewrapResponse } from './platform/kas/kas_pb.js';
 import { getPlatformUrlFromKasEndpoint, validateSecureUrl } from './utils.js';
@@ -312,12 +313,27 @@ async function tryRpcThenLegacy<T>(
     if (isAuthError(rpcError)) {
       throw rpcError;
     }
-    console.info('v2 request error', rpcError);
+    console.info('v2 request error:', errBrief(rpcError));
     try {
       return await legacyCall();
     } catch (legacyError) {
-      console.info('legacy fallback also failed', legacyError);
+      console.info('legacy fallback also failed:', errBrief(legacyError));
       throw rpcError;
     }
   }
+}
+
+/**
+ * A log-safe one-line summary of an error: its message (and Connect code), never
+ * the whole error object — Connect errors can carry response headers/metadata
+ * (including DPoP nonces) that should not be dumped to logs on the auth path.
+ */
+function errBrief(e: unknown): string {
+  if (e instanceof ConnectError) {
+    return `${Code[e.code]}: ${e.message}`;
+  }
+  if (e instanceof Error) {
+    return e.message;
+  }
+  return String(e);
 }

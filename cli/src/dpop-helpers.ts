@@ -4,7 +4,7 @@ import { type webcrypto } from 'node:crypto';
 import { type KeyPair, WebCryptoService } from '@opentdf/sdk/singlecontainer';
 import { CLIError } from './logger.js';
 
-const VALID_DPOP_ALGS = ['ES256', 'ES384', 'ES512', 'RS256', 'RS384', 'RS512'] as const;
+const VALID_DPOP_ALGS = ['ES256', 'ES384', 'ES512', 'RS256'] as const;
 export type DPoPAlg = (typeof VALID_DPOP_ALGS)[number];
 
 const EC_CURVE_MAP: Record<string, string> = {
@@ -35,19 +35,15 @@ export function derToPem(der: Uint8Array | ArrayBuffer, type: string): string {
 /**
  * Generate an ephemeral DPoP key pair for the given JWS algorithm.
  * ES256/ES384/ES512 → ECDSA key via WebCrypto + SDK import.
- * RS256/RS384/RS512 → RSA-2048 via SDK's generateSigningKeyPair() (all map to RS256 in DPoP proof).
+ * RS256 → RSA-2048 via the SDK's generateSigningKeyPair().
+ * RS384/RS512 are not supported (the SDK signs all RSA DPoP proofs as RS256) and
+ * are rejected rather than silently downgraded.
  */
 export async function generateEphemeralDPoPKeyPair(alg: string): Promise<KeyPair> {
   if (!VALID_DPOP_ALGS.includes(alg as DPoPAlg)) {
     throw new CLIError(
       'CRITICAL',
       `Unsupported DPoP algorithm: ${alg}. Valid values: ${VALID_DPOP_ALGS.join(', ')}`
-    );
-  }
-
-  if (alg === 'RS384' || alg === 'RS512') {
-    console.warn(
-      `[WARN] DPoP algorithm ${alg} requested but the SDK only supports RS256 for RSA keys; generating RSA-2048 (RS256) key.`
     );
   }
 
@@ -173,15 +169,58 @@ async function buildKeyPairFromCryptoKey(
 }
 
 /**
+ * The opaque key `algorithm` string the SDK reports for a key of each DPoP JWS
+ * algorithm. EC curves are matched exactly; all RSA key sizes sign as RS256, so
+ * RS256 matches the `rsa` family (e.g. `rsa:2048`, `rsa:4096`).
+ */
+const DPOP_ALG_TO_KEY_ALG: Record<DPoPAlg, string> = {
+  ES256: 'ec:secp256r1',
+  ES384: 'ec:secp384r1',
+  ES512: 'ec:secp521r1',
+  RS256: 'rsa',
+};
+
+/**
+ * Throw if a loaded key's algorithm doesn't satisfy an explicitly-requested
+ * `--dpop` algorithm, so the CLI never silently signs with a different (possibly
+ * weaker) algorithm than the user asked for.
+ */
+function assertKeyMatchesRequestedAlg(keyPair: KeyPair, alg: string, keyPath: string): void {
+  if (!VALID_DPOP_ALGS.includes(alg as DPoPAlg)) {
+    throw new CLIError(
+      'CRITICAL',
+      `Unsupported DPoP algorithm: ${alg}. Valid values: ${VALID_DPOP_ALGS.join(', ')}`
+    );
+  }
+  const expected = DPOP_ALG_TO_KEY_ALG[alg as DPoPAlg];
+  const actual = keyPair.publicKey.algorithm;
+  const matches = expected === 'rsa' ? actual.startsWith('rsa') : actual === expected;
+  if (!matches) {
+    throw new CLIError(
+      'CRITICAL',
+      `--dpop=${alg} conflicts with the key in --dpopKey (${keyPath}): the key's algorithm is ` +
+        `${actual}. Remove --dpop to infer the algorithm from the key, or supply a key matching ${alg}.`
+    );
+  }
+}
+
+/**
  * Main entry point: resolve a DPoP KeyPair from CLI arguments.
- * Returns undefined if DPoP is not requested.
+ * Returns undefined if DPoP is not requested. When a key file is supplied, its
+ * algorithm is inferred from the key; an explicitly-requested `--dpop` algorithm
+ * that disagrees with the key is a hard error (see {@link assertKeyMatchesRequestedAlg}).
  */
 export async function resolveDPoPKeyPair(
   alg: string | undefined,
-  keyPath: string | undefined
+  keyPath: string | undefined,
+  algWasExplicit = false
 ): Promise<KeyPair | undefined> {
   if (keyPath) {
-    return loadDPoPKeyPairFromPem(keyPath);
+    const keyPair = await loadDPoPKeyPairFromPem(keyPath);
+    if (alg && algWasExplicit) {
+      assertKeyMatchesRequestedAlg(keyPair, alg, keyPath);
+    }
+    return keyPair;
   }
   if (alg) {
     return generateEphemeralDPoPKeyPair(alg);
@@ -198,7 +237,10 @@ export async function resolveDPoPFromArgs(argv: {
   dpopKey?: string;
 }): Promise<{ dpopEnabled: boolean; dpopKeyPair: KeyPair | undefined }> {
   const dpopAlg = argv.dpop === undefined ? undefined : argv.dpop || 'ES256';
+  // A non-empty --dpop value is an explicit algorithm choice; a bare --dpop
+  // (empty string → ES256 default) is not, so it never conflicts with --dpopKey.
+  const algWasExplicit = !!argv.dpop;
   const dpopEnabled = dpopAlg !== undefined || !!argv.dpopKey;
-  const dpopKeyPair = await resolveDPoPKeyPair(dpopAlg, argv.dpopKey);
+  const dpopKeyPair = await resolveDPoPKeyPair(dpopAlg, argv.dpopKey, algWasExplicit);
   return { dpopEnabled, dpopKeyPair };
 }

@@ -19,7 +19,7 @@ The branch already ships `lib/src/auth/dpop-nonce.ts` (nonce cache) and `lib/src
 | `--dpop[=alg]` | `type: 'string'`, group `Security:` | `--dpop` → enable with ES256 (empty string → default). `--dpop=ES512` → enable with specific alg. Omitted → DPoP disabled. |
 | `--dpop-key <path>` | `type: 'string'`, alias `dpop-key`, group `Security:` | PEM-encoded private key file. Enables DPoP alone (algorithm inferred from key type). |
 
-Supported algorithm values: `ES256`, `ES384`, `ES512`, `RS256`, `RS384`, `RS512`. RS384/RS512 are accepted but the SDK's `determineJWSAlgorithmFromKeyInfo` maps all RSA keys to RS256 — document in help.
+Supported algorithm values: `ES256`, `ES384`, `ES512`, `RS256`. RS384/RS512 are **rejected** with a `CLIError` (not silently downgraded): the SDK's `determineJWSAlgorithmFromKeyInfo` signs all RSA DPoP proofs as RS256, so requesting RS384/RS512 could never be honored.
 
 Help text for both flags contains the word "dpop" so `grep -i dpop` matches.
 
@@ -42,7 +42,7 @@ A single async helper `resolveDPoPKeyPair(alg, keyPath)` in `cli.ts`:
 ### Auto-generated keys
 
 - **EC (ES256/ES384/ES512):** `crypto.subtle.generateKey({ name: 'ECDSA', namedCurve }, true, ['sign','verify'])` → export PKCS8/SPKI PEM → `WebCryptoService.importPrivateKey/importPublicKey(pem, { usage: 'sign' })`
-- **RSA (RS256/RS384/RS512):** `WebCryptoService.generateSigningKeyPair()` (existing, returns RSA-2048)
+- **RSA (RS256):** `WebCryptoService.generateSigningKeyPair()` (existing, returns RSA-2048)
 
 ### PEM key from file (`--dpop-key`)
 
@@ -96,7 +96,7 @@ console.assert(!dpopEnabled || dpopToken, 'DPoP requested but absent');
 
 - Unknown algorithm string → `CLIError` before key generation
 - PEM file not found / unparseable → `CLIError` with path in message
-- `--dpop-key` with a valid PEM overrides the algorithm from `--dpop` (key type wins)
+- `--dpop-key` alone infers the algorithm from the key. An **explicit** `--dpop=<alg>` combined with a `--dpop-key` whose algorithm disagrees is a `CLIError` (EC curves matched exactly; RSA matched by family). A bare `--dpop` (default `ES256`) never conflicts with a key.
 
 ---
 
