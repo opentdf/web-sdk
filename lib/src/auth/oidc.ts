@@ -167,6 +167,27 @@ export class AccessToken {
   }
 
   /**
+   * Returns the configured DPoP signing key, throwing if DPoP is enabled but no
+   * key has been bound yet. Call only from DPoP-enabled paths.
+   *
+   * Validation is intentionally at request time rather than construction so the
+   * deferred-binding flow keeps working: a client may construct with DPoP
+   * enabled and bind the key later via
+   * {@link refreshTokenClaimsWithClientPubkeyIfNeeded} (e.g. `opentdf.ts`
+   * `ready`), which happens before the first request. All request paths
+   * (`info`, `doPost`, `withCreds`) fail here consistently rather than one
+   * silently downgrading to a Bearer token.
+   */
+  private requireSigningKey(): KeyPair {
+    if (!this.signingKey) {
+      throw new ConfigurationError(
+        'Client public key was not set via `updateClientPublicKey` or passed in via constructor; required when DPoP is enabled'
+      );
+    }
+    return this.signingKey;
+  }
+
+  /**
    * https://connect2id.com/products/server/docs/api/userinfo
    * @param accessToken the current access_token or code
    * @returns
@@ -176,11 +197,15 @@ export class AccessToken {
     const headers = {
       ...this.extraHeaders,
     } as Record<string, string>;
+    // Resolve the DPoP signing key up front (throws if DPoP is enabled but no
+    // key has been bound); undefined when DPoP is disabled. No silent Bearer
+    // downgrade — a misconfigured DPoP client fails consistently with doPost/withCreds.
+    const signingKey = this.config.dpopEnabled ? this.requireSigningKey() : undefined;
     let cachedNonce: string | undefined;
-    if (this.config.dpopEnabled && this.signingKey) {
+    if (signingKey) {
       cachedNonce = this.nonceCache.get(origin);
       headers.DPoP = await dpopFn(
-        this.signingKey,
+        signingKey,
         this.cryptoService,
         this.userInfoEndpoint,
         'GET',
@@ -196,7 +221,7 @@ export class AccessToken {
     });
 
     // Handle DPoP-Nonce challenge per RFC 9449 §9: retry once with the server-supplied nonce.
-    if (this.config.dpopEnabled && this.signingKey && !response.ok) {
+    if (signingKey && !response.ok) {
       const challenge = DPoPNonceCache.extractNonce(response.headers);
       const challengeNonce = adoptChallengeNonce(
         this.nonceCache,
@@ -206,7 +231,7 @@ export class AccessToken {
       );
       if (challengeNonce) {
         headers.DPoP = await dpopFn(
-          this.signingKey,
+          signingKey,
           this.cryptoService,
           this.userInfoEndpoint,
           'GET',
@@ -242,20 +267,19 @@ export class AccessToken {
       'Content-Type': 'application/x-www-form-urlencoded',
       Accept: 'application/json',
     };
-    // add DPoP headers if configured
+    // add DPoP headers if configured. Resolve the signing key up front (throws
+    // if DPoP is enabled but no key has been bound); undefined when disabled.
+    const signingKey = this.config.dpopEnabled ? this.requireSigningKey() : undefined;
     let cachedNonce: string | undefined;
-    if (this.config.dpopEnabled) {
-      if (!this.signingKey) {
-        throw new ConfigurationError('No signature configured');
-      }
+    if (signingKey) {
       // Export opaque public key to PEM format for header
-      const publicKeyPem = await this.cryptoService.exportPublicKeyPem(this.signingKey.publicKey);
+      const publicKeyPem = await this.cryptoService.exportPublicKeyPem(signingKey.publicKey);
       // TODO: Rename to X-OpenTDF-PubKey; requires coordinated change with
       // platform Keycloak mapper (lib/fixtures/keycloak.go `client.publickey`).
       headers['X-VirtruPubKey'] = base64.encode(publicKeyPem);
 
       cachedNonce = this.nonceCache.get(origin);
-      headers.DPoP = await dpopFn(this.signingKey, this.cryptoService, url, 'POST', cachedNonce);
+      headers.DPoP = await dpopFn(signingKey, this.cryptoService, url, 'POST', cachedNonce);
     }
 
     const response = await (this.request || fetch)(url, {
@@ -267,7 +291,7 @@ export class AccessToken {
     // Handle DPoP-Nonce challenge. RFC 9449 §8: authorization servers return
     // HTTP 400 with error=use_dpop_nonce; §9: resource servers return 401.
     // Trigger on any non-OK response that carries a fresh DPoP-Nonce header.
-    if (this.config.dpopEnabled && !response.ok) {
+    if (signingKey && !response.ok) {
       const challenge = DPoPNonceCache.extractNonce(response.headers);
       const challengeNonce = adoptChallengeNonce(
         this.nonceCache,
@@ -277,13 +301,7 @@ export class AccessToken {
       );
       if (challengeNonce) {
         // Regenerate DPoP proof with the server-provided nonce and retry.
-        headers.DPoP = await dpopFn(
-          this.signingKey!,
-          this.cryptoService,
-          url,
-          'POST',
-          challengeNonce
-        );
+        headers.DPoP = await dpopFn(signingKey, this.cryptoService, url, 'POST', challengeNonce);
 
         const retryResponse = await (this.request || fetch)(url, {
           method: 'POST',
@@ -444,13 +462,11 @@ export class AccessToken {
   }
 
   async withCreds(httpReq: HttpRequest): Promise<HttpRequest> {
-    if (this.config.dpopEnabled && !this.signingKey) {
-      throw new ConfigurationError(
-        'Client public key was not set via `updateClientPublicKey` or passed in via constructor; required when DPoP is enabled'
-      );
-    }
+    // Resolve the DPoP signing key up front (throws if DPoP is enabled but no
+    // key has been bound); undefined when DPoP is disabled.
+    const signingKey = this.config.dpopEnabled ? this.requireSigningKey() : undefined;
     const accessToken = await this.get();
-    if (this.config.dpopEnabled && this.signingKey) {
+    if (signingKey) {
       const url = new URL(httpReq.url);
       const origin = url.origin;
       // RFC 9449 §4.2: the `htu` claim is the request URI without query and
@@ -459,7 +475,7 @@ export class AccessToken {
       const htu = `${origin}${url.pathname}`;
       const cachedNonce = this.nonceCache.get(origin);
       const dpopToken = await dpopFn(
-        this.signingKey,
+        signingKey,
         this.cryptoService,
         htu,
         httpReq.method,

@@ -67,7 +67,6 @@ export async function fetchWrappedKey(
 
 export function handleRpcRewrapError(e: unknown, platformUrl: string): never {
   if (e instanceof ConnectError) {
-    console.log('Error is a ConnectError with code:', e.code);
     switch (e.code) {
       case Code.InvalidArgument: // 400 Bad Request
         throw new InvalidFileError(`400 for [${platformUrl}]: rewrap bad request [${e.message}]`);
