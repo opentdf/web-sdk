@@ -3,6 +3,7 @@ import { type AuthProvider, type HttpRequest } from '../auth/auth.js';
 import {
   adoptChallengeNonce,
   defaultNonceCache,
+  toOrigin,
   warmNonceFromResponse,
 } from '../auth/dpop-nonce.js';
 import {
@@ -52,12 +53,8 @@ async function fetchWithCredsAndNonceRetry(
   // withCreds reads back (falls back to the shared default for custom providers).
   const nonceCache = authProvider.nonceCache ?? defaultNonceCache;
 
-  let origin: string | undefined;
-  try {
-    origin = new URL(httpReq.url).origin;
-  } catch {
-    // Non-absolute URL: nonce caching is keyed by origin, so just pass through.
-  }
+  // Non-absolute URLs have no origin; nonce caching is origin-keyed, so those pass through.
+  const origin = toOrigin(httpReq.url);
 
   let response = await send();
 

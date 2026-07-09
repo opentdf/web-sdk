@@ -109,13 +109,30 @@ describe('DPoP nonce challenge — integration with mock server', function (this
     const provider = await clientSecretAuthProvider({
       clientId: 'test-client',
       clientSecret: 'test-secret',
-      oidcOrigin: 'http://localhost:3000', // any origin; we never hit token endpoint here
-      oidcTokenEndpoint: 'http://localhost:3000/protocol/openid-connect/non-dpop-token',
+      oidcOrigin: SERVER_ORIGIN,
+      oidcTokenEndpoint: TOKEN_URL,
       exchange: 'client',
       // No dpopEnabled / signingKey — non-DPoP flow.
     });
     await provider.updateClientPublicKey(keyPair);
-    // The exposed AccessToken config must remain non-DPoP after the bind.
+
+    // Capture the actual outgoing token POST rather than trusting a config flag:
+    // a stubbed request lets us assert the real header shape without a server.
+    let sentHeaders: Record<string, string> | undefined;
+    provider.oidcAuth.request = async (_input, init) => {
+      sentHeaders = init?.headers as Record<string, string>;
+      return new Response(JSON.stringify({ access_token: 'non-dpop-token' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    };
+
+    const token = await provider.oidcAuth.get(false);
+    expect(token).to.equal('non-dpop-token');
+    // The real regression guard: no DPoP proof (nor pubkey header) on the token POST.
+    expect(sentHeaders).to.not.have.property('DPoP');
+    expect(sentHeaders).to.not.have.property('X-VirtruPubKey');
+    // And the exposed AccessToken config must remain non-DPoP after the bind.
     expect(provider.oidcAuth.config.dpopEnabled).to.not.equal(true);
   });
 });

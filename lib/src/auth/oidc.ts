@@ -25,7 +25,12 @@ export type CommonCredentials = {
   /** Whether or not DPoP is enabled. */
   dpopEnabled?: boolean;
 
-  /** the client's public key, base64 encoded. Will be bound to the OIDC token. Deprecated. If not set in the constructor, */
+  /**
+   * The client's DPoP/signing key pair, bound to the issued OIDC token (as
+   * `cnf.jkt`) when DPoP is enabled. May be supplied here or bound later via
+   * `updateClientPublicKey`, which forces a token refresh so the new key takes
+   * effect.
+   */
   signingKey?: KeyPair;
 };
 

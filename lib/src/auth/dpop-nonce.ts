@@ -49,6 +49,34 @@ export class DPoPNonceCache {
  */
 type NonceHeaders = Headers | undefined;
 
+/** The origin of an absolute URL, or `undefined` when it is relative/unparseable. */
+export function toOrigin(url: string): string | undefined {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Adopt `challenge` as this origin's nonce when it is present and differs from
+ * the one we just sent (`sentNonce`), recording it in `cache`. Returns the fresh
+ * nonce, or `undefined` when the caller should NOT retry (no nonce, or it matches
+ * what we already used). RFC 9449 §9.
+ */
+function adoptIfFresh(
+  cache: DPoPNonceCache,
+  origin: string,
+  challenge: string | undefined,
+  sentNonce: string | undefined
+): string | undefined {
+  if (challenge && challenge !== sentNonce) {
+    cache.set(origin, challenge);
+    return challenge;
+  }
+  return undefined;
+}
+
 /**
  * Given a response's headers, return a *fresh* challenge nonce that differs from
  * the one we just sent (`sentNonce`), recording it in `cache`. Returns
@@ -61,12 +89,7 @@ export function adoptChallengeNonce(
   headers: NonceHeaders,
   sentNonce: string | undefined
 ): string | undefined {
-  const challenge = DPoPNonceCache.extractNonce(headers);
-  if (challenge && challenge !== sentNonce) {
-    cache.set(origin, challenge);
-    return challenge;
-  }
-  return undefined;
+  return adoptIfFresh(cache, origin, DPoPNonceCache.extractNonce(headers), sentNonce);
 }
 
 /**
@@ -81,12 +104,12 @@ export function adoptChallengeNonceFromConnectError(
   metadata: NonceHeaders,
   sentNonce: string | undefined
 ): string | undefined {
-  const serverNonce = cache.get(origin) ?? DPoPNonceCache.extractNonce(metadata);
-  if (serverNonce && serverNonce !== sentNonce) {
-    cache.set(origin, serverNonce);
-    return serverNonce;
-  }
-  return undefined;
+  return adoptIfFresh(
+    cache,
+    origin,
+    cache.get(origin) ?? DPoPNonceCache.extractNonce(metadata),
+    sentNonce
+  );
 }
 
 /**
@@ -98,10 +121,7 @@ export function warmNonceFromResponse(
   origin: string,
   headers: NonceHeaders
 ): void {
-  const nonce = DPoPNonceCache.extractNonce(headers);
-  if (nonce) {
-    cache.set(origin, nonce);
-  }
+  adoptIfFresh(cache, origin, DPoPNonceCache.extractNonce(headers), undefined);
 }
 
 /**
@@ -114,13 +134,6 @@ export function warmNonceFromResponse(
  * `PlatformClientOptions.nonceCache`, or `DPoPInterceptorOptions.nonceCache`.
  */
 export const defaultNonceCache = new DPoPNonceCache();
-
-/**
- * @deprecated Prefer {@link defaultNonceCache} (or an injected per-client
- * {@link DPoPNonceCache}). Retained as an alias of {@link defaultNonceCache} for
- * backwards compatibility — it is the *same object*, not a second cache.
- */
-export const globalNonceCache = defaultNonceCache;
 
 /**
  * Record a `DPoP-Nonce` response header into `cache`, keyed by the request's origin.

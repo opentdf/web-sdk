@@ -24,7 +24,7 @@ function buf(input: string): Uint8Array {
 
 type DPoPJwtHeaderParameters = {
   alg: JWSAlgorithm;
-  typ: string;
+  typ: 'dpop+jwt';
   jwk: JsonWebKey;
 };
 

@@ -28,8 +28,6 @@ test('DPoP headers on token and KAS rewrap requests', async ({ page }) => {
     }
   });
 
-  page.on('console', (m) => console.log(m.text()));
-
   await authorize(page);
   await loadFile(page, 'README.md');
   const downloadPromise = page.waitForEvent('download');
@@ -46,13 +44,6 @@ test('DPoP headers on token and KAS rewrap requests', async ({ page }) => {
   await page.locator('#decryptButton').click();
   await plainDownloadPromise;
 
-  console.log('\n=== CAPTURED DPoP-RELEVANT REQUESTS ===');
-  for (const r of captured) {
-    console.log(`\n${r.method} ${r.url}`);
-    console.log(`  Authorization: ${r.authorization ?? '(none)'}`);
-    console.log(`  DPoP:          ${r.dpop ? r.dpop.slice(0, 80) + '...' : '(none)'}`);
-  }
-
   // We expect at minimum: token exchange + rewrap
   expect(captured.length).toBeGreaterThanOrEqual(2);
 
@@ -62,4 +53,10 @@ test('DPoP headers on token and KAS rewrap requests', async ({ page }) => {
       expect(r.dpop, `${r.url} should carry a DPoP header`).toBeTruthy();
     }
   }
+
+  // Decode one proof header to confirm it is a well-formed DPoP proof (RFC 9449 §4.2).
+  const proof = captured.find((r) => r.url.includes('/kas') && r.dpop)?.dpop;
+  expect(proof, 'a KAS request should carry a DPoP proof').toBeTruthy();
+  const header = JSON.parse(Buffer.from(proof!.split('.')[0], 'base64url').toString('utf8'));
+  expect(header.typ).toBe('dpop+jwt');
 });

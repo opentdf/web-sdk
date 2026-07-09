@@ -9,6 +9,7 @@ import {
   adoptChallengeNonceFromConnectError,
   DPoPNonceCache,
   defaultNonceCache,
+  toOrigin,
   warmNonceFromResponse,
 } from './dpop-nonce.js';
 
@@ -113,6 +114,7 @@ export function authTokenDPoPInterceptor(options: DPoPInterceptorOptions): DPoPI
 
     req.header.set('Authorization', `DPoP ${token}`);
     req.header.set('DPoP', dpopProof);
+    // TODO: rename to X-OpenTDF-PubKey (coordinate with platform Keycloak mapper; see oidc.ts doPost)
     req.header.set('X-VirtruPubKey', base64.encode(publicKeyPem));
 
     // Call next and handle DPoP-Nonce retry
@@ -219,12 +221,8 @@ export function authProviderInterceptor(authProvider: AuthProvider): Interceptor
     // default for custom providers that don't expose one).
     const nonceCache = authProvider.nonceCache ?? defaultNonceCache;
 
-    let origin: string | undefined;
-    try {
-      origin = new URL(req.url).origin;
-    } catch {
-      // Non-absolute URL: nonce caching is keyed by origin, so just pass through.
-    }
+    // Non-absolute URLs have no origin; nonce caching is origin-keyed, so those pass through.
+    const origin = toOrigin(req.url);
 
     await sign();
     // Snapshot the nonce we just signed with (withCreds reads it from the cache)
