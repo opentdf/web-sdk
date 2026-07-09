@@ -11,6 +11,7 @@ import {
   defaultNonceCache,
   toOrigin,
   warmNonceFromResponse,
+  warnNonceRetryGiveUp,
 } from './dpop-nonce.js';
 
 /**
@@ -150,6 +151,14 @@ export function authTokenDPoPInterceptor(options: DPoPInterceptorOptions): DPoPI
           warmNonceFromResponse(nonceCache, origin, retryResponse.header);
           return retryResponse;
         }
+        // A nonce challenge we can't act on (server omitted/repeated the nonce):
+        // surface why the retry was skipped before the original error propagates.
+        warnNonceRetryGiveUp(
+          'rpc interceptor',
+          origin,
+          nonceCache.get(origin) ?? DPoPNonceCache.extractNonce(err.metadata),
+          cachedNonce
+        );
       }
 
       // Re-throw if not a nonce challenge or retry failed
@@ -257,6 +266,12 @@ export function authProviderInterceptor(authProvider: AuthProvider): Interceptor
           warmNonceFromResponse(nonceCache, origin, retryResponse.header);
           return retryResponse;
         }
+        warnNonceRetryGiveUp(
+          'auth interceptor',
+          origin,
+          nonceCache.get(origin) ?? DPoPNonceCache.extractNonce(err.metadata),
+          sentNonce
+        );
       }
       throw err;
     }

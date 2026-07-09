@@ -10,6 +10,7 @@ import {
   defaultNonceCache,
   DPoPNonceCache,
   warmNonceFromResponse,
+  warnNonceRetryGiveUp,
 } from './dpop-nonce.js';
 
 /**
@@ -196,6 +197,7 @@ export class AccessToken {
 
     // Handle DPoP-Nonce challenge per RFC 9449 §9: retry once with the server-supplied nonce.
     if (this.config.dpopEnabled && this.signingKey && !response.ok) {
+      const challenge = DPoPNonceCache.extractNonce(response.headers);
       const challengeNonce = adoptChallengeNonce(
         this.nonceCache,
         origin,
@@ -214,6 +216,8 @@ export class AccessToken {
         response = await (this.request || fetch)(this.userInfoEndpoint, {
           headers,
         });
+      } else if (challenge) {
+        warnNonceRetryGiveUp('userinfo', origin, challenge, cachedNonce);
       }
     }
 
@@ -264,6 +268,7 @@ export class AccessToken {
     // HTTP 400 with error=use_dpop_nonce; §9: resource servers return 401.
     // Trigger on any non-OK response that carries a fresh DPoP-Nonce header.
     if (this.config.dpopEnabled && !response.ok) {
+      const challenge = DPoPNonceCache.extractNonce(response.headers);
       const challengeNonce = adoptChallengeNonce(
         this.nonceCache,
         origin,
@@ -288,6 +293,8 @@ export class AccessToken {
 
         warmNonceFromResponse(this.nonceCache, origin, retryResponse.headers);
         return retryResponse;
+      } else if (challenge) {
+        warnNonceRetryGiveUp('token endpoint', origin, challenge, cachedNonce);
       }
     }
 

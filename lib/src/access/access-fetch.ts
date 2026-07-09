@@ -3,8 +3,10 @@ import { type AuthProvider, type HttpRequest } from '../auth/auth.js';
 import {
   adoptChallengeNonce,
   defaultNonceCache,
+  DPoPNonceCache,
   toOrigin,
   warmNonceFromResponse,
+  warnNonceRetryGiveUp,
 } from '../auth/dpop-nonce.js';
 import {
   ConfigurationError,
@@ -60,8 +62,13 @@ async function fetchWithCredsAndNonceRetry(
 
   if (!response.ok && origin) {
     const sentNonce = nonceCache.get(origin);
+    const challenge = DPoPNonceCache.extractNonce(response.headers);
     if (adoptChallengeNonce(nonceCache, origin, response.headers, sentNonce)) {
       response = await send();
+    } else if (challenge) {
+      // A DPoP-Nonce was offered but is stale/unusable, so the retry is skipped;
+      // note it (only when a nonce was actually present — never on a plain 401).
+      warnNonceRetryGiveUp('legacy fetch', origin, challenge, sentNonce);
     }
   }
 

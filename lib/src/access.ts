@@ -66,37 +66,22 @@ export async function fetchWrappedKey(
     return await rpcCall();
   }
 
-  // Try the modern Connect-RPC rewrap first.
-  try {
-    return await rpcCall();
-  } catch (rpcError) {
-    // A definitive auth/validation answer from KAS (401/403/400 — including a
-    // post-nonce-challenge 401, RFC 9449 §9) must surface as-is. Falling back to
-    // the legacy REST endpoint here would mask it with a 404 on Connect-only
-    // platforms.
-    if (isRewrapAuthError(rpcError)) {
-      throw rpcError;
-    }
-    // Otherwise (transport/network error, or a platform old enough to be missing
-    // the Connect rewrap endpoint) fall back to the legacy REST rewrap for
-    // backwards compatibility. If that also fails, surface the original RPC error
-    // rather than the legacy 404.
-    // We intentionally do not provide the rewrap additional context to legacy requests destined for older platforms.
-    // Platforms new enough to have knowledge of obligations will be handling RPC requests successfully.
-    console.info('v2 rewrap request error', rpcError);
-    try {
-      return (await fetchWrappedKeysLegacy(
+  // Try the modern Connect-RPC rewrap first, falling back to the legacy REST
+  // rewrap only for non-auth failures (older, non-Connect platforms). A
+  // definitive KAS auth/validation answer (401/403/400 — incl. a post-nonce-
+  // challenge 401, RFC 9449 §9) surfaces as-is via tryRpcThenLegacy rather than
+  // being masked by the legacy 404 on Connect-only platforms.
+  // We intentionally omit the rewrap additional context from legacy requests:
+  // platforms new enough to know about obligations handle RPC successfully.
+  return await tryRpcThenLegacy(
+    rpcCall,
+    async () =>
+      (await fetchWrappedKeysLegacy(
         url,
         { signedRequestToken },
         authProvider
-      )) as unknown as RewrapResponse;
-    } catch (legacyError) {
-      // Surface the (more meaningful) RPC error, but don't silently drop the
-      // legacy failure — log it so the fallback path is debuggable.
-      console.info('legacy rewrap fallback also failed', legacyError);
-      throw rpcError;
-    }
-  }
+      )) as unknown as RewrapResponse
+  );
 }
 
 /**
@@ -230,7 +215,7 @@ export async function fetchKeyAccessServers(
     return await rpcCall();
   }
 
-  return await tryPromisesUntilFirstSuccess(rpcCall, () =>
+  return await tryRpcThenLegacy(rpcCall, () =>
     fetchKeyAccessServersLegacy(platformUrl, authProvider)
   );
 }
@@ -264,7 +249,7 @@ export async function fetchKasPubKey(
     console.log(e);
   }
 
-  return await tryPromisesUntilFirstSuccess(
+  return await tryRpcThenLegacy(
     () => fetchKasPubKeyRpc(kasEndpoint, algorithm),
     () => fetchKasPubKeyLegacy(kasEndpoint, algorithm)
   );
@@ -305,23 +290,34 @@ export class OriginAllowList {
 }
 
 /**
- * Tries two promise-returning functions in order and returns the first successful result.
- * If both fail, throws the error from the second.
- * @param first First function returning a promise to try.
- * @param second Second function returning a promise to try if the first fails.
+ * Try the modern Connect-RPC call first, falling back to the legacy REST call
+ * only for non-auth failures. A definitive auth/validation answer from the RPC
+ * layer short-circuits: the legacy endpoint 404s on Connect-only platforms and
+ * would otherwise mask the real error. On a double failure, surface the (more
+ * meaningful) RPC error while still logging the legacy one so the fallback path
+ * stays debuggable.
+ * @param rpcCall The modern Connect-RPC call to try first.
+ * @param legacyCall The legacy REST call to fall back to for non-auth failures.
+ * @param isAuthError Predicate identifying a definitive auth/validation error
+ *   that must surface as-is rather than trigger the legacy fallback.
  */
-async function tryPromisesUntilFirstSuccess<T>(
-  first: () => Promise<T>,
-  second: () => Promise<T>
+async function tryRpcThenLegacy<T>(
+  rpcCall: () => Promise<T>,
+  legacyCall: () => Promise<T>,
+  isAuthError: (e: unknown) => boolean = isRewrapAuthError
 ): Promise<T> {
   try {
-    return await first();
-  } catch (e1) {
-    console.info('v2 request error', e1);
+    return await rpcCall();
+  } catch (rpcError) {
+    if (isAuthError(rpcError)) {
+      throw rpcError;
+    }
+    console.info('v2 request error', rpcError);
     try {
-      return await second();
-    } catch (err) {
-      throw err;
+      return await legacyCall();
+    } catch (legacyError) {
+      console.info('legacy fallback also failed', legacyError);
+      throw rpcError;
     }
   }
 }

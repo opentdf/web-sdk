@@ -298,12 +298,18 @@ describe('access-fetch.js', () => {
     it('does not retry when the 401 carries no DPoP-Nonce', async () => {
       fetchStub.returns(responseWithNonce('nope', false, 401));
 
+      let caught: unknown;
       try {
         await fetchKeyAccessServers(platformUrl, dpopAuthProvider);
         expect.fail('Should have thrown');
       } catch (e) {
-        expect(e).to.be.instanceOf(ServiceError);
+        caught = e;
       }
+      // The real 401 must surface unchanged (not masked): a ServiceError that
+      // names the KAS-list request and its status.
+      expect(caught).to.be.instanceOf(ServiceError);
+      expect((caught as ServiceError).message).to.include('unable to fetch kas list');
+      expect((caught as ServiceError).message).to.include('status: 401');
       expect(fetchStub.calledOnce).to.be.true;
     });
 
@@ -311,12 +317,15 @@ describe('access-fetch.js', () => {
       // Server keeps rejecting with the same nonce: retry once, then give up.
       fetchStub.returns(responseWithNonce({ error: 'use_dpop_nonce' }, false, 401, challengeNonce));
 
+      let caught: unknown;
       try {
         await fetchKeyAccessServers(platformUrl, dpopAuthProvider);
         expect.fail('Should have thrown');
       } catch (e) {
-        expect(e).to.be.instanceOf(ServiceError);
+        caught = e;
       }
+      expect(caught).to.be.instanceOf(ServiceError);
+      expect((caught as ServiceError).message).to.include('status: 401');
       expect(fetchStub.calledTwice).to.be.true;
     });
   });

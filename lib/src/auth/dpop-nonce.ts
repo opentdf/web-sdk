@@ -125,6 +125,27 @@ export function warmNonceFromResponse(
 }
 
 /**
+ * Emit ONE concise warning when a genuine DPoP-Nonce challenge was detected but
+ * no fresh nonce could be adopted (the server omitted it, or repeated the one we
+ * already sent), so the retry is skipped and the original error propagates. Call
+ * only after confirming a challenge was present — otherwise an ordinary 401 would
+ * spam a misleading warning. RFC 9449 §9.
+ */
+export function warnNonceRetryGiveUp(
+  context: string,
+  origin: string,
+  challenge: string | undefined,
+  sentNonce: string | undefined
+): void {
+  const reason = !challenge
+    ? 'server omitted the DPoP-Nonce'
+    : challenge === sentNonce
+      ? 'server repeated the already-used DPoP-Nonce'
+      : 'DPoP-Nonce could not be adopted';
+  console.warn(`DPoP nonce retry skipped (${context}, ${origin}): ${reason}`);
+}
+
+/**
  * Shared, process-wide nonce cache — the default for every DPoP path (the
  * `AccessToken` cache, the auth interceptor, the Connect transport, and the
  * legacy fetch retry) unless a dedicated cache is injected. Keeping one default
@@ -150,9 +171,15 @@ export function captureNonce(cache: DPoPNonceCache, requestUrl: string, headers?
   if (!nonce) {
     return;
   }
-  try {
-    cache.set(new URL(requestUrl).origin, nonce);
-  } catch {
-    // Non-absolute URL: the nonce cache is origin-keyed, so nothing to store.
+  const origin = toOrigin(requestUrl);
+  if (origin) {
+    cache.set(origin, nonce);
+  } else {
+    // The cache is origin-keyed, so a relative request URL can't be stored — and
+    // since this is the only place a Connect-RPC nonce challenge is captured, that
+    // silently disables the retry. Surface it rather than dropping it quietly.
+    console.warn(
+      `DPoP-Nonce present but request URL is not absolute (${requestUrl}); cannot cache nonce, retry disabled.`
+    );
   }
 }

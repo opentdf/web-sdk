@@ -201,6 +201,50 @@ describe('authProviderInterceptor', () => {
     expect(nonceCache.get(origin)).to.equal('server-nonce-xyz');
   });
 
+  it('gives up and rethrows the original error when the challenge carries no new nonce', async () => {
+    const origin = 'https://platform.example.com';
+    const url = `${origin}/policy.kasregistry/ListKeyAccessServers`;
+    const nonceCache = new DPoPNonceCache();
+
+    const mockAuthProvider: AuthProvider = {
+      updateClientPublicKey: async () => {},
+      nonceCache,
+      withCreds: async (req: HttpRequest) => withHeaders(req, { Authorization: 'DPoP token' }),
+    };
+
+    // Unauthenticated, but the server supplied no DPoP-Nonce and the cache is
+    // empty, so there is nothing to retry with: the original error must
+    // propagate unchanged rather than be swallowed or retried in a loop.
+    const thrown = new ConnectError('unauthenticated', Code.Unauthenticated);
+    let attempts = 0;
+    const mockNext = async () => {
+      attempts++;
+      throw thrown;
+    };
+
+    const warnings: string[] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.map(String).join(' '));
+    };
+
+    let caught: unknown;
+    try {
+      const interceptor = authProviderInterceptor(mockAuthProvider);
+      const mockReq = { header: new Headers(), url } as Parameters<ReturnType<Interceptor>>[0];
+      await interceptor(mockNext)(mockReq);
+    } catch (e) {
+      caught = e;
+    } finally {
+      console.warn = originalWarn;
+    }
+
+    expect(caught).to.equal(thrown); // same error instance, not masked
+    expect(attempts).to.equal(1); // no retry, no loop
+    expect(warnings).to.have.length(1);
+    expect(warnings[0]).to.include('nonce retry skipped');
+  });
+
   it('wraps updateClientPublicKey errors with helpful message', async () => {
     const failingProvider: AuthProvider = {
       updateClientPublicKey: async () => {},
