@@ -140,6 +140,28 @@ describe('DPoP proof — JWS conformance vs jose.jwtVerify (RFC 9449 + RFC 7518 
   }
 });
 
+describe('DPoP proof — unsupported key algorithm', function () {
+  it('throws before signing when the key algorithm is not a supported JWS alg', async () => {
+    // determineJWSAlgorithmFromKeyInfo (now typed to return only the four
+    // AsymmetricSigningAlgorithm values) must still reject an unknown key
+    // algorithm string up front, rather than the type change silently widening
+    // what flows into the signer.
+    const bogusKeyPair = {
+      publicKey: { algorithm: 'ec:brainpoolP256r1' },
+      privateKey: {},
+    } as unknown as KeyPair;
+
+    let err: Error | undefined;
+    try {
+      await dpopFn(bogusKeyPair, DefaultCryptoService, HTU, HTM);
+    } catch (e) {
+      err = e as Error;
+    }
+    expect(err, 'expected an unsupported-algorithm error').to.be.instanceOf(Error);
+    expect(err?.message).to.match(/unsupported key algorithm/);
+  });
+});
+
 /**
  * Mint a real proof solely to extract a clean JWK for the public key.
  * Round-tripping through `dpopFn` ensures the JWK shape matches what the

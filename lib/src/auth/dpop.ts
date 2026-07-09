@@ -38,7 +38,14 @@ async function jwt(
   cryptoService: CryptoService
 ) {
   const input = `${b64u(buf(JSON.stringify(header)))}.${b64u(buf(JSON.stringify(claimsSet)))}`;
-  const alg = header.alg as AsymmetricSigningAlgorithm;
+  const { alg } = header;
+  // The header alg is a JWSAlgorithm, which is wider than what CryptoService can
+  // actually sign with (it documents forward-looking values like PS256/EdDSA).
+  // Validate rather than blind-cast so an unsupported alg fails here with a clear
+  // error instead of surfacing deep inside getSigningAlgorithmParams.
+  if (!isAsymmetricSigningAlgorithm(alg)) {
+    throw new UnsupportedOperationError(`unsupported DPoP alg: ${alg}`);
+  }
   let signature = await cryptoService.sign(buf(input), privateKey, alg);
   // JWS requires raw IEEE P1363 (R || S) for ECDSA per RFC 7518 §3.4, but
   // cryptoService.sign currently returns DER. Convert here so DPoP proofs are
@@ -124,10 +131,28 @@ class UnsupportedOperationError extends Error {
   }
 }
 
+const ASYMMETRIC_SIGNING_ALGORITHMS: readonly AsymmetricSigningAlgorithm[] = [
+  'RS256',
+  'ES256',
+  'ES384',
+  'ES512',
+];
+
+/**
+ * Type guard narrowing a JWS `alg` to one CryptoService can actually sign with.
+ * `JWSAlgorithm` also lists forward-looking identifiers (PS256/EdDSA) that have
+ * no runtime signing support yet; those must be rejected, not signed.
+ */
+function isAsymmetricSigningAlgorithm(alg: string): alg is AsymmetricSigningAlgorithm {
+  return (ASYMMETRIC_SIGNING_ALGORITHMS as readonly string[]).includes(alg);
+}
+
 /**
  * Determines a supported JWS `alg` identifier from PublicKeyInfo algorithm string.
+ * Returns an AsymmetricSigningAlgorithm (the subset CryptoService can sign with);
+ * it never produces the forward-looking PS256/EdDSA members of JWSAlgorithm.
  */
-function determineJWSAlgorithmFromKeyInfo(algorithm: KeyAlgorithm): JWSAlgorithm {
+function determineJWSAlgorithmFromKeyInfo(algorithm: KeyAlgorithm): AsymmetricSigningAlgorithm {
   if (isRsaKeyAlgorithm(algorithm)) {
     return 'RS256';
   }
