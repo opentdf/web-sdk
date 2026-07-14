@@ -112,6 +112,7 @@ describe('client wrapper tests', function () {
   });
 
   it('encrypt error', async function () {
+    const fetchStub = sinon.stub(globalThis, 'fetch').rejects(new Error('Network error'));
     const encryptParams = new TDF.EncryptParamsBuilder().withStringSource('hello world').build();
     const config = {
       kasEndpoint: 'https://kasUrl',
@@ -123,10 +124,13 @@ describe('client wrapper tests', function () {
       assert.fail('did not throw');
     } catch (expected) {
       assert.ok(expected);
+    } finally {
+      fetchStub.restore();
     }
   });
 
   it('decrypt error', async function () {
+    const fetchStub = sinon.stub(globalThis, 'fetch').rejects(new Error('Network error'));
     const decryptParams = new TDF.DecryptParamsBuilder().withStringSource('not a tdf').build();
     const config = {
       kasEndpoint: 'https://kasUrl',
@@ -138,6 +142,8 @@ describe('client wrapper tests', function () {
       assert.fail('did not throw');
     } catch (expected) {
       assert.ok(expected);
+    } finally {
+      fetchStub.restore();
     }
   });
 
