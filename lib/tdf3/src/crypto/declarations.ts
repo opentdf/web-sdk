@@ -22,14 +22,59 @@ export type PemKeyPair = {
 };
 
 /**
+ * Supported key algorithms, grouped by key-mechanism family. These `as const`
+ * arrays are the single source of truth: the family subtypes, the combined
+ * {@link KeyAlgorithm} union, and the runtime guards below all derive from them.
+ */
+export const EC_KEY_ALGORITHMS = ['ec:secp256r1', 'ec:secp384r1', 'ec:secp521r1'] as const;
+export const RSA_KEY_ALGORITHMS = ['rsa:2048', 'rsa:4096'] as const;
+
+/**
+ * All supported key algorithms. Order is significant: it is re-exported as
+ * `PUBLIC_KEY_ALGORITHMS` from `access.ts`, which historically listed EC, then RSA.
+ */
+export const KEY_ALGORITHMS = [...EC_KEY_ALGORITHMS, ...RSA_KEY_ALGORITHMS] as const;
+
+/** Elliptic-curve key algorithm identifiers (`ec:*`). */
+export type EcKeyAlgorithm = (typeof EC_KEY_ALGORITHMS)[number];
+/** RSA key algorithm identifiers (`rsa:*`). */
+export type RsaKeyAlgorithm = (typeof RSA_KEY_ALGORITHMS)[number];
+
+/**
  * Key algorithm identifier combining key type and parameters.
  */
-export type KeyAlgorithm =
-  | 'rsa:2048'
-  | 'rsa:4096'
-  | 'ec:secp256r1'
-  | 'ec:secp384r1'
-  | 'ec:secp521r1';
+export type KeyAlgorithm = EcKeyAlgorithm | RsaKeyAlgorithm;
+
+/** Narrows a string to an elliptic-curve (`ec:*`) key algorithm. */
+export const isEcKeyAlgorithm = (a: string): a is EcKeyAlgorithm =>
+  (EC_KEY_ALGORITHMS as readonly string[]).includes(a);
+/** Narrows a string to an RSA (`rsa:*`) key algorithm. */
+export const isRsaKeyAlgorithm = (a: string): a is RsaKeyAlgorithm =>
+  (RSA_KEY_ALGORITHMS as readonly string[]).includes(a);
+/** Narrows a string to any supported key algorithm. */
+export const isKeyAlgorithm = (a: string): a is KeyAlgorithm =>
+  (KEY_ALGORITHMS as readonly string[]).includes(a);
+
+// Strictly-typed accessors for the variant encoded in each family's algorithm
+// literal. The `Record<Subtype, …>` maps are exhaustive by construction — adding
+// a family member or mistyping a key is a compile error — so these avoid the
+// `parseInt`/`split(':')`/`as` patterns they replace.
+
+const EC_ALGORITHM_CURVES: Record<EcKeyAlgorithm, ECCurve> = {
+  'ec:secp256r1': 'P-256',
+  'ec:secp384r1': 'P-384',
+  'ec:secp521r1': 'P-521',
+};
+/** The elliptic curve for an `ec:*` key algorithm. */
+export const ecAlgorithmToCurve = (alg: EcKeyAlgorithm): ECCurve => EC_ALGORITHM_CURVES[alg];
+
+const RSA_ALGORITHM_MODULUS_BITS: Record<RsaKeyAlgorithm, 2048 | 4096> = {
+  'rsa:2048': 2048,
+  'rsa:4096': 4096,
+};
+/** The modulus bit length for an `rsa:*` key algorithm. */
+export const rsaAlgorithmToModulusBits = (alg: RsaKeyAlgorithm): 2048 | 4096 =>
+  RSA_ALGORITHM_MODULUS_BITS[alg];
 
 /**
  * Options for key generation and import.
@@ -156,7 +201,7 @@ export type HkdfParams = {
  */
 export type PublicKeyInfo = {
   /** Detected algorithm of the key. */
-  algorithm: 'rsa:2048' | 'rsa:4096' | 'ec:secp256r1' | 'ec:secp384r1' | 'ec:secp521r1';
+  algorithm: KeyAlgorithm;
   /** Normalized PEM string. */
   pem: string;
 };
