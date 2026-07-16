@@ -720,11 +720,9 @@ export function splitLookupTableFactory(
       ...disallowedKases
     );
   }
-  // Each split id maps to the list of KAOs that can unwrap it (a disjunction:
-  // any one succeeding unwraps the split). The same KAS may legitimately appear
-  // more than once for a split - an authoring mistake (same key used twice) or
-  // intentional multiple keys on one KAS - so we keep every allowed KAO as an
-  // alternative rather than rejecting duplicates. See DSPX-3379.
+  // Each split id maps to the list of KAOs that can unwrap it (in a disjunction,
+  // any one succeeding unwraps the split). Note: a KAS may appear several times
+  // for the same split, possibly using different keys to encrypt the same split value.
   const splitPotentials: Record<string, KeyAccessObject[]> = Object.fromEntries(
     [...splitIds].map((s) => [s, []])
   );
@@ -935,7 +933,7 @@ async function unwrapKey({
     potentials.forEach((keySplitInfo, i) => {
       // Key by url+kid+index so multiple KAOs on the same KAS stay distinct
       // alternatives within the split's disjunction (anyPool tries each until
-      // one succeeds). See DSPX-3379.
+      // one succeeds).
       const alternativeKey = `${keySplitInfo.url}#${keySplitInfo.kid ?? ''}#${i}`;
       anyPromises[alternativeKey] = async () => {
         try {
