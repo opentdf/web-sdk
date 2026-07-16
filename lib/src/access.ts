@@ -92,9 +92,6 @@ export const rewrapAdditionalContextHeader = (
   return base64.encode(JSON.stringify(context));
 };
 
-// The supported key algorithms are defined in one place, `crypto/declarations.ts`.
-// These public aliases preserve the historic `access.ts` API surface (name, tuple
-// order, and guard behavior) while delegating to that single source of truth.
 export const PUBLIC_KEY_ALGORITHMS = KEY_ALGORITHMS;
 
 export type KasPublicKeyAlgorithm = KeyAlgorithm;
