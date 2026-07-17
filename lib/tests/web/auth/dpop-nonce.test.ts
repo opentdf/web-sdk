@@ -177,4 +177,31 @@ describe('authTokenDPoPInterceptor DPoP-Nonce retry', () => {
 
     expect(mockNext.callCount).to.equal(1);
   });
+
+  it('uses a rotated metadata nonce when the cache still contains the sent nonce', async () => {
+    const sentNonce = 'stale-nonce';
+    const rotatedNonce = 'rotated-nonce';
+    const nonceCache = new DPoPNonceCache();
+    nonceCache.set(ORIGIN, sentNonce);
+
+    const mockNext = stub();
+    mockNext
+      .onFirstCall()
+      .rejects(
+        new ConnectError(
+          'unauthenticated',
+          Code.Unauthenticated,
+          new Headers({ 'dpop-nonce': rotatedNonce })
+        )
+      );
+    mockNext.onSecondCall().resolves({ header: new Headers() });
+
+    const interceptor = makeInterceptor(nonceCache);
+    await interceptor(mockNext as Parameters<typeof interceptor>[0])(makeMockReq());
+
+    expect(mockNext.callCount).to.equal(2);
+    expect(nonceCache.get(ORIGIN)).to.equal(rotatedNonce);
+    const retryReq = mockNext.secondCall.firstArg as { header: Headers };
+    expect(decodeJwtPayload(retryReq.header.get('DPoP')!).nonce).to.equal(rotatedNonce);
+  });
 });

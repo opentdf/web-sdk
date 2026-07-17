@@ -104,12 +104,13 @@ export function adoptChallengeNonceFromConnectError(
   metadata: NonceHeaders,
   sentNonce: string | undefined
 ): string | undefined {
-  return adoptIfFresh(
-    cache,
-    origin,
-    cache.get(origin) ?? DPoPNonceCache.extractNonce(metadata),
-    sentNonce
-  );
+  const metadataNonce = DPoPNonceCache.extractNonce(metadata);
+  const cachedNonce = cache.get(origin);
+  // Prefer metadata when it carries a nonce different from the one sent. The
+  // cache can still contain that stale sent nonce when a custom Connect
+  // transport exposes response metadata but does not capture raw headers.
+  const challenge = metadataNonce && metadataNonce !== sentNonce ? metadataNonce : cachedNonce;
+  return adoptIfFresh(cache, origin, challenge, sentNonce);
 }
 
 /**
