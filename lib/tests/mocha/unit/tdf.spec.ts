@@ -276,8 +276,8 @@ describe('splitLookupTableFactory', () => {
     const result = TDF.splitLookupTableFactory(keyAccess, allowedKases);
 
     expect(result).to.deep.equal({
-      split1: { 'https://kas1': keyAccess[0] },
-      split2: { 'https://kas2': keyAccess[1] },
+      split1: [keyAccess[0]],
+      split2: [keyAccess[1]],
     });
   });
 
@@ -291,8 +291,8 @@ describe('splitLookupTableFactory', () => {
     const result = TDF.splitLookupTableFactory(keyAccess, allowedKases);
 
     expect(result).to.deep.equal({
-      split1: { 'https://kas1': keyAccess[0] },
-      split2: { 'https://kas2': keyAccess[1] },
+      split1: [keyAccess[0]],
+      split2: [keyAccess[1]],
     });
   });
 
@@ -309,17 +309,28 @@ describe('splitLookupTableFactory', () => {
     );
   });
 
-  it('should throw for duplicate URLs in the same splitId', () => {
+  it('should keep duplicate URLs in the same splitId as alternatives (DSPX-3379)', () => {
     const keyAccess: KeyAccessObject[] = [
       { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas' },
-      { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas' }, // duplicate URL in same splitId
+      { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas' },
     ];
     const allowedKases = new OriginAllowList(['https://kas1']);
 
-    expect(() => TDF.splitLookupTableFactory(keyAccess, allowedKases)).to.throw(
-      InvalidFileError,
-      'Unable to decrypt: Multiple keys detected for Key Access Server [https://kas1]. Please contact your administrator.'
-    );
+    expect(TDF.splitLookupTableFactory(keyAccess, allowedKases)).to.deep.equal({
+      split1: [keyAccess[0], keyAccess[1]],
+    });
+  });
+
+  it('should keep same-KAS different-kid entries as alternatives (DSPX-3379)', () => {
+    const keyAccess: KeyAccessObject[] = [
+      { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas', kid: 'k1' },
+      { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas', kid: 'k2' },
+    ];
+    const allowedKases = new OriginAllowList(['https://kas1']);
+
+    expect(TDF.splitLookupTableFactory(keyAccess, allowedKases)).to.deep.equal({
+      split1: [keyAccess[0], keyAccess[1]],
+    });
   });
 
   it('should handle empty keyAccess array', () => {
@@ -352,7 +363,7 @@ describe('splitLookupTableFactory', () => {
     const result = TDF.splitLookupTableFactory(keyAccess, new OriginAllowList(allowedKases));
 
     expect(result).to.deep.equal({
-      '': { 'https://kas1': keyAccess[0] },
+      '': [keyAccess[0]],
     });
   });
 });

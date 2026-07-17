@@ -3,7 +3,7 @@ import { createServer, IncomingMessage, RequestListener } from 'node:http';
 import { ml_kem768, ml_kem1024 } from '@noble/post-quantum/ml-kem.js';
 
 import { base64 } from '../src/encodings/index.js';
-import { decryptWithPrivateKey, encryptWithPublicKey } from '../tdf3/src/crypto/index.js';
+import { encryptWithPublicKey } from '../tdf3/src/crypto/index.js';
 import { getMocks } from './mocks/index.js';
 import { keyAgreement, pemPublicToCrypto } from '../src/crypto/index.js';
 import { generateRandomNumber } from '../src/crypto/generateRandomNumber.js';
@@ -51,6 +51,9 @@ import {
 } from '../src/platform/kas/kas_pb.js';
 
 const Mocks = getMocks();
+const KAS_RSA_PRIVATE_KEY = DefaultCryptoService.importPrivateKey!(Mocks.kasPrivateKey, {
+  usage: 'encrypt',
+});
 
 function range(start: number, end: number): Uint8Array {
   const result = [];
@@ -337,7 +340,10 @@ const kas: RequestListener = async (req, res) => {
           const dekab = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, kek, wrappedKey);
           dek = Binary.fromArrayBuffer(dekab);
         } else {
-          dek = await decryptWithPrivateKey(Binary.fromArrayBuffer(wk), Mocks.kasPrivateKey);
+          dek = await DefaultCryptoService.decryptWithPrivateKey(
+            Binary.fromArrayBuffer(wk),
+            await KAS_RSA_PRIVATE_KEY
+          );
         }
         if (isMLKEMClient && clientMlKemLevel !== undefined && clientKeyRaw !== undefined) {
           const { cipherText, sharedSecret } =
