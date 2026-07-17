@@ -136,6 +136,11 @@ type KaoMetadata = {
   wrappedKeyBytes: number;
 };
 
+function decodedBase64Length(value: string): number {
+  const paddingLength = value.endsWith('==') ? 2 : value.endsWith('=') ? 1 : 0;
+  return Math.floor((value.length * 3) / 4) - paddingLength;
+}
+
 function fileNameFor(inputSource: InputSource) {
   if (!inputSource) {
     return 'undefined.bin';
@@ -508,7 +513,7 @@ function App() {
       try {
         const manifest = await reader.manifest();
         const kaos = manifest.encryptionInformation.keyAccess.map((kao) => {
-          const wrappedKeyBytes = kao.wrappedKey ? Math.floor((kao.wrappedKey.length * 3) / 4) : 0;
+          const wrappedKeyBytes = kao.wrappedKey ? decodedBase64Length(kao.wrappedKey) : 0;
           return {
             kid: kao.kid ?? '(no kid)',
             type: kao.type,

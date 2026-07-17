@@ -63,6 +63,7 @@ test('roundtrip ztdf', async ({ page }) => {
 // and mlkem:1024 (see lib/ocrypto/key_type.go), so a 512 roundtrip cannot rewrap.
 for (const algorithm of ['mlkem:768', 'mlkem:1024'] as const) {
   const expectedKid = algorithm.replace(':', '');
+  const expectedWrappedKeyBytes = algorithm === 'mlkem:768' ? 1158 : 1638;
   test(`roundtrip ztdf with ${algorithm}`, async ({ page }) => {
     page.on('download', (download) =>
       download.path().then((r) => console.log(`Saves ${download.suggestedFilename()} as ${r}`))
@@ -103,6 +104,7 @@ for (const algorithm of ['mlkem:768', 'mlkem:1024'] as const) {
     // populated during the decrypt flow above.
     await expect(page.locator('#kao-kid-0')).toHaveText(expectedKid);
     await expect(page.locator('#kao-type-0')).toHaveText('mlkem-wrapped');
+    await expect(page.locator('#kao-wrapped-bytes-0')).toHaveText(String(expectedWrappedKeyBytes));
   });
 }
 
