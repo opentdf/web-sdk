@@ -344,6 +344,17 @@ describe('encrypt decrypt test', async function () {
           ] as AssertionConfig[],
         });
 
+        const expectedKeyAccessType = encapKeyType.startsWith('mlkem:')
+          ? 'mlkem-wrapped'
+          : encapKeyType.startsWith('ec:')
+            ? 'ec-wrapped'
+            : 'wrapped';
+        assert.equal(
+          encryptedStream.manifest.encryptionInformation.keyAccess[0]?.type,
+          expectedKeyAccessType,
+          `manifest should use the requested ${encapKeyType} wrapping family`
+        );
+
         // Create AssertionVerificationKeys for verification
         const assertionVerificationKeys: AssertionVerificationKeys = {
           Keys: {

@@ -219,7 +219,10 @@ export async function fetchKasPubKey(
   algorithm?: KasPublicKeyAlgorithm
 ): Promise<KasPublicKeyInfo> {
   try {
-    return await fetchKasBasePubKey(kasEndpoint);
+    const baseKey = await fetchKasBasePubKey(kasEndpoint);
+    if (!algorithm || baseKey.algorithm === algorithm) {
+      return baseKey;
+    }
   } catch (e) {
     console.log(e);
   }
