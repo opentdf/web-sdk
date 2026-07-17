@@ -40,7 +40,9 @@ import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
 import {
   type CryptoService,
   type DecryptResult,
+  isMlKemKeyAlgorithm,
   type KeyPair,
+  mlKemAlgorithmToLevel,
   type SymmetricKey,
 } from './crypto/declarations.js';
 import { Algorithms } from './ciphers/index.js';
@@ -48,6 +50,8 @@ import {
   ECWrapped,
   KeyAccessType,
   KeyInfo,
+  MLKEM_CT_SIZES,
+  MlKemWrapped,
   Manifest,
   Policy,
   SplitKey,
@@ -60,6 +64,7 @@ import { unsigned } from './utils/buffer-crc32.js';
 import { ZipReader, ZipWriter, concatUint8, buffToString } from './utils/index.js';
 import { CentralDirectory } from './utils/zip-reader.js';
 import { getZtdfSalt } from './crypto/salt.js';
+import { decodeKemEnvelopeDer } from './crypto/core/mlkem-asn1.js';
 import { Payload } from './models/payload.js';
 import {
   getRequiredObligationFQNs,
@@ -283,6 +288,18 @@ export async function buildKeyAccess({
       return new Wrapped(url, kid, pubKey, metadata, cryptoService, sid);
     case 'ec-wrapped':
       return new ECWrapped(url, kid, pubKey, metadata, cryptoService, sid);
+    case 'mlkem-wrapped':
+      if (!isMlKemKeyAlgorithm(alg)) {
+        throw new ConfigurationError(
+          `buildKeyAccess: algorithm [${alg}] is not valid for mlkem-wrapped`
+        );
+      }
+      if (!kid?.trim()) {
+        throw new ConfigurationError(
+          `buildKeyAccess: kid is required for ML-KEM algorithm [${alg}]`
+        );
+      }
+      return new MlKemWrapped(url, kid, pubKey, metadata, cryptoService, sid, alg);
     default:
       throw new ConfigurationError(`buildKeyAccess: Key access type [${type}] is unsupported`);
   }
@@ -706,11 +723,11 @@ export async function loadTDFStream(chunker: Chunker): Promise<InspectedTDFOverv
 export function splitLookupTableFactory(
   keyAccess: KeyAccessObject[],
   allowedKases: OriginAllowList
-): Record<string, KeyAccessObject[]> {
+): Record<string, Record<string, KeyAccessObject>> {
   const allowed = (k: KeyAccessObject) => allowedKases.allows(k.url);
   const splitIds = new Set(keyAccess.map(({ sid }) => sid ?? ''));
 
-  const accessibleSplits = new Set(keyAccess.filter(allowed).map(({ sid }) => sid ?? ''));
+  const accessibleSplits = new Set(keyAccess.filter(allowed).map(({ sid }) => sid));
   if (splitIds.size > accessibleSplits.size) {
     const disallowedKases = new Set(keyAccess.filter((k) => !allowed(k)).map(({ url }) => url));
     throw new UnsafeUrlError(
@@ -720,15 +737,23 @@ export function splitLookupTableFactory(
       ...disallowedKases
     );
   }
-  // Each split id maps to the list of KAOs that can unwrap it (in a disjunction,
-  // any one succeeding unwraps the split). Note: a KAS may appear several times
-  // for the same split, possibly using different keys to encrypt the same split value.
-  const splitPotentials: Record<string, KeyAccessObject[]> = Object.fromEntries(
-    [...splitIds].map((s) => [s, []])
+  const splitPotentials: Record<string, Record<string, KeyAccessObject>> = Object.fromEntries(
+    [...splitIds].map((s) => [s, {}])
   );
   for (const kao of keyAccess) {
+    const disjunction = splitPotentials[kao.sid ?? ''];
+    if (kao.url in disjunction) {
+      // TODO(DSPX-3454): Handle duplicate KAS URLs with different KIDs.
+      // Each KAO contains a KID - the function should be updated to use this
+      // information to differentiate between keys from the same KAS.
+      // Cross-SDK validation needed via xtest.
+      throw new InvalidFileError(
+        `Unable to decrypt: Multiple keys detected for Key Access Server [${kao.url}]. ` +
+          `Please contact your administrator.`
+      );
+    }
     if (allowed(kao)) {
-      splitPotentials[kao.sid ?? ''].push(kao);
+      disjunction[kao.url] = kao;
     }
   }
   return splitPotentials;
@@ -776,6 +801,9 @@ async function unwrapKey({
     } else if (wrappingKeyAlgorithm === 'rsa:2048' || !wrappingKeyAlgorithm) {
       // generateKeyPair() returns opaque keys
       ephemeralEncryptionKeys = await cryptoService.generateKeyPair();
+    } else if (isMlKemKeyAlgorithm(wrappingKeyAlgorithm)) {
+      const level = mlKemAlgorithmToLevel(wrappingKeyAlgorithm);
+      ephemeralEncryptionKeys = await cryptoService.generateMlKemKeyPair(level);
     } else {
       throw new ConfigurationError(`Unsupported wrapping key algorithm [${wrappingKeyAlgorithm}]`);
     }
@@ -889,6 +917,49 @@ async function unwrapKey({
             requiredObligations,
           };
         }
+
+        if (wrappingKeyAlgorithm && isMlKemKeyAlgorithm(wrappingKeyAlgorithm)) {
+          // The KAS rewrap response uses the platform's canonical ML-KEM
+          // "direct key wrap" container:
+          //   DER( kemEnvelope { [0] kemCiphertext, [1] encryptedDek } )
+          // where encryptedDek = nonce(12) || aes_ct || tag(16) and the AES-256
+          // key is the raw ML-KEM shared secret (no HKDF).
+          const level = mlKemAlgorithmToLevel(wrappingKeyAlgorithm);
+          const { kemCiphertext, encryptedDek } = decodeKemEnvelopeDer(entityWrappedKey);
+          const expectedCtLen = MLKEM_CT_SIZES[level];
+          if (kemCiphertext.length !== expectedCtLen) {
+            throw new DecryptError(
+              `malformed ML-KEM wrapped key for ${wrappingKeyAlgorithm}: KEM ciphertext is ${kemCiphertext.length} bytes, expected ${expectedCtLen}`
+            );
+          }
+          // encryptedDek must hold at least a 12B nonce and a 16B GCM tag.
+          if (encryptedDek.length < 12 + 16) {
+            throw new DecryptError(
+              `malformed ML-KEM wrapped key for ${wrappingKeyAlgorithm}: encrypted DEK is only ${encryptedDek.length} bytes`
+            );
+          }
+          const iv = encryptedDek.slice(0, 12);
+          const wrappedKey = encryptedDek.slice(12);
+
+          const sharedSecret = await cryptoService.mlKemDecapsulate(
+            ephemeralEncryptionKeys.privateKey,
+            kemCiphertext
+          );
+
+          const decryptResult = await cryptoService.decrypt(
+            Binary.fromArrayBuffer(wrappedKey.buffer),
+            sharedSecret,
+            Binary.fromArrayBuffer(iv.buffer),
+            Algorithms.AES_256_GCM
+          );
+
+          return {
+            key: new Uint8Array(decryptResult.payload.asArrayBuffer()),
+            metadata,
+            requiredObligations,
+          };
+        }
+
         const key = Binary.fromArrayBuffer(entityWrappedKey);
         const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(
           key,
@@ -923,26 +994,22 @@ async function unwrapKey({
   const splitPromises: Record<string, () => Promise<RewrapResponseData>> = {};
   for (const splitId of Object.keys(splitPotentials)) {
     const potentials = splitPotentials[splitId];
-    if (!potentials?.length) {
+    if (!potentials || !Object.keys(potentials).length) {
       throw new UnsafeUrlError(
         `Unreconstructable key - no valid KAS found for split ${JSON.stringify(splitId)}`,
         ''
       );
     }
     const anyPromises: Record<string, () => Promise<RewrapResponseData>> = {};
-    potentials.forEach((keySplitInfo, i) => {
-      // Key by url+kid+index so multiple KAOs on the same KAS stay distinct
-      // alternatives within the split's disjunction (anyPool tries each until
-      // one succeeds).
-      const alternativeKey = `${keySplitInfo.url}#${keySplitInfo.kid ?? ''}#${i}`;
-      anyPromises[alternativeKey] = async () => {
+    for (const [kas, keySplitInfo] of Object.entries(potentials)) {
+      anyPromises[kas] = async () => {
         try {
           return await tryKasRewrap(keySplitInfo);
         } catch (e) {
           throw handleRewrapError(e as Error);
         }
       };
-    });
+    }
     splitPromises[splitId] = () => anyPool(poolSize, anyPromises);
   }
   try {

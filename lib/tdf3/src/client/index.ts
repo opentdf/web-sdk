@@ -45,6 +45,7 @@ import { ConfigurationError } from '../../../src/errors.js';
 import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
 import {
   isEcKeyAlgorithm,
+  isMlKemKeyAlgorithm,
   isRsaKeyAlgorithm,
   type KeyPair,
   type SymmetricKey,
@@ -729,7 +730,7 @@ export class Client {
     encryptionInformation.keyAccess = await Promise.all(
       splitPlan.map(async ({ kas, kid, pem, sid }) => {
         const algorithm = await algorithmFromPEM(pem, this.cryptoService);
-        if (algorithm !== wrappingKeyAlgorithm) {
+        if (wrappingKeyAlgorithm && algorithm !== wrappingKeyAlgorithm) {
           console.warn(
             `Mismatched wrapping key algorithm: [${algorithm}] is not requested type, [${wrappingKeyAlgorithm}]`
           );
@@ -739,6 +740,8 @@ export class Client {
           type = 'wrapped';
         } else if (isEcKeyAlgorithm(algorithm)) {
           type = 'ec-wrapped';
+        } else if (isMlKemKeyAlgorithm(algorithm)) {
+          type = 'mlkem-wrapped';
         } else {
           throw new ConfigurationError(`Unsupported algorithm ${algorithm}`);
         }

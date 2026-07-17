@@ -8,6 +8,7 @@ import { ConfigurationError, InvalidFileError, UnsafeUrlError } from '../../../s
 import { getMocks } from '../../mocks/index.js';
 import * as DefaultCryptoService from '../../../tdf3/src/crypto/index.js';
 import type { CryptoService } from '../../../tdf3/src/crypto/declarations.js';
+import { isMlKemKeyAlgorithm } from '../../../tdf3/src/crypto/declarations.js';
 
 const sampleCert = `
 -----BEGIN CERTIFICATE-----
@@ -46,6 +47,11 @@ HJg=
 `.trim();
 
 const { kasECCert } = getMocks();
+
+// `process` is undefined in the browser test runner (karma), so guard access.
+// BASE_KEY_ALG is a local-dev toggle used to point the mock server at an
+// ML-KEM base key; when unset (as in CI) these tests expect the default EC key.
+const baseKeyAlg = typeof process !== 'undefined' ? process.env.BASE_KEY_ALG || '' : '';
 
 describe('TDF', () => {
   const cryptoService: CryptoService = DefaultCryptoService;
@@ -94,8 +100,13 @@ describe('fetchKasPublicKey', async () => {
 
   it('localhost kas is valid', async () => {
     const pk2 = await TDF.fetchKasPublicKey('http://localhost:3000');
-    expect(pk2.publicKey).to.include('BEGIN CERTIFICATE');
-    expect(pk2.kid).to.equal('e1');
+    if (isMlKemKeyAlgorithm(baseKeyAlg)) {
+      expect(pk2.publicKey).to.include('BEGIN PUBLIC KEY');
+      expect(pk2.kid).to.match(/^mlkem(768|1024)$/);
+    } else {
+      expect(pk2.publicKey).to.include('BEGIN CERTIFICATE');
+      expect(pk2.kid).to.equal('e1');
+    }
   });
 
   it('invalid algorithms', async () => {
@@ -110,8 +121,13 @@ describe('fetchKasPublicKey', async () => {
 
   it('localhost BaseKey', async () => {
     const pk2 = await TDF.fetchKasPublicKey('http://localhost:3000');
-    expect(pk2.publicKey).to.include('BEGIN CERTIFICATE');
-    expect(pk2.kid).to.equal('e1');
+    if (isMlKemKeyAlgorithm(baseKeyAlg)) {
+      expect(pk2.publicKey).to.include('BEGIN PUBLIC KEY');
+      expect(pk2.kid).to.match(/^mlkem(768|1024)$/);
+    } else {
+      expect(pk2.publicKey).to.include('BEGIN CERTIFICATE');
+      expect(pk2.kid).to.equal('e1');
+    }
   });
 });
 
@@ -260,8 +276,8 @@ describe('splitLookupTableFactory', () => {
     const result = TDF.splitLookupTableFactory(keyAccess, allowedKases);
 
     expect(result).to.deep.equal({
-      split1: [keyAccess[0]],
-      split2: [keyAccess[1]],
+      split1: { 'https://kas1': keyAccess[0] },
+      split2: { 'https://kas2': keyAccess[1] },
     });
   });
 
@@ -275,8 +291,8 @@ describe('splitLookupTableFactory', () => {
     const result = TDF.splitLookupTableFactory(keyAccess, allowedKases);
 
     expect(result).to.deep.equal({
-      split1: [keyAccess[0]],
-      split2: [keyAccess[1]],
+      split1: { 'https://kas1': keyAccess[0] },
+      split2: { 'https://kas2': keyAccess[1] },
     });
   });
 
@@ -293,33 +309,17 @@ describe('splitLookupTableFactory', () => {
     );
   });
 
-  it('should keep duplicate URLs in the same splitId as alternatives (DSPX-3379)', () => {
+  it('should throw for duplicate URLs in the same splitId', () => {
     const keyAccess: KeyAccessObject[] = [
       { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas' },
-      { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas' }, // same KAS + split
+      { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas' }, // duplicate URL in same splitId
     ];
     const allowedKases = new OriginAllowList(['https://kas1']);
 
-    const result = TDF.splitLookupTableFactory(keyAccess, allowedKases);
-
-    // Both copies are retained as disjunction alternatives; unwrap tries each.
-    expect(result).to.deep.equal({
-      split1: [keyAccess[0], keyAccess[1]],
-    });
-  });
-
-  it('should keep same-KAS different-kid entries in the same splitId (DSPX-3379)', () => {
-    const keyAccess: KeyAccessObject[] = [
-      { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas', kid: 'k1' },
-      { sid: 'split1', type: 'remote', url: 'https://kas1', protocol: 'kas', kid: 'k2' },
-    ];
-    const allowedKases = new OriginAllowList(['https://kas1']);
-
-    const result = TDF.splitLookupTableFactory(keyAccess, allowedKases);
-
-    expect(result).to.deep.equal({
-      split1: [keyAccess[0], keyAccess[1]],
-    });
+    expect(() => TDF.splitLookupTableFactory(keyAccess, allowedKases)).to.throw(
+      InvalidFileError,
+      'Unable to decrypt: Multiple keys detected for Key Access Server [https://kas1]. Please contact your administrator.'
+    );
   });
 
   it('should handle empty keyAccess array', () => {
@@ -352,7 +352,7 @@ describe('splitLookupTableFactory', () => {
     const result = TDF.splitLookupTableFactory(keyAccess, new OriginAllowList(allowedKases));
 
     expect(result).to.deep.equal({
-      '': [keyAccess[0]],
+      '': { 'https://kas1': keyAccess[0] },
     });
   });
 });

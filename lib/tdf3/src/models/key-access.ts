@@ -1,11 +1,20 @@
 import { base64, hex } from '../../../src/encodings/index.js';
+import { ConfigurationError } from '../../../src/errors.js';
 import { Binary } from '../binary.js';
-import type { CryptoService, KeyPair, SymmetricKey } from '../crypto/declarations.js';
+import type {
+  CryptoService,
+  KeyPair,
+  MlKemKeyAlgorithm,
+  SymmetricKey,
+} from '../crypto/declarations.js';
+import { mlKemAlgorithmToLevel } from '../crypto/declarations.js';
 import { getZtdfSalt } from '../crypto/salt.js';
 import { Algorithms } from '../ciphers/index.js';
 import { Policy } from './policy.js';
+import { MLKEM_CT_SIZES } from '../crypto/core/mlkem.js';
+import { encodeKemEnvelopeDer } from '../crypto/core/mlkem-asn1.js';
 
-export type KeyAccessType = 'remote' | 'wrapped' | 'ec-wrapped';
+export type KeyAccessType = 'remote' | 'wrapped' | 'ec-wrapped' | 'mlkem-wrapped';
 
 export const schemaVersion = '1.0';
 
@@ -152,7 +161,96 @@ export class Wrapped {
   }
 }
 
-export type KeyAccess = ECWrapped | Wrapped;
+export class MlKemWrapped {
+  readonly type = 'mlkem-wrapped';
+  readonly level: 768 | 1024;
+  keyAccessObject?: KeyAccessObject;
+
+  constructor(
+    public readonly url: string,
+    public readonly kid: string,
+    public readonly publicKey: string,
+    public readonly metadata: unknown,
+    public readonly cryptoService: CryptoService,
+    public readonly sid: string | undefined,
+    public readonly alg: MlKemKeyAlgorithm
+  ) {
+    if (!kid?.trim()) {
+      throw new ConfigurationError('MlKemWrapped requires a non-empty kid');
+    }
+    this.level = mlKemAlgorithmToLevel(alg);
+  }
+
+  async write(
+    policy: Policy,
+    dek: SymmetricKey,
+    encryptedMetadataStr: string
+  ): Promise<KeyAccessObject> {
+    const policyStr = JSON.stringify(policy);
+
+    // Import KAS ML-KEM encapsulation key from raw base64
+    const kasPublicKey = await this.cryptoService.importPublicKey(this.publicKey, {
+      algorithmHint: this.alg,
+    });
+
+    // ML-KEM encapsulate → KEM ciphertext + raw shared secret
+    const { ciphertext: kemCiphertext, sharedSecret } =
+      await this.cryptoService.mlKemEncapsulate(kasPublicKey);
+
+    // ML-KEM "direct key wrap" (per the platform's canonical format): the raw
+    // 32-byte ML-KEM shared secret IS the AES-256 key — no HKDF. AES-256-GCM
+    // seals the DEK, and the 12-byte nonce is prepended to the ciphertext+tag.
+    const iv = await this.cryptoService.randomBytes(12);
+    const encryptResult = await this.cryptoService.encrypt(
+      dek,
+      sharedSecret,
+      Binary.fromArrayBuffer(iv.buffer),
+      Algorithms.AES_256_GCM
+    );
+
+    const aesCt = new Uint8Array(encryptResult.payload.asArrayBuffer());
+    const authTag = encryptResult.authTag
+      ? new Uint8Array(encryptResult.authTag.asArrayBuffer())
+      : new Uint8Array(0);
+
+    // encryptedDek = nonce(12) || aes_ct || tag(16)  (nonce-prepended AES-GCM)
+    const encryptedDek = new Uint8Array(iv.length + aesCt.length + authTag.length);
+    encryptedDek.set(iv);
+    encryptedDek.set(aesCt, iv.length);
+    encryptedDek.set(authTag, iv.length + aesCt.length);
+
+    // wrappedKey = base64( DER( kemEnvelope { [0] kemCiphertext, [1] encryptedDek } ) )
+    const blob = encodeKemEnvelopeDer(kemCiphertext, encryptedDek);
+
+    const policyBinding = hex.encodeArrayBuffer(
+      (await this.cryptoService.hmac(new TextEncoder().encode(base64.encode(policyStr)), dek))
+        .buffer
+    );
+
+    const kao: KeyAccessObject = {
+      type: 'mlkem-wrapped',
+      url: this.url,
+      protocol: 'kas',
+      wrappedKey: base64.encodeArrayBuffer(blob),
+      encryptedMetadata: base64.encode(encryptedMetadataStr),
+      policyBinding: {
+        alg: 'HS256',
+        hash: base64.encode(policyBinding),
+      },
+      schemaVersion,
+    };
+    kao.kid = this.kid;
+    if (this.sid?.length) {
+      kao.sid = this.sid;
+    }
+    this.keyAccessObject = kao;
+    return kao;
+  }
+}
+
+export { MLKEM_CT_SIZES };
+
+export type KeyAccess = ECWrapped | MlKemWrapped | Wrapped;
 
 /**
  * A KeyAccess object stores all information about how an object key OR one key split is stored.

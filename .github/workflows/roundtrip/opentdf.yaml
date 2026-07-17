@@ -10,6 +10,11 @@ logger:
 #   password: changeme
 services:
   kas:
+    # Preview features gate the non-RSA rewrap paths in newer platform builds.
+    # ec-wrapped is needed for the default ZTDF roundtrip; mlkem for the ML-KEM tests.
+    preview:
+      ec_tdf_enabled: true
+      mlkem_tdf_enabled: true
     keyring:
       - kid: e1
         alg: ec:secp256r1
@@ -21,6 +26,10 @@ services:
       - kid: r1
         alg: rsa:2048
         legacy: true
+      - kid: mlkem768
+        alg: mlkem:768
+      - kid: mlkem1024
+        alg: mlkem:1024
   entityresolution:
     url: http://localhost:65432/auth
     log_level: info
@@ -90,4 +99,12 @@ server:
           alg: ec:secp256r1
           private: kas-ec-private.pem
           cert: kas-ec-cert.pem
+        - kid: mlkem768
+          alg: mlkem:768
+          private: kas-mlkem768-private.pem
+          cert: kas-mlkem768-public.pem
+        - kid: mlkem1024
+          alg: mlkem:1024
+          private: kas-mlkem1024-private.pem
+          cert: kas-mlkem1024-public.pem
   port: 8080

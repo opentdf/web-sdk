@@ -92,6 +92,9 @@ export const rewrapAdditionalContextHeader = (
   return base64.encode(JSON.stringify(context));
 };
 
+// The supported key algorithms are defined in one place, `crypto/declarations.ts`.
+// These public aliases preserve the historic `access.ts` API surface (name, tuple
+// order, and guard behavior) while delegating to that single source of truth.
 export const PUBLIC_KEY_ALGORITHMS = KEY_ALGORITHMS;
 
 export type KasPublicKeyAlgorithm = KeyAlgorithm;
@@ -142,6 +145,10 @@ export const publicKeyAlgorithmToJwa = (a: KasPublicKeyAlgorithm): string => {
       return 'ES384';
     case 'ec:secp521r1':
       return 'ES512';
+    case 'mlkem:768':
+      return 'ML-KEM-768+A192KW';
+    case 'mlkem:1024':
+      return 'ML-KEM-1024+A256KW';
     default:
       throw new Error(`unsupported public key algorithm: ${a}`);
   }

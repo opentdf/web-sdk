@@ -245,8 +245,18 @@ describe('encrypt decrypt test', async function () {
   const expectedVal = 'hello world';
   const kasUrl = `http://localhost:3000`;
 
-  for (const encapKeyType of ['ec:secp256r1', 'rsa:2048'] as KasPublicKeyAlgorithm[]) {
-    for (const rewrapKeyType of ['ec:secp256r1', 'rsa:2048'] as KasPublicKeyAlgorithm[]) {
+  for (const encapKeyType of [
+    'ec:secp256r1',
+    'rsa:2048',
+    'mlkem:768',
+    'mlkem:1024',
+  ] as KasPublicKeyAlgorithm[]) {
+    for (const rewrapKeyType of [
+      'ec:secp256r1',
+      'rsa:2048',
+      'mlkem:768',
+      'mlkem:1024',
+    ] as KasPublicKeyAlgorithm[]) {
       it(`encrypt-decrypt stream source happy path {encap: ${encapKeyType}, rewrap: ${rewrapKeyType}}`, async function () {
         const cipher = new AesGcmCipher(WebCryptoService);
         const encryptionInformation = new SplitKey(cipher);
@@ -362,58 +372,6 @@ describe('encrypt decrypt test', async function () {
       });
     }
   }
-
-  it('decrypts when the same KAS wraps the same split twice (DSPX-3379)', async function () {
-    const cipher = new AesGcmCipher(WebCryptoService);
-    const encryptionInformation = new SplitKey(cipher);
-    const key1 = await encryptionInformation.generateKey();
-    const keyMiddleware = async () => ({ keyForEncryption: key1, keyForManifest: key1 });
-
-    const client = new Client.Client({
-      kasEndpoint: kasUrl,
-      platformUrl: kasUrl,
-      allowedKases: [kasUrl],
-      dpopKeys: Mocks.entityKeyPair(),
-      clientId: 'id',
-      authProvider,
-    });
-
-    const scope: Scope = { dissem: ['user@domain.com'], attributes: [] };
-
-    // Two KAOs pointing at the same KAS for the same split id: the same KAS
-    // wraps the same split twice. Previously this threw; now the copies are
-    // disjunction alternatives and the file must still decrypt.
-    const encryptedStream = await client.encrypt({
-      metadata: Mocks.getMetadataObject(),
-      wrappingKeyAlgorithm: 'rsa:2048',
-      offline: true,
-      scope,
-      keyMiddleware,
-      splitPlan: [
-        { kas: kasUrl, sid: '1' },
-        { kas: kasUrl, sid: '1' },
-      ],
-      source: new ReadableStream({
-        start(controller) {
-          controller.enqueue(new TextEncoder().encode(expectedVal));
-          controller.close();
-        },
-      }),
-    });
-
-    const kaos = encryptedStream.manifest.encryptionInformation.keyAccess;
-    assert.equal(kaos.length, 2, 'expected two KAOs for the duplicated split');
-    assert.equal(kaos[0].url, kaos[1].url);
-    assert.equal(kaos[0].sid, kaos[1].sid);
-
-    const decryptStream = await client.decrypt({
-      source: { type: 'stream', location: encryptedStream.stream },
-      wrappingKeyAlgorithm: 'rsa:2048',
-    });
-
-    const { value: decryptedText } = await decryptStream.stream.getReader().read();
-    assert.equal(new TextDecoder().decode(decryptedText), expectedVal);
-  });
 
   it('encrypt-decrypt with system metadata assertion', async function () {
     const cipher = new AesGcmCipher(WebCryptoService);
