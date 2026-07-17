@@ -1,7 +1,11 @@
 import {
+  ecAlgorithmToCurve,
+  isEcKeyAlgorithm,
+  isRsaKeyAlgorithm,
   type KeyAlgorithm,
   type PrivateKey,
   type PublicKey,
+  rsaAlgorithmToModulusBits,
   type SymmetricKey,
 } from '../declarations.js';
 
@@ -15,18 +19,10 @@ export function wrapPublicKey(key: CryptoKey, algorithm: KeyAlgorithm): PublicKe
     algorithm,
     _internal: key,
   };
-  if (algorithm.startsWith('rsa:')) {
-    result.modulusBits = parseInt(algorithm.split(':')[1], 10);
-  } else if (algorithm.startsWith('ec:')) {
-    const curvePart = algorithm.split(':')[1];
-    result.curve =
-      curvePart === 'secp256r1'
-        ? 'P-256'
-        : curvePart === 'secp384r1'
-          ? 'P-384'
-          : curvePart === 'secp521r1'
-            ? 'P-521'
-            : undefined;
+  if (isRsaKeyAlgorithm(algorithm)) {
+    result.modulusBits = rsaAlgorithmToModulusBits(algorithm);
+  } else if (isEcKeyAlgorithm(algorithm)) {
+    result.curve = ecAlgorithmToCurve(algorithm);
   }
   return result as PublicKey;
 }
@@ -41,18 +37,10 @@ export function wrapPrivateKey(key: CryptoKey, algorithm: KeyAlgorithm): Private
     algorithm,
     _internal: key,
   };
-  if (algorithm.startsWith('rsa:')) {
-    result.modulusBits = parseInt(algorithm.split(':')[1], 10);
-  } else if (algorithm.startsWith('ec:')) {
-    const curvePart = algorithm.split(':')[1];
-    result.curve =
-      curvePart === 'secp256r1'
-        ? 'P-256'
-        : curvePart === 'secp384r1'
-          ? 'P-384'
-          : curvePart === 'secp521r1'
-            ? 'P-521'
-            : undefined;
+  if (isRsaKeyAlgorithm(algorithm)) {
+    result.modulusBits = rsaAlgorithmToModulusBits(algorithm);
+  } else if (isEcKeyAlgorithm(algorithm)) {
+    result.curve = ecAlgorithmToCurve(algorithm);
   }
   return result as PrivateKey;
 }

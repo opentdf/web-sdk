@@ -1,4 +1,7 @@
 import {
+  ecAlgorithmToCurve,
+  isEcKeyAlgorithm,
+  isRsaKeyAlgorithm,
   type KeyAlgorithm,
   type KeyOptions,
   MIN_ASYMMETRIC_KEY_SIZE_BITS,
@@ -238,7 +241,7 @@ export async function importPublicKey(pem: string, options: KeyOptions): Promise
   let cryptoAlgorithm: RsaHashedImportParams | EcKeyImportParams;
   let keyUsages: KeyUsage[];
 
-  if (algorithm.startsWith('rsa:')) {
+  if (isRsaKeyAlgorithm(algorithm)) {
     if (usage === 'encrypt') {
       cryptoAlgorithm = rsaOaepSha1();
       keyUsages = ['encrypt'];
@@ -248,18 +251,8 @@ export async function importPublicKey(pem: string, options: KeyOptions): Promise
     } else {
       throw new ConfigurationError('RSA keys only support usage: encrypt or sign');
     }
-  } else if (algorithm.startsWith('ec:')) {
-    const curve = algorithm.split(':')[1];
-    const namedCurve =
-      curve === 'secp256r1'
-        ? 'P-256'
-        : curve === 'secp384r1'
-          ? 'P-384'
-          : curve === 'secp521r1'
-            ? 'P-521'
-            : (() => {
-                throw new ConfigurationError(`Unsupported EC curve: ${curve}`);
-              })();
+  } else if (isEcKeyAlgorithm(algorithm)) {
+    const namedCurve = ecAlgorithmToCurve(algorithm);
 
     if (usage === 'derive') {
       cryptoAlgorithm = { name: 'ECDH', namedCurve };
@@ -344,7 +337,7 @@ export async function importPrivateKey(pem: string, options: KeyOptions): Promis
   let cryptoAlgorithm: RsaHashedImportParams | EcKeyImportParams;
   let keyUsages: KeyUsage[];
 
-  if (algorithm.startsWith('rsa:')) {
+  if (isRsaKeyAlgorithm(algorithm)) {
     if (usage === 'encrypt') {
       cryptoAlgorithm = rsaOaepSha1();
       keyUsages = ['decrypt'];
@@ -354,18 +347,8 @@ export async function importPrivateKey(pem: string, options: KeyOptions): Promis
     } else {
       throw new ConfigurationError('RSA keys only support usage: encrypt or sign');
     }
-  } else if (algorithm.startsWith('ec:')) {
-    const curve = algorithm.split(':')[1];
-    const namedCurve =
-      curve === 'secp256r1'
-        ? 'P-256'
-        : curve === 'secp384r1'
-          ? 'P-384'
-          : curve === 'secp521r1'
-            ? 'P-521'
-            : (() => {
-                throw new ConfigurationError(`Unsupported EC curve: ${curve}`);
-              })();
+  } else if (isEcKeyAlgorithm(algorithm)) {
+    const namedCurve = ecAlgorithmToCurve(algorithm);
 
     if (usage === 'derive') {
       cryptoAlgorithm = { name: 'ECDH', namedCurve };

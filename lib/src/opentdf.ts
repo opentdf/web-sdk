@@ -14,6 +14,7 @@ import {
 import {
   type KasPublicKeyAlgorithm,
   OriginAllowList,
+  PUBLIC_KEY_ALGORITHMS,
   fetchKeyAccessServers,
   isPublicKeyAlgorithm,
 } from './access.js';
@@ -45,6 +46,7 @@ export {
   type Payload,
   type Segment,
   type SplitType,
+  PUBLIC_KEY_ALGORITHMS,
   isPublicKeyAlgorithm,
 };
 

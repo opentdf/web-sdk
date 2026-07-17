@@ -43,7 +43,12 @@ import {
 } from '../../../src/access.js';
 import { ConfigurationError } from '../../../src/errors.js';
 import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
-import { type KeyPair, type SymmetricKey } from '../crypto/declarations.js';
+import {
+  isEcKeyAlgorithm,
+  isRsaKeyAlgorithm,
+  type KeyPair,
+  type SymmetricKey,
+} from '../crypto/declarations.js';
 import * as defaultCryptoService from '../crypto/index.js';
 import {
   type AttributeObject,
@@ -730,18 +735,12 @@ export class Client {
           );
         }
         let type: KeyAccessType;
-        switch (algorithm) {
-          case 'rsa:2048':
-          case 'rsa:4096':
-            type = 'wrapped';
-            break;
-          case 'ec:secp384r1':
-          case 'ec:secp521r1':
-          case 'ec:secp256r1':
-            type = 'ec-wrapped';
-            break;
-          default:
-            throw new ConfigurationError(`Unsupported algorithm ${algorithm}`);
+        if (isRsaKeyAlgorithm(algorithm)) {
+          type = 'wrapped';
+        } else if (isEcKeyAlgorithm(algorithm)) {
+          type = 'ec-wrapped';
+        } else {
+          throw new ConfigurationError(`Unsupported algorithm ${algorithm}`);
         }
         return buildKeyAccess({
           alg: algorithm,

@@ -16,6 +16,7 @@ import {
   OpenTDF,
   DecoratedStream,
   isPublicKeyAlgorithm,
+  PUBLIC_KEY_ALGORITHMS,
 } from '@opentdf/sdk';
 import { CLIError, Level, log } from './logger.js';
 import * as assertions from '@opentdf/sdk/assertions';
@@ -462,6 +463,7 @@ export const handleArgs = (args: string[]) => {
           group: 'Encrypt Options:',
           desc: 'Key type for wrapping keys',
           type: 'string',
+          choices: PUBLIC_KEY_ALGORITHMS,
           default: 'rsa:2048',
         },
         mimeType: {
@@ -475,6 +477,7 @@ export const handleArgs = (args: string[]) => {
           group: 'Decrypt Options:',
           desc: 'Key type for rewrap',
           type: 'string',
+          choices: PUBLIC_KEY_ALGORITHMS,
           default: 'rsa:2048',
         },
         userId: {

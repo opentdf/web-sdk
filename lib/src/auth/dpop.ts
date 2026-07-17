@@ -6,7 +6,9 @@ import type {
   KeyPair,
   PrivateKey,
   AsymmetricSigningAlgorithm,
+  KeyAlgorithm,
 } from '../../tdf3/src/crypto/declarations.js';
+import { isRsaKeyAlgorithm } from '../../tdf3/src/crypto/declarations.js';
 
 export type JsonObject = { [Key in string]?: JsonValue };
 export type JsonArray = JsonValue[];
@@ -119,8 +121,8 @@ class UnsupportedOperationError extends Error {
 /**
  * Determines a supported JWS `alg` identifier from PublicKeyInfo algorithm string.
  */
-function determineJWSAlgorithmFromKeyInfo(algorithm: string): JWSAlgorithm {
-  if (algorithm.startsWith('rsa:')) {
+function determineJWSAlgorithmFromKeyInfo(algorithm: KeyAlgorithm): JWSAlgorithm {
+  if (isRsaKeyAlgorithm(algorithm)) {
     return 'RS256';
   }
   switch (algorithm) {

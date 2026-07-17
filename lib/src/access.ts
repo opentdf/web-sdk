@@ -2,6 +2,11 @@ import { type AuthConfig, resolveAuthConfig } from './auth/interceptors.js';
 import { RewrapResponse } from './platform/kas/kas_pb.js';
 import { getPlatformUrlFromKasEndpoint, validateSecureUrl } from './utils.js';
 import { base64 } from './encodings/index.js';
+import {
+  KEY_ALGORITHMS,
+  type KeyAlgorithm,
+  isKeyAlgorithm,
+} from '../tdf3/src/crypto/declarations.js';
 
 import {
   fetchKasBasePubKey,
@@ -87,16 +92,11 @@ export const rewrapAdditionalContextHeader = (
   return base64.encode(JSON.stringify(context));
 };
 
-export type KasPublicKeyAlgorithm =
-  | 'ec:secp256r1'
-  | 'ec:secp384r1'
-  | 'ec:secp521r1'
-  | 'rsa:2048'
-  | 'rsa:4096';
+export const PUBLIC_KEY_ALGORITHMS = KEY_ALGORITHMS;
 
-export const isPublicKeyAlgorithm = (a: string): a is KasPublicKeyAlgorithm => {
-  return a === 'ec:secp256r1' || a === 'rsa:2048';
-};
+export type KasPublicKeyAlgorithm = KeyAlgorithm;
+
+export const isPublicKeyAlgorithm = (a: string): a is KasPublicKeyAlgorithm => isKeyAlgorithm(a);
 
 export const keyAlgorithmToPublicKeyAlgorithm = (k: CryptoKey): KasPublicKeyAlgorithm => {
   const a = k.algorithm;
