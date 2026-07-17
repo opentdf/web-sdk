@@ -731,7 +731,7 @@ export class Client {
       splitPlan.map(async ({ kas, kid, pem, sid }) => {
         const algorithm = await algorithmFromPEM(pem, this.cryptoService);
         if (wrappingKeyAlgorithm && algorithm !== wrappingKeyAlgorithm) {
-          throw new ConfigurationError(
+          console.warn(
             `Mismatched wrapping key algorithm: [${algorithm}] is not requested type, [${wrappingKeyAlgorithm}]`
           );
         }
