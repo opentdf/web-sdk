@@ -59,4 +59,13 @@ test('DPoP headers on token and KAS rewrap requests', async ({ page }) => {
   expect(proof, 'a KAS request should carry a DPoP proof').toBeTruthy();
   const header = JSON.parse(Buffer.from(proof!.split('.')[0], 'base64url').toString('utf8'));
   expect(header.typ).toBe('dpop+jwt');
+
+  // The test environment requires a server-issued nonce. At least one retried
+  // token or KAS request must therefore carry that nonce in its proof.
+  const nonceProof = captured.find((r) => {
+    if (!r.dpop) return false;
+    const payload = JSON.parse(Buffer.from(r.dpop.split('.')[1], 'base64url').toString('utf8'));
+    return typeof payload.nonce === 'string' && payload.nonce.length > 0;
+  });
+  expect(nonceProof, 'a retried DPoP proof should carry the server nonce').toBeTruthy();
 });
