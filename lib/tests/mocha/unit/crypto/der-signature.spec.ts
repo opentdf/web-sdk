@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 
-import { derToIeeeP1363 } from '../../../../tdf3/src/crypto/core/signing.js';
+import { derToIeeeP1363, ieeeP1363ToDer } from '../../../../tdf3/src/crypto/core/signing.js';
 import { ConfigurationError } from '../../../../src/errors.js';
 
 /**
@@ -103,4 +103,23 @@ describe('derToIeeeP1363 DER validation', () => {
       );
     });
   });
+});
+
+describe('ieeeP1363ToDer fixed-width validation', () => {
+  for (const [algorithm, expectedLength] of [
+    ['ES256', 64],
+    ['ES384', 96],
+    ['ES512', 132],
+  ] as const) {
+    it(`${algorithm} accepts exactly ${expectedLength} bytes`, () => {
+      expect(ieeeP1363ToDer(new Uint8Array(expectedLength), algorithm)[0]).to.equal(0x30);
+    });
+
+    it(`${algorithm} rejects a shortened signature`, () => {
+      expect(() => ieeeP1363ToDer(new Uint8Array(expectedLength - 1), algorithm)).to.throw(
+        ConfigurationError,
+        `expected ${expectedLength} bytes`
+      );
+    });
+  }
 });

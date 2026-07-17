@@ -39,6 +39,20 @@ function getSigningAlgorithmParams(algorithm: AsymmetricSigningAlgorithm): {
   }
 }
 
+/** Fixed-width byte length of each ECDSA signature component (R or S). */
+function getEcdsaComponentLength(algorithm: AsymmetricSigningAlgorithm): number {
+  switch (algorithm) {
+    case 'ES256':
+      return 32;
+    case 'ES384':
+      return 48;
+    case 'ES512':
+      return 66;
+    default:
+      throw new ConfigurationError(`Unsupported algorithm for ECDSA conversion: ${algorithm}`);
+  }
+}
+
 /**
  * Convert IEEE P1363 signature format (used by WebCrypto ECDSA) to DER format.
  * RS256 signatures don't need conversion.
@@ -51,10 +65,17 @@ export function ieeeP1363ToDer(
     return signature;
   }
 
+  const componentLen = getEcdsaComponentLength(algorithm);
+  const expectedLength = componentLen * 2;
+  if (signature.length !== expectedLength) {
+    throw new ConfigurationError(
+      `Invalid IEEE P1363 signature: expected ${expectedLength} bytes for ${algorithm}, got ${signature.length}`
+    );
+  }
+
   // IEEE P1363: r || s where each is padded to key size
-  const halfLen = signature.length / 2;
-  const r = signature.slice(0, halfLen);
-  const s = signature.slice(halfLen);
+  const r = signature.slice(0, componentLen);
+  const s = signature.slice(componentLen);
 
   // Remove leading zeros but keep one if the high bit is set
   const trimLeadingZeros = (arr: Uint8Array): Uint8Array => {
@@ -112,21 +133,7 @@ export function derToIeeeP1363(
     return signature;
   }
 
-  // Determine the expected component length based on algorithm
-  let componentLen: number;
-  switch (algorithm) {
-    case 'ES256':
-      componentLen = 32;
-      break;
-    case 'ES384':
-      componentLen = 48;
-      break;
-    case 'ES512':
-      componentLen = 66;
-      break;
-    default:
-      throw new ConfigurationError(`Unsupported algorithm for DER conversion: ${algorithm}`);
-  }
+  const componentLen = getEcdsaComponentLength(algorithm);
 
   // Smallest well-formed ECDSA DER SEQUENCE is 8 bytes:
   //   0x30 seqLen 0x02 rLen r(>=1) 0x02 sLen s(>=1)

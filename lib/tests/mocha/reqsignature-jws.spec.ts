@@ -36,6 +36,20 @@ function derToPem(der: Uint8Array, label: string): string {
   return `-----BEGIN ${label}-----\n${b64}\n-----END ${label}-----`;
 }
 
+function decodeBase64url(value: string): Uint8Array {
+  const base64 = value
+    .replace(/-/g, '+')
+    .replace(/_/g, '/')
+    .padEnd(Math.ceil(value.length / 4) * 4, '=');
+  return Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+}
+
+function encodeBase64url(value: Uint8Array): string {
+  let binary = '';
+  for (const byte of value) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+}
+
 async function ecdsaKeyPair(
   namedCurve: 'P-256' | 'P-384' | 'P-521'
 ): Promise<{ sdk: KeyPair; pubPem: string }> {
@@ -89,4 +103,27 @@ describe('reqSignature / signJwt — JWS conformance vs jose.jwtVerify (RFC 7518
       expect(payload.sub).to.equal('test');
     });
   }
+
+  it('verifyJwt rejects a truncated ES256 signature', async () => {
+    const { sdk } = await ecdsaKeyPair('P-256');
+    const token = await signJwt(DefaultCryptoService, { sub: 'test' }, sdk.privateKey, {
+      alg: 'ES256',
+    });
+    const [header, payload, signature] = token.split('.');
+    const truncated = encodeBase64url(decodeBase64url(signature).subarray(1));
+
+    let caught: unknown;
+    try {
+      await verifyJwt(DefaultCryptoService, `${header}.${payload}.${truncated}`, sdk.publicKey, {
+        algorithms: ['ES256'],
+      });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).to.be.instanceOf(Error);
+    expect((caught as Error).message).to.include(
+      'Invalid IEEE P1363 signature: expected 64 bytes for ES256, got 63'
+    );
+  });
 });
