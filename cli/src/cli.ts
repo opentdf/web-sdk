@@ -635,14 +635,23 @@ export const handleArgs = (args: string[]) => {
                   console.assert(!accessToken, 'Multiple authorization headers found');
                   accessToken = parseJwt(lastRequest.headers[h].split(' ')[1]);
                   log('INFO', `Access Token: ${JSON.stringify(accessToken)}`);
-                  if (dpopEnabled) {
-                    console.assert(accessToken.cnf?.jkt, 'Access token must have a cnf.jkt');
+                  if (dpopEnabled && !accessToken.cnf?.jkt) {
+                    // A missing cnf.jkt means token binding silently didn't take
+                    // effect; fail loudly rather than exit 0 with only a warning.
+                    throw new CLIError(
+                      'CRITICAL',
+                      'DPoP requested but the access token is not bound (missing cnf.jkt)'
+                    );
                   }
                   break;
               }
             }
-            console.assert(accessToken, 'No access_token found');
-            console.assert(!dpopEnabled || dpopToken, 'DPoP requested but absent');
+            if (!accessToken) {
+              throw new CLIError('CRITICAL', 'No access_token found');
+            }
+            if (dpopEnabled && !dpopToken) {
+              throw new CLIError('CRITICAL', 'DPoP requested but no DPoP proof was sent');
+            }
           } finally {
             client.close();
           }
