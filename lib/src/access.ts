@@ -247,7 +247,10 @@ export async function fetchKasPubKey(
   try {
     return await fetchKasBasePubKey(kasEndpoint);
   } catch (e) {
-    console.log(e);
+    // Base key is optional; fall back to the RPC/legacy public-key path. Log a
+    // one-line summary via errBrief (never the raw error object, which for Connect
+    // errors can carry response metadata including DPoP nonces).
+    console.log(`base key fetch failed, falling back to RPC/legacy public key: ${errBrief(e)}`);
   }
 
   return await tryRpcThenLegacy(
