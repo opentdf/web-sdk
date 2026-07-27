@@ -409,11 +409,13 @@ export class AccessToken {
   }
 
   /**
-   * A TDF client MUST call this method whenever the client wants to use a new
-   * ephemeral key set. This updates the keys used to:
-   * or wishes to set the keypair after creating the object.
+   * A TDF client MUST call this method whenever it wants to bind a new ephemeral
+   * signing key (e.g. when setting the keypair after constructing the object).
    *
-   * Calling this function will trigger a forcible token refresh using the cached refresh token, and contact the auth server.
+   * It records the new signing key and, when DPoP is enabled, invalidates the
+   * cached token so the next `get()` obtains a token bound to the new key. It is
+   * a no-op when the key is unchanged and a token is already cached; it does not
+   * itself contact the auth server.
    */
   async refreshTokenClaimsWithClientPubkeyIfNeeded(signingKey: KeyPair): Promise<void> {
     // If we already have a token, and the pubkey is unchanged,
@@ -422,15 +424,14 @@ export class AccessToken {
     if (this.data?.access_token && signingKey === this.signingKey) {
       return;
     }
-    delete this.data;
-    delete this.cachedExpiry;
-    delete this.inFlight;
     this.signingKey = signingKey;
-    // A DPoP-bound token (cnf.jkt) is tied to a specific key; rotating the
+    // A DPoP-bound token (cnf.jkt) is tied to a specific key, so rotating the
     // signing key invalidates any cached token. Non-DPoP tokens are key-
-    // independent and can stay cached.
+    // independent and can stay cached across a key change.
     if (this.config.dpopEnabled) {
       delete this.data;
+      delete this.cachedExpiry;
+      delete this.inFlight;
     }
   }
 
