@@ -3,10 +3,12 @@ import {
   generateMlKemKeyPair,
   mlKemEncapsulate,
   mlKemDecapsulate,
-  hkdfDerive,
 } from '../../../../tdf3/src/crypto/core/mlkem.js';
 import { unwrapMlKemKey } from '../../../../tdf3/src/crypto/core/keys.js';
 import { unwrapSymmetricKey } from '../../../../tdf3/src/crypto/core/keys.js';
+import { wrapMlKemPrivateKey } from '../../../../tdf3/src/crypto/core/keys.js';
+import { hex } from '../../../../src/encodings/index.js';
+import { ML_KEM_DECAP_KATS } from './mlkem-kat-vectors.js';
 import { isPublicKeyAlgorithm, publicKeyAlgorithmToJwa } from '../../../../src/access.js';
 import {
   importPublicKey,
@@ -98,30 +100,19 @@ describe('ML-KEM crypto', () => {
     });
   }
 
-  describe('hkdfDerive', () => {
-    it('produces deterministic 32-byte output for fixed inputs', async () => {
-      const { sharedSecret } = await mlKemEncapsulate((await generateMlKemKeyPair(768)).publicKey);
-      const salt = new Uint8Array(32);
-      const derived1 = await hkdfDerive(sharedSecret, { hash: 'SHA-256', salt });
-      const derived2 = await hkdfDerive(sharedSecret, { hash: 'SHA-256', salt });
-      const key1Bytes = unwrapSymmetricKey(derived1);
-      const key2Bytes = unwrapSymmetricKey(derived2);
-      expect(key1Bytes).to.deep.equal(key2Bytes);
-      expect(key1Bytes.length).to.equal(32);
-    });
+  describe('FIPS 203 decapsulation known-answer tests (NIST ACVP)', () => {
+    for (const kat of ML_KEM_DECAP_KATS) {
+      it(`ML-KEM-${kat.level} recovers the expected shared secret (ACVP tcId ${kat.tcId})`, async () => {
+        const dk = new Uint8Array(hex.decodeArrayBuffer(kat.dk));
+        const ct = new Uint8Array(hex.decodeArrayBuffer(kat.c));
+        const expected = new Uint8Array(hex.decodeArrayBuffer(kat.k));
 
-    it('produces different keys for different salts', async () => {
-      const { sharedSecret } = await mlKemEncapsulate((await generateMlKemKeyPair(768)).publicKey);
-      const salt1 = new Uint8Array(32).fill(1);
-      const salt2 = new Uint8Array(32).fill(2);
-      const key1 = unwrapSymmetricKey(
-        await hkdfDerive(sharedSecret, { hash: 'SHA-256', salt: salt1 })
-      );
-      const key2 = unwrapSymmetricKey(
-        await hkdfDerive(sharedSecret, { hash: 'SHA-256', salt: salt2 })
-      );
-      expect(key1).to.not.deep.equal(key2);
-    });
+        const privateKey = wrapMlKemPrivateKey(dk, kat.level);
+        const sharedSecret = await mlKemDecapsulate(privateKey, ct);
+
+        expect(unwrapSymmetricKey(sharedSecret)).to.deep.equal(expected);
+      });
+    }
   });
 
   describe('isPublicKeyAlgorithm', () => {

@@ -100,7 +100,7 @@ for (const algorithm of ['mlkem:768', 'mlkem:1024'] as const) {
       'try encrypting some of your own files'
     );
 
-    // Manifest inspector should display the expected ML-KEM kid (mlkem512/768/1024)
+    // Manifest inspector should display the expected ML-KEM kid (mlkem768/1024)
     // populated during the decrypt flow above.
     await expect(page.locator('#kao-kid-0')).toHaveText(expectedKid);
     await expect(page.locator('#kao-type-0')).toHaveText('mlkem-wrapped');

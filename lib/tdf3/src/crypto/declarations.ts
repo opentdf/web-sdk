@@ -495,13 +495,4 @@ export type CryptoService = {
    * @returns Raw shared secret (32 bytes, not yet HKDF-derived)
    */
   mlKemDecapsulate: (sk: PrivateKey, ct: Uint8Array) => Promise<SymmetricKey>;
-
-  /**
-   * Derive a symmetric key from input key material using HKDF.
-   * Used to derive an AES-256-GCM key from an ML-KEM shared secret.
-   * @param ikm - Input key material (e.g., ML-KEM shared secret)
-   * @param params - HKDF parameters (hash, salt, optional info/keyLength)
-   * @returns Opaque 256-bit AES symmetric key
-   */
-  hkdfDerive: (ikm: SymmetricKey, params: HkdfParams) => Promise<SymmetricKey>;
 };

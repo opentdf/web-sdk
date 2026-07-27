@@ -1,6 +1,5 @@
 import { ml_kem768, ml_kem1024 } from '@noble/post-quantum/ml-kem.js';
 import {
-  type HkdfParams,
   type KeyPair,
   type PrivateKey,
   type PublicKey,
@@ -12,7 +11,6 @@ import {
   wrapMlKemPrivateKey,
   wrapMlKemPublicKey,
   wrapSymmetricKey,
-  unwrapSymmetricKey,
 } from './keys.js';
 
 const MLKEM: Record<768 | 1024, typeof ml_kem768 | typeof ml_kem1024> = {
@@ -59,31 +57,4 @@ export async function mlKemDecapsulate(sk: PrivateKey, ct: Uint8Array): Promise<
   const dkBytes = unwrapMlKemKey(sk);
   const sharedSecret = MLKEM[level].decapsulate(ct, dkBytes);
   return wrapSymmetricKey(sharedSecret);
-}
-
-/**
- * Derive a 256-bit AES-GCM key from raw input key material via HKDF.
- * Used to convert an ML-KEM shared secret into a usable AES key.
- */
-export async function hkdfDerive(ikm: SymmetricKey, params: HkdfParams): Promise<SymmetricKey> {
-  const ikmBytes = unwrapSymmetricKey(ikm);
-
-  const hkdfKey = await crypto.subtle.importKey('raw', ikmBytes, 'HKDF', false, ['deriveKey']);
-
-  const keyLength = params.keyLength ?? 256;
-  const derivedKey = await crypto.subtle.deriveKey(
-    {
-      name: 'HKDF',
-      hash: params.hash,
-      salt: params.salt,
-      info: params.info ?? new Uint8Array(0),
-    },
-    hkdfKey,
-    { name: 'AES-GCM', length: keyLength },
-    true,
-    ['encrypt', 'decrypt']
-  );
-
-  const keyBytes = await crypto.subtle.exportKey('raw', derivedKey);
-  return wrapSymmetricKey(new Uint8Array(keyBytes));
 }

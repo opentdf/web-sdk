@@ -29,12 +29,7 @@ import {
   rsaPkcs1Sha256,
 } from './core/rsa.js';
 import { deriveKeyFromECDH, generateECKeyPair } from './core/ec.js';
-import {
-  generateMlKemKeyPair,
-  hkdfDerive,
-  mlKemDecapsulate,
-  mlKemEncapsulate,
-} from './core/mlkem.js';
+import { generateMlKemKeyPair, mlKemDecapsulate, mlKemEncapsulate } from './core/mlkem.js';
 import { sign, verify } from './core/signing.js';
 import {
   exportPrivateKeyPem,
@@ -86,7 +81,6 @@ export {
   generateKeyPair,
   generateMlKemKeyPair,
   generateSigningKeyPair,
-  hkdfDerive,
   hex2Ab,
   hmac,
   importPrivateKey,
@@ -125,7 +119,6 @@ export const DefaultCryptoService: CryptoService = {
   generateKeyPair,
   generateMlKemKeyPair,
   generateSigningKeyPair,
-  hkdfDerive,
   importPrivateKey,
   importPublicKey,
   importSymmetricKey,

@@ -39,7 +39,16 @@ function mlKemPublicKeyPem(level: 768 | 1024): string {
 
 // Allow tests to flip the WellKnown base key by setting BASE_KEY_ALG=mlkem:768
 // (or any other supported algorithm) before importing this module. Default stays EC.
+// This configures the mock KAS backend itself, so an unsupported value is a
+// server-misconfiguration: fail fast rather than silently advertising EC and
+// letting a roundtrip test exercise the wrong key-wrap family.
+const SUPPORTED_BASE_KEY_ALGS = ['ec:secp256r1', 'rsa:2048', 'mlkem:768', 'mlkem:1024'] as const;
 const BASE_KEY_ALG = process.env.BASE_KEY_ALG || 'ec:secp256r1';
+if (!(SUPPORTED_BASE_KEY_ALGS as readonly string[]).includes(BASE_KEY_ALG)) {
+  throw new Error(
+    `Unsupported BASE_KEY_ALG [${BASE_KEY_ALG}]; expected one of ${SUPPORTED_BASE_KEY_ALGS.join(', ')}`
+  );
+}
 
 import { create, toJsonString, fromJson } from '@bufbuild/protobuf';
 import { ValueSchema } from '@bufbuild/protobuf/wkt';
@@ -583,7 +592,10 @@ const kas: RequestListener = async (req, res) => {
           kid: `mlkem${level}`,
           pem: mlKemPublicKeyPem(level),
         };
+      } else if (BASE_KEY_ALG === 'rsa:2048') {
+        publicKey = { algorithm: 'rsa:2048', kid: 'r1', pem: Mocks.kasPublicKey };
       } else {
+        // ec:secp256r1 — the only remaining value (validated at import time).
         publicKey = { algorithm: 'ec:secp256r1', kid: 'e1', pem: Mocks.kasECCert };
       }
       res.end(

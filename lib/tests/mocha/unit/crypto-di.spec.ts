@@ -146,9 +146,6 @@ describe('CryptoService DI', () => {
       mlKemDecapsulate: function (sk: PrivateKey, ct: Uint8Array): Promise<SymmetricKey> {
         throw new Error(NOT_IMPLEMENTED);
       },
-      hkdfDerive: function (ikm: SymmetricKey, params: HkdfParams): Promise<SymmetricKey> {
-        throw new Error(NOT_IMPLEMENTED);
-      },
     };
 
     const mockAuthProvider: AuthProvider = {
@@ -327,9 +324,6 @@ describe('CryptoService DI', () => {
         throw new Error(NOT_IMPLEMENTED);
       },
       mlKemDecapsulate: function (sk: PrivateKey, ct: Uint8Array): Promise<SymmetricKey> {
-        throw new Error(NOT_IMPLEMENTED);
-      },
-      hkdfDerive: function (ikm: SymmetricKey, params: HkdfParams): Promise<SymmetricKey> {
         throw new Error(NOT_IMPLEMENTED);
       },
     };
