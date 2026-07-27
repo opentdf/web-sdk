@@ -52,9 +52,10 @@ async function jwt(
   let signature = await cryptoService.sign(buf(input), privateKey, alg);
   // JWS requires raw IEEE P1363 (R || S) for ECDSA per RFC 7518 §3.4, but
   // cryptoService.sign currently returns DER. Convert here so DPoP proofs are
-  // accepted by RFC-conformant verifiers (Keycloak, panva-jose). RSA/EdDSA
-  // signatures are already raw bytes — no conversion. See DSPX-3634 for the
-  // broader cleanup that would make this transform unnecessary.
+  // accepted by RFC-conformant verifiers (Keycloak, panva-jose). RSA signatures
+  // are already raw bytes — no conversion (EdDSA is rejected by the guard above
+  // and never reaches here). See DSPX-3634 for the broader cleanup that would
+  // make this transform unnecessary.
   if (alg.startsWith('ES')) {
     signature = derToIeeeP1363(signature, alg);
   }

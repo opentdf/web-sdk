@@ -142,9 +142,9 @@ export async function signJwt(
     signature = await cryptoService.sign(signingInputBytes, key, alg);
     // JWS requires raw IEEE P1363 (R || S) for ECDSA per RFC 7518 §3.4, but
     // cryptoService.sign returns DER. Convert here so the JWT (e.g. the KAS
-    // rewrap request token) is accepted by RFC-conformant verifiers. RSA/EdDSA
-    // signatures are already raw bytes — no conversion. Mirrors the DPoP proof
-    // signer in src/auth/dpop.ts.
+    // rewrap request token) is accepted by RFC-conformant verifiers. RSA
+    // signatures are already raw bytes — no conversion (only RS256 and ES*
+    // reach here). Mirrors the DPoP proof signer in src/auth/dpop.ts.
     if (alg.startsWith('ES')) {
       signature = derToIeeeP1363(signature, alg);
     }

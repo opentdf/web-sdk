@@ -30,10 +30,9 @@ import { ConnectError, Code } from '@connectrpc/connect';
 /**
  * Get a rewrapped access key to the document, if possible
  * @param url Key access server rewrap endpoint
- * @param requestBody a signed request with an encrypted document key
- * @param authProvider Authorization middleware
+ * @param signedRequestToken a signed request with an encrypted document key
+ * @param auth Authorization middleware
  * @param rewrapAdditionalContextHeader optional value for 'X-Rewrap-Additional-Context'
- * @param clientVersion
  */
 export async function fetchWrappedKey(
   url: string,
