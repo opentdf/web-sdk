@@ -194,6 +194,9 @@ export class MlKemWrapped {
     });
 
     // ML-KEM encapsulate → KEM ciphertext + raw shared secret
+    if (!this.cryptoService.mlKemEncapsulate) {
+      throw new ConfigurationError('CryptoService does not support ML-KEM (mlKemEncapsulate)');
+    }
     const { ciphertext: kemCiphertext, sharedSecret } =
       await this.cryptoService.mlKemEncapsulate(kasPublicKey);
 

@@ -794,6 +794,11 @@ async function unwrapKey({
       // generateKeyPair() returns opaque keys
       ephemeralEncryptionKeys = await cryptoService.generateKeyPair();
     } else if (isMlKemKeyAlgorithm(wrappingKeyAlgorithm)) {
+      if (!cryptoService.generateMlKemKeyPair) {
+        throw new ConfigurationError(
+          'CryptoService does not support ML-KEM (generateMlKemKeyPair)'
+        );
+      }
       const level = mlKemAlgorithmToLevel(wrappingKeyAlgorithm);
       ephemeralEncryptionKeys = await cryptoService.generateMlKemKeyPair(level);
     } else {
@@ -933,6 +938,11 @@ async function unwrapKey({
           const iv = encryptedDek.slice(0, 12);
           const wrappedKey = encryptedDek.slice(12);
 
+          if (!cryptoService.mlKemDecapsulate) {
+            throw new ConfigurationError(
+              'CryptoService does not support ML-KEM (mlKemDecapsulate)'
+            );
+          }
           const sharedSecret = await cryptoService.mlKemDecapsulate(
             ephemeralEncryptionKeys.privateKey,
             kemCiphertext

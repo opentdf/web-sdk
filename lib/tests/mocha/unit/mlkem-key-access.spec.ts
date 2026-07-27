@@ -39,6 +39,22 @@ const mockCryptoService: CryptoService = {
   },
 } as unknown as CryptoService;
 
+// Compile-time proof that ML-KEM support is an OPTIONAL CryptoService capability:
+// `undefined` is assignable to the member type only when it is declared optional.
+// If these become required again, assigning `true` to a `false` type fails the build.
+const _mlKemEncapsulateIsOptional: undefined extends CryptoService['mlKemEncapsulate']
+  ? true
+  : false = true;
+const _mlKemDecapsulateIsOptional: undefined extends CryptoService['mlKemDecapsulate']
+  ? true
+  : false = true;
+const _generateMlKemKeyPairIsOptional: undefined extends CryptoService['generateMlKemKeyPair']
+  ? true
+  : false = true;
+void _mlKemEncapsulateIsOptional;
+void _mlKemDecapsulateIsOptional;
+void _generateMlKemKeyPairIsOptional;
+
 describe('MlKemWrapped', () => {
   const url = 'https://example.com';
   const kid = 'test-kid';
@@ -99,5 +115,26 @@ describe('MlKemWrapped', () => {
     expect(
       () => new MlKemWrapped(url, '', publicKey, metadata, mockCryptoService, sid, alg)
     ).to.throw(ConfigurationError);
+  });
+
+  it('write() throws ConfigurationError when the CryptoService lacks ML-KEM support', async () => {
+    // A custom (e.g. HSM-backed) service that predates post-quantum support: it
+    // implements importPublicKey but omits the optional ML-KEM methods entirely.
+    const noMlKemService: CryptoService = {
+      async importPublicKey(): Promise<PublicKey> {
+        return { _brand: 'PublicKey', algorithm: 'mlkem:768', mlKemLevel: 768 };
+      },
+    } as unknown as CryptoService;
+
+    const mlKemWrapped = new MlKemWrapped(url, kid, publicKey, metadata, noMlKemService, sid, alg);
+    const dek = await importSymmetricKey(new Uint8Array([1, 2, 3, 4, 5]));
+
+    let err: unknown;
+    try {
+      await mlKemWrapped.write(policy, dek, encryptedMetadataStr);
+    } catch (e) {
+      err = e;
+    }
+    expect(err).to.be.instanceOf(ConfigurationError);
   });
 });

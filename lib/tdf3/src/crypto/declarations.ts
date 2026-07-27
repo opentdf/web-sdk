@@ -471,19 +471,27 @@ export type CryptoService = {
    */
   mergeSymmetricKeys: (shares: SymmetricKey[]) => Promise<SymmetricKey>;
 
+  // === Optional post-quantum capability (ML-KEM, NIST FIPS 203) ===
+  //
+  // These are OPTIONAL so that custom CryptoService implementations (e.g.
+  // HSM-backed) predating post-quantum support keep compiling. Implementations
+  // that omit them are rejected at runtime — SDK call sites guard on presence and
+  // throw ConfigurationError — mirroring the optional importPrivateKey?/
+  // exportPrivateKeyPem? members above.
+
   /**
    * Generate an ML-KEM key pair (NIST FIPS 203).
    * @param level - Security level: 768 or 1024
    * @returns Opaque key pair; publicKey carries the encapsulation key bytes, privateKey the decapsulation key bytes
    */
-  generateMlKemKeyPair: (level: 768 | 1024) => Promise<KeyPair>;
+  generateMlKemKeyPair?: (level: 768 | 1024) => Promise<KeyPair>;
 
   /**
    * Encapsulate a shared secret to an ML-KEM public key.
    * @param pk - Opaque ML-KEM public key (encapsulation key)
    * @returns KEM ciphertext and raw shared secret (32 bytes, not yet HKDF-derived)
    */
-  mlKemEncapsulate: (
+  mlKemEncapsulate?: (
     pk: PublicKey
   ) => Promise<{ ciphertext: Uint8Array; sharedSecret: SymmetricKey }>;
 
@@ -494,5 +502,5 @@ export type CryptoService = {
    * @param ct - KEM ciphertext bytes
    * @returns Raw shared secret (32 bytes, not yet HKDF-derived)
    */
-  mlKemDecapsulate: (sk: PrivateKey, ct: Uint8Array) => Promise<SymmetricKey>;
+  mlKemDecapsulate?: (sk: PrivateKey, ct: Uint8Array) => Promise<SymmetricKey>;
 };
