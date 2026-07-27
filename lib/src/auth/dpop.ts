@@ -8,7 +8,10 @@ import type {
   AsymmetricSigningAlgorithm,
   KeyAlgorithm,
 } from '../../tdf3/src/crypto/declarations.js';
-import { isRsaKeyAlgorithm } from '../../tdf3/src/crypto/declarations.js';
+import {
+  isAsymmetricSigningAlgorithm,
+  isRsaKeyAlgorithm,
+} from '../../tdf3/src/crypto/declarations.js';
 import { derToIeeeP1363 } from '../../tdf3/src/crypto/core/signing.js';
 
 export type JsonObject = { [Key in string]?: JsonValue };
@@ -129,22 +132,6 @@ class UnsupportedOperationError extends Error {
     this.name = this.constructor.name;
     Error.captureStackTrace?.(this, this.constructor);
   }
-}
-
-const ASYMMETRIC_SIGNING_ALGORITHMS: readonly AsymmetricSigningAlgorithm[] = [
-  'RS256',
-  'ES256',
-  'ES384',
-  'ES512',
-];
-
-/**
- * Type guard narrowing a JWS `alg` to one CryptoService can actually sign with.
- * `JWSAlgorithm` also lists forward-looking identifiers (PS256/EdDSA) that have
- * no runtime signing support yet; those must be rejected, not signed.
- */
-function isAsymmetricSigningAlgorithm(alg: string): alg is AsymmetricSigningAlgorithm {
-  return (ASYMMETRIC_SIGNING_ALGORITHMS as readonly string[]).includes(alg);
 }
 
 /**

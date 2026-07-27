@@ -1,5 +1,5 @@
 import {
-  type AsymmetricSigningAlgorithm,
+  isAsymmetricSigningAlgorithm,
   type CryptoService,
   type PrivateKey,
   type PublicKey,
@@ -135,7 +135,10 @@ export async function signJwt(
     if (key._brand !== 'PrivateKey') {
       throw new Error(`${header.alg} requires a PrivateKey`);
     }
-    const alg = header.alg as AsymmetricSigningAlgorithm;
+    if (!isAsymmetricSigningAlgorithm(header.alg)) {
+      throw new Error(`Unsupported JWS signing algorithm: ${header.alg}`);
+    }
+    const alg = header.alg;
     signature = await cryptoService.sign(signingInputBytes, key, alg);
     // JWS requires raw IEEE P1363 (R || S) for ECDSA per RFC 7518 §3.4, but
     // cryptoService.sign returns DER. Convert here so the JWT (e.g. the KAS
@@ -238,7 +241,10 @@ export async function verifyJwt(
       typeof key === 'string'
         ? await cryptoService.importPublicKey(key, { usage: 'sign' })
         : (key as PublicKey);
-    const alg = header.alg as AsymmetricSigningAlgorithm;
+    if (!isAsymmetricSigningAlgorithm(header.alg)) {
+      throw new joseErrors.JWTInvalid(`Invalid JWT: unsupported algorithm "${header.alg}"`);
+    }
+    const alg = header.alg;
     // JWS carries ECDSA signatures as raw IEEE P1363 (RFC 7518 §3.4), but
     // cryptoService.verify expects DER. Convert here so we accept RFC-conformant
     // ES* JWTs (matches the signJwt signer above). RSA is unchanged.
