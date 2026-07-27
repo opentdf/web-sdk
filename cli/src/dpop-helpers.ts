@@ -98,13 +98,17 @@ export async function loadDPoPKeyPairFromPem(pemPath: string): Promise<KeyPair> 
 
   // Try EC curves (P-256, P-384, P-521). Catch only the importKey call so that
   // any SDK-layer errors from buildKeyPairFromCryptoKey propagate with full context.
+  // Retain the most recent import failure so a genuinely corrupt key surfaces its
+  // real decode error as the cause, instead of only the generic "unsupported" message.
+  let lastImportError: unknown;
   for (const namedCurve of ['P-256', 'P-384', 'P-521']) {
     let privCK: webcrypto.CryptoKey | undefined;
     try {
       privCK = await crypto.subtle.importKey('pkcs8', der, { name: 'ECDSA', namedCurve }, true, [
         'sign',
       ]);
-    } catch {
+    } catch (err) {
+      lastImportError = err;
       // wrong curve or not an EC key — try next
     }
     if (privCK) {
@@ -122,7 +126,8 @@ export async function loadDPoPKeyPairFromPem(pemPath: string): Promise<KeyPair> 
       true,
       ['sign']
     );
-  } catch {
+  } catch (err) {
+    lastImportError = err;
     // not RSA either
   }
   if (rsaCK) {
@@ -134,7 +139,8 @@ export async function loadDPoPKeyPairFromPem(pemPath: string): Promise<KeyPair> 
 
   throw new CLIError(
     'CRITICAL',
-    `Cannot parse DPoP key from ${pemPath}: expected PKCS8 PEM with ECDSA (P-256/P-384/P-521) or RSA private key`
+    `Cannot parse DPoP key from ${pemPath}: expected PKCS8 PEM with ECDSA (P-256/P-384/P-521) or RSA private key`,
+    lastImportError instanceof Error ? lastImportError : undefined
   );
 }
 
