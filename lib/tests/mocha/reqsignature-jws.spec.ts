@@ -70,6 +70,32 @@ async function ecdsaKeyPair(
   return { sdk: { publicKey, privateKey }, pubPem };
 }
 
+async function rsaKeyPair(): Promise<{ sdk: KeyPair; pubPem: string }> {
+  // RS256 is the default for RSA keys and is signed without the DER↔P1363
+  // transform applied to ES*; verify that pass-through branch stays conformant.
+  const raw = await crypto.subtle.generateKey(
+    {
+      name: 'RSASSA-PKCS1-v1_5',
+      modulusLength: 2048,
+      publicExponent: new Uint8Array([1, 0, 1]),
+      hash: 'SHA-256',
+    },
+    true,
+    ['sign', 'verify']
+  );
+  const [privDer, pubDer] = await Promise.all([
+    crypto.subtle.exportKey('pkcs8', raw.privateKey),
+    crypto.subtle.exportKey('spki', raw.publicKey),
+  ]);
+  const privPem = derToPem(new Uint8Array(privDer), 'PRIVATE KEY');
+  const pubPem = derToPem(new Uint8Array(pubDer), 'PUBLIC KEY');
+  const [privateKey, publicKey] = await Promise.all([
+    importPrivateKey(privPem, { usage: 'sign', extractable: true }),
+    importPublicKey(pubPem, { usage: 'sign', extractable: true }),
+  ]);
+  return { sdk: { publicKey, privateKey }, pubPem };
+}
+
 describe('reqSignature / signJwt — JWS conformance vs jose.jwtVerify (RFC 7518 §3.4)', function (this: Mocha.Suite) {
   this.timeout(10_000);
 
@@ -103,6 +129,36 @@ describe('reqSignature / signJwt — JWS conformance vs jose.jwtVerify (RFC 7518
       expect(payload.sub).to.equal('test');
     });
   }
+
+  it('reqSignature RS256 token verifies against jose.jwtVerify', async () => {
+    const { sdk, pubPem } = await rsaKeyPair();
+
+    const token = await reqSignature(
+      { requestBody: 'hello' },
+      sdk.privateKey,
+      DefaultCryptoService,
+      {
+        alg: 'RS256',
+      }
+    );
+
+    const key = await jose.importSPKI(pubPem, 'RS256');
+    const { payload } = await jose.jwtVerify(token, key);
+    expect(payload.requestBody).to.equal('hello');
+    expect(payload.iat).to.be.a('number');
+    expect(payload.exp).to.be.a('number');
+  });
+
+  it('signJwt RS256 round-trips through verifyJwt', async () => {
+    const { sdk } = await rsaKeyPair();
+    const token = await signJwt(DefaultCryptoService, { sub: 'test' }, sdk.privateKey, {
+      alg: 'RS256',
+    });
+    const { payload } = await verifyJwt(DefaultCryptoService, token, sdk.publicKey, {
+      algorithms: ['RS256'],
+    });
+    expect(payload.sub).to.equal('test');
+  });
 
   it('verifyJwt rejects a truncated ES256 signature', async () => {
     const { sdk } = await ecdsaKeyPair('P-256');

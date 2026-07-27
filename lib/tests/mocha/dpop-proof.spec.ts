@@ -47,6 +47,33 @@ async function ecdsaKeyPair(namedCurve: 'P-256' | 'P-384' | 'P-521'): Promise<Ke
   return { publicKey, privateKey };
 }
 
+async function rsaKeyPair(): Promise<KeyPair> {
+  // RS256 is the default DPoP alg for any RSA key and, unlike ES*, its signature
+  // is passed through unconverted (no DER↔P1363 transform). Exercise that branch
+  // against the same conformant verifier the ES cases use.
+  const raw = await crypto.subtle.generateKey(
+    {
+      name: 'RSASSA-PKCS1-v1_5',
+      modulusLength: 2048,
+      publicExponent: new Uint8Array([1, 0, 1]),
+      hash: 'SHA-256',
+    },
+    true,
+    ['sign', 'verify']
+  );
+  const [privDer, pubDer] = await Promise.all([
+    crypto.subtle.exportKey('pkcs8', raw.privateKey),
+    crypto.subtle.exportKey('spki', raw.publicKey),
+  ]);
+  const privPem = derToPem(new Uint8Array(privDer), 'PRIVATE KEY');
+  const pubPem = derToPem(new Uint8Array(pubDer), 'PUBLIC KEY');
+  const [privateKey, publicKey] = await Promise.all([
+    importPrivateKey(privPem, { usage: 'sign', extractable: true }),
+    importPublicKey(pubPem, { usage: 'sign', extractable: true }),
+  ]);
+  return { publicKey, privateKey };
+}
+
 function derToPem(der: Uint8Array, label: string): string {
   let b = '';
   for (let i = 0; i < der.length; i++) b += String.fromCharCode(der[i]);
@@ -138,6 +165,43 @@ describe('DPoP proof — JWS conformance vs jose.jwtVerify (RFC 9449 + RFC 7518 
       expect(threw, 'jose.jwtVerify must reject a forged proof with mismatched jwk').to.equal(true);
     });
   }
+});
+
+describe('DPoP proof — RS256 JWS conformance vs jose.jwtVerify (RFC 9449)', function (this: Mocha.Suite) {
+  this.timeout(10_000);
+
+  it('RS256 proof verifies against jose.jwtVerify', async () => {
+    const kp = await rsaKeyPair();
+    const proof = await dpopFn(kp, DefaultCryptoService, HTU, HTM);
+
+    const header = jose.decodeProtectedHeader(proof);
+    expect(header.typ).to.equal('dpop+jwt');
+    expect(header.alg).to.equal('RS256');
+    expect(header.jwk).to.exist;
+
+    const key = await jose.importJWK(header.jwk as jose.JWK, 'RS256');
+    const { payload } = await jose.jwtVerify(proof, key);
+    expect(payload.htu).to.equal(HTU);
+    expect(payload.htm).to.equal(HTM);
+    expect(payload.jti).to.be.a('string').and.have.length.greaterThan(0);
+    expect(payload.iat).to.be.a('number');
+  });
+
+  it('RS256 proof verification rejects a flipped signature byte', async () => {
+    const kp = await rsaKeyPair();
+    const proof = await dpopFn(kp, DefaultCryptoService, HTU, HTM);
+    const tampered = flipOneBitInSignatureSegment(proof);
+
+    const header = jose.decodeProtectedHeader(proof);
+    const key = await jose.importJWK(header.jwk as jose.JWK, 'RS256');
+    let threw = false;
+    try {
+      await jose.jwtVerify(tampered, key);
+    } catch {
+      threw = true;
+    }
+    expect(threw, 'jose.jwtVerify must reject a tampered RS256 signature').to.equal(true);
+  });
 });
 
 describe('DPoP proof — unsupported key algorithm', function () {
