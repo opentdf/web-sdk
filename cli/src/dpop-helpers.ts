@@ -233,13 +233,17 @@ export async function resolveDPoPKeyPair(
  * `--dpopKey` enables DPoP even without `--dpop`.
  */
 export async function resolveDPoPFromArgs(argv: {
-  dpop?: string;
+  dpop?: string | boolean;
   dpopKey?: string;
 }): Promise<{ dpopEnabled: boolean; dpopKeyPair: KeyPair | undefined }> {
-  const dpopAlg = argv.dpop === undefined ? undefined : argv.dpop || 'ES256';
+  // yargs coerces `--no-dpop` into the boolean `false` (its automatic negation),
+  // and a bare `--dpop` into the empty string. Only a string requests DPoP; a
+  // boolean `false` (or absent) means the user explicitly disabled it, so it must
+  // NOT fall through to the ES256 default.
+  const dpopAlg = typeof argv.dpop === 'string' ? argv.dpop || 'ES256' : undefined;
   // A non-empty --dpop value is an explicit algorithm choice; a bare --dpop
   // (empty string → ES256 default) is not, so it never conflicts with --dpopKey.
-  const algWasExplicit = !!argv.dpop;
+  const algWasExplicit = typeof argv.dpop === 'string' && argv.dpop !== '';
   const dpopEnabled = dpopAlg !== undefined || !!argv.dpopKey;
   const dpopKeyPair = await resolveDPoPKeyPair(dpopAlg, argv.dpopKey, algWasExplicit);
   return { dpopEnabled, dpopKeyPair };

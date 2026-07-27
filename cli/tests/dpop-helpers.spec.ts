@@ -259,6 +259,14 @@ describe('resolveDPoPFromArgs', function () {
     expect(result.dpopKeyPair?.publicKey.algorithm).to.equal('ec:secp256r1');
   });
 
+  it('stays disabled for --no-dpop (yargs boolean false), not re-enabled', async function () {
+    // yargs turns the negated `--no-dpop` flag into boolean false on the
+    // string-typed --dpop option; it must NOT fall through to the ES256 default.
+    const result = await resolveDPoPFromArgs({ dpop: false });
+    expect(result.dpopEnabled).to.be.false;
+    expect(result.dpopKeyPair).to.be.undefined;
+  });
+
   it('honours an explicit --dpop=ES384', async function () {
     const result = await resolveDPoPFromArgs({ dpop: 'ES384' });
     expect(result.dpopEnabled).to.be.true;
