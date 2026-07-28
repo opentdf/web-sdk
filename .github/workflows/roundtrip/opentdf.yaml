@@ -10,8 +10,6 @@ logger:
 #   password: changeme
 services:
   kas:
-    # Preview features gate the non-RSA rewrap paths in newer platform builds.
-    # ec-wrapped is needed for the default ZTDF roundtrip; mlkem for the ML-KEM tests.
     preview:
       ec_tdf_enabled: true
       mlkem_tdf_enabled: true
