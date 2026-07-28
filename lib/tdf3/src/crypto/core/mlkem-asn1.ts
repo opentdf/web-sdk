@@ -6,6 +6,8 @@
 //     subjectPublicKey  BIT STRING     -- raw ML-KEM encapsulation key bytes
 //   }
 
+import { decodeLength, encodeLength } from './asn1.js';
+
 const RAW_PUBLIC_KEY_SIZES: Record<768 | 1024, number> = {
   768: 1184,
   1024: 1568,
@@ -19,32 +21,9 @@ const LEVEL_FROM_VARIANT_BYTE: Record<number, 768 | 1024> = {
 };
 
 // First 8 bytes of the OID's BER-encoded contents (excluding tag/length and the
-// final variant byte): 2.16.840.1.101.3.4.4
-const ML_KEM_OID_ARC_PREFIX = [0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x04];
-
-function encodeLength(len: number): Uint8Array {
-  if (len < 0x80) return new Uint8Array([len]);
-  if (len < 0x100) return new Uint8Array([0x81, len]);
-  if (len < 0x10000) return new Uint8Array([0x82, (len >> 8) & 0xff, len & 0xff]);
-  throw new Error(`ASN.1 length too large for ML-KEM SPKI: ${len}`);
-}
-
-function decodeLength(
-  bytes: Uint8Array,
-  offset: number
-): { length: number; bytesConsumed: number } {
-  const first = bytes[offset];
-  if (first < 0x80) return { length: first, bytesConsumed: 1 };
-  const numOctets = first & 0x7f;
-  if (numOctets === 0 || numOctets > 3) {
-    throw new Error(`Unsupported ASN.1 length octets: ${numOctets}`);
-  }
-  let length = 0;
-  for (let i = 0; i < numOctets; i++) {
-    length = (length << 8) | bytes[offset + 1 + i];
-  }
-  return { length, bytesConsumed: 1 + numOctets };
-}
+// final variant byte): 2.16.840.1.101.3.4.4. Exported so SPKI classifiers can
+// recognise the id-alg-ml-kem arc before delegating to decodeMlKemSpkiDer.
+export const ML_KEM_OID_ARC_PREFIX = Uint8Array.of(0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x04);
 
 export function encodeMlKemSpkiDer(rawKey: Uint8Array, level: 768 | 1024): Uint8Array {
   const expectedSize = RAW_PUBLIC_KEY_SIZES[level];
