@@ -68,12 +68,7 @@ openssl req -x509 -nodes -newkey RSA:2048 -subj "/CN=kas" -keyout "$opt_output/k
 openssl ecparam -name prime256v1 >ecparams.tmp
 openssl req -x509 -nodes -newkey ec:ecparams.tmp -subj "/CN=kas" -keyout "$opt_output/kas-ec-private.pem" -out "$opt_output/kas-ec-cert.pem" -days 365
 
-# ML-KEM KAS keys (768 & 1024). openssl on the runner is too old to emit ML-KEM,
-# so delegate to the platform's own keygen command — its ocrypto encoding is the
-# authoritative one the KAS expects, so there is no hand-rolled ASN.1 to keep in
-# sync. Reuses the platform clone already checked out for the roundtrip test.
-# script_dir must be absolute: go requires GOWORK to be an absolute path and
-# rejects a relative one with "invalid GOWORK: not an absolute path".
+# ML-KEM KAS keys (768 & 1024)
 script_dir="$(cd "$(dirname "$0")" >/dev/null && pwd)"
 if [ -d "${script_dir}/platform/service" ]; then
   GOWORK="${script_dir}/platform/go.work" \
