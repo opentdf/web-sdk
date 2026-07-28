@@ -91,12 +91,23 @@ const P521_OID = Uint8Array.of(0x2b, 0x81, 0x04, 0x00, 0x23); // 1.3.132.0.35
  * matches against key material.
  */
 function readSpkiAlgorithm(der: Uint8Array): { algorithmOid: Uint8Array; curveOid?: Uint8Array } {
+  // readTlv bounds each TLV against `der`, but not against its parent SEQUENCE.
+  // Validate containment at every level so malformed input cannot be classified
+  // as a supported key from its OIDs alone.
   const spki = readTlv(der, 0);
-  if (spki.tag !== 0x30) throw new ConfigurationError('Invalid SPKI: missing outer SEQUENCE');
+  if (spki.tag !== 0x30 || spki.next !== der.length) {
+    throw new ConfigurationError('Invalid SPKI: malformed outer SEQUENCE');
+  }
+
   const algId = readTlv(der, spki.contentStart);
-  if (algId.tag !== 0x30) throw new ConfigurationError('Invalid SPKI: missing AlgorithmIdentifier');
+  if (algId.tag !== 0x30 || algId.next > spki.contentEnd) {
+    throw new ConfigurationError('Invalid SPKI: malformed AlgorithmIdentifier');
+  }
+
   const oid = readTlv(der, algId.contentStart);
-  if (oid.tag !== 0x06) throw new ConfigurationError('Invalid SPKI: missing algorithm OID');
+  if (oid.tag !== 0x06 || oid.next > algId.contentEnd) {
+    throw new ConfigurationError('Invalid SPKI: missing algorithm OID');
+  }
   const algorithmOid = der.subarray(oid.contentStart, oid.contentEnd);
 
   // AlgorithmIdentifier parameters follow the OID. For EC keys this is the named
@@ -104,8 +115,19 @@ function readSpkiAlgorithm(der: Uint8Array): { algorithmOid: Uint8Array; curveOi
   let curveOid: Uint8Array | undefined;
   if (oid.next < algId.contentEnd) {
     const param = readTlv(der, oid.next);
+    if (param.next > algId.contentEnd) {
+      throw new ConfigurationError('Invalid SPKI: AlgorithmIdentifier parameter exceeds bounds');
+    }
     if (param.tag === 0x06) curveOid = der.subarray(param.contentStart, param.contentEnd);
   }
+
+  // The subjectPublicKey BIT STRING must follow AlgorithmIdentifier and consume
+  // the remainder of the outer SEQUENCE exactly (no trailing bytes).
+  const subjectPublicKey = readTlv(der, algId.next);
+  if (subjectPublicKey.tag !== 0x03 || subjectPublicKey.next !== spki.contentEnd) {
+    throw new ConfigurationError('Invalid SPKI: missing or malformed subjectPublicKey');
+  }
+
   return { algorithmOid, curveOid };
 }
 

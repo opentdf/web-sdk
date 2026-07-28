@@ -2,6 +2,9 @@
 // Definite-length BER/DER only; that is all X.509 SubjectPublicKeyInfo needs.
 
 export function encodeLength(len: number): Uint8Array {
+  if (!Number.isSafeInteger(len) || len < 0) {
+    throw new Error(`Invalid ASN.1 length: ${len}`);
+  }
   if (len < 0x80) return new Uint8Array([len]);
   if (len < 0x100) return new Uint8Array([0x81, len]);
   if (len < 0x10000) return new Uint8Array([0x82, (len >> 8) & 0xff, len & 0xff]);
@@ -18,9 +21,17 @@ export function decodeLength(
   if (numOctets === 0 || numOctets > 3) {
     throw new Error(`Unsupported ASN.1 length octets: ${numOctets}`);
   }
+  // Reject truncated encodings and non-minimal long form (leading zero octet).
+  if (offset + 1 + numOctets > bytes.length || bytes[offset + 1] === 0) {
+    throw new Error('Invalid ASN.1 length encoding');
+  }
   let length = 0;
   for (let i = 0; i < numOctets; i++) {
     length = (length << 8) | bytes[offset + 1 + i];
+  }
+  // Long form must not encode a value that fits in short form.
+  if (length < 0x80) {
+    throw new Error('Non-canonical DER length encoding');
   }
   return { length, bytesConsumed: 1 + numOctets };
 }
