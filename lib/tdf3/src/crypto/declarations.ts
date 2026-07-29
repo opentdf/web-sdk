@@ -225,7 +225,7 @@ export type HkdfParams = {
 export type PublicKeyInfo = {
   /** Detected algorithm of the key. */
   algorithm: KeyAlgorithm;
-  /** Normalized PEM string (or raw base64 for ML-KEM keys). */
+  /** Normalized PEM string. */
   pem: string;
 };
 
