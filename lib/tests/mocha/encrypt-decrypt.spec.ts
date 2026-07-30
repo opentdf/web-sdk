@@ -245,8 +245,18 @@ describe('encrypt decrypt test', async function () {
   const expectedVal = 'hello world';
   const kasUrl = `http://localhost:3000`;
 
-  for (const encapKeyType of ['ec:secp256r1', 'rsa:2048'] as KasPublicKeyAlgorithm[]) {
-    for (const rewrapKeyType of ['ec:secp256r1', 'rsa:2048'] as KasPublicKeyAlgorithm[]) {
+  for (const encapKeyType of [
+    'ec:secp256r1',
+    'rsa:2048',
+    'mlkem:768',
+    'mlkem:1024',
+  ] as KasPublicKeyAlgorithm[]) {
+    for (const rewrapKeyType of [
+      'ec:secp256r1',
+      'rsa:2048',
+      'mlkem:768',
+      'mlkem:1024',
+    ] as KasPublicKeyAlgorithm[]) {
       it(`encrypt-decrypt stream source happy path {encap: ${encapKeyType}, rewrap: ${rewrapKeyType}}`, async function () {
         const cipher = new AesGcmCipher(WebCryptoService);
         const encryptionInformation = new SplitKey(cipher);
@@ -377,12 +387,8 @@ describe('encrypt decrypt test', async function () {
       clientId: 'id',
       authProvider,
     });
-
     const scope: Scope = { dissem: ['user@domain.com'], attributes: [] };
 
-    // Two KAOs pointing at the same KAS for the same split id: the same KAS
-    // wraps the same split twice. Previously this threw; now the copies are
-    // disjunction alternatives and the file must still decrypt.
     const encryptedStream = await client.encrypt({
       metadata: Mocks.getMetadataObject(),
       wrappingKeyAlgorithm: 'rsa:2048',
@@ -410,7 +416,6 @@ describe('encrypt decrypt test', async function () {
       source: { type: 'stream', location: encryptedStream.stream },
       wrappingKeyAlgorithm: 'rsa:2048',
     });
-
     const { value: decryptedText } = await decryptStream.stream.getReader().read();
     assert.equal(new TextDecoder().decode(decryptedText), expectedVal);
   });

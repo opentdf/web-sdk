@@ -21,26 +21,55 @@ export type PemKeyPair = {
   privateKey: string;
 };
 
+/**
+ * Supported key algorithms, grouped by key-mechanism family. These `as const`
+ * arrays are the single source of truth: the family subtypes, the combined
+ * {@link KeyAlgorithm} union, and the runtime guards below all derive from them.
+ */
 export const EC_KEY_ALGORITHMS = ['ec:secp256r1', 'ec:secp384r1', 'ec:secp521r1'] as const;
 export const RSA_KEY_ALGORITHMS = ['rsa:2048', 'rsa:4096'] as const;
+export const MLKEM_KEY_ALGORITHMS = ['mlkem:768', 'mlkem:1024'] as const;
 
-/** Order is significant: re-exported as `PUBLIC_KEY_ALGORITHMS` in `access.ts` and consumed as an ordered list (e.g. CLI `--choices` output). */
-export const KEY_ALGORITHMS = [...EC_KEY_ALGORITHMS, ...RSA_KEY_ALGORITHMS] as const;
+/**
+ * All supported key algorithms. Order is significant: it is re-exported as
+ * `PUBLIC_KEY_ALGORITHMS` from `access.ts`, which historically listed EC, then
+ * RSA, then ML-KEM.
+ */
+export const KEY_ALGORITHMS = [
+  ...EC_KEY_ALGORITHMS,
+  ...RSA_KEY_ALGORITHMS,
+  ...MLKEM_KEY_ALGORITHMS,
+] as const;
 
+/** Elliptic-curve key algorithm identifiers (`ec:*`). */
 export type EcKeyAlgorithm = (typeof EC_KEY_ALGORITHMS)[number];
+/** RSA key algorithm identifiers (`rsa:*`). */
 export type RsaKeyAlgorithm = (typeof RSA_KEY_ALGORITHMS)[number];
+/** ML-KEM key algorithm identifiers (`mlkem:*`). */
+export type MlKemKeyAlgorithm = (typeof MLKEM_KEY_ALGORITHMS)[number];
 
 /**
  * Key algorithm identifier combining key type and parameters.
  */
-export type KeyAlgorithm = EcKeyAlgorithm | RsaKeyAlgorithm;
+export type KeyAlgorithm = EcKeyAlgorithm | RsaKeyAlgorithm | MlKemKeyAlgorithm;
 
+/** Narrows a string to an elliptic-curve (`ec:*`) key algorithm. */
 export const isEcKeyAlgorithm = (a: string): a is EcKeyAlgorithm =>
   (EC_KEY_ALGORITHMS as readonly string[]).includes(a);
+/** Narrows a string to an RSA (`rsa:*`) key algorithm. */
 export const isRsaKeyAlgorithm = (a: string): a is RsaKeyAlgorithm =>
   (RSA_KEY_ALGORITHMS as readonly string[]).includes(a);
+/** Narrows a string to an ML-KEM (`mlkem:*`) key algorithm. */
+export const isMlKemKeyAlgorithm = (a: string): a is MlKemKeyAlgorithm =>
+  (MLKEM_KEY_ALGORITHMS as readonly string[]).includes(a);
+/** Narrows a string to any supported key algorithm. */
 export const isKeyAlgorithm = (a: string): a is KeyAlgorithm =>
   (KEY_ALGORITHMS as readonly string[]).includes(a);
+
+// Strictly-typed accessors for the variant encoded in each family's algorithm
+// literal. The `Record<Subtype, …>` maps are exhaustive by construction — adding
+// a family member or mistyping a key is a compile error — so these avoid the
+// `parseInt`/`split(':')`/`as` patterns they replace.
 
 const EC_ALGORITHM_CURVES: Record<EcKeyAlgorithm, ECCurve> = {
   'ec:secp256r1': 'P-256',
@@ -57,6 +86,14 @@ const RSA_ALGORITHM_MODULUS_BITS: Record<RsaKeyAlgorithm, 2048 | 4096> = {
 /** The modulus bit length for an `rsa:*` key algorithm. */
 export const rsaAlgorithmToModulusBits = (alg: RsaKeyAlgorithm): 2048 | 4096 =>
   RSA_ALGORITHM_MODULUS_BITS[alg];
+
+const MLKEM_ALGORITHM_LEVELS: Record<MlKemKeyAlgorithm, 768 | 1024> = {
+  'mlkem:768': 768,
+  'mlkem:1024': 1024,
+};
+/** The NIST security level for an `mlkem:*` key algorithm. */
+export const mlKemAlgorithmToLevel = (alg: MlKemKeyAlgorithm): 768 | 1024 =>
+  MLKEM_ALGORITHM_LEVELS[alg];
 
 /**
  * Options for key generation and import.
@@ -95,6 +132,8 @@ export type PublicKey = {
   readonly modulusBits?: number;
   /** EC curve name (only for EC keys) */
   readonly curve?: ECCurve;
+  /** ML-KEM security level (only for mlkem:* keys) */
+  readonly mlKemLevel?: 768 | 1024;
 };
 
 /**
@@ -111,6 +150,8 @@ export type PrivateKey = {
   readonly modulusBits?: number;
   /** EC curve name (only for EC keys) */
   readonly curve?: ECCurve;
+  /** ML-KEM security level (only for mlkem:* keys) */
+  readonly mlKemLevel?: 768 | 1024;
 };
 
 /**
@@ -429,4 +470,37 @@ export type CryptoService = {
    * @throws ConfigurationError if not supported by the implementation
    */
   mergeSymmetricKeys: (shares: SymmetricKey[]) => Promise<SymmetricKey>;
+
+  // === Optional post-quantum capability (ML-KEM, NIST FIPS 203) ===
+  //
+  // These are OPTIONAL so that custom CryptoService implementations (e.g.
+  // HSM-backed) predating post-quantum support keep compiling. Implementations
+  // that omit them are rejected at runtime — SDK call sites guard on presence and
+  // throw ConfigurationError — mirroring the optional importPrivateKey?/
+  // exportPrivateKeyPem? members above.
+
+  /**
+   * Generate an ML-KEM key pair (NIST FIPS 203).
+   * @param level - Security level: 768 or 1024
+   * @returns Opaque key pair; publicKey carries the encapsulation key bytes, privateKey the decapsulation key bytes
+   */
+  generateMlKemKeyPair?: (level: 768 | 1024) => Promise<KeyPair>;
+
+  /**
+   * Encapsulate a shared secret to an ML-KEM public key.
+   * @param pk - Opaque ML-KEM public key (encapsulation key)
+   * @returns KEM ciphertext and raw shared secret (32 bytes, not yet HKDF-derived)
+   */
+  mlKemEncapsulate?: (
+    pk: PublicKey
+  ) => Promise<{ ciphertext: Uint8Array; sharedSecret: SymmetricKey }>;
+
+  /**
+   * Decapsulate an ML-KEM ciphertext with the private key.
+   * Relies on @noble/post-quantum implicit rejection on failure (FIPS 203 mandate).
+   * @param sk - Opaque ML-KEM private key (decapsulation key)
+   * @param ct - KEM ciphertext bytes
+   * @returns Raw shared secret (32 bytes, not yet HKDF-derived)
+   */
+  mlKemDecapsulate?: (sk: PrivateKey, ct: Uint8Array) => Promise<SymmetricKey>;
 };

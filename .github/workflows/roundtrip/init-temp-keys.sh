@@ -68,6 +68,15 @@ openssl req -x509 -nodes -newkey RSA:2048 -subj "/CN=kas" -keyout "$opt_output/k
 openssl ecparam -name prime256v1 >ecparams.tmp
 openssl req -x509 -nodes -newkey ec:ecparams.tmp -subj "/CN=kas" -keyout "$opt_output/kas-ec-private.pem" -out "$opt_output/kas-ec-cert.pem" -days 365
 
+# ML-KEM KAS keys (768 & 1024)
+script_dir="$(cd "$(dirname "$0")" >/dev/null && pwd)"
+if [ -d "${script_dir}/platform/service" ]; then
+  GOWORK="${script_dir}/platform/go.work" \
+    go run "${script_dir}/platform/service/cmd/keygen" -output "$opt_output" || exit 1
+else
+  go run github.com/opentdf/platform/service/cmd/keygen@latest -output "$opt_output" || exit 1
+fi
+
 if [ "$opt_hsm" = true ]; then
   pkcs11-tool --module "${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_MODULEPATH}" --login --pin "${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_PIN}" --write-object kas-private.pem --type privkey --label "${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_KEYS_RSA_LABEL}"
   pkcs11-tool --module "${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_MODULEPATH}" --login --pin "${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_PIN}" --write-object kas-cert.pem --type cert --label "${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_KEYS_RSA_LABEL}"

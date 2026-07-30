@@ -135,6 +135,17 @@ describe('CryptoService DI', () => {
       mergeSymmetricKeys: function (shares: SymmetricKey[]): Promise<SymmetricKey> {
         throw new Error(NOT_IMPLEMENTED);
       },
+      generateMlKemKeyPair: function (level: 768 | 1024): Promise<KeyPair> {
+        throw new Error(NOT_IMPLEMENTED);
+      },
+      mlKemEncapsulate: function (
+        pk: PublicKey
+      ): Promise<{ ciphertext: Uint8Array; sharedSecret: SymmetricKey }> {
+        throw new Error(NOT_IMPLEMENTED);
+      },
+      mlKemDecapsulate: function (sk: PrivateKey, ct: Uint8Array): Promise<SymmetricKey> {
+        throw new Error(NOT_IMPLEMENTED);
+      },
     };
 
     const mockAuthProvider: AuthProvider = {
@@ -302,6 +313,17 @@ describe('CryptoService DI', () => {
         throw new Error(NOT_IMPLEMENTED);
       },
       mergeSymmetricKeys: function (shares: SymmetricKey[]): Promise<SymmetricKey> {
+        throw new Error(NOT_IMPLEMENTED);
+      },
+      generateMlKemKeyPair: function (level: 768 | 1024): Promise<KeyPair> {
+        throw new Error(NOT_IMPLEMENTED);
+      },
+      mlKemEncapsulate: function (
+        pk: PublicKey
+      ): Promise<{ ciphertext: Uint8Array; sharedSecret: SymmetricKey }> {
+        throw new Error(NOT_IMPLEMENTED);
+      },
+      mlKemDecapsulate: function (sk: PrivateKey, ct: Uint8Array): Promise<SymmetricKey> {
         throw new Error(NOT_IMPLEMENTED);
       },
     };

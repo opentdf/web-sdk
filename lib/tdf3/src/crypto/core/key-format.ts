@@ -1,10 +1,12 @@
 import {
   ecAlgorithmToCurve,
   isEcKeyAlgorithm,
+  isMlKemKeyAlgorithm,
   isRsaKeyAlgorithm,
   type KeyAlgorithm,
   type KeyOptions,
   MIN_ASYMMETRIC_KEY_SIZE_BITS,
+  mlKemAlgorithmToLevel,
   type PrivateKey,
   type PublicKey,
   type PublicKeyInfo,
@@ -19,7 +21,15 @@ import {
   guessCurveName,
   toJwsAlg,
 } from '../../../../src/crypto/pemPublicToCrypto.js';
-import { unwrapKey, wrapPrivateKey, wrapPublicKey } from './keys.js';
+import {
+  unwrapKey,
+  wrapMlKemPublicKey,
+  unwrapMlKemKey,
+  wrapPrivateKey,
+  wrapPublicKey,
+} from './keys.js';
+import { bytesEqual, readTlv } from './asn1.js';
+import { decodeMlKemSpkiDer, encodeMlKemSpkiDer, ML_KEM_OID_ARC_PREFIX } from './mlkem-asn1.js';
 import { rsaOaepSha1 } from './rsa.js';
 
 /**
@@ -51,9 +61,6 @@ export async function extractPublicKeyPem(
   throw new ConfigurationError('Input must be a PEM-encoded certificate or public key');
 }
 
-const SUPPORTED_EC_CURVES = ['P-256', 'P-384', 'P-521'] as const;
-type SupportedEcCurve = (typeof SUPPORTED_EC_CURVES)[number];
-
 /**
  * Decode base64url string and return byte length.
  * Uses the existing base64 decoder which handles both standard and URL-safe encoding.
@@ -65,16 +72,63 @@ function base64urlByteLength(base64url: string): number {
   return base64Decode(padded).byteLength;
 }
 
+// DER OID *content* bytes (tag/length stripped), as returned by readTlv. These are
+// the byte twins of the hex OID constants in pemPublicToCrypto.ts.
+const RSA_OID = Uint8Array.of(0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01); // 1.2.840.113549.1.1.1
+const EC_OID = Uint8Array.of(0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01); // 1.2.840.10045.2.1 (id-ecPublicKey)
+const P256_OID = Uint8Array.of(0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07); // 1.2.840.10045.3.1.7
+const P384_OID = Uint8Array.of(0x2b, 0x81, 0x04, 0x00, 0x22); // 1.3.132.0.34
+const P521_OID = Uint8Array.of(0x2b, 0x81, 0x04, 0x00, 0x23); // 1.3.132.0.35
+
 /**
- * Extract EC curve from a public key by parsing ASN.1 OIDs.
- * Reuses the existing guessCurveName function that checks for curve OIDs.
+ * Read a SubjectPublicKeyInfo's algorithm OID (and, for EC, the following curve
+ * parameter OID) directly from its DER bytes:
+ *
+ *   SEQUENCE { AlgorithmIdentifier SEQUENCE { OID algorithm, ANY parameters }, BIT STRING key }
+ *
+ * Reading the OID from its exact structural position — rather than substring
+ * matching hex-encoded key bytes — avoids incidental and nibble-misaligned
+ * matches against key material.
  */
-function extractEcCurveFromPublicKey(keyData: ArrayBuffer): SupportedEcCurve {
-  // Convert to hex for OID parsing
-  const hexKey = hexEncode(keyData);
-  // Use existing OID parser (returns 'P-256', 'P-384', or 'P-521')
-  const curveName = guessCurveName(hexKey);
-  return curveName as SupportedEcCurve;
+function readSpkiAlgorithm(der: Uint8Array): { algorithmOid: Uint8Array; curveOid?: Uint8Array } {
+  // readTlv bounds each TLV against `der`, but not against its parent SEQUENCE.
+  // Validate containment at every level so malformed input cannot be classified
+  // as a supported key from its OIDs alone.
+  const spki = readTlv(der, 0);
+  if (spki.tag !== 0x30 || spki.next !== der.length) {
+    throw new ConfigurationError('Invalid SPKI: malformed outer SEQUENCE');
+  }
+
+  const algId = readTlv(der, spki.contentStart);
+  if (algId.tag !== 0x30 || algId.next > spki.contentEnd) {
+    throw new ConfigurationError('Invalid SPKI: malformed AlgorithmIdentifier');
+  }
+
+  const oid = readTlv(der, algId.contentStart);
+  if (oid.tag !== 0x06 || oid.next > algId.contentEnd) {
+    throw new ConfigurationError('Invalid SPKI: missing algorithm OID');
+  }
+  const algorithmOid = der.subarray(oid.contentStart, oid.contentEnd);
+
+  // AlgorithmIdentifier parameters follow the OID. For EC keys this is the named
+  // curve OID; for RSA it is NULL; for ML-KEM it is absent.
+  let curveOid: Uint8Array | undefined;
+  if (oid.next < algId.contentEnd) {
+    const param = readTlv(der, oid.next);
+    if (param.next > algId.contentEnd) {
+      throw new ConfigurationError('Invalid SPKI: AlgorithmIdentifier parameter exceeds bounds');
+    }
+    if (param.tag === 0x06) curveOid = der.subarray(param.contentStart, param.contentEnd);
+  }
+
+  // The subjectPublicKey BIT STRING must follow AlgorithmIdentifier and consume
+  // the remainder of the outer SEQUENCE exactly (no trailing bytes).
+  const subjectPublicKey = readTlv(der, algId.next);
+  if (subjectPublicKey.tag !== 0x03 || subjectPublicKey.next !== spki.contentEnd) {
+    throw new ConfigurationError('Invalid SPKI: missing or malformed subjectPublicKey');
+  }
+
+  return { algorithmOid, curveOid };
 }
 
 /**
@@ -113,11 +167,19 @@ export async function parsePublicKeyPem(pem: string): Promise<PublicKeyInfo> {
     throw new ConfigurationError('Input must be a PEM-encoded public key or certificate');
   }
 
-  const keyData = base64Decode(removePemFormatting(publicKeyPem));
+  const der = new Uint8Array(base64Decode(removePemFormatting(publicKeyPem)));
+  const { algorithmOid, curveOid } = readSpkiAlgorithm(der);
 
-  // Try RSA first - use JWK export to get modulus size
-  try {
-    const modulusBits = await extractRsaModulusBitLength(keyData);
+  // ML-KEM: WebCrypto has no support (as of 2026). Route by the id-alg-ml-kem arc,
+  // then let decodeMlKemSpkiDer validate structure/length and report the level.
+  if (algorithmOid.length === 9 && bytesEqual(algorithmOid.subarray(0, 8), ML_KEM_OID_ARC_PREFIX)) {
+    const { level } = decodeMlKemSpkiDer(der);
+    return { algorithm: `mlkem:${level}` as const, pem: publicKeyPem };
+  }
+
+  if (bytesEqual(algorithmOid, RSA_OID)) {
+    // Use JWK export to read the modulus size.
+    const modulusBits = await extractRsaModulusBitLength(der.buffer);
     let algorithm: PublicKeyInfo['algorithm'];
     if (modulusBits < MIN_ASYMMETRIC_KEY_SIZE_BITS) {
       throw new ConfigurationError(
@@ -131,25 +193,12 @@ export async function parsePublicKeyPem(pem: string): Promise<PublicKeyInfo> {
       throw new ConfigurationError(`Unsupported RSA key size: ${modulusBits} bits`);
     }
     return { algorithm, pem: publicKeyPem };
-  } catch (e) {
-    // If it's our own ConfigurationError, rethrow
-    if (e instanceof ConfigurationError) {
-      throw e;
-    }
-    // Not an RSA key, try EC next
   }
 
-  // Try EC - parse curve from OID
-  try {
-    const detectedCurve = extractEcCurveFromPublicKey(keyData);
-    const curveMap = {
-      'P-256': 'ec:secp256r1',
-      'P-384': 'ec:secp384r1',
-      'P-521': 'ec:secp521r1',
-    } as const;
-    return { algorithm: curveMap[detectedCurve], pem: publicKeyPem };
-  } catch {
-    // Not a valid EC key
+  if (bytesEqual(algorithmOid, EC_OID) && curveOid) {
+    if (bytesEqual(curveOid, P256_OID)) return { algorithm: 'ec:secp256r1', pem: publicKeyPem };
+    if (bytesEqual(curveOid, P384_OID)) return { algorithm: 'ec:secp384r1', pem: publicKeyPem };
+    if (bytesEqual(curveOid, P521_OID)) return { algorithm: 'ec:secp521r1', pem: publicKeyPem };
   }
 
   throw new ConfigurationError('Unable to determine public key algorithm - unsupported key type');
@@ -225,12 +274,31 @@ export async function publicKeyPemToJwk(publicKeyPem: string): Promise<JsonWebKe
 
 /**
  * Import a PEM public key as an opaque key.
+ *
+ * Accepts standard `-----BEGIN PUBLIC KEY-----` SPKI envelopes for RSA, EC, and
+ * ML-KEM (per draft-ietf-lamps-kyber-certificates, OIDs id-alg-ml-kem-{768,1024}).
+ * ML-KEM keys produced by `openssl pkey -pubout` round-trip without translation.
  */
 export async function importPublicKey(pem: string, options: KeyOptions): Promise<PublicKey> {
   const { usage = 'encrypt', extractable = true, algorithmHint } = options;
 
-  // Detect algorithm from PEM; also normalises certificates → plain SPKI PEM.
+  // Detect algorithm from PEM; also normalises certificates → plain SPKI PEM
+  // and identifies ML-KEM keys by OID.
   const keyInfo = await parsePublicKeyPem(pem);
+
+  // ML-KEM: import via SPKI codec. WebCrypto has no ML-KEM support, so we keep
+  // the key as an opaque `PublicKey` carrying the raw encapsulation key bytes.
+  if (isMlKemKeyAlgorithm(keyInfo.algorithm)) {
+    const der = new Uint8Array(base64Decode(removePemFormatting(keyInfo.pem)));
+    const { level, rawKey } = decodeMlKemSpkiDer(der);
+    if (algorithmHint && algorithmHint !== `mlkem:${level}`) {
+      throw new ConfigurationError(
+        `ML-KEM SPKI advertises mlkem:${level} but algorithmHint is ${algorithmHint}`
+      );
+    }
+    return wrapMlKemPublicKey(rawKey, level);
+  }
+
   const algorithm = algorithmHint || keyInfo.algorithm;
   // Use keyInfo.pem (normalised SPKI) not the original pem, which may be a certificate.
   // Passing raw X.509 DER bytes to crypto.subtle.importKey('spki') would throw DataError.
@@ -376,9 +444,21 @@ export async function importPrivateKey(pem: string, options: KeyOptions): Promis
 }
 
 /**
- * Export an opaque public key to PEM format.
+ * Export an opaque public key to PEM SPKI format.
+ *
+ * ML-KEM keys are wrapped in a SubjectPublicKeyInfo envelope using the NIST
+ * OIDs id-alg-ml-kem-{768,1024} (per draft-ietf-lamps-kyber-certificates),
+ * so the resulting PEM is byte-compatible with `openssl pkey -pubout`.
  */
 export async function exportPublicKeyPem(key: PublicKey): Promise<string> {
+  if (isMlKemKeyAlgorithm(key.algorithm)) {
+    const level = mlKemAlgorithmToLevel(key.algorithm);
+    const der = encodeMlKemSpkiDer(unwrapMlKemKey(key), level);
+    return formatAsPem(
+      der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength),
+      'PUBLIC KEY'
+    );
+  }
   const cryptoKey = unwrapKey(key);
   const keyBuffer = await crypto.subtle.exportKey('spki', cryptoKey);
   return formatAsPem(keyBuffer, 'PUBLIC KEY');

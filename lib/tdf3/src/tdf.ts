@@ -40,7 +40,9 @@ import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
 import {
   type CryptoService,
   type DecryptResult,
+  isMlKemKeyAlgorithm,
   type KeyPair,
+  mlKemAlgorithmToLevel,
   type SymmetricKey,
 } from './crypto/declarations.js';
 import { Algorithms } from './ciphers/index.js';
@@ -48,6 +50,8 @@ import {
   ECWrapped,
   KeyAccessType,
   KeyInfo,
+  MLKEM_CT_SIZES,
+  MlKemWrapped,
   Manifest,
   Policy,
   SplitKey,
@@ -60,6 +64,7 @@ import { unsigned } from './utils/buffer-crc32.js';
 import { ZipReader, ZipWriter, concatUint8, buffToString } from './utils/index.js';
 import { CentralDirectory } from './utils/zip-reader.js';
 import { getZtdfSalt } from './crypto/salt.js';
+import { decodeKemEnvelopeDer } from './crypto/core/mlkem-asn1.js';
 import { Payload } from './models/payload.js';
 import {
   getRequiredObligationFQNs,
@@ -283,6 +288,18 @@ export async function buildKeyAccess({
       return new Wrapped(url, kid, pubKey, metadata, cryptoService, sid);
     case 'ec-wrapped':
       return new ECWrapped(url, kid, pubKey, metadata, cryptoService, sid);
+    case 'mlkem-wrapped':
+      if (!isMlKemKeyAlgorithm(alg)) {
+        throw new ConfigurationError(
+          `buildKeyAccess: algorithm [${alg}] is not valid for mlkem-wrapped`
+        );
+      }
+      if (!kid?.trim()) {
+        throw new ConfigurationError(
+          `buildKeyAccess: kid is required for ML-KEM algorithm [${alg}]`
+        );
+      }
+      return new MlKemWrapped(url, kid, pubKey, metadata, cryptoService, sid, alg);
     default:
       throw new ConfigurationError(`buildKeyAccess: Key access type [${type}] is unsupported`);
   }
@@ -721,8 +738,8 @@ export function splitLookupTableFactory(
     );
   }
   // Each split id maps to the list of KAOs that can unwrap it (in a disjunction,
-  // any one succeeding unwraps the split). Note: a KAS may appear several times
-  // for the same split, possibly using different keys to encrypt the same split value.
+  // any one succeeding unwraps the split). A KAS may appear several times for
+  // the same split, possibly using different keys during rotation.
   const splitPotentials: Record<string, KeyAccessObject[]> = Object.fromEntries(
     [...splitIds].map((s) => [s, []])
   );
@@ -776,6 +793,14 @@ async function unwrapKey({
     } else if (wrappingKeyAlgorithm === 'rsa:2048' || !wrappingKeyAlgorithm) {
       // generateKeyPair() returns opaque keys
       ephemeralEncryptionKeys = await cryptoService.generateKeyPair();
+    } else if (isMlKemKeyAlgorithm(wrappingKeyAlgorithm)) {
+      if (!cryptoService.generateMlKemKeyPair) {
+        throw new ConfigurationError(
+          'CryptoService does not support ML-KEM (generateMlKemKeyPair)'
+        );
+      }
+      const level = mlKemAlgorithmToLevel(wrappingKeyAlgorithm);
+      ephemeralEncryptionKeys = await cryptoService.generateMlKemKeyPair(level);
     } else {
       throw new ConfigurationError(`Unsupported wrapping key algorithm [${wrappingKeyAlgorithm}]`);
     }
@@ -889,6 +914,54 @@ async function unwrapKey({
             requiredObligations,
           };
         }
+
+        if (wrappingKeyAlgorithm && isMlKemKeyAlgorithm(wrappingKeyAlgorithm)) {
+          // The KAS rewrap response uses the platform's canonical ML-KEM
+          // "direct key wrap" container:
+          //   DER( kemEnvelope { [0] kemCiphertext, [1] encryptedDek } )
+          // where encryptedDek = nonce(12) || aes_ct || tag(16) and the AES-256
+          // key is the raw ML-KEM shared secret (no HKDF).
+          const level = mlKemAlgorithmToLevel(wrappingKeyAlgorithm);
+          const { kemCiphertext, encryptedDek } = decodeKemEnvelopeDer(entityWrappedKey);
+          const expectedCtLen = MLKEM_CT_SIZES[level];
+          if (kemCiphertext.length !== expectedCtLen) {
+            throw new DecryptError(
+              `malformed ML-KEM wrapped key for ${wrappingKeyAlgorithm}: KEM ciphertext is ${kemCiphertext.length} bytes, expected ${expectedCtLen}`
+            );
+          }
+          // encryptedDek must hold at least a 12B nonce and a 16B GCM tag.
+          if (encryptedDek.length < 12 + 16) {
+            throw new DecryptError(
+              `malformed ML-KEM wrapped key for ${wrappingKeyAlgorithm}: encrypted DEK is only ${encryptedDek.length} bytes`
+            );
+          }
+          const iv = encryptedDek.slice(0, 12);
+          const wrappedKey = encryptedDek.slice(12);
+
+          if (!cryptoService.mlKemDecapsulate) {
+            throw new ConfigurationError(
+              'CryptoService does not support ML-KEM (mlKemDecapsulate)'
+            );
+          }
+          const sharedSecret = await cryptoService.mlKemDecapsulate(
+            ephemeralEncryptionKeys.privateKey,
+            kemCiphertext
+          );
+
+          const decryptResult = await cryptoService.decrypt(
+            Binary.fromArrayBuffer(wrappedKey.buffer),
+            sharedSecret,
+            Binary.fromArrayBuffer(iv.buffer),
+            Algorithms.AES_256_GCM
+          );
+
+          return {
+            key: new Uint8Array(decryptResult.payload.asArrayBuffer()),
+            metadata,
+            requiredObligations,
+          };
+        }
+
         const key = Binary.fromArrayBuffer(entityWrappedKey);
         const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(
           key,
@@ -931,9 +1004,6 @@ async function unwrapKey({
     }
     const anyPromises: Record<string, () => Promise<RewrapResponseData>> = {};
     potentials.forEach((keySplitInfo, i) => {
-      // Key by url+kid+index so multiple KAOs on the same KAS stay distinct
-      // alternatives within the split's disjunction (anyPool tries each until
-      // one succeeds).
       const alternativeKey = `${keySplitInfo.url}#${keySplitInfo.kid ?? ''}#${i}`;
       anyPromises[alternativeKey] = async () => {
         try {
