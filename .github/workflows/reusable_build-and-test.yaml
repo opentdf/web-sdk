@@ -313,7 +313,10 @@ jobs:
           go env GOWORK
       - run: docker compose up -d --wait --wait-timeout 240
       - env:
-          PLAYWRIGHT_TESTS_TO_RUN: roundtrip
+          # dpop-headers asserts the browser actually emits DPoP proofs and
+          # retries around a Keycloak nonce challenge; it only has a platform to
+          # talk to in this job, so it must be named here or it never runs.
+          PLAYWRIGHT_TESTS_TO_RUN: roundtrip dpop-headers
         run: |-
           ./wait-and-test.sh platform
       - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f #v7.0.0
