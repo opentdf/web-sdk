@@ -3,6 +3,7 @@ import type { KasPublicKeyAlgorithm, KasPublicKeyInfo } from '../access.js';
 import { isPublicKeyAlgorithm, OriginAllowList } from '../access.js';
 
 import { type AuthConfig, resolveInterceptors } from '../auth/interceptors.js';
+import { isAuthProvider } from '../auth/auth.js';
 import {
   ConfigurationError,
   InvalidFileError,
@@ -36,7 +37,14 @@ export async function fetchWrappedKey(
   rewrapAdditionalContextHeader?: string
 ): Promise<RewrapResponse> {
   const platformUrl = getPlatformUrlFromKasEndpoint(url);
-  const platform = new PlatformClient({ interceptors: resolveInterceptors(auth), platformUrl });
+  // Share the provider's per-client nonce cache so the transport's nonce capture
+  // and the auth interceptor's retry read the same instance (RFC 9449 §9).
+  const nonceCache = isAuthProvider(auth) ? auth.nonceCache : undefined;
+  const platform = new PlatformClient({
+    interceptors: resolveInterceptors(auth),
+    platformUrl,
+    nonceCache,
+  });
   const options: CallOptions = {};
   if (rewrapAdditionalContextHeader) {
     options.headers = {
@@ -123,7 +131,13 @@ export async function fetchKeyAccessServers(
 ): Promise<OriginAllowList> {
   let nextOffset = 0;
   const allServers = [];
-  const platform = new PlatformClient({ interceptors: resolveInterceptors(auth), platformUrl });
+  // Share the provider's per-client nonce cache (see fetchWrappedKey above).
+  const nonceCache = isAuthProvider(auth) ? auth.nonceCache : undefined;
+  const platform = new PlatformClient({
+    interceptors: resolveInterceptors(auth),
+    platformUrl,
+    nonceCache,
+  });
 
   do {
     let response: ListKeyAccessServersResponse;
