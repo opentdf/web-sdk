@@ -18,7 +18,14 @@ import type { Scope } from '../../tdf3/src/client/builders.js';
 import { loadTDFStream } from '../../tdf3/src/tdf.js';
 import { concatUint8 } from '../../tdf3/src/utils/index.js';
 import { type Chunker, fromBuffer } from '../../src/seekable.js';
-import { ConfigurationError, InvalidFileError, NetworkError } from '../../src/errors.js';
+import {
+  ConfigurationError,
+  InvalidFileError,
+  NetworkError,
+  PermissionDeniedError,
+  ServiceError,
+  UnauthenticatedError,
+} from '../../src/errors.js';
 import { packTdf, unpackTdf, type TdfParts } from './helpers/tdf-archive.js';
 
 const Mocks = getMocks();
@@ -125,7 +132,8 @@ describe('rewrap error cases', function () {
       });
       assert.fail('Expected Error');
     } catch (error) {
-      assert.instanceOf(error, NetworkError);
+      // The RPC auth error must surface, not the REST fallback's 404 (DSPX-3397).
+      assert.instanceOf(error, UnauthenticatedError);
     }
   });
 
@@ -150,7 +158,7 @@ describe('rewrap error cases', function () {
       });
       assert.fail('Expected Error');
     } catch (error) {
-      assert.instanceOf(error, NetworkError);
+      assert.instanceOf(error, PermissionDeniedError);
     }
   });
 
@@ -180,7 +188,9 @@ describe('rewrap error cases', function () {
       });
       assert.fail('Expected Error');
     } catch (error) {
-      assert.instanceOf(error, NetworkError);
+      // A raw HTTP 400 (no Connect error body) maps to Connect Internal -> ServiceError,
+      // not InvalidFileError; only a Connect invalid_argument is a definitive 400.
+      assert.instanceOf(error, ServiceError);
     }
   });
 
@@ -205,7 +215,7 @@ describe('rewrap error cases', function () {
       });
       assert.fail('Expected ServiceError');
     } catch (error) {
-      assert.instanceOf(error, NetworkError);
+      assert.instanceOf(error, ServiceError);
     }
   });
 
@@ -261,10 +271,12 @@ describe('rewrap error cases', function () {
           location: encryptedStream.stream,
         },
       });
-      assert.fail('Expected InvalidFileError');
+      assert.fail('Expected ServiceError');
     } catch (error) {
-      assert.instanceOf(error, NetworkError);
-      assert.include(error.message, '404 Not Found');
+      // Raw HTTP 400 -> Connect Internal -> ServiceError. The REST fallback is
+      // tried and 404s; the RPC error, not the REST 404, is reported.
+      assert.instanceOf(error, ServiceError);
+      assert.notInclude(error.message, '404 Not Found');
     }
   });
 });
