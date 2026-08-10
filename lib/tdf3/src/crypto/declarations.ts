@@ -191,6 +191,27 @@ export type ECCurve = 'P-256' | 'P-384' | 'P-521';
 export type AsymmetricSigningAlgorithm = 'RS256' | 'ES256' | 'ES384' | 'ES512';
 
 /**
+ * Runtime list of {@link AsymmetricSigningAlgorithm} values, kept in sync with
+ * the type above. Used to validate untyped/JWS-header algorithm strings.
+ */
+export const ASYMMETRIC_SIGNING_ALGORITHMS: readonly AsymmetricSigningAlgorithm[] = [
+  'RS256',
+  'ES256',
+  'ES384',
+  'ES512',
+];
+
+/**
+ * Type guard narrowing an arbitrary string to an algorithm CryptoService can
+ * actually sign/verify with. The JWS `alg` space is wider (e.g. forward-looking
+ * PS256/EdDSA identifiers) than this runtime-supported subset; those must be
+ * rejected, not cast.
+ */
+export function isAsymmetricSigningAlgorithm(alg: string): alg is AsymmetricSigningAlgorithm {
+  return (ASYMMETRIC_SIGNING_ALGORITHMS as readonly string[]).includes(alg);
+}
+
+/**
  * Symmetric signing algorithm (requires raw key bytes).
  */
 export type SymmetricSigningAlgorithm = 'HS256';
