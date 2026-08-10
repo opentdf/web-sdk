@@ -1,5 +1,5 @@
 import {
-  type AsymmetricSigningAlgorithm,
+  isAsymmetricSigningAlgorithm,
   type CryptoService,
   type PrivateKey,
   type PublicKey,
@@ -134,11 +134,12 @@ export async function signJwt(
     if (key._brand !== 'PrivateKey') {
       throw new Error(`${header.alg} requires a PrivateKey`);
     }
-    signature = await cryptoService.sign(
-      signingInputBytes,
-      key,
-      header.alg as AsymmetricSigningAlgorithm
-    );
+    if (!isAsymmetricSigningAlgorithm(header.alg)) {
+      throw new Error(`Unsupported JWS signing algorithm: ${header.alg}`);
+    }
+    // CryptoService.sign returns exactly what the JWS wire wants: raw IEEE
+    // P1363 (R || S) for ECDSA per RFC 7518 §3.4, and PKCS#1 for RSA.
+    signature = await cryptoService.sign(signingInputBytes, key, header.alg);
   }
 
   // Return compact JWT
@@ -232,12 +233,12 @@ export async function verifyJwt(
       typeof key === 'string'
         ? await cryptoService.importPublicKey(key, { usage: 'sign' })
         : (key as PublicKey);
-    valid = await cryptoService.verify(
-      signingInputBytes,
-      signature,
-      publicKey,
-      header.alg as AsymmetricSigningAlgorithm
-    );
+    if (!isAsymmetricSigningAlgorithm(header.alg)) {
+      throw new joseErrors.JWTInvalid(`Invalid JWT: unsupported algorithm "${header.alg}"`);
+    }
+    // The signature comes off the wire in the encoding CryptoService.verify
+    // expects: raw IEEE P1363 for ECDSA (RFC 7518 §3.4), PKCS#1 for RSA.
+    valid = await cryptoService.verify(signingInputBytes, signature, publicKey, header.alg);
   }
 
   if (!valid) {

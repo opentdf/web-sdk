@@ -111,7 +111,8 @@ async function sign(
   try {
     token = await signJwt(cryptoService, payload, signingMaterial, header);
   } catch (error) {
-    throw new ConfigurationError(`Signing assertion failed: ${error.message}`, error);
+    const msg = error instanceof Error ? error.message : String(error);
+    throw new ConfigurationError(`Signing assertion failed: ${msg}`, error);
   }
   thiz.binding.method = 'jws';
   thiz.binding.signature = token;
@@ -185,7 +186,8 @@ export async function verify(
     });
     payload = result.payload as AssertionPayload;
   } catch (error) {
-    throw new InvalidFileError(`Verifying assertion failed: ${error.message}`, error);
+    const msg = error instanceof Error ? error.message : String(error);
+    throw new InvalidFileError(`Verifying assertion failed: ${msg}`, error);
   }
   const { assertionHash, assertionSig } = payload;
 
