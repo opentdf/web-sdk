@@ -4,7 +4,13 @@ import * as jose from 'jose';
 import { reqSignature } from '../../src/auth/auth.js';
 import { signJwt, verifyJwt } from '../../tdf3/src/crypto/jwt.js';
 import { DefaultCryptoService } from '../../tdf3/src/crypto/index.js';
-import { CURVES, ecdsaKeyPair, rsaKeyPair } from './helpers/jws-keys.js';
+import {
+  CURVES,
+  decodeBase64url,
+  ecdsaKeyPair,
+  encodeBase64url,
+  rsaKeyPair,
+} from './helpers/jws-keys.js';
 
 /**
  * RFC 7518 §3.4 conformance for `signJwt`/`reqSignature` (the KAS rewrap request
@@ -80,5 +86,28 @@ describe('reqSignature / signJwt — JWS conformance vs jose.jwtVerify (RFC 7518
       algorithms: ['RS256'],
     });
     expect(payload.sub).to.equal('test');
+  });
+
+  it('verifyJwt rejects a truncated ES256 signature', async () => {
+    const { sdk } = await ecdsaKeyPair('P-256');
+    const token = await signJwt(DefaultCryptoService, { sub: 'test' }, sdk.privateKey, {
+      alg: 'ES256',
+    });
+    const [header, payload, signature] = token.split('.');
+    const truncated = encodeBase64url(decodeBase64url(signature).subarray(1));
+
+    let caught: unknown;
+    try {
+      await verifyJwt(DefaultCryptoService, `${header}.${payload}.${truncated}`, sdk.publicKey, {
+        algorithms: ['ES256'],
+      });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).to.be.instanceOf(Error);
+    expect((caught as Error).message).to.include(
+      'Invalid IEEE P1363 signature: expected 64 bytes for ES256, got 63'
+    );
   });
 });

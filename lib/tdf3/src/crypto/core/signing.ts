@@ -39,8 +39,29 @@ function getSigningAlgorithmParams(algorithm: AsymmetricSigningAlgorithm): {
   }
 }
 
+/** Fixed-width byte length of each ECDSA signature component (R or S). */
+function getEcdsaComponentLength(algorithm: AsymmetricSigningAlgorithm): number {
+  switch (algorithm) {
+    case 'ES256':
+      return 32;
+    case 'ES384':
+      return 48;
+    case 'ES512':
+      return 66;
+    default:
+      throw new ConfigurationError(`Unsupported algorithm for ECDSA conversion: ${algorithm}`);
+  }
+}
+
+/** Drop leading zero bytes, keeping at least one so the value stays non-empty. */
+function trimLeadingZeros(arr: Uint8Array): Uint8Array {
+  let i = 0;
+  while (i < arr.length - 1 && arr[i] === 0) i++;
+  return arr.slice(i);
+}
+
 /**
- * Convert IEEE P1363 signature format (used by WebCrypto ECDSA) to DER format (used by JWT).
+ * Convert IEEE P1363 signature format (used by WebCrypto ECDSA) to DER format.
  * RS256 signatures don't need conversion.
  */
 export function ieeeP1363ToDer(
@@ -51,18 +72,19 @@ export function ieeeP1363ToDer(
     return signature;
   }
 
+  const componentLen = getEcdsaComponentLength(algorithm);
+  const expectedLength = componentLen * 2;
+  if (signature.length !== expectedLength) {
+    throw new ConfigurationError(
+      `Invalid IEEE P1363 signature: expected ${expectedLength} bytes for ${algorithm}, got ${signature.length}`
+    );
+  }
+
   // IEEE P1363: r || s where each is padded to key size
-  const halfLen = signature.length / 2;
-  const r = signature.slice(0, halfLen);
-  const s = signature.slice(halfLen);
+  const r = signature.slice(0, componentLen);
+  const s = signature.slice(componentLen);
 
   // Remove leading zeros but keep one if the high bit is set
-  const trimLeadingZeros = (arr: Uint8Array): Uint8Array => {
-    let i = 0;
-    while (i < arr.length - 1 && arr[i] === 0) i++;
-    return arr.slice(i);
-  };
-
   let rTrimmed = trimLeadingZeros(r);
   let sTrimmed = trimLeadingZeros(s);
 
@@ -97,12 +119,12 @@ export function ieeeP1363ToDer(
 }
 
 /**
- * Convert DER signature format (used by JWT) to IEEE P1363 format (used by WebCrypto ECDSA).
- * RS256 signatures don't need conversion.
+ * Convert DER-encoded ECDSA signature to raw IEEE P1363 (R||S) format.
+ * RS256 signatures pass through unchanged.
  *
  * Exported because callers that emit JWS (e.g. DPoP proofs in lib/src/auth/dpop.ts)
- * must produce raw R||S per RFC 7518 section 3.4, while cryptoService.sign()
- * currently returns DER. See DSPX-3634 for the broader cleanup.
+ * must produce raw R||S per RFC 7518 §3.4, while cryptoService.sign() currently
+ * returns DER. See DSPX-3634 for the broader cleanup.
  */
 export function derToIeeeP1363(
   signature: Uint8Array,
@@ -112,20 +134,14 @@ export function derToIeeeP1363(
     return signature;
   }
 
-  // Determine the expected component length based on algorithm
-  let componentLen: number;
-  switch (algorithm) {
-    case 'ES256':
-      componentLen = 32;
-      break;
-    case 'ES384':
-      componentLen = 48;
-      break;
-    case 'ES512':
-      componentLen = 66;
-      break;
-    default:
-      throw new ConfigurationError(`Unsupported algorithm for DER conversion: ${algorithm}`);
+  const componentLen = getEcdsaComponentLength(algorithm);
+
+  // Smallest well-formed ECDSA DER SEQUENCE is 8 bytes:
+  //   0x30 seqLen 0x02 rLen r(>=1) 0x02 sLen s(>=1)
+  // Anything shorter cannot be parsed; reject before indexing so a malformed
+  // input throws a clean ConfigurationError rather than coercing undefined.
+  if (signature.length < 8) {
+    throw new ConfigurationError('Invalid DER signature: too short');
   }
 
   if (signature[0] !== 0x30) {
@@ -141,40 +157,46 @@ export function derToIeeeP1363(
       throw new ConfigurationError('Invalid DER signature: invalid long-form length');
     }
     offset += 1 + lenBytesCount;
-    if (offset > signature.length) {
-      throw new ConfigurationError('Invalid DER signature: length bytes exceed signature length');
-    }
   } else {
     // Short-form: single length byte.
     offset += 1;
   }
 
-  // Parse r INTEGER
-  if (signature[offset] !== 0x02) {
-    throw new ConfigurationError('Invalid DER signature: expected INTEGER for r');
-  }
-  const rLen = signature[offset + 1];
-  offset += 2;
-  let r = signature.slice(offset, offset + rLen);
-  offset += rLen;
+  // Parse a DER INTEGER at `offset`, advancing past it. Every read is
+  // bounds-checked so a truncated or over-long length field throws a clean
+  // ConfigurationError instead of silently slicing a short/empty component.
+  const readInteger = (label: 'r' | 's'): Uint8Array => {
+    if (offset + 1 >= signature.length) {
+      throw new ConfigurationError(`Invalid DER signature: truncated before ${label} INTEGER`);
+    }
+    if (signature[offset] !== 0x02) {
+      throw new ConfigurationError(`Invalid DER signature: expected INTEGER for ${label}`);
+    }
+    const len = signature[offset + 1];
+    const start = offset + 2;
+    const end = start + len;
+    if (len === 0 || end > signature.length) {
+      throw new ConfigurationError(`Invalid DER signature: ${label} INTEGER length out of range`);
+    }
+    offset = end;
+    return signature.slice(start, end);
+  };
 
-  // Parse s INTEGER
-  if (signature[offset] !== 0x02) {
-    throw new ConfigurationError('Invalid DER signature: expected INTEGER for s');
-  }
-  const sLen = signature[offset + 1];
-  offset += 2;
-  let s = signature.slice(offset, offset + sLen);
+  let r = readInteger('r');
+  let s = readInteger('s');
 
-  // Remove leading zero padding if present
-  if (r[0] === 0 && r.length > componentLen) {
-    r = r.slice(1);
-  }
-  if (s[0] === 0 && s.length > componentLen) {
-    s = s.slice(1);
+  // Strip DER's leading zero padding (INTEGERs are zero-prefixed to stay positive).
+  r = trimLeadingZeros(r);
+  s = trimLeadingZeros(s);
+
+  // After stripping, each component must fit its fixed-width slot; a larger value
+  // means the signature does not belong to this curve (and would otherwise produce
+  // a negative offset in result.set below).
+  if (r.length > componentLen || s.length > componentLen) {
+    throw new ConfigurationError('Invalid DER signature: component larger than expected for curve');
   }
 
-  // Pad to component length
+  // Pad to component length (right-aligned): result = r_padded || s_padded.
   const result = new Uint8Array(componentLen * 2);
   result.set(r, componentLen - r.length);
   result.set(s, componentLen * 2 - s.length);
