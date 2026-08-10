@@ -1,5 +1,6 @@
 import { expect } from '@esm-bundle/chai';
-import { type Interceptor } from '@connectrpc/connect';
+import { Code, ConnectError } from '@connectrpc/connect';
+import type { Interceptor } from '@connectrpc/connect';
 import type { AuthProvider, HttpRequest } from '../../src/auth/auth.js';
 import { withHeaders } from '../../src/auth/auth.js';
 import {
@@ -10,6 +11,7 @@ import {
   resolveAuthConfig,
   isInterceptorConfig,
 } from '../../src/auth/interceptors.js';
+import { DPoPNonceCache } from '../../src/auth/dpop-nonce.js';
 
 // --- helpers ---
 
@@ -62,7 +64,7 @@ describe('authTokenDPoPInterceptor', () => {
 
     const headers = await captureHeaders(interceptor);
 
-    expect(headers.get('Authorization')).to.equal('Bearer dpop-token');
+    expect(headers.get('Authorization')).to.equal('DPoP dpop-token');
     expect(headers.get('DPoP')).to.be.a('string');
     const dpopHeader = headers.get('DPoP');
     const publicKeyHeader = headers.get('X-VirtruPubKey');
@@ -155,6 +157,111 @@ describe('authProviderInterceptor', () => {
 
     expect(headers.get('Authorization')).to.equal('Bearer provider-token');
     expect(headers.get('X-Custom')).to.equal('custom-value');
+  });
+
+  it('passes the full request URL to withCreds (not just the path)', async () => {
+    // Regression: a DPoP-enabled provider computes the proof `htu` and nonce
+    // origin via `new URL(req.url)`, which throws on a bare path. The
+    // interceptor must hand withCreds the absolute URL.
+    let seenUrl: string | undefined;
+    const mockAuthProvider: AuthProvider = {
+      updateClientPublicKey: async () => {},
+      withCreds: (req: HttpRequest) => {
+        seenUrl = req.url;
+        // Mimic a DPoP provider that parses the URL; a bare path throws here.
+        new URL(req.url);
+        return Promise.resolve(withHeaders(req, { Authorization: 'DPoP token' }));
+      },
+    };
+
+    const interceptor = authProviderInterceptor(mockAuthProvider);
+    await captureHeaders(interceptor, 'https://platform.example.com/policy.attributes/Get');
+
+    expect(seenUrl).to.equal('https://platform.example.com/policy.attributes/Get');
+  });
+
+  it('retries once with the server-issued DPoP-Nonce on an Unauthenticated challenge', async () => {
+    const origin = 'https://platform.example.com';
+    const url = `${origin}/policy.kasregistry/ListKeyAccessServers`;
+    const nonceCache = new DPoPNonceCache();
+
+    // Provider records the nonce it sees so we can assert the retry carried it.
+    const seenNonces: (string | undefined)[] = [];
+    const mockAuthProvider: AuthProvider = {
+      updateClientPublicKey: async () => {},
+      nonceCache,
+      withCreds: (req: HttpRequest) => {
+        seenNonces.push(nonceCache.get(new URL(req.url).origin));
+        return Promise.resolve(withHeaders(req, { Authorization: 'DPoP token' }));
+      },
+    };
+
+    let attempts = 0;
+    const mockNext = () => {
+      attempts++;
+      if (attempts === 1) {
+        // First attempt: server issues a nonce challenge.
+        throw new ConnectError('unauthenticated', Code.Unauthenticated, {
+          'dpop-nonce': 'server-nonce-xyz',
+        });
+      }
+      return Promise.resolve({ header: new Headers(), message: {} } as Awaited<
+        ReturnType<ReturnType<Interceptor>>
+      >);
+    };
+
+    const interceptor = authProviderInterceptor(mockAuthProvider);
+    const mockReq = { header: new Headers(), url } as Parameters<ReturnType<Interceptor>>[0];
+    await interceptor(mockNext)(mockReq);
+
+    expect(attempts).to.equal(2);
+    expect(seenNonces).to.deep.equal([undefined, 'server-nonce-xyz']);
+    expect(nonceCache.get(origin)).to.equal('server-nonce-xyz');
+  });
+
+  it('gives up and rethrows the original error when the challenge carries no new nonce', async () => {
+    const origin = 'https://platform.example.com';
+    const url = `${origin}/policy.kasregistry/ListKeyAccessServers`;
+    const nonceCache = new DPoPNonceCache();
+
+    const mockAuthProvider: AuthProvider = {
+      updateClientPublicKey: async () => {},
+      nonceCache,
+      withCreds: (req: HttpRequest) =>
+        Promise.resolve(withHeaders(req, { Authorization: 'DPoP token' })),
+    };
+
+    // Unauthenticated, but the server supplied no DPoP-Nonce and the cache is
+    // empty, so there is nothing to retry with: the original error must
+    // propagate unchanged rather than be swallowed or retried in a loop.
+    const thrown = new ConnectError('unauthenticated', Code.Unauthenticated);
+    let attempts = 0;
+    const mockNext = (): Promise<never> => {
+      attempts++;
+      throw thrown;
+    };
+
+    const warnings: string[] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.map(String).join(' '));
+    };
+
+    let caught: unknown;
+    try {
+      const interceptor = authProviderInterceptor(mockAuthProvider);
+      const mockReq = { header: new Headers(), url } as Parameters<ReturnType<Interceptor>>[0];
+      await interceptor(mockNext)(mockReq);
+    } catch (e) {
+      caught = e;
+    } finally {
+      console.warn = originalWarn;
+    }
+
+    expect(caught).to.equal(thrown); // same error instance, not masked
+    expect(attempts).to.equal(1); // no retry, no loop
+    expect(warnings).to.have.length(1);
+    expect(warnings[0]).to.include('nonce retry skipped');
   });
 
   it('wraps updateClientPublicKey errors with helpful message', async () => {
