@@ -29,6 +29,8 @@ export class OIDCRefreshTokenProvider implements AuthProvider {
       oidcOrigin,
       oidcTokenEndpoint,
       oidcUserInfoEndpoint,
+      dpopEnabled,
+      signingKey,
     }: Partial<RefreshTokenCredentials> & Omit<RefreshTokenCredentials, 'exchange'>,
     cryptoService: CryptoService = defaultCryptoService
   ) {
@@ -44,6 +46,8 @@ export class OIDCRefreshTokenProvider implements AuthProvider {
         oidcOrigin,
         oidcTokenEndpoint,
         oidcUserInfoEndpoint,
+        dpopEnabled,
+        signingKey,
       },
       cryptoService
     );
