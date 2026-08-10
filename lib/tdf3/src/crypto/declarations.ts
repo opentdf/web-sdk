@@ -186,9 +186,33 @@ export type SymmetricKey = {
 export type ECCurve = 'P-256' | 'P-384' | 'P-521';
 
 /**
+ * ECDSA signing algorithms. Signatures for these are raw IEEE P1363 (`R || S`)
+ * everywhere in this SDK, per RFC 7518 §3.4; see `crypto/core/signing.ts`.
+ */
+export const EC_SIGNING_ALGORITHMS = ['ES256', 'ES384', 'ES512'] as const;
+
+export type EcSigningAlgorithm = (typeof EC_SIGNING_ALGORITHMS)[number];
+
+/**
+ * Runtime list of asymmetric signing algorithms. Used to validate
+ * untyped/JWS-header algorithm strings.
+ */
+export const ASYMMETRIC_SIGNING_ALGORITHMS = ['RS256', ...EC_SIGNING_ALGORITHMS] as const;
+
+/**
  * Asymmetric signing algorithms (require PEM keys).
  */
-export type AsymmetricSigningAlgorithm = 'RS256' | 'ES256' | 'ES384' | 'ES512';
+export type AsymmetricSigningAlgorithm = (typeof ASYMMETRIC_SIGNING_ALGORITHMS)[number];
+
+/**
+ * Type guard narrowing an arbitrary string to an algorithm CryptoService can
+ * actually sign/verify with. The JWS `alg` space is wider (e.g. forward-looking
+ * PS256/EdDSA identifiers) than this runtime-supported subset; those must be
+ * rejected, not cast.
+ */
+export function isAsymmetricSigningAlgorithm(alg: string): alg is AsymmetricSigningAlgorithm {
+  return (ASYMMETRIC_SIGNING_ALGORITHMS as readonly string[]).includes(alg);
+}
 
 /**
  * Symmetric signing algorithm (requires raw key bytes).
@@ -287,6 +311,14 @@ export type CryptoService = {
 
   /**
    * Sign data with an asymmetric private key.
+   *
+   * ECDSA signature encoding: implementations MUST return raw IEEE P1363
+   * (`R || S`), fixed-width per curve — 64 bytes for ES256, 96 for ES384, 132
+   * for ES512. This is what WebCrypto emits and what RFC 7518 §3.4 requires on
+   * the JWS wire; the SDK writes the bytes through unchanged. An implementation
+   * returning ASN.1 DER will produce tokens that conformant verifiers reject.
+   * RSA signatures have a single encoding.
+   *
    * @param data - Data to sign
    * @param privateKey - Opaque private key
    * @param algorithm - Signing algorithm (RS256, ES256, ES384, ES512)
@@ -299,6 +331,11 @@ export type CryptoService = {
 
   /**
    * Verify signature with an asymmetric public key.
+   *
+   * ECDSA signature encoding: the SDK passes raw IEEE P1363 (`R || S`) — the
+   * same encoding {@link CryptoService.sign} produces, taken straight off the
+   * JWS wire. A wrong-length signature should fail verification, not throw.
+   *
    * @param data - Original data that was signed
    * @param signature - Signature to verify
    * @param publicKey - Opaque public key

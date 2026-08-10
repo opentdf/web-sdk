@@ -8,6 +8,7 @@ import { hex, base64 } from '../../../src/encodings/index.js';
 import { signJwt } from '../../../tdf3/src/crypto/jwt.js';
 import type { CryptoService } from '../../../tdf3/src/crypto/declarations.js';
 import { wrapPrivateKey, wrapPublicKey } from '../../../tdf3/src/crypto/core/keys.js';
+import { decodeBase64url } from '../helpers/jws-keys.js';
 
 describe('assertions', () => {
   const cryptoService: CryptoService = DefaultCryptoService;
@@ -121,6 +122,54 @@ describe('assertions', () => {
       };
 
       await assertions.verify(assertion, aggregateHash, dummyKey, isLegacyTDF, cryptoService);
+    });
+
+    it('persists ES256 bindings as raw IEEE P1363, the only encoding on the wire', async () => {
+      // binding.signature is the one signature this SDK writes to durable
+      // storage — it lands in the manifest and is read back by other SDKs. RFC
+      // 7518 §3.4 requires raw R || S (64 bytes for P-256); ASN.1 DER is 69-72
+      // bytes and is rejected on length by conformant verifiers. Pin the width
+      // so no encoding change can slip into the file format unnoticed.
+      const webCryptoKeyPair = await crypto.subtle.generateKey(
+        { name: 'ECDSA', namedCurve: 'P-256' },
+        true,
+        ['sign', 'verify']
+      );
+      const signingKey: assertions.AssertionKey = {
+        alg: 'ES256',
+        key: wrapPrivateKey(webCryptoKeyPair.privateKey, 'ec:secp256r1'),
+      };
+
+      const assertion = await assertions.CreateAssertion(
+        aggregateHash,
+        {
+          id: 'raw-p1363-binding',
+          type: 'handling',
+          scope: 'tdo',
+          appliesToState: 'unencrypted',
+          statement: {
+            format: 'json',
+            schema: 'test-schema',
+            value: '{"foo":"bar"}',
+          },
+          signingKey,
+        },
+        cryptoService
+      );
+
+      const [, , signatureB64url] = assertion.binding.signature.split('.');
+      expect(decodeBase64url(signatureB64url).length).to.equal(64);
+
+      await assertions.verify(
+        assertion,
+        aggregateHash,
+        {
+          alg: 'ES256',
+          key: wrapPublicKey(webCryptoKeyPair.publicKey, 'ec:secp256r1'),
+        },
+        isLegacyTDF,
+        cryptoService
+      );
     });
 
     it('should fallback to provided key if no key in header', async () => {
