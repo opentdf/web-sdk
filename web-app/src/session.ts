@@ -1,7 +1,13 @@
 import { decodeJwt } from 'jose';
 import { default as dpopFn } from 'dpop';
 import { base64 } from '@opentdf/sdk/encodings';
-import { AuthProvider, HttpRequest, withHeaders } from '@opentdf/sdk';
+import {
+  AuthProvider,
+  DPoPNonceCache,
+  HttpRequest,
+  sendWithNonceRetry,
+  withHeaders,
+} from '@opentdf/sdk';
 import { type KeyPair, WebCryptoService } from '@opentdf/sdk/singlecontainer';
 
 export type OpenidConfiguration = {
@@ -174,6 +180,7 @@ export class OidcClient implements AuthProvider {
   scope: string;
   sessionIdentifier: string;
   _sessions?: Sessions;
+  readonly nonceCache = new DPoPNonceCache();
   // Store as opaque KeyPair
   private signingKey?: KeyPair;
 
@@ -463,13 +470,24 @@ export class OidcClient implements AuthProvider {
       publicKey: publicKeyPem,
       privateKey: privateKeyPem,
     });
-    headers.DPoP = await dpopFn(cryptoPair, config.token_endpoint, 'POST');
-    const response = await fetch(config.token_endpoint, {
-      method: 'POST',
-      headers,
-      body: params,
-      credentials: 'include',
-    });
+    // Keycloak answers the first proof with 400 + DPoP-Nonce when nonces are
+    // required (RFC 9449 §8); sendWithNonceRetry re-mints around the challenge.
+    const tokenOrigin = new URL(config.token_endpoint).origin;
+    const response = await sendWithNonceRetry(
+      this.nonceCache,
+      tokenOrigin,
+      'web-app token endpoint',
+      async (nonce) => {
+        headers.DPoP = await dpopFn(cryptoPair, config.token_endpoint, 'POST', nonce);
+        return fetch(config.token_endpoint, {
+          method: 'POST',
+          headers,
+          body: params,
+          credentials: 'include',
+        });
+      }
+    );
+
     if (!response.ok) {
       throw new Error(response.statusText);
     }
@@ -516,14 +534,15 @@ export class OidcClient implements AuthProvider {
       publicKey: publicKeyPem,
       privateKey: privateKeyPem,
     });
+    const requestOrigin = new URL(httpReq.url).origin;
     const dpopToken = await dpopFn(
       cryptoPair,
       httpReq.url,
       httpReq.method,
-      /* nonce */ undefined,
+      this.nonceCache.get(requestOrigin),
       accessToken
     );
     // TODO: Consider: only set DPoP if cnf.jkt is present in access token?
-    return withHeaders(httpReq, { Authorization: `Bearer ${accessToken}`, DPoP: dpopToken });
+    return withHeaders(httpReq, { Authorization: `DPoP ${accessToken}`, DPoP: dpopToken });
   }
 }
