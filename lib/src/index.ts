@@ -1,4 +1,12 @@
 export { type AuthProvider, type HttpMethod, HttpRequest, withHeaders } from './auth/auth.js';
+export {
+  DPoPModeResolver,
+  advertisesRFC9449,
+  fullDPoPHTU,
+  legacyRpcDPoPHTU,
+  type DPoPMode,
+  type DPoPModeResolverOptions,
+} from './auth/dpop-mode.js';
 export * as AuthProviders from './auth/providers.js';
 export {
   authTokenInterceptor,

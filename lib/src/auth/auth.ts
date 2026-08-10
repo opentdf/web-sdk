@@ -4,6 +4,7 @@ import {
   type PrivateKey,
 } from '../../tdf3/src/crypto/declarations.js';
 import { signJwt, type JwtHeader, type JwtPayload } from '../../tdf3/src/crypto/jwt.js';
+import type { DPoPModeResolver } from './dpop-mode.js';
 
 export type HttpMethod =
   'GET' | 'HEAD' | 'POST' | 'PUT' | 'DELETE' | 'CONNECT' | 'OPTIONS' | 'TRACE' | 'PATCH';
@@ -19,6 +20,9 @@ export class HttpRequest {
   params?: object;
 
   url: string;
+
+  /** DPoP `htu` override for RPCs; `url` remains the actual request URL. */
+  dpopHtu?: string;
 
   body?: BodyInit | null;
 
@@ -82,6 +86,8 @@ export async function reqSignature(
  * [the claims object](https://github.com/opentdf/spec/blob/main/schema/ClaimsObject.md).
  */
 export type AuthProvider = {
+  /** Enables per-origin DPoP proof-style discovery for Connect RPC requests. */
+  readonly dpopModeResolver?: DPoPModeResolver;
   /**
    * This function should be called if the consumer of this auth provider
    * changes the client keypair, or wishes to set the keypair after creating

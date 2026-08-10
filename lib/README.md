@@ -48,6 +48,15 @@ const client = new OpenTDF({
 });
 ```
 
+Resource DPoP proofs default to `dpopMode: 'auto'`. The SDK checks each server's
+unauthenticated well-known configuration, then protected resource metadata, for
+RFC 9449 support. Servers that do not advertise it receive the RPC procedure
+path expected by older KAS releases. To select a format explicitly, pass
+`dpopMode: 'legacy'` or `dpopMode: 'rfc9449'` to `authTokenDPoPInterceptor` (or to
+the OIDC provider credentials). Token endpoint and non-RPC proofs always use the
+full URL without its query or fragment. The CLI exposes the same setting as
+`--dpop-mode`.
+
 You can also write your own interceptor for full control over request headers:
 
 ```typescript

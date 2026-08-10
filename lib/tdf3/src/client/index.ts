@@ -20,6 +20,7 @@ import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-pr
 import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider.js';
 import { type AuthProvider, HttpRequest, withHeaders } from '../../../src/auth/auth.js';
 import { type AuthConfig } from '../../../src/auth/interceptors.js';
+import type { DPoPMode } from '../../../src/auth/dpop-mode.js';
 import { type Interceptor } from '@connectrpc/connect';
 import { getPlatformUrlFromKasEndpoint, rstrip, validateSecureUrl } from '../../../src/utils.js';
 
@@ -131,6 +132,8 @@ export interface ClientConfig {
   /// oauth client id; used to generate oauth authProvider
   clientId?: string;
   dpopEnabled?: boolean;
+  /** Resource DPoP proof style for SDK-created OIDC providers. */
+  dpopMode?: DPoPMode;
   dpopKeys?: Promise<KeyPair>;
   kasEndpoint: string;
   /**
@@ -467,6 +470,8 @@ export class Client {
             clientId: clientConfig.clientId,
             refreshToken: clientConfig.refreshToken,
             oidcOrigin: clientConfig.oidcOrigin,
+            dpopEnabled: this.dpopEnabled,
+            dpopMode: clientConfig.dpopMode,
           },
           this.cryptoService
         );
@@ -477,6 +482,8 @@ export class Client {
             clientId: clientConfig.clientId,
             externalJwt: clientConfig.externalJwt,
             oidcOrigin: clientConfig.oidcOrigin,
+            dpopEnabled: this.dpopEnabled,
+            dpopMode: clientConfig.dpopMode,
           },
           this.cryptoService
         );

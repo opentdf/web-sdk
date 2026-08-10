@@ -15,6 +15,7 @@ import {
   tdfSpecVersion,
   OpenTDF,
   DecoratedStream,
+  type DPoPMode,
   isPublicKeyAlgorithm,
   PUBLIC_KEY_ALGORITHMS,
 } from '@opentdf/sdk';
@@ -24,6 +25,7 @@ import { asRangeCliError, isUrl, rangeFromArgs } from './source.js';
 import * as assertions from '@opentdf/sdk/assertions';
 import { base64 } from '@opentdf/sdk/encodings';
 import { type KeyPair } from '@opentdf/sdk/singlecontainer';
+import { resolveDPoPFromArgs } from './dpop-helpers.js';
 
 type AuthToProcess = {
   auth?: string;
@@ -32,6 +34,7 @@ type AuthToProcess = {
   concurrencyLimit?: number;
   oidcEndpoint?: string;
   userId?: string;
+  dpopMode?: DPoPMode;
 };
 
 type LoggedAuthProvider = AuthProvider & {
@@ -70,14 +73,10 @@ const parseJwtComplete = (jwt: string) => {
   return { header: parseJwt(jwt, 0), payload: parseJwt(jwt) };
 };
 
-async function processAuth({
-  auth,
-  clientId,
-  clientSecret,
-  concurrencyLimit,
-  oidcEndpoint,
-  userId,
-}: AuthToProcess): Promise<LoggedAuthProvider> {
+async function processAuth(
+  { auth, clientId, clientSecret, concurrencyLimit, oidcEndpoint, userId, dpopMode }: AuthToProcess,
+  dpopKeyPair?: KeyPair
+): Promise<LoggedAuthProvider> {
   log('DEBUG', 'Processing auth params');
   if (!oidcEndpoint) {
     throw new CLIError('CRITICAL', 'oidcEndpoint must be specified');
@@ -96,11 +95,20 @@ async function processAuth({
       'Auth expects clientId and clientSecret, or combined auth param'
     );
   }
+  // Pass DPoP key into the provider config so the AccessToken is born with
+  // DPoP enabled (config.dpopEnabled + signingKey). Without this, the very
+  // first POST /token would go out without a DPoP proof — Keycloak clients
+  // with dpop_bound_access_tokens=true reject that with 400 invalid_request.
+  // Without a key, DPoP stays off so non-DPoP clients still get plain Bearer
+  // tokens that the platform will accept.
   const actual = await AuthProviders.clientSecretAuthProvider({
     clientId,
     oidcOrigin: oidcEndpoint,
     exchange: 'client',
     clientSecret,
+    dpopEnabled: !!dpopKeyPair,
+    dpopMode,
+    signingKey: dpopKeyPair,
   });
   if (concurrencyLimit !== 1) {
     await actual.oidcAuth.get();
@@ -108,6 +116,7 @@ async function processAuth({
   const requestLog: AuthProviders.HttpRequest[] = [];
   return {
     requestLog,
+    dpopModeResolver: actual.dpopModeResolver,
     updateClientPublicKey: async (signingKey: KeyPair) => {
       await actual.updateClientPublicKey(signingKey);
       log('DEBUG', `updateClientPublicKey: [${JSON.stringify(signingKey.publicKey)}]`);
@@ -507,8 +516,21 @@ export const handleArgs = (args: string[]) => {
       })
       .option('dpop', {
         group: 'Security:',
-        desc: 'Use DPoP for token binding',
-        type: 'boolean',
+        desc: 'Enable DPoP token binding. Optional value selects algorithm: ES256 (default), ES384, ES512, RS256. Use --dpop=ES512 to specify.',
+        type: 'string',
+      })
+      .option('dpopKey', {
+        alias: 'dpop-key',
+        group: 'Security:',
+        desc: 'Path to PEM-encoded PKCS8 private key for DPoP signing. Enables DPoP alone if --dpop is omitted.',
+        type: 'string',
+      })
+      .option('dpopMode', {
+        alias: 'dpop-mode',
+        group: 'Security:',
+        desc: 'Resource DPoP htu style: auto discovers per server, legacy signs RPC procedure paths, rfc9449 signs full URLs.',
+        choices: ['auto', 'legacy', 'rfc9449'] as const,
+        default: 'auto' as const,
       })
       .implies('auth', '--no-clientId')
       .implies('auth', '--no-clientSecret')
@@ -645,6 +667,21 @@ export const handleArgs = (args: string[]) => {
       })
 
       .command(
+        'supports <feature>',
+        'Check if a feature is supported',
+        (yargs) => {
+          yargs.strict().positional('feature', {
+            describe: 'feature name to check',
+            type: 'string',
+            choices: ['dpop'],
+          });
+        },
+        async () => {
+          // yargs choices validation ensures feature is supported; return naturally exits 0
+        }
+      )
+
+      .command(
         'inspect [file]',
         'Inspect TDF and extract header information, without decrypting',
         (yargs) => {
@@ -700,9 +737,11 @@ export const handleArgs = (args: string[]) => {
           if (!argv.oidcEndpoint) {
             throw new CLIError('CRITICAL', 'oidcEndpoint must be specified');
           }
-          const authProvider = await processAuth(argv);
+          const { dpopEnabled, dpopKeyPair } = await resolveDPoPFromArgs(argv);
+          const authProvider = await processAuth(argv, dpopKeyPair);
           log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
           const guessedPolicyEndpoint = guessPolicyUrl(argv);
+
           const client = new OpenTDF({
             authProvider,
             defaultCreateOptions: {
@@ -713,7 +752,8 @@ export const handleArgs = (args: string[]) => {
               ignoreAllowlist: ignoreAllowList,
               noVerify: !!argv.noVerifyAssertions,
             },
-            disableDPoP: !argv.dpop,
+            disableDPoP: !dpopEnabled,
+            dpopKeys: dpopKeyPair ? Promise.resolve(dpopKeyPair) : undefined,
             policyEndpoint: guessedPolicyEndpoint,
             platformUrl: argv.platformUrl || guessedPolicyEndpoint,
           });
@@ -743,7 +783,7 @@ export const handleArgs = (args: string[]) => {
                   console.assert(!accessToken, 'Multiple authorization headers found');
                   accessToken = parseJwt(lastRequest.headers[h].split(' ')[1]);
                   log('INFO', `Access Token: ${JSON.stringify(accessToken)}`);
-                  if (argv.dpop) {
+                  if (dpopEnabled) {
                     const cnf =
                       typeof accessToken === 'object' &&
                       accessToken !== null &&
@@ -752,13 +792,24 @@ export const handleArgs = (args: string[]) => {
                         : undefined;
                     const hasJkt =
                       typeof cnf === 'object' && cnf !== null && 'jkt' in cnf && Boolean(cnf.jkt);
-                    console.assert(hasJkt, 'Access token must have a cnf.jkt');
+                    if (!hasJkt) {
+                      // A missing cnf.jkt means token binding silently didn't take
+                      // effect; fail loudly rather than exit 0 with only a warning.
+                      throw new CLIError(
+                        'CRITICAL',
+                        'DPoP requested but the access token is not bound (missing cnf.jkt)'
+                      );
+                    }
                   }
                   break;
               }
             }
-            console.assert(accessToken, 'No access_token found');
-            console.assert(!argv.dpop || dpopToken, 'DPoP requested but absent');
+            if (!accessToken) {
+              throw new CLIError('CRITICAL', 'No access_token found');
+            }
+            if (dpopEnabled && !dpopToken) {
+              throw new CLIError('CRITICAL', 'DPoP requested but no DPoP proof was sent');
+            }
           } finally {
             await closeSource(readOptions?.source);
             client.close();
@@ -780,14 +831,15 @@ export const handleArgs = (args: string[]) => {
           //   1. pure flag checks -- no I/O, so a typo fails instantly
           //   2. oidcEndpoint, mirroring `decrypt`
           //   3. open the input file and any assertion files
-          //   4. the auth provider, which may reach the IdP
+          //   4. the DPoP key and auth provider, which touch disk and the IdP
           const createFlags = parseCreateTDFFlags(argv);
           if (!argv.oidcEndpoint) {
             throw new CLIError('CRITICAL', 'oidcEndpoint must be specified');
           }
           const createOptions = await parseCreateTDFOptions(argv, createFlags);
           try {
-            const authProvider = await processAuth(argv);
+            const { dpopEnabled, dpopKeyPair } = await resolveDPoPFromArgs(argv);
+            const authProvider = await processAuth(argv, dpopKeyPair);
             log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
             const guessedPolicyEndpoint = guessPolicyUrl(argv);
 
@@ -796,7 +848,8 @@ export const handleArgs = (args: string[]) => {
               defaultCreateOptions: {
                 defaultKASEndpoint: argv.kasEndpoint,
               },
-              disableDPoP: !argv.dpop,
+              disableDPoP: !dpopEnabled,
+              dpopKeys: dpopKeyPair ? Promise.resolve(dpopKeyPair) : undefined,
               policyEndpoint: guessedPolicyEndpoint,
               platformUrl: argv.platformUrl || guessedPolicyEndpoint,
             });

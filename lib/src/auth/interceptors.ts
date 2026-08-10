@@ -5,6 +5,7 @@ import * as DefaultCryptoService from '../../tdf3/src/crypto/index.js';
 import DPoP from './dpop.js';
 import { type AuthProvider } from './auth.js';
 import { base64 } from '../encodings/index.js';
+import { DPoPModeResolver, type DPoPMode } from './dpop-mode.js';
 
 /**
  * A function that returns a valid access token string.
@@ -22,6 +23,10 @@ export type DPoPInterceptorOptions = {
   dpopKeys?: KeyPair | Promise<KeyPair>;
   /** CryptoService for signing. Defaults to DefaultCryptoService. */
   cryptoService?: CryptoService;
+  /** Resource proof style. Defaults to per-origin advertisement discovery. */
+  dpopMode?: DPoPMode;
+  /** Share a resolver/cache with other auth paths when needed. */
+  dpopModeResolver?: DPoPModeResolver;
 };
 
 /**
@@ -78,6 +83,7 @@ export function authTokenInterceptor(tokenProvider: TokenProvider): Interceptor 
  */
 export function authTokenDPoPInterceptor(options: DPoPInterceptorOptions): DPoPInterceptor {
   const cryptoService = options.cryptoService ?? DefaultCryptoService;
+  const modeResolver = options.dpopModeResolver ?? new DPoPModeResolver({ mode: options.dpopMode });
   const dpopKeysPromise: Promise<KeyPair> = options.dpopKeys
     ? Promise.resolve(options.dpopKeys)
     : cryptoService.generateSigningKeyPair();
@@ -85,8 +91,7 @@ export function authTokenDPoPInterceptor(options: DPoPInterceptorOptions): DPoPI
   const interceptor: Interceptor = (next) => async (req) => {
     const [token, keys] = await Promise.all([options.tokenProvider(), dpopKeysPromise]);
 
-    const url = new URL(req.url);
-    const httpUri = `${url.origin}${url.pathname}`;
+    const httpUri = await modeResolver.htuForRpc(req.url, req.signal);
 
     // Generate DPoP proof JWT for this request
     const dpopProof = await DPoP(keys, cryptoService, httpUri, 'POST');
@@ -123,11 +128,16 @@ export function authProviderInterceptor(authProvider: AuthProvider): Interceptor
   return (next) => async (req) => {
     const url = new URL(req.url);
     const pathOnly = url.pathname;
-    // Signs only the path of the url in the request
+    const modeResolver = authProvider.dpopModeResolver;
+    // Custom providers without a resolver retain the previous path-only input.
+    // DPoP-aware providers need the absolute URL for their nonce cache, while
+    // dpopHtu carries the server's selected proof style separately.
+    const dpopHtu = modeResolver ? await modeResolver.htuForRpc(req.url, req.signal) : undefined;
     let token;
     try {
       token = await authProvider.withCreds({
-        url: pathOnly,
+        url: modeResolver ? req.url : pathOnly,
+        dpopHtu,
         method: 'POST',
         // Start with any headers Connect already has
         headers: {
