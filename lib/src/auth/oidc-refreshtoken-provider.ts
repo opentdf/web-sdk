@@ -1,6 +1,7 @@
 import { ConfigurationError } from '../errors.js';
 import { type AuthProvider, type HttpRequest } from './auth.js';
 import { AccessToken, type RefreshTokenCredentials } from './oidc.js';
+import { type DPoPNonceCache } from './dpop-nonce.js';
 import * as defaultCryptoService from '../../tdf3/src/crypto/index.js';
 import { type CryptoService, type KeyPair } from '../../tdf3/src/crypto/declarations.js';
 
@@ -67,5 +68,10 @@ export class OIDCRefreshTokenProvider implements AuthProvider {
       delete this.refreshToken;
     }
     return this.oidcAuth.withCreds(httpReq);
+  }
+
+  /** Per-client DPoP-Nonce cache, shared with the underlying {@link AccessToken}. */
+  get nonceCache(): DPoPNonceCache {
+    return this.oidcAuth.nonceCache;
   }
 }
