@@ -557,11 +557,11 @@ describe('Crypto Service', () => {
       expect(valid).to.be.true;
     });
 
-    it('ES512 DER output is well-formed and round-trips correctly', async () => {
-      // Verifies that ieeeP1363ToDer and derToIeeeP1363 both use correct DER length
-      // encoding, including long-form (0x81 <len>) when the SEQUENCE body is ≥ 128 bytes.
-      // Correct encoding is required for interoperability with external parsers
-      // (Go crypto, OpenSSL, etc.) that strictly validate the DER structure.
+    it('ES512 output is fixed-width raw P1363', async () => {
+      // JWS carries ECDSA signatures as raw R || S, each component padded to the
+      // curve's field size (RFC 7518 §3.4) — 66 bytes for P-521, so 132 total.
+      // External verifiers (Keycloak, panva-jose, Go crypto) reject anything else,
+      // including a variable-length DER SEQUENCE.
       const webCryptoKeyPair = await crypto.subtle.generateKey(
         { name: 'ECDSA', namedCurve: 'P-521' },
         true,
@@ -581,16 +581,14 @@ describe('Crypto Service', () => {
           _internal: webCryptoKeyPair.privateKey,
         } as any,
       };
-      const data = new TextEncoder().encode('test data for ES512 DER long-form');
+      const data = new TextEncoder().encode('test data for ES512 raw P1363');
 
-      const der = await sign(data, ecKeyPair.privateKey, 'ES512');
+      const signature = await sign(data, ecKeyPair.privateKey, 'ES512');
 
-      // Output must be a DER SEQUENCE regardless of component size.
-      expect(der[0]).to.equal(0x30);
+      // Fixed width, not a variable-length DER SEQUENCE.
+      expect(signature.length).to.equal(132);
 
-      // Round-trip validates that the length field was encoded and decoded consistently,
-      // including long-form (needed when the SEQUENCE body is ≥ 128 bytes).
-      const valid = await verify(data, der, ecKeyPair.publicKey, 'ES512');
+      const valid = await verify(data, signature, ecKeyPair.publicKey, 'ES512');
       expect(valid).to.be.true;
     });
   });

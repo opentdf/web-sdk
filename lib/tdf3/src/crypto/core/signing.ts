@@ -39,173 +39,12 @@ function getSigningAlgorithmParams(algorithm: AsymmetricSigningAlgorithm): {
   }
 }
 
-/** Fixed-width byte length of each ECDSA signature component (R or S). */
-function getEcdsaComponentLength(algorithm: AsymmetricSigningAlgorithm): number {
-  switch (algorithm) {
-    case 'ES256':
-      return 32;
-    case 'ES384':
-      return 48;
-    case 'ES512':
-      return 66;
-    default:
-      throw new ConfigurationError(`Unsupported algorithm for ECDSA conversion: ${algorithm}`);
-  }
-}
-
-/** Drop leading zero bytes, keeping at least one so the value stays non-empty. */
-function trimLeadingZeros(arr: Uint8Array): Uint8Array {
-  let i = 0;
-  while (i < arr.length - 1 && arr[i] === 0) i++;
-  return arr.slice(i);
-}
-
-/**
- * Convert IEEE P1363 signature format (used by WebCrypto ECDSA) to DER format.
- * RS256 signatures don't need conversion.
- */
-export function ieeeP1363ToDer(
-  signature: Uint8Array,
-  algorithm: AsymmetricSigningAlgorithm
-): Uint8Array {
-  if (algorithm === 'RS256') {
-    return signature;
-  }
-
-  const componentLen = getEcdsaComponentLength(algorithm);
-  const expectedLength = componentLen * 2;
-  if (signature.length !== expectedLength) {
-    throw new ConfigurationError(
-      `Invalid IEEE P1363 signature: expected ${expectedLength} bytes for ${algorithm}, got ${signature.length}`
-    );
-  }
-
-  // IEEE P1363: r || s where each is padded to key size
-  const r = signature.slice(0, componentLen);
-  const s = signature.slice(componentLen);
-
-  // Remove leading zeros but keep one if the high bit is set
-  let rTrimmed = trimLeadingZeros(r);
-  let sTrimmed = trimLeadingZeros(s);
-
-  // Add leading zero if high bit is set (to keep positive in DER)
-  if (rTrimmed[0] & 0x80) {
-    const padded = new Uint8Array(rTrimmed.length + 1);
-    padded.set(rTrimmed, 1);
-    rTrimmed = padded;
-  }
-  if (sTrimmed[0] & 0x80) {
-    const padded = new Uint8Array(sTrimmed.length + 1);
-    padded.set(sTrimmed, 1);
-    sTrimmed = padded;
-  }
-
-  // DER SEQUENCE: 0x30 [length] [r INTEGER] [s INTEGER]
-  // INTEGER: 0x02 [length] [value]
-  const rDer = new Uint8Array([0x02, rTrimmed.length, ...rTrimmed]);
-  const sDer = new Uint8Array([0x02, sTrimmed.length, ...sTrimmed]);
-
-  const seqLen = rDer.length + sDer.length;
-  // DER length: short-form for < 128, long-form (0x81 nn) for 128-255.
-  // ECDSA sequences never exceed 255 bytes for any supported curve.
-  const lenBytes = seqLen < 128 ? new Uint8Array([seqLen]) : new Uint8Array([0x81, seqLen]);
-  const result = new Uint8Array(1 + lenBytes.length + seqLen);
-  result[0] = 0x30;
-  result.set(lenBytes, 1);
-  result.set(rDer, 1 + lenBytes.length);
-  result.set(sDer, 1 + lenBytes.length + rDer.length);
-
-  return result;
-}
-
-/**
- * Convert DER-encoded ECDSA signature to raw IEEE P1363 (R||S) format.
- * RS256 signatures pass through unchanged.
- *
- * Exported because callers that emit JWS (e.g. DPoP proofs in lib/src/auth/dpop.ts)
- * must produce raw R||S per RFC 7518 §3.4, while cryptoService.sign() currently
- * returns DER. See DSPX-3634 for the broader cleanup.
- */
-export function derToIeeeP1363(
-  signature: Uint8Array,
-  algorithm: AsymmetricSigningAlgorithm
-): Uint8Array {
-  if (algorithm === 'RS256') {
-    return signature;
-  }
-
-  const componentLen = getEcdsaComponentLength(algorithm);
-
-  // Smallest well-formed ECDSA DER SEQUENCE is 8 bytes:
-  //   0x30 seqLen 0x02 rLen r(>=1) 0x02 sLen s(>=1)
-  // Anything shorter cannot be parsed; reject before indexing so a malformed
-  // input throws a clean ConfigurationError rather than coercing undefined.
-  if (signature.length < 8) {
-    throw new ConfigurationError('Invalid DER signature: too short');
-  }
-
-  if (signature[0] !== 0x30) {
-    throw new ConfigurationError('Invalid DER signature: expected SEQUENCE');
-  }
-
-  // Skip SEQUENCE tag, then parse DER length (short- or long-form).
-  let offset = 1;
-  if (signature[offset] & 0x80) {
-    // Long-form: low 7 bits = number of subsequent length bytes.
-    const lenBytesCount = signature[offset] & 0x7f;
-    if (lenBytesCount === 0 || lenBytesCount > 4) {
-      throw new ConfigurationError('Invalid DER signature: invalid long-form length');
-    }
-    offset += 1 + lenBytesCount;
-  } else {
-    // Short-form: single length byte.
-    offset += 1;
-  }
-
-  // Parse a DER INTEGER at `offset`, advancing past it. Every read is
-  // bounds-checked so a truncated or over-long length field throws a clean
-  // ConfigurationError instead of silently slicing a short/empty component.
-  const readInteger = (label: 'r' | 's'): Uint8Array => {
-    if (offset + 1 >= signature.length) {
-      throw new ConfigurationError(`Invalid DER signature: truncated before ${label} INTEGER`);
-    }
-    if (signature[offset] !== 0x02) {
-      throw new ConfigurationError(`Invalid DER signature: expected INTEGER for ${label}`);
-    }
-    const len = signature[offset + 1];
-    const start = offset + 2;
-    const end = start + len;
-    if (len === 0 || end > signature.length) {
-      throw new ConfigurationError(`Invalid DER signature: ${label} INTEGER length out of range`);
-    }
-    offset = end;
-    return signature.slice(start, end);
-  };
-
-  let r = readInteger('r');
-  let s = readInteger('s');
-
-  // Strip DER's leading zero padding (INTEGERs are zero-prefixed to stay positive).
-  r = trimLeadingZeros(r);
-  s = trimLeadingZeros(s);
-
-  // After stripping, each component must fit its fixed-width slot; a larger value
-  // means the signature does not belong to this curve (and would otherwise produce
-  // a negative offset in result.set below).
-  if (r.length > componentLen || s.length > componentLen) {
-    throw new ConfigurationError('Invalid DER signature: component larger than expected for curve');
-  }
-
-  // Pad to component length (right-aligned): result = r_padded || s_padded.
-  const result = new Uint8Array(componentLen * 2);
-  result.set(r, componentLen - r.length);
-  result.set(s, componentLen * 2 - s.length);
-
-  return result;
-}
-
 /**
  * Sign data with an asymmetric private key.
+ *
+ * ECDSA signatures come back in raw IEEE P1363 (R || S) form, which is what
+ * WebCrypto produces and what JWS requires (RFC 7518 §3.4). RSA signatures are
+ * raw bytes either way.
  */
 export async function sign(
   data: Uint8Array,
@@ -220,12 +59,14 @@ export async function sign(
   // Sign the data
   const signature = await crypto.subtle.sign(signParams, key, data);
 
-  // Convert from IEEE P1363 to DER for EC algorithms
-  return ieeeP1363ToDer(new Uint8Array(signature), algorithm);
+  return new Uint8Array(signature);
 }
 
 /**
  * Verify signature with an asymmetric public key.
+ *
+ * Expects the same raw encoding {@link sign} produces: IEEE P1363 (R || S) for
+ * ECDSA, raw bytes for RSA.
  */
 export async function verify(
   data: Uint8Array,
@@ -238,9 +79,6 @@ export async function verify(
   // Unwrap the internal CryptoKey
   const key = unwrapKey(publicKey);
 
-  // Convert from DER to IEEE P1363 for EC algorithms
-  const ieeeSignature = derToIeeeP1363(signature, algorithm);
-
   // Verify the signature
-  return crypto.subtle.verify(signParams, key, ieeeSignature, data);
+  return crypto.subtle.verify(signParams, key, signature, data);
 }

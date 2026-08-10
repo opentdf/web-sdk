@@ -12,7 +12,6 @@ import {
   isAsymmetricSigningAlgorithm,
   isRsaKeyAlgorithm,
 } from '../../tdf3/src/crypto/declarations.js';
-import { derToIeeeP1363 } from '../../tdf3/src/crypto/core/signing.js';
 
 export type JsonObject = { [Key in string]?: JsonValue };
 export type JsonArray = JsonValue[];
@@ -49,16 +48,10 @@ async function jwt(
   if (!isAsymmetricSigningAlgorithm(alg)) {
     throw new UnsupportedOperationError(`unsupported DPoP alg: ${alg}`);
   }
-  let signature = await cryptoService.sign(buf(input), privateKey, alg);
-  // JWS requires raw IEEE P1363 (R || S) for ECDSA per RFC 7518 §3.4, but
-  // cryptoService.sign currently returns DER. Convert here so DPoP proofs are
-  // accepted by RFC-conformant verifiers (Keycloak, panva-jose). RSA signatures
-  // are already raw bytes — no conversion (EdDSA is rejected by the guard above
-  // and never reaches here). See DSPX-3634 for the broader cleanup that would
-  // make this transform unnecessary.
-  if (alg.startsWith('ES')) {
-    signature = derToIeeeP1363(signature, alg);
-  }
+  // cryptoService.sign emits the raw encoding JWS wants for every alg that can
+  // reach here: IEEE P1363 (R || S) for ECDSA per RFC 7518 §3.4, raw bytes for
+  // RSA. (EdDSA is rejected by the guard above.)
+  const signature = await cryptoService.sign(buf(input), privateKey, alg);
   return `${input}.${b64u(signature)}`;
 }
 

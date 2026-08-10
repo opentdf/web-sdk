@@ -17,7 +17,6 @@ import {
 } from 'jose';
 import jwtClaimsSet from './jose/jwt-claims-set.js';
 import validateCrit from './jose/validate-crit.js';
-import { derToIeeeP1363, ieeeP1363ToDer } from './core/signing.js';
 
 export type JwtHeader = JWTHeaderParameters & { alg: SigningAlgorithm };
 export type JwtPayload = JWTPayload;
@@ -139,15 +138,9 @@ export async function signJwt(
       throw new Error(`Unsupported JWS signing algorithm: ${header.alg}`);
     }
     const alg = header.alg;
+    // cryptoService.sign already emits what JWS wants: raw IEEE P1363 (R || S)
+    // for ECDSA per RFC 7518 §3.4, raw bytes for RSA.
     signature = await cryptoService.sign(signingInputBytes, key, alg);
-    // JWS requires raw IEEE P1363 (R || S) for ECDSA per RFC 7518 §3.4, but
-    // cryptoService.sign returns DER. Convert here so the JWT (e.g. the KAS
-    // rewrap request token) is accepted by RFC-conformant verifiers. RSA
-    // signatures are already raw bytes — no conversion (only RS256 and ES*
-    // reach here). Mirrors the DPoP proof signer in src/auth/dpop.ts.
-    if (alg.startsWith('ES')) {
-      signature = derToIeeeP1363(signature, alg);
-    }
   }
 
   // Return compact JWT
@@ -245,11 +238,9 @@ export async function verifyJwt(
       throw new joseErrors.JWTInvalid(`Invalid JWT: unsupported algorithm "${header.alg}"`);
     }
     const alg = header.alg;
-    // JWS carries ECDSA signatures as raw IEEE P1363 (RFC 7518 §3.4), but
-    // cryptoService.verify expects DER. Convert here so we accept RFC-conformant
-    // ES* JWTs (matches the signJwt signer above). RSA is unchanged.
-    const verifySignature = alg.startsWith('ES') ? ieeeP1363ToDer(signature, alg) : signature;
-    valid = await cryptoService.verify(signingInputBytes, verifySignature, publicKey, alg);
+    // JWS carries ECDSA signatures as raw IEEE P1363 (RFC 7518 §3.4), which is
+    // exactly what cryptoService.verify expects.
+    valid = await cryptoService.verify(signingInputBytes, signature, publicKey, alg);
   }
 
   if (!valid) {

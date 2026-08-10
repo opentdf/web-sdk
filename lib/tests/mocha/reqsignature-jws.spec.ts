@@ -106,8 +106,9 @@ describe('reqSignature / signJwt — JWS conformance vs jose.jwtVerify (RFC 7518
     }
 
     expect(caught).to.be.instanceOf(Error);
-    expect((caught as Error).message).to.include(
-      'Invalid IEEE P1363 signature: expected 64 bytes for ES256, got 63'
-    );
+    // A wrong-width signature is just an invalid signature: WebCrypto returns
+    // false rather than throwing, so this surfaces as an ordinary verification
+    // failure with no detail about the internal encoding.
+    expect((caught as Error).message).to.include('Invalid JWT: signature verification failed');
   });
 });
