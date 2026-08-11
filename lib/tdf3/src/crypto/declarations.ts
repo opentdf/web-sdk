@@ -206,9 +206,7 @@ export type AsymmetricSigningAlgorithm = (typeof ASYMMETRIC_SIGNING_ALGORITHMS)[
 
 /**
  * Type guard narrowing an arbitrary string to an algorithm CryptoService can
- * actually sign/verify with. The JWS `alg` space is wider (e.g. forward-looking
- * PS256/EdDSA identifiers) than this runtime-supported subset; those must be
- * rejected, not cast.
+ * sign/verify with.
  */
 export function isAsymmetricSigningAlgorithm(alg: string): alg is AsymmetricSigningAlgorithm {
   return (ASYMMETRIC_SIGNING_ALGORITHMS as readonly string[]).includes(alg);
@@ -312,12 +310,10 @@ export type CryptoService = {
   /**
    * Sign data with an asymmetric private key.
    *
-   * ECDSA signature encoding: implementations MUST return raw IEEE P1363
-   * (`R || S`), fixed-width per curve — 64 bytes for ES256, 96 for ES384, 132
-   * for ES512. This is what WebCrypto emits and what RFC 7518 §3.4 requires on
-   * the JWS wire; the SDK writes the bytes through unchanged. An implementation
-   * returning ASN.1 DER will produce tokens that conformant verifiers reject.
-   * RSA signatures have a single encoding.
+   * ECDSA signature encoding: returns raw IEEE P1363 (`R || S`), fixed-width
+   * per curve — 64 bytes for ES256, 96 for ES384, 132 for ES512.
+   *
+   * RSA uses RSASSA-PKCS1-v1_5 with SHA-256.
    *
    * @param data - Data to sign
    * @param privateKey - Opaque private key
@@ -331,10 +327,6 @@ export type CryptoService = {
 
   /**
    * Verify signature with an asymmetric public key.
-   *
-   * ECDSA signature encoding: the SDK passes raw IEEE P1363 (`R || S`) — the
-   * same encoding {@link CryptoService.sign} produces, taken straight off the
-   * JWS wire. A wrong-length signature should fail verification, not throw.
    *
    * @param data - Original data that was signed
    * @param signature - Signature to verify
