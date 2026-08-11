@@ -137,8 +137,6 @@ export async function signJwt(
     if (!isAsymmetricSigningAlgorithm(header.alg)) {
       throw new Error(`Unsupported JWS signing algorithm: ${header.alg}`);
     }
-    // CryptoService.sign returns exactly what the JWS wire wants: raw IEEE
-    // P1363 (R || S) for ECDSA per RFC 7518 §3.4, and PKCS#1 for RSA.
     signature = await cryptoService.sign(signingInputBytes, key, header.alg);
   }
 
@@ -236,8 +234,7 @@ export async function verifyJwt(
     if (!isAsymmetricSigningAlgorithm(header.alg)) {
       throw new joseErrors.JWTInvalid(`Invalid JWT: unsupported algorithm "${header.alg}"`);
     }
-    // The signature comes off the wire in the encoding CryptoService.verify
-    // expects: raw IEEE P1363 for ECDSA (RFC 7518 §3.4), PKCS#1 for RSA.
+    // Sigs are IEEE P1363 for ECDSA (RFC 7518 §3.4), PKCS#1 for RSA.
     valid = await cryptoService.verify(signingInputBytes, signature, publicKey, header.alg);
   }
 

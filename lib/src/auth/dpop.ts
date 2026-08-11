@@ -41,16 +41,9 @@ async function jwt(
 ) {
   const input = `${b64u(buf(JSON.stringify(header)))}.${b64u(buf(JSON.stringify(claimsSet)))}`;
   const { alg } = header;
-  // The header alg is a JWSAlgorithm, which is wider than what CryptoService can
-  // actually sign with (it documents forward-looking values like PS256/EdDSA).
-  // Validate rather than blind-cast so an unsupported alg fails here with a clear
-  // error instead of surfacing deep inside getSigningAlgorithmParams.
   if (!isAsymmetricSigningAlgorithm(alg)) {
     throw new UnsupportedOperationError(`unsupported DPoP alg: ${alg}`);
   }
-  // CryptoService.sign returns raw IEEE P1363 (R || S) for ECDSA per RFC 7518
-  // §3.4, which is what RFC-conformant verifiers (Keycloak, panva-jose) expect
-  // of a DPoP proof.
   const signature = await cryptoService.sign(buf(input), privateKey, alg);
   return `${input}.${b64u(signature)}`;
 }
@@ -131,7 +124,7 @@ class UnsupportedOperationError extends Error {
 /**
  * Determines a supported JWS `alg` identifier from PublicKeyInfo algorithm string.
  * Returns an AsymmetricSigningAlgorithm (the subset CryptoService can sign with);
- * it never produces the forward-looking PS256/EdDSA members of JWSAlgorithm.
+ * notably, it does not support PS256/EdDSA members of JWSAlgorithm.
  */
 function determineJWSAlgorithmFromKeyInfo(algorithm: KeyAlgorithm): AsymmetricSigningAlgorithm {
   if (isRsaKeyAlgorithm(algorithm)) {
