@@ -1,6 +1,7 @@
 import { ConfigurationError } from '../errors.js';
 import { AuthProvider, type HttpRequest } from './auth.js';
 import { AccessToken, type ClientSecretCredentials } from './oidc.js';
+import { type DPoPNonceCache } from './dpop-nonce.js';
 import * as defaultCryptoService from '../../tdf3/src/crypto/index.js';
 import { type CryptoService, type KeyPair } from '../../tdf3/src/crypto/declarations.js';
 
@@ -14,6 +15,8 @@ export class OIDCClientCredentialsProvider implements AuthProvider {
       oidcOrigin,
       oidcTokenEndpoint,
       oidcUserInfoEndpoint,
+      dpopEnabled,
+      signingKey,
     }: Partial<ClientSecretCredentials> & Omit<ClientSecretCredentials, 'exchange'>,
     cryptoService: CryptoService = defaultCryptoService
   ) {
@@ -29,6 +32,8 @@ export class OIDCClientCredentialsProvider implements AuthProvider {
         oidcOrigin,
         oidcTokenEndpoint,
         oidcUserInfoEndpoint,
+        dpopEnabled,
+        signingKey,
       },
       cryptoService
     );
@@ -40,5 +45,10 @@ export class OIDCClientCredentialsProvider implements AuthProvider {
 
   async withCreds(httpReq: HttpRequest): Promise<HttpRequest> {
     return this.oidcAuth.withCreds(httpReq);
+  }
+
+  /** Per-client DPoP-Nonce cache, shared with the underlying {@link AccessToken}. */
+  get nonceCache(): DPoPNonceCache {
+    return this.oidcAuth.nonceCache;
   }
 }

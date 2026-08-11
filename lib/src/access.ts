@@ -1,11 +1,7 @@
 import { Code, ConnectError } from '@connectrpc/connect';
 import { type AuthConfig, resolveAuthConfig } from './auth/interceptors.js';
 import { RewrapResponse } from './platform/kas/kas_pb.js';
-import {
-  extractRpcErrorMessage,
-  getPlatformUrlFromKasEndpoint,
-  validateSecureUrl,
-} from './utils.js';
+import { getPlatformUrlFromKasEndpoint, validateSecureUrl } from './utils.js';
 import { base64 } from './encodings/index.js';
 import {
   KEY_ALGORITHMS,
@@ -52,13 +48,16 @@ export async function fetchWrappedKey(
   fulfillableObligationFQNs: string[]
 ): Promise<RewrapResponse> {
   const platformUrl = getPlatformUrlFromKasEndpoint(url);
-  const { interceptors, authProvider } = resolveAuthConfig(auth);
+  const { authProvider } = resolveAuthConfig(auth);
 
+  // Pass the original AuthConfig (not just its interceptors) so the RPC layer can
+  // recover the provider's per-client DPoP nonce cache and keep the transport's
+  // nonce capture and the interceptor's retry on the same instance (RFC 9449 §9).
   const rpcCall = () =>
     fetchWrappedKeysRpc(
       platformUrl,
       signedRequestToken,
-      { interceptors },
+      auth,
       rewrapAdditionalContextHeader(fulfillableObligationFQNs)
     );
 
@@ -70,9 +69,9 @@ export async function fetchWrappedKey(
 
   // Try the modern Connect-RPC rewrap first, falling back to the legacy REST
   // rewrap only for non-auth failures (older, non-Connect platforms). A
-  // definitive KAS auth/validation answer (401/403/400) surfaces as-is via
-  // tryRpcThenLegacy rather than being masked by the legacy 404 on
-  // Connect-only platforms.
+  // definitive KAS auth/validation answer (401/403/400 — incl. a post-nonce-
+  // challenge 401, RFC 9449 §9) surfaces as-is via tryRpcThenLegacy rather than
+  // being masked by the legacy 404 on Connect-only platforms.
   // We intentionally omit the rewrap additional context from legacy requests:
   // platforms new enough to know about obligations handle RPC successfully.
   return await tryRpcThenLegacy(
@@ -207,9 +206,11 @@ export async function fetchKeyAccessServers(
   platformUrl: string,
   auth: AuthConfig
 ): Promise<OriginAllowList> {
-  const { interceptors, authProvider } = resolveAuthConfig(auth);
+  const { authProvider } = resolveAuthConfig(auth);
 
-  const rpcCall = () => fetchKeyAccessServersRpc(platformUrl, { interceptors });
+  // Pass the original AuthConfig so the RPC layer shares the provider's per-client
+  // DPoP nonce cache with the transport (see fetchWrappedKey).
+  const rpcCall = () => fetchKeyAccessServersRpc(platformUrl, auth);
 
   if (!authProvider) {
     return await rpcCall();
@@ -248,7 +249,7 @@ export async function fetchKasPubKey(
   } catch (e) {
     // Base key is optional; fall back to the RPC/legacy public-key path. Log a
     // one-line summary via errBrief (never the raw error object, which for Connect
-    // errors can carry response metadata).
+    // errors can carry response metadata including DPoP nonces).
     console.log(`base key fetch failed, falling back to RPC/legacy public key: ${errBrief(e)}`);
   }
 
@@ -327,10 +328,15 @@ async function tryRpcThenLegacy<T>(
 
 /**
  * A log-safe one-line summary of an error: its message (and Connect code), never
- * the whole error object — Connect errors can carry response headers and
- * metadata that should not be dumped to the console.
+ * the whole error object — Connect errors can carry response headers/metadata
+ * (including DPoP nonces) that should not be dumped to logs on the auth path.
  */
 function errBrief(e: unknown): string {
-  const message = extractRpcErrorMessage(e);
-  return e instanceof ConnectError ? `${Code[e.code]}: ${message}` : message;
+  if (e instanceof ConnectError) {
+    return `${Code[e.code]}: ${e.message}`;
+  }
+  if (e instanceof Error) {
+    return e.message;
+  }
+  return String(e);
 }
