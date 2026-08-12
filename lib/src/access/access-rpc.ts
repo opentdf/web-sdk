@@ -29,10 +29,9 @@ import { ConnectError, Code } from '@connectrpc/connect';
 /**
  * Get a rewrapped access key to the document, if possible
  * @param url Key access server rewrap endpoint
- * @param requestBody a signed request with an encrypted document key
- * @param authProvider Authorization middleware
+ * @param signedRequestToken a signed request with an encrypted document key
+ * @param auth Authorization middleware
  * @param rewrapAdditionalContextHeader optional value for 'X-Rewrap-Additional-Context'
- * @param clientVersion
  */
 export async function fetchWrappedKey(
   url: string,
@@ -59,7 +58,6 @@ export async function fetchWrappedKey(
 
 export function handleRpcRewrapError(e: unknown, platformUrl: string): never {
   if (e instanceof ConnectError) {
-    console.log('Error is a ConnectError with code:', e.code);
     switch (e.code) {
       case Code.InvalidArgument: // 400 Bad Request
         throw new InvalidFileError(`400 for [${platformUrl}]: rewrap bad request [${e.message}]`);
@@ -217,7 +215,7 @@ export async function fetchKasPubKey(
 /**
  * Fetch the base public key from WellKnownConfiguration of the platform.
  * @param kasEndpoint The KAS endpoint URL.
- * @throws {ConfigurationError} If the KAS endpoint is not defined.
+ * @throws {ConfigurationError} If the KAS endpoint is not defined, or the platform config is missing its BaseKey.
  * @throws {NetworkError} If there is an error fetching the public key from the KAS endpoint.
  * @returns The base public key information for the KAS endpoint.
  */
@@ -235,7 +233,7 @@ export async function fetchKasBasePubKey(kasEndpoint: string): Promise<KasPublic
     const { configuration } = await platform.v1.wellknown.getWellKnownConfiguration({});
     const baseKey = configuration?.base_key as unknown as PlatformBaseKey;
     if (!isBaseKey(baseKey)) {
-      throw new NetworkError(
+      throw new ConfigurationError(
         `Invalid Platform Configuration: [${kasEndpoint}] is missing BaseKey in WellKnownConfiguration`
       );
     }
@@ -248,6 +246,12 @@ export async function fetchKasBasePubKey(kasEndpoint: string): Promise<KasPublic
     };
     return result;
   } catch (e) {
+    // A malformed platform config is not a network fault — re-throw it unchanged
+    // rather than masking it behind a [PublicKey] network-error banner. Only wrap
+    // genuine RPC/transport failures.
+    if (e instanceof ConfigurationError) {
+      throw e;
+    }
     throw new NetworkError(`[${platformUrl}] [PublicKey] ${extractRpcErrorMessage(e)}`);
   }
 }
