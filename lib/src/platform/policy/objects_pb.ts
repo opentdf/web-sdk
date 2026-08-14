@@ -1837,7 +1837,9 @@ export const AlgorithmSchema: GenEnum<Algorithm> = /*@__PURE__*/
   enumDesc(file_policy_objects, 5);
 
 /**
- * The status of the key
+ * The status of the key.
+ * Adding a value here requires updating the key_status mapping in the listKeys
+ * query so SORT_KAS_KEYS_TYPE_KEY_STATUS keeps sorting alphabetically.
  *
  * @generated from enum policy.KeyStatus
  */
