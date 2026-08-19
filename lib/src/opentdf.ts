@@ -534,7 +534,11 @@ class ZTDFReader {
         this.opts.ignoreAllowlist
       );
     } else if (this.opts.platformUrl) {
-      allowList = await fetchKeyAccessServersWithCache(this.client.kasAllowListCache, this.opts.platformUrl, auth);
+      allowList = await fetchKeyAccessServersWithCache(
+        this.client.kasAllowListCache,
+        this.opts.platformUrl,
+        auth
+      );
     }
 
     const overview = await this.overview;
