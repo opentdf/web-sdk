@@ -250,7 +250,12 @@ export function fetchKeyAccessServersWithCache(
   if (cached) {
     return cached;
   }
-  const promise = fetchKeyAccessServers(platformUrl, auth);
+  const promise = fetchKeyAccessServers(platformUrl, auth).catch((e) => {
+    if (cache.get(platformUrl) === promise) {
+      cache.delete(platformUrl);
+    }
+    throw e;
+  });
   cache.set(platformUrl, promise);
   return promise;
 }

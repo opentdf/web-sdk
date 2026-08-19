@@ -41,6 +41,32 @@ describe('fetchKeyAccessServersWithCache', () => {
 
     expect(fetchStub.callCount).to.equal(2);
   });
+
+  it('should evict a rejected entry and retry on the next call', async () => {
+    const auth = { interceptors: [] };
+    const cache: KasAllowListCache = new Map();
+    const platformUrl = 'http://localhost:3000';
+
+    fetchStub.callsFake(() => Promise.reject(new Error('network down')));
+
+    try {
+      await fetchKeyAccessServersWithCache(cache, platformUrl, auth);
+    } catch {
+      // expected
+    }
+
+    // Wait a tick for the .catch() eviction handler to run
+    await new Promise((r) => setTimeout(r, 0));
+    expect(cache.has(platformUrl)).to.equal(false);
+
+    fetchStub.callsFake(() =>
+      Promise.resolve(new Response('{}', { headers: { 'Content-Type': 'application/json' } }))
+    );
+
+    const result = await fetchKeyAccessServersWithCache(cache, platformUrl, auth);
+    expect(result).to.not.be.undefined;
+    expect(fetchStub.callCount).to.equal(2);
+  });
 });
 
 describe('rewrapAdditionalContextHeader', () => {
