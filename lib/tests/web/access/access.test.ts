@@ -22,12 +22,14 @@ describe('fetchKeyAccessServersWithCache', () => {
     sinon.restore();
   });
 
-  it('should only fetch the KAS list once for repeated calls with the same platformUrl', async () => {
+  it('should deduplicate concurrent calls for the same platformUrl', async () => {
     const auth = { interceptors: [] };
     const cache: KasAllowListCache = new Map();
     const platformUrl = 'http://localhost:3000';
-    const result1 = await fetchKeyAccessServersWithCache(cache, platformUrl, auth);
-    const result2 = await fetchKeyAccessServersWithCache(cache, platformUrl, auth);
+    const [result1, result2] = await Promise.all([
+      fetchKeyAccessServersWithCache(cache, platformUrl, auth),
+      fetchKeyAccessServersWithCache(cache, platformUrl, auth),
+    ]);
 
     expect(result1).to.equal(result2);
     expect(fetchStub.callCount).to.equal(1);
