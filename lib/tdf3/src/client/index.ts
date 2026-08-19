@@ -37,7 +37,8 @@ import {
 } from './builders.js';
 import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 import {
-  fetchKeyAccessServers,
+  fetchKeyAccessServersWithCache,
+  type KasAllowListCache,
   type KasPublicKeyInfo,
   OriginAllowList,
 } from '../../../src/access.js';
@@ -353,6 +354,8 @@ export class Client {
   readonly platformUrl?: string;
 
   readonly kasKeyInfoCache: KasKeyInfoCache = [];
+
+  readonly kasAllowListCache: KasAllowListCache = new Map();
 
   readonly easEndpoint?: string;
 
@@ -815,7 +818,7 @@ export class Client {
     if (!allowList && this.allowedKases) {
       allowList = this.allowedKases;
     } else if (this.platformUrl) {
-      allowList = await fetchKeyAccessServers(this.platformUrl, this.auth);
+      allowList = await fetchKeyAccessServersWithCache(this.kasAllowListCache, this.platformUrl, this.auth);
     } else {
       throw new ConfigurationError('platformUrl is required when allowedKases is empty');
     }

@@ -239,6 +239,22 @@ const origin = (u: string): string => {
   }
 };
 
+export type KasAllowListCache = Map<string, Promise<OriginAllowList>>;
+
+export function fetchKeyAccessServersWithCache(
+  cache: KasAllowListCache,
+  platformUrl: string,
+  auth: AuthConfig
+): Promise<OriginAllowList> {
+  const cached = cache.get(platformUrl);
+  if (cached) {
+    return cached;
+  }
+  const promise = fetchKeyAccessServers(platformUrl, auth);
+  cache.set(platformUrl, promise);
+  return promise;
+}
+
 /**
  * Manages a list of origins that are allowed to access the Key Access Server (KAS).
  * @origins A list of origins that are allowed to access the KAS.

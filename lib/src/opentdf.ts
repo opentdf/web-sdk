@@ -12,10 +12,10 @@ import {
   AssertionVerificationKeys,
 } from '../tdf3/src/assertions.js';
 import {
+  fetchKeyAccessServersWithCache,
   type KasPublicKeyAlgorithm,
   OriginAllowList,
   PUBLIC_KEY_ALGORITHMS,
-  fetchKeyAccessServers,
   isPublicKeyAlgorithm,
 } from './access.js';
 import { type Manifest } from '../tdf3/src/models/manifest.js';
@@ -534,7 +534,7 @@ class ZTDFReader {
         this.opts.ignoreAllowlist
       );
     } else if (this.opts.platformUrl) {
-      allowList = await fetchKeyAccessServers(this.opts.platformUrl, auth);
+      allowList = await fetchKeyAccessServersWithCache(this.client.kasAllowListCache, this.opts.platformUrl, auth);
     }
 
     const overview = await this.overview;
