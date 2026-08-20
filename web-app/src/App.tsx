@@ -27,28 +27,51 @@ async function toFile(
   return stream.pipeTo(fileStream, options);
 }
 
-function decryptedFileName(encryptedFileName: string): string {
-  // Groups: 1 file 'name' bit
-  // 2: original file extension
-  // [non-capture group] - match how safari and chrome insert counters before extension.
-  //    I'm guessing this has some fascinating internationalizations but for now WFM is enough.
-  // 3: TDF container type extension
-  const m = encryptedFileName.match(/^(.+)\.(\w+)(?:-\d+| \(\d+\))?\.(tdf|ztdf)$/);
-  console.log(encryptedFileName, m);
+/**
+ * `mlkem:768` -> `mlkem768`. Colons are legal in a file name but awkward on
+ * Windows and in shell paths, and this matches the KAS kid convention.
+ */
+function algorithmSlug(algorithm: KasPublicKeyAlgorithm): string {
+  return algorithm.replace(':', '');
+}
+
+// Groups: 1 file 'name' bit
+// 2: original file extension
+// 3: the wrap qualifier we appended on encrypt, e.g. `-mlkem768`. Lazy so that a
+//    browser-inserted counter is left to the group below rather than swallowed.
+// [non-capture group] - match how safari and chrome insert counters before extension.
+//    I'm guessing this has some fascinating internationalizations but for now WFM is enough.
+// 4: TDF container type extension
+const ENCRYPTED_FILE_NAME = /^(.+)\.(\w+)((?:-[\w=]+)*?)(?:-\d+| \(\d+\))?\.(tdf|ztdf)$/;
+
+function parseEncryptedFileName(encryptedFileName: string) {
+  const m = encryptedFileName.match(ENCRYPTED_FILE_NAME);
   if (!m) {
     console.warn(`Unable to extract raw file name from ${encryptedFileName}`);
-    return `${encryptedFileName}.decrypted`;
+    return undefined;
   }
-  return `${m[1]}.decrypted.${m[2]}`;
+  return { base: m[1], extension: m[2], wrapQualifier: m[3] };
+}
+
+/**
+ * Keeps the wrap qualifier the encrypt side added and records the mechanism the
+ * client used for the rewrap exchange, so the two post-quantum legs are both
+ * visible in the file name.
+ */
+function decryptedFileName(
+  encryptedFileName: string,
+  rewrapAlgorithm: KasPublicKeyAlgorithm
+): string {
+  const rewrapQualifier = `-rwk-p=${algorithmSlug(rewrapAlgorithm)}`;
+  const parts = parseEncryptedFileName(encryptedFileName);
+  if (!parts) {
+    return `${encryptedFileName}${rewrapQualifier}.decrypted`;
+  }
+  return `${parts.base}${parts.wrapQualifier}${rewrapQualifier}.decrypted.${parts.extension}`;
 }
 
 function decryptedFileExtension(encryptedFileName: string): string {
-  const m = encryptedFileName.match(/^(.+)\.(\w+)\.(tdf|ztdf)$/);
-  if (!m) {
-    console.warn(`Unable to extract raw file name from ${encryptedFileName}`);
-    return `${encryptedFileName}.decrypted`;
-  }
-  return m[2];
+  return parseEncryptedFileName(encryptedFileName)?.extension ?? 'decrypted';
 }
 
 const oidcClient = new OidcClient(config.oidc.host, config.oidc.clientId, 'otdf-sample-web-app');
@@ -434,7 +457,9 @@ function App() {
     setDownloadState('Encrypting...');
     setKaoMetadata(undefined);
     let f: FileSystemFileHandle | undefined;
-    const downloadName = `${inputFileName}.tdf`;
+    // Tag the container with the wrap algorithm so a folder full of demo output
+    // says which encapsulation produced which file.
+    const downloadName = `${inputFileName}-${algorithmSlug(encapAlgorithm)}.tdf`;
     if (sinkType === 'fsapi') {
       f = await getNewFileHandle('tdf', downloadName);
     }
@@ -492,7 +517,7 @@ function App() {
       console.error('decrypt while logged out doesnt work');
       return false;
     }
-    const dfn = decryptedFileName(fileNameFor(inputSource));
+    const dfn = decryptedFileName(fileNameFor(inputSource), rewrapAlgorithm);
     console.log(`Decrypting ${JSON.stringify(inputSource)} to ${sinkType} ${dfn}`);
     // Drop anything left over from a previous encrypt or decrypt so the panel
     // always reflects the file we're reading now.
