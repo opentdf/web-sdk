@@ -5,12 +5,21 @@
 # Platform checkout (CI clones it here; locally it is usually a symlink)
 /platform
 
-# KAS keys and CA material from ./init-temp-keys.sh
+# KAS keys and CA material from ./init-temp-keys.sh. The CA serial lands in
+# keys/ alongside the cert it numbers, so /keys/ already covers it.
 /*.pem
-/*.srl
 /ecparams.tmp
 /keys/
 
 # Keycloak admin CLI downloaded by ./config-demo-idp.sh
 /kc.zip
 /keycloak-*/
+
+# ./wait-and-test.sh installs the packed CLI tarball here; only package.json is
+# tracked, so the lock file it generates is throwaway.
+/package-lock.json
+
+# Round-trip fixtures from ./encrypt-decrypt.sh. It only removes these on the
+# success path, and it is `set -e`, so a failed run strands them.
+/sample*.txt
+/sample*.tdf

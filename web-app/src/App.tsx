@@ -7,12 +7,20 @@ import {
   type Chunker,
   type DecoratedStream,
   type KasPublicKeyAlgorithm,
+  type KeyAccessType,
   type Manifest,
   type Source,
   OpenTDF,
 } from '@opentdf/sdk';
 import { type SessionInformation, OidcClient } from './session.js';
 import { config } from './config.js';
+import {
+  actualWrapQualifier,
+  algorithmSlug,
+  decryptedFileExtension,
+  decryptedFileName,
+  expectedKaoType,
+} from './fileNames.js';
 
 async function toFile(
   stream: ReadableStream<Uint8Array>,
@@ -25,53 +33,6 @@ async function toFile(
   });
 
   return stream.pipeTo(fileStream, options);
-}
-
-/**
- * `mlkem:768` -> `mlkem768`. Colons are legal in a file name but awkward on
- * Windows and in shell paths, and this matches the KAS kid convention.
- */
-function algorithmSlug(algorithm: KasPublicKeyAlgorithm): string {
-  return algorithm.replace(':', '');
-}
-
-// Groups: 1 file 'name' bit
-// 2: original file extension
-// 3: the wrap qualifier we appended on encrypt, e.g. `-mlkem768`. Lazy so that a
-//    browser-inserted counter is left to the group below rather than swallowed.
-// [non-capture group] - match how safari and chrome insert counters before extension.
-//    I'm guessing this has some fascinating internationalizations but for now WFM is enough.
-// 4: TDF container type extension
-const ENCRYPTED_FILE_NAME = /^(.+)\.(\w+)((?:-[\w=]+)*?)(?:-\d+| \(\d+\))?\.(tdf|ztdf)$/;
-
-function parseEncryptedFileName(encryptedFileName: string) {
-  const m = encryptedFileName.match(ENCRYPTED_FILE_NAME);
-  if (!m) {
-    console.warn(`Unable to extract raw file name from ${encryptedFileName}`);
-    return undefined;
-  }
-  return { base: m[1], extension: m[2], wrapQualifier: m[3] };
-}
-
-/**
- * Keeps the wrap qualifier the encrypt side added and records the mechanism the
- * client used for the rewrap exchange, so the two post-quantum legs are both
- * visible in the file name.
- */
-function decryptedFileName(
-  encryptedFileName: string,
-  rewrapAlgorithm: KasPublicKeyAlgorithm
-): string {
-  const rewrapQualifier = `-rwk-p=${algorithmSlug(rewrapAlgorithm)}`;
-  const parts = parseEncryptedFileName(encryptedFileName);
-  if (!parts) {
-    return `${encryptedFileName}${rewrapQualifier}.decrypted`;
-  }
-  return `${parts.base}${parts.wrapQualifier}${rewrapQualifier}.decrypted.${parts.extension}`;
-}
-
-function decryptedFileExtension(encryptedFileName: string): string {
-  return parseEncryptedFileName(encryptedFileName)?.extension ?? 'decrypted';
 }
 
 const oidcClient = new OidcClient(config.oidc.host, config.oidc.clientId, 'otdf-sample-web-app');
@@ -160,7 +121,7 @@ function getDecryptReadTuningFromLocation(): DecryptReadTuning {
 
 type KaoMetadata = {
   kid: string;
-  type: string;
+  type: KeyAccessType;
   url: string;
   protocol: string;
   wrappedKeyBytes: number;
@@ -301,6 +262,9 @@ function App() {
   const [encapAlgorithm, setEncapAlgorithm] = useState<KasPublicKeyAlgorithm>('ec:secp256r1');
   const [rewrapAlgorithm, setRewrapAlgorithm] = useState<KasPublicKeyAlgorithm>('rsa:2048');
   const [kaoMetadata, setKaoMetadata] = useState<KaoMetadata[] | undefined>();
+  // Kept out of downloadState because the progress transformers overwrite that
+  // several times a second; a warning parked there would never be read.
+  const [algorithmWarning, setAlgorithmWarning] = useState<string | undefined>();
   const [streamController, setStreamController] = useState<CurrentDataController>();
 
   useEffect(() => {
@@ -456,12 +420,17 @@ function App() {
     });
     setDownloadState('Encrypting...');
     setKaoMetadata(undefined);
+    setAlgorithmWarning(undefined);
     let f: FileSystemFileHandle | undefined;
     // Tag the container with the wrap algorithm so a folder full of demo output
-    // says which encapsulation produced which file.
-    const downloadName = `${inputFileName}-${algorithmSlug(encapAlgorithm)}.tdf`;
+    // says which encapsulation produced which file. This is only the algorithm
+    // we asked for: the Save As picker has to open while the click activation is
+    // still live, which is before the KAS has told us what it actually used. The
+    // download sink corrects the name below; for `fsapi` the user has already
+    // named the file, so there we can only warn.
+    const requestedName = `${inputFileName}-${algorithmSlug(encapAlgorithm)}.tdf`;
     if (sinkType === 'fsapi') {
-      f = await getNewFileHandle('tdf', downloadName);
+      f = await getNewFileHandle('tdf', requestedName);
     }
     const progressTransformers = makeProgressPair(size, 'Encrypt');
 
@@ -478,11 +447,36 @@ function App() {
       return;
     }
     // Surface the key access objects we just wrote, so the wrap algorithm choice
-    // is visible without having to decrypt first. Don't await; this shouldn't
+    // is visible without having to decrypt first. createZTDF attaches an
+    // already-resolved promise, so awaiting it costs a microtask and does not
     // hold up the download.
-    cipherText.manifest
-      ?.then((manifest) => setKaoMetadata(kaoMetadataFrom(manifest)))
-      .catch((e) => console.warn('failed to read manifest after encrypt', e));
+    let downloadName = requestedName;
+    if (!cipherText.manifest) {
+      console.error('encrypt produced no manifest; cannot show key access objects');
+      setAlgorithmWarning('Encrypted, but the SDK returned no manifest to inspect.');
+    } else {
+      try {
+        const kaos = kaoMetadataFrom(await cipherText.manifest);
+        setKaoMetadata(kaos);
+        // What we asked for is not necessarily what wrapped the DEK: fetchKasPubKey
+        // prefers the platform base key and drops the requested algorithm, and the
+        // SDK only console.warns when the two disagree. Name the file after what
+        // actually happened rather than letting it assert something untrue.
+        const [kao] = kaos;
+        if (kao && kao.type !== expectedKaoType(encapAlgorithm)) {
+          downloadName = `${inputFileName}${actualWrapQualifier(kao.type, kao.kid)}.tdf`;
+          setAlgorithmWarning(
+            `Requested ${encapAlgorithm}, but the KAS wrapped with ${kao.type} (kid ${kao.kid}). ` +
+              (sinkType === 'fsapi'
+                ? 'The name you chose does not reflect this.'
+                : `Saved as ${downloadName}.`)
+          );
+        }
+      } catch (e) {
+        console.warn('failed to read manifest after encrypt', e);
+        setAlgorithmWarning(`Encrypted, but could not read the manifest to inspect it: ${e}`);
+      }
+    }
     const cipherTextWithProgress = cipherText.pipeThrough(progressTransformers.writer);
     try {
       switch (sinkType) {
@@ -522,6 +516,7 @@ function App() {
     // Drop anything left over from a previous encrypt or decrypt so the panel
     // always reflects the file we're reading now.
     setKaoMetadata(undefined);
+    setAlgorithmWarning(undefined);
     let f: FileSystemFileHandle | undefined;
     if (sinkType === 'fsapi') {
       f = await getNewFileHandle(decryptedFileExtension(fileNameFor(inputSource)), dfn);
@@ -654,6 +649,10 @@ function App() {
                     onClick={() => {
                       setInputSource(undefined);
                       setDownloadState(undefined);
+                      // The inspector describes the file being cleared, so it has
+                      // to go too; otherwise it lingers over the next selection.
+                      setKaoMetadata(undefined);
+                      setAlgorithmWarning(undefined);
                     }}
                     type="button"
                   >
@@ -798,13 +797,18 @@ function App() {
             </section>
           </div>
         )}
-        {(!!downloadState || !!kaoMetadata?.length) && (
+        {(!!downloadState || !!kaoMetadata?.length || !!algorithmWarning) && (
           <section className="step">
             <h2>Output</h2>
             <div className="step-body">
               {downloadState && (
                 <div id="downloadState" className="status">
                   {downloadState}
+                </div>
+              )}
+              {algorithmWarning && (
+                <div id="algorithmWarning" className="status warning" role="alert">
+                  ⚠️ {algorithmWarning}
                 </div>
               )}
               {kaoMetadata?.length ? (

@@ -97,11 +97,15 @@
   flex: 0 1 auto;
 }
 
-.horizontal-flow {
-  display: flex;
-  align-items: bottom;
-  flex-wrap: wrap;
-  gap: 1em;
+/* The requested wrap algorithm and the one the KAS actually used can differ;
+   when they do, say so somewhere the progress counter won't overwrite. */
+.warning {
+  background-color: #fff3cd;
+  border: 1px solid #e0a800;
+  border-radius: 0.5em;
+  color: #664d03;
+  flex: 1 1 20em;
+  padding: 0.5em 0.75em;
 }
 
 .selected {

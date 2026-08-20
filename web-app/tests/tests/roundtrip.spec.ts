@@ -97,6 +97,11 @@ for (const algorithm of ['mlkem:768', 'mlkem:1024'] as const) {
     await expect(page.locator('#kao-wrapped-bytes-0')).toHaveText(String(expectedWrappedKeyBytes));
 
     await page.locator('#clearFile').click();
+    // Clearing the file clears the inspector with it. Without this the decrypt
+    // assertions below could be satisfied by leftover encrypt-side state: both
+    // legs read the same manifest, so they expect identical values.
+    await expect(page.locator('#kaoMetadata')).toBeHidden();
+
     await loadFile(page, cipherTextPath);
     const plainDownloadPromise = page.waitForEvent('download');
     await page.locator('#fileSink').click();
@@ -112,8 +117,8 @@ for (const algorithm of ['mlkem:768', 'mlkem:1024'] as const) {
       'try encrypting some of your own files'
     );
 
-    // Decrypt clears the panel and repopulates it from the manifest it just
-    // read, so these assertions cannot pass on leftover encrypt-side state.
+    // Repopulated by the decrypt-side read. The panel was asserted empty after
+    // #clearFile above, so these cannot be the encrypt-side values lingering.
     await expect(page.locator('#kao-kid-0')).toHaveText(expectedKid);
     await expect(page.locator('#kao-type-0')).toHaveText('mlkem-wrapped');
     await expect(page.locator('#kao-wrapped-bytes-0')).toHaveText(String(expectedWrappedKeyBytes));
@@ -136,7 +141,8 @@ test('download names record both key wrap legs', async ({ page }) => {
   }
 
   // Re-upload under the name encrypt suggested. The other tests hand back
-  // playwright's temp uuid, which can't exercise the name parser at all.
+  // playwright's temp uuid, which has no `.tdf` suffix, so they only ever reach
+  // the parser's no-match fallback and never its successful-parse branch.
   const staged = test.info().outputPath(download.suggestedFilename());
   fs.copyFileSync(cipherTextPath, staged);
 
@@ -150,6 +156,16 @@ test('download names record both key wrap legs', async ({ page }) => {
   const download2 = await plainDownloadPromise;
   // Wrap qualifier is carried through; the rewrap mechanism is appended.
   expect(download2.suggestedFilename()).toBe('README-mlkem768-rwk-p=mlkem1024.decrypted.md');
+
+  // The download event fires when the stream opens, not when it finishes, so the
+  // name alone would still be asserted had the mlkem:768 -> mlkem:1024 rewrap
+  // failed partway. Read the bytes back to pin that the exchange completed.
+  const plainTextPath = await download2.path();
+  if (!plainTextPath) {
+    throw new Error();
+  }
+  const text = await readFile(plainTextPath, 'utf8');
+  expect(text).toContain('try encrypting some of your own files');
 });
 
 test('Remote Source Streaming', async ({ page }) => {
