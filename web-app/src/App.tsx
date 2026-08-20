@@ -3,7 +3,14 @@ import { useState, useEffect, type ChangeEvent } from 'react';
 import streamsaver from 'streamsaver';
 import { showSaveFilePicker } from 'native-file-system-adapter';
 import './App.css';
-import { type Chunker, type KasPublicKeyAlgorithm, type Source, OpenTDF } from '@opentdf/sdk';
+import {
+  type Chunker,
+  type DecoratedStream,
+  type KasPublicKeyAlgorithm,
+  type Manifest,
+  type Source,
+  OpenTDF,
+} from '@opentdf/sdk';
 import { type SessionInformation, OidcClient } from './session.js';
 import { config } from './config.js';
 
@@ -141,6 +148,19 @@ function decodedBase64Length(value: string): number {
   return Math.floor((value.length * 3) / 4) - paddingLength;
 }
 
+function kaoMetadataFrom(manifest: Manifest): KaoMetadata[] {
+  return manifest.encryptionInformation.keyAccess.map((kao) => {
+    const wrappedKeyBytes = kao.wrappedKey ? decodedBase64Length(kao.wrappedKey) : 0;
+    return {
+      kid: kao.kid ?? '(no kid)',
+      type: kao.type,
+      url: kao.url,
+      protocol: kao.protocol,
+      wrappedKeyBytes,
+    } satisfies KaoMetadata;
+  });
+}
+
 function fileNameFor(inputSource: InputSource) {
   if (!inputSource) {
     return 'undefined.bin';
@@ -256,6 +276,7 @@ function App() {
   const [inputSource, setInputSource] = useState<InputSource | undefined>();
   const [sinkType, setSinkType] = useState<SinkType>('file');
   const [encapAlgorithm, setEncapAlgorithm] = useState<KasPublicKeyAlgorithm>('ec:secp256r1');
+  const [rewrapAlgorithm, setRewrapAlgorithm] = useState<KasPublicKeyAlgorithm>('rsa:2048');
   const [kaoMetadata, setKaoMetadata] = useState<KaoMetadata[] | undefined>();
   const [streamController, setStreamController] = useState<CurrentDataController>();
 
@@ -419,7 +440,7 @@ function App() {
     }
     const progressTransformers = makeProgressPair(size, 'Encrypt');
 
-    let cipherText: ReadableStream<Uint8Array>;
+    let cipherText: DecoratedStream;
     try {
       cipherText = await client.createZTDF({
         autoconfigure: false,
@@ -431,6 +452,12 @@ function App() {
       console.error('Encrypt Failed', e);
       return;
     }
+    // Surface the key access objects we just wrote, so the wrap algorithm choice
+    // is visible without having to decrypt first. Don't await; this shouldn't
+    // hold up the download.
+    cipherText.manifest
+      ?.then((manifest) => setKaoMetadata(kaoMetadataFrom(manifest)))
+      .catch((e) => console.warn('failed to read manifest after encrypt', e));
     const cipherTextWithProgress = cipherText.pipeThrough(progressTransformers.writer);
     try {
       switch (sinkType) {
@@ -467,6 +494,9 @@ function App() {
     }
     const dfn = decryptedFileName(fileNameFor(inputSource));
     console.log(`Decrypting ${JSON.stringify(inputSource)} to ${sinkType} ${dfn}`);
+    // Drop anything left over from a previous encrypt or decrypt so the panel
+    // always reflects the file we're reading now.
+    setKaoMetadata(undefined);
     let f: FileSystemFileHandle | undefined;
     if (sinkType === 'fsapi') {
       f = await getNewFileHandle(decryptedFileExtension(fileNameFor(inputSource)), dfn);
@@ -479,6 +509,7 @@ function App() {
       authProvider: oidcClient,
       defaultReadOptions: {
         allowedKASEndpoints: [config.kas],
+        wrappingKeyAlgorithm: rewrapAlgorithm,
         ...decryptReadTuning,
       },
       dpopKeys: oidcClient.getSigningKey(),
@@ -512,17 +543,7 @@ function App() {
       const reader = client.open({ source });
       try {
         const manifest = await reader.manifest();
-        const kaos = manifest.encryptionInformation.keyAccess.map((kao) => {
-          const wrappedKeyBytes = kao.wrappedKey ? decodedBase64Length(kao.wrappedKey) : 0;
-          return {
-            kid: kao.kid ?? '(no kid)',
-            type: kao.type,
-            url: kao.url,
-            protocol: kao.protocol,
-            wrappedKeyBytes,
-          } satisfies KaoMetadata;
-        });
-        setKaoMetadata(kaos);
+        setKaoMetadata(kaoMetadataFrom(manifest));
       } catch (e) {
         console.warn('failed to read manifest for KAO inspection', e);
         setKaoMetadata(undefined);
@@ -682,11 +703,24 @@ function App() {
           <fieldset>
             <legend>Encapsulation Algorithm</legend>
             <div>
-              <label htmlFor="encapAlgorithm">Key wrap algorithm:</label>{' '}
+              <label htmlFor="encapAlgorithm">Wrap key algorithm (encrypt):</label>{' '}
               <select
                 id="encapAlgorithm"
                 value={encapAlgorithm}
                 onChange={(e) => setEncapAlgorithm(e.target.value as KasPublicKeyAlgorithm)}
+              >
+                <option value="ec:secp256r1">EC P-256</option>
+                <option value="rsa:2048">RSA-2048</option>
+                <option value="mlkem:768">ML-KEM-768</option>
+                <option value="mlkem:1024">ML-KEM-1024</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="rewrapAlgorithm">Rewrap key algorithm (decrypt):</label>{' '}
+              <select
+                id="rewrapAlgorithm"
+                value={rewrapAlgorithm}
+                onChange={(e) => setRewrapAlgorithm(e.target.value as KasPublicKeyAlgorithm)}
               >
                 <option value="ec:secp256r1">EC P-256</option>
                 <option value="rsa:2048">RSA-2048</option>

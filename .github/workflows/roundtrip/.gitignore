@@ -1,0 +1,16 @@
+# Local backend bring-up artifacts. In CI these live on a throwaway runner, but
+# when running the harness locally they land in this directory. See the
+# roundtrip README steps in web-app/tests/README.md.
+
+# Platform checkout (CI clones it here; locally it is usually a symlink)
+/platform
+
+# KAS keys and CA material from ./init-temp-keys.sh
+/*.pem
+/*.srl
+/ecparams.tmp
+/keys/
+
+# Keycloak admin CLI downloaded by ./config-demo-idp.sh
+/kc.zip
+/keycloak-*/

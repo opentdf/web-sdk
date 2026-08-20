@@ -71,7 +71,10 @@ for (const algorithm of ['mlkem:768', 'mlkem:1024'] as const) {
 
     await authorize(page);
     await loadFile(page, 'README.md');
+    // Both legs post-quantum: the KAO wrap on encrypt, and the client's
+    // ephemeral key for the rewrap exchange on decrypt.
     await page.locator('#encapAlgorithm').selectOption(algorithm);
+    await page.locator('#rewrapAlgorithm').selectOption(algorithm);
 
     const downloadPromise = page.waitForEvent('download');
     await page.locator('#fileSink').click();
@@ -83,6 +86,12 @@ for (const algorithm of ['mlkem:768', 'mlkem:1024'] as const) {
     if (!cipherTextPath) {
       throw new Error();
     }
+
+    // The inspector is populated straight off the encrypt manifest, so the
+    // chosen wrap algorithm is observable without decrypting first.
+    await expect(page.locator('#kao-kid-0')).toHaveText(expectedKid);
+    await expect(page.locator('#kao-type-0')).toHaveText('mlkem-wrapped');
+    await expect(page.locator('#kao-wrapped-bytes-0')).toHaveText(String(expectedWrappedKeyBytes));
 
     await page.locator('#clearFile').click();
     await loadFile(page, cipherTextPath);
@@ -100,8 +109,8 @@ for (const algorithm of ['mlkem:768', 'mlkem:1024'] as const) {
       'try encrypting some of your own files'
     );
 
-    // Manifest inspector should display the expected ML-KEM kid (mlkem768/1024)
-    // populated during the decrypt flow above.
+    // Decrypt clears the panel and repopulates it from the manifest it just
+    // read, so these assertions cannot pass on leftover encrypt-side state.
     await expect(page.locator('#kao-kid-0')).toHaveText(expectedKid);
     await expect(page.locator('#kao-type-0')).toHaveText('mlkem-wrapped');
     await expect(page.locator('#kao-wrapped-bytes-0')).toHaveText(String(expectedWrappedKeyBytes));
