@@ -608,194 +608,210 @@ function App() {
         {SessionInfo}
       </div>
       <div className="body">
-        <div className="config horizontal-flow">
-          <fieldset className="input">
-            <legend>Source</legend>
-            {hasFileInput ? (
-              <div id="details">
-                <h2>{'file' in inputSource ? inputSource.file.name : '[rand]'}</h2>
-                {'file' in inputSource && (
-                  <>
-                    <div id="contentType">Content Type: {inputSource.file.type}</div>
-                    <div>
-                      Last Modified: {new Date(inputSource.file.lastModified).toLocaleString()}
-                    </div>
-                    <div>Size: {new Intl.NumberFormat().format(inputSource.file.size)} bytes</div>
-                  </>
-                )}
-                <button
-                  id="clearFile"
-                  onClick={() => {
-                    setInputSource(undefined);
-                    setDownloadState(undefined);
-                  }}
-                  type="button"
-                >
-                  Clear file
-                </button>
-              </div>
-            ) : (
-              <>
-                <label htmlFor="fileSelector">Select file:</label>
-                <input type="file" name="file" id="fileSelector" onChange={setFileHandler} />
-                <div>OR</div>
-                <div className={clsx({ selected: inputSource && 'url' in inputSource })}>
-                  <label htmlFor="urlSelector">Load from URL:</label>
-                  <input
-                    id="urlSelector"
-                    name="url"
-                    onChange={setUrlHandler}
-                    placeholder="http://localhost:8000/sample.tdf"
-                    type="url"
-                  />
+        <section className="step">
+          <div className="step-body">
+            <fieldset className="input">
+              <legend>Source</legend>
+              {hasFileInput ? (
+                <div id="details">
+                  <h2>{'file' in inputSource ? inputSource.file.name : '[rand]'}</h2>
+                  {'file' in inputSource && (
+                    <>
+                      <div id="contentType">Content Type: {inputSource.file.type}</div>
+                      <div>
+                        Last Modified: {new Date(inputSource.file.lastModified).toLocaleString()}
+                      </div>
+                      <div>Size: {new Intl.NumberFormat().format(inputSource.file.size)} bytes</div>
+                    </>
+                  )}
+                  <button
+                    id="clearFile"
+                    onClick={() => {
+                      setInputSource(undefined);
+                      setDownloadState(undefined);
+                    }}
+                    type="button"
+                  >
+                    Clear file
+                  </button>
                 </div>
-                <div>OR:</div>
-                <div className={clsx({ selected: inputSource && 'length' in inputSource })}>
-                  <label htmlFor="randomSelector">Random Bytes:</label>
-                  <input
-                    id="randomSelector"
-                    name="randomSelector"
-                    min="0"
-                    max={2 ** 34}
-                    onChange={setRandomHandler}
-                    placeholder={`${2 ** 20} bytes`}
-                    type="number"
-                  />
-                </div>
-              </>
-            )}
-          </fieldset>
-
-          <fieldset className="Output">
-            <legend>Sink</legend>
-            <div>
-              <input
-                type="radio"
-                id="fileSink"
-                name="sinkType"
-                value="file"
-                onChange={(e) => setSinkType(e.target.value as SinkType)}
-                checked={sinkType === 'file'}
-              />{' '}
-              <label htmlFor="fileSink">Download</label>
-              <br />
-              <input
-                type="radio"
-                id="fsapiSink"
-                name="sinkType"
-                value="fsapi"
-                onChange={(e) => setSinkType(e.target.value as SinkType)}
-                checked={sinkType === 'fsapi'}
-              />{' '}
-              <label htmlFor="fsapiSink">Save As</label>
-              <br />
-              <input
-                type="radio"
-                id="noneSink"
-                name="sinkType"
-                value="none"
-                onChange={(e) => setSinkType(e.target.value as SinkType)}
-                checked={sinkType === 'none'}
-              />{' '}
-              <label htmlFor="noneSink">Dump</label>
-            </div>
-          </fieldset>
-          <fieldset>
-            <legend>Encapsulation Algorithm</legend>
-            <div>
-              <label htmlFor="encapAlgorithm">Wrap key algorithm (encrypt):</label>{' '}
-              <select
-                id="encapAlgorithm"
-                value={encapAlgorithm}
-                onChange={(e) => setEncapAlgorithm(e.target.value as KasPublicKeyAlgorithm)}
-              >
-                <option value="ec:secp256r1">EC P-256</option>
-                <option value="rsa:2048">RSA-2048</option>
-                <option value="mlkem:768">ML-KEM-768</option>
-                <option value="mlkem:1024">ML-KEM-1024</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="rewrapAlgorithm">Rewrap key algorithm (decrypt):</label>{' '}
-              <select
-                id="rewrapAlgorithm"
-                value={rewrapAlgorithm}
-                onChange={(e) => setRewrapAlgorithm(e.target.value as KasPublicKeyAlgorithm)}
-              >
-                <option value="ec:secp256r1">EC P-256</option>
-                <option value="rsa:2048">RSA-2048</option>
-                <option value="mlkem:768">ML-KEM-768</option>
-                <option value="mlkem:1024">ML-KEM-1024</option>
-              </select>
-            </div>
-          </fieldset>
-          {kaoMetadata && kaoMetadata.length > 0 && (
-            <fieldset>
-              <legend>Manifest Inspector</legend>
-              <table id="kaoMetadata">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>kid</th>
-                    <th>type</th>
-                    <th>protocol</th>
-                    <th>wrappedKey bytes</th>
-                    <th>kas url</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {kaoMetadata.map((kao, idx) => (
-                    <tr key={idx} id={`kao-row-${idx}`}>
-                      <td>{idx}</td>
-                      <td id={`kao-kid-${idx}`}>{kao.kid}</td>
-                      <td id={`kao-type-${idx}`}>{kao.type}</td>
-                      <td id={`kao-protocol-${idx}`}>{kao.protocol}</td>
-                      <td id={`kao-wrapped-bytes-${idx}`}>{kao.wrappedKeyBytes}</td>
-                      <td id={`kao-url-${idx}`}>{kao.url}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              ) : (
+                <>
+                  <label htmlFor="fileSelector">Select file:</label>
+                  <input type="file" name="file" id="fileSelector" onChange={setFileHandler} />
+                  <div>OR</div>
+                  <div className={clsx({ selected: inputSource && 'url' in inputSource })}>
+                    <label htmlFor="urlSelector">Load from URL:</label>
+                    <input
+                      id="urlSelector"
+                      name="url"
+                      onChange={setUrlHandler}
+                      placeholder="http://localhost:8000/sample.tdf"
+                      type="url"
+                    />
+                  </div>
+                  <div>OR:</div>
+                  <div className={clsx({ selected: inputSource && 'length' in inputSource })}>
+                    <label htmlFor="randomSelector">Random Bytes:</label>
+                    <input
+                      id="randomSelector"
+                      name="randomSelector"
+                      min="0"
+                      max={2 ** 34}
+                      onChange={setRandomHandler}
+                      placeholder={`${2 ** 20} bytes`}
+                      type="number"
+                    />
+                  </div>
+                </>
+              )}
             </fieldset>
-          )}
-        </div>
+
+            <fieldset className="Output">
+              <legend>Sink</legend>
+              <div>
+                <input
+                  type="radio"
+                  id="fileSink"
+                  name="sinkType"
+                  value="file"
+                  onChange={(e) => setSinkType(e.target.value as SinkType)}
+                  checked={sinkType === 'file'}
+                />{' '}
+                <label htmlFor="fileSink">Download</label>
+                <br />
+                <input
+                  type="radio"
+                  id="fsapiSink"
+                  name="sinkType"
+                  value="fsapi"
+                  onChange={(e) => setSinkType(e.target.value as SinkType)}
+                  checked={sinkType === 'fsapi'}
+                />{' '}
+                <label htmlFor="fsapiSink">Save As</label>
+                <br />
+                <input
+                  type="radio"
+                  id="noneSink"
+                  name="sinkType"
+                  value="none"
+                  onChange={(e) => setSinkType(e.target.value as SinkType)}
+                  checked={sinkType === 'none'}
+                />{' '}
+                <label htmlFor="noneSink">Dump</label>
+              </div>
+            </fieldset>
+          </div>
+        </section>
 
         {streamController && (
-          <div className="action">
-            <button
-              id="cancelStream"
-              onClick={async () => {
-                console.log(`Cancelling !!!!`);
-                const p = streamController.abort();
-                setStreamController(undefined);
-                await p;
-              }}
-              type="button"
-            >
-              CANCEL
-            </button>
-          </div>
+          <section className="step">
+            <div className="step-body card">
+              <button
+                id="cancelStream"
+                onClick={async () => {
+                  console.log(`Cancelling !!!!`);
+                  const p = streamController.abort();
+                  setStreamController(undefined);
+                  await p;
+                }}
+                type="button"
+              >
+                CANCEL
+              </button>
+            </div>
+          </section>
         )}
         {inputSource && !streamController && (
-          <div className="action">
-            <form className="column">
+          <div className="actions">
+            {/* Encrypt and decrypt are alternatives rather than sequential steps,
+                so they sit side by side when there is room and stack when there
+                isn't. Each carries the options that affect it to its right. */}
+            <section className="step">
               <h2>Encrypt</h2>
-              <div className="card horizontal-flow">
+              <div className="step-body card">
                 <button id="encryptButton" onClick={() => handleEncrypt()} type="button">
                   Encrypt
                 </button>
+                <fieldset className="options">
+                  <legend>Options</legend>
+                  <label htmlFor="encapAlgorithm">Wrap key algorithm</label>{' '}
+                  <select
+                    id="encapAlgorithm"
+                    value={encapAlgorithm}
+                    onChange={(e) => setEncapAlgorithm(e.target.value as KasPublicKeyAlgorithm)}
+                  >
+                    <option value="ec:secp256r1">EC P-256</option>
+                    <option value="rsa:2048">RSA-2048</option>
+                    <option value="mlkem:768">ML-KEM-768</option>
+                    <option value="mlkem:1024">ML-KEM-1024</option>
+                  </select>
+                </fieldset>
               </div>
-            </form>
-            <form className="column">
+            </section>
+            <section className="step">
               <h2>Decrypt</h2>
-              <div className="card horizontal-flow">
+              <div className="step-body card">
                 <button id="decryptButton" onClick={() => handleDecrypt()} type="button">
                   decrypt
                 </button>
+                <fieldset className="options">
+                  <legend>Options</legend>
+                  <label htmlFor="rewrapAlgorithm">Rewrap key algorithm</label>{' '}
+                  <select
+                    id="rewrapAlgorithm"
+                    value={rewrapAlgorithm}
+                    onChange={(e) => setRewrapAlgorithm(e.target.value as KasPublicKeyAlgorithm)}
+                  >
+                    <option value="ec:secp256r1">EC P-256</option>
+                    <option value="rsa:2048">RSA-2048</option>
+                    <option value="mlkem:768">ML-KEM-768</option>
+                    <option value="mlkem:1024">ML-KEM-1024</option>
+                  </select>
+                </fieldset>
               </div>
-            </form>
-            {downloadState && <div id="downloadState">{downloadState}</div>}
+            </section>
           </div>
+        )}
+        {(!!downloadState || !!kaoMetadata?.length) && (
+          <section className="step">
+            <h2>Output</h2>
+            <div className="step-body">
+              {downloadState && (
+                <div id="downloadState" className="status">
+                  {downloadState}
+                </div>
+              )}
+              {kaoMetadata?.length ? (
+                <fieldset className="inspector">
+                  <legend>Manifest Inspector</legend>
+                  {/* Label/value rows rather than a wide table: one key access
+                      object is the common case, and this stays readable when the
+                      viewport is too narrow for six columns. */}
+                  <ol id="kaoMetadata" className="kao-list">
+                    {kaoMetadata.map((kao, idx) => (
+                      <li key={idx} id={`kao-row-${idx}`} className="kao">
+                        <h3>Key access object {idx}</h3>
+                        <dl>
+                          <dt>kid</dt>
+                          <dd id={`kao-kid-${idx}`}>{kao.kid}</dd>
+                          <dt>type</dt>
+                          <dd id={`kao-type-${idx}`}>{kao.type}</dd>
+                          <dt>protocol</dt>
+                          <dd id={`kao-protocol-${idx}`}>{kao.protocol}</dd>
+                          {/* Unit is in the label so the value stays a bare number. */}
+                          <dt>wrappedKey bytes</dt>
+                          <dd id={`kao-wrapped-bytes-${idx}`}>{kao.wrappedKeyBytes}</dd>
+                          <dt>kas url</dt>
+                          <dd id={`kao-url-${idx}`}>{kao.url}</dd>
+                        </dl>
+                      </li>
+                    ))}
+                  </ol>
+                </fieldset>
+              ) : null}
+            </div>
+          </section>
         )}
       </div>
     </div>
