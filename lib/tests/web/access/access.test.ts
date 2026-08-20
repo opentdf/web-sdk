@@ -1,9 +1,75 @@
 import { expect } from 'chai';
+import sinon from 'sinon';
 import {
+  fetchKeyAccessServersWithCache,
+  type KasAllowListCache,
   rewrapAdditionalContextHeader,
   type RewrapAdditionalContext,
 } from '../../../src/access.js';
 import { base64 } from '../../../src/encodings/index.js';
+
+describe('fetchKeyAccessServersWithCache', () => {
+  let fetchStub: sinon.SinonStub;
+
+  beforeEach(() => {
+    fetchStub = sinon.stub(globalThis, 'fetch');
+    fetchStub.callsFake(() =>
+      Promise.resolve(new Response('{}', { headers: { 'Content-Type': 'application/json' } }))
+    );
+  });
+
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it('should deduplicate concurrent calls for the same platformUrl', async () => {
+    const auth = { interceptors: [] };
+    const cache: KasAllowListCache = new Map();
+    const platformUrl = 'http://localhost:3000';
+    const [result1, result2] = await Promise.all([
+      fetchKeyAccessServersWithCache(cache, platformUrl, auth),
+      fetchKeyAccessServersWithCache(cache, platformUrl, auth),
+    ]);
+
+    expect(result1).to.equal(result2);
+    expect(fetchStub.callCount).to.equal(1);
+  });
+
+  it('should fetch separately for different platformUrls', async () => {
+    const auth = { interceptors: [] };
+    const cache: KasAllowListCache = new Map();
+    await fetchKeyAccessServersWithCache(cache, 'http://platform-a.example.com', auth);
+    await fetchKeyAccessServersWithCache(cache, 'http://platform-b.example.com', auth);
+
+    expect(fetchStub.callCount).to.equal(2);
+  });
+
+  it('should evict a rejected entry and retry on the next call', async () => {
+    const auth = { interceptors: [] };
+    const cache: KasAllowListCache = new Map();
+    const platformUrl = 'http://localhost:3000';
+
+    fetchStub.callsFake(() => Promise.reject(new Error('network down')));
+
+    try {
+      await fetchKeyAccessServersWithCache(cache, platformUrl, auth);
+    } catch {
+      // expected
+    }
+
+    // Wait a tick for the .catch() eviction handler to run
+    await new Promise((r) => setTimeout(r, 0));
+    expect(cache.has(platformUrl)).to.equal(false);
+
+    fetchStub.callsFake(() =>
+      Promise.resolve(new Response('{}', { headers: { 'Content-Type': 'application/json' } }))
+    );
+
+    const result = await fetchKeyAccessServersWithCache(cache, platformUrl, auth);
+    expect(result).to.not.be.undefined;
+    expect(fetchStub.callCount).to.equal(2);
+  });
+});
 
 describe('rewrapAdditionalContextHeader', () => {
   it('should return undefined for empty array', () => {
