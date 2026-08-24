@@ -59,7 +59,7 @@ import {
   SplitKey,
 } from '../models/index.js';
 import { plan } from '../../../src/policy/granter.js';
-import { attributeFQNsAsValues } from '../../../src/policy/api.js';
+import { attributeFQNsAsKeyMappings } from '../../../src/policy/api.js';
 import { type Chunker, fromBuffer, fromSource } from '../../../src/seekable.js';
 import { Algorithm, SimpleKasKey } from '../../../src/platform/policy/objects_pb.js';
 import { effectiveKasKeys } from '../../../src/policy/kas-keys.js';
@@ -604,7 +604,7 @@ export class Client {
         if (!this.auth) {
           throw new ConfigurationError('AuthProvider or interceptors required for autoconfigure');
         }
-        const fetchedFQNValues = await attributeFQNsAsValues(
+        const fetchedFQNValues = await attributeFQNsAsKeyMappings(
           this.platformUrl,
           this.auth,
           ...fqnsWithoutValues

@@ -563,6 +563,43 @@ const kas: RequestListener = async (req, res) => {
       res.statusCode = 200;
       res.end(JSON.stringify({ fqnAttributeValues }));
       return;
+    } else if (url.pathname === '/policy.attributes.AttributesService/GetKeyMappingsByFqns') {
+      res.setHeader('Content-Type', 'application/json');
+      const token = req.headers['authorization'] as string;
+      if (!token || !token.startsWith('Bearer dummy-auth-token')) {
+        res.statusCode = 401;
+        res.end(JSON.stringify({ code: 'unauthenticated', message: 'unauthenticated' }));
+        return;
+      }
+
+      const body = await getBody(req);
+      const bodyText = new TextDecoder().decode(body);
+      const params = JSON.parse(bodyText);
+      const fqnKeyMappings: Record<string, { rule: number; keys: unknown[] }> = {};
+      let skipped = 0;
+
+      for (const v of params.fqns) {
+        const value = valueFor(v);
+        if (!value?.attribute) {
+          console.error(`unable to find definition for value [${v}]`);
+          skipped++;
+          continue;
+        }
+        // The mock policy is configured with legacy KAS grants (no mapped kas_keys),
+        // so key mappings resolve to an empty key set and the client falls back to
+        // GetAttributeValuesByFqns for grant resolution.
+        fqnKeyMappings[v] = { rule: value.attribute.rule, keys: value.kasKeys };
+      }
+
+      if (skipped) {
+        res.statusCode = 404;
+        res.end(JSON.stringify({ code: 'error', message: 'not found' }));
+        return;
+      }
+
+      res.statusCode = 200;
+      res.end(JSON.stringify({ fqnKeyMappings }));
+      return;
     } else if (url.pathname === '/stop' && req.method === 'GET') {
       server.close(() => {
         console.log('Server gracefully terminated.');
