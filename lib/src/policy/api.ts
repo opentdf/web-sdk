@@ -39,7 +39,7 @@ export async function attributeFQNsAsKeyMappings(
     response = await platform.v1.attributes.getKeyMappingsByFqns({ fqns });
   } catch (e) {
     if (e instanceof ConnectError && e.code === Code.Unimplemented) {
-      return attributeFQNsAsValues(platformUrl, auth, ...fqns);
+      return fetchAttributeFQNsAsValues(platform, platformUrl, fqns);
     }
     throw new NetworkError(`[${platformUrl}] [GetKeyMappingsByFqns] ${extractRpcErrorMessage(e)}`);
   }
@@ -47,10 +47,10 @@ export async function attributeFQNsAsKeyMappings(
   const values: Value[] = [];
   const legacyGrantFqns: string[] = [];
   // Iterate the requested FQNs (not the response map) so a value the server omits
-  // still falls back rather than being silently dropped. The response is keyed by
-  // normalized (lower-cased) FQN.
+  // still falls back rather than being silently dropped. The server normalizes
+  // response keys to lower case (resolveValueFqns), so look them up lower-cased.
   for (const fqn of fqns) {
-    const mapping = response.fqnKeyMappings[fqn] ?? response.fqnKeyMappings[fqn.toLowerCase()];
+    const mapping = response.fqnKeyMappings[fqn.toLowerCase()];
     if (!mapping?.keys.length) {
       // No mapped keys (legacy-grant-only value, or omitted by the server); resolve
       // via the full attribute lookup, which also surfaces genuinely missing FQNs.
@@ -70,7 +70,7 @@ export async function attributeFQNsAsKeyMappings(
   }
 
   if (legacyGrantFqns.length) {
-    values.push(...(await attributeFQNsAsValues(platformUrl, auth, ...legacyGrantFqns)));
+    values.push(...(await fetchAttributeFQNsAsValues(platform, platformUrl, legacyGrantFqns)));
   }
 
   return values;
@@ -84,7 +84,16 @@ export async function attributeFQNsAsValues(
 ): Promise<Value[]> {
   platformUrl = getPlatformUrlFromKasEndpoint(platformUrl);
   const platform = new PlatformClient({ interceptors: resolveInterceptors(auth), platformUrl });
+  return fetchAttributeFQNsAsValues(platform, platformUrl, fqns);
+}
 
+// Resolves attribute value FQNs via GetAttributeValuesByFqns using an existing
+// platform client, so callers (e.g. the key-mappings fallback) can reuse one client.
+async function fetchAttributeFQNsAsValues(
+  platform: PlatformClient,
+  platformUrl: string,
+  fqns: string[]
+): Promise<Value[]> {
   let response: GetAttributeValuesByFqnsResponse;
   try {
     response = await platform.v1.attributes.getAttributeValuesByFqns({

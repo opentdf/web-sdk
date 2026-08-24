@@ -275,7 +275,7 @@ const fetchKasKeyWithCache = (
   return keyInfoPromise;
 };
 
-function algorithmEnumValueToString(algorithmEnumValue: Algorithm) {
+export function algorithmEnumValueToString(algorithmEnumValue: Algorithm) {
   switch (algorithmEnumValue) {
     case Algorithm.RSA_2048:
       return 'rsa:2048';
@@ -287,6 +287,10 @@ function algorithmEnumValueToString(algorithmEnumValue: Algorithm) {
       return 'ec:secp384r1';
     case Algorithm.EC_P521:
       return 'ec:secp521r1';
+    case Algorithm.MLKEM_768:
+      return 'mlkem:768';
+    case Algorithm.MLKEM_1024:
+      return 'mlkem:1024';
     case Algorithm.UNSPECIFIED:
       // Not entirely sure undefined is correct here, but since we need to generate a key for our cache
       // synchonously, it seems to be the best approach for now.

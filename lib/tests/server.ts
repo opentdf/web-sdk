@@ -587,8 +587,9 @@ const kas: RequestListener = async (req, res) => {
         }
         // The mock policy is configured with legacy KAS grants (no mapped kas_keys),
         // so key mappings resolve to an empty key set and the client falls back to
-        // GetAttributeValuesByFqns for grant resolution.
-        fqnKeyMappings[v] = { rule: value.attribute.rule, keys: value.kasKeys };
+        // GetAttributeValuesByFqns for grant resolution. The real server normalizes
+        // response keys to lower case (resolveValueFqns), so mirror that here.
+        fqnKeyMappings[v.toLowerCase()] = { rule: value.attribute.rule, keys: value.kasKeys };
       }
 
       if (skipped) {
