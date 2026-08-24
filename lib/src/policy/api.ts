@@ -46,9 +46,14 @@ export async function attributeFQNsAsKeyMappings(
 
   const values: Value[] = [];
   const legacyGrantFqns: string[] = [];
-  for (const [fqn, mapping] of Object.entries(response.fqnKeyMappings)) {
-    if (!mapping.keys.length) {
-      // No mapped keys (legacy-grant-only value); resolve via the full attribute lookup.
+  // Iterate the requested FQNs (not the response map) so a value the server omits
+  // still falls back rather than being silently dropped. The response is keyed by
+  // normalized (lower-cased) FQN.
+  for (const fqn of fqns) {
+    const mapping = response.fqnKeyMappings[fqn] ?? response.fqnKeyMappings[fqn.toLowerCase()];
+    if (!mapping?.keys.length) {
+      // No mapped keys (legacy-grant-only value, or omitted by the server); resolve
+      // via the full attribute lookup, which also surfaces genuinely missing FQNs.
       legacyGrantFqns.push(fqn);
       continue;
     }
