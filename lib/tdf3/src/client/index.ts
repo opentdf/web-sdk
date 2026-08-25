@@ -128,11 +128,15 @@ const makeChunkable = async (source: DecryptSource) => {
 };
 
 export interface ClientConfig {
+  /** Cryptographic implementation used by the client. */
   cryptoService?: CryptoService;
-  /// oauth client id; used to generate oauth authProvider
+  /** OIDC client ID used by the legacy authentication flow. */
   clientId?: string;
+  /** Enables DPoP for requests. */
   dpopEnabled?: boolean;
+  /** Signing keys used for DPoP and signed request bodies. Generated when omitted. */
   dpopKeys?: Promise<KeyPair>;
+  /** Default Key Access Server URL. */
   kasEndpoint: string;
   /**
    * Service to use to look up ABAC. Used during autoconfigure. Defaults to
@@ -158,9 +162,12 @@ export interface ClientConfig {
   keyRewrapEndpoint?: string;
   // DEPRECATED Ignored
   keyUpsertEndpoint?: string;
+  /** Refresh token used by the legacy OIDC authentication flow. */
   refreshToken?: string;
   kasPublicKey?: string;
+  /** Authentication service URL used by the legacy OIDC flow. */
   oidcOrigin?: string;
+  /** External JWT used by the legacy token-exchange flow. */
   externalJwt?: string;
   /** @deprecated since 0.14.0. Use `interceptors` instead. */
   authProvider?: AuthProvider;
@@ -378,9 +385,16 @@ export class Client {
   readonly clientConfig: ClientConfig;
 
   /**
-   * Creates a TDF3 client. Requires `kasEndpoint`.
-   * Configure authentication with `interceptors`, `authProvider`, or the legacy OIDC options.
-   * Generates signing keys when `dpopKeys` is omitted.
+   * An abstraction for protecting and accessing data using TDF3 services.
+   * @param config TDF3 client configuration.
+   * @param config.kasEndpoint Default Key Access Server URL.
+   * @param config.dpopKeys Signing keys used for DPoP and signed request bodies. Generated when omitted.
+   * @param config.interceptors Connect RPC authentication interceptors.
+   * @param config.authProvider Deprecated authentication provider.
+   * @param config.clientId OIDC client ID used by the legacy authentication flow.
+   * @param config.refreshToken Refresh token used by the legacy OIDC authentication flow.
+   * @param config.externalJwt External JWT used by the legacy token-exchange flow.
+   * @param config.oidcOrigin Authentication service URL used by the legacy OIDC flow.
    */
   constructor(config: ClientConfig) {
     const clientConfig = { ...defaultClientConfig, ...config };
