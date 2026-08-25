@@ -232,7 +232,7 @@ export type TDFReader = {
    */
   decrypt: () => Promise<DecoratedStream>;
   /**
-   * Marks the reader as closed. Does not release resources held by the source.
+   * Marks the internal reader state as closed. Currently performs no resource cleanup.
    */
   close: () => Promise<void>;
 
