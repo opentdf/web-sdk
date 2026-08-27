@@ -3,15 +3,15 @@
 set -eu
 
 
-rm -rf platform lib/src/platform
+rm -rf lib/src/platform
 
 if [ -n "${PLATFORM_SRC:-}" ]; then
   # Use PLATFORM_SRC for buf generate
   echo "Using PLATFORM_SRC: $PLATFORM_SRC"
 else
-  # Clone latest platform code
-  git clone https://github.com/opentdf/platform.git
-  PLATFORM_SRC="platform/service"
+  # Generate from the latest platform schemas published to the BSR.
+  PLATFORM_SRC="buf.build/opentdf/platform:main"
+  echo "Using PLATFORM_SRC: $PLATFORM_SRC"
 fi
 
 # Generate Typescript code

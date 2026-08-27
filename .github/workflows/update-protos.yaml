@@ -43,15 +43,17 @@ jobs:
         id: fetch-latest-tag
         run: |
           if [ -z "${{ github.event.inputs.tag }}" ]; then
-            LATEST_TAG=$(git ls-remote --tags https://github.com/opentdf/platform.git | \
+            PROTOCOL_VERSION=$(git ls-remote --tags https://github.com/opentdf/platform.git | \
               grep "refs/tags/protocol/go" | \
               sed 's|.*/||' | \
               sort -V | \
               tail -n1)
-            echo "LATEST_TAG=protocol/go/$LATEST_TAG" >> "$GITHUB_ENV"
+            LATEST_TAG="protocol/go/$PROTOCOL_VERSION"
           else
-            echo "LATEST_TAG=${{ github.event.inputs.tag }}" >> "$GITHUB_ENV"
+            LATEST_TAG="${{ github.event.inputs.tag }}"
           fi
+          echo "LATEST_TAG=$LATEST_TAG" >> "$GITHUB_ENV"
+          echo "BSR_LABEL=${LATEST_TAG##*/}" >> "$GITHUB_ENV"
 
       - name: Check if update is needed
         working-directory: ./web-sdk
@@ -84,15 +86,6 @@ jobs:
           git fetch origin update-platform-protos:update-platform-protos
           git checkout update-platform-protos
 
-      - name: Clone platform repo at protocol/go tag
-        if: steps.check-update.outputs.no_updates != 'true'
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 #v5
-        with:
-          path: platform
-          repository: opentdf/platform
-          ref: ${{ env.LATEST_TAG }}
-          persist-credentials: true
-
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 #v5.0.0
         if: steps.check-update.outputs.no_updates != 'true'
         with:
@@ -120,8 +113,8 @@ jobs:
             echo "changes=true" >> "$GITHUB_OUTPUT"
           fi
         env:
-          PLATFORM_SRC: ../platform/service
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}          
+          PLATFORM_SRC: buf.build/opentdf/platform:${{ env.BSR_LABEL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create new branch
         working-directory: ./web-sdk
@@ -181,4 +174,3 @@ jobs:
             --body-file pr_body.txt \
             --head update-platform-protos \
             --base main
-
