@@ -41,8 +41,10 @@ jobs:
 
       - name: Fetch latest semver tag for protocol/go
         id: fetch-latest-tag
+        env:
+          REQUESTED_TAG: ${{ github.event.inputs.tag }}
         run: |
-          if [ -z "${{ github.event.inputs.tag }}" ]; then
+          if [ -z "$REQUESTED_TAG" ]; then
             PROTOCOL_VERSION=$(git ls-remote --tags https://github.com/opentdf/platform.git | \
               grep "refs/tags/protocol/go" | \
               sed 's|.*/||' | \
@@ -50,7 +52,11 @@ jobs:
               tail -n1)
             LATEST_TAG="protocol/go/$PROTOCOL_VERSION"
           else
-            LATEST_TAG="${{ github.event.inputs.tag }}"
+            if [[ ! "$REQUESTED_TAG" =~ ^protocol/go/v[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]]; then
+              echo "Invalid protocol/go tag: $REQUESTED_TAG" >&2
+              exit 1
+            fi
+            LATEST_TAG="$REQUESTED_TAG"
           fi
           echo "LATEST_TAG=$LATEST_TAG" >> "$GITHUB_ENV"
           echo "BSR_LABEL=${LATEST_TAG##*/}" >> "$GITHUB_ENV"
