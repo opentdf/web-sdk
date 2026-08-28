@@ -17,7 +17,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file policy/keymanagement/key_management.proto.
  */
 export const file_policy_keymanagement_key_management: GenFile = /*@__PURE__*/
-  fileDesc("Cilwb2xpY3kva2V5bWFuYWdlbWVudC9rZXlfbWFuYWdlbWVudC5wcm90bxIUcG9saWN5LmtleW1hbmFnZW1lbnQilAEKG0NyZWF0ZVByb3ZpZGVyQ29uZmlnUmVxdWVzdBIUCgRuYW1lGAEgASgJQga6SAPIAQESGwoLY29uZmlnX2pzb24YAiABKAxCBrpIA8gBARIXCgdtYW5hZ2VyGAMgASgJQga6SAPIAQESKQoIbWV0YWRhdGEYZCABKAsyFy5jb21tb24uTWV0YWRhdGFNdXRhYmxlIlIKHENyZWF0ZVByb3ZpZGVyQ29uZmlnUmVzcG9uc2USMgoPcHJvdmlkZXJfY29uZmlnGAEgASgLMhkucG9saWN5LktleVByb3ZpZGVyQ29uZmlnInkKGEdldFByb3ZpZGVyQ29uZmlnUmVxdWVzdBIWCgJpZBgCIAEoCUIIukgFcgOwAQFIABIXCgRuYW1lGAMgASgJQge6SARyAhABSAASFwoHbWFuYWdlchgEIAEoCUIGukgDyAEAQhMKCmlkZW50aWZpZXISBbpIAggBIk8KGUdldFByb3ZpZGVyQ29uZmlnUmVzcG9uc2USMgoPcHJvdmlkZXJfY29uZmlnGAEgASgLMhkucG9saWN5LktleVByb3ZpZGVyQ29uZmlnIkUKGkxpc3RQcm92aWRlckNvbmZpZ3NSZXF1ZXN0EicKCnBhZ2luYXRpb24YCiABKAsyEy5wb2xpY3kuUGFnZVJlcXVlc3QifAobTGlzdFByb3ZpZGVyQ29uZmlnc1Jlc3BvbnNlEjMKEHByb3ZpZGVyX2NvbmZpZ3MYASADKAsyGS5wb2xpY3kuS2V5UHJvdmlkZXJDb25maWcSKAoKcGFnaW5hdGlvbhgKIAEoCzIULnBvbGljeS5QYWdlUmVzcG9uc2Ui6AEKG1VwZGF0ZVByb3ZpZGVyQ29uZmlnUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQESFAoEbmFtZRgCIAEoCUIGukgDyAEAEhsKC2NvbmZpZ19qc29uGAMgASgMQga6SAPIAQASFwoHbWFuYWdlchgEIAEoCUIGukgDyAEAEikKCG1ldGFkYXRhGGQgASgLMhcuY29tbW9uLk1ldGFkYXRhTXV0YWJsZRI8ChhtZXRhZGF0YV91cGRhdGVfYmVoYXZpb3IYZSABKA4yGi5jb21tb24uTWV0YWRhdGFVcGRhdGVFbnVtIlIKHFVwZGF0ZVByb3ZpZGVyQ29uZmlnUmVzcG9uc2USMgoPcHJvdmlkZXJfY29uZmlnGAEgASgLMhkucG9saWN5LktleVByb3ZpZGVyQ29uZmlnIjMKG0RlbGV0ZVByb3ZpZGVyQ29uZmlnUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQEiUgocRGVsZXRlUHJvdmlkZXJDb25maWdSZXNwb25zZRIyCg9wcm92aWRlcl9jb25maWcYASABKAsyGS5wb2xpY3kuS2V5UHJvdmlkZXJDb25maWcyjwUKFEtleU1hbmFnZW1lbnRTZXJ2aWNlEn8KFENyZWF0ZVByb3ZpZGVyQ29uZmlnEjEucG9saWN5LmtleW1hbmFnZW1lbnQuQ3JlYXRlUHJvdmlkZXJDb25maWdSZXF1ZXN0GjIucG9saWN5LmtleW1hbmFnZW1lbnQuQ3JlYXRlUHJvdmlkZXJDb25maWdSZXNwb25zZSIAEnYKEUdldFByb3ZpZGVyQ29uZmlnEi4ucG9saWN5LmtleW1hbmFnZW1lbnQuR2V0UHJvdmlkZXJDb25maWdSZXF1ZXN0Gi8ucG9saWN5LmtleW1hbmFnZW1lbnQuR2V0UHJvdmlkZXJDb25maWdSZXNwb25zZSIAEnwKE0xpc3RQcm92aWRlckNvbmZpZ3MSMC5wb2xpY3kua2V5bWFuYWdlbWVudC5MaXN0UHJvdmlkZXJDb25maWdzUmVxdWVzdBoxLnBvbGljeS5rZXltYW5hZ2VtZW50Lkxpc3RQcm92aWRlckNvbmZpZ3NSZXNwb25zZSIAEn8KFFVwZGF0ZVByb3ZpZGVyQ29uZmlnEjEucG9saWN5LmtleW1hbmFnZW1lbnQuVXBkYXRlUHJvdmlkZXJDb25maWdSZXF1ZXN0GjIucG9saWN5LmtleW1hbmFnZW1lbnQuVXBkYXRlUHJvdmlkZXJDb25maWdSZXNwb25zZSIAEn8KFERlbGV0ZVByb3ZpZGVyQ29uZmlnEjEucG9saWN5LmtleW1hbmFnZW1lbnQuRGVsZXRlUHJvdmlkZXJDb25maWdSZXF1ZXN0GjIucG9saWN5LmtleW1hbmFnZW1lbnQuRGVsZXRlUHJvdmlkZXJDb25maWdSZXNwb25zZSIAYgZwcm90bzM", [file_buf_validate_validate, file_common_common, file_policy_objects, file_policy_selectors]);
+  fileDesc("Cilwb2xpY3kva2V5bWFuYWdlbWVudC9rZXlfbWFuYWdlbWVudC5wcm90bxIUcG9saWN5LmtleW1hbmFnZW1lbnQilAEKG0NyZWF0ZVByb3ZpZGVyQ29uZmlnUmVxdWVzdBIUCgRuYW1lGAEgASgJQga6SAPIAQESGwoLY29uZmlnX2pzb24YAiABKAxCBrpIA8gBARIXCgdtYW5hZ2VyGAMgASgJQga6SAPIAQESKQoIbWV0YWRhdGEYZCABKAsyFy5jb21tb24uTWV0YWRhdGFNdXRhYmxlIlIKHENyZWF0ZVByb3ZpZGVyQ29uZmlnUmVzcG9uc2USMgoPcHJvdmlkZXJfY29uZmlnGAEgASgLMhkucG9saWN5LktleVByb3ZpZGVyQ29uZmlnIpECChhHZXRQcm92aWRlckNvbmZpZ1JlcXVlc3QSFgoCaWQYAiABKAlCCLpIBXIDsAEBSAASGQoEbmFtZRgDIAEoCUIJGAG6SARyAhABSAASUgoMbmFtZV9tYW5hZ2VyGAUgASgLMjoucG9saWN5LmtleW1hbmFnZW1lbnQuR2V0UHJvdmlkZXJDb25maWdSZXF1ZXN0Lk5hbWVNYW5hZ2VySAASGQoHbWFuYWdlchgEIAEoCUIIGAG6SAPIAQAaPgoLTmFtZU1hbmFnZXISFQoEbmFtZRgBIAEoCUIHukgEcgIQARIYCgdtYW5hZ2VyGAIgASgJQge6SARyAhABQhMKCmlkZW50aWZpZXISBbpIAggBIk8KGUdldFByb3ZpZGVyQ29uZmlnUmVzcG9uc2USMgoPcHJvdmlkZXJfY29uZmlnGAEgASgLMhkucG9saWN5LktleVByb3ZpZGVyQ29uZmlnIkUKGkxpc3RQcm92aWRlckNvbmZpZ3NSZXF1ZXN0EicKCnBhZ2luYXRpb24YCiABKAsyEy5wb2xpY3kuUGFnZVJlcXVlc3QifAobTGlzdFByb3ZpZGVyQ29uZmlnc1Jlc3BvbnNlEjMKEHByb3ZpZGVyX2NvbmZpZ3MYASADKAsyGS5wb2xpY3kuS2V5UHJvdmlkZXJDb25maWcSKAoKcGFnaW5hdGlvbhgKIAEoCzIULnBvbGljeS5QYWdlUmVzcG9uc2Ui6AEKG1VwZGF0ZVByb3ZpZGVyQ29uZmlnUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQESFAoEbmFtZRgCIAEoCUIGukgDyAEAEhsKC2NvbmZpZ19qc29uGAMgASgMQga6SAPIAQASFwoHbWFuYWdlchgEIAEoCUIGukgDyAEAEikKCG1ldGFkYXRhGGQgASgLMhcuY29tbW9uLk1ldGFkYXRhTXV0YWJsZRI8ChhtZXRhZGF0YV91cGRhdGVfYmVoYXZpb3IYZSABKA4yGi5jb21tb24uTWV0YWRhdGFVcGRhdGVFbnVtIlIKHFVwZGF0ZVByb3ZpZGVyQ29uZmlnUmVzcG9uc2USMgoPcHJvdmlkZXJfY29uZmlnGAEgASgLMhkucG9saWN5LktleVByb3ZpZGVyQ29uZmlnIjMKG0RlbGV0ZVByb3ZpZGVyQ29uZmlnUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQEiUgocRGVsZXRlUHJvdmlkZXJDb25maWdSZXNwb25zZRIyCg9wcm92aWRlcl9jb25maWcYASABKAsyGS5wb2xpY3kuS2V5UHJvdmlkZXJDb25maWcyjwUKFEtleU1hbmFnZW1lbnRTZXJ2aWNlEn8KFENyZWF0ZVByb3ZpZGVyQ29uZmlnEjEucG9saWN5LmtleW1hbmFnZW1lbnQuQ3JlYXRlUHJvdmlkZXJDb25maWdSZXF1ZXN0GjIucG9saWN5LmtleW1hbmFnZW1lbnQuQ3JlYXRlUHJvdmlkZXJDb25maWdSZXNwb25zZSIAEnYKEUdldFByb3ZpZGVyQ29uZmlnEi4ucG9saWN5LmtleW1hbmFnZW1lbnQuR2V0UHJvdmlkZXJDb25maWdSZXF1ZXN0Gi8ucG9saWN5LmtleW1hbmFnZW1lbnQuR2V0UHJvdmlkZXJDb25maWdSZXNwb25zZSIAEnwKE0xpc3RQcm92aWRlckNvbmZpZ3MSMC5wb2xpY3kua2V5bWFuYWdlbWVudC5MaXN0UHJvdmlkZXJDb25maWdzUmVxdWVzdBoxLnBvbGljeS5rZXltYW5hZ2VtZW50Lkxpc3RQcm92aWRlckNvbmZpZ3NSZXNwb25zZSIAEn8KFFVwZGF0ZVByb3ZpZGVyQ29uZmlnEjEucG9saWN5LmtleW1hbmFnZW1lbnQuVXBkYXRlUHJvdmlkZXJDb25maWdSZXF1ZXN0GjIucG9saWN5LmtleW1hbmFnZW1lbnQuVXBkYXRlUHJvdmlkZXJDb25maWdSZXNwb25zZSIAEn8KFERlbGV0ZVByb3ZpZGVyQ29uZmlnEjEucG9saWN5LmtleW1hbmFnZW1lbnQuRGVsZXRlUHJvdmlkZXJDb25maWdSZXF1ZXN0GjIucG9saWN5LmtleW1hbmFnZW1lbnQuRGVsZXRlUHJvdmlkZXJDb25maWdSZXNwb25zZSIAYgZwcm90bzM", [file_buf_validate_validate, file_common_common, file_policy_objects, file_policy_selectors]);
 
 /**
  *
@@ -99,16 +99,28 @@ export type GetProviderConfigRequest = Message<"policy.keymanagement.GetProvider
     case: "id";
   } | {
     /**
-     * @generated from field: string name = 3;
+     * DEPRECATED, please use the NameManager and specify manager + name together.
+     *
+     * @generated from field: string name = 3 [deprecated = true];
+     * @deprecated
      */
     value: string;
     case: "name";
+  } | {
+    /**
+     * Search by name and manager.
+     *
+     * @generated from field: policy.keymanagement.GetProviderConfigRequest.NameManager name_manager = 5;
+     */
+    value: GetProviderConfigRequest_NameManager;
+    case: "nameManager";
   } | { case: undefined; value?: undefined };
 
   /**
-   * Optional - filter by manager type when searching by name
+   * DEPRECATED, please use the NameManager and specify manager + name together.
    *
-   * @generated from field: string manager = 4;
+   * @generated from field: string manager = 4 [deprecated = true];
+   * @deprecated
    */
   manager: string;
 };
@@ -119,6 +131,32 @@ export type GetProviderConfigRequest = Message<"policy.keymanagement.GetProvider
  */
 export const GetProviderConfigRequestSchema: GenMessage<GetProviderConfigRequest> = /*@__PURE__*/
   messageDesc(file_policy_keymanagement_key_management, 2);
+
+/**
+ * @generated from message policy.keymanagement.GetProviderConfigRequest.NameManager
+ */
+export type GetProviderConfigRequest_NameManager = Message<"policy.keymanagement.GetProviderConfigRequest.NameManager"> & {
+  /**
+   * The name of the key provider
+   *
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * The type of key manager.
+   *
+   * @generated from field: string manager = 2;
+   */
+  manager: string;
+};
+
+/**
+ * Describes the message policy.keymanagement.GetProviderConfigRequest.NameManager.
+ * Use `create(GetProviderConfigRequest_NameManagerSchema)` to create a new message.
+ */
+export const GetProviderConfigRequest_NameManagerSchema: GenMessage<GetProviderConfigRequest_NameManager> = /*@__PURE__*/
+  messageDesc(file_policy_keymanagement_key_management, 2, 0);
 
 /**
  * @generated from message policy.keymanagement.GetProviderConfigResponse

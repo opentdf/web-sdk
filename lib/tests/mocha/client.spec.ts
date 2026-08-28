@@ -2,11 +2,14 @@ import { assert, expect } from 'chai';
 import sinon from 'sinon';
 import { Client as TDF } from '../../tdf3/src/index.js';
 import { DecoratedReadableStream } from '../../tdf3/src/client/DecoratedReadableStream.js';
-import { findEntryInCache } from '../../tdf3/src/client/index.js';
+import { algorithmEnumValueToString, findEntryInCache } from '../../tdf3/src/client/index.js';
 import { getMocks } from '../mocks/index.js';
 import { Algorithm, Value } from '../../src/platform/policy/objects_pb.js';
 import { create } from '@bufbuild/protobuf';
-import { GetAttributeValuesByFqnsResponseSchema } from '../../src/platform/policy/attributes/attributes_pb.js';
+import {
+  GetAttributeValuesByFqnsResponseSchema,
+  GetKeyMappingsByFqnsResponseSchema,
+} from '../../src/platform/policy/attributes/attributes_pb.js';
 import { base64 } from '../../src/encodings/index.js';
 import { Attribute } from 'src/policy/attributes.js';
 
@@ -141,7 +144,7 @@ describe('client wrapper tests', function () {
     }
   });
 
-  it('encrypt autoconfigure hydrates fqns via getAttributeValuesByFqns', async function () {
+  it('encrypt autoconfigure hydrates fqns via getKeyMappingsByFqns', async function () {
     const Mocks = getMocks();
     const authProvider = {
       updateClientPublicKey: async () => {},
@@ -243,8 +246,25 @@ describe('client wrapper tests', function () {
       },
     });
 
+    // The encrypt autoconfigure path resolves key splits via GetKeyMappingsByFqns.
+    // The server resolves effective keys per FQN (value > definition > namespace):
+    // attributeValueFqn resolves to its value-level key, attributeOnlyFqn to its
+    // definition-level key.
+    const getKeyMappingsByFqnsResponse = create(GetKeyMappingsByFqnsResponseSchema, {
+      fqnKeyMappings: {
+        [attributeValueFqn]: { rule: 0, keys: valueWithAttribute.kasKeys },
+        [attributeOnlyFqn]: { rule: 0, keys: attributeOnly.kasKeys },
+      },
+    });
+
     const fetchStub = sinon.stub(globalThis, 'fetch').callsFake(async (input) => {
       const url = typeof input === 'string' ? input : input.toString();
+      if (url.includes('GetKeyMappingsByFqns')) {
+        return new Response(JSON.stringify(getKeyMappingsByFqnsResponse), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
       if (url.includes('GetAttributeValuesByFqns')) {
         return new Response(JSON.stringify(getAttributeValuesByFqnsResponse), {
           status: 200,
@@ -346,5 +366,25 @@ describe('tdf stream tests', function () {
     // replicate an assignment during the decrypt flow
     stream.requiredObligations = obligations;
     assert.deepEqual(stream.obligations(), obligations);
+  });
+});
+
+describe('algorithmEnumValueToString', function () {
+  it('maps ML-KEM algorithms to their serialized names', function () {
+    // Matches the algorithm strings used in lib/src/access.ts.
+    assert.equal(algorithmEnumValueToString(Algorithm.MLKEM_768), 'mlkem:768');
+    assert.equal(algorithmEnumValueToString(Algorithm.MLKEM_1024), 'mlkem:1024');
+  });
+
+  it('maps classic algorithms', function () {
+    assert.equal(algorithmEnumValueToString(Algorithm.RSA_2048), 'rsa:2048');
+    assert.equal(algorithmEnumValueToString(Algorithm.RSA_4096), 'rsa:4096');
+    assert.equal(algorithmEnumValueToString(Algorithm.EC_P256), 'ec:secp256r1');
+    assert.equal(algorithmEnumValueToString(Algorithm.EC_P384), 'ec:secp384r1');
+    assert.equal(algorithmEnumValueToString(Algorithm.EC_P521), 'ec:secp521r1');
+  });
+
+  it('returns undefined for unspecified algorithms', function () {
+    assert.equal(algorithmEnumValueToString(Algorithm.UNSPECIFIED), undefined);
   });
 });

@@ -2,7 +2,7 @@ import { expect } from '@esm-bundle/chai';
 import { type AuthProvider, HttpRequest, withHeaders } from '../../src/auth/auth.js';
 import { authTokenInterceptor } from '../../src/auth/interceptors.js';
 import { PlatformClient } from '../../src/platform.js';
-import { attributeFQNsAsValues } from '../../src/policy/api.js';
+import { attributeFQNsAsKeyMappings, attributeFQNsAsValues } from '../../src/policy/api.js';
 import { fetchWrappedKey } from '../../src/access/access-rpc.js';
 import { PermissionDeniedError } from '../../src/errors.js';
 
@@ -102,6 +102,20 @@ describe('Local Platform Connect RPC Client Tests', () => {
     try {
       const response = await attributeFQNsAsValues(platformUrl, authProvider, ...fqns);
       expect(response[0].$typeName).to.equal('policy.Value');
+    } catch (e) {
+      expect.fail('Test failed missing auth headers', e);
+    }
+  });
+
+  it(`attributeFQNsAsKeyMappings value with auth from api`, async () => {
+    // The mock policy resolves via legacy grants (no mapped keys), so this exercises
+    // GetKeyMappingsByFqns plus the fallback to GetAttributeValuesByFqns.
+    const fqns = ['https://granted.ns/attr/granted/value/granted'];
+
+    try {
+      const response = await attributeFQNsAsKeyMappings(platformUrl, authProvider, ...fqns);
+      expect(response[0].$typeName).to.equal('policy.Value');
+      expect(response[0].fqn).to.equal(fqns[0]);
     } catch (e) {
       expect.fail('Test failed missing auth headers', e);
     }
