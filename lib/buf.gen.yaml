@@ -1,6 +1,6 @@
 version: v2
 
-clean: true
+clean: false
 plugins:
   - local: protoc-gen-es
     out: src/platform

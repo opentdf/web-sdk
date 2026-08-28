@@ -1,0 +1,48 @@
+name: Verify Platform protobuf generation
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/platform-proto-generation.yaml"
+      - ".github/workflows/update-protos.yaml"
+      - "lib/buf.gen.yaml"
+      - "lib/package-lock.json"
+      - "lib/package.json"
+      - "scripts/platform.sh"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/platform-proto-generation.yaml"
+      - ".github/workflows/update-protos.yaml"
+      - "lib/buf.gen.yaml"
+      - "lib/package-lock.json"
+      - "lib/package.json"
+      - "scripts/platform.sh"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate-and-build:
+    name: Generate from BSR and build SDK
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: lib/package-lock.json
+      - name: Install generation dependencies
+        working-directory: lib
+        run: npm ci
+      - name: Generate Platform bindings from the BSR
+        run: ./scripts/platform.sh
+      - name: Build SDK with generated bindings
+        working-directory: lib
+        run: npm run build

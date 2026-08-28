@@ -112,7 +112,6 @@ dist
 *.tmp
 
 # For integration testing
-/platform
 /go.work
 /go.work.sum
 kc.zip
