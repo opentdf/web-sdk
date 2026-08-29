@@ -37,7 +37,7 @@
     "@types/readable-stream": "^4.0.18",
     "@types/sinon": "^21.0.0",
     "@types/yargs": "^17.0.33",
-    "chai": "^5.2.0",
+    "chai": "^6.2.2",
     "eslint-config-prettier": "^10.0.2",
     "eslint-plugin-chai-friendly": "^1.1.0",
     "eslint-plugin-prettier": "^5.5.5",
