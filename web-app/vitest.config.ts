@@ -15,9 +15,12 @@ export default defineConfig({
       // Sonar treats absent files as uncovered anyway; listing them keeps the
       // local summary honest about how little of the demo app is tested.
       //
-      // App.tsx will sit at 0% here no matter what: App.test.tsx drives it
-      // through a real browser against `vite preview`, so it executes in a
-      // process this provider never instruments.
+      // Expect near-zero numbers here and don't read anything into them. This
+      // provider instruments the vitest Node process, and every test in this
+      // package drives a real browser instead. The figures that matter come
+      // from `npm run coverage:browser`, which reports the istanbul counters
+      // the instrumented bundle accumulates in the page. This lane is kept
+      // only so a future in-process unit test is measured at all.
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/**/*.d.ts', 'src/**/*.{test,spec}.{ts,tsx}'],
     },
