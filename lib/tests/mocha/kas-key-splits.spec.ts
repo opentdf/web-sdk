@@ -48,6 +48,14 @@ const createFakeResponse = (body: unknown, ok = true, status = 200) => {
   } as Response);
 };
 
+// The autoconfigure encrypt path calls GetKeyMappingsByFqns first. These fixtures
+// resolve via grants / cached keys, so an empty key-mappings response makes the
+// client fall back to GetAttributeValuesByFqns, exercising the same resolution.
+const emptyKeyMappingsResponse = {
+  $typeName: 'policy.attributes.GetKeyMappingsByFqnsResponse',
+  fqnKeyMappings: {},
+};
+
 describe('Client Caching Behavior', () => {
   let client: Client;
   let fetchStub: sinon.SinonStub;
@@ -198,9 +206,10 @@ describe('Client Caching Behavior', () => {
         };
 
         fetchStub.returns(createFakeResponse({ error: 'Not Found' }, false, 404));
-        fetchStub.onCall(0).returns(createFakeResponse(attrValueByFqnResponse));
-        fetchStub.onCall(3).returns(createFakeResponse(attrOneValueOneKey));
-        fetchStub.onCall(6).returns(createFakeResponse(attrOneValueTwoKey));
+        fetchStub.onCall(0).returns(createFakeResponse(emptyKeyMappingsResponse));
+        fetchStub.onCall(1).returns(createFakeResponse(attrValueByFqnResponse));
+        fetchStub.onCall(4).returns(createFakeResponse(attrOneValueOneKey));
+        fetchStub.onCall(7).returns(createFakeResponse(attrOneValueTwoKey));
 
         const encryptParams = new EncryptParamsBuilder()
           .withStringSource('some data to encrypt')
@@ -345,9 +354,10 @@ describe('Client Caching Behavior', () => {
       };
 
       fetchStub.returns(createFakeResponse({ error: 'Not Found' }, false, 404));
-      fetchStub.onCall(0).returns(createFakeResponse(attrValueByFqnResponse));
-      fetchStub.onCall(3).returns(createFakeResponse(attrOneValueOneKey));
-      fetchStub.onCall(6).returns(createFakeResponse(attrOneValueTwoKey));
+      fetchStub.onCall(0).returns(createFakeResponse(emptyKeyMappingsResponse));
+      fetchStub.onCall(1).returns(createFakeResponse(attrValueByFqnResponse));
+      fetchStub.onCall(4).returns(createFakeResponse(attrOneValueOneKey));
+      fetchStub.onCall(7).returns(createFakeResponse(attrOneValueTwoKey));
 
       const encryptParams = new EncryptParamsBuilder()
         .withStringSource('some data to encrypt')
@@ -469,9 +479,10 @@ describe('Client Caching Behavior', () => {
       };
 
       fetchStub.returns(createFakeResponse({ error: 'Not Found' }, false, 404));
-      fetchStub.onCall(0).returns(createFakeResponse(attrValueByFqnResponse));
-      fetchStub.onCall(3).returns(createFakeResponse(attrOneValueOneKey));
-      fetchStub.onCall(6).returns(createFakeResponse(attrOneValueTwoKey));
+      fetchStub.onCall(0).returns(createFakeResponse(emptyKeyMappingsResponse));
+      fetchStub.onCall(1).returns(createFakeResponse(attrValueByFqnResponse));
+      fetchStub.onCall(4).returns(createFakeResponse(attrOneValueOneKey));
+      fetchStub.onCall(7).returns(createFakeResponse(attrOneValueTwoKey));
 
       const encryptParams = new EncryptParamsBuilder()
         .withStringSource('some data to encrypt')

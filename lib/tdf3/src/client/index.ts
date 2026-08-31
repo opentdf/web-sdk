@@ -37,7 +37,8 @@ import {
 } from './builders.js';
 import { DecoratedReadableStream } from './DecoratedReadableStream.js';
 import {
-  fetchKeyAccessServers,
+  fetchKeyAccessServersWithCache,
+  type KasAllowListCache,
   type KasPublicKeyInfo,
   OriginAllowList,
 } from '../../../src/access.js';
@@ -58,7 +59,7 @@ import {
   SplitKey,
 } from '../models/index.js';
 import { plan } from '../../../src/policy/granter.js';
-import { attributeFQNsAsValues } from '../../../src/policy/api.js';
+import { attributeFQNsAsKeyMappings } from '../../../src/policy/api.js';
 import { type Chunker, fromBuffer, fromSource } from '../../../src/seekable.js';
 import { Algorithm, SimpleKasKey } from '../../../src/platform/policy/objects_pb.js';
 import { effectiveKasKeys } from '../../../src/policy/kas-keys.js';
@@ -274,7 +275,7 @@ const fetchKasKeyWithCache = (
   return keyInfoPromise;
 };
 
-function algorithmEnumValueToString(algorithmEnumValue: Algorithm) {
+export function algorithmEnumValueToString(algorithmEnumValue: Algorithm) {
   switch (algorithmEnumValue) {
     case Algorithm.RSA_2048:
       return 'rsa:2048';
@@ -286,6 +287,10 @@ function algorithmEnumValueToString(algorithmEnumValue: Algorithm) {
       return 'ec:secp384r1';
     case Algorithm.EC_P521:
       return 'ec:secp521r1';
+    case Algorithm.MLKEM_768:
+      return 'mlkem:768';
+    case Algorithm.MLKEM_1024:
+      return 'mlkem:1024';
     case Algorithm.UNSPECIFIED:
       // Not entirely sure undefined is correct here, but since we need to generate a key for our cache
       // synchonously, it seems to be the best approach for now.
@@ -353,6 +358,8 @@ export class Client {
   readonly platformUrl?: string;
 
   readonly kasKeyInfoCache: KasKeyInfoCache = [];
+
+  readonly kasAllowListCache: KasAllowListCache = new Map();
 
   readonly easEndpoint?: string;
 
@@ -601,7 +608,7 @@ export class Client {
         if (!this.auth) {
           throw new ConfigurationError('AuthProvider or interceptors required for autoconfigure');
         }
-        const fetchedFQNValues = await attributeFQNsAsValues(
+        const fetchedFQNValues = await attributeFQNsAsKeyMappings(
           this.platformUrl,
           this.auth,
           ...fqnsWithoutValues
@@ -815,7 +822,11 @@ export class Client {
     if (!allowList && this.allowedKases) {
       allowList = this.allowedKases;
     } else if (this.platformUrl) {
-      allowList = await fetchKeyAccessServers(this.platformUrl, this.auth);
+      allowList = await fetchKeyAccessServersWithCache(
+        this.kasAllowListCache,
+        this.platformUrl,
+        this.auth
+      );
     } else {
       throw new ConfigurationError('platformUrl is required when allowedKases is empty');
     }
