@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { test, expect } from '../fixtures.js';
 import fs from 'node:fs';
 import { appUrl, authorize, loadFile } from './acts.js';
 

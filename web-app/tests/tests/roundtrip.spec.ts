@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures.js';
 import fs from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { serve } from '../static-server.js';

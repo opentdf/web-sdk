@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc && vite build",
+    "coverage:browser": "nyc report --reporter=text --reporter=lcov --cwd .. -t web-app/.nyc_output --report-dir=web-app/coverage/browser",
     "dev": "vite",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"  \"tests/*.{js,jsx,ts,tsx}\" \"tests/tests/**/*.{js,jsx,ts,tsx}\"",
     "license-check": "license-checker-rseidelsohn --production --onlyAllow 'Apache-2.0; BSD; CC-BY-4.0; ISC; MIT'",
@@ -12,7 +13,7 @@
     "lint:fix": "eslint --fix \"src/**/*.{js,jsx,ts,tsx}\"",
     "prepack": "npm run build",
     "preview": "vite preview",
-    "test": "COVERAGE=1 vite build && COVERAGE=1 vitest --coverage",
+    "test": "rm -rf .nyc_output && COVERAGE=1 vite build && COVERAGE=1 vitest --coverage && npm run coverage:browser",
     "test:ui": "vite build && vitest --ui",
     "rebuild": "npm remove @opentdf/sdk && npm add file:../lib/opentdf-sdk-0.20.0.tgz && npm run dev"
   },
