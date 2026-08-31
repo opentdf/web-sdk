@@ -160,6 +160,15 @@ jobs:
           path: ./web-app/coverage/lcov.info
           if-no-files-found: error
           retention-days: 7
+      # The istanbul counters the instrumented bundle accumulated in the
+      # browser. Unlike the v8 report above, this one covers lib/ as well.
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f #v7.0.0
+        if: fromJSON(env.do_sonarscan)
+        with:
+          name: coverage-web-app-browser
+          path: ./web-app/coverage/browser/lcov.info
+          if-no-files-found: error
+          retention-days: 7
       - run: npm pack
 
   # Split out from `lib` because sonar-project.properties covers web-app/src
@@ -172,8 +181,18 @@ jobs:
     needs:
       - lib
       - web-app
+      # For the roundtrip coverage only. A failed roundtrip must degrade how
+      # complete the report is, not suppress the analysis -- hence the `if`
+      # below, which waits for this job without requiring it, and the tolerated
+      # download further down. lib and web-app are still required: without
+      # their artifacts there is nothing worth scanning.
+      - platform-roundtrip
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    if: >-
+      ${{ !cancelled()
+      && needs.lib.result == 'success'
+      && needs['web-app'].result == 'success' }}
     steps:
       # do_sonarscan is meant to be false only on forks and dependabot, where
       # SONAR_TOKEN is unavailable. It reads github.event_name, so adding a
@@ -224,6 +243,20 @@ jobs:
         with:
           name: coverage-web-app
           path: web-app/coverage/
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c #v8.0.1
+        if: fromJSON(env.do_sonarscan)
+        with:
+          name: coverage-web-app-browser
+          path: web-app/coverage/browser/
+      # Same producer as coverage-web-app-browser, so it needs its own
+      # directory. Tolerated rather than required: if platform-roundtrip failed
+      # there is no artifact, and scanning without it beats not scanning.
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c #v8.0.1
+        if: fromJSON(env.do_sonarscan)
+        continue-on-error: true
+        with:
+          name: coverage-roundtrip-browser
+          path: web-app/coverage/roundtrip/
       - name: SonarCloud Scan
         if: fromJSON(env.do_sonarscan)
         uses: SonarSource/sonarqube-scan-action@1a6d90ebcb0e6a6b1d87e37ba693fe453195ae25 #v5.3.1
@@ -303,6 +336,17 @@ jobs:
           PLAYWRIGHT_TESTS_TO_RUN: roundtrip
         run: |-
           ./wait-and-test.sh platform
+      # The SDK exercised against a live KAS in three real browsers -- the only
+      # coverage of lib/ that runs the way a consumer runs it. Uploaded even on
+      # failure: a suite that got most of the way through still measured most
+      # of the way through, and sonarscan tolerates the artifact being absent.
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f #v7.0.0
+        if: ${{ always() && fromJSON(env.do_sonarscan) }}
+        with:
+          name: coverage-roundtrip-browser
+          path: ./web-app/coverage/browser/lcov.info
+          if-no-files-found: warn
+          retention-days: 7
 
   platform-xtest:
     needs:
