@@ -8,7 +8,10 @@
     "declarationMap": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "inlineSourceMap": true,
+    // Standalone .js.map rather than inline (the two are mutually exclusive),
+    // with sources embedded so a consumer's debugger can step through SDK
+    // source without needing to resolve paths back into node_modules.
+    "inlineSources": true,
     "isolatedModules": true,
     "lib": ["dom", "dom.iterable", "es2021", "ES2022.Error"],
     "module": "NodeNext",
@@ -19,6 +22,7 @@
     "noUnusedLocals": true,
     "outDir": "dist/web",
     "skipLibCheck": true,
+    "sourceMap": true,
     "strict": false,
     "strictBindCallApply": true,
     "strictFunctionTypes": true,
