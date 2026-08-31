@@ -153,6 +153,16 @@ jobs:
       - run: npm run lint
       - run: npx playwright install
       - run: npm test
+      # Unlike the Sonar decoration this also shows up on fork PRs, where
+      # do_sonarscan is false and a reviewer otherwise gets no coverage signal.
+      - uses: fingerprintjs/action-coverage-report-md@72dfb7de7581612640a8e599e918b2eda98f9bba #v2.0.1
+        id: coverage-md
+        with:
+          srcBasePath: './'
+          textReportPath: './web-app/coverage/browser/coverage.txt'
+      - run: echo "${MARKDOWN_REPORT}" >>$GITHUB_STEP_SUMMARY
+        env:
+          MARKDOWN_REPORT: '${{ steps.coverage-md.outputs.markdownReport }}'
       - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f #v7.0.0
         if: fromJSON(env.do_sonarscan)
         with:
