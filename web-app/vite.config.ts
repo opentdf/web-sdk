@@ -7,6 +7,7 @@ import istanbul from 'vite-plugin-istanbul';
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
 const libRoot = path.join(repoRoot, 'lib');
+const webAppEntry = fileURLToPath(new URL('index.html', import.meta.url));
 
 // Set by `npm test` and by the roundtrip harness. Off by default: a normal
 // `npm run dev` should use the packed SDK the same way a consumer would.
@@ -70,12 +71,35 @@ function nodeNextSourceResolution(): Plugin {
   };
 }
 
+/**
+ * Node resolution walks up from the importer, so a bare specifier in
+ * `lib/src/**` looks in `lib/node_modules` and then the repo root -- never in
+ * `web-app/node_modules`. CI never installs lib/ in this job (it consumes the
+ * packed tarball), so `@bufbuild/protobuf` and friends are unresolvable from
+ * there. Resolve them as the app itself would instead, which is also the
+ * dependency graph the app actually ships.
+ */
+function libDependencyResolution(): Plugin {
+  return {
+    name: 'opentdf-lib-dependency-resolution',
+    enforce: 'pre',
+    async resolveId(source, importer, options) {
+      const bare = !/^[./]/.test(source) && !source.startsWith('node:') && !path.isAbsolute(source);
+      if (!bare || !importer?.startsWith(libRoot + path.sep)) {
+        return null;
+      }
+      return this.resolve(source, webAppEntry, { ...options, skipSelf: true });
+    },
+  };
+}
+
 function coveragePlugins(): PluginOption[] {
   if (!coverage) {
     return [];
   }
   return [
     nodeNextSourceResolution(),
+    libDependencyResolution(),
     istanbul({
       // Relative to the repo root, so lib/ and web-app/ can both be named
       // without `..` segments that test-exclude handles poorly.
