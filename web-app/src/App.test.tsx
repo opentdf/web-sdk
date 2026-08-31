@@ -4,12 +4,6 @@ import { preview, type PreviewServer } from 'vite';
 import { chromium, type Browser, type Page } from 'playwright';
 import { expect } from '@playwright/test';
 
-// These tests drive a real Chromium against a real build, so nothing they
-// exercise is visible to vitest's own v8 coverage provider -- that instruments
-// this Node process, not the browser. When COVERAGE is set, vite.config.ts
-// instruments the bundle with istanbul instead and the browser accumulates
-// counters on `window.__coverage__`; we ship them to .nyc_output for
-// `npm run coverage:browser` to turn into lcov.
 const collectCoverage = !!process.env.COVERAGE;
 const coverageDir = new URL('../.nyc_output/', import.meta.url);
 let coverageFiles = 0;
@@ -39,8 +33,6 @@ describe('basic', () => {
     page = await browser.newPage();
   });
 
-  // Each test navigates afresh, which resets the counters, so collect per test
-  // rather than once at the end. nyc merges the fragments additively.
   afterEach(async () => {
     await saveCoverage(page);
   });
