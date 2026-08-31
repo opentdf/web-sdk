@@ -163,8 +163,11 @@ jobs:
       - run: npm pack
 
   # Split out from `lib` because sonar-project.properties covers web-app/src
-  # too, and the web-app job that produces its coverage `needs: lib`. Every step
-  # is guarded rather than the job, because job-level `if` cannot read `env`.
+  # too, and the web-app job that produces its coverage `needs: lib`. Steps are
+  # guarded individually because a job-level `if` cannot read `env`. The
+  # underlying expression uses only the `github` context, which *is* available
+  # at job level, so inlining it there would work -- at the cost of repeating
+  # it, and of losing the guard step below that catches an unintended skip.
   sonarscan:
     needs:
       - lib
@@ -319,7 +322,8 @@ jobs:
       - scripts
       - platform-xtest
       # Kept here so a failed scan still fails CI, as it did when the scan was
-      # a step of `lib`. Skipped steps report success, so forks stay green.
+      # a step of `lib`. On a fork every step in the job is skipped but the job
+      # itself still concludes `success`, so this does not turn forks red.
       - sonarscan
     runs-on: ubuntu-22.04
     if: ${{ !cancelled() }}
