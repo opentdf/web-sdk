@@ -105,7 +105,16 @@ function coveragePlugins(): PluginOption[] {
       // without `..` segments that test-exclude handles poorly.
       cwd: repoRoot,
       include: ['web-app/src/**', 'lib/src/**', 'lib/tdf3/**'],
-      exclude: ['**/*.d.ts', '**/*.test.*', '**/*.spec.*', 'lib/src/platform/**'],
+      // platform/** is generated and vendor/** is third-party; Sonar indexes
+      // neither, so instrumenting them only produces lcov entries it reports
+      // as unresolvable.
+      exclude: [
+        '**/*.d.ts',
+        '**/*.test.*',
+        '**/*.spec.*',
+        'lib/src/platform/**',
+        'lib/tdf3/src/crypto/jose/vendor/**',
+      ],
       extension: ['.ts', '.tsx'],
       // Suite A runs against `vite preview`, which serves a production build.
       forceBuildInstrument: true,
