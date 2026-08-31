@@ -1,6 +1,7 @@
 name: "Reusable worflow: Build and Test Client"
 
 env:
+  # Skips SonarScan on PRs from forks, for security reasons.
   do_sonarscan: >-
     ${{ (github.event_name == 'push' ||
       github.event.pull_request.head.repo.full_name == github.repository) &&
@@ -59,8 +60,6 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
-        with:
-          fetch-depth: ${{ !fromJSON(env.do_sonarscan) && 1 || 0 }}
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 #v7.0.0
         with:
           node-version: '24'
@@ -84,12 +83,13 @@ jobs:
         with:
           name: opentdf-sdk-lib
           path: ./lib/opentdf-sdk-*.tgz
-      - name: SonarCloud Scan
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f #v7.0.0
         if: fromJSON(env.do_sonarscan)
-        uses: SonarSource/sonarqube-scan-action@1a6d90ebcb0e6a6b1d87e37ba693fe453195ae25 #v5.3.1
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          name: coverage-lib
+          path: ./lib/coverage/lcov.info
+          if-no-files-found: error
+          retention-days: 7
 
   cli:
     needs:
@@ -151,7 +151,95 @@ jobs:
       - run: npm run lint
       - run: npx playwright install
       - run: npm test
+      - uses: fingerprintjs/action-coverage-report-md@72dfb7de7581612640a8e599e918b2eda98f9bba #v2.0.1
+        id: coverage-md
+        with:
+          srcBasePath: './'
+          textReportPath: './web-app/coverage/browser/coverage.txt'
+      - run: echo "${MARKDOWN_REPORT}" >>$GITHUB_STEP_SUMMARY
+        env:
+          MARKDOWN_REPORT: '${{ steps.coverage-md.outputs.markdownReport }}'
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f #v7.0.0
+        if: fromJSON(env.do_sonarscan)
+        with:
+          name: coverage-web-app
+          path: ./web-app/coverage/lcov.info
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f #v7.0.0
+        if: fromJSON(env.do_sonarscan)
+        with:
+          name: coverage-web-app-browser
+          path: ./web-app/coverage/browser/lcov.info
+          if-no-files-found: error
+          retention-days: 7
       - run: npm pack
+
+  sonarscan:
+    needs:
+      - lib
+      - web-app
+      - platform-roundtrip
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: >-
+      ${{ !cancelled()
+      && needs.lib.result == 'success'
+      && needs['web-app'].result == 'success' }}
+    steps:
+      - name: Scan must not be skipped on trunk commits, but won't run on forks
+        if: >-
+          ${{ github.event_name == 'push'
+          && github.actor != 'dependabot[bot]'
+          && !fromJSON(env.do_sonarscan) }}
+        run: |
+          echo "::error::SonarCloud scan skipped on a push to ${{ github.ref }}."
+          echo "::error::Check the do_sonarscan expression at the top of this workflow."
+          exit 1
+      - name: Note the skip
+        if: ${{ !fromJSON(env.do_sonarscan) }}
+        run: echo "SonarCloud scan skipped (fork PR or dependabot)." >>"$GITHUB_STEP_SUMMARY"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
+        if: fromJSON(env.do_sonarscan)
+        with:
+          # Full depth required for Sonar's blame and new-code dating.
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 #v7.0.0
+        if: fromJSON(env.do_sonarscan)
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: './lib/package-lock.json'
+      - run: npm ci
+        if: fromJSON(env.do_sonarscan)
+        working-directory: ./lib
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c #v8.0.1
+        if: fromJSON(env.do_sonarscan)
+        with:
+          name: coverage-lib
+          path: lib/coverage/
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c #v8.0.1
+        if: fromJSON(env.do_sonarscan)
+        with:
+          name: coverage-web-app
+          path: web-app/coverage/
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c #v8.0.1
+        if: fromJSON(env.do_sonarscan)
+        with:
+          name: coverage-web-app-browser
+          path: web-app/coverage/browser/
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c #v8.0.1
+        if: fromJSON(env.do_sonarscan)
+        continue-on-error: true
+        with:
+          name: coverage-roundtrip-browser
+          path: web-app/coverage/roundtrip/
+      - name: SonarCloud Scan
+        if: fromJSON(env.do_sonarscan)
+        uses: SonarSource/sonarqube-scan-action@1a6d90ebcb0e6a6b1d87e37ba693fe453195ae25 #v5.3.1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   scripts:
     runs-on: ubuntu-latest
@@ -225,6 +313,13 @@ jobs:
           PLAYWRIGHT_TESTS_TO_RUN: roundtrip
         run: |-
           ./wait-and-test.sh platform
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f #v7.0.0
+        if: ${{ always() && fromJSON(env.do_sonarscan) }}
+        with:
+          name: coverage-roundtrip-browser
+          path: ./web-app/coverage/browser/lcov.info
+          if-no-files-found: warn
+          retention-days: 7
 
   platform-xtest:
     needs:
@@ -243,6 +338,7 @@ jobs:
       - web-app
       - scripts
       - platform-xtest
+      - sonarscan
     runs-on: ubuntu-22.04
     if: ${{ !cancelled() }}
     steps:

@@ -1,7 +1,26 @@
-import { afterAll, beforeAll, describe, test } from 'vitest';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { afterAll, afterEach, beforeAll, describe, test } from 'vitest';
 import { preview, type PreviewServer } from 'vite';
 import { chromium, type Browser, type Page } from 'playwright';
 import { expect } from '@playwright/test';
+
+const collectCoverage = !!process.env.COVERAGE;
+const coverageDir = new URL('../.nyc_output/', import.meta.url);
+let coverageFiles = 0;
+
+async function saveCoverage(page: Page): Promise<void> {
+  if (!collectCoverage) {
+    return;
+  }
+  const data = await page.evaluate(() => (globalThis as { __coverage__?: unknown }).__coverage__);
+  if (!data) {
+    // Silence here would look exactly like "the app ran but covered nothing",
+    // which is the failure this whole setup exists to rule out.
+    throw new Error('COVERAGE is set but window.__coverage__ is missing; is the build stale?');
+  }
+  mkdirSync(coverageDir, { recursive: true });
+  writeFileSync(new URL(`vitest-${coverageFiles++}.json`, coverageDir), JSON.stringify(data));
+}
 
 describe('basic', () => {
   let server: PreviewServer;
@@ -12,6 +31,10 @@ describe('basic', () => {
     server = await preview({ preview: { port: 3000 } });
     browser = await chromium.launch();
     page = await browser.newPage();
+  });
+
+  afterEach(async () => {
+    await saveCoverage(page);
   });
 
   afterAll(async () => {

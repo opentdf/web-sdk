@@ -2,6 +2,12 @@
 
 This folder contains playwright, e2e tests for web-app,
 running against a local or remote backend in proxy mode.
+This suite runs the SDK end to end in a real browser.
+This exercises bundling, the same-origin policy and CORS, web streams,
+and works with a live KAS and Keycloak. When COVERAGE is set the dev
+server serves an istanbul-instrumented bundle (see web-app/vite.config.ts).
+Run `npm run coverage:browser` in web-app to convert the coverage files
+into the lcov format.
 
 ## Bring up the platform behind local (vite dev server) proxy
 

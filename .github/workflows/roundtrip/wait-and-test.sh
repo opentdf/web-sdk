@@ -66,6 +66,11 @@ _init_webapp() {
     echo "[ERROR] Couldn't install @opentdf/sdk tarball"
     return 1
   fi
+  # Serve an istanbul-instrumented bundle, aliased to lib/ TypeScript source,
+  # so this suite reports coverage for the SDK it exercises. The Playwright
+  # fixture in web-app/tests/fixtures.ts reads the counters back out.
+  export COVERAGE=1
+  rm -rf .nyc_output
   npm run dev &>"$output" &
   server_pid=$!
   echo "Server pid: $server_pid"
@@ -195,4 +200,28 @@ if ! npx playwright install --with-deps; then
   exit 2
 fi
 
+_report_browser_coverage() (
+  cd "${WEB_APP_DIR}" || return 1
+  # nyc reports an empty run as a clean 0%, so check there is something to
+  # report before asking it.
+  compgen -G '.nyc_output/*.json' >/dev/null || return 1
+  npm run coverage:browser
+)
+
 npm test
+rc=$?
+
+# Turn the counters the fixture harvested into lcov. Collection must not mask
+# the suite's own result, so $rc is captured first and only ever escalated: a
+# green run that produced no coverage means the instrumentation broke, and that
+# silence is the exact failure this setup exists to prevent.
+if ! _report_browser_coverage; then
+  if [ $rc -eq 0 ]; then
+    echo "[ERROR] tests passed but no browser coverage was collected"
+    rc=1
+  else
+    echo "[WARN] no browser coverage to report, presumably because the tests failed"
+  fi
+fi
+
+exit $rc
