@@ -1,12 +1,15 @@
 // tests for assertions.ts
 
 import { expect } from 'chai';
+import { base64url } from 'jose';
 
 import * as assertions from '../../../tdf3/src/assertions.js';
 import * as DefaultCryptoService from '../../../tdf3/src/crypto/index.js';
 import { hex, base64 } from '../../../src/encodings/index.js';
+import { exportPublicKeyJwk } from '../../../tdf3/src/crypto/core/key-format.js';
 import { signJwt } from '../../../tdf3/src/crypto/jwt.js';
 import type { CryptoService } from '../../../tdf3/src/crypto/declarations.js';
+import { ecdsaKeyPair } from '../helpers/jws-keys.js';
 
 describe('assertions', () => {
   const cryptoService: CryptoService = DefaultCryptoService;
@@ -63,28 +66,10 @@ describe('assertions', () => {
     const isLegacyTDF = false;
 
     it('should verify assertion using jwk from header', async () => {
-      // Generate ECDSA key pair for ES256 signing (not ECDH)
-      const webCryptoKeyPair = await crypto.subtle.generateKey(
-        { name: 'ECDSA', namedCurve: 'P-256' },
-        true,
-        ['sign', 'verify']
-      );
-      const keyPair = {
-        publicKey: {
-          _brand: 'PublicKey',
-          algorithm: 'ec:secp256r1',
-          curve: 'P-256',
-          _internal: webCryptoKeyPair.publicKey,
-        } as any,
-        privateKey: {
-          _brand: 'PrivateKey',
-          algorithm: 'ec:secp256r1',
-          curve: 'P-256',
-          _internal: webCryptoKeyPair.privateKey,
-        } as any,
-      };
+      // ES256 signing key pair (ECDSA, not ECDH)
+      const { sdk: keyPair } = await ecdsaKeyPair('P-256');
       // Get JWK from the public key
-      const jwk = await crypto.subtle.exportKey('jwk', webCryptoKeyPair.publicKey);
+      const jwk = await exportPublicKeyJwk(keyPair.publicKey);
 
       const assertion: assertions.Assertion = {
         id: 'test-assertion',
@@ -128,6 +113,50 @@ describe('assertions', () => {
       };
 
       await assertions.verify(assertion, aggregateHash, dummyKey, isLegacyTDF, cryptoService);
+    });
+
+    it('persists ES256 bindings as raw IEEE P1363, the only encoding on the wire', async () => {
+      // binding.signature is the one signature this SDK writes to durable
+      // storage — it lands in the manifest and is read back by other SDKs. RFC
+      // 7518 §3.4 requires raw R || S (64 bytes for P-256); ASN.1 DER is 69-72
+      // bytes and is rejected on length by conformant verifiers. Pin the width
+      // so no encoding change can slip into the file format unnoticed.
+      const { sdk: keyPair } = await ecdsaKeyPair('P-256');
+      const signingKey: assertions.AssertionKey = {
+        alg: 'ES256',
+        key: keyPair.privateKey,
+      };
+
+      const assertion = await assertions.CreateAssertion(
+        aggregateHash,
+        {
+          id: 'raw-p1363-binding',
+          type: 'handling',
+          scope: 'tdo',
+          appliesToState: 'unencrypted',
+          statement: {
+            format: 'json',
+            schema: 'test-schema',
+            value: '{"foo":"bar"}',
+          },
+          signingKey,
+        },
+        cryptoService
+      );
+
+      const [, , signatureB64url] = assertion.binding.signature.split('.');
+      expect(base64url.decode(signatureB64url).length).to.equal(64);
+
+      await assertions.verify(
+        assertion,
+        aggregateHash,
+        {
+          alg: 'ES256',
+          key: keyPair.publicKey,
+        },
+        isLegacyTDF,
+        cryptoService
+      );
     });
 
     it('should fallback to provided key if no key in header', async () => {

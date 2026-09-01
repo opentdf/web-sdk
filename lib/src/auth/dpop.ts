@@ -8,7 +8,10 @@ import type {
   AsymmetricSigningAlgorithm,
   KeyAlgorithm,
 } from '../../tdf3/src/crypto/declarations.js';
-import { isRsaKeyAlgorithm } from '../../tdf3/src/crypto/declarations.js';
+import {
+  isAsymmetricSigningAlgorithm,
+  isRsaKeyAlgorithm,
+} from '../../tdf3/src/crypto/declarations.js';
 
 export type JsonObject = { [Key in string]?: JsonValue };
 export type JsonArray = JsonValue[];
@@ -21,11 +24,11 @@ function buf(input: string): Uint8Array {
   return encoder.encode(input);
 }
 
-interface DPoPJwtHeaderParameters {
+type DPoPJwtHeaderParameters = {
   alg: JWSAlgorithm;
-  typ: string;
+  typ: 'dpop+jwt';
   jwk: JsonWebKey;
-}
+};
 
 /**
  * Minimal JWT sign() implementation using CryptoService.
@@ -37,11 +40,11 @@ async function jwt(
   cryptoService: CryptoService
 ) {
   const input = `${b64u(buf(JSON.stringify(header)))}.${b64u(buf(JSON.stringify(claimsSet)))}`;
-  const signature = await cryptoService.sign(
-    buf(input),
-    privateKey,
-    header.alg as AsymmetricSigningAlgorithm
-  );
+  const { alg } = header;
+  if (!isAsymmetricSigningAlgorithm(alg)) {
+    throw new UnsupportedOperationError(`unsupported DPoP alg: ${alg}`);
+  }
+  const signature = await cryptoService.sign(buf(input), privateKey, alg);
   return `${input}.${b64u(signature)}`;
 }
 
@@ -120,8 +123,10 @@ class UnsupportedOperationError extends Error {
 
 /**
  * Determines a supported JWS `alg` identifier from PublicKeyInfo algorithm string.
+ * Returns an AsymmetricSigningAlgorithm (the subset CryptoService can sign with);
+ * notably, it does not support PS256/EdDSA members of JWSAlgorithm.
  */
-function determineJWSAlgorithmFromKeyInfo(algorithm: KeyAlgorithm): JWSAlgorithm {
+function determineJWSAlgorithmFromKeyInfo(algorithm: KeyAlgorithm): AsymmetricSigningAlgorithm {
   if (isRsaKeyAlgorithm(algorithm)) {
     return 'RS256';
   }
