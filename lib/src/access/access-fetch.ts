@@ -6,8 +6,10 @@ import {
   NetworkError,
   PermissionDeniedError,
   ServiceError,
+  TokenExpiredError,
   UnauthenticatedError,
 } from '../errors.js';
+import { readJwtExpMs } from '../auth/interceptors.js';
 import { validateSecureUrl } from '../utils.js';
 
 export type RewrapRequest = {
@@ -20,6 +22,32 @@ export type RewrapResponseLegacy = {
   sessionPublicKey: string;
   schemaVersion: string;
 };
+
+/**
+ * Classify a rewrap 401. When the `Authorization` header this SDK STAMPED on the request
+ * carries a JWT that was already expired (by local clock) as the request went out, the 401
+ * is the well-known static-token-provider footgun — surfaced as {@link TokenExpiredError},
+ * which has a clear recovery path (refresh the token and retry) and must not be conflated
+ * with an authorization denial. Anything else — an opaque token, an unreadable JWT, a
+ * still-valid `exp` — classifies as the generic {@link UnauthenticatedError}: an expired
+ * stamp is the ONLY trigger, so the specific error is zero-false-positive.
+ */
+function classifyRewrap401(
+  headers: Record<string, string> | undefined,
+  url: string
+): UnauthenticatedError {
+  const auth = headers?.['Authorization'] ?? headers?.['authorization'];
+  const match = typeof auth === 'string' ? auth.match(/^(?:Bearer|DPoP)\s+(.+)$/i) : null;
+  const expMs = match ? readJwtExpMs(match[1]) : undefined;
+  if (expMs !== undefined && expMs <= Date.now()) {
+    return new TokenExpiredError(
+      `401 for [${url}]; rewrap auth failure: the stamped access token was already EXPIRED — ` +
+        'refresh it and retry (see refreshTokenProvider / clientCredentialsTokenProvider / ' +
+        'externalJwtTokenProvider)'
+    );
+  }
+  return new UnauthenticatedError(`401 for [${url}]; rewrap auth failure`);
+}
 
 /**
  * Get a rewrapped access key to the document, if possible
@@ -66,7 +94,9 @@ export async function fetchWrappedKey(
           `400 for [${req.url}]: rewrap bad request [${await response.text()}]`
         );
       case 401:
-        throw new UnauthenticatedError(`401 for [${req.url}]; rewrap auth failure`);
+        // Distinguish the static-token-provider footgun (expired stamp -> TokenExpiredError,
+        // recoverable by refresh+retry) from a generic auth failure. See classifyRewrap401.
+        throw classifyRewrap401(req.headers, req.url);
       case 403:
         throw new PermissionDeniedError(
           `403 for [${req.url}]; rewrap permission denied: forbidden`

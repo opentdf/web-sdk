@@ -13,6 +13,7 @@ import {
   NetworkError,
   PermissionDeniedError,
   ServiceError,
+  TokenExpiredError,
   UnauthenticatedError,
 } from '../../../src/errors.js';
 import { OriginAllowList } from '../../../src/access.js';
@@ -113,7 +114,65 @@ describe('access-fetch.js', () => {
         expect.fail('Should have thrown');
       } catch (e) {
         expect(e).to.be.instanceOf(UnauthenticatedError);
+        // an OPAQUE stamped token ('Bearer test-token') carries no readable expiry, so the
+        // 401 must stay the GENERIC auth failure — never the expired-token classification.
+        expect(e).to.not.be.instanceOf(TokenExpiredError);
         expect(e.message).to.equal(`401 for [${url}]; rewrap auth failure`);
+      }
+    });
+
+    /** Build an unsigned JWT whose `exp` is `deltaSeconds` from now (negative = expired). */
+    const makeJwt = (deltaSeconds: number): string => {
+      const b64url = (o: unknown): string =>
+        btoa(JSON.stringify(o)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      const exp = Math.floor(Date.now() / 1000) + deltaSeconds;
+      return `${b64url({ alg: 'none' })}.${b64url({ exp })}.sig`;
+    };
+
+    /** An auth provider that stamps a specific Authorization header value. */
+    const providerStamping = (authorization: string): AuthProvider =>
+      ({
+        withCreds: async (req: { headers?: Record<string, string> }) => ({
+          ...req,
+          headers: { ...req.headers, Authorization: authorization },
+        }),
+      }) as unknown as AuthProvider;
+
+    it('should throw TokenExpiredError when the 401 request was stamped with an EXPIRED JWT', async () => {
+      fetchStub.returns(createMockResponse('Auth failed', false, 401, 'Unauthorized'));
+
+      try {
+        await fetchWrappedKey(url, requestBody, providerStamping(`Bearer ${makeJwt(-60)}`));
+        expect.fail('Should have thrown');
+      } catch (e) {
+        // the typed footgun signal — AND still an UnauthenticatedError, so existing
+        // instanceof handling keeps matching (non-breaking subclass).
+        expect(e).to.be.instanceOf(TokenExpiredError);
+        expect(e).to.be.instanceOf(UnauthenticatedError);
+        expect(e.message).to.contain('EXPIRED');
+      }
+    });
+
+    it('should throw plain UnauthenticatedError when the 401 request carried a still-VALID JWT', async () => {
+      fetchStub.returns(createMockResponse('Auth failed', false, 401, 'Unauthorized'));
+
+      try {
+        await fetchWrappedKey(url, requestBody, providerStamping(`Bearer ${makeJwt(300)}`));
+        expect.fail('Should have thrown');
+      } catch (e) {
+        expect(e).to.be.instanceOf(UnauthenticatedError);
+        expect(e).to.not.be.instanceOf(TokenExpiredError);
+      }
+    });
+
+    it('should classify a DPoP-scheme expired stamp the same as Bearer', async () => {
+      fetchStub.returns(createMockResponse('Auth failed', false, 401, 'Unauthorized'));
+
+      try {
+        await fetchWrappedKey(url, requestBody, providerStamping(`DPoP ${makeJwt(-60)}`));
+        expect.fail('Should have thrown');
+      } catch (e) {
+        expect(e).to.be.instanceOf(TokenExpiredError);
       }
     });
 

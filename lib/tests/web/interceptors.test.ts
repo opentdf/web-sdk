@@ -26,6 +26,15 @@ async function captureHeaders(
   return headers;
 }
 
+/** Build an unsigned JWT whose `exp` is `deltaSeconds` from now (negative = already expired). */
+function makeJwt(deltaSeconds: number): string {
+  const b64url = (o: unknown): string =>
+    btoa(JSON.stringify(o)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const header = { alg: 'RS256', typ: 'JWT' };
+  const payload = { exp: Math.floor(Date.now() / 1000) + deltaSeconds };
+  return `${b64url(header)}.${b64url(payload)}.unsigned`;
+}
+
 // --- authTokenInterceptor ---
 
 describe('authTokenInterceptor', () => {
@@ -48,6 +57,63 @@ describe('authTokenInterceptor', () => {
     expect(h1.get('Authorization')).to.equal('Bearer token-1');
     expect(h2.get('Authorization')).to.equal('Bearer token-2');
     expect(callCount).to.equal(2);
+  });
+});
+
+// --- expired-token footgun warning ---
+
+describe('authTokenInterceptor expired-token warning', () => {
+  let warnings: string[];
+  let origWarn: typeof console.warn;
+
+  beforeEach(() => {
+    warnings = [];
+    origWarn = console.warn;
+    // eslint-disable-next-line no-console
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.map((a) => String(a)).join(' '));
+    };
+  });
+
+  afterEach(() => {
+    // eslint-disable-next-line no-console
+    console.warn = origWarn;
+  });
+
+  it('warns ONCE when the tokenProvider returns an already-expired JWT (and still stamps it)', async () => {
+    const expired = makeJwt(-60);
+    const interceptor = authTokenInterceptor(async () => expired);
+
+    const headers = await captureHeaders(interceptor);
+    // Behavior is unchanged — the token is still stamped (non-breaking guard).
+    expect(headers.get('Authorization')).to.equal(`Bearer ${expired}`);
+    expect(warnings).to.have.length(1);
+    expect(warnings[0]).to.include('EXPIRED');
+    expect(warnings[0]).to.include('refreshTokenProvider');
+
+    // A second request must NOT warn again (one-shot, no log spam).
+    await captureHeaders(interceptor);
+    expect(warnings).to.have.length(1);
+  });
+
+  it('does NOT warn for a valid (unexpired) JWT', async () => {
+    const interceptor = authTokenInterceptor(async () => makeJwt(300));
+    await captureHeaders(interceptor);
+    expect(warnings).to.have.length(0);
+  });
+
+  it('does NOT warn for an opaque (non-JWT) token', async () => {
+    const interceptor = authTokenInterceptor(async () => 'opaque-token-abc');
+    const headers = await captureHeaders(interceptor);
+    expect(headers.get('Authorization')).to.equal('Bearer opaque-token-abc');
+    expect(warnings).to.have.length(0);
+  });
+
+  it('also warns for authTokenDPoPInterceptor on an expired token', async () => {
+    const interceptor = authTokenDPoPInterceptor({ tokenProvider: async () => makeJwt(-1) });
+    await captureHeaders(interceptor);
+    expect(warnings).to.have.length(1);
+    expect(warnings[0]).to.include('authTokenDPoPInterceptor');
   });
 });
 
