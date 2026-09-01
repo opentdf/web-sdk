@@ -120,7 +120,7 @@ _init_platform() {
     return 1
   fi
   if ! ./config-demo-idp.sh; then
-    echo "[ERROR] unable to provision keycloak"
+    echo "[ERROR] unable to configure demo idp clients"
     return 1
   fi
   if ! ./init-temp-keys.sh; then
