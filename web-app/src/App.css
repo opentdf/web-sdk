@@ -13,17 +13,99 @@
   margin-left: 10px;
 }
 
-.card {
-  border-radius: 1em;
-  padding: 2em;
-  margin: 1em;
-  background-color: cadetblue;
+/* The session tokens are long unbroken strings. Keep them in their own scroll
+   box: unconstrained they set the page's minimum width and the whole layout
+   scrolls sideways, but wrapping them instead turns the header into thousands
+   of lines. */
+#user_token {
+  flex: 1;
+  max-height: 6em;
+  min-width: 0;
+  overflow: auto;
+  white-space: pre;
 }
 
-.horizontal-flow {
+.body {
+  padding: 0 24px 2em;
+}
+
+/* Steps stack top to bottom in the order you work through them: choose a
+   source and sink, encrypt or decrypt, then read the output. Within a step,
+   left to right is action then the options that affect it. */
+.step {
+  margin: 1.5em 0;
+}
+
+.step > h2 {
+  font-size: 1.1em;
+  letter-spacing: 0.04em;
+  margin: 0 0 0.5em;
+  text-transform: uppercase;
+}
+
+/* Encrypt and decrypt are peers: pair them on one row when the viewport can
+   fit both, otherwise let them stack. */
+.actions {
   display: flex;
-  align-items: bottom;
+  flex-wrap: wrap;
+  gap: 1.5em 2em;
+  margin: 1.5em 0;
+}
+
+/* Spacing comes from the container's gap; flex children don't collapse
+   margins, so leaving the .step margin on would double it when stacked. */
+.actions > .step {
+  flex: 0 1 auto;
+  margin: 0;
+}
+
+.step-body {
+  align-items: flex-start;
+  display: flex;
+  flex-wrap: wrap;
   gap: 1em;
+}
+
+.step-body > fieldset {
+  flex: 1 1 15em;
+  min-width: 0;
+}
+
+/* inline-flex so the action bar hugs its button and options instead of
+   stretching into a wide empty slab on a desktop viewport. */
+.card {
+  align-items: center;
+  background-color: cadetblue;
+  border-radius: 1em;
+  display: inline-flex;
+  padding: 1em;
+}
+
+/* Per-step options, sitting on the action card. */
+.options {
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 0.5em;
+}
+
+.options legend {
+  font-size: 0.8em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.status {
+  flex: 0 1 auto;
+}
+
+/* The requested wrap algorithm and the one the KAS actually used can differ;
+   when they do, say so somewhere the progress counter won't overwrite. */
+.warning {
+  background-color: #fff3cd;
+  border: 1px solid #e0a800;
+  border-radius: 0.5em;
+  color: #664d03;
+  flex: 1 1 20em;
+  padding: 0.5em 0.75em;
 }
 
 .selected {
@@ -33,4 +115,50 @@
 textarea {
   width: 100%;
   height: 200px;
+}
+
+/* Manifest Inspector */
+/* Needs to outrank `.step-body > fieldset` on specificity, hence the child
+   selector: the inspector should size to its content, not stretch. */
+.step-body > .inspector {
+  flex: 0 1 28em;
+}
+
+.kao-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.kao + .kao {
+  border-top: 1px solid #ccc;
+  margin-top: 0.75em;
+  padding-top: 0.75em;
+}
+
+.kao h3 {
+  font-size: 0.8em;
+  letter-spacing: 0.06em;
+  margin: 0 0 0.6em;
+  opacity: 0.7;
+  text-transform: uppercase;
+}
+
+.kao dl {
+  display: grid;
+  /* minmax(0, …) so a long kas url wraps rather than widening the column. */
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.4em 0.8em;
+  margin: 0;
+}
+
+.kao dt {
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+.kao dd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  margin: 0;
+  overflow-wrap: anywhere;
 }
