@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.21.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.20.0...sdk-v0.21.0) (2026-09-01)
+
+
+### Features
+
+* **ci:** collect real-browser coverage for SonarCloud (DSPX-4556) ([#1001](https://github.com/opentdf/web-sdk/issues/1001)) ([55dfcfe](https://github.com/opentdf/web-sdk/commit/55dfcfe8a24f3bf590bc1508712618f00b5fab9f))
+* **main:** surface wrap and rewrap algorithm choice in web-app demo (DSPX-3229) ([#1000](https://github.com/opentdf/web-sdk/issues/1000)) ([2003ed6](https://github.com/opentdf/web-sdk/commit/2003ed66cd2a13e6e12b1401a89697c209cb4db5))
+* **sdk:** add ML-KEM key access objects (DSPX-3229) ([#933](https://github.com/opentdf/web-sdk/issues/933)) ([9a26030](https://github.com/opentdf/web-sdk/commit/9a26030efdc2f30cd978b899fdda817295bd84e8))
+* **sdk:** cache ListKeyAccessServers response during decryption ([#999](https://github.com/opentdf/web-sdk/issues/999)) ([690d3cb](https://github.com/opentdf/web-sdk/commit/690d3cb4bc739c6005b6edde0a4e7f49a7ce18c1))
+* **sdk:** resolve attribute key splits via GetKeyMappingsByFqns during encrypt ([#1002](https://github.com/opentdf/web-sdk/issues/1002)) ([e6c580a](https://github.com/opentdf/web-sdk/commit/e6c580a07a00ca13b50192907c2cdad5caae2d7a))
+
+
+### Bug Fixes
+
+* **cli:** bump js-yaml from 4.2.0 to 4.3.1 in /cli ([#981](https://github.com/opentdf/web-sdk/issues/981)) ([baae73b](https://github.com/opentdf/web-sdk/commit/baae73b606e29d8f668dbe547a6988ff42ddac1c))
+* **sdk:** allow the same KAS to wrap the same split (DSPX-3379) ([#967](https://github.com/opentdf/web-sdk/issues/967)) ([fab82a2](https://github.com/opentdf/web-sdk/commit/fab82a27f8f90d9fa18704eaea8e184ed55c39ed))
+* **sdk:** bump js-yaml to 3.15.1/4.3.1 in lib to patch omap DoS ([#979](https://github.com/opentdf/web-sdk/issues/979)) ([75b50e0](https://github.com/opentdf/web-sdk/commit/75b50e0b1fd554493835262b655c5a78981eea1d))
+* **sdk:** bump linkify-it from 5.0.1 to 5.0.2 in /lib ([#972](https://github.com/opentdf/web-sdk/issues/972)) ([0d389f6](https://github.com/opentdf/web-sdk/commit/0d389f63d32974dcb42a1e557d1814124ac2da42))
+
 ## [0.20.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.19.0...sdk-v0.20.0) (2026-07-08)
 
 
