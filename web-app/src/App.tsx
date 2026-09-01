@@ -280,29 +280,41 @@ function App() {
       });
   }, []);
 
+  // The output panel describes whatever was last encrypted or decrypted, so any
+  // change of source invalidates it. Retire it here rather than in each handler:
+  // url and bytes sources have no `Clear file` button to hang the reset off, and
+  // an inspector left over from the previous file claims something untrue about
+  // the new one.
+  const selectInputSource = (next: InputSource | undefined) => {
+    setInputSource(next);
+    setDownloadState(undefined);
+    setKaoMetadata(undefined);
+    setAlgorithmWarning(undefined);
+  };
+
   const setFileHandler = (event: ChangeEvent<HTMLInputElement>) => {
     const target = event.target as HTMLInputElement;
     if (target.files?.length) {
       const [file] = target.files;
-      setInputSource({ type: 'file', file });
+      selectInputSource({ type: 'file', file });
     } else {
-      setInputSource(undefined);
+      selectInputSource(undefined);
     }
   };
   const setRandomHandler = (event: ChangeEvent<HTMLInputElement>) => {
     const target = event.target as HTMLInputElement;
     if (target.value && target.validity.valid) {
-      setInputSource({ type: 'bytes', length: parseInt(target.value) });
+      selectInputSource({ type: 'bytes', length: parseInt(target.value) });
     } else {
-      setInputSource(undefined);
+      selectInputSource(undefined);
     }
   };
   const setUrlHandler = (event: ChangeEvent<HTMLInputElement>) => {
     const target = event.target as HTMLInputElement;
     if (target.value && target.validity.valid) {
-      setInputSource({ type: 'url', url: new URL(target.value) });
+      selectInputSource({ type: 'url', url: new URL(target.value) });
     } else {
-      setInputSource(undefined);
+      selectInputSource(undefined);
     }
   };
 
@@ -644,18 +656,7 @@ function App() {
                       <div>Size: {new Intl.NumberFormat().format(inputSource.file.size)} bytes</div>
                     </>
                   )}
-                  <button
-                    id="clearFile"
-                    onClick={() => {
-                      setInputSource(undefined);
-                      setDownloadState(undefined);
-                      // The inspector describes the file being cleared, so it has
-                      // to go too; otherwise it lingers over the next selection.
-                      setKaoMetadata(undefined);
-                      setAlgorithmWarning(undefined);
-                    }}
-                    type="button"
-                  >
+                  <button id="clearFile" onClick={() => selectInputSource(undefined)} type="button">
                     Clear file
                   </button>
                 </div>

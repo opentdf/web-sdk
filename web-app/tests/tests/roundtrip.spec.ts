@@ -168,6 +168,25 @@ test('download names record both key wrap legs', async ({ page }) => {
   expect(text).toContain('try encrypting some of your own files');
 });
 
+test('changing the source retires the previous output', async ({ page }) => {
+  await authorize(page);
+  // Random bytes rather than a url source: this needs no static server, and the
+  // `Clear file` button that used to be the only reset path is not rendered for
+  // a non-file source, which is exactly the hole being covered.
+  await page.locator('#noneSink').click();
+  await page.locator('#randomSelector').fill('1024');
+  await page.locator('#encryptButton').click();
+
+  await expect(page.locator('#downloadState')).toContainText('Complete');
+  await expect(page.locator('#kaoMetadata')).toBeVisible();
+
+  await page.locator('#randomSelector').fill('2048');
+  // Nothing has been encrypted from the new source, so a status or an inspector
+  // here would be describing the previous one.
+  await expect(page.locator('#downloadState')).toBeHidden();
+  await expect(page.locator('#kaoMetadata')).toBeHidden();
+});
+
 test('Remote Source Streaming', async ({ page }) => {
   const server = await serve('.', 8086);
 
