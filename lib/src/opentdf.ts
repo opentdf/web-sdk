@@ -78,7 +78,7 @@ export type CreateOptions = {
   /** The KAS to use for creation, if none is specified by the attribute service. */
   defaultKASEndpoint?: string;
 
-  /** Private (or shared) keys for signing assertions and bindings. */
+  /** Currently unused; supplying signer keys has no effect. */
   signers?: Keys;
 
   /** Source of plaintext data. */
@@ -152,7 +152,7 @@ export type ReadOptions = {
   /** Optionally disable assertion verification. */
   noVerify?: boolean;
 
-  /** If set, prevents more than this number of concurrent requests to the KAS. */
+  /** Currently ignored; KAS request concurrency is fixed at 1. */
   concurrencyLimit?: number;
 
   /**
@@ -232,7 +232,7 @@ export type TDFReader = {
    */
   decrypt: () => Promise<DecoratedStream>;
   /**
-   * Mark this reader as closed and release any resources, such as open files.
+   * Marks the internal reader state as closed.
    */
   close: () => Promise<void>;
 
@@ -256,8 +256,8 @@ export type TDFReader = {
  * The main OpenTDF class that provides methods for creating and reading TDF files.
  * It can be used to create new TDF files and read existing ones.
  * This class is the entry point for using the OpenTDF SDK.
- * It requires an authentication provider to be passed in the constructor.
- * It also requires a platform URL to be set, which is used to fetch key access servers and policies.
+ * Configure authentication with interceptors or the deprecated `authProvider`.
+ * Reads require a platform URL unless a KAS allowlist is supplied or allowlist checks are disabled.
  * @example
  * ```
  * import { authTokenInterceptor, OpenTDF } from '@opentdf/sdk';
@@ -272,7 +272,9 @@ export type TDFReader = {
  *   autoconfigure: false,
  * });
  *
- * const clearText = await client.read({ type: 'stream', location: cipherText });
+ * const clearText = await client.read({
+ *   source: { type: 'stream', location: cipherText },
+ * });
  * ```
  */
 export class OpenTDF {
@@ -411,7 +413,7 @@ export class OpenTDF {
     return reader.decrypt();
   }
 
-  /** Closes the OpenTDF instance and releases any resources. */
+  /** No-op retained for API compatibility. */
   close() {
     // No-op for now, but kept for API compatibility
   }

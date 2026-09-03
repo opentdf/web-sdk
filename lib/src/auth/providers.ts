@@ -26,9 +26,7 @@ import * as defaultCryptoService from '../../tdf3/src/crypto/index.js';
  * This just expects a clientId and clientSecret to be provided in the clientConfig, and will use that
  * to grant tokens via the OIDC clientCredentials flow.
  *
- * The client's public key must be set in all OIDC token requests in order to recieve a token with valid
- * Virtru claims. The public key may be passed to this provider's constructor, or supplied post-construction by calling
- * {@link updateClientPublicKey} which will force an explicit token refresh
+ * Bind the client public key after construction with `updateClientPublicKey()`.
  *
  */
 export const clientSecretAuthProvider = async (
@@ -59,9 +57,7 @@ export const clientSecretAuthProvider = async (
  * The client can supply this provider with a JWT issued by that trusted 3rd-party IdP, and that JWT will be exchanged
  * for a tokenset with TDF claims.
  *
- * The client's public key must be set in all OIDC token requests in order to recieve a token with valid
- * Virtru claims. The public key may be passed to this provider's constructor, or supplied post-construction by calling
- * {@link updateClientPublicKey}, which will force an explicit token refresh.
+ * Bind the client public key after construction with `updateClientPublicKey()`.
  */
 export const externalAuthProvider = async (
   clientConfig: ExternalJwtCredentials,
@@ -89,9 +85,7 @@ export const externalAuthProvider = async (
  * IdP using the OIDC flow fo their choice, and can provide a Refresh Token which will be exchanged (along with the client pubkey)
  * for a new tokenset containing valid TDF claims.
  *
- * The client's public key must be set in all OIDC token requests in order to recieve a token with valid
- * Virtru claims. The public key may be passed to this provider's constructor, or supplied post-construction by calling
- * {@link updateClientPublicKey} which will force an explicit token refresh
+ * Bind the client public key after construction with `updateClientPublicKey()`.
  */
 export const refreshAuthProvider = async (
   clientConfig: RefreshTokenCredentials,
