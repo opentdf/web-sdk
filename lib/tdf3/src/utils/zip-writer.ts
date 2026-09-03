@@ -168,7 +168,20 @@ export class ZipWriter {
     ]);
   }
 
-  writeDataDescriptor(crc32: number, uncompressedSize: number): Uint8Array {
+  /**
+   * Builds a data descriptor record (APPNOTE 4.3.9):
+   * `signature, crc-32, compressed size, uncompressed size`.
+   *
+   * @param crc32 CRC-32 of the uncompressed data
+   * @param uncompressedSize size of the entry before compression
+   * @param compressedSize size of the entry as stored; defaults to `uncompressedSize`
+   *   because we only ever use the STORE method
+   */
+  writeDataDescriptor(
+    crc32: number,
+    uncompressedSize: number,
+    compressedSize: number = uncompressedSize
+  ): Uint8Array {
     // NOTE(PLAT-1134): optional signature (required according to Archive Utility)
     // 4.3.9.3 Although not originally assigned a signature, the value
     // 0x08074b50 has commonly been adopted as a signature value
@@ -188,16 +201,15 @@ export class ZipWriter {
       // the file the compressed and uncompressed sizes will be 8
       // byte values.
       buffer = new Uint8Array(ZIP64_DATA_DESCRIPTOR_SIZE);
-      writeUInt32LE(buffer, crc32, 4);
       writeUInt32LE(buffer, ddSig, 0);
-      // We just use STORE, so compressed and uncompressed are the same.
-      writeUInt64LE(buffer, uncompressedSize, 8);
+      writeUInt32LE(buffer, crc32, 4);
+      writeUInt64LE(buffer, compressedSize, 8);
       writeUInt64LE(buffer, uncompressedSize, 16);
     } else {
       buffer = new Uint8Array(DATA_DESCRIPTOR_SIZE);
       writeUInt32LE(buffer, ddSig, 0);
       writeUInt32LE(buffer, crc32, 4);
-      writeUInt32LE(buffer, uncompressedSize, 8);
+      writeUInt32LE(buffer, compressedSize, 8);
       writeUInt32LE(buffer, uncompressedSize, 12);
     }
     return buffer;
