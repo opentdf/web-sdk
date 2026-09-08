@@ -64,6 +64,7 @@ import { attributeFQNsAsKeyMappings } from '../../../src/policy/api.js';
 import { type Chunker, fromBuffer, fromSource } from '../../../src/seekable.js';
 import { Algorithm, type SimpleKasKey } from '../../../src/platform/policy/objects_pb.js';
 import { effectiveKasKeys } from '../../../src/policy/kas-keys.js';
+import { chooseSegmentSize } from '../utils/scale-limits.js';
 
 const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
 
@@ -540,7 +541,8 @@ export class Client {
       autoconfigure,
       metadata,
       mimeType = 'unknown',
-      windowSize = DEFAULT_SEGMENT_SIZE,
+      windowSize,
+      knownSourceSize,
       keyMiddleware: keyMiddlewareOpt,
       splitPlan: preconfiguredSplitPlan,
       streamMiddleware = async (stream: DecoratedReadableStream) => {
@@ -562,7 +564,25 @@ export class Client {
         `unsupported segment integrity algorithm [${String(segmentIntegrityAlgorithm)}]`
       );
     }
+    // The guards above accept any casing, but `chooseSegmentSize` looks the
+    // algorithm up by exact key, so canonicalize before sizing anything.
+    const segmentIntegrityAlg =
+      segmentIntegrityAlgorithm.toUpperCase() as typeof SEGMENT_INTEGRITY_ALGORITHM;
     const keyMiddleware = keyMiddlewareOpt ?? (() => defaultKeyMiddleware(this.cryptoService));
+    // An explicit windowSize always wins. Otherwise, when the source length is
+    // known, climb the ladder only as far as the manifest budget requires --
+    // ordinary files keep the historical 1 MiB segment and are unaffected.
+    // Sized against the algorithm actually in force: an HS256 segment entry is
+    // 56 bytes against GMAC's 36, so it needs a larger segment for the same
+    // manifest budget.
+    const segmentSizeDefault =
+      windowSize ??
+      (knownSourceSize === undefined
+        ? DEFAULT_SEGMENT_SIZE
+        : chooseSegmentSize({
+            sourceSize: knownSourceSize,
+            alg: segmentIntegrityAlg,
+          }));
     const scope = opts.scope ?? { attributes: [], dissem: [] };
 
     for (const attributeValue of scope.attributeValues || []) {
@@ -789,9 +809,10 @@ export class Client {
       cryptoService: this.cryptoService,
       dpopKeys,
       encryptionInformation,
-      segmentSizeDefault: windowSize,
+      segmentSizeDefault,
       rootIntegrityAlgorithm,
-      segmentIntegrityAlgorithm,
+      segmentIntegrityAlgorithm: segmentIntegrityAlg,
+      knownSourceSize,
       contentStream: opts.source,
       mimeType,
       policy: policyObject,
