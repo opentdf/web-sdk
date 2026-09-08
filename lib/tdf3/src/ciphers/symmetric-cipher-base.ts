@@ -5,8 +5,6 @@ import {
   type EncryptResult,
   type SymmetricKey,
 } from '../crypto/declarations.js';
-import { encodeArrayBuffer as hexEncode } from '../../../src/encodings/hex.js';
-import { toArrayBuffer } from '../utils/index.js';
 
 export abstract class SymmetricCipher {
   cryptoService: CryptoService;
@@ -21,20 +19,25 @@ export abstract class SymmetricCipher {
     this.cryptoService = cryptoService;
   }
 
-  async generateInitializationVector(): Promise<string> {
-    if (!this.ivLength) {
-      throw Error('No iv length');
-    }
-    const bytes = await this.cryptoService.randomBytes(this.ivLength);
-    return hexEncode(toArrayBuffer(bytes));
-  }
-
   async generateKey(): Promise<SymmetricKey> {
     if (!this.keyLength) {
       throw Error('No key length');
     }
     return this.cryptoService.generateKey(this.keyLength);
   }
+
+  /**
+   * Length of the buffer {@link encrypt} returns for a `plaintextSize`-byte
+   * input. This must be exact, not an upper bound: the writer records it as
+   * the manifest's `encryptedSegmentSizeDefault`, and readers seek by it, so
+   * an over- or under-estimate produces a TDF whose segment offsets are wrong
+   * in every SDK that trusts the field.
+   *
+   * For AES-GCM the answer is `ivLength + plaintextSize + tagLength`, because
+   * the mode is a stream cipher with a fixed-width tag. A block-mode cipher
+   * would instead have to round up to the block size and drop the tag term.
+   */
+  abstract encryptedPayloadSize(plaintextSize: number): number;
 
   abstract encrypt(payload: Binary, key: SymmetricKey, iv: Binary): Promise<EncryptResult>;
 

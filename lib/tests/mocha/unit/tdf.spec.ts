@@ -5,11 +5,20 @@ import type { KeyAccessObject } from '../../../tdf3/src/models/key-access.js';
 import type { PolicyBody } from '../../../tdf3/src/models/policy.js';
 import { type Policy } from '../../../tdf3/src/models/policy.js';
 import { OriginAllowList } from '../../../src/access.js';
-import { ConfigurationError, InvalidFileError, UnsafeUrlError } from '../../../src/errors.js';
+import {
+  ConfigurationError,
+  InvalidFileError,
+  IvExhaustionError,
+  UnsafeUrlError,
+} from '../../../src/errors.js';
 import { getMocks } from '../../mocks/index.js';
 import * as DefaultCryptoService from '../../../tdf3/src/crypto/index.js';
 import type { CryptoService } from '../../../tdf3/src/crypto/declarations.js';
 import { isMlKemKeyAlgorithm } from '../../../tdf3/src/crypto/declarations.js';
+import {
+  GcmIvCounter,
+  MAX_GCM_INVOCATIONS_PER_KEY,
+} from '../../../tdf3/src/ciphers/gcm-iv-counter.js';
 
 const sampleCert = `
 -----BEGIN CERTIFICATE-----
@@ -75,6 +84,90 @@ describe('TDF', () => {
     const pem = await TDF.extractPemFromKeyString(kasECCert, 'ec:secp256r1', cryptoService);
     expect(pem).to.include('-----BEGIN PUBLIC KEY-----');
     expect(pem).to.include('-----END PUBLIC KEY-----');
+  });
+});
+
+describe('GcmIvCounter', () => {
+  const ff = Uint8Array.from([1, 2, 3, 4, 5, 6, 7, 8]);
+
+  it('reserves IV zero for metadata and starts payload IVs at one', () => {
+    const counter = new GcmIvCounter(ff);
+
+    expect(counter.metadataIv()).to.deep.equal(Uint8Array.from([...ff, 0, 0, 0, 0]));
+    expect(counter.next()).to.deep.equal(Uint8Array.from([...ff, 0, 0, 0, 1]));
+    expect(counter.next()).to.deep.equal(Uint8Array.from([...ff, 0, 0, 0, 2]));
+    // The metadata IV is a pure function of the fixed field, so asking again
+    // after issuing payload IVs must not consume or shift an invocation.
+    expect(counter.metadataIv()).to.deep.equal(Uint8Array.from([...ff, 0, 0, 0, 0]));
+  });
+
+  it('gives two streams disjoint IVs even when the key is reused', () => {
+    const a = new GcmIvCounter(Uint8Array.from([1, 1, 1, 1, 1, 1, 1, 1]));
+    const b = new GcmIvCounter(Uint8Array.from([2, 2, 2, 2, 2, 2, 2, 2]));
+
+    expect(a.metadataIv()).to.not.deep.equal(b.metadataIv());
+    expect(a.next()).to.not.deep.equal(b.next());
+  });
+
+  it('holds the fixed field steady across a multi-byte carry', () => {
+    const counter = new GcmIvCounter(ff, 0xffff, 0x10002);
+
+    expect(counter.next()).to.deep.equal(Uint8Array.from([...ff, 0, 0, 0xff, 0xff]));
+    expect(counter.next()).to.deep.equal(Uint8Array.from([...ff, 0, 1, 0, 0]));
+    expect(counter.next()).to.deep.equal(Uint8Array.from([...ff, 0, 1, 0, 1]));
+  });
+
+  it('copies the fixed field so later caller mutations cannot shift IVs', () => {
+    const mutable = Uint8Array.from(ff);
+    const counter = new GcmIvCounter(mutable);
+    mutable.fill(0);
+
+    expect(counter.next()).to.deep.equal(Uint8Array.from([...ff, 0, 0, 0, 1]));
+  });
+
+  it('stops before the per-key invocation ceiling', () => {
+    const counter = new GcmIvCounter(
+      ff,
+      MAX_GCM_INVOCATIONS_PER_KEY - 1,
+      MAX_GCM_INVOCATIONS_PER_KEY
+    );
+
+    expect(counter.next()).to.deep.equal(Uint8Array.from([...ff, 0xff, 0xff, 0xff, 0xff]));
+    expect(() => counter.next()).to.throw(IvExhaustionError);
+    // Still throws rather than wrapping around to the metadata IV.
+    expect(() => counter.next()).to.throw(IvExhaustionError);
+  });
+
+  it('rejects a fixed field that is not exactly eight bytes', () => {
+    expect(() => new GcmIvCounter(new Uint8Array(7))).to.throw(
+      ConfigurationError,
+      'Invalid fixed field length'
+    );
+    expect(() => new GcmIvCounter(new Uint8Array(12))).to.throw(
+      ConfigurationError,
+      'Invalid fixed field length'
+    );
+  });
+
+  it('rejects ranges that include the metadata IV or exceed the invocation ceiling', () => {
+    expect(() => new GcmIvCounter(ff, 0)).to.throw(
+      ConfigurationError,
+      'invocation 0 is reserved for metadata'
+    );
+    expect(() => new GcmIvCounter(ff, 2, 1)).to.throw(
+      ConfigurationError,
+      'Invalid invocation limit'
+    );
+    // A limit equal to the first invocation yields a counter that could never
+    // issue an IV, so it is rejected up front rather than on first use.
+    expect(() => new GcmIvCounter(ff, 1, 1)).to.throw(
+      ConfigurationError,
+      'Invalid invocation limit'
+    );
+    expect(() => new GcmIvCounter(ff, 1, MAX_GCM_INVOCATIONS_PER_KEY + 1)).to.throw(
+      ConfigurationError,
+      'exceeds the maximum'
+    );
   });
 });
 

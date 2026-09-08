@@ -1,4 +1,4 @@
-import { base64, hex } from '../../../src/encodings/index.js';
+import { base64 } from '../../../src/encodings/index.js';
 import { Binary } from '../binary.js';
 import { type SymmetricCipher } from '../ciphers/symmetric-cipher-base.js';
 import { type KeyAccess, type KeyAccessObject } from './key-access.js';
@@ -66,16 +66,23 @@ export class SplitKey {
 
   async generateKey(): Promise<KeyInfo> {
     const unwrappedKey = await this.cipher.generateKey();
-    const unwrappedKeyIvBinary = await this.generateIvBinary();
-    return { unwrappedKey, unwrappedKeyIvBinary };
+    // A random fallback IV, for callers that build a `KeyInfo` without going
+    // through `writeStream`. `writeStream` overrides it with invocation zero of
+    // the stream's own IV counter so metadata and payload share one fixed field.
+    const { ivLength } = this.cipher;
+    if (!ivLength) {
+      // Hard coded as part of the cipher object. This should not be reachable.
+      throw new ConfigurationError('uninitialized cipher iv length');
+    }
+    const iv = await this.cryptoService.randomBytes(ivLength);
+    return { unwrappedKey, unwrappedKeyIvBinary: Binary.fromArrayBuffer(toArrayBuffer(iv)) };
   }
 
   async encrypt(
     contentBinary: Binary,
     key: SymmetricKey,
-    ivBinaryOptional?: Binary
+    ivBinary: Binary
   ): Promise<EncryptResult> {
-    const ivBinary = ivBinaryOptional || (await this.generateIvBinary());
     return this.cipher.encrypt(contentBinary, key, ivBinary);
   }
 
@@ -83,7 +90,17 @@ export class SplitKey {
     return this.cipher.decrypt(content, key);
   }
 
-  async getKeyAccessObjects(policy: Policy, keyInfo: KeyInfo): Promise<KeyAccessObject[]> {
+  /**
+   * @param metadataIv IV for the encrypted metadata of every key access
+   * object. Defaults to `keyInfo.unwrappedKeyIvBinary`; `writeStream` passes
+   * invocation zero of the stream's IV counter so a key reused across two
+   * TDFs still gets distinct metadata IVs.
+   */
+  async getKeyAccessObjects(
+    policy: Policy,
+    keyInfo: KeyInfo,
+    metadataIv: Binary = keyInfo.unwrappedKeyIvBinary
+  ): Promise<KeyAccessObject[]> {
     const splitIds = [...new Set(this.keyAccess.map(({ sid }) => sid || ''))].sort((a, b) =>
       a.localeCompare(b)
     );
@@ -124,15 +141,18 @@ export class SplitKey {
         toArrayBuffer(new TextEncoder().encode(metadataStr))
       );
 
+      // Every key access object in one manifest shares this IV, as each also
+      // shares the `metadata` object it encrypts -- identical plaintext under
+      // an identical IV leaks nothing the duplication had not already.
       const encryptedMetadataResult = await this.encrypt(
         metadataBinary,
         unwrappedKeySplit,
-        keyInfo.unwrappedKeyIvBinary
+        metadataIv
       );
 
       const encryptedMetadataOb = {
         ciphertext: base64.encode(encryptedMetadataResult.payload.asString()),
-        iv: base64.encode(keyInfo.unwrappedKeyIvBinary.asString()),
+        iv: base64.encode(metadataIv.asString()),
       };
 
       const encryptedMetadataStr = JSON.stringify(encryptedMetadataOb);
@@ -143,18 +163,18 @@ export class SplitKey {
     return keyAccessObjects;
   }
 
-  async generateIvBinary(): Promise<Binary> {
-    const iv = await this.cipher.generateInitializationVector();
-    return Binary.fromString(hex.decode(iv));
-  }
-
-  async write(policy: Policy, keyInfo: KeyInfo): Promise<EncryptionInformation> {
+  /** @param metadataIv see {@link getKeyAccessObjects}. */
+  async write(
+    policy: Policy,
+    keyInfo: KeyInfo,
+    metadataIv: Binary = keyInfo.unwrappedKeyIvBinary
+  ): Promise<EncryptionInformation> {
     const algorithm = this.cipher?.name;
     if (!algorithm) {
       // Hard coded as part of the cipher object. This should not be reachable.
       throw new ConfigurationError('uninitialized cipher type');
     }
-    const keyAccessObjects = await this.getKeyAccessObjects(policy, keyInfo);
+    const keyAccessObjects = await this.getKeyAccessObjects(policy, keyInfo, metadataIv);
 
     // For now we're only concerned with a single (first) key access object
     const policyForManifest = base64.encode(JSON.stringify(policy));
@@ -165,7 +185,10 @@ export class SplitKey {
       method: {
         algorithm,
         isStreamable: false,
-        iv: base64.encode(keyInfo.unwrappedKeyIvBinary.asString()),
+        // Vestigial: payload segments carry their own IV prefix and each key
+        // access object repeats this one alongside its ciphertext. Kept equal
+        // to the metadata IV for schema compatibility.
+        iv: base64.encode(metadataIv.asString()),
       },
       integrityInformation: {
         rootSignature: {

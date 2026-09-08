@@ -16,6 +16,16 @@ import type { Value } from '../../../src/policy/attributes.js';
 import type { KasPublicKeyAlgorithm, OriginAllowList } from '../../../src/access.js';
 
 export const DEFAULT_SEGMENT_SIZE: number = 1024 * 1024;
+
+/**
+ * Smallest segment size a caller may request, matching the java-sdk's floor.
+ *
+ * Besides the per-segment IV and tag overhead that tiny segments would make
+ * dominant, one payload key addresses only 2^32 AES-GCM invocations. At 16KiB
+ * per segment that ceiling sits past 64TiB of input; much below it, a large
+ * but plausible file would exhaust the counter part way through the write.
+ */
+export const MIN_SEGMENT_SIZE: number = 16 * 1024;
 export type Scope = {
   dissem?: string[];
   policyId?: string;
@@ -24,6 +34,15 @@ export type Scope = {
   attributeValues?: Value[];
 };
 
+/**
+ * Supplies the symmetric key material for one `encrypt` call, in place of the
+ * freshly generated default.
+ *
+ * Returning the same `KeyInfo` from more than one call is supported: each
+ * stream draws its own random AES-GCM fixed field, so IVs never repeat even
+ * under a repeated key. Note, though, that every TDF sharing a key is
+ * recoverable from any one compromise of it.
+ */
 export type EncryptKeyMiddleware = (...args: unknown[]) => Promise<{
   keyForEncryption: KeyInfo;
   keyForManifest: KeyInfo;
@@ -382,10 +401,13 @@ class EncryptParamsBuilder {
    * <a href="https://github.com/virtru/tdf3-spec">TDF spec</a>, so a larger window
    * will result in more compact ciphertext.
    * @param {number} numBytes sliding window size, in bytes (1MB by default).
+   *   Must be at least {@link MIN_SEGMENT_SIZE}.
    */
   setStreamWindowSize(numBytes: number) {
-    if (numBytes <= 0) {
-      throw new ConfigurationError('Stream window size must be positive');
+    if (numBytes < MIN_SEGMENT_SIZE) {
+      throw new ConfigurationError(
+        `Stream window size must be at least ${MIN_SEGMENT_SIZE} bytes; got [${numBytes}]`
+      );
     }
     this._params.windowSize = numBytes;
   }
