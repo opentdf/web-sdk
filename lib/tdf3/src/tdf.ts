@@ -1410,6 +1410,7 @@ export async function decryptStreamFrom(
     allowedKases: allowList,
     dpopKeys: cfg.dpopKeys,
     cryptoService: cfg.cryptoService,
+    wrappingKeyAlgorithm: cfg.wrappingKeyAlgorithm,
   });
   // async function unwrapKey(manifest: Manifest, allowedKases: string[], authProvider: AuthProvider | AppIdAuthProvider, publicKey: string, privateKey: string, entity: EntityObject) {
   const keyForDecryption = await cfg.keyMiddleware(reconstructedKey);

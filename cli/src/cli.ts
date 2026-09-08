@@ -667,6 +667,12 @@ export const handleArgs = (args: string[]) => {
         JSON.stringify({
           '@opentdf/sdk': version,
           tdfSpecVersion,
+          // Features explicitly implemented by this CLI build, as opposed to
+          // values merely accepted by an option's `choices` list (e.g.
+          // --rewrapKeyType has long accepted "mlkem:768" because it shares
+          // PUBLIC_KEY_ALGORITHMS with the KAS-managed-key encap path, which
+          // predates the rewrap session key actually decapsulating ML-KEM).
+          supportedFeatures: ['session-key-mlkem'],
         })
       )
       .alias('version', 'V')
