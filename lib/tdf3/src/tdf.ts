@@ -77,6 +77,13 @@ import {
   assertManifestWithinSizeLimit,
 } from './utils/index.js';
 import type { CentralDirectory } from './utils/zip-reader.js';
+import { ByteAccumulator } from './utils/byte-accumulator.js';
+import {
+  DEFAULT_MANIFEST_MAX_SIZE,
+  estimateManifestBytes,
+  segmentCountFor,
+  segmentDigestBytes,
+} from './utils/scale-limits.js';
 import { getZtdfSalt } from './crypto/salt.js';
 import { decodeKemEnvelopeDer } from './crypto/core/mlkem-asn1.js';
 import type { Payload } from './models/payload.js';
@@ -303,6 +310,16 @@ export type EncryptConfiguration = {
   assertionConfigs?: AssertionConfig[];
   systemMetadataAssertion?: boolean;
   tdfSpecVersion?: string;
+  /**
+   * Length of `contentStream` in bytes, when the caller knows it (a `Blob`'s
+   * `size`, a `Content-Length`). Lets `writeStream` reject an oversized
+   * manifest before encrypting anything, and lets the segment hash buffer be
+   * sized exactly. Omit when the length is genuinely unknown; the end-of-stream
+   * check still catches it, just far more expensively.
+   */
+  knownSourceSize?: number;
+  /** Overrides the manifest ceiling. See {@link DEFAULT_MANIFEST_MAX_SIZE}. */
+  manifestMaxSize?: number;
 };
 
 export type DecryptConfiguration = {
@@ -641,7 +658,6 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
   let crcCounter = 0;
   let fileByteCount = 0;
   let aggregateHash422 = '';
-  const segmentHashList: Uint8Array[] = [];
   // Every AES-GCM call below goes through an encryptor that chooses its own
   // IVs; the writer only records them. A provider without encryptors, the
   // default included, gets a deterministic SDK-side one, with a fresh random
@@ -677,6 +693,38 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
   const { segmentSizeDefault } = cfg;
   const encryptedSegmentSizeDefault =
     cfg.encryptionInformation.cipher.encryptedPayloadSize(segmentSizeDefault);
+  const manifestMaxSize = cfg.manifestMaxSize ?? DEFAULT_MANIFEST_MAX_SIZE;
+
+  // Reject an oversized manifest before encrypting anything, whenever the
+  // source length is known. This is an estimate, not a measurement: `manifest`
+  // does not yet carry the assertions or the root signature, which are not
+  // produced until the payload is done, so it can undercount by a few dozen
+  // bytes plus whatever the assertions weigh. That is why the end-of-stream
+  // check below stays as the authoritative one -- but for the case this does
+  // catch, it saves the entire encrypt instead of throwing after the bytes are
+  // already downstream.
+  if (cfg.knownSourceSize !== undefined) {
+    assertManifestWithinSizeLimit(
+      estimateManifestBytes({
+        sourceSize: cfg.knownSourceSize,
+        segmentSize: segmentSizeDefault,
+        alg: segmentIntegrityAlgorithm,
+        baseManifestBytes: new TextEncoder().encode(JSON.stringify(manifest)).length,
+        encryptedSegmentOverhead: encryptedSegmentSizeDefault - segmentSizeDefault,
+      }),
+      segmentCountFor(cfg.knownSourceSize, segmentSizeDefault),
+      { manifestMaxSize, estimated: true }
+    );
+  }
+
+  // One contiguous buffer rather than an array of per-segment digests; see
+  // ByteAccumulator. Exact when the source length is known, grown otherwise.
+  const segmentHashes = new ByteAccumulator(
+    cfg.knownSourceSize === undefined
+      ? 0
+      : segmentCountFor(cfg.knownSourceSize, segmentSizeDefault) *
+          segmentDigestBytes(segmentIntegrityAlgorithm)
+  );
 
   // start writing the content
   entryInfos[0].filename = '0.payload';
@@ -759,7 +807,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
             base64.encode(payloadSigStr);
         } else {
           // hash the concat of all hashes
-          aggregateHash = await concatenateUint8Array(segmentHashList);
+          aggregateHash = segmentHashes.subarray();
 
           const payloadSig = await rootIntegrity(
             aggregateHash,
@@ -829,7 +877,9 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
 
         // write the manifest
         const manifestBuffer = new TextEncoder().encode(JSON.stringify(manifest));
-        assertManifestWithinSizeLimit(manifestBuffer.length, segmentInfos.length);
+        assertManifestWithinSizeLimit(manifestBuffer.length, segmentInfos.length, {
+          manifestMaxSize,
+        });
         controller.enqueue(manifestBuffer);
         _countChunk(manifestBuffer);
         entryInfos[1].crcCounter = crcCounter;
@@ -924,7 +974,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
         cfg.cryptoService
       );
 
-      segmentHashList.push(new Uint8Array(payloadSig));
+      segmentHashes.push(new Uint8Array(payloadSig));
       hash = base64.encodeArrayBuffer(payloadSig);
     }
 
@@ -1685,13 +1735,17 @@ export async function decryptStreamFrom(
   const specVersion = resolveSpecVersion(manifest) || '4.2.2';
   const isLegacyTDF = isTargetSpecLegacyTDF(specVersion);
 
-  // Decode each hash and store it in an array of Uint8Array
-  const segmentHashList = segments.map(
-    ({ hash }) => new Uint8Array(base64.decodeArrayBuffer(hash))
+  // Decode the segment hashes straight into one contiguous buffer. Sized from
+  // the first hash, since every segment uses the same integrity algorithm.
+  const segmentHashes = new ByteAccumulator(
+    segments.length === 0
+      ? 0
+      : segments.length * base64.decodeArrayBuffer(segments[0].hash).byteLength
   );
-
-  // Concatenate all segment hashes into a single Uint8Array
-  const aggregateHash = await concatenateUint8Array(segmentHashList);
+  for (const { hash } of segments) {
+    segmentHashes.push(new Uint8Array(base64.decodeArrayBuffer(hash)));
+  }
+  const aggregateHash = segmentHashes.subarray();
 
   // `rootSignature.alg` is unauthenticated manifest data. Reject GMAC (in any
   // casing) and every unknown algorithm here, before it can select a
@@ -1833,10 +1887,4 @@ export async function decryptStreamFrom(
   outputStream.manifest = manifest;
   outputStream.metadata = metadata;
   return outputStream;
-}
-
-async function concatenateUint8Array(uint8arrays: Uint8Array[]): Promise<Uint8Array> {
-  const blob = new Blob(uint8arrays.map(toArrayBuffer));
-  const buffer = await blob.arrayBuffer();
-  return new Uint8Array(buffer);
 }
