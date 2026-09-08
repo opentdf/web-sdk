@@ -5,7 +5,7 @@ import { ConfigurationError } from '../../../src/errors.js';
 import { type CryptoService } from '../crypto/declarations.js';
 import { decodeArrayBuffer, encodeArrayBuffer } from '../../../src/encodings/base64.js';
 
-export { ZipReader, readUInt64LE } from './zip-reader.js';
+export { ZipReader, readUInt64LE, assertManifestWithinSizeLimit } from './zip-reader.js';
 export { ZipWriter } from './zip-writer.js';
 export { keySplit, keyMerge } from './keysplit.js';
 export { streamToBuffer } from '../client/DecoratedReadableStream.js';
