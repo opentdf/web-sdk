@@ -87,6 +87,28 @@ describe('AccessToken', () => {
         expect(e.message).to.match(/Unauthorized/);
       }
     });
+    it('throws when DPoP is enabled but signingKey is missing (no silent Bearer downgrade)', async () => {
+      const mf = mockFetch({ access_token: 'fdfsdffsdf' });
+      const accessToken = new AccessToken(
+        {
+          exchange: 'refresh',
+          oidcOrigin: 'https://auth.invalid/auth/realms/yeet',
+          clientId: 'yoo',
+          refreshToken: 'ignored',
+          dpopEnabled: true,
+        },
+        DefaultCryptoService,
+        mf
+      );
+      try {
+        await accessToken.info('fakeToken');
+        assert.fail('Expected ConfigurationError');
+      } catch (e) {
+        expect(e.message).to.match(/required when DPoP is enabled/);
+      }
+      // Must fail before contacting userinfo, not silently fall back to Bearer.
+      expect(mf.called, 'must not send a userinfo request when misconfigured').to.be.false;
+    });
   });
 
   describe('exchanging refresh token for token with TDF claims', () => {
@@ -426,6 +448,88 @@ describe('AccessToken', () => {
       } catch (e) {
         expect(e.message).to.match(/required when DPoP is enabled/);
       }
+    });
+
+    it('token exchange (doPost via get) throws when DPoP is enabled but signingKey is missing', async () => {
+      const mf = mockFetch({ access_token: 'test_token' });
+      const accessToken = new AccessToken(
+        {
+          exchange: 'refresh',
+          oidcOrigin: 'https://auth.invalid/auth/realms/test/',
+          clientId: 'myid',
+          refreshToken: 'refresh',
+          dpopEnabled: true,
+        },
+        DefaultCryptoService,
+        mf
+      );
+      try {
+        await accessToken.get();
+        assert.fail('Expected ConfigurationError');
+      } catch (e) {
+        expect(e.message).to.match(/required when DPoP is enabled/);
+      }
+      // Same consistent failure as info()/withCreds — never POST to the token endpoint.
+      expect(mf.called, 'must not POST to the token endpoint when misconfigured').to.be.false;
+    });
+
+    it('deferred key binding: withCreds succeeds after refreshTokenClaimsWithClientPubkeyIfNeeded', async () => {
+      // The legitimate deferred-binding flow (mirrors opentdf.ts `ready`):
+      // construct DPoP-enabled with NO key, bind the key later, then request.
+      const mf = mockFetch({ access_token: 'test_token' });
+      const accessToken = new AccessToken(
+        {
+          exchange: 'refresh',
+          oidcOrigin: 'https://auth.invalid/auth/realms/test/',
+          clientId: 'myid',
+          refreshToken: 'refresh',
+          dpopEnabled: true,
+        },
+        DefaultCryptoService,
+        mf
+      );
+      const signingKey = await generateTestSigningKey();
+      await accessToken.refreshTokenClaimsWithClientPubkeyIfNeeded(signingKey);
+      const result = await accessToken.withCreds({
+        url: 'https://kas.invalid/v2/rewrap',
+        method: 'POST',
+        headers: {},
+      });
+      expect(result.headers).to.have.property('Authorization', 'DPoP test_token');
+      expect(result.headers).to.have.property('DPoP');
+    });
+
+    it('strips query and fragment from the DPoP proof htu (RFC 9449 §4.2)', async () => {
+      const signingKey = await generateTestSigningKey();
+      const mf = mockFetch({ access_token: 'test_token' });
+      const accessToken = new AccessToken(
+        {
+          exchange: 'refresh',
+          oidcOrigin: 'https://auth.invalid/auth/realms/test/',
+          clientId: 'myid',
+          refreshToken: 'refresh',
+          signingKey,
+          dpopEnabled: true,
+        },
+        DefaultCryptoService,
+        mf
+      );
+      const result = await accessToken.withCreds({
+        url: 'https://platform.invalid/key-access-servers?pagination.offset=0',
+        method: 'GET',
+        headers: {},
+      });
+
+      const decodeJwtPayload = (jwt: string): Record<string, unknown> => {
+        let b64 = jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        while (b64.length % 4 !== 0) {
+          b64 += '=';
+        }
+        return JSON.parse(atob(b64));
+      };
+      const payload = decodeJwtPayload(result.headers.DPoP);
+      expect(payload.htu).to.equal('https://platform.invalid/key-access-servers');
+      expect(payload.htm).to.equal('GET');
     });
   });
 });

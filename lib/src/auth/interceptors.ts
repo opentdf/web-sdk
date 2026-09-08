@@ -1,10 +1,18 @@
-import { type Interceptor } from '@connectrpc/connect';
+import { Code, ConnectError, type Interceptor } from '@connectrpc/connect';
 export type { Interceptor } from '@connectrpc/connect';
 import { type CryptoService, type KeyPair } from '../../tdf3/src/crypto/declarations.js';
 import * as DefaultCryptoService from '../../tdf3/src/crypto/index.js';
 import DPoP from './dpop.js';
 import { type AuthProvider } from './auth.js';
 import { base64 } from '../encodings/index.js';
+import {
+  adoptChallengeNonceFromConnectError,
+  DPoPNonceCache,
+  defaultNonceCache,
+  toOrigin,
+  warmNonceFromResponse,
+  warnNonceRetryGiveUp,
+} from './dpop-nonce.js';
 
 /**
  * A function that returns a valid access token string.
@@ -22,6 +30,12 @@ export type DPoPInterceptorOptions = {
   dpopKeys?: KeyPair | Promise<KeyPair>;
   /** CryptoService for signing. Defaults to DefaultCryptoService. */
   cryptoService?: CryptoService;
+  /**
+   * Per-client DPoP-Nonce cache (RFC 9449 §8). Defaults to the shared
+   * {@link defaultNonceCache}; pass the same instance to `PlatformClient` for
+   * strict per-client isolation on the interceptor-only path.
+   */
+  nonceCache?: DPoPNonceCache;
 };
 
 /**
@@ -78,6 +92,7 @@ export function authTokenInterceptor(tokenProvider: TokenProvider): Interceptor 
  */
 export function authTokenDPoPInterceptor(options: DPoPInterceptorOptions): DPoPInterceptor {
   const cryptoService = options.cryptoService ?? DefaultCryptoService;
+  const nonceCache = options.nonceCache ?? defaultNonceCache;
   const dpopKeysPromise: Promise<KeyPair> = options.dpopKeys
     ? Promise.resolve(options.dpopKeys)
     : cryptoService.generateSigningKeyPair();
@@ -86,19 +101,69 @@ export function authTokenDPoPInterceptor(options: DPoPInterceptorOptions): DPoPI
     const [token, keys] = await Promise.all([options.tokenProvider(), dpopKeysPromise]);
 
     const url = new URL(req.url);
-    const httpUri = `${url.origin}${url.pathname}`;
+    const origin = url.origin;
+    const httpUri = `${origin}${url.pathname}`;
+
+    // Check for cached nonce
+    const cachedNonce = nonceCache.get(origin);
 
     // Generate DPoP proof JWT for this request
-    const dpopProof = await DPoP(keys, cryptoService, httpUri, 'POST');
+    const dpopProof = await DPoP(keys, cryptoService, httpUri, 'POST', cachedNonce, token);
 
     // Export public key PEM for X-VirtruPubKey header
     const publicKeyPem = await cryptoService.exportPublicKeyPem(keys.publicKey);
 
-    req.header.set('Authorization', `Bearer ${token}`);
+    req.header.set('Authorization', `DPoP ${token}`);
     req.header.set('DPoP', dpopProof);
+    // TODO: rename to X-OpenTDF-PubKey (coordinate with platform Keycloak mapper; see oidc.ts doPost)
     req.header.set('X-VirtruPubKey', base64.encode(publicKeyPem));
 
-    return next(req);
+    // Call next and handle DPoP-Nonce retry
+    try {
+      const response = await next(req);
+      warmNonceFromResponse(nonceCache, origin, response.header);
+      return response;
+    } catch (err) {
+      // A Connect Unauthenticated error may carry a DPoP-Nonce challenge. The
+      // transport's fetch wrapper records the nonce from the raw 401 response
+      // into the cache (Connect errors don't reliably surface response headers);
+      // error metadata is a fallback for transports that do expose it.
+      if (err instanceof ConnectError && err.code === Code.Unauthenticated) {
+        const serverNonce = adoptChallengeNonceFromConnectError(
+          nonceCache,
+          origin,
+          err.metadata,
+          cachedNonce
+        );
+        if (serverNonce) {
+          // Regenerate proof with the server nonce and retry once.
+          const retryDpopProof = await DPoP(
+            keys,
+            cryptoService,
+            httpUri,
+            'POST',
+            serverNonce,
+            token
+          );
+          req.header.set('DPoP', retryDpopProof);
+
+          const retryResponse = await next(req);
+          warmNonceFromResponse(nonceCache, origin, retryResponse.header);
+          return retryResponse;
+        }
+        // A nonce challenge we can't act on (server omitted/repeated the nonce):
+        // surface why the retry was skipped before the original error propagates.
+        warnNonceRetryGiveUp(
+          'rpc interceptor',
+          origin,
+          nonceCache.get(origin) ?? DPoPNonceCache.extractNonce(err.metadata),
+          cachedNonce
+        );
+      }
+
+      // Re-throw if not a nonce challenge or retry failed
+      throw err;
+    }
   };
 
   // Attach dpopKeys to the interceptor function
@@ -121,38 +186,95 @@ export function authTokenDPoPInterceptor(options: DPoPInterceptorOptions): DPoPI
  */
 export function authProviderInterceptor(authProvider: AuthProvider): Interceptor {
   return (next) => async (req) => {
-    const url = new URL(req.url);
-    const pathOnly = url.pathname;
-    // Signs only the path of the url in the request
-    let token;
-    try {
-      token = await authProvider.withCreds({
-        url: pathOnly,
-        method: 'POST',
-        // Start with any headers Connect already has
-        headers: {
-          ...Object.fromEntries(req.header.entries()),
-          'Content-Type': 'application/json',
-        },
+    // Pass the full request URL to withCreds. DPoP-enabled providers need the
+    // absolute URL to compute the proof's `htu` claim and the origin for the
+    // nonce cache; `new URL()` on a bare path throws "Invalid URL". Non-DPoP
+    // providers ignore the URL (they only add a Bearer header), so this stays
+    // backwards-compatible with legacy AuthProviders.
+
+    // Re-sign the request via withCreds and apply the resulting headers. Called
+    // once normally, and again on a DPoP-Nonce challenge so the provider mints a
+    // fresh proof carrying the server-issued nonce (read from nonceCache).
+    const sign = async (): Promise<void> => {
+      let token;
+      try {
+        token = await authProvider.withCreds({
+          url: req.url,
+          method: 'POST',
+          // Start with any headers Connect already has
+          headers: {
+            ...Object.fromEntries(req.header.entries()),
+            'Content-Type': 'application/json',
+          },
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes('public key') || msg.includes('updateClientPublicKey')) {
+          throw new Error(
+            'PlatformClient: DPoP key binding is not complete. ' +
+              'If you are using OpenTDF with PlatformClient, create OpenTDF first and ' +
+              '`await client.ready` before constructing PlatformClient. ' +
+              `Original error: ${msg}`
+          );
+        }
+        throw err;
+      }
+
+      Object.entries(token.headers).forEach(([key, value]) => {
+        req.header.set(key, value);
       });
+    };
+
+    // Share the provider's per-client cache so the nonce withCreds embeds and the
+    // one we read back on a 401 are the same instance (falls back to the shared
+    // default for custom providers that don't expose one).
+    const nonceCache = authProvider.nonceCache ?? defaultNonceCache;
+
+    // Non-absolute URLs have no origin; nonce caching is origin-keyed, so those pass through.
+    const origin = toOrigin(req.url);
+
+    await sign();
+    // Snapshot the nonce we just signed with (withCreds reads it from the cache)
+    // so a 401 can tell us whether the server handed back a *new* one to retry.
+    const sentNonce = origin ? nonceCache.get(origin) : undefined;
+
+    try {
+      const response = await next(req);
+      // Keep the nonce cache warm from successful responses (RFC 9449 §8).
+      if (origin) {
+        warmNonceFromResponse(nonceCache, origin, response.header);
+      }
+      return response;
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes('public key') || msg.includes('updateClientPublicKey')) {
-        throw new Error(
-          'PlatformClient: DPoP key binding is not complete. ' +
-            'If you are using OpenTDF with PlatformClient, create OpenTDF first and ' +
-            '`await client.ready` before constructing PlatformClient. ' +
-            `Original error: ${msg}`
+      // A DPoP resource server rejects a proof minted without (or with a stale)
+      // nonce by returning Unauthenticated with a fresh `DPoP-Nonce`. The
+      // transport's fetch wrapper captures that header from the raw response into
+      // the cache (Connect errors don't reliably surface response headers); we
+      // also fall back to error metadata. Re-sign so withCreds embeds the nonce
+      // and retry once (RFC 9449 §9). Non-DPoP providers/servers never emit a
+      // DPoP-Nonce, so this is a no-op for them.
+      if (origin && err instanceof ConnectError && err.code === Code.Unauthenticated) {
+        const serverNonce = adoptChallengeNonceFromConnectError(
+          nonceCache,
+          origin,
+          err.metadata,
+          sentNonce
+        );
+        if (serverNonce) {
+          await sign();
+          const retryResponse = await next(req);
+          warmNonceFromResponse(nonceCache, origin, retryResponse.header);
+          return retryResponse;
+        }
+        warnNonceRetryGiveUp(
+          'auth interceptor',
+          origin,
+          nonceCache.get(origin) ?? DPoPNonceCache.extractNonce(err.metadata),
+          sentNonce
         );
       }
       throw err;
     }
-
-    Object.entries(token.headers).forEach(([key, value]) => {
-      req.header.set(key, value);
-    });
-
-    return await next(req);
   };
 }
 

@@ -16,6 +16,7 @@ _tdf3_test() {
     --ignoreAllowList \
     --oidcEndpoint http://localhost:65432/auth/realms/opentdf \
     --auth testclient:secret \
+    --dpop \
     --output sample.txt.tdf \
     encrypt "${plain}" \
     --containerType tdf3 \
@@ -28,6 +29,7 @@ _tdf3_test() {
     --ignoreAllowList \
     --oidcEndpoint http://localhost:65432/auth/realms/opentdf \
     --auth testclient:secret \
+    --dpop \
     --output sample_out.txt \
     --containerType tdf3 \
     decrypt sample.txt.tdf
@@ -50,6 +52,7 @@ _tdf3_inspect_test() {
     --ignoreAllowList \
     --oidcEndpoint http://localhost:65432/auth/realms/opentdf \
     --auth testclient:secret \
+    --dpop \
     --output sample-with-attrs.txt.tdf \
     --attributes 'https://attr.io/attr/a/value/1,https://attr.io/attr/x/value/2' \
     encrypt "${plain}" \

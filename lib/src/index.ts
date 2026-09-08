@@ -10,6 +10,7 @@ export {
   type Interceptor,
   type TokenProvider,
 } from './auth/interceptors.js';
+export { DPoPNonceCache } from './auth/dpop-nonce.js';
 export {
   clientCredentialsTokenProvider,
   refreshTokenProvider,

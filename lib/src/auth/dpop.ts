@@ -8,7 +8,11 @@ import type {
   AsymmetricSigningAlgorithm,
   KeyAlgorithm,
 } from '../../tdf3/src/crypto/declarations.js';
-import { isRsaKeyAlgorithm } from '../../tdf3/src/crypto/declarations.js';
+import {
+  isAsymmetricSigningAlgorithm,
+  isRsaKeyAlgorithm,
+} from '../../tdf3/src/crypto/declarations.js';
+import { derToIeeeP1363 } from '../../tdf3/src/crypto/core/signing.js';
 
 export type JsonObject = { [Key in string]?: JsonValue };
 export type JsonArray = JsonValue[];
@@ -21,11 +25,11 @@ function buf(input: string): Uint8Array {
   return encoder.encode(input);
 }
 
-interface DPoPJwtHeaderParameters {
+type DPoPJwtHeaderParameters = {
   alg: JWSAlgorithm;
-  typ: string;
+  typ: 'dpop+jwt';
   jwk: JsonWebKey;
-}
+};
 
 /**
  * Minimal JWT sign() implementation using CryptoService.
@@ -37,11 +41,24 @@ async function jwt(
   cryptoService: CryptoService
 ) {
   const input = `${b64u(buf(JSON.stringify(header)))}.${b64u(buf(JSON.stringify(claimsSet)))}`;
-  const signature = await cryptoService.sign(
-    buf(input),
-    privateKey,
-    header.alg as AsymmetricSigningAlgorithm
-  );
+  const { alg } = header;
+  // The header alg is a JWSAlgorithm, which is wider than what CryptoService can
+  // actually sign with (it documents forward-looking values like PS256/EdDSA).
+  // Validate rather than blind-cast so an unsupported alg fails here with a clear
+  // error instead of surfacing deep inside getSigningAlgorithmParams.
+  if (!isAsymmetricSigningAlgorithm(alg)) {
+    throw new UnsupportedOperationError(`unsupported DPoP alg: ${alg}`);
+  }
+  let signature = await cryptoService.sign(buf(input), privateKey, alg);
+  // JWS requires raw IEEE P1363 (R || S) for ECDSA per RFC 7518 §3.4, but
+  // cryptoService.sign currently returns DER. Convert here so DPoP proofs are
+  // accepted by RFC-conformant verifiers (Keycloak, panva-jose). RSA signatures
+  // are already raw bytes — no conversion (EdDSA is rejected by the guard above
+  // and never reaches here). See DSPX-3634 for the broader cleanup that would
+  // make this transform unnecessary.
+  if (alg.startsWith('ES')) {
+    signature = derToIeeeP1363(signature, alg);
+  }
   return `${input}.${b64u(signature)}`;
 }
 
@@ -120,8 +137,10 @@ class UnsupportedOperationError extends Error {
 
 /**
  * Determines a supported JWS `alg` identifier from PublicKeyInfo algorithm string.
+ * Returns an AsymmetricSigningAlgorithm (the subset CryptoService can sign with);
+ * it never produces the forward-looking PS256/EdDSA members of JWSAlgorithm.
  */
-function determineJWSAlgorithmFromKeyInfo(algorithm: KeyAlgorithm): JWSAlgorithm {
+function determineJWSAlgorithmFromKeyInfo(algorithm: KeyAlgorithm): AsymmetricSigningAlgorithm {
   if (isRsaKeyAlgorithm(algorithm)) {
     return 'RS256';
   }

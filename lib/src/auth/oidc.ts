@@ -5,6 +5,13 @@ import { base64 } from '../encodings/index.js';
 import { ConfigurationError, TdfError } from '../errors.js';
 import { rstrip } from '../utils.js';
 import { type CryptoService, type KeyPair } from '../../tdf3/src/crypto/declarations.js';
+import {
+  adoptChallengeNonce,
+  defaultNonceCache,
+  DPoPNonceCache,
+  warmNonceFromResponse,
+  warnNonceRetryGiveUp,
+} from './dpop-nonce.js';
 
 /**
  * Common fields used by all OIDC credentialing flows.
@@ -19,7 +26,12 @@ export type CommonCredentials = {
   /** Whether or not DPoP is enabled. */
   dpopEnabled?: boolean;
 
-  /** the client's public key, base64 encoded. Will be bound to the OIDC token. Deprecated. If not set in the constructor, */
+  /**
+   * The client's DPoP/signing key pair, bound to the issued OIDC token (as
+   * `cnf.jkt`) when DPoP is enabled. May be supplied here or bound later via
+   * `updateClientPublicKey`, which forces a token refresh so the new key takes
+   * effect.
+   */
   signingKey?: KeyPair;
 };
 
@@ -109,7 +121,21 @@ export class AccessToken {
 
   cryptoService: CryptoService;
 
-  constructor(cfg: OIDCCredentials, cryptoService: CryptoService, request?: typeof fetch) {
+  /**
+   * DPoP-Nonce cache (RFC 9449 §8). Defaults to the shared {@link defaultNonceCache}
+   * so the interceptor, transport, and `withCreds` stay consistent even when a
+   * provider is wrapped by a decorator that doesn't forward `nonceCache`. Pass a
+   * dedicated {@link DPoPNonceCache} to the constructor for per-client isolation;
+   * it is exposed on providers via `nonceCache` so the auth layer reads the same instance.
+   */
+  readonly nonceCache: DPoPNonceCache;
+
+  constructor(
+    cfg: OIDCCredentials,
+    cryptoService: CryptoService,
+    request?: typeof fetch,
+    nonceCache: DPoPNonceCache = defaultNonceCache
+  ) {
     if (!cfg.clientId) {
       throw new ConfigurationError(
         'A Keycloak client identifier is currently required for all auth mechanisms'
@@ -137,6 +163,28 @@ export class AccessToken {
     this.userInfoEndpoint =
       cfg.oidcUserInfoEndpoint || `${this.baseUrl}/protocol/openid-connect/userinfo`;
     this.signingKey = cfg.signingKey;
+    this.nonceCache = nonceCache;
+  }
+
+  /**
+   * Returns the configured DPoP signing key, throwing if DPoP is enabled but no
+   * key has been bound yet. Call only from DPoP-enabled paths.
+   *
+   * Validation is intentionally at request time rather than construction so the
+   * deferred-binding flow keeps working: a client may construct with DPoP
+   * enabled and bind the key later via
+   * {@link refreshTokenClaimsWithClientPubkeyIfNeeded} (e.g. `opentdf.ts`
+   * `ready`), which happens before the first request. All request paths
+   * (`info`, `doPost`, `withCreds`) fail here consistently rather than one
+   * silently downgrading to a Bearer token.
+   */
+  private requireSigningKey(): KeyPair {
+    if (!this.signingKey) {
+      throw new ConfigurationError(
+        'Client public key was not set via `updateClientPublicKey` or passed in via constructor; required when DPoP is enabled'
+      );
+    }
+    return this.signingKey;
   }
 
   /**
@@ -145,21 +193,64 @@ export class AccessToken {
    * @returns
    */
   async info(accessToken: string): Promise<unknown> {
+    const origin = new URL(this.userInfoEndpoint).origin;
     const headers = {
       ...this.extraHeaders,
-      Authorization: `Bearer ${accessToken}`,
     } as Record<string, string>;
-    if (this.config.dpopEnabled && this.signingKey) {
+    // Resolve the DPoP signing key up front (throws if DPoP is enabled but no
+    // key has been bound); undefined when DPoP is disabled. No silent Bearer
+    // downgrade — a misconfigured DPoP client fails consistently with doPost/withCreds.
+    const signingKey = this.config.dpopEnabled ? this.requireSigningKey() : undefined;
+    let cachedNonce: string | undefined;
+    if (signingKey) {
+      cachedNonce = this.nonceCache.get(origin);
       headers.DPoP = await dpopFn(
-        this.signingKey,
+        signingKey,
         this.cryptoService,
         this.userInfoEndpoint,
-        'POST'
+        'GET',
+        cachedNonce,
+        accessToken
       );
+      headers.Authorization = `DPoP ${accessToken}`;
+    } else {
+      headers.Authorization = `Bearer ${accessToken}`;
     }
-    const response = await (this.request || fetch)(this.userInfoEndpoint, {
+    let response = await (this.request || fetch)(this.userInfoEndpoint, {
       headers,
     });
+
+    // Handle DPoP-Nonce challenge per RFC 9449 §9: retry once with the server-supplied nonce.
+    if (signingKey && !response.ok) {
+      const challenge = DPoPNonceCache.extractNonce(response.headers);
+      const challengeNonce = adoptChallengeNonce(
+        this.nonceCache,
+        origin,
+        response.headers,
+        cachedNonce
+      );
+      if (challengeNonce) {
+        headers.DPoP = await dpopFn(
+          signingKey,
+          this.cryptoService,
+          this.userInfoEndpoint,
+          'GET',
+          challengeNonce,
+          accessToken
+        );
+        response = await (this.request || fetch)(this.userInfoEndpoint, {
+          headers,
+        });
+      } else if (challenge) {
+        warnNonceRetryGiveUp('userinfo', origin, challenge, cachedNonce);
+      }
+    }
+
+    // Update nonce cache from final response
+    if (this.config.dpopEnabled) {
+      warmNonceFromResponse(this.nonceCache, origin, response.headers);
+    }
+
     if (!response.ok) {
       console.error(await response.text());
       throw new TdfError(
@@ -171,27 +262,66 @@ export class AccessToken {
   }
 
   async doPost(url: string, o: Record<string, string>) {
+    const origin = new URL(url).origin;
     const headers: Record<string, string> = {
       'Content-Type': 'application/x-www-form-urlencoded',
       Accept: 'application/json',
     };
-    // add DPoP headers if configured
-    if (this.config.dpopEnabled) {
-      if (!this.signingKey) {
-        throw new ConfigurationError('No signature configured');
-      }
+    // add DPoP headers if configured. Resolve the signing key up front (throws
+    // if DPoP is enabled but no key has been bound); undefined when disabled.
+    const signingKey = this.config.dpopEnabled ? this.requireSigningKey() : undefined;
+    let cachedNonce: string | undefined;
+    if (signingKey) {
       // Export opaque public key to PEM format for header
-      const publicKeyPem = await this.cryptoService.exportPublicKeyPem(this.signingKey.publicKey);
+      const publicKeyPem = await this.cryptoService.exportPublicKeyPem(signingKey.publicKey);
       // TODO: Rename to X-OpenTDF-PubKey; requires coordinated change with
       // platform Keycloak mapper (lib/fixtures/keycloak.go `client.publickey`).
       headers['X-VirtruPubKey'] = base64.encode(publicKeyPem);
-      headers.DPoP = await dpopFn(this.signingKey, this.cryptoService, url, 'POST');
+
+      cachedNonce = this.nonceCache.get(origin);
+      headers.DPoP = await dpopFn(signingKey, this.cryptoService, url, 'POST', cachedNonce);
     }
-    return (this.request || fetch)(url, {
+
+    const response = await (this.request || fetch)(url, {
       method: 'POST',
       headers,
       body: qstringify(o),
     });
+
+    // Handle DPoP-Nonce challenge. RFC 9449 §8: authorization servers return
+    // HTTP 400 with error=use_dpop_nonce; §9: resource servers return 401.
+    // Trigger on any non-OK response that carries a fresh DPoP-Nonce header.
+    if (signingKey && !response.ok) {
+      const challenge = DPoPNonceCache.extractNonce(response.headers);
+      const challengeNonce = adoptChallengeNonce(
+        this.nonceCache,
+        origin,
+        response.headers,
+        cachedNonce
+      );
+      if (challengeNonce) {
+        // Regenerate DPoP proof with the server-provided nonce and retry.
+        headers.DPoP = await dpopFn(signingKey, this.cryptoService, url, 'POST', challengeNonce);
+
+        const retryResponse = await (this.request || fetch)(url, {
+          method: 'POST',
+          headers,
+          body: qstringify(o),
+        });
+
+        warmNonceFromResponse(this.nonceCache, origin, retryResponse.headers);
+        return retryResponse;
+      } else if (challenge) {
+        warnNonceRetryGiveUp('token endpoint', origin, challenge, cachedNonce);
+      }
+    }
+
+    // Update nonce cache from successful responses
+    if (this.config.dpopEnabled && response.ok) {
+      warmNonceFromResponse(this.nonceCache, origin, response.headers);
+    }
+
+    return response;
   }
 
   async accessTokenLookup(cfg: OIDCCredentials) {
@@ -279,11 +409,13 @@ export class AccessToken {
   }
 
   /**
-   * A TDF client MUST call this method whenever the client wants to use a new
-   * ephemeral key set. This updates the keys used to:
-   * or wishes to set the keypair after creating the object.
+   * A TDF client MUST call this method whenever it wants to bind a new ephemeral
+   * signing key (e.g. when setting the keypair after constructing the object).
    *
-   * Calling this function will trigger a forcible token refresh using the cached refresh token, and contact the auth server.
+   * It records the new signing key and, when DPoP is enabled, invalidates the
+   * cached token so the next `get()` obtains a token bound to the new key. It is
+   * a no-op when the key is unchanged and a token is already cached; it does not
+   * itself contact the auth server.
    */
   async refreshTokenClaimsWithClientPubkeyIfNeeded(signingKey: KeyPair): Promise<void> {
     // If we already have a token, and the pubkey is unchanged,
@@ -292,10 +424,15 @@ export class AccessToken {
     if (this.data?.access_token && signingKey === this.signingKey) {
       return;
     }
-    delete this.data;
-    delete this.cachedExpiry;
-    delete this.inFlight;
     this.signingKey = signingKey;
+    // A DPoP-bound token (cnf.jkt) is tied to a specific key, so rotating the
+    // signing key invalidates any cached token. Non-DPoP tokens are key-
+    // independent and can stay cached across a key change.
+    if (this.config.dpopEnabled) {
+      delete this.data;
+      delete this.cachedExpiry;
+      delete this.inFlight;
+    }
   }
 
   /**
@@ -326,23 +463,28 @@ export class AccessToken {
   }
 
   async withCreds(httpReq: HttpRequest): Promise<HttpRequest> {
-    if (this.config.dpopEnabled && !this.signingKey) {
-      throw new ConfigurationError(
-        'Client public key was not set via `updateClientPublicKey` or passed in via constructor; required when DPoP is enabled'
-      );
-    }
+    // Resolve the DPoP signing key up front (throws if DPoP is enabled but no
+    // key has been bound); undefined when DPoP is disabled.
+    const signingKey = this.config.dpopEnabled ? this.requireSigningKey() : undefined;
     const accessToken = await this.get();
-    if (this.config.dpopEnabled && this.signingKey) {
+    if (signingKey) {
+      const url = new URL(httpReq.url);
+      const origin = url.origin;
+      // RFC 9449 §4.2: the `htu` claim is the request URI without query and
+      // fragment. Resource servers (and the mock) recompute and compare it, so
+      // a proof carrying the query string is rejected.
+      const htu = `${origin}${url.pathname}`;
+      const cachedNonce = this.nonceCache.get(origin);
       const dpopToken = await dpopFn(
-        this.signingKey,
+        signingKey,
         this.cryptoService,
-        httpReq.url,
+        htu,
         httpReq.method,
-        /* nonce */ undefined,
+        cachedNonce,
         accessToken
       );
       // TODO: Consider: only set DPoP if cnf.jkt is present in access token?
-      return withHeaders(httpReq, { Authorization: `Bearer ${accessToken}`, DPoP: dpopToken });
+      return withHeaders(httpReq, { Authorization: `DPoP ${accessToken}`, DPoP: dpopToken });
     }
     return withHeaders(httpReq, { Authorization: `Bearer ${accessToken}` });
   }
