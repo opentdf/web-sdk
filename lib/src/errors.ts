@@ -100,6 +100,22 @@ export class UnauthenticatedError extends TdfError {
   override name = 'UnauthenticatedError';
 }
 
+/**
+ * Authentication failure (401) where the access token this SDK stamped on the request was
+ * ALREADY EXPIRED (by local clock) when the platform rejected it — the static-token-provider
+ * footgun surfaced as a typed error. Unlike a generic 401, and very unlike a
+ * `PermissionDeniedError`, this failure has a clear recovery path: obtain a fresh access
+ * token (e.g. via `refreshTokenProvider` / `clientCredentialsTokenProvider`) and retry.
+ * Callers surfacing access verdicts should treat it as "no decision — retry", never as an
+ * authorization DENY.
+ *
+ * Subclasses `UnauthenticatedError`, so existing `instanceof UnauthenticatedError` handling
+ * continues to match (non-breaking).
+ */
+export class TokenExpiredError extends UnauthenticatedError {
+  override name = 'TokenExpiredError';
+}
+
 /** Authorization failure (403) */
 export class PermissionDeniedError extends TdfError {
   override name = 'PermissionDeniedError';
