@@ -166,6 +166,63 @@ export const fromSource = async ({ type, location }: Source): Promise<Chunker> =
 };
 
 /**
+ * Length of a source in bytes, when it can be learned without reading it.
+ *
+ * Used to reject an over-budget encrypt before any bytes are processed, and to
+ * pick a segment size that keeps the manifest within its ceiling. Best effort
+ * by design: `undefined` means "unknown", never "empty", and every caller has
+ * to stay correct without it. A `'chunker'` exposes no length, and a
+ * `'stream'`'s is unknowable without draining it.
+ *
+ * For `'remote'` this costs one extra request. `HEAD` is tried first; when that
+ * is unavailable or hidden by CORS, a one-byte range request is used to read
+ * the total out of `Content-Range`. Any failure yields `undefined` rather than
+ * throwing, since a size probe must not be able to fail an otherwise valid
+ * encrypt.
+ */
+export async function sourceSize(source: Source): Promise<number | undefined> {
+  switch (source.type) {
+    case 'buffer':
+      return source.location.byteLength;
+    case 'file-browser':
+      return source.location.size;
+    case 'remote':
+      return remoteSize(source.location);
+    default:
+      return undefined;
+  }
+}
+
+async function remoteSize(url: string): Promise<number | undefined> {
+  try {
+    const head = await fetch(url, { method: 'HEAD', redirect: 'follow' });
+    const contentLength = head.ok && head.headers.get('Content-Length');
+    if (contentLength) {
+      const size = Number.parseInt(contentLength, 10);
+      if (Number.isSafeInteger(size) && size >= 0) {
+        return size;
+      }
+    }
+  } catch {
+    // fall through to the range probe
+  }
+  try {
+    const probe = await fetch(url, { redirect: 'follow', headers: { Range: 'bytes=0-0' } });
+    // "bytes 0-0/1234"; a "*" total means the server does not know either.
+    const total = probe.headers.get('Content-Range')?.split('/')[1];
+    if (total && total !== '*') {
+      const size = Number.parseInt(total, 10);
+      if (Number.isSafeInteger(size) && size >= 0) {
+        return size;
+      }
+    }
+  } catch {
+    // unknown size; callers fall back to the end-of-stream checks
+  }
+  return undefined;
+}
+
+/**
  * Converts a Source object to a ReadableStream.
  * @param source A Source object containing the type and location of the data.
  * Converts the source to a ReadableStream of Uint8Array.

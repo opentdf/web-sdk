@@ -358,26 +358,43 @@ describe('zip utilities', () => {
 });
 
 describe('reader', () => {
+  const manifestEntry = (uncompressedSize: number) =>
+    [
+      {
+        fileName: '0.manifest.json',
+        relativeOffsetOfLocalHeader: 0,
+        headerLength: 1024,
+        uncompressedSize,
+      } as CentralDirectory,
+    ] as const;
+
   it('fails on bad manifest size', async () => {
     const reader = new ZipReader(async () => new Uint8Array([]));
-    const fileName = '0.manifest.json';
+    let message = '';
     try {
-      expect(
-        await reader.getManifest(
-          [
-            {
-              fileName,
-              relativeOffsetOfLocalHeader: 0,
-              headerLength: 1024,
-              uncompressedSize: 1024 * 1024 * 128,
-            } as CentralDirectory,
-          ],
-          fileName
-        )
-      ).to.be.undefined;
+      await reader.getManifest([...manifestEntry(MANIFEST_MAX_SIZE + 1)], '0.manifest.json');
+      expect.fail('expected an oversized manifest to be rejected');
     } catch (e) {
-      expect(e.message).to.contain('too large');
+      message = e.message;
     }
+    expect(message).to.contain('too large');
+  });
+
+  // A reader configured with a tighter budget than the default must enforce
+  // its own, otherwise the write side has no way to guarantee readability for
+  // a constrained consumer.
+  it('honours a configured manifest ceiling', async () => {
+    const manifestMaxSize = 4096;
+    const reader = new ZipReader(async () => new Uint8Array([]), { manifestMaxSize });
+    let message = '';
+    try {
+      await reader.getManifest([...manifestEntry(manifestMaxSize + 1)], '0.manifest.json');
+      expect.fail('expected the configured ceiling to be enforced');
+    } catch (e) {
+      message = e.message;
+    }
+    expect(message).to.contain('too large');
+    expect(message).to.contain('4 KiB limit');
   });
 
   // DSPX-4591 finding 4: `>>` coerces to signed 32 bits, so 2 GiB used to be

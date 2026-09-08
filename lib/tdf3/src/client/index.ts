@@ -9,6 +9,7 @@ import {
   buildKeyAccess,
   type EncryptConfiguration,
   fetchKasPublicKey,
+  type IntegrityAlgorithm,
   loadTDFStream,
   readStream,
   validatePolicyObject,
@@ -63,8 +64,17 @@ import { attributeFQNsAsKeyMappings } from '../../../src/policy/api.js';
 import { type Chunker, fromBuffer, fromSource } from '../../../src/seekable.js';
 import { Algorithm, SimpleKasKey } from '../../../src/platform/policy/objects_pb.js';
 import { effectiveKasKeys } from '../../../src/policy/kas-keys.js';
+import { chooseSegmentSize } from '../utils/scale-limits.js';
 
 const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
+
+/** Root signature over the concatenated segment hashes. */
+const ROOT_INTEGRITY_ALGORITHM: IntegrityAlgorithm = 'HS256';
+/**
+ * Per-segment integrity. GMAC is free -- it is the AES-GCM auth tag the cipher
+ * already computed. See `spec/DSPX-4650-segment-integrity-algorithm.md`.
+ */
+const SEGMENT_INTEGRITY_ALGORITHM: IntegrityAlgorithm = 'GMAC';
 
 // No default config for now. Delegate to Virtru wrapper for endpoints.
 const defaultClientConfig = { oidcOrigin: '', cryptoService: defaultCryptoService };
@@ -538,7 +548,8 @@ export class Client {
       autoconfigure,
       metadata,
       mimeType = 'unknown',
-      windowSize = DEFAULT_SEGMENT_SIZE,
+      windowSize,
+      knownSourceSize,
       keyMiddleware: keyMiddlewareOpt,
       splitPlan: preconfiguredSplitPlan,
       streamMiddleware = async (stream: DecoratedReadableStream) => stream,
@@ -546,6 +557,17 @@ export class Client {
       wrappingKeyAlgorithm,
     } = opts;
     const keyMiddleware = keyMiddlewareOpt ?? (() => defaultKeyMiddleware(this.cryptoService));
+    // An explicit windowSize always wins. Otherwise, when the source length is
+    // known, climb the ladder only as far as the manifest budget requires --
+    // ordinary files keep the historical 1 MiB segment and are unaffected.
+    const segmentSizeDefault =
+      windowSize ??
+      (knownSourceSize === undefined
+        ? DEFAULT_SEGMENT_SIZE
+        : chooseSegmentSize({
+            sourceSize: knownSourceSize,
+            alg: SEGMENT_INTEGRITY_ALGORITHM,
+          }));
     const scope = opts.scope ?? { attributes: [], dissem: [] };
 
     for (const attributeValue of scope.attributeValues || []) {
@@ -771,9 +793,10 @@ export class Client {
       cryptoService: this.cryptoService,
       dpopKeys,
       encryptionInformation,
-      segmentSizeDefault: windowSize,
-      integrityAlgorithm: 'HS256',
-      segmentIntegrityAlgorithm: 'GMAC',
+      segmentSizeDefault,
+      integrityAlgorithm: ROOT_INTEGRITY_ALGORITHM,
+      segmentIntegrityAlgorithm: SEGMENT_INTEGRITY_ALGORITHM,
+      knownSourceSize,
       contentStream: opts.source,
       mimeType,
       policy: policyObject,

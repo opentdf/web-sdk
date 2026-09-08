@@ -2,7 +2,7 @@ import { type AuthProvider } from './auth/providers.js';
 import { type Interceptor } from '@connectrpc/connect';
 import { ConfigurationError, InvalidFileError } from './errors.js';
 export { Client as TDF3Client } from '../tdf3/src/client/index.js';
-import { Chunker, fromSource, sourceToStream, type Source } from './seekable.js';
+import { Chunker, fromSource, sourceSize, sourceToStream, type Source } from './seekable.js';
 import { Client as TDF3Client } from '../tdf3/src/client/index.js';
 import { type CryptoService, type KeyPair } from '../tdf3/src/crypto/declarations.js';
 import * as DefaultCryptoService from '../tdf3/src/crypto/index.js';
@@ -379,6 +379,9 @@ export class OpenTDF {
     opts = { ...this.defaultCreateOptions, ...opts };
     const oldStream = await this.tdf3Client.encrypt({
       source: await sourceToStream(opts.source),
+      // Best effort; `undefined` just means the manifest budget is checked at
+      // the end of the stream instead of before it starts.
+      knownSourceSize: await sourceSize(opts.source),
 
       assertionConfigs: opts.assertionConfigs,
       autoconfigure: !!opts.autoconfigure,

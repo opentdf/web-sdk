@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { createSandbox, SinonSandbox } from 'sinon';
 
-import { type Chunker, fromSource, sourceToStream } from '../../../src/seekable.js';
+import { type Chunker, fromSource, sourceSize, sourceToStream } from '../../../src/seekable.js';
 
 function range(a: number, b?: number): number[] {
   if (!b) {
@@ -188,6 +188,76 @@ describe('fromSource', () => {
       expect(e).to.be.an('error');
       expect(e.message).to.include('Data source type not defined, or not supported');
     }
+  });
+});
+
+describe('sourceSize', () => {
+  it('reads a buffer length without touching the data', async () => {
+    expect(await sourceSize({ type: 'buffer', location: new Uint8Array(range(256)) })).to.equal(
+      256
+    );
+  });
+
+  it('reads a File/Blob size', async () => {
+    const file = new Blob([new Uint8Array(range(256))]);
+    expect(await sourceSize({ type: 'file-browser', location: file })).to.equal(256);
+  });
+
+  it('is undefined for sources whose size is unknowable up front', async () => {
+    const { fromBuffer } = await import('../../../src/seekable.js');
+    const readableStream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.close();
+      },
+    });
+    expect(await sourceSize({ type: 'stream', location: readableStream })).to.be.undefined;
+    expect(await sourceSize({ type: 'chunker', location: fromBuffer(new Uint8Array(4)) })).to.be
+      .undefined;
+  });
+
+  describe('remote', () => {
+    const url = 'http://localhost:3000/file';
+
+    it('prefers HEAD Content-Length', async () => {
+      const fetchSpy = box.spy(globalThis, 'fetch');
+      expect(await sourceSize({ type: 'remote', location: url })).to.equal(256);
+      expect(fetchSpy.callCount, 'HEAD alone should answer').to.equal(1);
+      expect(fetchSpy.firstCall.args[1]?.method).to.equal('HEAD');
+    });
+
+    it('falls back to a one-byte range probe when HEAD is unusable', async () => {
+      const real = globalThis.fetch;
+      box
+        .stub(globalThis, 'fetch')
+        .callsFake(async (input: RequestInfo | URL, init?: RequestInit) => {
+          if (init?.method === 'HEAD') {
+            return new Response(null, { status: 405 });
+          }
+          return real(input, init);
+        });
+      expect(await sourceSize({ type: 'remote', location: url })).to.equal(256);
+    });
+
+    // A size probe is an optimization; it must never be able to fail an
+    // otherwise valid encrypt.
+    it('reports unknown rather than throwing when both probes fail', async () => {
+      box.stub(globalThis, 'fetch').rejects(new TypeError('network down'));
+      expect(await sourceSize({ type: 'remote', location: url })).to.be.undefined;
+    });
+
+    it('reports unknown when the server declines to say', async () => {
+      box
+        .stub(globalThis, 'fetch')
+        .callsFake(async (_input: RequestInfo | URL, init?: RequestInit) =>
+          init?.method === 'HEAD'
+            ? new Response(null, { status: 405 })
+            : new Response(new Uint8Array(1), {
+                status: 206,
+                headers: { 'Content-Range': 'bytes 0-0/*' },
+              })
+        );
+      expect(await sourceSize({ type: 'remote', location: url })).to.be.undefined;
+    });
   });
 });
 

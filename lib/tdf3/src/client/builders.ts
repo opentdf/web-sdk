@@ -44,6 +44,14 @@ export type EncryptParams = {
   metadata?: Metadata;
   keypair?: CryptoKeyPair;
   windowSize?: number;
+  /**
+   * Length of `source` in bytes, when the caller knows it. `source` is already
+   * a stream by the time it gets here, so the size has to be carried
+   * separately; `sourceSize()` in `seekable.ts` derives it from the original
+   * `Source`. When present, an over-budget manifest is rejected before
+   * encrypting and `windowSize` is auto-selected if the caller did not set one.
+   */
+  knownSourceSize?: number;
   getPolicyId?: () => Scope['policyId'];
   mimeType?: string;
   payloadKey?: Binary;
