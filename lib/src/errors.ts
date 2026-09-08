@@ -57,7 +57,9 @@ export class AttributeValidationError extends ConfigurationError {
 /**
  * Errors that indicate the TDF object is corrupt, invalid, or fails validation or decrypt.
  */
-export class InvalidFileError extends TdfError {}
+export class InvalidFileError extends TdfError {
+  override name = 'InvalidFileError';
+}
 
 /**
  * Indicates a decrypt failure, either due to an incorrect key, corrupt ciphertext, or inappropriate key parameters.
@@ -68,6 +70,17 @@ export class DecryptError extends InvalidFileError {
 
 export class IntegrityError extends InvalidFileError {
   override name = 'IntegrityError';
+}
+
+/**
+ * One stream exhausted the deterministic AES-GCM IVs available to its fixed
+ * field part way through a write. Not a `ConfigurationError`: the caller passed
+ * valid options, and the stream encrypted several billion segments
+ * successfully before running out. The partial output is unusable and must be
+ * discarded; retry with a larger segment size or split the input.
+ */
+export class IvExhaustionError extends TdfError {
+  override name = 'IvExhaustionError';
 }
 
 /**
