@@ -207,18 +207,18 @@ Two scope corrections to the previous revision:
       (`maxSegmentsFor` / `maxEncryptableBytes` / `maxOutputBytes` in `scale-limits.ts`):
 
       ```
-              maxSegments = min(
-                MAX_PAYLOAD_SEGMENTS_PER_KEY,                     // IV ceiling, 2^32 - 1
-                floor(manifestMaxSize / perSegmentEntryBytes)     // manifest ceiling
-              )
-              maxEncryptableBytes = segmentSize * maxSegments                      // plaintext in
-              maxOutputBytes      = maxSegments * (segmentSize + 28)
-                                    + manifestMaxSize + 64 KiB                     // zip bytes out
-              ```
+                  maxSegments = min(
+                    MAX_PAYLOAD_SEGMENTS_PER_KEY,                     // IV ceiling, 2^32 - 1
+                    floor(manifestMaxSize / perSegmentEntryBytes)     // manifest ceiling
+                  )
+                  maxEncryptableBytes = segmentSize * maxSegments                      // plaintext in
+                  maxOutputBytes      = maxSegments * (segmentSize + 28)
+                                        + manifestMaxSize + 64 KiB                     // zip bytes out
+                  ```
 
-              At the recommended configuration (16 MiB segments, 256 MiB cap, HS256 at 56 B/entry) this
-              yields a manifest ceiling of 4,793,490 segments and `maxEncryptableBytes = 80,421,417,123,840`
-              (~80.4 TB) — comfortably above 50 TiB, with the IV ceiling not binding.
+                  At the recommended configuration (16 MiB segments, 256 MiB cap, HS256 at 56 B/entry) this
+                  yields a manifest ceiling of 4,793,490 segments and `maxEncryptableBytes = 80,421,417,123,840`
+                  (~80.4 TB) — comfortably above 50 TiB, with the IV ceiling not binding.
 
 - [x] Apply the same up-front check as item 1: when source length is known, compare against
       `maxEncryptableBytes` before encrypting rather than after 64GB of output has been emitted.
@@ -252,36 +252,62 @@ Not done, deliberately deferred:
   mid-stream. That is inherent to streaming without a length, and the output-side check still
   catches it.
 
-### 3. Full-buffer traps in source handling
+### 3. Full-buffer traps in source handling — **DONE** (`DSPX-4653`)
 
 These are two different problems with opposite answers; the previous revision lumped them into one
 checkbox.
 
 **3a. Encrypt from a `'remote'` or `'buffer'` source — straightforward fix.** `sourceToStream`'s
-`default:` branch (`lib/src/seekable.ts:196`) calls `chunker()` with no arguments, which for
-`'remote'` issues an **unranged GET** that buffers the whole object. The `'chunker'` case
-immediately above it (`:180`) already does the right thing with an 8 MiB ranged pull loop.
+`default:` branch called `chunker()` with no arguments, which for `'remote'` issued an **unranged
+GET** that buffers the whole object. The `'chunker'` case immediately above it already did the right
+thing with an 8 MiB ranged pull loop.
 
-- [ ] Route `'remote'` through the same ranged-pull loop as `'chunker'`. Non-breaking; no API
-      change.
-- [ ] Leave `'buffer'` as-is — it is already fully in memory by construction, so there is nothing to
-      stream. Document it as inherently size-limited.
+- [x] Route `'remote'` through the same ranged-pull loop as `'chunker'`. Non-breaking; no API
+      change. Both now go through one `seekableStream(chunker, totalSize?)` helper.
+- [x] Leave `'buffer'` as-is — it is already fully in memory by construction, so there is nothing to
+      stream. Documented as inherently size-limited on the `Source` union itself, where a caller
+      choosing between the variants will actually see it.
 
-**3b. Decrypt from a `'stream'` source — inherent, not a bug.** `lib/src/seekable.ts:162` and
-`makeChunkable` in `lib/tdf3/src/client/index.ts:104` both drain the stream to a buffer (code
-comment: _"we don't support streams anyways"_). This is not fixable in place: zip requires random
-access because the EOCD is at the end of the archive, so a single-pass stream genuinely cannot be
-decrypted without buffering or spooling to disk/OPFS.
+One thing the plan did not anticipate: `'remote'` cannot reuse the `'chunker'` loop as written. That
+loop discovers the end by reading until a pull comes back empty, but a range request past the end of
+an HTTP object is a **416**, so running off the end turns a clean finish into a thrown error. The
+ranged path therefore needs the object's length up front. `sourceSize` (added in `DSPX-4651`)
+already provides it, and `sourceToStream` now takes an optional `knownSize` so `createZTDF` probes
+once and hands the answer to both consumers instead of paying for two `HEAD`s. With no discoverable
+length, it falls back to the historical single unranged GET rather than walking into a 416.
 
-- [ ] Decide between: (a) hard-reject `'stream'` decrypt with a `ConfigurationError` pointing at
-      `'chunker'`/`'file-browser'`/ranged `'remote'`; or (b) buffer under a documented threshold and
-      reject above it. **(b) is recommended** — (a) is a breaking change for existing callers
-      passing small streams that work fine today, and would be a semver-major for a case the SDK
-      currently supports.
-- [ ] Whichever is chosen, call out the semver impact in the PR description.
+Related: a short read now errors instead of closing the stream. Closing early would truncate the
+payload and produce a TDF that is internally consistent but missing data — a silent corruption,
+which is worse than a failed encrypt.
 
-The safe paths today remain `'chunker'`, `'file-browser'` (Blob), and the SDK's own ranged
-`'remote'` reads used internally during segment decryption.
+**3b. Decrypt from a `'stream'` source — inherent, not a bug.** `fromSource` and `makeChunkable`
+both drain the stream to a buffer (code comment: _"we don't support streams anyways"_). This is not
+fixable in place: zip requires random access because the EOCD is at the end of the archive, so a
+single-pass stream genuinely cannot be decrypted without buffering or spooling to disk/OPFS.
+
+- [x] Decide between (a) hard-reject and (b) buffer under a documented threshold. **Chose (b)**, as
+      recommended. `MAX_BUFFERED_STREAM_BYTES = 1 GiB`, enforced by a new `bufferStream` that counts
+      as it drains, so an oversized stream costs the limit rather than its full length —
+      `Response.arrayBuffer()` gave no way to stop early. 1 GiB sits under the browser's own ~2 GiB
+      `ArrayBuffer` wall, so the failure is an actionable `ConfigurationError` naming the seekable
+      source types instead of an opaque allocation error.
+- [x] Call out the semver impact. **Minor, not major.** No signature changes and no previously
+      working case stops working below 1 GiB; above it, a case that used to OOM the tab now throws a
+      typed error. Called out in the PR body regardless, since "used to sort-of work" is still a
+      behaviour change.
+
+Not done, deliberately deferred:
+
+- The 1 GiB threshold is a constant, not a client option. Making it configurable is easy but adds
+  public API surface for a limit nobody has yet asked to move.
+- `streamToBuffer` on `DecoratedReadableStream.toBuffer()` is still unbounded. That is the decrypt
+  _output_ — plaintext the caller explicitly asked to materialize — not a source the SDK chose to
+  buffer on their behalf.
+- Spooling a stream to OPFS or a temp file to make it seekable. That would genuinely lift the limit,
+  and is the only real fix, but it is a much larger piece of work with a browser/Node split.
+
+The safe paths remain `'chunker'`, `'file-browser'` (Blob), and `'remote'`, which is now ranged on
+the encrypt path as well as during segment decryption.
 
 ### 4. Default decrypt prefetch scheduler isn't consumption-paced
 
