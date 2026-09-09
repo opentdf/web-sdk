@@ -10,10 +10,14 @@ import {
   base64Length,
   chooseSegmentSize,
   DEFAULT_MANIFEST_MAX_SIZE,
+  DEFAULT_MAX_CONCURRENT_SEGMENT_BATCHES,
+  DEFAULT_PREFETCH_BYTE_BUDGET,
+  derivePrefetchWindow,
   estimateSegmentsArrayBytes,
   FIFTY_TEBIBYTES,
   finalSegmentEntryBytes,
   MAX_PAYLOAD_SEGMENTS_PER_KEY,
+  MAX_SEGMENT_BATCH_SIZE,
   maxEncryptableBytes,
   maxOutputBytes,
   maxSegmentsFor,
@@ -317,6 +321,89 @@ describe('scale-limits', () => {
           chooseSegmentSize({ sourceSize, alg: 'HS256' }),
           `${sourceSize} bytes`
         ).to.be.at.least(chooseSegmentSize({ sourceSize, alg: 'GMAC' }));
+      }
+    });
+  });
+
+  describe('derivePrefetchWindow', () => {
+    const windowBytes = (segmentSize: number, opts = {}) => {
+      const { segmentBatchSize, maxConcurrentSegmentBatches } = derivePrefetchWindow({
+        segmentSize,
+        ...opts,
+      });
+      return segmentBatchSize * maxConcurrentSegmentBatches * segmentSize;
+    };
+
+    // The whole point of the change: the window is a byte count, not a segment
+    // count, so growing the segment size must not grow peak memory.
+    it('keeps the window inside the byte budget at every rung of the ladder', () => {
+      for (const segmentSize of SEGMENT_SIZE_LADDER) {
+        if (segmentSize > DEFAULT_PREFETCH_BYTE_BUDGET) {
+          continue;
+        }
+        expect(windowBytes(segmentSize), `${segmentSize} bytes`).to.be.at.most(
+          DEFAULT_PREFETCH_BYTE_BUDGET
+        );
+      }
+    });
+
+    it('spends the budget on concurrency before batch size', () => {
+      // 128 MiB / 16 MiB = 8 segments, split 3 ways -> 2 per batch, 3 batches.
+      expect(derivePrefetchWindow({ segmentSize: 16 * MIB })).to.deep.equal({
+        segmentBatchSize: 2,
+        maxConcurrentSegmentBatches: 3,
+      });
+      // 128 MiB / 64 MiB = 2 segments: not enough for three batches, so
+      // concurrency drops rather than rounding the batch size down to zero.
+      expect(derivePrefetchWindow({ segmentSize: 64 * MIB })).to.deep.equal({
+        segmentBatchSize: 1,
+        maxConcurrentSegmentBatches: 2,
+      });
+    });
+
+    it('caps the batch size so a small-segment file is not one enormous read', () => {
+      // 128 MiB / 1 KiB = 131,072 segments; within budget, but the consumer
+      // would wait on a single request for all of them.
+      const { segmentBatchSize, maxConcurrentSegmentBatches } = derivePrefetchWindow({
+        segmentSize: 1024,
+      });
+      expect(segmentBatchSize).to.equal(MAX_SEGMENT_BATCH_SIZE);
+      expect(maxConcurrentSegmentBatches).to.equal(DEFAULT_MAX_CONCURRENT_SEGMENT_BATCHES);
+    });
+
+    it('keeps the legacy window for the legacy 1 MiB segment size', () => {
+      expect(derivePrefetchWindow({ segmentSize: MIB })).to.deep.equal({
+        segmentBatchSize: 42,
+        maxConcurrentSegmentBatches: 3,
+      });
+    });
+
+    // No smaller unit exists, so the alternative to blowing the budget is
+    // refusing to decrypt at all.
+    it('falls back to a single segment when one segment exceeds the budget', () => {
+      expect(derivePrefetchWindow({ segmentSize: 256 * MIB })).to.deep.equal({
+        segmentBatchSize: 1,
+        maxConcurrentSegmentBatches: 1,
+      });
+      expect(windowBytes(256 * MIB)).to.be.above(DEFAULT_PREFETCH_BYTE_BUDGET);
+    });
+
+    it('honours a caller-supplied budget', () => {
+      expect(windowBytes(MIB, { byteBudget: 6 * MIB })).to.be.at.most(6 * MIB);
+      expect(derivePrefetchWindow({ segmentSize: MIB, byteBudget: 6 * MIB })).to.deep.equal({
+        segmentBatchSize: 2,
+        maxConcurrentSegmentBatches: 3,
+      });
+    });
+
+    it('rejects nonsense inputs rather than deriving a nonsense window', () => {
+      for (const bad of [0, -1, 1.5, NaN]) {
+        expect(() => derivePrefetchWindow({ segmentSize: bad }), `${bad}`).to.throw(
+          ConfigurationError
+        );
+        expect(() => derivePrefetchWindow({ segmentSize: MIB, byteBudget: bad })).to.throw(
+          ConfigurationError
+        );
       }
     });
   });
