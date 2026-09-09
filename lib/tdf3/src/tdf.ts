@@ -81,6 +81,8 @@ import { ByteAccumulator } from './utils/byte-accumulator.js';
 import {
   DEFAULT_MANIFEST_MAX_SIZE,
   estimateManifestBytes,
+  maxEncryptableBytes,
+  maxSegmentsFor,
   segmentCountFor,
   segmentDigestBytes,
 } from './utils/scale-limits.js';
@@ -715,6 +717,26 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
       segmentCountFor(cfg.knownSourceSize, segmentSizeDefault),
       { manifestMaxSize, estimated: true }
     );
+
+    // The manifest check above does not cover the payload encryptor's
+    // invocation limit, which binds instead of the manifest whenever segments
+    // are small or the provider declares a low limit. The encryptor's guard
+    // would throw `IvExhaustionError`, but only on the segment that overflows --
+    // by which point the whole payload has been encrypted.
+    const ceiling = {
+      alg: segmentIntegrityAlgorithm,
+      manifestMaxSize,
+      invocationLimit: payloadEncryptor.invocationLimit,
+    };
+    const maxBytes = maxEncryptableBytes({ segmentSize: segmentSizeDefault, ...ceiling });
+    if (cfg.knownSourceSize > maxBytes) {
+      throw new ConfigurationError(
+        `Source is too large to encrypt under a single key: ${cfg.knownSourceSize.toLocaleString()}` +
+          ` bytes exceeds the ${maxBytes.toLocaleString()} byte ceiling at a segment size of` +
+          ` ${segmentSizeDefault.toLocaleString()} (${maxSegmentsFor(ceiling).toLocaleString()}` +
+          ` segments); increase segmentSize.`
+      );
+    }
   }
 
   // One contiguous buffer rather than an array of per-segment digests; see

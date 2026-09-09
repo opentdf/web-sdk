@@ -221,10 +221,27 @@ export function chooseSegmentSize({
 }
 
 /**
+ * Payload segments an AES-GCM encryptor permitting `invocationLimit` calls may
+ * encrypt.
+ *
+ * One fewer than the limit: when the manifest and payload share a key, the
+ * writer encrypts the key access object metadata with the payload encryptor's
+ * first call, so only `limit - 1` calls are left for segments. Using the limit
+ * directly would over-count by one and let a payload sized exactly at the
+ * boundary fail mid-stream.
+ */
+export function payloadSegmentsFor(invocationLimit: number = MAX_AES_GCM_INVOCATIONS): number {
+  return invocationLimit - 1;
+}
+
+/** {@link payloadSegmentsFor} the default 2^32 encryptor limit. */
+export const MAX_PAYLOAD_SEGMENTS_PER_KEY = payloadSegmentsFor();
+
+/**
  * The smallest segment size a source of `sourceSize` bytes may use without
  * exhausting an AES-GCM encryptor that permits `invocationLimit` calls. At
- * 50 TiB this is 12,800 bytes under the default deterministic encryptor's
- * 2^32, and 819,200 bytes under an RBG provider at the recommended 2^26 --
+ * 50 TiB this is 12,801 bytes under the default deterministic encryptor's
+ * 2^32, and 819,201 bytes under an RBG provider at the recommended 2^26 --
  * both below every segment size we would actually choose, but the floor any
  * future change to the default has to stay above.
  */
@@ -232,8 +249,94 @@ export function minSegmentSizeFor(
   sourceSize: number,
   invocationLimit: number = MAX_AES_GCM_INVOCATIONS
 ): number {
-  return Math.ceil(sourceSize / invocationLimit);
+  return Math.ceil(sourceSize / payloadSegmentsFor(invocationLimit));
 }
+
+/**
+ * Most segments a single TDF may carry: the tighter of the payload
+ * encryptor's invocation limit and what the manifest budget can describe.
+ *
+ * At the recommended configuration (256 MiB cap, HS256 at 56 B/entry) the
+ * manifest binds at 4,793,490 segments; the default IV ceiling of ~4.29e9, and
+ * even an RBG provider's recommended 2^26 (~6.7e7), are nowhere near. The
+ * limit only binds for very small segments or a provider declaring less.
+ */
+export function maxSegmentsFor({
+  alg,
+  manifestMaxSize = DEFAULT_MANIFEST_MAX_SIZE,
+  invocationLimit = MAX_AES_GCM_INVOCATIONS,
+}: {
+  alg: IntegrityAlgorithm;
+  manifestMaxSize?: number;
+  invocationLimit?: number;
+}): number {
+  return Math.min(
+    payloadSegmentsFor(invocationLimit),
+    Math.floor(manifestMaxSize / perSegmentEntryBytes(alg))
+  );
+}
+
+/**
+ * Largest payload, in plaintext bytes, that can be encrypted under one key at
+ * this configuration.
+ *
+ * This is the ceiling that replaces the hardcoded 64 GB `GLOBAL_BYTE_LIMIT`. It
+ * is *derived* rather than picked: both terms are real limits the format
+ * imposes, so raising the manifest cap or the segment size raises this in step
+ * instead of requiring a second arbitrary number to be revised alongside.
+ *
+ * At 16 MiB segments with a 256 MiB cap it is ~80.4 TB under HS256 and ~125 TB
+ * under GMAC, both comfortably past the 50 TiB target.
+ */
+export function maxEncryptableBytes({
+  segmentSize,
+  alg,
+  manifestMaxSize = DEFAULT_MANIFEST_MAX_SIZE,
+  invocationLimit = MAX_AES_GCM_INVOCATIONS,
+}: {
+  segmentSize: number;
+  alg: IntegrityAlgorithm;
+  manifestMaxSize?: number;
+  invocationLimit?: number;
+}): number {
+  assertPositiveInteger(segmentSize, 'segmentSize');
+  return segmentSize * maxSegmentsFor({ alg, manifestMaxSize, invocationLimit });
+}
+
+/**
+ * Largest ZIP output the same configuration can produce.
+ *
+ * Distinct from {@link maxEncryptableBytes} because `byteLimit` is checked
+ * against `totalByteCount`, the bytes written out, not the bytes read in: every
+ * segment gains a 12 byte IV and a 16 byte tag, and the container also carries
+ * the manifest and the zip records. Comparing a plaintext ceiling against an
+ * output counter would reject payloads that actually fit.
+ */
+export function maxOutputBytes({
+  segmentSize,
+  alg,
+  manifestMaxSize = DEFAULT_MANIFEST_MAX_SIZE,
+  encryptedSegmentOverhead = GCM_SEGMENT_OVERHEAD_BYTES,
+  invocationLimit = MAX_AES_GCM_INVOCATIONS,
+}: {
+  segmentSize: number;
+  alg: IntegrityAlgorithm;
+  manifestMaxSize?: number;
+  encryptedSegmentOverhead?: number;
+  invocationLimit?: number;
+}): number {
+  const segments = maxSegmentsFor({ alg, manifestMaxSize, invocationLimit });
+  return (
+    segments * (segmentSize + encryptedSegmentOverhead) + manifestMaxSize + ZIP_CONTAINER_OVERHEAD
+  );
+}
+
+/**
+ * Slack for the zip64 local headers, data descriptors, central directory and
+ * EOCD records around the two entries a TDF contains. A few hundred bytes in
+ * practice; 64 KiB is generous and the number it pads is measured in terabytes.
+ */
+const ZIP_CONTAINER_OVERHEAD = 64 * 1024;
 
 function assertPositiveInteger(value: number, name: string): void {
   if (!Number.isInteger(value) || value < 1) {

@@ -1,11 +1,17 @@
 import { expect } from 'chai';
 
 import { ConfigurationError } from '../../../src/errors.js';
+import { deterministicAesGcmEncryptor } from '../../../tdf3/src/ciphers/aes-gcm-encryptor.js';
+import type { CryptoService } from '../../../tdf3/src/crypto/declarations.js';
+import { DefaultCryptoService } from '../../../tdf3/src/crypto/index.js';
 import { writeStream } from '../../../tdf3/src/tdf.js';
 import type { IntegrityAlgorithm } from '../../../tdf3/src/tdf.js';
 import {
   DEFAULT_MANIFEST_MAX_SIZE,
+  MAX_PAYLOAD_SEGMENTS_PER_KEY,
   estimateManifestBytes,
+  maxEncryptableBytes,
+  maxSegmentsFor,
 } from '../../../tdf3/src/utils/scale-limits.js';
 import { MANIFEST_MAX_SIZE } from '../../../tdf3/src/utils/zip-reader.js';
 import { encryptConfiguration, segmentsArrayBytes, writeTdf } from '../helpers/write-tdf.js';
@@ -49,6 +55,9 @@ describe('manifest size budget', () => {
     // over a 4 KiB budget but small enough to encrypt if the check misses.
     const plaintext = new Uint8Array(400 * segmentSize);
     const manifestMaxSize = 4096;
+    // A budget no manifest will ever reach, so the invocation ceiling is the
+    // only thing left that can bind.
+    const hugeManifestBudget = 2 ** 40;
 
     it('rejects before reading a single byte of the source', async () => {
       const { stream, counter } = countingStream(plaintext, segmentSize);
@@ -99,6 +108,116 @@ describe('manifest size budget', () => {
         expect(manifest.encryptionInformation.integrityInformation.segments).to.have.lengthOf(400);
         expect(manifestBytes.length).to.be.at.most(64 * 1024);
       }
+    });
+
+    // The manifest check cannot see this: with a generous manifest budget the
+    // segments array fits fine, and it is the payload encryptor's invocation
+    // limit that the payload runs out of. The encryptor's guard would catch it,
+    // but only on the segment that overflows.
+    it('rejects a source past the AES-GCM invocation ceiling, not just the manifest', async () => {
+      // A 1 TiB manifest budget puts the manifest nowhere near binding, so the
+      // only thing left to run out of is invocations. `knownSourceSize` is just
+      // a number here -- no bytes are produced, which is the point.
+      const maxBytes = maxEncryptableBytes({
+        segmentSize,
+        alg: 'GMAC',
+        manifestMaxSize: hugeManifestBudget,
+      });
+      expect(maxSegmentsFor({ alg: 'GMAC', manifestMaxSize: hugeManifestBudget })).to.equal(
+        MAX_PAYLOAD_SEGMENTS_PER_KEY
+      );
+
+      const { stream, counter } = countingStream(plaintext, segmentSize);
+      const cfg = await encryptConfiguration({
+        plaintext,
+        segmentSize,
+        segmentIntegrityAlgorithm: 'GMAC',
+        contentStream: stream,
+        knownSourceSize: maxBytes + 1,
+        manifestMaxSize: hugeManifestBudget,
+      });
+
+      let error: Error | undefined;
+      try {
+        await writeStream(cfg);
+      } catch (e) {
+        error = e as Error;
+      }
+      expect(error).to.be.instanceOf(ConfigurationError);
+      expect(error?.message, 'should be the invocation ceiling, not the manifest').to.contain(
+        'too large to encrypt under a single key'
+      );
+      expect(counter.pulls).to.equal(0);
+    });
+
+    // A provider may declare far fewer invocations than 2^32, and the ceiling
+    // has to come from its encryptor -- otherwise `IvExhaustionError`, after
+    // most of the payload is encrypted, is the first anyone hears of it.
+    describe("with a provider's low invocation limit", () => {
+      const lowLimit: CryptoService = {
+        ...DefaultCryptoService,
+        createAesGcmEncryptor: async (key) => ({
+          ...(await deterministicAesGcmEncryptor(
+            key,
+            DefaultCryptoService.randomBytes,
+            DefaultCryptoService.encrypt
+          )),
+          invocationLimit: 3,
+        }),
+      };
+
+      it('rejects up front once the metadata leaves too few calls', async () => {
+        const source = new Uint8Array(3 * segmentSize);
+        const { stream, counter } = countingStream(source, segmentSize);
+        const cfg = await encryptConfiguration({
+          plaintext: source,
+          segmentSize,
+          contentStream: stream,
+          knownSourceSize: source.length,
+          cryptoService: lowLimit,
+        });
+
+        let error: Error | undefined;
+        try {
+          await writeStream(cfg);
+        } catch (e) {
+          error = e as Error;
+        }
+        expect(error).to.be.instanceOf(ConfigurationError);
+        expect(error?.message).to.contain('(2 segments)');
+        expect(counter.pulls).to.equal(0);
+      });
+
+      it('writes a source that fits in the calls left after the metadata', async () => {
+        const source = new Uint8Array(2 * segmentSize);
+        const { manifest } = await writeTdf({
+          plaintext: source,
+          segmentSize,
+          knownSourceSize: source.length,
+          cryptoService: lowLimit,
+        });
+        expect(manifest.encryptionInformation.integrityInformation.segments).to.have.lengthOf(2);
+      });
+    });
+
+    it('admits a source exactly at the ceiling', async () => {
+      const maxBytes = maxEncryptableBytes({
+        segmentSize,
+        alg: 'GMAC',
+        manifestMaxSize: hugeManifestBudget,
+      });
+      const { stream } = countingStream(plaintext, segmentSize);
+      const cfg = await encryptConfiguration({
+        plaintext,
+        segmentSize,
+        segmentIntegrityAlgorithm: 'GMAC',
+        contentStream: stream,
+        knownSourceSize: maxBytes,
+        manifestMaxSize: hugeManifestBudget,
+      });
+      // Resolves rather than throwing; the stream is never drained, so this
+      // only exercises the up-front checks.
+      expect(await writeStream(cfg)).to.exist;
     });
 
     // An estimate under the truth would let a doomed encrypt start; an estimate

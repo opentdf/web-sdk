@@ -1,7 +1,10 @@
 import { expect } from 'chai';
 
-import { ConfigurationError } from '../../../src/errors.js';
-import { MAX_AES_GCM_INVOCATIONS } from '../../../tdf3/src/ciphers/aes-gcm-encryptor.js';
+import { ConfigurationError, IvExhaustionError } from '../../../src/errors.js';
+import {
+  guardAesGcmEncryptor,
+  MAX_AES_GCM_INVOCATIONS,
+} from '../../../tdf3/src/ciphers/aes-gcm-encryptor.js';
 import type { IntegrityAlgorithm } from '../../../tdf3/src/tdf.js';
 import {
   base64Length,
@@ -10,7 +13,12 @@ import {
   estimateSegmentsArrayBytes,
   FIFTY_TEBIBYTES,
   finalSegmentEntryBytes,
+  MAX_PAYLOAD_SEGMENTS_PER_KEY,
+  maxEncryptableBytes,
+  maxOutputBytes,
+  maxSegmentsFor,
   minSegmentSizeFor,
+  payloadSegmentsFor,
   perSegmentEntryBytes,
   SEGMENT_SIZE_LADDER,
   segmentCountFor,
@@ -56,22 +64,145 @@ describe('scale-limits', () => {
     });
   });
 
+  // The -1 is not cosmetic: at 50 TiB, using the invocation limit directly
+  // gives a floor of 12,800, which needs one more call than the payload
+  // encryptor has left once it has encrypted the metadata.
+  describe('payloadSegmentsFor', () => {
+    it('is one below the invocation limit', () => {
+      expect(MAX_PAYLOAD_SEGMENTS_PER_KEY).to.equal(MAX_AES_GCM_INVOCATIONS - 1);
+      expect(payloadSegmentsFor(2 ** 26)).to.equal(2 ** 26 - 1);
+    });
+
+    it('is exactly how many segments a guarded encryptor admits after the metadata', async () => {
+      for (const limit of [2, 3, 8]) {
+        const guarded = guardAesGcmEncryptor({
+          ivConstruction: 'rbg',
+          invocationLimit: limit,
+          encrypt: (plaintext) =>
+            Promise.resolve({
+              iv: new Uint8Array(12),
+              ciphertext: new Uint8Array(plaintext.length),
+              tag: new Uint8Array(16),
+            }),
+        });
+        // The writer's first call on a shared encryptor is the metadata.
+        await guarded.encrypt(new Uint8Array(1));
+        let segments = 0;
+        for (;;) {
+          try {
+            await guarded.encrypt(new Uint8Array(1));
+          } catch (e) {
+            expect(e).to.be.instanceOf(IvExhaustionError);
+            break;
+          }
+          segments += 1;
+        }
+        expect(segments, `limit ${limit}`).to.equal(payloadSegmentsFor(limit));
+      }
+    });
+  });
+
   describe('minSegmentSizeFor', () => {
-    it('derives the 12.5 KiB floor a 50 TiB payload needs to stay under the IV ceiling', () => {
-      expect(minSegmentSizeFor(FIFTY_TEBIBYTES)).to.equal(12_800);
-      expect(FIFTY_TEBIBYTES / minSegmentSizeFor(FIFTY_TEBIBYTES)).to.be.at.most(
-        MAX_AES_GCM_INVOCATIONS
+    it('derives the floor a 50 TiB payload needs to stay under the IV ceiling', () => {
+      expect(minSegmentSizeFor(FIFTY_TEBIBYTES)).to.equal(12_801);
+      expect(segmentCountFor(FIFTY_TEBIBYTES, minSegmentSizeFor(FIFTY_TEBIBYTES))).to.be.at.most(
+        MAX_PAYLOAD_SEGMENTS_PER_KEY
+      );
+    });
+
+    // One byte smaller and the payload needs a call the encryptor refuses.
+    it('is tight -- a byte below it overflows the encryptor', () => {
+      expect(segmentCountFor(FIFTY_TEBIBYTES, minSegmentSizeFor(FIFTY_TEBIBYTES) - 1)).to.be.above(
+        MAX_PAYLOAD_SEGMENTS_PER_KEY
       );
     });
 
     it("scales with the encryptor's invocation limit", () => {
       // An RBG provider at the ADR's recommended 2^26.
-      expect(minSegmentSizeFor(FIFTY_TEBIBYTES, 2 ** 26)).to.equal(819_200);
+      expect(minSegmentSizeFor(FIFTY_TEBIBYTES, 2 ** 26)).to.equal(819_201);
     });
 
     it('is far below every segment size we would actually pick', () => {
       expect(minSegmentSizeFor(FIFTY_TEBIBYTES)).to.be.below(MIB);
       expect(minSegmentSizeFor(FIFTY_TEBIBYTES, 2 ** 26)).to.be.below(MIB);
+    });
+  });
+
+  describe('maxSegmentsFor', () => {
+    it('is manifest-bound at the recommended cap', () => {
+      expect(maxSegmentsFor({ alg: 'HS256' })).to.equal(4_793_490);
+      expect(maxSegmentsFor({ alg: 'GMAC' })).to.equal(7_456_540);
+      expect(maxSegmentsFor({ alg: 'HS256' })).to.equal(
+        Math.floor(DEFAULT_MANIFEST_MAX_SIZE / perSegmentEntryBytes('HS256'))
+      );
+    });
+
+    // The other branch of the min(): only reachable with a manifest budget of
+    // hundreds of gigabytes, but it is the branch that keeps the format safe.
+    it('is invocation-bound once the manifest budget stops binding', () => {
+      expect(maxSegmentsFor({ alg: 'HS256', manifestMaxSize: 2 ** 40 })).to.equal(
+        MAX_PAYLOAD_SEGMENTS_PER_KEY
+      );
+    });
+
+    it('crosses over at a manifest budget of about 240 GB', () => {
+      const crossover = MAX_PAYLOAD_SEGMENTS_PER_KEY * perSegmentEntryBytes('HS256');
+      expect(maxSegmentsFor({ alg: 'HS256', manifestMaxSize: crossover })).to.equal(
+        MAX_PAYLOAD_SEGMENTS_PER_KEY
+      );
+      expect(maxSegmentsFor({ alg: 'HS256', manifestMaxSize: crossover - 1 })).to.be.below(
+        MAX_PAYLOAD_SEGMENTS_PER_KEY
+      );
+    });
+  });
+
+  describe('maxEncryptableBytes', () => {
+    it('clears 50 TiB at the recommended configuration under either algorithm', () => {
+      const hs256 = maxEncryptableBytes({ segmentSize: 16 * MIB, alg: 'HS256' });
+      const gmac = maxEncryptableBytes({ segmentSize: 16 * MIB, alg: 'GMAC' });
+      expect(hs256).to.equal(80_421_417_123_840);
+      expect(gmac).to.equal(125_099_982_192_640);
+      expect(hs256).to.be.above(FIFTY_TEBIBYTES);
+      expect(gmac).to.be.above(FIFTY_TEBIBYTES);
+    });
+
+    // Honest accounting of the change this replaces: the old flat ceiling was
+    // 64 GB, and at today's 1 MiB default the derived one is ~122x that. The
+    // plan's claim that it "collapses back to roughly today's behavior" was
+    // written against the old 10 MB manifest cap and no longer holds.
+    it('is far above the 64 GB constant it replaces, even at the 1 MiB default', () => {
+      const derived = maxEncryptableBytes({ segmentSize: MIB, alg: 'GMAC' });
+      expect(derived).to.equal(7_818_748_887_040);
+      expect(derived / (64 * 1000 * 1000 * 1000)).to.be.above(100);
+    });
+
+    it('scales linearly with the segment size while the manifest binds', () => {
+      const base = maxEncryptableBytes({ segmentSize: MIB, alg: 'HS256' });
+      expect(maxEncryptableBytes({ segmentSize: 16 * MIB, alg: 'HS256' })).to.equal(base * 16);
+    });
+
+    it('rejects a nonsensical segment size', () => {
+      expect(() => maxEncryptableBytes({ segmentSize: 0, alg: 'GMAC' })).to.throw(
+        ConfigurationError
+      );
+    });
+  });
+
+  describe('maxOutputBytes', () => {
+    // byteLimit counts bytes written, not bytes read, so the output ceiling has
+    // to be the larger of the two or it would reject payloads that fit.
+    it('exceeds the plaintext ceiling by the per-segment and container overhead', () => {
+      const segmentSize = 16 * MIB;
+      const plaintext = maxEncryptableBytes({ segmentSize, alg: 'GMAC' });
+      const output = maxOutputBytes({ segmentSize, alg: 'GMAC' });
+      expect(output).to.be.above(plaintext);
+      expect(output - plaintext).to.equal(
+        maxSegmentsFor({ alg: 'GMAC' }) * 28 + DEFAULT_MANIFEST_MAX_SIZE + 64 * 1024
+      );
+    });
+
+    it('still clears 50 TiB of plaintext', () => {
+      expect(maxOutputBytes({ segmentSize: 16 * MIB, alg: 'HS256' })).to.be.above(FIFTY_TEBIBYTES);
     });
   });
 
