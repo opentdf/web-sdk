@@ -14,6 +14,21 @@
  * message assertions are bound to. This bounds the cost of producing it, it
  * does not eliminate it.
  */
+/**
+ * Ceiling on the *initial* allocation, not on the accumulator's size.
+ *
+ * The hint is derived from a caller-supplied source length, so a wrong or
+ * hostile one must not turn into a single enormous `new Uint8Array`. V8 in Node
+ * will quietly hand back a 64 GiB array it never backs; Chrome throws
+ * `RangeError: Invalid typed array length` outright. Neither is a failure mode
+ * worth having for what is only a pre-sizing optimization.
+ *
+ * 256 MiB is above every reachable final size -- the manifest budget caps the
+ * segment count, which caps the digests at ~146 MB -- so in practice this only
+ * ever clamps a hint that was already wrong.
+ */
+const MAX_PREALLOCATED_BYTES = 256 * 1024 * 1024;
+
 export class ByteAccumulator {
   #buffer: Uint8Array;
   #length = 0;
@@ -21,10 +36,11 @@ export class ByteAccumulator {
   /**
    * @param expectedBytes total bytes expected, when known. Sizing exactly
    * avoids the doubling growth, whose transient peak would otherwise be up to
-   * three times the final buffer.
+   * three times the final buffer. Clamped to {@link MAX_PREALLOCATED_BYTES};
+   * beyond that the buffer grows on demand like any other under-estimate.
    */
   constructor(expectedBytes = 0) {
-    this.#buffer = new Uint8Array(Math.max(expectedBytes, 64));
+    this.#buffer = new Uint8Array(Math.min(Math.max(expectedBytes, 64), MAX_PREALLOCATED_BYTES));
   }
 
   get length(): number {
