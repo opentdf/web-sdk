@@ -377,11 +377,13 @@ export class OpenTDF {
    */
   async createZTDF(opts: CreateZTDFOptions): Promise<DecoratedStream> {
     opts = { ...this.defaultCreateOptions, ...opts };
+    // Best effort; `undefined` just means the manifest budget is checked at the
+    // end of the stream instead of before it starts. Probed once and handed to
+    // both consumers, since for a `'remote'` source it costs a request.
+    const knownSourceSize = await sourceSize(opts.source);
     const oldStream = await this.tdf3Client.encrypt({
-      source: await sourceToStream(opts.source),
-      // Best effort; `undefined` just means the manifest budget is checked at
-      // the end of the stream instead of before it starts.
-      knownSourceSize: await sourceSize(opts.source),
+      source: await sourceToStream(opts.source, knownSourceSize),
+      knownSourceSize,
 
       assertionConfigs: opts.assertionConfigs,
       autoconfigure: !!opts.autoconfigure,

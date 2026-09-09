@@ -10,6 +10,19 @@ export type Chunker = (byteStart?: number, byteEnd?: number) => Promise<Uint8Arr
 
 /**
  * Type union for a variety of inputs.
+ *
+ * Not all of these scale equally, and the difference is inherent rather than a
+ * missing optimization:
+ *
+ * - `'chunker'`, `'file-browser'` and `'remote'` are seekable. They stream in
+ *   bounded pieces on both the encrypt and decrypt paths, and are the only
+ *   types suitable for very large payloads.
+ * - `'buffer'` is entirely in memory by construction. There is nothing to
+ *   stream, so it is bounded by whatever the caller could already allocate.
+ * - `'stream'` is single-pass, and zip needs random access -- the central
+ *   directory is at the *end* of the archive. Decrypting one therefore requires
+ *   buffering it whole; see {@link MAX_BUFFERED_STREAM_BYTES}. Encrypting from
+ *   one is fine, since encryption is a forward pass.
  */
 export type Source =
   | { type: 'buffer'; location: Uint8Array }
@@ -131,6 +144,63 @@ export const fromUrl = async (location: string): Promise<Chunker> => {
 };
 
 /**
+ * Most a single-pass `'stream'` may weigh before it is refused.
+ *
+ * Making a `'stream'` seekable means holding all of it, because zip's central
+ * directory is at the end of the archive; there is no in-place fix, only a
+ * choice of failure. Refusing outright would break callers who pass small
+ * streams that work fine today, so instead this bounds the damage: at 1 GiB the
+ * SDK throws something actionable, naming the seekable source types, rather
+ * than letting the tab reach the browser's own ~2 GiB `ArrayBuffer` wall and
+ * die on an opaque allocation error.
+ *
+ * It is the *decrypt* path that needs this. Encrypting from a stream is a
+ * forward pass and is not size-limited.
+ */
+export const MAX_BUFFERED_STREAM_BYTES = 1024 * 1024 * 1024;
+
+/**
+ * Drains a stream into one buffer, refusing partway through if it is too big.
+ *
+ * Counts as it goes rather than deferring to `Response.arrayBuffer()`, so a
+ * 50 GB stream fails after `maxBytes`, not after 50 GB.
+ */
+export async function bufferStream(
+  stream: ReadableStream<Uint8Array>,
+  maxBytes: number = MAX_BUFFERED_STREAM_BYTES
+): Promise<Uint8Array> {
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  const reader = stream.getReader();
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      total += value.length;
+      if (total > maxBytes) {
+        throw new ConfigurationError(
+          `Stream source is too large to make seekable: exceeds ${maxBytes.toLocaleString()}` +
+            ` bytes. A zip archive must be read out of order, so a single-pass stream has to be` +
+            ` buffered whole. Use a 'chunker', 'file-browser', or 'remote' source instead.`
+        );
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const buffer = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    buffer.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return buffer;
+}
+
+/**
  * Creates a seekable object from a source.
  * @param source A Source object containing the type and location of the data.
  * @returns A promise that resolves to a Chunker function.
@@ -159,7 +229,7 @@ export const fromSource = async ({ type, location }: Source): Promise<Chunker> =
       }
       return fromUrl(location);
     case 'stream':
-      return fromBuffer(new Uint8Array(await new Response(location).arrayBuffer()));
+      return fromBuffer(await bufferStream(location));
     default:
       throw new ConfigurationError(`Data source type not defined, or not supported: ${type}}`);
   }
@@ -222,45 +292,90 @@ async function remoteSize(url: string): Promise<number | undefined> {
   return undefined;
 }
 
+/** Bytes requested per pull when reading a seekable source as a stream. */
+export const STREAM_CHUNK_SIZE = 8 * 1024 * 1024;
+
+/**
+ * Reads a seekable source one bounded piece at a time.
+ *
+ * When `totalSize` is known the loop stops at it, which matters for `'remote'`:
+ * a range request past the end of an object is a 416, so running off the end to
+ * discover it would turn a clean finish into an error. Without a length it
+ * falls back to reading until a pull comes back empty, which is all a bare
+ * `Chunker` can tell us.
+ *
+ * A server that ignores `Range` and returns the whole body still produces the
+ * right bytes -- the first pull satisfies the whole length and the stream
+ * closes -- it just does not get the memory benefit.
+ */
+function seekableStream(chunker: Chunker, totalSize?: number): ReadableStream<Uint8Array> {
+  let offset = 0;
+  return new ReadableStream({
+    async pull(controller) {
+      if (totalSize !== undefined && offset >= totalSize) {
+        controller.close();
+        return;
+      }
+      const end =
+        totalSize === undefined
+          ? offset + STREAM_CHUNK_SIZE
+          : Math.min(offset + STREAM_CHUNK_SIZE, totalSize);
+      const chunk = await chunker(offset, end);
+      if (chunk.length === 0) {
+        if (totalSize !== undefined && offset < totalSize) {
+          // Silently closing here would truncate the payload and produce a
+          // short TDF that looks valid.
+          throw new NetworkError(
+            `source returned no bytes at offset ${offset} of ${totalSize}; read was truncated`
+          );
+        }
+        controller.close();
+        return;
+      }
+      controller.enqueue(chunk);
+      offset += chunk.length;
+    },
+  });
+}
+
 /**
  * Converts a Source object to a ReadableStream.
  * @param source A Source object containing the type and location of the data.
  * Converts the source to a ReadableStream of Uint8Array.
  * This is useful for streaming data from various sources like files, remote URLs, or chunkers.
+ * @param knownSize the source's length, when the caller already learned it via
+ * {@link sourceSize}. Passing it avoids a second probe request for `'remote'`.
  * @returns A ReadableStream of Uint8Array.
  */
-export async function sourceToStream(source: Source): Promise<ReadableStream<Uint8Array>> {
+export async function sourceToStream(
+  source: Source,
+  knownSize?: number
+): Promise<ReadableStream<Uint8Array>> {
   switch (source.type) {
     case 'stream':
       return source.location;
     case 'file-browser':
       return source.location.stream();
-    case 'chunker': {
-      const chunkSize = 8 * 1024 * 1024; // 8 megabytes
-      let offset = 0;
-      return new ReadableStream({
-        async pull(controller) {
-          const chunk = await source.location(offset, offset + chunkSize);
-          if (chunk.length === 0) {
-            controller.close();
-            return;
-          }
-          controller.enqueue(chunk);
-          offset += chunk.length;
-        },
-      });
-    }
-    default: {
-      const chunker = await fromSource(source);
-      return new ReadableStream({
-        async start(controller) {
-          const chunk = await chunker();
-          controller.enqueue(chunk);
-          controller.close();
-        },
-      });
+    case 'chunker':
+      return seekableStream(source.location);
+    case 'remote': {
+      const size = knownSize ?? (await sourceSize(source));
+      if (size === undefined) {
+        // No length and no range support to infer one from: nothing to do but
+        // what this always did, and take the whole object into memory.
+        break;
+      }
+      return seekableStream(await fromSource(source), size);
     }
   }
+  const chunker = await fromSource(source);
+  return new ReadableStream({
+    async start(controller) {
+      const chunk = await chunker();
+      controller.enqueue(chunk);
+      controller.close();
+    },
+  });
 }
 
 // Deprected name, prefer `fromSource`
