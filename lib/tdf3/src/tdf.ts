@@ -68,6 +68,7 @@ import {
 import { unsigned } from './utils/buffer-crc32.js';
 import { ZipReader, ZipWriter, concatUint8, buffToString, toArrayBuffer } from './utils/index.js';
 import type { CentralDirectory } from './utils/zip-reader.js';
+import { derivePrefetchWindow } from './utils/prefetch-window.js';
 import { getZtdfSalt } from './crypto/salt.js';
 import { decodeKemEnvelopeDer } from './crypto/core/mlkem-asn1.js';
 import type { Payload } from './models/payload.js';
@@ -119,10 +120,6 @@ export function manifestEntryName(centralDirectory: CentralDirectory[]): string 
 }
 
 const HEX_SEMVER_VERSION = '4.2.2';
-const LEGACY_SEGMENTS_PER_DOWNLOAD = 500;
-const LEGACY_MAX_CONCURRENT_SEGMENT_BATCHES = 3;
-const DEFAULT_BOUND_SEGMENT_BATCH_SIZE = LEGACY_SEGMENTS_PER_DOWNLOAD;
-const DEFAULT_BOUND_MAX_CONCURRENT_SEGMENT_BATCHES = LEGACY_MAX_CONCURRENT_SEGMENT_BATCHES;
 
 /**
  * Configuration for TDF3
@@ -177,6 +174,10 @@ function mailbox<T>(): Mailbox<T> {
     set = resolve;
     reject = rejectFn;
   }) as Mailbox<T>;
+  // A failed decrypt rejects every remaining mailbox, but the reader only ever
+  // awaits one. Mark them handled so the rest are not unhandled rejections
+  // (fatal in Node); awaiting the mailbox itself still throws.
+  promise.catch(() => undefined);
 
   promise.set = set!;
   promise.reject = reject!;
@@ -1337,38 +1338,6 @@ async function decryptChunk(
   return await cipher.decrypt(encryptedChunk, reconstructedKey);
 }
 
-async function updateChunkQueue(
-  chunks: Chunk[],
-  centralDirectory: CentralDirectory[],
-  zipReader: ZipReader,
-  reconstructedKey: SymmetricKey,
-  cipher: SymmetricCipher,
-  segmentIntegrityAlgorithm: SegmentIntegrityAlgorithm,
-  cryptoService: CryptoService,
-  specVersion: string
-) {
-  let requests = [];
-
-  for (let i = 0; i < chunks.length; i += LEGACY_SEGMENTS_PER_DOWNLOAD) {
-    if (requests.length === LEGACY_MAX_CONCURRENT_SEGMENT_BATCHES) {
-      await Promise.all(requests);
-      requests = [];
-    }
-    requests.push(
-      fetchAndDecryptChunkSlice({
-        centralDirectory,
-        zipReader,
-        reconstructedKey,
-        cipher,
-        segmentIntegrityAlgorithm,
-        cryptoService,
-        specVersion,
-        slice: chunks.slice(i, i + LEGACY_SEGMENTS_PER_DOWNLOAD),
-      }).catch(() => undefined)
-    );
-  }
-}
-
 function rejectChunks(chunks: Chunk[], error: Error) {
   for (const chunk of chunks) {
     chunk.decryptedChunk.reject(error);
@@ -1551,28 +1520,35 @@ function normalizeSegmentBatchSetting(
 }
 
 /**
- * Enables bounded scheduling only when at least one tuning knob is set.
- * If callers set only one knob, the other falls back to the legacy value so
- * throughput stays aligned with the pre-bounded path. Adjust both knobs together
- * when tuning for predictable memory and performance characteristics.
+ * Prefetch window for a decrypt, in segments.
+ *
+ * Bounded scheduling is now the default rather than opt-in. The old default was
+ * `updateChunkQueue`, which fetched 500-segment batches three at a time and
+ * never waited for the consumer, so decrypted plaintext piled up as fast as the
+ * network allowed -- up to the whole file. Even its in-flight window, 1,500
+ * segments, was about 3 GiB at the 2 MiB writer default and grows linearly
+ * with segment size. Nothing tied that segment count to memory.
+ *
+ * Explicit knobs still win, and still fall back to the derived value rather
+ * than each other, so setting one does not silently rescale the other.
  */
-function getBoundedSegmentSchedulerOptions({
+export function getBoundedSegmentSchedulerOptions({
   segmentBatchSize,
   maxConcurrentSegmentBatches,
-}: Pick<DecryptConfiguration, 'segmentBatchSize' | 'maxConcurrentSegmentBatches'>) {
-  if (segmentBatchSize === undefined && maxConcurrentSegmentBatches === undefined) {
-    return undefined;
-  }
-
+  segmentSize,
+}: Pick<DecryptConfiguration, 'segmentBatchSize' | 'maxConcurrentSegmentBatches'> & {
+  segmentSize: number;
+}) {
+  const derived = derivePrefetchWindow({ segmentSize });
   return {
     segmentBatchSize: normalizeSegmentBatchSetting(
       segmentBatchSize,
-      DEFAULT_BOUND_SEGMENT_BATCH_SIZE,
+      derived.segmentBatchSize,
       'segmentBatchSize'
     ),
     maxConcurrentSegmentBatches: normalizeSegmentBatchSetting(
       maxConcurrentSegmentBatches,
-      DEFAULT_BOUND_MAX_CONCURRENT_SEGMENT_BATCHES,
+      derived.maxConcurrentSegmentBatches,
       'maxConcurrentSegmentBatches'
     ),
   };
@@ -1661,6 +1637,13 @@ export async function decryptStreamFrom(
     segmentSizeDefault,
     segments,
   } = manifest.encryptionInformation.integrityInformation;
+  // Absent or zero falls back to DEFAULT_SEGMENT_SIZE below. Anything else must
+  // be usable as a size; check before the rewrap so a bad file costs no KAS call.
+  if (defaultSegmentSize && !(Number.isInteger(defaultSegmentSize) && defaultSegmentSize > 0)) {
+    throw new InvalidFileError(
+      `manifest encryptedSegmentSizeDefault must be a positive integer; got [${defaultSegmentSize}]`
+    );
+  }
   const { metadata, reconstructedKey, requiredObligations } = await unwrapKey({
     fulfillableObligations: cfg.fulfillableObligations,
     manifest,
@@ -1757,43 +1740,33 @@ export async function decryptStreamFrom(
   // valid here; only unknown ones are rejected.
   const segmentIntegrityAlg = asSegmentIntegrityAlgorithm(segmentHashAlg || rootIntegrityAlgorithm);
 
-  const schedulerOptions = getBoundedSegmentSchedulerOptions(cfg);
-  let scheduler: SegmentBatchScheduler | undefined;
-  if (schedulerOptions) {
-    scheduler = createBoundedSegmentScheduler({
-      totalSegments: chunks.length,
-      ...schedulerOptions,
-      onError: (error, startIndex) => {
-        rejectChunks(chunks.slice(startIndex), error);
-      },
-      scheduleBatch: async (startIndex, endIndex) =>
-        fetchAndDecryptChunkSlice({
-          centralDirectory,
-          zipReader,
-          reconstructedKey: keyForDecryption,
-          cipher,
-          segmentIntegrityAlgorithm: segmentIntegrityAlg,
-          cryptoService: cfg.cryptoService,
-          specVersion,
-          slice: chunks.slice(startIndex, endIndex),
-        }),
-    });
-    scheduler.fillWindow();
-  } else {
-    void updateChunkQueue(
-      chunks,
-      centralDirectory,
-      zipReader,
-      keyForDecryption,
-      cipher,
-      segmentIntegrityAlg,
-      cfg.cryptoService,
-      specVersion
-    );
-  }
+  let nextChunkIndex = 0;
+  const scheduler = createBoundedSegmentScheduler({
+    totalSegments: chunks.length,
+    // The window mostly holds decrypted plaintext awaiting the reader; the
+    // encrypted size is a slight overestimate of that, and covers the transient
+    // ciphertext buffers too.
+    ...getBoundedSegmentSchedulerOptions({ ...cfg, segmentSize: encryptedSegmentSizeDefault }),
+    onError: (error, startIndex) => {
+      // Chunks the reader already consumed were swapped for fresh mailboxes
+      // nobody will await; only reject from the first unconsumed one.
+      rejectChunks(chunks.slice(Math.max(startIndex, nextChunkIndex)), error);
+    },
+    scheduleBatch: async (startIndex, endIndex) =>
+      fetchAndDecryptChunkSlice({
+        centralDirectory,
+        zipReader,
+        reconstructedKey: keyForDecryption,
+        cipher,
+        segmentIntegrityAlgorithm: segmentIntegrityAlg,
+        cryptoService: cfg.cryptoService,
+        specVersion,
+        slice: chunks.slice(startIndex, endIndex),
+      }),
+  });
+  scheduler.fillWindow();
 
   let progress = 0;
-  let nextChunkIndex = 0;
   const underlyingSource = {
     pull: async (controller: ReadableStreamDefaultController) => {
       if (nextChunkIndex >= chunks.length) {
@@ -1816,7 +1789,7 @@ export async function decryptStreamFrom(
         decryptedChunk: mailbox<DecryptResult>(),
       };
       nextChunkIndex += 1;
-      scheduler?.markConsumed();
+      scheduler.markConsumed();
     },
     ...(cfg.fileStreamServiceWorker && { fileStreamServiceWorker: cfg.fileStreamServiceWorker }),
   };
