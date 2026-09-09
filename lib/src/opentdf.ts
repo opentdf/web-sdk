@@ -175,12 +175,20 @@ export type ReadOptions = {
   /**
    * Maximum number of payload segments to fetch and decrypt per batch.
    * Adjust together with `maxConcurrentSegmentBatches` for expected throughput.
+   *
+   * Defaults to a value derived from the TDF's own segment size, so that
+   * `segmentBatchSize * maxConcurrentSegmentBatches` segments stay inside a
+   * fixed byte budget (see `derivePrefetchWindow`). Raising this raises peak
+   * memory in proportion.
    */
   segmentBatchSize?: number;
 
   /**
    * Maximum number of segment batches that may be fetched concurrently.
    * Adjust together with `segmentBatchSize` for expected throughput.
+   *
+   * Also derived from the TDF's segment size by default. Setting one of these
+   * two does not rescale the other -- the unset one keeps its derived value.
    */
   maxConcurrentSegmentBatches?: number;
 
