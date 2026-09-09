@@ -74,6 +74,8 @@ import { ByteAccumulator } from './utils/byte-accumulator.js';
 import {
   DEFAULT_MANIFEST_MAX_SIZE,
   estimateManifestBytes,
+  maxEncryptableBytes,
+  maxSegmentsFor,
   segmentCountFor,
   segmentDigestBytes,
 } from './utils/scale-limits.js';
@@ -492,6 +494,26 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
       segmentCountFor(cfg.knownSourceSize, segmentSizeDefault),
       { manifestMaxSize, estimated: true }
     );
+
+    // The manifest check above does not cover the AES-GCM per-key invocation
+    // ceiling, which binds instead of the manifest whenever segments are small.
+    // `GcmIvCounter` would catch it, but only on the segment that overflows --
+    // by which point the whole payload has been encrypted.
+    const maxBytes = maxEncryptableBytes({
+      segmentSize: segmentSizeDefault,
+      alg: cfg.segmentIntegrityAlgorithm,
+      manifestMaxSize,
+    });
+    if (cfg.knownSourceSize > maxBytes) {
+      throw new ConfigurationError(
+        `Source is too large to encrypt under a single key: ${cfg.knownSourceSize.toLocaleString()}` +
+          ` bytes exceeds the ${maxBytes.toLocaleString()} byte ceiling at a segment size of` +
+          ` ${segmentSizeDefault.toLocaleString()} (${maxSegmentsFor({
+            alg: cfg.segmentIntegrityAlgorithm,
+            manifestMaxSize,
+          }).toLocaleString()} segments); increase segmentSize.`
+      );
+    }
   }
 
   // One contiguous buffer rather than an array of per-segment digests; see
