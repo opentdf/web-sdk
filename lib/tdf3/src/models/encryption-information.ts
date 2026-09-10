@@ -12,6 +12,7 @@ import {
 import {
   ROOT_INTEGRITY_ALGORITHM,
   SEGMENT_INTEGRITY_ALGORITHM,
+  type RootIntegrityAlgorithm,
   type SegmentIntegrityAlgorithm,
 } from '../tdf.js';
 import { ConfigurationError } from '../../../src/errors.js';
@@ -36,10 +37,16 @@ export type EncryptionInformation = {
   readonly keyAccess: KeyAccessObject[];
   readonly integrityInformation: {
     readonly rootSignature: {
-      alg: SegmentIntegrityAlgorithm;
+      /**
+       * Algorithm declared by the file. Untrusted until validated on read;
+       * only `HS256` is accepted (see `asRootIntegrityAlgorithm`). Typed as a
+       * plain string because a hostile manifest may say anything.
+       */
+      alg: RootIntegrityAlgorithm | string;
       sig: string;
     };
-    segmentHashAlg?: SegmentIntegrityAlgorithm;
+    /** Untrusted until validated on read; `GMAC` and `HS256` are accepted. */
+    segmentHashAlg?: SegmentIntegrityAlgorithm | string;
     segments: Segment[];
     segmentSizeDefault?: number;
     encryptedSegmentSizeDefault?: number;
