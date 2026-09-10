@@ -45,6 +45,13 @@ class InvalidAuthProvider {
 
 const containerTypes = ['tdf3', 'ztdf'];
 
+/** Accepted values for the two integrity-algorithm flags, lowercase by convention. */
+const integrityAlgorithms = ['hs256', 'gmac'] as const;
+
+/** Flag values are case-insensitive; normalize before yargs checks `choices`. */
+const lowercaseIntegrityAlgorithm = (v: unknown) =>
+  typeof v === 'string' ? v.toLowerCase() : (v as string);
+
 const parseJwt = (jwt: string, field = 1) => {
   return JSON.parse(base64.decode(jwt.split('.')[field]));
 };
@@ -291,6 +298,26 @@ async function parseCreateTDFOptions(argv: Partial<mainArgs>): Promise<CreateTDF
   if (argv.tdfSpecVersion) {
     c.tdfSpecVersion = argv.tdfSpecVersion as never;
   }
+  if (argv.rootIntegrityAlgorithm?.length) {
+    // Only HMAC is supported for the root integrity algorithm.
+    if (argv.rootIntegrityAlgorithm.toLowerCase() !== 'hs256') {
+      throw new CLIError(
+        'CRITICAL',
+        `unsupported root integrity algorithm: [${argv.rootIntegrityAlgorithm}]; only [hs256] is supported`
+      );
+    }
+    c.rootIntegrityAlgorithm = 'HS256';
+  }
+  if (argv.segmentIntegrityAlgorithm?.length) {
+    const segmentAlg = argv.segmentIntegrityAlgorithm.toUpperCase();
+    if (segmentAlg !== 'GMAC' && segmentAlg !== 'HS256') {
+      throw new CLIError(
+        'CRITICAL',
+        `unsupported segment integrity algorithm: [${argv.segmentIntegrityAlgorithm}]`
+      );
+    }
+    c.segmentIntegrityAlgorithm = segmentAlg;
+  }
   log('DEBUG', `CreateTDFOptions: ${JSON.stringify(c)}`);
   return c;
 }
@@ -472,6 +499,24 @@ export const handleArgs = (args: string[]) => {
           type: 'string',
           default: '',
         },
+        rootIntegrityAlgorithm: {
+          alias: 'root-integrity-algorithm',
+          group: 'Encrypt Options:',
+          desc: 'Algorithm for the root signature. Only hs256 is supported; gmac is rejected',
+          type: 'string',
+          choices: integrityAlgorithms,
+          coerce: lowercaseIntegrityAlgorithm,
+          default: 'hs256',
+        },
+        segmentIntegrityAlgorithm: {
+          alias: 'segment-integrity-algorithm',
+          group: 'Encrypt Options:',
+          desc: 'Algorithm for per-segment integrity',
+          type: 'string',
+          choices: integrityAlgorithms,
+          coerce: lowercaseIntegrityAlgorithm,
+          default: 'gmac',
+        },
         rewrapKeyType: {
           alias: 'rewrap-encapsulation-algorithm',
           group: 'Decrypt Options:',
@@ -624,6 +669,8 @@ export const handleArgs = (args: string[]) => {
         },
         async (argv) => {
           log('DEBUG', 'Running encrypt command');
+          // Validate create options before any network activity.
+          const createOptions = await parseCreateTDFOptions(argv);
           const authProvider = await processAuth(argv);
           log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
           const guessedPolicyEndpoint = guessPolicyUrl(argv);
@@ -640,7 +687,7 @@ export const handleArgs = (args: string[]) => {
           try {
             log('SILLY', `Initialized client`);
             log('DEBUG', `TDF Create`);
-            const ct: DecoratedStream = await client.createTDF(await parseCreateTDFOptions(argv));
+            const ct: DecoratedStream = await client.createTDF(createOptions);
             if (!ct) {
               throw new CLIError('CRITICAL', 'Encrypt configuration error: No output?');
             }

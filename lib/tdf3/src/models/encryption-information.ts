@@ -9,7 +9,11 @@ import {
   type EncryptResult,
   type SymmetricKey,
 } from '../crypto/declarations.js';
-import { IntegrityAlgorithm } from '../tdf.js';
+import {
+  ROOT_INTEGRITY_ALGORITHM,
+  SEGMENT_INTEGRITY_ALGORITHM,
+  type SegmentIntegrityAlgorithm,
+} from '../tdf.js';
 import { ConfigurationError } from '../../../src/errors.js';
 
 export type KeyInfo = {
@@ -32,10 +36,10 @@ export type EncryptionInformation = {
   readonly keyAccess: KeyAccessObject[];
   readonly integrityInformation: {
     readonly rootSignature: {
-      alg: IntegrityAlgorithm;
+      alg: SegmentIntegrityAlgorithm;
       sig: string;
     };
-    segmentHashAlg?: IntegrityAlgorithm;
+    segmentHashAlg?: SegmentIntegrityAlgorithm;
     segments: Segment[];
     segmentSizeDefault?: number;
     encryptedSegmentSizeDefault?: number;
@@ -153,10 +157,12 @@ export class SplitKey {
       },
       integrityInformation: {
         rootSignature: {
-          alg: 'HS256',
+          // Placeholders; `writeStream` overwrites both once the payload has
+          // been segmented and the aggregate hash is known.
+          alg: ROOT_INTEGRITY_ALGORITHM,
           sig: '',
         },
-        segmentHashAlg: 'GMAC',
+        segmentHashAlg: SEGMENT_INTEGRITY_ALGORITHM,
         segments: [],
       },
       policy: policyForManifest,

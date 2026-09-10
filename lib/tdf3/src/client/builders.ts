@@ -1,6 +1,10 @@
 import { validateAttribute, validateAttributeObject } from './validation.js';
 import { AttributeObject, KeyInfo, Policy } from '../models/index.js';
-import { type Metadata } from '../tdf.js';
+import {
+  type Metadata,
+  type RootIntegrityAlgorithm,
+  type SegmentIntegrityAlgorithm,
+} from '../tdf.js';
 import { Binary } from '../binary.js';
 
 import { ConfigurationError } from '../../../src/errors.js';
@@ -56,6 +60,9 @@ export type EncryptParams = {
 
   // Preferred wrapping key algorithm. Used when KID resolution is not available.
   wrappingKeyAlgorithm?: KasPublicKeyAlgorithm;
+
+  rootIntegrityAlgorithm?: RootIntegrityAlgorithm;
+  segmentIntegrityAlgorithm?: SegmentIntegrityAlgorithm;
 
   // Unsupported
   asHtml?: boolean;

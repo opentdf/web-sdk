@@ -9,8 +9,12 @@ import {
   buildKeyAccess,
   type EncryptConfiguration,
   fetchKasPublicKey,
+  isRootIntegrityAlgorithm,
+  isSegmentIntegrityAlgorithm,
   loadTDFStream,
   readStream,
+  ROOT_INTEGRITY_ALGORITHM,
+  SEGMENT_INTEGRITY_ALGORITHM,
   validatePolicyObject,
   writeStream,
 } from '../tdf.js';
@@ -544,7 +548,19 @@ export class Client {
       streamMiddleware = async (stream: DecoratedReadableStream) => stream,
       tdfSpecVersion,
       wrappingKeyAlgorithm,
+      rootIntegrityAlgorithm = ROOT_INTEGRITY_ALGORITHM,
+      segmentIntegrityAlgorithm = SEGMENT_INTEGRITY_ALGORITHM,
     } = opts;
+    if (!isRootIntegrityAlgorithm(rootIntegrityAlgorithm)) {
+      throw new ConfigurationError(
+        `unsupported root integrity algorithm [${rootIntegrityAlgorithm}]; only [${ROOT_INTEGRITY_ALGORITHM}] is supported`
+      );
+    }
+    if (!isSegmentIntegrityAlgorithm(segmentIntegrityAlgorithm)) {
+      throw new ConfigurationError(
+        `unsupported segment integrity algorithm [${segmentIntegrityAlgorithm}]`
+      );
+    }
     const keyMiddleware = keyMiddlewareOpt ?? (() => defaultKeyMiddleware(this.cryptoService));
     const scope = opts.scope ?? { attributes: [], dissem: [] };
 
@@ -772,8 +788,8 @@ export class Client {
       dpopKeys,
       encryptionInformation,
       segmentSizeDefault: windowSize,
-      integrityAlgorithm: 'HS256',
-      segmentIntegrityAlgorithm: 'GMAC',
+      rootIntegrityAlgorithm,
+      segmentIntegrityAlgorithm,
       contentStream: opts.source,
       mimeType,
       policy: policyObject,
