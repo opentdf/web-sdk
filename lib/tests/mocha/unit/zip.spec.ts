@@ -3,7 +3,9 @@ import { expect } from 'chai';
 import { encodeArrayBuffer } from '../../../src/encodings/base64.js';
 import { fromBuffer } from '../../../src/seekable.js';
 import {
+  assertManifestWithinSizeLimit,
   CentralDirectory,
+  MANIFEST_MAX_SIZE,
   parseCDBuffer,
   readUInt64LE,
   ZipReader,
@@ -159,6 +161,19 @@ describe('zip utilities', () => {
       // File modificaiton stamps only had two-second granularity.
       // eslint-disable-next-line no-bitwise
       expect(time).to.equal(29 | (59 << 5) | (23 << 11));
+    });
+  });
+
+  describe('assertManifestWithinSizeLimit', () => {
+    it('allows a manifest at or under the limit', () => {
+      expect(() => assertManifestWithinSizeLimit(MANIFEST_MAX_SIZE, 1)).to.not.throw();
+      expect(() => assertManifestWithinSizeLimit(0, 0)).to.not.throw();
+    });
+
+    it('rejects a manifest that would exceed the limit, before it is written', () => {
+      expect(() => assertManifestWithinSizeLimit(MANIFEST_MAX_SIZE + 1, 291_000)).to.throw(
+        /Manifest too large to write.*291,000 segments.*increase segmentSize/
+      );
     });
   });
 

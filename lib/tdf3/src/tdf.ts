@@ -62,7 +62,13 @@ import {
   SplitType,
 } from './models/index.js';
 import { unsigned } from './utils/buffer-crc32.js';
-import { ZipReader, ZipWriter, concatUint8, buffToString } from './utils/index.js';
+import {
+  ZipReader,
+  ZipWriter,
+  concatUint8,
+  buffToString,
+  assertManifestWithinSizeLimit,
+} from './utils/index.js';
 import { CentralDirectory } from './utils/zip-reader.js';
 import { getZtdfSalt } from './crypto/salt.js';
 import { decodeKemEnvelopeDer } from './crypto/core/mlkem-asn1.js';
@@ -600,6 +606,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
 
         // write the manifest
         const manifestBuffer = new TextEncoder().encode(JSON.stringify(manifest));
+        assertManifestWithinSizeLimit(manifestBuffer.length, segmentInfos.length);
         controller.enqueue(manifestBuffer);
         _countChunk(manifestBuffer);
         entryInfos[1].crcCounter = crcCounter;
