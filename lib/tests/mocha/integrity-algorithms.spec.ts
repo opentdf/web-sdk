@@ -152,4 +152,40 @@ describe('integrity algorithm selection (DSPX-4736)', function () {
       assert.include((e as Error).message, 'unsupported segment integrity algorithm');
     }
   });
+
+  // The guards accept any casing so that callers can hand us user input directly.
+  // What lands in the manifest is a separate question: readers -- ours included --
+  // match the spec's uppercase spelling exactly, so a lowercase manifest is one no
+  // one can open. These pin the writer's canonicalization rather than the guards'.
+  for (const segment of ['gmac', 'hs256'] as const) {
+    it(`canonicalizes lowercase '${segment}' segments and a lowercase root`, async function () {
+      const { buffer, manifest } = await encryptToBuffer(client, plaintext, {
+        rootIntegrityAlgorithm: 'hs256' as never,
+        segmentIntegrityAlgorithm: segment as never,
+      });
+      assert.equal(integrityInfo(manifest).rootSignature.alg, 'HS256');
+      assert.equal(integrityInfo(manifest).segmentHashAlg, segment.toUpperCase());
+
+      // Re-read the bytes we actually wrote, not the in-memory manifest.
+      const { manifest: onDisk } = await client.loadTDFStream({
+        source: { type: 'buffer', location: buffer },
+      });
+      assert.equal(integrityInfo(onDisk).rootSignature.alg, 'HS256');
+      assert.equal(integrityInfo(onDisk).segmentHashAlg, segment.toUpperCase());
+
+      // And the strict reader can open it, which a lowercase manifest cannot.
+      const stream = await client.decrypt({ source: { type: 'buffer', location: buffer } });
+      assert.deepEqual(new Uint8Array(await stream.toBuffer()), plaintext);
+    });
+  }
+
+  it('canonicalizes lowercase algorithms in a 4.2.2 manifest too', async function () {
+    const { manifest } = await encryptToBuffer(client, plaintext, {
+      tdfSpecVersion: '4.2.2',
+      rootIntegrityAlgorithm: 'hs256' as never,
+      segmentIntegrityAlgorithm: 'gmac' as never,
+    });
+    assert.equal(integrityInfo(manifest).rootSignature.alg, 'HS256');
+    assert.equal(integrityInfo(manifest).segmentHashAlg, 'GMAC');
+  });
 });

@@ -469,6 +469,14 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
     );
   }
 
+  // The guards above are deliberately case-insensitive, so callers may pass user
+  // input straight through. Manifests, however, are read back by strict parsers --
+  // this SDK's own reader included -- so everything below writes and signs with the
+  // canonical uppercase spelling.
+  const rootIntegrityAlgorithm = cfg.rootIntegrityAlgorithm.toUpperCase() as RootIntegrityAlgorithm;
+  const segmentIntegrityAlgorithm =
+    cfg.segmentIntegrityAlgorithm.toUpperCase() as SegmentIntegrityAlgorithm;
+
   // eslint-disable-next-line @typescript-eslint/no-this-alias
   const segmentInfos: Segment[] = [];
 
@@ -589,7 +597,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
           const payloadSigStr = await getSignatureVersion422(
             cfg.keyForEncryption.unwrappedKey,
             Binary.fromString(aggregateHash),
-            cfg.rootIntegrityAlgorithm,
+            rootIntegrityAlgorithm,
             cfg.cryptoService
           );
           manifest.encryptionInformation.integrityInformation.rootSignature.sig =
@@ -601,7 +609,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
           const payloadSig = await getSignature(
             cfg.keyForEncryption.unwrappedKey,
             aggregateHash,
-            cfg.rootIntegrityAlgorithm,
+            rootIntegrityAlgorithm,
             cfg.cryptoService
           );
 
@@ -609,13 +617,13 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
           manifest.encryptionInformation.integrityInformation.rootSignature.sig = rootSig;
         }
         manifest.encryptionInformation.integrityInformation.rootSignature.alg =
-          cfg.rootIntegrityAlgorithm;
+          rootIntegrityAlgorithm;
 
         manifest.encryptionInformation.integrityInformation.segmentSizeDefault = segmentSizeDefault;
         manifest.encryptionInformation.integrityInformation.encryptedSegmentSizeDefault =
           encryptedSegmentSizeDefault;
         manifest.encryptionInformation.integrityInformation.segmentHashAlg =
-          cfg.segmentIntegrityAlgorithm;
+          segmentIntegrityAlgorithm;
         manifest.encryptionInformation.integrityInformation.segments = segmentInfos;
 
         manifest.encryptionInformation.method.isStreamable = true;
@@ -740,7 +748,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
       const payloadSigStr = await getSignatureVersion422(
         cfg.keyForEncryption.unwrappedKey,
         encryptedResult.payload,
-        cfg.segmentIntegrityAlgorithm,
+        segmentIntegrityAlgorithm,
         cfg.cryptoService
       );
       // combined string of all hashes for root signature
@@ -750,7 +758,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
       const payloadSig = await getSignature(
         cfg.keyForEncryption.unwrappedKey,
         new Uint8Array(encryptedResult.payload.asArrayBuffer()),
-        cfg.segmentIntegrityAlgorithm,
+        segmentIntegrityAlgorithm,
         cfg.cryptoService
       );
 
