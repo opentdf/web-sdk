@@ -6,6 +6,11 @@ on:
     branches:
       - main
       - "release/**"
+  merge_group:
+    branches:
+      - main
+    types:
+      - checks_requested
 
 # Default empty permissions for all jobs
 # fix later, need to add permissions for every job in reusable_build-and-test.yaml
