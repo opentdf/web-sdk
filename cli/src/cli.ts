@@ -277,11 +277,22 @@ async function parseCreateOptions(argv: Partial<mainArgs>): Promise<CreateOption
   return c;
 }
 
-async function parseCreateTDFOptions(argv: Partial<mainArgs>): Promise<CreateTDFOptions> {
-  const c: CreateTDFOptions = await parseCreateOptions(argv);
-  if (argv.assertions?.length) {
-    c.assertionConfigs = await parseAssertionConfig(argv.assertions);
-  }
+/**
+ * The subset of `CreateTDFOptions` derived purely from flags -- no filesystem, no
+ * network. Split out so `encrypt` can reject a bad flag before it opens anything.
+ * Synchronous on purpose: the missing `async` is the contract.
+ */
+type CreateTDFFlags = Pick<
+  CreateTDFOptions,
+  | 'wrappingKeyAlgorithm'
+  | 'mimeType'
+  | 'tdfSpecVersion'
+  | 'rootIntegrityAlgorithm'
+  | 'segmentIntegrityAlgorithm'
+>;
+
+function parseCreateTDFFlags(argv: Partial<mainArgs>): CreateTDFFlags {
+  const c: CreateTDFFlags = {};
   if (argv.encapKeyType?.length) {
     if (!isPublicKeyAlgorithm(argv.encapKeyType)) {
       throw new CLIError('CRITICAL', `Unsupported rewrap key algorithm: [${argv.encapKeyType}]`);
@@ -317,6 +328,19 @@ async function parseCreateTDFOptions(argv: Partial<mainArgs>): Promise<CreateTDF
       );
     }
     c.segmentIntegrityAlgorithm = segmentAlg;
+  }
+  return c;
+}
+
+async function parseCreateTDFOptions(
+  argv: Partial<mainArgs>,
+  flags: CreateTDFFlags = parseCreateTDFFlags(argv)
+): Promise<CreateTDFOptions> {
+  const c: CreateTDFOptions = { ...(await parseCreateOptions(argv)), ...flags };
+  if (argv.assertions?.length) {
+    // Reads from disk (parseAssertionConfig falls back to openAsBlob), so it
+    // stays here rather than in the pure pass.
+    c.assertionConfigs = await parseAssertionConfig(argv.assertions);
   }
   log('DEBUG', `CreateTDFOptions: ${JSON.stringify(c)}`);
   return c;
@@ -669,8 +693,16 @@ export const handleArgs = (args: string[]) => {
         },
         async (argv) => {
           log('DEBUG', 'Running encrypt command');
-          // Validate create options before any network activity.
-          const createOptions = await parseCreateTDFOptions(argv);
+          // Order is deliberate and covered by bin/opentdf.bats:
+          //   1. pure flag checks -- no I/O, so a typo fails instantly
+          //   2. oidcEndpoint, mirroring `decrypt`
+          //   3. open the input file and any assertion files
+          //   4. the auth provider, which may reach the IdP
+          const createFlags = parseCreateTDFFlags(argv);
+          if (!argv.oidcEndpoint) {
+            throw new CLIError('CRITICAL', 'oidcEndpoint must be specified');
+          }
+          const createOptions = await parseCreateTDFOptions(argv, createFlags);
           const authProvider = await processAuth(argv);
           log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
           const guessedPolicyEndpoint = guessPolicyUrl(argv);
