@@ -18,7 +18,7 @@ import { AuthProvider, HttpRequest } from '../../src/auth/auth.js';
 import { AesGcmCipher, SplitKey, WebCryptoService } from '../../tdf3/index.js';
 import { Client } from '../../tdf3/src/index.js';
 import { type EncryptParams } from '../../tdf3/src/client/builders.js';
-import { type Manifest } from '../../tdf3/src/models/manifest.js';
+import { asManifest, type Manifest } from '../../tdf3/src/models/manifest.js';
 import { ConfigurationError } from '../../src/errors.js';
 
 const Mocks = getMocks();
@@ -166,12 +166,16 @@ describe('integrity algorithm selection (DSPX-4736)', function () {
       assert.equal(integrityInfo(manifest).rootSignature.alg, 'HS256');
       assert.equal(integrityInfo(manifest).segmentHashAlg, segment.toUpperCase());
 
-      // Re-read the bytes we actually wrote, not the in-memory manifest.
+      // Re-read the bytes we actually wrote, not the in-memory manifest. The
+      // read boundary hands back unvalidated JSON, so run it through asManifest
+      // -- which is itself part of the assertion, since it rejects a manifest
+      // whose algorithms are not spelled the way the spec requires.
       const { manifest: onDisk } = await client.loadTDFStream({
         source: { type: 'buffer', location: buffer },
       });
-      assert.equal(integrityInfo(onDisk).rootSignature.alg, 'HS256');
-      assert.equal(integrityInfo(onDisk).segmentHashAlg, segment.toUpperCase());
+      const parsed = asManifest(onDisk);
+      assert.equal(integrityInfo(parsed).rootSignature.alg, 'HS256');
+      assert.equal(integrityInfo(parsed).segmentHashAlg, segment.toUpperCase());
 
       // And the strict reader can open it, which a lowercase manifest cannot.
       const stream = await client.decrypt({ source: { type: 'buffer', location: buffer } });
