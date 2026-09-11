@@ -34,6 +34,7 @@ import { AssertionConfig, AssertionKey, AssertionVerificationKeys } from './asse
 import * as assertions from './assertions.js';
 import { Binary } from './binary.js';
 import { AesGcmCipher } from './ciphers/aes-gcm-cipher.js';
+import { GcmIvCounter } from './ciphers/gcm-iv-counter.js';
 import { SymmetricCipher } from './ciphers/symmetric-cipher-base.js';
 import { DecryptParams } from './client/builders.js';
 import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
@@ -426,6 +427,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
   let fileByteCount = 0;
   let aggregateHash422 = '';
   const segmentHashList: Uint8Array[] = [];
+  const payloadIv = new GcmIvCounter();
 
   const zipWriter = new ZipWriter();
   const manifest = await _generateManifest(
@@ -441,14 +443,11 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
     throw new ConfigurationError('internal: please use "loadTDFStream" first to load a manifest.');
   }
 
-  // determine default segment size by writing empty buffer
+  // Determine the encrypted segment size without performing a throwaway GCM
+  // invocation. Reusing that invocation for real payload would repeat its IV.
   const { segmentSizeDefault } = cfg;
-  const encryptedBlargh = await cfg.encryptionInformation.encrypt(
-    Binary.fromArrayBuffer(new ArrayBuffer(segmentSizeDefault)),
-    cfg.keyForEncryption.unwrappedKey
-  );
-  const payloadBuffer = new Uint8Array(encryptedBlargh.payload.asByteArray());
-  const encryptedSegmentSizeDefault = payloadBuffer.length;
+  const encryptedSegmentSizeDefault =
+    cfg.encryptionInformation.cipher.encryptedPayloadSize(segmentSizeDefault);
 
   // start writing the content
   entryInfos[0].filename = '0.payload';
@@ -664,10 +663,11 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
     bytesProcessed += chunk.length;
     cfg.progressHandler?.(bytesProcessed);
 
-    // Don't pass in an IV here. The encrypt function will generate one for you, ensuring that each segment has a unique IV.
+    const iv = payloadIv.next();
     const encryptedResult = await cfg.encryptionInformation.encrypt(
       Binary.fromArrayBuffer(chunk.buffer),
-      cfg.keyForEncryption.unwrappedKey
+      cfg.keyForEncryption.unwrappedKey,
+      Binary.fromArrayBuffer(iv.buffer)
     );
     const payloadBuffer = new Uint8Array(encryptedResult.payload.asByteArray());
     let hash: string;
