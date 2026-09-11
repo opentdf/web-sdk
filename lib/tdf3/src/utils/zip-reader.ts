@@ -2,6 +2,7 @@ import { ConfigurationError, InvalidFileError } from '../../../src/errors.js';
 import { type Chunker } from '../../../src/seekable.js';
 import { Manifest } from '../models/index.js';
 import { readUInt32LE, readUInt16LE, copyUint8Arr, buffToString } from './index.js';
+import { DEFAULT_MANIFEST_MAX_SIZE } from './scale-limits.js';
 
 // Signatures and fixed record sizes from PKWARE APPNOTE.TXT sections 4.3.12-4.3.16.
 /** Central file header signature (APPNOTE 4.3.12). */
@@ -53,25 +54,45 @@ const MAX_CENTRAL_DIRECTORY_SIZE = 16 * 1024 * 1024;
  * buffer, so this bounds how large a manifest a TDF may carry. It is the same
  * limit enforced on both the read and write paths so a TDF can never be
  * written successfully and then turn out to be unreadable.
+ *
+ * The value lives in `scale-limits.ts` next to the arithmetic that derives what
+ * fits under it; see {@link DEFAULT_MANIFEST_MAX_SIZE} for how 256 MiB was
+ * chosen. Callers that need a different ceiling pass `manifestMaxSize` through
+ * {@link ZipReader}'s constructor and {@link assertManifestWithinSizeLimit}
+ * rather than mutating this -- but both sides of a given TDF must agree, so a
+ * container written under a raised cap is only readable by a reader configured
+ * the same way.
  */
-export const MANIFEST_MAX_SIZE = 1024 * 1024 * 10; // 10 MB
+export const MANIFEST_MAX_SIZE = DEFAULT_MANIFEST_MAX_SIZE;
+
+export type ManifestSizeLimitOptions = {
+  /** Ceiling to enforce. Defaults to {@link MANIFEST_MAX_SIZE}. */
+  manifestMaxSize?: number;
+  /**
+   * Whether `manifestByteLength` is an up-front estimate rather than a measured
+   * serialization. Only affects the wording of the error.
+   */
+  estimated?: boolean;
+};
 
 /**
- * Rejects a manifest before it's written if it would exceed {@link MANIFEST_MAX_SIZE},
- * so a TDF can never be produced that later fails the read-side check in
- * {@link ZipReader.getManifest}. Segment count is included to point callers at the
- * fix: a larger `segmentSize` reduces the segment count, and thus the manifest size.
+ * Rejects a manifest that would exceed the size limit, so a TDF can never be
+ * produced that later fails the read-side check in {@link ZipReader.getManifest}.
+ * Segment count is included to point callers at the fix: a larger `segmentSize`
+ * reduces the segment count, and thus the manifest size.
  */
 export function assertManifestWithinSizeLimit(
   manifestByteLength: number,
-  segmentCount: number
+  segmentCount: number,
+  { manifestMaxSize = MANIFEST_MAX_SIZE, estimated = false }: ManifestSizeLimitOptions = {}
 ): void {
-  if (manifestByteLength <= MANIFEST_MAX_SIZE) {
+  if (manifestByteLength <= manifestMaxSize) {
     return;
   }
+  const kib = (bytes: number) => Math.floor(bytes / 1024).toLocaleString();
   throw new ConfigurationError(
-    `Manifest too large to write: ${Math.floor(manifestByteLength / 1024).toLocaleString()} KiB` +
-      ` exceeds the ${Math.floor(MANIFEST_MAX_SIZE / 1024).toLocaleString()} KiB limit` +
+    `Manifest too large to write: ${estimated ? 'an estimated ' : ''}${kib(manifestByteLength)} KiB` +
+      ` exceeds the ${kib(manifestMaxSize)} KiB limit` +
       ` (${segmentCount.toLocaleString()} segments); increase segmentSize to reduce the segment count.`
   );
 }
@@ -144,8 +165,12 @@ export type EndOfCentralDirectory = {
 export class ZipReader {
   getChunk: Chunker;
 
-  constructor(getChunk: Chunker) {
+  /** Largest manifest this reader will buffer and parse. */
+  readonly manifestMaxSize: number;
+
+  constructor(getChunk: Chunker, { manifestMaxSize = MANIFEST_MAX_SIZE } = {}) {
     this.getChunk = getChunk;
+    this.manifestMaxSize = manifestMaxSize;
   }
 
   /**
@@ -272,9 +297,10 @@ export class ZipReader {
       throw new InvalidFileError('Unable to retrieve CD manifest');
     }
     const byteStart = cdObj.relativeOffsetOfLocalHeader + cdObj.headerLength;
-    if (cdObj.uncompressedSize > MANIFEST_MAX_SIZE) {
+    if (cdObj.uncompressedSize > this.manifestMaxSize) {
       throw new InvalidFileError(
-        `manifest file too large: ${Math.floor(cdObj.uncompressedSize / 1024).toLocaleString()} KiB`
+        `manifest file too large: ${Math.floor(cdObj.uncompressedSize / 1024).toLocaleString()} KiB` +
+          ` exceeds the ${Math.floor(this.manifestMaxSize / 1024).toLocaleString()} KiB limit`
       );
     }
     const byteEnd = byteStart + cdObj.uncompressedSize;

@@ -118,7 +118,7 @@ table above by 1.56x and carries a real throughput cost.
       limit is a function of it rather than of the shipped default; the landing point in item 1 is
       chosen to fit 50 TiB at 56 B/entry.
 
-### 1. Manifest & segment-integrity scalability — the actual binding wall
+### 1. Manifest & segment-integrity scalability — the actual binding wall — **DONE** (`DSPX-4651`)
 
 `MANIFEST_MAX_SIZE = 10MB` (`lib/tdf3/src/utils/zip-reader.ts:18`) was historically enforced only at
 decrypt time. Default segment size is 1MiB (`lib/tdf3/src/tdf.ts:83`,
@@ -126,55 +126,56 @@ decrypt time. Default segment size is 1MiB (`lib/tdf3/src/tdf.ts:83`,
 Separately, the write and read paths both materialize several full per-segment arrays in memory
 (detail below).
 
-- [~] **Partially done:** validate manifest size at write/encrypt time too, so a TDF can never be
-  written successfully and then be permanently unreadable. Implemented as
-  `assertManifestWithinSizeLimit()` in `lib/tdf3/src/utils/zip-reader.ts:26`, called from
-  `writeStream()` in `lib/tdf3/src/tdf.ts:609` before the manifest is emitted; throws a
-  `ConfigurationError` naming the segment count and suggesting a larger `segmentSize`. Also fixed
-  the `>> 10` bitwise-truncation bug in the read-side error message for manifests ≥ 4GiB. Covered by
-  new tests in `lib/tests/mocha/unit/zip.spec.ts`.
+- [x] **Validate manifest size at write/encrypt time too**, so a TDF can never be written
+      successfully and then be permanently unreadable. Implemented as
+      `assertManifestWithinSizeLimit()` in `lib/tdf3/src/utils/zip-reader.ts`, called from
+      `writeStream()` in `lib/tdf3/src/tdf.ts` before the manifest is emitted; throws a
+      `ConfigurationError` naming the segment count and suggesting a larger `segmentSize`. Also
+      fixed the `>> 10` bitwise-truncation bug in the read-side error message for manifests ≥ 4GiB.
+      Covered by tests in `lib/tests/mocha/unit/zip.spec.ts`.
 
-  **This check is not fail-fast, and that gap is still open.** It runs at `tdf.ts:609`, _after_ the
-  entire payload has been encrypted and enqueued to the controller. For a 50TB input that means
-  burning the whole encrypt — days of work — before the error, and those bytes are already
-  downstream, so a truncated archive is on the caller's disk or on the wire by the time it throws.
-  The invariant ("never write something unreadable") holds; the useful half does not.
+  - [x] Add an **up-front** manifest-size estimate before the first segment is encrypted, for
+        sources whose length is known. `sourceSize()` (`lib/src/seekable.ts`) reports a length for
+        `'buffer'` and `'file-browser'` directly and probes `'remote'` with `HEAD` falling back to a
+        one-byte `Content-Range` request; `'stream'` and `'chunker'` report `undefined`.
+        `OpenTDF.     createZTDF` passes the result through as `knownSourceSize`, and `writeStream`
+        rejects via `estimateManifestBytes()` before `getReader()` is ever called — verified by a
+        test that counts source pulls. The end-of-stream assert stays as the backstop for
+        unknown-length sources, and is still needed regardless: assertion bytes are not known until
+        the payload is done, so the up-front number cannot include them.
 
-  - [ ] Add an **up-front** manifest-size estimate before the first segment is encrypted, for
-        sources whose length is known (Blob `size`, `Content-Length`, chunker-reported size):
-        `ceil(sourceSize / segmentSize) * perSegmentEntryBytes` versus the cap, where
-        `perSegmentEntryBytes` is 56 for HS256 / 36 for GMAC. Keep the existing end-of-stream assert
-        as a backstop for unknown-length sources.
+- [x] Raise `MANIFEST_MAX_SIZE` to 256 MiB (`DEFAULT_MANIFEST_MAX_SIZE`, in
+      `lib/tdf3/src/utils/scale-limits.ts`) and make it configurable rather than a fixed constant.
+      `ZipReader` takes `{ manifestMaxSize }`; `EncryptConfiguration` takes `manifestMaxSize`. Both
+      sides default to the same constant, and a test asserts they cannot drift apart.
+- [x] Auto-select the default segment size by source size: `chooseSegmentSize()` walks a 1/4/16/64/
+      256 MiB ladder and returns the smallest rung whose `segments` array fits 80% of the manifest
+      budget. 50 TiB lands on 16 MiB under both GMAC and HS256; anything up to ~3.6 TiB keeps the
+      historical 1 MiB, so ordinary files are unaffected. The tradeoff is documented on
+      `SEGMENT_SIZE_LADDER`. Only the `lib/src/opentdf.ts` path auto-selects — the tdf3 builder
+      still sets `windowSize` explicitly, so its behaviour is unchanged.
+- [x] Replace the `Blob`-concatenation root-signature computation. WebCrypto exposes no incremental
+      HMAC, and the concatenation is also the message assertions bind to, so a streaming digest is
+      not available; `ByteAccumulator` (`lib/tdf3/src/utils/byte-accumulator.ts`) instead writes the
+      digests straight into one exactly-sized buffer on both the write and read paths. Byte-
+      identical output, without 3.3M live typed arrays or the extra `Blob` copy.
 
-- [ ] Raise `MANIFEST_MAX_SIZE` to 256 MiB and make it a configurable, documented value rather than
-      a fixed constant. Read side and write side must share the value.
-- [ ] Raise the default segment size for large inputs to 16 MiB (or auto-select by source size),
-      keeping 1 MiB for small inputs so ordinary files are unaffected. Document the tradeoff: bigger
-      segments = coarser seek granularity, larger decrypt-retry blast radius, and larger per-segment
-      memory — which directly constrains item 4's prefetch window. Confirm this needs no
-      manifest-schema coordination with go-sdk/java-sdk (PR #1017's notes suggest `segmentSize` is
-      already optional there, which is promising).
-- [ ] Replace the `Blob`-concatenation root-signature computation with incremental hashing (feed
-      each segment hash into a running digest) on both write (`concatenateUint8Array` via
-      `lib/tdf3/src/tdf.ts:539`) and read/verify (`:1435`); the helper itself is at `:1578`.
+**Not done, deliberately deferred:**
 
-      **Sequencing note:** this is *not* urgent and should be done after the
-      cap decision above, not before. While the 10MB cap stands, the concat
-      buffer tops out around 100–150k segment hashes and is never large. Its
-      real justification only appears once the cap is raised.
-
-- [ ] Address the **other three** per-segment arrays, which incremental hashing does not touch. At
-      3.28M segments (16 MiB) these are manageable; at 52.4M (1 MiB) each is independently
-      multi-GB: - `segmentHashList` — one `Uint8Array` per segment, write and read - `segmentInfos`
+- [ ] The **other two** per-segment arrays. `segmentHashList` is gone (above), but: - `segmentInfos`
       — the manifest `segments` array; must be fully materialized to be `JSON.stringify`'d -
       `chunks` — built eagerly via `segments.map(...)` at `lib/tdf3/src/tdf.ts:1482`, one object
-      plus mailbox promise per segment. **This is why item 4 alone will not deliver bounded
-      memory**: the scheduler paces _fetching_, not this allocation.
-- [ ] Bound manifest `JSON.parse` on the read path (`lib/tdf3/src/utils/zip-reader.ts:132`). At the
-      recommended 16 MiB / 256 MiB configuration a one-shot parse is acceptable and a streaming
-      parser is **not** required — but the transient heap cost should be measured and documented,
-      and the cap chosen so one-shot parsing stays viable. If a future cap raise pushes past ~512
-      MB, revisit.
+      plus mailbox promise per segment. At 3.28M segments (16 MiB) these are manageable, which is
+      why the 256 MiB cap is the mitigation for now; at 52.4M (1 MiB) each is independently
+      multi-GB. **This is why item 4 alone will not deliver bounded memory**: the scheduler paces
+      _fetching_, not this allocation.
+- [ ] Bound manifest `JSON.parse` on the read path (`lib/tdf3/src/utils/zip-reader.ts`). The 256 MiB
+      cap was chosen so a one-shot parse stays viable — ~3.3M objects and an estimated 300–400 MB of
+      transient V8 heap — but that figure is reasoned, not measured. It should be measured, and if a
+      future cap raise pushes past ~512 MiB, a streaming parser has to be revisited.
+- [ ] Confirm with go-sdk/java-sdk that a 16 MiB `segmentSize` needs no manifest-schema
+      coordination. PR #1017's notes suggest `segmentSize` is already optional there, but this has
+      not been verified against a real cross-SDK round trip.
 
 ### 2. Hard 64GB `GLOBAL_BYTE_LIMIT`
 
@@ -195,17 +196,17 @@ Two scope corrections to the previous revision:
 - [ ] Replace the constant with a **derived** ceiling rather than a second arbitrary number:
 
       ```
-      maxBytes = segmentSize * min(
-        MAX_GCM_INVOCATIONS_PER_KEY,                      // IV ceiling, 2^32
-        floor(manifestMaxSize / perSegmentEntryBytes)     // manifest ceiling
-      )
-      ```
+          maxBytes = segmentSize * min(
+            MAX_GCM_INVOCATIONS_PER_KEY,                      // IV ceiling, 2^32
+            floor(manifestMaxSize / perSegmentEntryBytes)     // manifest ceiling
+          )
+          ```
 
-      At the recommended configuration (16 MiB segments, 256 MiB cap, HS256 at
-      56 B/entry) this yields a manifest ceiling of 4,793,490 segments and
-      `maxBytes ≈ 80.4 TB` — comfortably above 50TB, with the IV ceiling
-      (~72 PB at 16 MiB) not binding. At the current defaults it correctly
-      collapses back to roughly today's behavior.
+          At the recommended configuration (16 MiB segments, 256 MiB cap, HS256 at
+          56 B/entry) this yields a manifest ceiling of 4,793,490 segments and
+          `maxBytes ≈ 80.4 TB` — comfortably above 50TB, with the IV ceiling
+          (~72 PB at 16 MiB) not binding. At the current defaults it correctly
+          collapses back to roughly today's behavior.
 
 - [ ] Apply the same up-front check as item 1: when source length is known, compare against
       `maxBytes` before encrypting rather than after 64GB of output has been emitted.
