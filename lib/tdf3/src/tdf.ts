@@ -73,6 +73,7 @@ import { CentralDirectory } from './utils/zip-reader.js';
 import { ByteAccumulator } from './utils/byte-accumulator.js';
 import {
   DEFAULT_MANIFEST_MAX_SIZE,
+  derivePrefetchWindow,
   estimateManifestBytes,
   maxEncryptableBytes,
   maxSegmentsFor,
@@ -92,10 +93,6 @@ import {
 const DEFAULT_SEGMENT_SIZE = 1024 * 1024;
 
 const HEX_SEMVER_VERSION = '4.2.2';
-const LEGACY_SEGMENTS_PER_DOWNLOAD = 500;
-const LEGACY_MAX_CONCURRENT_SEGMENT_BATCHES = 3;
-const DEFAULT_BOUND_SEGMENT_BATCH_SIZE = LEGACY_SEGMENTS_PER_DOWNLOAD;
-const DEFAULT_BOUND_MAX_CONCURRENT_SEGMENT_BATCHES = LEGACY_MAX_CONCURRENT_SEGMENT_BATCHES;
 
 /**
  * Configuration for TDF3
@@ -1160,38 +1157,6 @@ async function decryptChunk(
   return await cipher.decrypt(encryptedChunk, reconstructedKey);
 }
 
-async function updateChunkQueue(
-  chunks: Chunk[],
-  centralDirectory: CentralDirectory[],
-  zipReader: ZipReader,
-  reconstructedKey: SymmetricKey,
-  cipher: SymmetricCipher,
-  segmentIntegrityAlgorithm: IntegrityAlgorithm,
-  cryptoService: CryptoService,
-  specVersion: string
-) {
-  let requests = [];
-
-  for (let i = 0; i < chunks.length; i += LEGACY_SEGMENTS_PER_DOWNLOAD) {
-    if (requests.length === LEGACY_MAX_CONCURRENT_SEGMENT_BATCHES) {
-      await Promise.all(requests);
-      requests = [];
-    }
-    requests.push(
-      fetchAndDecryptChunkSlice({
-        centralDirectory,
-        zipReader,
-        reconstructedKey,
-        cipher,
-        segmentIntegrityAlgorithm,
-        cryptoService,
-        specVersion,
-        slice: chunks.slice(i, i + LEGACY_SEGMENTS_PER_DOWNLOAD),
-      }).catch(() => undefined)
-    );
-  }
-}
-
 function rejectChunks(chunks: Chunk[], error: Error) {
   for (const chunk of chunks) {
     chunk.decryptedChunk.reject(error);
@@ -1374,28 +1339,35 @@ function normalizeSegmentBatchSetting(
 }
 
 /**
- * Enables bounded scheduling only when at least one tuning knob is set.
- * If callers set only one knob, the other falls back to the legacy value so
- * throughput stays aligned with the pre-bounded path. Adjust both knobs together
- * when tuning for predictable memory and performance characteristics.
+ * Prefetch window for a decrypt, in segments.
+ *
+ * Bounded scheduling is now the default rather than opt-in. The old default was
+ * `updateChunkQueue`, which fired every batch at once and never waited for the
+ * consumer: at 500 segments x 3 concurrent batches that is 1.5 GiB of decrypted
+ * payload in flight at the 1 MiB segment size, and 24 GiB once
+ * `chooseSegmentSize` picks 16 MiB. Neither number was chosen; they fell out of
+ * a segment count that nothing tied to memory.
+ *
+ * Explicit knobs still win, and still fall back to the derived value rather
+ * than each other, so setting one does not silently rescale the other.
  */
-function getBoundedSegmentSchedulerOptions({
+export function getBoundedSegmentSchedulerOptions({
   segmentBatchSize,
   maxConcurrentSegmentBatches,
-}: Pick<DecryptConfiguration, 'segmentBatchSize' | 'maxConcurrentSegmentBatches'>) {
-  if (segmentBatchSize === undefined && maxConcurrentSegmentBatches === undefined) {
-    return undefined;
-  }
-
+  segmentSize,
+}: Pick<DecryptConfiguration, 'segmentBatchSize' | 'maxConcurrentSegmentBatches'> & {
+  segmentSize: number;
+}) {
+  const derived = derivePrefetchWindow({ segmentSize });
   return {
     segmentBatchSize: normalizeSegmentBatchSetting(
       segmentBatchSize,
-      DEFAULT_BOUND_SEGMENT_BATCH_SIZE,
+      derived.segmentBatchSize,
       'segmentBatchSize'
     ),
     maxConcurrentSegmentBatches: normalizeSegmentBatchSetting(
       maxConcurrentSegmentBatches,
-      DEFAULT_BOUND_MAX_CONCURRENT_SEGMENT_BATCHES,
+      derived.maxConcurrentSegmentBatches,
       'maxConcurrentSegmentBatches'
     ),
   };
@@ -1579,40 +1551,27 @@ export async function decryptStreamFrom(
     throw new UnsupportedError(`Unsupported segment hash alg [${segmentIntegrityAlg}]`);
   }
 
-  const schedulerOptions = getBoundedSegmentSchedulerOptions(cfg);
-  let scheduler: SegmentBatchScheduler | undefined;
-  if (schedulerOptions) {
-    scheduler = createBoundedSegmentScheduler({
-      totalSegments: chunks.length,
-      ...schedulerOptions,
-      onError: (error, startIndex) => {
-        rejectChunks(chunks.slice(startIndex), error);
-      },
-      scheduleBatch: async (startIndex, endIndex) =>
-        fetchAndDecryptChunkSlice({
-          centralDirectory,
-          zipReader,
-          reconstructedKey: keyForDecryption,
-          cipher,
-          segmentIntegrityAlgorithm: segmentIntegrityAlg,
-          cryptoService: cfg.cryptoService,
-          specVersion,
-          slice: chunks.slice(startIndex, endIndex),
-        }),
-    });
-    scheduler.fillWindow();
-  } else {
-    void updateChunkQueue(
-      chunks,
-      centralDirectory,
-      zipReader,
-      keyForDecryption,
-      cipher,
-      segmentIntegrityAlg,
-      cfg.cryptoService,
-      specVersion
-    );
-  }
+  const scheduler = createBoundedSegmentScheduler({
+    totalSegments: chunks.length,
+    // The encrypted size is what the window actually holds -- these are ciphertext
+    // segments fetched from the archive, not yet-decrypted plaintext.
+    ...getBoundedSegmentSchedulerOptions({ ...cfg, segmentSize: encryptedSegmentSizeDefault }),
+    onError: (error, startIndex) => {
+      rejectChunks(chunks.slice(startIndex), error);
+    },
+    scheduleBatch: async (startIndex, endIndex) =>
+      fetchAndDecryptChunkSlice({
+        centralDirectory,
+        zipReader,
+        reconstructedKey: keyForDecryption,
+        cipher,
+        segmentIntegrityAlgorithm: segmentIntegrityAlg,
+        cryptoService: cfg.cryptoService,
+        specVersion,
+        slice: chunks.slice(startIndex, endIndex),
+      }),
+  });
+  scheduler.fillWindow();
 
   let progress = 0;
   let nextChunkIndex = 0;
@@ -1638,7 +1597,7 @@ export async function decryptStreamFrom(
         decryptedChunk: mailbox<DecryptResult>(),
       };
       nextChunkIndex += 1;
-      scheduler?.markConsumed();
+      scheduler.markConsumed();
     },
     ...(cfg.fileStreamServiceWorker && { fileStreamServiceWorker: cfg.fileStreamServiceWorker }),
   };
