@@ -149,7 +149,59 @@ type Chunk = {
   decryptedChunk: Mailbox<DecryptResult>;
 };
 
-export type IntegrityAlgorithm = 'GMAC' | 'HS256';
+/**
+ * Algorithms usable for *per-segment* integrity.
+ *
+ * `GMAC` is legitimate here: the segment's bytes were just processed by
+ * AES-GCM under the DEK, so the trailing 16 bytes are the tag the AEAD itself
+ * produced.
+ */
+export type SegmentIntegrityAlgorithm = 'GMAC' | 'HS256';
+
+/**
+ * Algorithms usable for the *root* signature.
+ *
+ * Deliberately narrower than {@link SegmentIntegrityAlgorithm}: AES-GCM never
+ * processes the aggregate hash, so there is no tag to extract and `GMAC` would
+ * degenerate into copying the last segment hash — a keyless, forgeable value.
+ * The type carries the invariant so a root algorithm cannot even be *typed* as
+ * `'GMAC'`.
+ */
+export type RootIntegrityAlgorithm = 'HS256';
+
+/**
+ * @deprecated Prefer {@link SegmentIntegrityAlgorithm} or
+ * {@link RootIntegrityAlgorithm}, which say which position they are valid in.
+ */
+export type IntegrityAlgorithm = SegmentIntegrityAlgorithm;
+
+/** The only root integrity algorithm this SDK writes. */
+export const ROOT_INTEGRITY_ALGORITHM: RootIntegrityAlgorithm = 'HS256';
+
+/** Default per-segment integrity algorithm. */
+export const SEGMENT_INTEGRITY_ALGORITHM: SegmentIntegrityAlgorithm = 'GMAC';
+
+/** Length in bytes of an AES-GCM authentication tag. */
+const GMAC_TAG_LENGTH = 16;
+
+/**
+ * Case-insensitive test for a supported segment integrity algorithm.
+ * An explicit allowlist, so unknown algorithms are rejected rather than
+ * silently defaulted.
+ */
+export function isSegmentIntegrityAlgorithm(alg: unknown): alg is SegmentIntegrityAlgorithm {
+  return typeof alg === 'string' && ['GMAC', 'HS256'].includes(alg.toUpperCase());
+}
+
+/**
+ * Case-insensitive test for a supported root integrity algorithm.
+ *
+ * `GMAC` is not a member in any casing. Only `HS256` produces a keyed MAC over
+ * the aggregate hash, so it is the only value this SDK will write.
+ */
+export function isRootIntegrityAlgorithm(alg: unknown): alg is RootIntegrityAlgorithm {
+  return typeof alg === 'string' && alg.toUpperCase() === ROOT_INTEGRITY_ALGORITHM;
+}
 
 export type EncryptConfiguration = {
   allowList?: OriginAllowList;
@@ -157,8 +209,8 @@ export type EncryptConfiguration = {
   dpopKeys: KeyPair;
   encryptionInformation: SplitKey;
   segmentSizeDefault: number;
-  integrityAlgorithm: IntegrityAlgorithm;
-  segmentIntegrityAlgorithm: IntegrityAlgorithm;
+  rootIntegrityAlgorithm: RootIntegrityAlgorithm;
+  segmentIntegrityAlgorithm: SegmentIntegrityAlgorithm;
   contentStream: ReadableStream<Uint8Array>;
   mimeType?: string;
   policy: Policy;
@@ -362,7 +414,7 @@ async function getSignature(
   switch (algorithmType.toUpperCase()) {
     case 'GMAC':
       // use the auth tag baked into the encrypted payload
-      return content.slice(-16);
+      return content.slice(-GMAC_TAG_LENGTH);
     case 'HS256': {
       // Use CryptoService for HMAC-SHA256 signing
       return cryptoService.hmac(content, unwrappedKey);
@@ -381,7 +433,10 @@ async function getSignatureVersion422(
   switch (algorithmType.toUpperCase()) {
     case 'GMAC':
       // use the auth tag baked into the encrypted payload
-      return buffToString(Uint8Array.from(payloadBinary.asByteArray()).slice(-16), 'hex');
+      return buffToString(
+        Uint8Array.from(payloadBinary.asByteArray()).slice(-GMAC_TAG_LENGTH),
+        'hex'
+      );
     case 'HS256': {
       const content = buffToString(new Uint8Array(payloadBinary.asArrayBuffer()), 'utf-8');
       const sig = await cryptoService.hmac(new TextEncoder().encode(content), unwrappedKey);
@@ -403,6 +458,24 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
   if (!cfg.contentStream) {
     throw new ConfigurationError('No input stream defined');
   }
+  if (!isRootIntegrityAlgorithm(cfg.rootIntegrityAlgorithm)) {
+    throw new ConfigurationError(
+      `unsupported root integrity algorithm [${cfg.rootIntegrityAlgorithm}]; only [${ROOT_INTEGRITY_ALGORITHM}] is supported`
+    );
+  }
+  if (!isSegmentIntegrityAlgorithm(cfg.segmentIntegrityAlgorithm)) {
+    throw new ConfigurationError(
+      `unsupported segment integrity algorithm [${cfg.segmentIntegrityAlgorithm}]`
+    );
+  }
+
+  // The guards above are deliberately case-insensitive, so callers may pass user
+  // input straight through. Manifests, however, are read back by strict parsers --
+  // this SDK's own reader included -- so everything below writes and signs with the
+  // canonical uppercase spelling.
+  const rootIntegrityAlgorithm = cfg.rootIntegrityAlgorithm.toUpperCase() as RootIntegrityAlgorithm;
+  const segmentIntegrityAlgorithm =
+    cfg.segmentIntegrityAlgorithm.toUpperCase() as SegmentIntegrityAlgorithm;
 
   // eslint-disable-next-line @typescript-eslint/no-this-alias
   const segmentInfos: Segment[] = [];
@@ -524,7 +597,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
           const payloadSigStr = await getSignatureVersion422(
             cfg.keyForEncryption.unwrappedKey,
             Binary.fromString(aggregateHash),
-            cfg.integrityAlgorithm,
+            rootIntegrityAlgorithm,
             cfg.cryptoService
           );
           manifest.encryptionInformation.integrityInformation.rootSignature.sig =
@@ -536,7 +609,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
           const payloadSig = await getSignature(
             cfg.keyForEncryption.unwrappedKey,
             aggregateHash,
-            cfg.integrityAlgorithm,
+            rootIntegrityAlgorithm,
             cfg.cryptoService
           );
 
@@ -544,13 +617,13 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
           manifest.encryptionInformation.integrityInformation.rootSignature.sig = rootSig;
         }
         manifest.encryptionInformation.integrityInformation.rootSignature.alg =
-          cfg.integrityAlgorithm;
+          rootIntegrityAlgorithm;
 
         manifest.encryptionInformation.integrityInformation.segmentSizeDefault = segmentSizeDefault;
         manifest.encryptionInformation.integrityInformation.encryptedSegmentSizeDefault =
           encryptedSegmentSizeDefault;
         manifest.encryptionInformation.integrityInformation.segmentHashAlg =
-          cfg.segmentIntegrityAlgorithm;
+          segmentIntegrityAlgorithm;
         manifest.encryptionInformation.integrityInformation.segments = segmentInfos;
 
         manifest.encryptionInformation.method.isStreamable = true;
@@ -675,7 +748,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
       const payloadSigStr = await getSignatureVersion422(
         cfg.keyForEncryption.unwrappedKey,
         encryptedResult.payload,
-        cfg.segmentIntegrityAlgorithm,
+        segmentIntegrityAlgorithm,
         cfg.cryptoService
       );
       // combined string of all hashes for root signature
@@ -685,7 +758,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
       const payloadSig = await getSignature(
         cfg.keyForEncryption.unwrappedKey,
         new Uint8Array(encryptedResult.payload.asArrayBuffer()),
-        cfg.segmentIntegrityAlgorithm,
+        segmentIntegrityAlgorithm,
         cfg.cryptoService
       );
 

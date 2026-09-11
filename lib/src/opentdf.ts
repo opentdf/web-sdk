@@ -31,6 +31,8 @@ import {
   InspectedTDFOverview,
   loadTDFStream,
   type IntegrityAlgorithm,
+  type RootIntegrityAlgorithm,
+  type SegmentIntegrityAlgorithm,
 } from '../tdf3/src/tdf.js';
 import { base64 } from './encodings/index.js';
 import { Policy } from '../tdf3/src/models/policy.js';
@@ -44,7 +46,9 @@ export {
   type KeyAccessObject,
   type Manifest,
   type Payload,
+  type RootIntegrityAlgorithm,
   type Segment,
+  type SegmentIntegrityAlgorithm,
   type SplitType,
   PUBLIC_KEY_ALGORITHMS,
   isPublicKeyAlgorithm,
@@ -130,6 +134,19 @@ export type CreateZTDFOptions = CreateOptions & {
 
   /** TDF spec version to target. */
   tdfSpecVersion?: '4.2.2' | '4.3.0';
+
+  /**
+   * Algorithm used for the root signature over the aggregate of segment
+   * hashes. `HS256` only. Defaults to `HS256`.
+   */
+  rootIntegrityAlgorithm?: RootIntegrityAlgorithm;
+
+  /**
+   * Algorithm used for each segment's integrity value. `GMAC` reads out the
+   * AES-GCM tag the cipher already produced for that segment; `HS256` computes
+   * an HMAC over the segment ciphertext. Defaults to `GMAC`.
+   */
+  segmentIntegrityAlgorithm?: SegmentIntegrityAlgorithm;
 };
 
 /** Options for creating a TDF. */
@@ -392,6 +409,8 @@ export class OpenTDF {
       windowSize: opts.windowSize,
       wrappingKeyAlgorithm: opts.wrappingKeyAlgorithm,
       tdfSpecVersion: opts.tdfSpecVersion,
+      rootIntegrityAlgorithm: opts.rootIntegrityAlgorithm,
+      segmentIntegrityAlgorithm: opts.segmentIntegrityAlgorithm,
     });
     const stream: DecoratedStream = oldStream.stream;
     stream.manifest = Promise.resolve(oldStream.manifest);
