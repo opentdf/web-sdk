@@ -1,0 +1,16 @@
+# The DCO app only signs off on pull_request events, so the required "DCO"
+# context would never report inside the merge queue and every entry would time
+# out. Sign-offs were already verified on the PR before it was queued; this
+# shim just satisfies the context. Mirrors opentdf/platform's dco_merge_group.yaml.
+name: DCO
+on:
+  merge_group:
+
+permissions: {}
+
+jobs:
+  DCO:
+    runs-on: ubuntu-latest
+    if: ${{ github.actor != 'dependabot[bot]'}}
+    steps:
+      - run: echo "Bypassing DCO Check in merge group"

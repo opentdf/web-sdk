@@ -328,7 +328,11 @@ jobs:
     uses: opentdf/tests/.github/workflows/xtest.yml@main
     with:
       focus-sdk: js
-      js-ref: ${{ github.ref }} main latest
+      # In the merge queue `github.ref` is refs/heads/gh-readonly-queue/main/pr-N-<sha>,
+      # which xtest resolves down the plain-branch path and turns into a dist tag with
+      # slashes still in it. Its SHA lookup has a merge-queue case that maps the same
+      # commit to a flat `mq-main-N` tag, so hand it the head SHA instead of the ref.
+      js-ref: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || github.ref }} main latest
       platform-ref: main lts
 
   ci:
