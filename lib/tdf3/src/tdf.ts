@@ -428,7 +428,14 @@ async function rootIntegrity(
 
 /**
  * Legacy (TDF spec 4.2.2) segment integrity: the value is hex-encoded before
- * it is base64'd by the caller.
+ * it is base64'd by the caller. Same domain as {@link segmentIntegrity}; only
+ * the encoding differs.
+ *
+ * The MAC covers the ciphertext bytes as they are, which is what
+ * {@link decryptChunk} and the Go and Java SDKs recompute. Passing them
+ * through a UTF-8 decode first — as this did until DSPX-4703 — mangles every
+ * byte that is not valid UTF-8 into U+FFFD, so the writer signed something no
+ * reader could reproduce.
  */
 async function segmentIntegrityVersion422(
   payloadBinary: Binary,
@@ -444,8 +451,10 @@ async function segmentIntegrityVersion422(
         'hex'
       );
     case 'HS256': {
-      const content = buffToString(new Uint8Array(payloadBinary.asArrayBuffer()), 'utf-8');
-      const sig = await cryptoService.hmac(new TextEncoder().encode(content), unwrappedKey);
+      const sig = await cryptoService.hmac(
+        new Uint8Array(payloadBinary.asArrayBuffer()),
+        unwrappedKey
+      );
       return hex.encodeArrayBuffer(sig.buffer);
     }
     default:
@@ -455,7 +464,12 @@ async function segmentIntegrityVersion422(
 
 /**
  * Legacy (TDF spec 4.2.2) root integrity. Same hex-then-base64 encoding as
- * before, same HS256-only domain as {@link rootIntegrity}.
+ * before, same HS256-only domain as {@link rootIntegrity}, and the same
+ * MAC-the-bytes-as-they-are rule as {@link segmentIntegrityVersion422}.
+ *
+ * The UTF-8 decode removed here was inert rather than wrong: a legacy
+ * aggregate hash is a run of hex digits, so the round trip was the identity.
+ * It is gone so that the two legacy writers cannot drift apart again.
  */
 async function rootIntegrityVersion422(
   aggregateHash: Binary,
@@ -466,8 +480,7 @@ async function rootIntegrityVersion422(
   if (!isRootIntegrityAlgorithm(algorithmType)) {
     throw new ConfigurationError(`unsupported root integrity algorithm [${algorithmType}]`);
   }
-  const content = buffToString(new Uint8Array(aggregateHash.asArrayBuffer()), 'utf-8');
-  const sig = await cryptoService.hmac(new TextEncoder().encode(content), unwrappedKey);
+  const sig = await cryptoService.hmac(new Uint8Array(aggregateHash.asArrayBuffer()), unwrappedKey);
   return hex.encodeArrayBuffer(sig.buffer);
 }
 
