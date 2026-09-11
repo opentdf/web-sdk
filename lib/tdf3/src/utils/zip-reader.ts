@@ -1,4 +1,5 @@
 import { InvalidFileError } from '../../../src/errors.js';
+import { type Unvalidated } from '../../../src/json.js';
 import { type Chunker } from '../../../src/seekable.js';
 import { Manifest } from '../models/index.js';
 import { readUInt32LE, readUInt16LE, copyUint8Arr, buffToString } from './index.js';
@@ -87,9 +88,15 @@ export class ZipReader {
 
   /**
    * Gets the manifest
-   * @returns The manifest as a buffer represented as JSON
+   *
+   * @returns the parsed manifest, *unvalidated* — the bytes came from a file
+   * we did not write, so nothing beyond "it is a JSON object" is proven here.
+   * Call `asManifest` before making any decision from it.
    */
-  async getManifest(cdBuffers: CentralDirectory[], manifestFileName: string): Promise<Manifest> {
+  async getManifest(
+    cdBuffers: CentralDirectory[],
+    manifestFileName: string
+  ): Promise<Unvalidated<Manifest>> {
     const cdObj = cdBuffers.find(({ fileName }) => fileName === manifestFileName);
     if (!cdObj) {
       throw new InvalidFileError('Unable to retrieve CD manifest');
@@ -103,7 +110,11 @@ export class ZipReader {
     const byteEnd = byteStart + cdObj.uncompressedSize;
     const manifest = await this.getChunk(byteStart, byteEnd);
 
-    return JSON.parse(new TextDecoder().decode(manifest));
+    const parsed: unknown = JSON.parse(new TextDecoder().decode(manifest));
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      throw new InvalidFileError('manifest is not a JSON object');
+    }
+    return parsed as Unvalidated<Manifest>;
   }
 
   async adjustHeaders(cdObj: CentralDirectory): Promise<void> {

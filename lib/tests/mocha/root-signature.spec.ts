@@ -28,12 +28,14 @@ import { AesGcmCipher, SplitKey, WebCryptoService } from '../../tdf3/index.js';
 import { Client } from '../../tdf3/src/index.js';
 import { type EncryptParams } from '../../tdf3/src/client/builders.js';
 import { type Manifest } from '../../tdf3/src/models/manifest.js';
+import { type Segment } from '../../tdf3/src/models/encryption-information.js';
 import { loadTDFStream } from '../../tdf3/src/tdf.js';
 import { concatUint8, ZipWriter } from '../../tdf3/src/utils/index.js';
 import { unsigned } from '../../tdf3/src/utils/buffer-crc32.js';
 import { fromBuffer } from '../../src/seekable.js';
 import { base64 } from '../../src/encodings/index.js';
-import { IntegrityError } from '../../src/errors.js';
+import { IntegrityError, InvalidFileError, UnsupportedFeatureError } from '../../src/errors.js';
+import { type JsonValue, type Unvalidated } from '../../src/json.js';
 
 const Mocks = getMocks();
 const kasUrl = 'http://localhost:3000';
@@ -105,10 +107,36 @@ async function decryptBuffer(client: Client.Client, buffer: Uint8Array): Promise
   return new Uint8Array(await stream.toBuffer());
 }
 
+/**
+ * The integrity block as an attacker sees it: the segment list is whatever we
+ * just wrote, but the two algorithm fields are widened to `JsonValue`, because
+ * a manifest is a file and a file can say `42` there.
+ */
+type ForgeableIntegrityInformation = {
+  rootSignature: { alg: JsonValue; sig: JsonValue };
+  segmentHashAlg?: JsonValue;
+  segments: Segment[];
+  segmentSizeDefault?: number;
+  encryptedSegmentSizeDefault?: number;
+};
+
+/**
+ * Reach the integrity block of a manifest we produced ourselves. The optional
+ * chaining is `Unvalidated<Manifest>`'s doing, not real doubt — the assert
+ * turns a broken fixture into a clear failure instead of a `TypeError`.
+ */
+function integrityInfo(manifest: Unvalidated<Manifest>): ForgeableIntegrityInformation {
+  const info = manifest.encryptionInformation?.integrityInformation;
+  assert.isObject(info, 'the fixture manifest has an integrity block');
+  return info as ForgeableIntegrityInformation;
+}
+
 /** Split a TDF into the two pieces an attacker edits: payload bytes + manifest. */
-async function unpackTdf(buffer: Uint8Array): Promise<{ payload: Uint8Array; manifest: Manifest }> {
+async function unpackTdf(
+  buffer: Uint8Array
+): Promise<{ payload: Uint8Array; manifest: Unvalidated<Manifest> }> {
   const { manifest, zipReader, centralDirectory } = await loadTDFStream(fromBuffer(buffer));
-  const info = manifest.encryptionInformation.integrityInformation;
+  const info = integrityInfo(manifest);
   const payloadSize = info.segments.reduce(
     (total, { encryptedSegmentSize }) =>
       total + (encryptedSegmentSize ?? info.encryptedSegmentSizeDefault ?? 0),
@@ -123,7 +151,7 @@ async function unpackTdf(buffer: Uint8Array): Promise<{ payload: Uint8Array; man
  * `writeStream` emits (stored entries with trailing data descriptors). This is
  * pure zip carpentry — no key material is involved, which is the point.
  */
-function packTdf(payload: Uint8Array, manifest: Manifest): Uint8Array {
+function packTdf(payload: Uint8Array, manifest: Unvalidated<Manifest>): Uint8Array {
   const zipWriter = new ZipWriter();
   const entries = [
     { filename: '0.payload', content: payload },
@@ -168,13 +196,12 @@ function packTdf(payload: Uint8Array, manifest: Manifest): Uint8Array {
   return concatUint8(parts);
 }
 
-type Tamper = (parts: { payload: Uint8Array; manifest: Manifest }) => {
-  payload: Uint8Array;
-  manifest: Manifest;
-} | void;
+type TdfParts = { payload: Uint8Array; manifest: Unvalidated<Manifest> };
 
-/** Encrypt, apply a keyless edit to the result, and hand it back to a reader. */
-async function tamperTdf(
+type Tamper = (parts: TdfParts) => TdfParts | void;
+
+/** Encrypt, then apply a keyless edit to the result. */
+async function tamperedBuffer(
   client: Client.Client,
   plaintext: Uint8Array,
   tamper: Tamper,
@@ -183,11 +210,17 @@ async function tamperTdf(
   const { buffer } = await encryptToBuffer(client, plaintext, overrides);
   const parts = await unpackTdf(buffer);
   const tampered = tamper(parts) ?? parts;
-  return decryptBuffer(client, packTdf(tampered.payload, tampered.manifest));
+  return packTdf(tampered.payload, tampered.manifest);
 }
 
-function integrityInfo(manifest: Manifest) {
-  return manifest.encryptionInformation.integrityInformation;
+/** Encrypt, apply a keyless edit to the result, and hand it back to a reader. */
+async function tamperTdf(
+  client: Client.Client,
+  plaintext: Uint8Array,
+  tamper: Tamper,
+  overrides: EncryptOverrides = {}
+): Promise<Uint8Array> {
+  return decryptBuffer(client, await tamperedBuffer(client, plaintext, tamper, overrides));
 }
 
 /**
@@ -195,7 +228,7 @@ function integrityInfo(manifest: Manifest) {
  * then emit the trailing 16 bytes of the aggregate hash. Every input is
  * manifest data the attacker already controls.
  */
-function forgeGmacRootSignature(manifest: Manifest, alg = 'GMAC') {
+function forgeGmacRootSignature(manifest: Unvalidated<Manifest>, alg: JsonValue = 'GMAC') {
   const info = integrityInfo(manifest);
   const aggregate = concatUint8(
     info.segments.map(({ hash }) => new Uint8Array(base64.decodeArrayBuffer(hash)))
@@ -209,7 +242,7 @@ function forgeGmacRootSignature(manifest: Manifest, alg = 'GMAC') {
  * ciphertext; the reader walks the manifest, so the trailing bytes are simply
  * never read.
  */
-function keepSegments(manifest: Manifest, n: number) {
+function keepSegments(manifest: Unvalidated<Manifest>, n: number) {
   const info = integrityInfo(manifest);
   info.segments = info.segments.slice(0, n);
 }
@@ -220,7 +253,7 @@ function keepSegments(manifest: Manifest, n: number) {
  * segment keeps its own valid GCM tag. Nothing in AES-GCM binds a segment to
  * its index, so per-segment authentication cannot notice the permutation.
  */
-function reverseSegments(payload: Uint8Array, manifest: Manifest): Uint8Array {
+function reverseSegments(payload: Uint8Array, manifest: Unvalidated<Manifest>): Uint8Array {
   const info = integrityInfo(manifest);
   const encryptedSegmentSize = info.encryptedSegmentSizeDefault as number;
   info.segments = [...info.segments].reverse();
@@ -231,13 +264,23 @@ function reverseSegments(payload: Uint8Array, manifest: Manifest): Uint8Array {
   return concatUint8(blocks);
 }
 
-async function expectIntegrityError(promise: Promise<unknown>, why: string) {
+async function expectError(
+  promise: Promise<unknown>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  kind: new (...args: any[]) => Error,
+  why: string
+) {
   try {
     await promise;
-    assert.fail(`expected an IntegrityError: ${why}`);
   } catch (e) {
-    assert.instanceOf(e, IntegrityError, why);
+    assert.instanceOf(e, kind, why);
+    return;
   }
+  assert.fail(`expected a ${kind.name}: ${why}`);
+}
+
+async function expectIntegrityError(promise: Promise<unknown>, why: string) {
+  return expectError(promise, IntegrityError, why);
 }
 
 describe('root signature integrity (DSPX-4703)', function () {
@@ -362,6 +405,130 @@ describe('root signature integrity (DSPX-4703)', function () {
         'unknown root algorithms must fail closed'
       );
     });
+
+    // A manifest is a JSON file, so `alg` is not necessarily a string at all.
+    // Before DSPX-4703 the type claimed `RootIntegrityAlgorithm | string`,
+    // which TypeScript collapses to `string` — it could not even describe
+    // these, let alone reject them.
+    for (const [label, alg] of [
+      ['a number', 42],
+      ['null', null],
+      ['a boolean', true],
+      ['an object', {}],
+      ['an array', ['HS256']],
+    ] as [string, JsonValue][]) {
+      it(`rejects a root algorithm that is ${label}`, async function () {
+        await expectIntegrityError(
+          tamperTdf(client, plaintext, ({ manifest }) => {
+            forgeGmacRootSignature(manifest, alg);
+          }),
+          `a root algorithm of ${JSON.stringify(alg)} must fail closed`
+        );
+      });
+    }
+  });
+
+  describe('structurally broken manifests', function () {
+    // These used to reach the reader as `undefined` property accesses; now
+    // they are named, typed errors from the one gate.
+
+    it('rejects a manifest whose encryptionInformation is not an object', async function () {
+      await expectError(
+        tamperTdf(client, plaintext, ({ manifest }) => {
+          manifest.encryptionInformation =
+            'nope' as unknown as Unvalidated<Manifest>['encryptionInformation'];
+        }),
+        InvalidFileError,
+        'encryptionInformation must be an object'
+      );
+    });
+
+    it('rejects a manifest with no integrityInformation', async function () {
+      await expectError(
+        tamperTdf(client, plaintext, ({ manifest }) => {
+          delete manifest.encryptionInformation?.integrityInformation;
+        }),
+        InvalidFileError,
+        'integrityInformation must be present'
+      );
+    });
+
+    it('rejects a manifest with no rootSignature', async function () {
+      await expectError(
+        tamperTdf(client, plaintext, ({ manifest }) => {
+          delete manifest.encryptionInformation?.integrityInformation?.rootSignature;
+        }),
+        InvalidFileError,
+        'rootSignature must be present'
+      );
+    });
+  });
+
+  describe('spec version', function () {
+    // The version selects an *encoding* (hex-then-base64 vs base64) for the
+    // root signature, segment hashes and assertion signatures — not a strength.
+    // So it is checked for type only: anything that is not '4.2.2' takes the
+    // modern path, which is what keeps future files readable.
+
+    it('reads a file declaring an unknown but well-formed version', async function () {
+      const got = await tamperTdf(client, plaintext, ({ manifest }) => {
+        manifest.schemaVersion = '4.4.0';
+      });
+      assert.deepEqual(got, plaintext, 'a future spec version must not be rejected out of hand');
+    });
+
+    for (const [label, schemaVersion] of [
+      ['a number', 42],
+      ['an object', {}],
+    ] as [string, JsonValue][]) {
+      it(`rejects a schemaVersion that is ${label}`, async function () {
+        await expectError(
+          tamperTdf(client, plaintext, ({ manifest }) => {
+            manifest.schemaVersion = schemaVersion;
+          }),
+          InvalidFileError,
+          'a non-string version would compare unequal to every known version'
+        );
+      });
+    }
+
+    // A 4.2.2 file carries no version field at all, so absent, '' and null all
+    // have to mean the same thing as each other.
+    for (const [label, schemaVersion] of [
+      ['null', null],
+      ['empty', ''],
+    ] as [string, JsonValue][]) {
+      it(`treats a ${label} schemaVersion on a 4.2.2 file as absent`, async function () {
+        const got = await tamperTdf(
+          client,
+          plaintext,
+          ({ manifest }) => {
+            manifest.schemaVersion = schemaVersion;
+          },
+          { tdfSpecVersion: '4.2.2' }
+        );
+        assert.deepEqual(got, plaintext);
+      });
+    }
+  });
+
+  describe('inspection stays possible on a file decryption refuses', function () {
+    // This is the whole reason `Manifest` and `Unvalidated<Manifest>` are two
+    // types: the moment you most want to dump a manifest is when it is forged.
+
+    it('reports a forged GMAC root rather than throwing', async function () {
+      const forged = await tamperedBuffer(client, plaintext, ({ manifest }) => {
+        forgeGmacRootSignature(manifest);
+      });
+
+      const { manifest } = await loadTDFStream(fromBuffer(forged));
+      assert.equal(integrityInfo(manifest).rootSignature.alg, 'GMAC');
+
+      await expectIntegrityError(
+        decryptBuffer(client, forged),
+        'the same file must still fail to decrypt'
+      );
+    });
   });
 
   describe('segment integrity is unaffected', function () {
@@ -408,17 +575,40 @@ describe('root signature integrity (DSPX-4703)', function () {
       assert.deepEqual(got, plaintext);
     });
 
-    it('rejects an unknown segment hash algorithm', async function () {
-      try {
-        await tamperTdf(client, plaintext, ({ manifest }) => {
-          integrityInfo(manifest).segmentHashAlg = 'CRC32';
-        });
-        assert.fail('expected an error for an unknown segment hash alg');
-      } catch (e) {
-        assert.instanceOf(e, Error);
-        assert.match((e as Error).message, /Unsupported segment hash alg/);
-      }
-    });
+    // Absent, empty and null all mean "use the root algorithm"; the root is
+    // always HS256, and these files were written with HS256 segments.
+    for (const [label, segmentHashAlg] of [
+      ['empty', ''],
+      ['null', null],
+    ] as [string, JsonValue][]) {
+      it(`falls back to the root algorithm when segmentHashAlg is ${label}`, async function () {
+        const got = await tamperTdf(
+          client,
+          plaintext,
+          ({ manifest }) => {
+            integrityInfo(manifest).segmentHashAlg = segmentHashAlg;
+          },
+          { segmentIntegrityAlgorithm: 'HS256' }
+        );
+        assert.deepEqual(got, plaintext);
+      });
+    }
+
+    for (const [label, segmentHashAlg] of [
+      ['unknown', 'CRC32'],
+      ['a number', 42],
+      ['an object', {}],
+    ] as [string, JsonValue][]) {
+      it(`rejects a segment hash algorithm that is ${label}`, async function () {
+        await expectError(
+          tamperTdf(client, plaintext, ({ manifest }) => {
+            integrityInfo(manifest).segmentHashAlg = segmentHashAlg;
+          }),
+          UnsupportedFeatureError,
+          `a segment hash alg of ${JSON.stringify(segmentHashAlg)} must fail closed`
+        );
+      });
+    }
   });
 
   describe('legacy 4.2.2 files', function () {

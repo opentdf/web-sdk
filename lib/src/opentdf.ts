@@ -18,7 +18,8 @@ import {
   PUBLIC_KEY_ALGORITHMS,
   isPublicKeyAlgorithm,
 } from './access.js';
-import { type Manifest } from '../tdf3/src/models/manifest.js';
+import { asManifest, type Manifest } from '../tdf3/src/models/manifest.js';
+import { asRecord, asString, type JsonValue, type Unvalidated } from './json.js';
 import { type Payload } from '../tdf3/src/models/payload.js';
 import {
   type Segment,
@@ -42,6 +43,7 @@ export {
   type CryptoService,
   type EncryptionInformation,
   type IntegrityAlgorithm,
+  type JsonValue,
   type KasPublicKeyAlgorithm,
   type KeyAccessObject,
   type Manifest,
@@ -50,7 +52,9 @@ export {
   type Segment,
   type SegmentIntegrityAlgorithm,
   type SplitType,
+  type Unvalidated,
   PUBLIC_KEY_ALGORITHMS,
+  asManifest,
   isPublicKeyAlgorithm,
 };
 
@@ -254,9 +258,13 @@ export type TDFReader = {
   close: () => Promise<void>;
 
   /**
-   * Only present on ZTDF files
+   * Only present on ZTDF files.
+   *
+   * The manifest as the file declares it, *unvalidated* — a forged file is
+   * still inspectable, which is exactly when you want to inspect it. Pass it
+   * through `asManifest` if you need the proven form.
    */
-  manifest: () => Promise<Manifest>;
+  manifest: () => Promise<Unvalidated<Manifest>>;
 
   /**
    * @returns Any data attributes found in the policy. Currently only works for plain text, embedded policies (not remote or encrypted policies)
@@ -479,7 +487,7 @@ class ZTDFReaderWrapper {
   }
 
   /** Returns the manifest of the TDF file */
-  async manifest(): Promise<Manifest> {
+  async manifest(): Promise<Unvalidated<Manifest>> {
     const actual = await this.delegate;
     return actual.manifest();
   }
@@ -585,7 +593,9 @@ class ZTDFReader {
       fqns: oldStream.obligations(),
     };
     const stream: DecoratedStream = oldStream.stream;
-    stream.manifest = Promise.resolve(overview.manifest);
+    // The validated manifest `decryptStreamFrom` produced, not the raw one
+    // from `overview` — by this point it has been proven.
+    stream.manifest = Promise.resolve(oldStream.manifest);
     stream.metadata = Promise.resolve(oldStream.metadata);
     return stream;
   }
@@ -595,7 +605,7 @@ class ZTDFReader {
   }
 
   /** Returns the manifest of the TDF file. */
-  async manifest(): Promise<Manifest> {
+  async manifest(): Promise<Unvalidated<Manifest>> {
     const overview = await this.overview;
     return overview.manifest;
   }
@@ -603,7 +613,10 @@ class ZTDFReader {
   /** Returns the attributes of the TDF file. */
   async attributes(): Promise<string[]> {
     const manifest = await this.manifest();
-    const policyJSON = base64.decode(manifest.encryptionInformation.policy);
+    // Not `asManifest`: listing attributes should not require a usable
+    // integrity algorithm, only a policy that is actually a string.
+    const ei = asRecord(manifest.encryptionInformation, 'manifest.encryptionInformation');
+    const policyJSON = base64.decode(asString(ei.policy, 'manifest.encryptionInformation.policy'));
     const policy = JSON.parse(policyJSON) as Policy;
     return policy?.body?.dataAttributes.map((a) => a.attribute) || [];
   }

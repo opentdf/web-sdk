@@ -26,8 +26,8 @@ import {
   IntegrityError,
   NetworkError,
   UnsafeUrlError,
-  UnsupportedFeatureError as UnsupportedError,
 } from '../../src/errors.js';
+import { type Unvalidated } from '../../src/json.js';
 import { type Chunker } from '../../src/seekable.js';
 import { tdfSpecVersion } from '../../src/version.js';
 import { AssertionConfig, AssertionKey, AssertionVerificationKeys } from './assertions.js';
@@ -53,6 +53,7 @@ import {
   MLKEM_CT_SIZES,
   MlKemWrapped,
   Manifest,
+  asManifest,
   Policy,
   SplitKey,
   Wrapped,
@@ -60,6 +61,14 @@ import {
   KeyAccessObject,
   SplitType,
 } from './models/index.js';
+import {
+  type RootIntegrityAlgorithm,
+  type SegmentIntegrityAlgorithm,
+  ROOT_INTEGRITY_ALGORITHM,
+  asSegmentIntegrityAlgorithm,
+  isRootIntegrityAlgorithm,
+  isSegmentIntegrityAlgorithm,
+} from './models/integrity-algorithms.js';
 import { unsigned } from './utils/buffer-crc32.js';
 import { ZipReader, ZipWriter, concatUint8, buffToString } from './utils/index.js';
 import { CentralDirectory } from './utils/zip-reader.js';
@@ -72,7 +81,6 @@ import {
   getPlatformUrlFromKasEndpoint,
 } from '../../src/utils.js';
 
-// TODO: input validation on manifest JSON
 const DEFAULT_SEGMENT_SIZE = 1024 * 1024;
 
 const HEX_SEMVER_VERSION = '4.2.2';
@@ -149,87 +157,20 @@ type Chunk = {
   decryptedChunk: Mailbox<DecryptResult>;
 };
 
-/**
- * Algorithms usable for *per-segment* integrity.
- *
- * `GMAC` is legitimate here: the segment's bytes were just processed by
- * AES-GCM under the DEK, so the trailing 16 bytes are the tag the AEAD itself
- * produced. See {@link segmentIntegrity}.
- */
-export type SegmentIntegrityAlgorithm = 'GMAC' | 'HS256';
-
-/**
- * Algorithms usable for the *root* signature.
- *
- * Deliberately narrower than {@link SegmentIntegrityAlgorithm}: AES-GCM never
- * processes the aggregate hash, so there is no tag to extract and `GMAC` would
- * degenerate into copying the last segment hash — a keyless, forgeable value.
- * The type carries the invariant so a root algorithm cannot even be *typed* as
- * `'GMAC'`. See {@link rootIntegrity}.
- */
-export type RootIntegrityAlgorithm = 'HS256';
-
-/**
- * @deprecated Prefer {@link SegmentIntegrityAlgorithm} or
- * {@link RootIntegrityAlgorithm}, which say which position they are valid in.
- */
-export type IntegrityAlgorithm = SegmentIntegrityAlgorithm;
-
-/** The only root integrity algorithm this SDK reads or writes. */
-export const ROOT_INTEGRITY_ALGORITHM: RootIntegrityAlgorithm = 'HS256';
-
-/** Default per-segment integrity algorithm. */
-export const SEGMENT_INTEGRITY_ALGORITHM: SegmentIntegrityAlgorithm = 'GMAC';
+export {
+  type SegmentIntegrityAlgorithm,
+  type RootIntegrityAlgorithm,
+  type IntegrityAlgorithm,
+  ROOT_INTEGRITY_ALGORITHM,
+  SEGMENT_INTEGRITY_ALGORITHM,
+  isSegmentIntegrityAlgorithm,
+  isRootIntegrityAlgorithm,
+  asSegmentIntegrityAlgorithm,
+  asRootIntegrityAlgorithm,
+} from './models/integrity-algorithms.js';
 
 /** Length in bytes of an AES-GCM authentication tag. */
 const GMAC_TAG_LENGTH = 16;
-
-/**
- * Case-insensitive test for a supported segment integrity algorithm.
- * An explicit allowlist, so unknown algorithms are rejected rather than
- * silently defaulted.
- */
-export function isSegmentIntegrityAlgorithm(alg: unknown): alg is SegmentIntegrityAlgorithm {
-  return typeof alg === 'string' && ['GMAC', 'HS256'].includes(alg.toUpperCase());
-}
-
-/**
- * Case-insensitive test for a supported root integrity algorithm.
- * `GMAC` in *any* casing is not a member: the JS reader historically compared
- * exactly (`!== 'GMAC'`), so `"gmac"` took a different path than in the Go and
- * Java SDKs. Normalizing first closes that gap.
- */
-export function isRootIntegrityAlgorithm(alg: unknown): alg is RootIntegrityAlgorithm {
-  return typeof alg === 'string' && alg.toUpperCase() === ROOT_INTEGRITY_ALGORITHM;
-}
-
-/**
- * Normalize a manifest-declared segment algorithm, rejecting anything unknown.
- */
-export function asSegmentIntegrityAlgorithm(alg: unknown): SegmentIntegrityAlgorithm {
-  if (!isSegmentIntegrityAlgorithm(alg)) {
-    throw new UnsupportedError(`Unsupported segment hash alg [${alg}]`);
-  }
-  return alg.toUpperCase() as SegmentIntegrityAlgorithm;
-}
-
-/**
- * Normalize a manifest-declared root algorithm, failing *closed*.
- *
- * A ZTDF's `rootSignature.alg` is unauthenticated manifest data. Accepting
- * `GMAC` there lets a keyless attacker downgrade an HS256-rooted file and then
- * truncate, reorder, duplicate or drop segments undetected, so reject it (and
- * every unknown algorithm) instead of coercing to HS256 — coercion would
- * validate a forged file against the wrong algorithm and mask the downgrade.
- */
-export function asRootIntegrityAlgorithm(alg: unknown): RootIntegrityAlgorithm {
-  if (!isRootIntegrityAlgorithm(alg)) {
-    throw new IntegrityError(
-      `unsupported root integrity algorithm [${alg}]; only [${ROOT_INTEGRITY_ALGORITHM}] is supported`
-    );
-  }
-  return ROOT_INTEGRITY_ALGORITHM;
-}
 
 export type EncryptConfiguration = {
   allowList?: OriginAllowList;
@@ -863,7 +804,12 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
 }
 
 export type InspectedTDFOverview = {
-  manifest: Manifest;
+  /**
+   * As found in the file, not as proven: inspection should still work on a
+   * file that decryption will refuse. `decryptStreamFrom` narrows this with
+   * `asManifest` before acting on it.
+   */
+  manifest: Unvalidated<Manifest>;
   zipReader: ZipReader;
   centralDirectory: CentralDirectory[];
 };
@@ -1533,8 +1479,9 @@ export async function readStream(cfg: DecryptConfiguration) {
 
 export async function decryptStreamFrom(
   cfg: DecryptConfiguration,
-  { manifest, zipReader, centralDirectory }: InspectedTDFOverview
+  { manifest: unvalidatedManifest, zipReader, centralDirectory }: InspectedTDFOverview
 ) {
+  const manifest = asManifest(unvalidatedManifest);
   let { allowList } = cfg;
   if (!allowList) {
     if (!cfg.allowedKases) {
@@ -1580,12 +1527,8 @@ export async function decryptStreamFrom(
   // Concatenate all segment hashes into a single Uint8Array
   const aggregateHash = await concatenateUint8Array(segmentHashList);
 
-  // `rootSignature.alg` is unauthenticated manifest data. Reject GMAC (in any
-  // casing) and every unknown algorithm here, before it can select a
-  // verification routine: a GMAC "root signature" is just a copy of the last
-  // segment hash, so honouring it would let a keyless attacker truncate,
-  // reorder, duplicate or drop segments undetected.
-  const rootIntegrityAlgorithm = asRootIntegrityAlgorithm(rootSignature.alg);
+  // Already proven by `asManifest`: only HS256 reaches here.
+  const rootIntegrityAlgorithm = rootSignature.alg;
 
   const payloadSig = await rootIntegrity(
     aggregateHash,
@@ -1647,8 +1590,8 @@ export async function decryptStreamFrom(
 
   const cipher = new AesGcmCipher(cfg.cryptoService);
   // Segment GMAC is sound (it is the AEAD's own tag), so both algorithms stay
-  // valid here; only unknown ones are rejected.
-  const segmentIntegrityAlg = asSegmentIntegrityAlgorithm(segmentHashAlg || rootIntegrityAlgorithm);
+  // valid here; `asManifest` already rejected unknown ones.
+  const segmentIntegrityAlg = segmentHashAlg ?? rootIntegrityAlgorithm;
 
   const schedulerOptions = getBoundedSegmentSchedulerOptions(cfg);
   let scheduler: SegmentBatchScheduler | undefined;

@@ -5,6 +5,7 @@ import {
   ZipReader,
 } from '../utils/index.js';
 import { base64 } from '../../../src/encodings/index.js';
+import { asRecord, asString } from '../../../src/json.js';
 import {
   buildKeyAccess,
   type EncryptConfiguration,
@@ -891,7 +892,10 @@ export class Client {
     const zipHelper = new ZipReader(chunker);
     const centralDirectory = await zipHelper.getCentralDirectory();
     const manifest = await zipHelper.getManifest(centralDirectory, '0.manifest.json');
-    const policyJson = base64.decode(manifest.encryptionInformation.policy);
+    // Not `asManifest`: reading a policy id should not require a usable
+    // integrity algorithm, only a policy that is actually a string.
+    const ei = asRecord(manifest.encryptionInformation, 'manifest.encryptionInformation');
+    const policyJson = base64.decode(asString(ei.policy, 'manifest.encryptionInformation.policy'));
     return JSON.parse(policyJson).uuid;
   }
 

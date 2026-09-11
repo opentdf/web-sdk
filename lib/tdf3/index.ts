@@ -106,9 +106,13 @@ export {
   type CreateOptions,
   type CreateZTDFOptions,
   type DecoratedStream,
+  type JsonValue,
   type Keys,
+  type Manifest,
   type OpenTDFOptions,
   type ReadOptions,
   type TDFReader,
+  type Unvalidated,
   OpenTDF,
+  asManifest,
 } from '../src/opentdf.js';
