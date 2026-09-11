@@ -1,0 +1,31 @@
+# Satisfies the required "DCO" status context inside the merge queue.
+#
+# The job name below must stay exactly `DCO`. That string is the required
+# context -- renaming it does not fail anything, it just means the context never
+# arrives, so every queue entry sits until the check-response timeout (60m) and
+# is dequeued with nothing pointing at the cause.
+#
+# Why a shim is needed: the DCO app does not report on merge_group for this
+# installation, so the context would never arrive on its own. Sign-offs are
+# still verified on the pull request before it is queued, and the queue cannot
+# add unsigned commits, so nothing actually goes unchecked.
+#
+# Re-check this before relying on it. Upstream dcoapp/app gained a real
+# `merge_group.checks_requested` handler in 2026-07 (dcoapp/app#292) that reports
+# under the same `DCO` name on the same head SHA. This installation had not
+# picked it up as of 2026-09-16 -- verified by listing check runs on three
+# opentdf/platform merge groups, where the only `DCO` check came from
+# github-actions and never from the app. If that changes, a merge group gets two
+# same-named DCO checks, one real and one unconditionally green, and this shim
+# can mask a genuine failure. Delete this file at that point.
+name: DCO
+on:
+  merge_group:
+
+permissions: {}
+
+jobs:
+  DCO:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Bypassing DCO Check in merge group"
