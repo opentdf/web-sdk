@@ -28,5 +28,7 @@
     "target": "es2021",
   },
   "include": ["src", "tests", "tdf3"],
-  "exclude": ["**/node_modules"]
+  // `tests/types` holds deliberate type-level failures, checked separately by
+  // `npm run test:types` so they cannot mask the runtime specs.
+  "exclude": ["**/node_modules", "tests/types"]
 }

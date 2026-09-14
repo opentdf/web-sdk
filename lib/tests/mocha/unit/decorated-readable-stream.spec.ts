@@ -69,6 +69,48 @@ describe('streamToBuffer', function () {
       }
     });
   }
+
+  /**
+   * Dropping `Response` also dropped its input checking, and the replacement
+   * does not fail on a chunk it cannot handle — it produces a wrong answer.
+   *
+   * `value.length` is `undefined` for an `ArrayBuffer`, so `length` becomes
+   * `NaN`, `new Uint8Array(NaN)` is empty, and `accumulator.set(arrayBuffer)`
+   * is a no-op: the function returns an empty buffer and reports success. A
+   * string chunk sizes the accumulator correctly and then fills it with zeroes.
+   * `Response` threw `TypeError: Received non-Uint8Array chunk`.
+   *
+   * This is reachable: `streamToBuffer` is re-exported from
+   * `tdf3/src/utils/index.ts` and backs the caller-supplied `{type: 'stream'}`
+   * decrypt source, where the `ReadableStream<Uint8Array>` annotation is gone
+   * at runtime.
+   */
+  for (const [what, chunk] of [
+    ['an ArrayBuffer', new Uint8Array([1, 2, 3]).buffer],
+    ['a string', 'abc'],
+    ['a number', 7],
+  ] as const) {
+    it(`rejects ${what} chunk rather than silently mis-decoding it`, async function () {
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          // The cast is the point: `DecryptSource`'s annotation is erased at
+          // runtime, so a caller can and does enqueue this.
+          controller.enqueue(chunk as unknown as Uint8Array);
+          controller.close();
+        },
+      });
+      let got: Uint8Array | undefined;
+      try {
+        got = await streamToBuffer(stream);
+      } catch (e) {
+        assert.instanceOf(e, TypeError);
+        return;
+      }
+      assert.fail(
+        `expected a TypeError; got a ${got.length}-byte buffer [${Array.from(got)}] reported as success`
+      );
+    });
+  }
 });
 
 describe('DecoratedReadableStream', function () {

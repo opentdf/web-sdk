@@ -32,7 +32,7 @@ import { loadTDFStream } from '../../tdf3/src/tdf.js';
 import { concatUint8, ZipWriter } from '../../tdf3/src/utils/index.js';
 import { unsigned } from '../../tdf3/src/utils/buffer-crc32.js';
 import { fromBuffer } from '../../src/seekable.js';
-import { base64 } from '../../src/encodings/index.js';
+import { base64, hex } from '../../src/encodings/index.js';
 import { IntegrityError } from '../../src/errors.js';
 
 const Mocks = getMocks();
@@ -287,6 +287,31 @@ describe('root signature integrity (DSPX-4703)', function () {
       );
     });
 
+    it('control: reverseSegments really is a permutation', async function () {
+      // The two reordering cases below are only meaningful if the payload they
+      // hand the reader contains the same bytes in a different order. The loop
+      // slices backwards by a fixed segment size, so on a payload that is not
+      // an exact multiple the final `start` goes negative -- and
+      // `Uint8Array.slice` reads a negative start as an offset from the *end*,
+      // silently dropping bytes. The fixture is exactly 4 x 1024 today, so
+      // nothing catches it if that ever changes.
+      const segmentSize = 4;
+      const manifest = {
+        encryptionInformation: {
+          integrityInformation: {
+            encryptedSegmentSizeDefault: segmentSize,
+            segments: [{ hash: 'a' }, { hash: 'b' }, { hash: 'c' }],
+          },
+        },
+      } as unknown as Manifest;
+      const payload = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+
+      const got = reverseSegments(payload, manifest);
+
+      assert.lengthOf(got, payload.length, 'no bytes may be dropped');
+      assert.sameMembers([...got], [...payload], 'the same bytes, reordered');
+    });
+
     it('negative: reordering under HS256 is caught', async function () {
       await expectIntegrityError(
         tamperTdf(client, plaintext, (parts) => ({
@@ -441,6 +466,33 @@ describe('root signature integrity (DSPX-4703)', function () {
           legacy
         ),
         'a 4.2.2 HS256 root must catch truncation'
+      );
+    });
+
+    it('control: the forged GMAC signature is one a 4.2.2 reader would accept', async function () {
+      // Without this the downgrade test below is vacuous. A 4.2.2 reader
+      // encodes every integrity value as base64(hex(bytes)); `forgeGmacRootSignature`
+      // emits base64(bytes). Those are 44 and 24 characters, so a reader that
+      // *did* honour GMAC would still reject the file -- on the signature
+      // comparison, never on the algorithm. The test passes on a build with no
+      // algorithm check at all, which is to say it pins nothing.
+      const { buffer } = await encryptToBuffer(client, plaintext, legacy);
+      const { manifest } = await unpackTdf(buffer);
+      keepSegments(manifest, 2);
+      forgeGmacRootSignature(manifest);
+
+      const info = integrityInfo(manifest);
+      const aggregate = concatUint8(
+        info.segments.map(({ hash }) => new Uint8Array(base64.decodeArrayBuffer(hash)))
+      );
+      const whatALegacyGmacReaderWouldCompute = base64.encode(
+        hex.encodeArrayBuffer(aggregate.slice(-GMAC_TAG_LENGTH))
+      );
+
+      assert.equal(
+        info.rootSignature.sig,
+        whatALegacyGmacReaderWouldCompute,
+        'the forged signature has to be the one the attack would actually produce'
       );
     });
 
