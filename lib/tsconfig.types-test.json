@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "declarationDir": null,
+    "declarationMap": false,
+    "noEmit": true,
+    "noUnusedLocals": false
+  },
+  "include": ["src", "tdf3", "tests/types"],
+  "exclude": ["**/node_modules"]
+}
