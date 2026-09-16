@@ -79,20 +79,30 @@ const DEFAULT_SEGMENT_SIZE = 1024 * 1024;
 export const manifestFileName = 'manifest.json';
 
 /**
- * What this SDK calls the manifest. The `0.` prefix anticipated several
- * payload/manifest pairs per archive, a design that never shipped. Renaming what
- * the writer emits is a breaking file-format change tracked separately in
- * opentdf/platform#3513; until then this stays the name we write.
+ * What this SDK has always called the manifest. The `0.` prefix anticipated
+ * several payload/manifest pairs per archive, a design that never shipped.
  */
 export const offspecManifestFileName = '0.manifest.json';
 
 /**
+ * The name `writeStream` gives the manifest entry. Distinct from the constants
+ * above on purpose: moving the writer to the spec name (a breaking file-format
+ * change, tracked in opentdf/platform#3513) means repointing *this* binding, and
+ * repointing it leaves the read side below untouched, so archives written by
+ * every earlier release keep opening.
+ */
+export const manifestEntryNameToWrite: string = offspecManifestFileName;
+
+/**
  * The manifest entry to read from an archive: the spec name when the archive
- * carries it, otherwise the off-spec name this SDK writes.
+ * carries it, otherwise the name this SDK writes.
  *
  * Resolving against the central directory rather than against a failed read keeps
  * other failures honest: an oversized manifest under the spec name stays a size
- * error instead of silently yielding an off-spec entry.
+ * error instead of silently yielding an off-spec entry. The cost of preferring
+ * the spec name is that an archive carrying both entries resolves to the spec
+ * one even when this SDK wrote the other — see the PR discussion of appended
+ * central-directory records.
  */
 export function manifestEntryName(centralDirectory: CentralDirectory[]): string {
   return centralDirectory.some(({ fileName }) => fileName === manifestFileName)
@@ -512,7 +522,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
       filename: '0.payload',
     },
     {
-      filename: offspecManifestFileName,
+      filename: manifestEntryNameToWrite,
     },
   ];
 
@@ -609,7 +619,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
         _countChunk(payloadDataDescriptor);
 
         // prepare the manifest
-        entryInfos[1].filename = offspecManifestFileName;
+        entryInfos[1].filename = manifestEntryNameToWrite;
         entryInfos[1].offset = totalByteCount;
         controller.enqueue(getHeader(entryInfos[1].filename));
         _countChunk(getHeader(entryInfos[1].filename));

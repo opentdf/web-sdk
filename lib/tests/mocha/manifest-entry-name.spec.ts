@@ -10,7 +10,7 @@
  * one. The writer still emits `0.manifest.json` — renaming it is a breaking
  * file-format change tracked separately.
  *
- * Both fixtures here are archives this SDK wrote, rebuilt with the manifest
+ * Every fixture here is an archive this SDK wrote, rebuilt with its manifest
  * entry renamed, so what they pin is name resolution and nothing more. They are
  * this SDK's zip dialect throughout (zip64, data descriptors, STORE); an archive
  * from a producer with a different dialect exercises `parseCDBuffer` paths that
@@ -22,11 +22,7 @@ import { getMocks } from '../mocks/index.js';
 import { AuthProvider, HttpRequest } from '../../src/auth/auth.js';
 import { AesGcmCipher, SplitKey, WebCryptoService } from '../../tdf3/index.js';
 import { Client } from '../../tdf3/src/index.js';
-import {
-  offspecManifestFileName,
-  manifestEntryName,
-  manifestFileName,
-} from '../../tdf3/src/tdf.js';
+import { manifestEntryName } from '../../tdf3/src/tdf.js';
 import { type CentralDirectory, ZipReader } from '../../tdf3/src/utils/zip-reader.js';
 import { ZipWriter } from '../../tdf3/src/utils/zip-writer.js';
 import { concatUint8 } from '../../tdf3/src/utils/index.js';
@@ -43,14 +39,29 @@ const authProvider: AuthProvider = {
 
 const plaintext = new TextEncoder().encode('the manifest is at the archive root');
 
+/**
+ * Spelled out rather than imported from `tdf.ts`. A suite written in terms of
+ * the constants it is testing cannot notice them changing: repoint
+ * `offspecManifestFileName` at the spec name and every assertion below follows
+ * it, including the writer tripwire.
+ */
+const SPEC_NAME = 'manifest.json';
+const OFFSPEC_NAME = '0.manifest.json';
+
 /** What `writeStream` stamps on every entry it writes. */
 const EXTERNAL_FILE_ATTRIBUTES = 2175008768;
 
 /** Comfortably past the reader's 10 MiB manifest ceiling. */
 const OVERSIZED = 1024 * 1024 * 128;
 
-function entry(fileName: string, overrides: Partial<CentralDirectory> = {}): CentralDirectory {
-  return { fileName, ...overrides } as CentralDirectory;
+/**
+ * A central-directory record with only the field `manifestEntryName` consults.
+ * The cast hides CentralDirectory's other 16 fields, so if the resolver ever
+ * starts reading one of them these fixtures will read `undefined` rather than
+ * fail to compile — widen this helper at the same time.
+ */
+function entry(fileName: string): CentralDirectory {
+  return { fileName } as CentralDirectory;
 }
 
 function newClient(): Client.Client {
@@ -192,13 +203,15 @@ function buildArchive(entries: ArchiveEntry[], aliases: AliasRecord[] = []): Uin
 /**
  * Rebuild `buffer` with its manifest entry named `newName` and every entry's
  * bytes preserved. Throws unless exactly one entry looked like a manifest, so a
- * fixture can never quietly come back unrenamed — including once the writer
- * switches to the spec name.
+ * fixture built from an archive this SDK stops naming the way we expect fails
+ * loudly instead of coming back subtly wrong. Whether a rename actually happened
+ * is a separate question — when `newName` is already the writer's name this is a
+ * pure rebuild — so each caller asserts the name it ended up with.
  */
 async function renameManifestEntry(buffer: Uint8Array, newName: string): Promise<Uint8Array> {
   const entries = await entriesOf(buffer);
   const manifests = entries.filter(
-    ({ fileName }) => fileName === manifestFileName || fileName === offspecManifestFileName
+    ({ fileName }) => fileName === SPEC_NAME || fileName === OFFSPEC_NAME
   );
   if (manifests.length !== 1) {
     throw new Error(`renameManifestEntry: expected one manifest entry, found ${manifests.length}`);
@@ -215,28 +228,19 @@ describe('manifest entry name (platform#3513)', function () {
 
   describe('manifestEntryName', function () {
     it('asks for the spec name when the archive carries it', function () {
-      assert.equal(
-        manifestEntryName([entry('0.payload'), entry(manifestFileName)]),
-        manifestFileName
-      );
+      assert.equal(manifestEntryName([entry('0.payload'), entry(SPEC_NAME)]), SPEC_NAME);
     });
 
     it('asks for the off-spec name when the spec name is absent', function () {
-      assert.equal(
-        manifestEntryName([entry('0.payload'), entry(offspecManifestFileName)]),
-        offspecManifestFileName
-      );
+      assert.equal(manifestEntryName([entry('0.payload'), entry(OFFSPEC_NAME)]), OFFSPEC_NAME);
     });
 
     it('prefers the spec name when an archive carries both', function () {
-      assert.equal(
-        manifestEntryName([entry(offspecManifestFileName), entry(manifestFileName)]),
-        manifestFileName
-      );
+      assert.equal(manifestEntryName([entry(OFFSPEC_NAME), entry(SPEC_NAME)]), SPEC_NAME);
     });
 
     it('asks for the off-spec name when the archive carries neither', function () {
-      assert.equal(manifestEntryName([entry('0.payload')]), offspecManifestFileName);
+      assert.equal(manifestEntryName([entry('0.payload')]), OFFSPEC_NAME);
     });
   });
 
@@ -244,7 +248,7 @@ describe('manifest entry name (platform#3513)', function () {
     it('still names the manifest entry 0.manifest.json', async function () {
       assert.deepEqual(await fileNamesOf(await encryptToBuffer(client)), [
         '0.payload',
-        offspecManifestFileName,
+        OFFSPEC_NAME,
       ]);
     });
 
@@ -256,8 +260,8 @@ describe('manifest entry name (platform#3513)', function () {
   });
 
   for (const [named, entryName] of [
-    ['spec', manifestFileName],
-    ['off-spec', offspecManifestFileName],
+    ['spec', SPEC_NAME],
+    ['off-spec', OFFSPEC_NAME],
   ] as const) {
     describe(`${named}-named archives`, function () {
       let original: Uint8Array;
@@ -297,26 +301,22 @@ describe('manifest entry name (platform#3513)', function () {
 
     beforeEach(async function () {
       const entries = await entriesOf(
-        await renameManifestEntry(await encryptToBuffer(client), offspecManifestFileName)
+        await renameManifestEntry(await encryptToBuffer(client), OFFSPEC_NAME)
       );
       shadowed = buildArchive(entries, [
         {
-          fileName: manifestFileName,
-          sameDataAs: offspecManifestFileName,
+          fileName: SPEC_NAME,
+          sameDataAs: OFFSPEC_NAME,
           uncompressedSize: OVERSIZED,
         },
       ]);
     });
 
     it('is a fixture carrying both names, the off-spec one readable', async function () {
-      assert.deepEqual(await fileNamesOf(shadowed), [
-        '0.payload',
-        offspecManifestFileName,
-        manifestFileName,
-      ]);
+      assert.deepEqual(await fileNamesOf(shadowed), ['0.payload', OFFSPEC_NAME, SPEC_NAME]);
       const centralDirectory = await centralDirectoryOf(shadowed);
       const reader = new ZipReader(fromBuffer(shadowed));
-      const manifest = await reader.getManifest(centralDirectory, offspecManifestFileName);
+      const manifest = await reader.getManifest(centralDirectory, OFFSPEC_NAME);
       assert.isString(manifest.encryptionInformation.policy);
     });
 
