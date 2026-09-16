@@ -12,6 +12,7 @@ import {
   isRootIntegrityAlgorithm,
   isSegmentIntegrityAlgorithm,
   loadTDFStream,
+  manifestEntryName,
   readStream,
   ROOT_INTEGRITY_ALGORITHM,
   SEGMENT_INTEGRITY_ALGORITHM,
@@ -890,7 +891,10 @@ export class Client {
     const chunker = await makeChunkable(source);
     const zipHelper = new ZipReader(chunker);
     const centralDirectory = await zipHelper.getCentralDirectory();
-    const manifest = await zipHelper.getManifest(centralDirectory, '0.manifest.json');
+    const manifest = await zipHelper.getManifest(
+      centralDirectory,
+      manifestEntryName(centralDirectory)
+    );
     const policyJson = base64.decode(manifest.encryptionInformation.policy);
     return JSON.parse(policyJson).uuid;
   }
