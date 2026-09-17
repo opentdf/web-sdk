@@ -1,5 +1,5 @@
 /**
- * DSPX-4703 — the root signature is the only thing in a ZTDF that authenticates
+ * The root signature is the only thing in a base TDF that authenticates
  * the *manifest's* description of the payload: the ordered list of segment
  * hashes. Per-segment AES-GCM tags authenticate each segment's bytes in
  * isolation, but nothing in a segment binds it to its index or to the total
