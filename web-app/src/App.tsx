@@ -10,6 +10,7 @@ import {
   type KeyAccessType,
   type Manifest,
   type Source,
+  type Unvalidated,
   OpenTDF,
 } from '@opentdf/sdk';
 import { type SessionInformation, OidcClient } from './session.js';
@@ -121,7 +122,8 @@ function getDecryptReadTuningFromLocation(): DecryptReadTuning {
 
 type KaoMetadata = {
   kid: string;
-  type: KeyAccessType;
+  /** `undefined` when the manifest named something that is not a KAO type. */
+  type?: KeyAccessType;
   url: string;
   protocol: string;
   wrappedKeyBytes: number;
@@ -132,15 +134,32 @@ function decodedBase64Length(value: string): number {
   return Math.floor((value.length * 3) / 4) - paddingLength;
 }
 
-function kaoMetadataFrom(manifest: Manifest): KaoMetadata[] {
-  return manifest.encryptionInformation.keyAccess.map((kao) => {
-    const wrappedKeyBytes = kao.wrappedKey ? decodedBase64Length(kao.wrappedKey) : 0;
+const KEY_ACCESS_TYPES: KeyAccessType[] = ['remote', 'wrapped', 'ec-wrapped', 'mlkem-wrapped'];
+
+function asKeyAccessType(value: unknown): KeyAccessType | undefined {
+  return KEY_ACCESS_TYPES.find((known) => known === value);
+}
+
+function asDisplayString(value: unknown): string {
+  return typeof value === 'string' ? value : '(invalid)';
+}
+
+/**
+ * Summarize the key access objects for the inspector panel.
+ *
+ * Takes the unvalidated manifest on purpose: this panel is most useful on a
+ * file the SDK refuses to decrypt, so every field is read defensively and
+ * anything unrecognized is shown as such rather than thrown on.
+ */
+function kaoMetadataFrom(manifest: Unvalidated<Manifest>): KaoMetadata[] {
+  return (manifest.encryptionInformation?.keyAccess ?? []).map((kao) => {
+    const wrappedKey = typeof kao.wrappedKey === 'string' ? kao.wrappedKey : '';
     return {
-      kid: kao.kid ?? '(no kid)',
-      type: kao.type,
-      url: kao.url,
-      protocol: kao.protocol,
-      wrappedKeyBytes,
+      kid: typeof kao.kid === 'string' ? kao.kid : '(no kid)',
+      type: asKeyAccessType(kao.type),
+      url: asDisplayString(kao.url),
+      protocol: asDisplayString(kao.protocol),
+      wrappedKeyBytes: wrappedKey ? decodedBase64Length(wrappedKey) : 0,
     } satisfies KaoMetadata;
   });
 }
@@ -475,7 +494,7 @@ function App() {
         // SDK only console.warns when the two disagree. Name the file after what
         // actually happened rather than letting it assert something untrue.
         const [kao] = kaos;
-        if (kao && kao.type !== expectedKaoType(encapAlgorithm)) {
+        if (kao?.type && kao.type !== expectedKaoType(encapAlgorithm)) {
           downloadName = `${inputFileName}${actualWrapQualifier(kao.type, kao.kid)}.tdf`;
           setAlgorithmWarning(
             `Requested ${encapAlgorithm}, but the KAS wrapped with ${kao.type} (kid ${kao.kid}). ` +
@@ -826,7 +845,7 @@ function App() {
                           <dt>kid</dt>
                           <dd id={`kao-kid-${idx}`}>{kao.kid}</dd>
                           <dt>type</dt>
-                          <dd id={`kao-type-${idx}`}>{kao.type}</dd>
+                          <dd id={`kao-type-${idx}`}>{kao.type ?? '(invalid)'}</dd>
                           <dt>protocol</dt>
                           <dd id={`kao-protocol-${idx}`}>{kao.protocol}</dd>
                           {/* Unit is in the label so the value stays a bare number. */}

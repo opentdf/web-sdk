@@ -14,7 +14,7 @@ import {
   SEGMENT_INTEGRITY_ALGORITHM,
   type RootIntegrityAlgorithm,
   type SegmentIntegrityAlgorithm,
-} from '../tdf.js';
+} from './integrity-algorithms.js';
 import { ConfigurationError } from '../../../src/errors.js';
 
 export type KeyInfo = {
@@ -38,15 +38,14 @@ export type EncryptionInformation = {
   readonly integrityInformation: {
     readonly rootSignature: {
       /**
-       * Algorithm declared by the file. Untrusted until validated on read;
-       * only `HS256` is accepted (see `asRootIntegrityAlgorithm`). Typed as a
-       * plain string because a hostile manifest may say anything.
+       * Only `HS256`. A manifest read from a file says whatever it likes; this
+       * is what survived `asManifest`. See DSPX-4703.
        */
-      alg: RootIntegrityAlgorithm | string;
+      alg: RootIntegrityAlgorithm;
       sig: string;
     };
-    /** Untrusted until validated on read; `GMAC` and `HS256` are accepted. */
-    segmentHashAlg?: SegmentIntegrityAlgorithm | string;
+    /** `GMAC` or `HS256`, normalized to upper case by `asManifest` on read. */
+    segmentHashAlg?: SegmentIntegrityAlgorithm;
     segments: Segment[];
     segmentSizeDefault?: number;
     encryptedSegmentSizeDefault?: number;
