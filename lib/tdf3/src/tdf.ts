@@ -216,7 +216,7 @@ export function asSegmentIntegrityAlgorithm(alg: unknown): SegmentIntegrityAlgor
 /**
  * Normalize a manifest-declared root algorithm, failing *closed*.
  *
- * A ZTDF's `rootSignature.alg` is unauthenticated manifest data. Accepting
+ * A base TDF's `rootSignature.alg` is unauthenticated manifest data. Accepting
  * `GMAC` there lets a keyless attacker downgrade an HS256-rooted file and then
  * truncate, reorder, duplicate or drop segments undetected, so reject it (and
  * every unknown algorithm) instead of coercing to HS256 — coercion would
