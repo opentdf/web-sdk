@@ -6,6 +6,11 @@ on:
     branches:
       - main
       - "release/**"
+  merge_group:
+    branches:
+      - main
+    types:
+      - checks_requested
 
 permissions: {}
 

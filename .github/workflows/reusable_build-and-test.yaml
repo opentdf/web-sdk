@@ -2,6 +2,9 @@ name: "Reusable worflow: Build and Test Client"
 
 env:
   # Skips SonarScan on PRs from forks, for security reasons.
+  # Also false on merge_group, where there is no pull_request in the payload.
+  # That is deliberate: the queue's post-merge push to main scans the same tree,
+  # so nothing is lost by not scanning the queue entry as well.
   do_sonarscan: >-
     ${{ (github.event_name == 'push' ||
       github.event.pull_request.head.repo.full_name == github.repository) &&
@@ -198,7 +201,7 @@ jobs:
           exit 1
       - name: Note the skip
         if: ${{ !fromJSON(env.do_sonarscan) }}
-        run: echo "SonarCloud scan skipped (fork PR or dependabot)." >>"$GITHUB_STEP_SUMMARY"
+        run: echo "SonarCloud scan skipped (fork PR, dependabot, or merge queue)." >>"$GITHUB_STEP_SUMMARY"
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
         if: fromJSON(env.do_sonarscan)
         with:
@@ -328,7 +331,11 @@ jobs:
     uses: opentdf/tests/.github/workflows/xtest.yml@main
     with:
       focus-sdk: js
-      js-ref: ${{ github.ref }} main latest
+      # In the merge queue `github.ref` is refs/heads/gh-readonly-queue/main/pr-N-<sha>,
+      # which xtest resolves down the plain-branch path and turns into a dist tag with
+      # slashes still in it. Its SHA lookup has a merge-queue case that maps the same
+      # commit to a flat `mq-main-N` tag, so hand it the head SHA instead of the ref.
+      js-ref: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || github.ref }} main latest
       platform-ref: main lts
 
   ci:
