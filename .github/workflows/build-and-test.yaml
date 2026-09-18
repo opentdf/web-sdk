@@ -14,9 +14,6 @@ jobs:
     #   packages: read       -- ghcr pulls in xtest's start-up-with-containers
     #   pull-requests: write -- xtest's publish-results comments on the PR; ccc
     #                           and the Sonar scan read PR context
-    # Narrowing further means per-job blocks inside
-    # reusable_build-and-test.yaml, which the `@main` pin makes untestable from
-    # a PR -- tracked separately.
     permissions:
       contents: read
       packages: read # For using published artifacts, e.g. in `start-up-with-containers`    
