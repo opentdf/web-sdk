@@ -1,4 +1,4 @@
-import { InvalidFileError } from '../../../src/errors.js';
+import { ConfigurationError, InvalidFileError } from '../../../src/errors.js';
 import { type Chunker } from '../../../src/seekable.js';
 import { Manifest } from '../models/index.js';
 import { readUInt32LE, readUInt16LE, copyUint8Arr, buffToString } from './index.js';
@@ -48,7 +48,33 @@ const INITIAL_EOCDR_SEARCH_SIZE = 1024;
  */
 const MAX_CENTRAL_DIRECTORY_SIZE = 16 * 1024 * 1024;
 
-const manifestMaxSize = 1024 * 1024 * 10; // 10 MB
+/**
+ * Manifest entries are read (and, on write, validated) as a single in-memory
+ * buffer, so this bounds how large a manifest a TDF may carry. It is the same
+ * limit enforced on both the read and write paths so a TDF can never be
+ * written successfully and then turn out to be unreadable.
+ */
+export const MANIFEST_MAX_SIZE = 1024 * 1024 * 10; // 10 MB
+
+/**
+ * Rejects a manifest before it's written if it would exceed {@link MANIFEST_MAX_SIZE},
+ * so a TDF can never be produced that later fails the read-side check in
+ * {@link ZipReader.getManifest}. Segment count is included to point callers at the
+ * fix: a larger `segmentSize` reduces the segment count, and thus the manifest size.
+ */
+export function assertManifestWithinSizeLimit(
+  manifestByteLength: number,
+  segmentCount: number
+): void {
+  if (manifestByteLength <= MANIFEST_MAX_SIZE) {
+    return;
+  }
+  throw new ConfigurationError(
+    `Manifest too large to write: ${Math.floor(manifestByteLength / 1024).toLocaleString()} KiB` +
+      ` exceeds the ${Math.floor(MANIFEST_MAX_SIZE / 1024).toLocaleString()} KiB limit` +
+      ` (${segmentCount.toLocaleString()} segments); increase segmentSize to reduce the segment count.`
+  );
+}
 
 const cp437 =
   '\u0000☺☻♥♦♣♠•◘○◙♂♀♪♫☼►◄↕‼¶§▬↨↑↓→←∟↔▲▼ !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~⌂ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■ ';
@@ -246,7 +272,7 @@ export class ZipReader {
       throw new InvalidFileError('Unable to retrieve CD manifest');
     }
     const byteStart = cdObj.relativeOffsetOfLocalHeader + cdObj.headerLength;
-    if (cdObj.uncompressedSize > manifestMaxSize) {
+    if (cdObj.uncompressedSize > MANIFEST_MAX_SIZE) {
       throw new InvalidFileError(
         `manifest file too large: ${Math.floor(cdObj.uncompressedSize / 1024).toLocaleString()} KiB`
       );
