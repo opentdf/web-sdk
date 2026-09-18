@@ -7,13 +7,17 @@ on:
       - main
       - "release/**"
 
-# Default empty permissions for all jobs
-# fix later, need to add permissions for every job in reusable_build-and-test.yaml
-# then add corresponding permissions to the build-and-test job below
-#permissions: {}
+permissions: {}
 
 jobs:
   build-and-test:
+    #   packages: read       -- ghcr pulls in xtest's start-up-with-containers
+    #   pull-requests: write -- xtest's publish-results comments on the PR; ccc
+    #                           and the Sonar scan read PR context
+    permissions:
+      contents: read
+      packages: read # For using published artifacts, e.g. in `start-up-with-containers`    
+      pull-requests: write # For comments on PR from ccc check, xtest, and others
     uses: opentdf/web-sdk/.github/workflows/reusable_build-and-test.yaml@main
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
