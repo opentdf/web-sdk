@@ -7,13 +7,25 @@ on:
       - main
       - "release/**"
 
-# Default empty permissions for all jobs
-# fix later, need to add permissions for every job in reusable_build-and-test.yaml
-# then add corresponding permissions to the build-and-test job below
-#permissions: {}
+permissions: {}
 
 jobs:
   build-and-test:
+    # This is the ceiling for every job in the called workflow, and a called
+    # workflow can only narrow it, never widen it. Anything omitted here is
+    # `none`, so the three scopes below are exactly what the tree needs:
+    #   contents: read       -- actions/checkout in lib, cli, web-app, scripts,
+    #                           platform-roundtrip, and in the called xtest jobs
+    #   packages: read       -- ghcr pulls in xtest's start-up-with-containers
+    #   pull-requests: write -- xtest's publish-results comments on the PR; ccc
+    #                           and the Sonar scan read PR context
+    # Narrowing further means per-job blocks inside
+    # reusable_build-and-test.yaml, which the `@main` pin makes untestable from
+    # a PR -- tracked separately.
+    permissions:
+      contents: read
+      packages: read
+      pull-requests: write
     uses: opentdf/web-sdk/.github/workflows/reusable_build-and-test.yaml@main
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
