@@ -1,9 +1,5 @@
 import { v4 } from 'uuid';
-import {
-  keyMiddleware as defaultKeyMiddleware,
-  streamToBuffer,
-  ZipReader,
-} from '../utils/index.js';
+import { keyMiddleware as defaultKeyMiddleware, streamToBuffer } from '../utils/index.js';
 import { base64 } from '../../../src/encodings/index.js';
 import {
   buildKeyAccess,
@@ -887,10 +883,7 @@ export class Client {
    * @see DecryptParamsBuilder
    */
   async getPolicyId({ source }: { source: DecryptSource }) {
-    const chunker = await makeChunkable(source);
-    const zipHelper = new ZipReader(chunker);
-    const centralDirectory = await zipHelper.getCentralDirectory();
-    const manifest = await zipHelper.getManifest(centralDirectory, '0.manifest.json');
+    const { manifest } = await this.loadTDFStream({ source });
     const policyJson = base64.decode(manifest.encryptionInformation.policy);
     return JSON.parse(policyJson).uuid;
   }
