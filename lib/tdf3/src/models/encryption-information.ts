@@ -16,6 +16,7 @@ import {
   type SegmentIntegrityAlgorithm,
 } from '../tdf.js';
 import { ConfigurationError } from '../../../src/errors.js';
+import { GcmIvCounter } from '../ciphers/gcm-iv-counter.js';
 
 export type KeyInfo = {
   readonly unwrappedKey: SymmetricKey;
@@ -70,7 +71,9 @@ export class SplitKey {
 
   async generateKey(): Promise<KeyInfo> {
     const unwrappedKey = await this.cipher.generateKey();
-    const unwrappedKeyIvBinary = await this.generateIvBinary();
+    // A single split uses this same key for metadata and payload encryption.
+    // Reserve invocation zero for metadata; payload segments begin at one.
+    const unwrappedKeyIvBinary = Binary.fromArrayBuffer(GcmIvCounter.metadataIv().buffer);
     return { unwrappedKey, unwrappedKeyIvBinary };
   }
 

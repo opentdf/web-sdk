@@ -4,7 +4,7 @@ import { assert } from 'chai';
 import { getMocks } from '../mocks/index.js';
 import { KasPublicKeyAlgorithm } from '../../src/access.js';
 import { AuthProvider, HttpRequest } from '../../src/auth/auth.js';
-import { AesGcmCipher, KeyInfo, SplitKey, WebCryptoService } from '../../tdf3/index.js';
+import { AesGcmCipher, Binary, KeyInfo, SplitKey, WebCryptoService } from '../../tdf3/index.js';
 import { Client } from '../../tdf3/src/index.js';
 import {
   AssertionConfig,
@@ -14,6 +14,8 @@ import {
 } from '../../tdf3/src/assertions.js';
 import { Scope } from '../../tdf3/src/client/builders.js';
 import { NetworkError } from '../../src/errors.js';
+import { fromBuffer } from '../../src/seekable.js';
+import { ZipReader } from '../../tdf3/src/utils/zip-reader.js';
 
 const Mocks = getMocks();
 
@@ -372,6 +374,70 @@ describe('encrypt decrypt test', async function () {
       });
     }
   }
+
+  it('writes deterministic payload IVs after the reserved metadata IV', async function () {
+    const cipher = new AesGcmCipher(WebCryptoService);
+    const encryptionInformation = new SplitKey(cipher);
+    const key = await encryptionInformation.generateKey();
+    const client = new Client.Client({
+      kasEndpoint: kasUrl,
+      platformUrl: kasUrl,
+      dpopKeys: Mocks.entityKeyPair(),
+      clientId: 'id',
+      authProvider,
+    });
+
+    const encryptedStream = await client.encrypt({
+      metadata: Mocks.getMetadataObject(),
+      wrappingKeyAlgorithm: 'rsa:2048',
+      offline: true,
+      scope: { dissem: ['user@domain.com'], attributes: [] },
+      keyMiddleware: async () => ({ keyForEncryption: key, keyForManifest: key }),
+      windowSize: 3,
+      source: new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('1234567'));
+          controller.close();
+        },
+      }),
+    });
+
+    const encryptedTdf = await encryptedStream.toBuffer();
+    const { manifest } = encryptedStream;
+    assert.deepEqual(
+      Binary.fromBase64(manifest.encryptionInformation.method.iv).asByteArray(),
+      Array(12).fill(0)
+    );
+
+    const zipReader = new ZipReader(fromBuffer(encryptedTdf));
+    const centralDirectory = await zipReader.getCentralDirectory();
+    const { encryptedSegmentSizeDefault, segments } =
+      manifest.encryptionInformation.integrityInformation;
+    let encryptedOffset = 0;
+
+    for (const [index, segmentInfo] of segments.entries()) {
+      const encryptedSize = segmentInfo.encryptedSegmentSize ?? encryptedSegmentSizeDefault;
+      if (encryptedSize === undefined) {
+        assert.fail(`payload segment ${index} has no encrypted size`);
+      }
+      const encryptedSegment = await zipReader.getPayloadSegment(
+        centralDirectory,
+        '0.payload',
+        encryptedOffset,
+        encryptedSize
+      );
+      const expectedIv = new Uint8Array(12);
+      new DataView(expectedIv.buffer).setUint32(8, index + 1);
+      assert.deepEqual(
+        encryptedSegment.subarray(0, 12),
+        expectedIv,
+        `payload segment ${index} should use invocation ${index + 1}`
+      );
+      encryptedOffset += encryptedSize;
+    }
+
+    assert.lengthOf(segments, 3);
+  });
 
   it('decrypts when the same KAS wraps the same split twice (DSPX-3379)', async function () {
     const cipher = new AesGcmCipher(WebCryptoService);

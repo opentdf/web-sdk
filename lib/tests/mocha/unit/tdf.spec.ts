@@ -9,6 +9,10 @@ import { getMocks } from '../../mocks/index.js';
 import * as DefaultCryptoService from '../../../tdf3/src/crypto/index.js';
 import type { CryptoService } from '../../../tdf3/src/crypto/declarations.js';
 import { isMlKemKeyAlgorithm } from '../../../tdf3/src/crypto/declarations.js';
+import {
+  GcmIvCounter,
+  MAX_GCM_INVOCATIONS_PER_KEY,
+} from '../../../tdf3/src/ciphers/gcm-iv-counter.js';
 
 const sampleCert = `
 -----BEGIN CERTIFICATE-----
@@ -74,6 +78,44 @@ describe('TDF', () => {
     const pem = await TDF.extractPemFromKeyString(kasECCert, 'ec:secp256r1', cryptoService);
     expect(pem).to.include('-----BEGIN PUBLIC KEY-----');
     expect(pem).to.include('-----END PUBLIC KEY-----');
+  });
+});
+
+describe('GcmIvCounter', () => {
+  it('reserves IV zero for metadata and starts payload IVs at one', () => {
+    expect(GcmIvCounter.metadataIv()).to.deep.equal(new Uint8Array(12));
+
+    const counter = new GcmIvCounter();
+    expect(counter.next()).to.deep.equal(Uint8Array.from([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]));
+    expect(counter.next()).to.deep.equal(Uint8Array.from([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2]));
+  });
+
+  it('increments across a multi-byte carry boundary', () => {
+    const counter = new GcmIvCounter(0xffff, 0x10002);
+
+    expect(counter.next()).to.deep.equal(
+      Uint8Array.from([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff])
+    );
+    expect(counter.next()).to.deep.equal(Uint8Array.from([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0]));
+    expect(counter.next()).to.deep.equal(Uint8Array.from([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1]));
+  });
+
+  it('stops before the per-key invocation ceiling', () => {
+    const counter = new GcmIvCounter(MAX_GCM_INVOCATIONS_PER_KEY - 1, MAX_GCM_INVOCATIONS_PER_KEY);
+
+    expect(counter.next()).to.deep.equal(
+      Uint8Array.from([0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, 0xff, 0xff])
+    );
+    expect(() => counter.next()).to.throw('AES-GCM invocations for a single key');
+    expect(() => counter.next()).to.throw('AES-GCM invocations for a single key');
+  });
+
+  it('rejects ranges that include the metadata IV or exceed the invocation ceiling', () => {
+    expect(() => new GcmIvCounter(0)).to.throw('invocation 0 is reserved for metadata');
+    expect(() => new GcmIvCounter(2, 1)).to.throw('Invalid invocation limit');
+    expect(() => new GcmIvCounter(1, MAX_GCM_INVOCATIONS_PER_KEY + 1)).to.throw(
+      'exceeds the maximum'
+    );
   });
 });
 

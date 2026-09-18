@@ -13,6 +13,7 @@ import {
 
 const KEY_LENGTH = 32;
 const IV_LENGTH = 12;
+const AUTH_TAG_LENGTH = 16;
 
 type ProcessGcmPayload = {
   payload: Binary;
@@ -37,6 +38,10 @@ export class AesGcmCipher extends SymmetricCipher {
     this.name = 'AES-256-GCM';
     this.ivLength = IV_LENGTH;
     this.keyLength = KEY_LENGTH;
+  }
+
+  override encryptedPayloadSize(plaintextSize: number): number {
+    return IV_LENGTH + plaintextSize + AUTH_TAG_LENGTH;
   }
 
   /**

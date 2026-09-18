@@ -35,6 +35,8 @@ export abstract class SymmetricCipher {
     return this.cryptoService.generateKey(this.keyLength);
   }
 
+  abstract encryptedPayloadSize(plaintextSize: number): number;
+
   abstract encrypt(payload: Binary, key: SymmetricKey, iv: Binary): Promise<EncryptResult>;
 
   abstract decrypt(
