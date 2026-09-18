@@ -189,7 +189,7 @@ type Chunk = {
  *
  * `GMAC` is legitimate here: the segment's bytes were just processed by
  * AES-GCM under the DEK, so the trailing 16 bytes are the tag the AEAD itself
- * produced.
+ * produced. See {@link segmentIntegrity}.
  */
 export type SegmentIntegrityAlgorithm = 'GMAC' | 'HS256';
 
@@ -200,7 +200,7 @@ export type SegmentIntegrityAlgorithm = 'GMAC' | 'HS256';
  * processes the aggregate hash, so there is no tag to extract and `GMAC` would
  * degenerate into copying the last segment hash — a keyless, forgeable value.
  * The type carries the invariant so a root algorithm cannot even be *typed* as
- * `'GMAC'`.
+ * `'GMAC'`. See {@link rootIntegrity}.
  */
 export type RootIntegrityAlgorithm = 'HS256';
 
@@ -210,7 +210,7 @@ export type RootIntegrityAlgorithm = 'HS256';
  */
 export type IntegrityAlgorithm = SegmentIntegrityAlgorithm;
 
-/** The only root integrity algorithm this SDK writes. */
+/** The only root integrity algorithm this SDK reads or writes. */
 export const ROOT_INTEGRITY_ALGORITHM: RootIntegrityAlgorithm = 'HS256';
 
 /** Default per-segment integrity algorithm. */
@@ -230,12 +230,40 @@ export function isSegmentIntegrityAlgorithm(alg: unknown): alg is SegmentIntegri
 
 /**
  * Case-insensitive test for a supported root integrity algorithm.
- *
- * `GMAC` is not a member in any casing. Only `HS256` produces a keyed MAC over
- * the aggregate hash, so it is the only value this SDK will write.
+ * `GMAC` in *any* casing is not a member: the JS reader historically compared
+ * exactly (`!== 'GMAC'`), so `"gmac"` took a different path than in the Go and
+ * Java SDKs. Normalizing first closes that gap.
  */
 export function isRootIntegrityAlgorithm(alg: unknown): alg is RootIntegrityAlgorithm {
   return typeof alg === 'string' && alg.toUpperCase() === ROOT_INTEGRITY_ALGORITHM;
+}
+
+/**
+ * Normalize a manifest-declared segment algorithm, rejecting anything unknown.
+ */
+export function asSegmentIntegrityAlgorithm(alg: unknown): SegmentIntegrityAlgorithm {
+  if (!isSegmentIntegrityAlgorithm(alg)) {
+    throw new UnsupportedError(`Unsupported segment hash alg [${alg}]`);
+  }
+  return alg.toUpperCase() as SegmentIntegrityAlgorithm;
+}
+
+/**
+ * Normalize a manifest-declared root algorithm, failing *closed*.
+ *
+ * A base TDF's `rootSignature.alg` is unauthenticated manifest data. Accepting
+ * `GMAC` there lets a keyless attacker downgrade an HS256-rooted file and then
+ * truncate, reorder, duplicate or drop segments undetected, so reject it (and
+ * every unknown algorithm) instead of coercing to HS256 — coercion would
+ * validate a forged file against the wrong algorithm and mask the downgrade.
+ */
+export function asRootIntegrityAlgorithm(alg: unknown): RootIntegrityAlgorithm {
+  if (!isRootIntegrityAlgorithm(alg)) {
+    throw new IntegrityError(
+      `unsupported root integrity algorithm [${alg}]; only [${ROOT_INTEGRITY_ALGORITHM}] is supported`
+    );
+  }
+  return ROOT_INTEGRITY_ALGORITHM;
 }
 
 export type EncryptConfiguration = {
@@ -440,34 +468,71 @@ async function _generateManifest(
   };
 }
 
-async function getSignature(
+/**
+ * Integrity value for a single *segment* of AES-GCM ciphertext.
+ *
+ * `GMAC` is sound here and only here: `ciphertext` is exactly the buffer
+ * AES-GCM produced (or is about to authenticate) under `unwrappedKey`, so its
+ * trailing 16 bytes are the GHASH tag the AEAD already computed. The key
+ * parameter looks unused because it was already used — by the cipher, a moment
+ * earlier.
+ *
+ * Never call this with data that has not gone through the AEAD; see
+ * {@link rootIntegrity} for the aggregate hash.
+ */
+async function segmentIntegrity(
+  ciphertext: Uint8Array,
   unwrappedKey: SymmetricKey,
-  content: Uint8Array,
-  algorithmType: IntegrityAlgorithm,
+  algorithmType: SegmentIntegrityAlgorithm,
   cryptoService: CryptoService
 ): Promise<Uint8Array> {
-  switch (algorithmType.toUpperCase()) {
+  switch (algorithmType) {
     case 'GMAC':
-      // use the auth tag baked into the encrypted payload
-      return content.slice(-GMAC_TAG_LENGTH);
-    case 'HS256': {
+      // read out the auth tag AES-GCM baked into these exact bytes
+      return ciphertext.slice(-GMAC_TAG_LENGTH);
+    case 'HS256':
       // Use CryptoService for HMAC-SHA256 signing
-      return cryptoService.hmac(content, unwrappedKey);
-    }
+      return cryptoService.hmac(ciphertext, unwrappedKey);
     default:
-      throw new ConfigurationError(`Unsupported signature alg [${algorithmType}]`);
+      throw new ConfigurationError(`Unsupported segment integrity alg [${algorithmType}]`);
   }
 }
 
-async function getSignatureVersion422(
+/**
+ * Integrity value for the *root*: the aggregate of every segment hash.
+ *
+ * AES-GCM never processed `aggregateHash`, so there is no tag to read out and
+ * the trailing-16-bytes trick would just copy the last segment hash — a value
+ * already sitting in the manifest, computable with no key. Only a real keyed
+ * MAC is accepted.
+ */
+async function rootIntegrity(
+  aggregateHash: Uint8Array,
   unwrappedKey: SymmetricKey,
+  algorithmType: RootIntegrityAlgorithm,
+  cryptoService: CryptoService
+): Promise<Uint8Array> {
+  // Runtime guard as well as a type-level one: callers may hand us a value
+  // parsed out of an untrusted manifest.
+  if (!isRootIntegrityAlgorithm(algorithmType)) {
+    throw new ConfigurationError(`unsupported root integrity algorithm [${algorithmType}]`);
+  }
+  return cryptoService.hmac(aggregateHash, unwrappedKey);
+}
+
+/**
+ * Legacy (TDF spec 4.2.2) segment integrity: the value is hex-encoded before
+ * it is base64'd by the caller.
+ */
+async function segmentIntegrityVersion422(
   payloadBinary: Binary,
-  algorithmType: IntegrityAlgorithm,
+  unwrappedKey: SymmetricKey,
+  algorithmType: SegmentIntegrityAlgorithm,
   cryptoService: CryptoService
 ): Promise<string> {
-  switch (algorithmType.toUpperCase()) {
+  switch (algorithmType) {
     case 'GMAC':
-      // use the auth tag baked into the encrypted payload
+      // read out the auth tag AES-GCM baked into these exact bytes
       return buffToString(
         Uint8Array.from(payloadBinary.asByteArray()).slice(-GMAC_TAG_LENGTH),
         'hex'
@@ -478,8 +543,26 @@ async function getSignatureVersion422(
       return hex.encodeArrayBuffer(sig.buffer);
     }
     default:
-      throw new ConfigurationError(`Unsupported signature alg [${algorithmType}]`);
+      throw new ConfigurationError(`Unsupported segment integrity alg [${algorithmType}]`);
   }
+}
+
+/**
+ * Legacy (TDF spec 4.2.2) root integrity. Same hex-then-base64 encoding as
+ * before, same HS256-only domain as {@link rootIntegrity}.
+ */
+async function rootIntegrityVersion422(
+  aggregateHash: Binary,
+  unwrappedKey: SymmetricKey,
+  algorithmType: RootIntegrityAlgorithm,
+  cryptoService: CryptoService
+): Promise<string> {
+  if (!isRootIntegrityAlgorithm(algorithmType)) {
+    throw new ConfigurationError(`unsupported root integrity algorithm [${algorithmType}]`);
+  }
+  const content = buffToString(new Uint8Array(aggregateHash.asArrayBuffer()), 'utf-8');
+  const sig = await cryptoService.hmac(new TextEncoder().encode(content), unwrappedKey);
+  return hex.encodeArrayBuffer(sig.buffer);
 }
 
 function isTargetSpecLegacyTDF(targetSpecVersion?: string): boolean {
@@ -629,9 +712,9 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
         let aggregateHash: string | Uint8Array;
         if (isTargetSpecLegacyTDF(cfg.tdfSpecVersion)) {
           aggregateHash = aggregateHash422;
-          const payloadSigStr = await getSignatureVersion422(
-            cfg.keyForEncryption.unwrappedKey,
+          const payloadSigStr = await rootIntegrityVersion422(
             Binary.fromString(aggregateHash),
+            cfg.keyForEncryption.unwrappedKey,
             rootIntegrityAlgorithm,
             cfg.cryptoService
           );
@@ -641,9 +724,9 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
           // hash the concat of all hashes
           aggregateHash = await concatenateUint8Array(segmentHashList);
 
-          const payloadSig = await getSignature(
-            cfg.keyForEncryption.unwrappedKey,
+          const payloadSig = await rootIntegrity(
             aggregateHash,
+            cfg.keyForEncryption.unwrappedKey,
             rootIntegrityAlgorithm,
             cfg.cryptoService
           );
@@ -780,9 +863,9 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
     const payloadBuffer = new Uint8Array(encryptedResult.payload.asByteArray());
     let hash: string;
     if (isTargetSpecLegacyTDF(cfg.tdfSpecVersion)) {
-      const payloadSigStr = await getSignatureVersion422(
-        cfg.keyForEncryption.unwrappedKey,
+      const payloadSigStr = await segmentIntegrityVersion422(
         encryptedResult.payload,
+        cfg.keyForEncryption.unwrappedKey,
         segmentIntegrityAlgorithm,
         cfg.cryptoService
       );
@@ -790,9 +873,9 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
       aggregateHash422 += payloadSigStr;
       hash = base64.encode(payloadSigStr);
     } else {
-      const payloadSig = await getSignature(
-        cfg.keyForEncryption.unwrappedKey,
+      const payloadSig = await segmentIntegrity(
         new Uint8Array(encryptedResult.payload.asArrayBuffer()),
+        cfg.keyForEncryption.unwrappedKey,
         segmentIntegrityAlgorithm,
         cfg.cryptoService
       );
@@ -1168,17 +1251,14 @@ async function decryptChunk(
   reconstructedKey: SymmetricKey,
   hash: string,
   cipher: SymmetricCipher,
-  segmentIntegrityAlgorithm: IntegrityAlgorithm,
+  segmentIntegrityAlgorithm: SegmentIntegrityAlgorithm,
   specVersion: string,
   cryptoService: CryptoService
 ): Promise<DecryptResult> {
-  if (segmentIntegrityAlgorithm !== 'GMAC' && segmentIntegrityAlgorithm !== 'HS256') {
-    throw new UnsupportedError(`Unsupported integrity alg [${segmentIntegrityAlgorithm}]`);
-  }
-  const segmentSig = await getSignature(
-    reconstructedKey, // SymmetricKey (opaque)
+  const segmentSig = await segmentIntegrity(
     encryptedChunk,
-    segmentIntegrityAlgorithm,
+    reconstructedKey, // SymmetricKey (opaque)
+    asSegmentIntegrityAlgorithm(segmentIntegrityAlgorithm),
     cryptoService
   );
 
@@ -1198,7 +1278,7 @@ async function updateChunkQueue(
   zipReader: ZipReader,
   reconstructedKey: SymmetricKey,
   cipher: SymmetricCipher,
-  segmentIntegrityAlgorithm: IntegrityAlgorithm,
+  segmentIntegrityAlgorithm: SegmentIntegrityAlgorithm,
   cryptoService: CryptoService,
   specVersion: string
 ) {
@@ -1251,7 +1331,7 @@ async function fetchAndDecryptChunkSlice({
   zipReader: ZipReader;
   reconstructedKey: SymmetricKey;
   cipher: SymmetricCipher;
-  segmentIntegrityAlgorithm: IntegrityAlgorithm;
+  segmentIntegrityAlgorithm: SegmentIntegrityAlgorithm;
   cryptoService: CryptoService;
   specVersion: string;
   slice: Chunk[];
@@ -1447,7 +1527,7 @@ export async function sliceAndDecrypt({
   slice: Chunk[];
   cipher: SymmetricCipher;
   cryptoService: CryptoService;
-  segmentIntegrityAlgorithm: IntegrityAlgorithm;
+  segmentIntegrityAlgorithm: SegmentIntegrityAlgorithm;
   specVersion: string;
 }) {
   for (const index in slice) {
@@ -1538,15 +1618,17 @@ export async function decryptStreamFrom(
   // Concatenate all segment hashes into a single Uint8Array
   const aggregateHash = await concatenateUint8Array(segmentHashList);
 
-  const integrityAlgorithm = rootSignature.alg;
-  if (integrityAlgorithm !== 'GMAC' && integrityAlgorithm !== 'HS256') {
-    throw new UnsupportedError(`Unsupported integrity alg [${integrityAlgorithm}]`);
-  }
+  // `rootSignature.alg` is unauthenticated manifest data. Reject GMAC (in any
+  // casing) and every unknown algorithm here, before it can select a
+  // verification routine: a GMAC "root signature" is just a copy of the last
+  // segment hash, so honouring it would let a keyless attacker truncate,
+  // reorder, duplicate or drop segments undetected.
+  const rootIntegrityAlgorithm = asRootIntegrityAlgorithm(rootSignature.alg);
 
-  const payloadSig = await getSignature(
-    keyForDecryption, // SymmetricKey (opaque)
+  const payloadSig = await rootIntegrity(
     aggregateHash,
-    integrityAlgorithm,
+    keyForDecryption, // SymmetricKey (opaque)
+    rootIntegrityAlgorithm,
     cfg.cryptoService
   );
 
@@ -1602,10 +1684,9 @@ export async function decryptStreamFrom(
   );
 
   const cipher = new AesGcmCipher(cfg.cryptoService);
-  const segmentIntegrityAlg = segmentHashAlg || integrityAlgorithm;
-  if (segmentIntegrityAlg !== 'GMAC' && segmentIntegrityAlg !== 'HS256') {
-    throw new UnsupportedError(`Unsupported segment hash alg [${segmentIntegrityAlg}]`);
-  }
+  // Segment GMAC is sound (it is the AEAD's own tag), so both algorithms stay
+  // valid here; only unknown ones are rejected.
+  const segmentIntegrityAlg = asSegmentIntegrityAlgorithm(segmentHashAlg || rootIntegrityAlgorithm);
 
   const schedulerOptions = getBoundedSegmentSchedulerOptions(cfg);
   let scheduler: SegmentBatchScheduler | undefined;

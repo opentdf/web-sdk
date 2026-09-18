@@ -333,23 +333,32 @@ jobs:
 
   ci:
     needs:
+      - ccc
       - lib
       - cli
       - web-app
       - scripts
+      - platform-roundtrip
       - platform-xtest
       - sonarscan
     runs-on: ubuntu-22.04
     if: ${{ !cancelled() }}
     steps:
-
-      - name: "All jobs succeeded"
-        id: success
-        if: ${{ contains(needs.*.result, 'success') }}
+      # `build-and-test / ci` is a required status context and the only one that
+      # summarizes this workflow, so it has to fail closed: anything that is not
+      # `success` -- including `skipped` and `cancelled` -- must block. Asserting
+      # over toJSON(needs) keeps every job in the `needs` list above covered
+      # without a second list here to drift out of sync, and names the offending
+      # job in the annotation.
+      - name: "All jobs must have succeeded"
+        env:
+          NEEDS: ${{ toJSON(needs) }}
         run: |
-          :
-
-      - name: "One or more jobs failed"
-        if: ${{ contains(needs.*.result, 'failure') }}
-        run: |
-          exit 1
+          bad=$(jq -r '[to_entries[]
+            | select(.value.result != "success")
+            | "\(.key)=\(.value.result)"] | join(" ")' <<<"$NEEDS")
+          if [ -n "$bad" ]; then
+            echo "::error::Jobs that did not succeed: $bad"
+            exit 1
+          fi
+          echo "All jobs succeeded." >>"$GITHUB_STEP_SUMMARY"
