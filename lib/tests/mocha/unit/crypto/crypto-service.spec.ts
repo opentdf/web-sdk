@@ -557,42 +557,41 @@ describe('Crypto Service', () => {
       expect(valid).to.be.true;
     });
 
-    it('ES512 DER output is well-formed and round-trips correctly', async () => {
-      // Verifies that ieeeP1363ToDer and derToIeeeP1363 both use correct DER length
-      // encoding, including long-form (0x81 <len>) when the SEQUENCE body is ≥ 128 bytes.
-      // Correct encoding is required for interoperability with external parsers
-      // (Go crypto, OpenSSL, etc.) that strictly validate the DER structure.
-      const webCryptoKeyPair = await crypto.subtle.generateKey(
-        { name: 'ECDSA', namedCurve: 'P-521' },
-        true,
-        ['sign', 'verify']
-      );
-      const ecKeyPair = {
-        publicKey: {
-          _brand: 'PublicKey',
-          algorithm: 'ec:secp521r1',
-          curve: 'P-521',
-          _internal: webCryptoKeyPair.publicKey,
-        } as any,
-        privateKey: {
+    // RFC 7518 §3.4 fixes the ECDSA signature encoding for JWS as raw IEEE
+    // P1363 (R || S), one fixed-width field element each. ASN.1 DER — which is
+    // what several non-WebCrypto stacks emit — is variable length and always
+    // longer, so an exact byte count is what distinguishes the two. Signatures
+    // go from here straight onto the wire, so a regression here silently
+    // produces tokens that conformant verifiers (jose, jwx, nimbus) reject.
+    const RAW_SIGNATURE_BYTES = [
+      { alg: 'ES256', namedCurve: 'P-256', keyAlgorithm: 'ec:secp256r1', length: 64 },
+      { alg: 'ES384', namedCurve: 'P-384', keyAlgorithm: 'ec:secp384r1', length: 96 },
+      { alg: 'ES512', namedCurve: 'P-521', keyAlgorithm: 'ec:secp521r1', length: 132 },
+    ] as const;
+
+    for (const { alg, namedCurve, keyAlgorithm, length } of RAW_SIGNATURE_BYTES) {
+      it(`${alg} signatures are exactly ${length} raw bytes, never DER`, async () => {
+        const webCryptoKeyPair = await crypto.subtle.generateKey(
+          { name: 'ECDSA', namedCurve },
+          true,
+          ['sign', 'verify']
+        );
+        const privateKey = {
           _brand: 'PrivateKey',
-          algorithm: 'ec:secp521r1',
-          curve: 'P-521',
+          algorithm: keyAlgorithm,
+          curve: namedCurve,
           _internal: webCryptoKeyPair.privateKey,
-        } as any,
-      };
-      const data = new TextEncoder().encode('test data for ES512 DER long-form');
+        } as any;
+        const data = new TextEncoder().encode(`raw signature width check for ${alg}`);
 
-      const der = await sign(data, ecKeyPair.privateKey, 'ES512');
-
-      // Output must be a DER SEQUENCE regardless of component size.
-      expect(der[0]).to.equal(0x30);
-
-      // Round-trip validates that the length field was encoded and decoded consistently,
-      // including long-form (needed when the SEQUENCE body is ≥ 128 bytes).
-      const valid = await verify(data, der, ecKeyPair.publicKey, 'ES512');
-      expect(valid).to.be.true;
-    });
+        // A handful of draws: r and s are uniform, so ~1 signature in 256 has a
+        // leading zero byte that DER would drop and P1363 must keep.
+        for (let i = 0; i < 8; i++) {
+          const signature = await sign(data, privateKey, alg);
+          expect(signature.length).to.equal(length);
+        }
+      });
+    }
   });
 
   describe('sign and verify with RS256', () => {
