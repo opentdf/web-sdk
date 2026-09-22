@@ -52,8 +52,11 @@ const integrityAlgorithms = ['hs256', 'gmac'] as const;
 const lowercaseIntegrityAlgorithm = (v: unknown) =>
   typeof v === 'string' ? v.toLowerCase() : (v as string);
 
+const asError = (value: unknown): Error =>
+  value instanceof Error ? value : new Error(String(value));
+
 const parseJwt = (jwt: string, field = 1) => {
-  return JSON.parse(base64.decode(jwt.split('.')[field]));
+  return JSON.parse(base64.decode(jwt.split('.')[field])) as unknown;
 };
 
 const parseJwtComplete = (jwt: string) => {
@@ -99,8 +102,8 @@ async function processAuth({
   return {
     requestLog,
     updateClientPublicKey: async (signingKey: KeyPair) => {
-      actual.updateClientPublicKey(signingKey);
-      log('DEBUG', `updateClientPublicKey: [${signingKey?.publicKey}]`);
+      await actual.updateClientPublicKey(signingKey);
+      log('DEBUG', `updateClientPublicKey: [${JSON.stringify(signingKey.publicKey)}]`);
     },
     withCreds: async (httpReq: AuthProviders.HttpRequest) => {
       const credible = await actual.withCreds(httpReq);
@@ -128,17 +131,18 @@ async function parseAssertionVerificationKeys(
 ): Promise<assertions.AssertionVerificationKeys> {
   let u: assertions.AssertionVerificationKeys;
   try {
-    u = JSON.parse(s);
+    u = JSON.parse(s) as assertions.AssertionVerificationKeys;
   } catch (err) {
     // try as file name:
     try {
       const jsonFile = await openAsBlob(s);
-      u = JSON.parse(await jsonFile.text());
+      u = JSON.parse(await jsonFile.text()) as assertions.AssertionVerificationKeys;
     } catch (err2) {
+      const cause = asError(err2);
       throw new CLIError(
         'CRITICAL',
-        `Failed to open/parse assertion verification keys as string or file path ${err.message}`,
-        err2
+        `Failed to open/parse assertion verification keys as string or file path ${asError(err).message}`,
+        cause
       );
     }
   }
@@ -170,9 +174,12 @@ async function parseAssertionVerificationKeys(
       );
     }
     try {
-      u.Keys[assertionName].key = await correctAssertionKeys(assertionKey);
+      u.Keys[assertionName].key = correctAssertionKeys(assertionKey);
     } catch (err) {
-      throw new CLIError('CRITICAL', `Issue converting assertion key from string: ${err.message}`);
+      throw new CLIError(
+        'CRITICAL',
+        `Issue converting assertion key from string: ${asError(err).message}`
+      );
     }
   }
   return u;
@@ -202,10 +209,7 @@ async function parseReadOptions(argv: Partial<mainArgs>): Promise<ReadOptions> {
   return r;
 }
 
-async function correctAssertionKeys({
-  alg,
-  key,
-}: assertions.AssertionKey): Promise<string | Uint8Array> {
+function correctAssertionKeys({ alg, key }: assertions.AssertionKey): string | Uint8Array {
   if (alg === 'HS256') {
     // Convert key string to Uint8Array
     if (typeof key !== 'string') {
@@ -224,19 +228,20 @@ async function correctAssertionKeys({
 }
 
 async function parseAssertionConfig(s: string): Promise<assertions.AssertionConfig[]> {
-  let u;
+  let u: unknown;
   try {
-    u = JSON.parse(s);
+    u = JSON.parse(s) as unknown;
   } catch (err) {
     // try as file name:
     try {
       const jsonFile = await openAsBlob(s);
-      u = JSON.parse(await jsonFile.text());
+      u = JSON.parse(await jsonFile.text()) as unknown;
     } catch (err2) {
+      const cause = asError(err2);
       throw new CLIError(
         'CRITICAL',
-        `Failed to open/parse assertions as string or file path ${err.message} [${err2}]`,
-        err
+        `Failed to open/parse assertions as string or file path ${asError(err).message} [${cause.message}]`,
+        asError(err)
       );
     }
   }
@@ -245,25 +250,29 @@ async function parseAssertionConfig(s: string): Promise<assertions.AssertionConf
   if (!u) {
     return [];
   }
-  const a = Array.isArray(u) ? u : [u];
+  const a: unknown[] = Array.isArray(u) ? u : [u];
+  const configs: assertions.AssertionConfig[] = [];
   for (const assertion of a) {
     if (!assertions.isAssertionConfig(assertion)) {
       throw new CLIError('CRITICAL', `invalid assertion config ${JSON.stringify(assertion)}`);
     }
     if (!assertion.signingKey) {
+      configs.push(assertion);
       continue;
     }
     try {
-      assertion.signingKey.key = await correctAssertionKeys(assertion.signingKey);
+      assertion.signingKey.key = correctAssertionKeys(assertion.signingKey);
     } catch (err) {
+      const cause = asError(err);
       throw new CLIError(
         'CRITICAL',
-        `Issue converting assertion key from string: ${err.message}`,
-        err
+        `Issue converting assertion key from string: ${cause.message}`,
+        cause
       );
     }
+    configs.push(assertion);
   }
-  return a;
+  return configs;
 }
 
 async function parseCreateOptions(argv: Partial<mainArgs>): Promise<CreateOptions> {
@@ -356,7 +365,7 @@ async function fileAsSource(file: string): Promise<Source> {
       throw new CLIError('CRITICAL', `File does not exist [${file}]`);
     }
   } catch (e) {
-    throw new CLIError('CRITICAL', `File is not accessable [${file}]`, e);
+    throw new CLIError('CRITICAL', `File is not accessable [${file}]`, asError(e));
   }
   log('DEBUG', `Using input from file [${file}]`);
   return { type: 'file-browser', location: await openAsBlob(file) };
@@ -381,7 +390,7 @@ export const handleArgs = (args: string[]) => {
           log(err);
           process.exit(2);
         } else {
-          console.error(`${msg}\n\n${yargs.help()}`);
+          console.error(msg, '\n', yargs.help());
           process.exit(1);
         }
       })
@@ -625,7 +634,7 @@ export const handleArgs = (args: string[]) => {
         async (argv) => {
           log('DEBUG', 'Running decrypt command');
           const allowedKases = argv.allowList?.split(',');
-          log('DEBUG', `Allowed KASes: ${allowedKases}`);
+          log('DEBUG', `Allowed KASes: ${JSON.stringify(allowedKases)}`);
           const ignoreAllowList = !!argv.ignoreAllowList;
           if (!argv.oidcEndpoint) {
             throw new CLIError('CRITICAL', 'oidcEndpoint must be specified');
@@ -649,10 +658,10 @@ export const handleArgs = (args: string[]) => {
           });
           try {
             log('SILLY', `Initialized client`);
-            log('DEBUG', `About to TDF3 decrypt [${argv.file}]`);
+            log('DEBUG', `About to TDF3 decrypt [${String(argv.file)}]`);
             const ct = await client.read(await parseReadOptions(argv));
             const destination = argv.output ? createWriteStream(argv.output) : process.stdout;
-            await ct.pipeTo(Writable.toWeb(destination));
+            await ct.pipeTo(Writable.toWeb(destination) as WritableStream<Uint8Array>);
 
             const lastRequest = authProvider.requestLog[authProvider.requestLog.length - 1];
             log('SILLY', `last request is ${JSON.stringify(lastRequest)}`);
@@ -670,7 +679,15 @@ export const handleArgs = (args: string[]) => {
                   accessToken = parseJwt(lastRequest.headers[h].split(' ')[1]);
                   log('INFO', `Access Token: ${JSON.stringify(accessToken)}`);
                   if (argv.dpop) {
-                    console.assert(accessToken.cnf?.jkt, 'Access token must have a cnf.jkt');
+                    const cnf =
+                      typeof accessToken === 'object' &&
+                      accessToken !== null &&
+                      'cnf' in accessToken
+                        ? accessToken.cnf
+                        : undefined;
+                    const hasJkt =
+                      typeof cnf === 'object' && cnf !== null && 'jkt' in cnf && Boolean(cnf.jkt);
+                    console.assert(hasJkt, 'Access token must have a cnf.jkt');
                   }
                   break;
               }
@@ -724,7 +741,7 @@ export const handleArgs = (args: string[]) => {
               throw new CLIError('CRITICAL', 'Encrypt configuration error: No output?');
             }
             const destination = argv.output ? createWriteStream(argv.output) : process.stdout;
-            await ct.pipeTo(Writable.toWeb(destination));
+            await ct.pipeTo(Writable.toWeb(destination) as WritableStream<Uint8Array>);
           } finally {
             client.close();
           }
@@ -755,7 +772,7 @@ export const handleArgs = (args: string[]) => {
 };
 
 export type mainArgs = Awaited<ReturnType<typeof handleArgs>>;
-export const main = async (argsPromise: mainArgs) => {
+export const main = (argsPromise: mainArgs) => {
   return argsPromise;
 };
 

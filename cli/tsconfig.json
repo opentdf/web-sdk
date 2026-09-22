@@ -1,9 +1,23 @@
 {
-  "extends": "../lib/tsconfig.json",
   "compilerOptions": {
-    "lib": ["es2021", "ES2022.Error"],
+    "allowJs": false,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "lib": ["ES2021", "ES2022.Error"],
     "module": "Node16",
-    "outDir": "dist"
+    "moduleResolution": "Node16",
+    "noEmitOnError": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "outDir": "./dist",
+    "rootDir": ".",
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "strict": true,
+    "target": "ES2021",
+    "types": ["mocha", "node"]
   },
   "include": ["src", "tests"],
   "exclude": ["**/node_modules"]

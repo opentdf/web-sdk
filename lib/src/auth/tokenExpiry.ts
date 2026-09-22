@@ -14,8 +14,10 @@ export function getJwtExpiration(token: string): number | undefined {
     // Base64url decode the payload
     const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
     const padded = payload + '='.repeat((4 - (payload.length % 4)) % 4);
-    const decoded = JSON.parse(atob(padded));
-    return typeof decoded.exp === 'number' ? decoded.exp : undefined;
+    const decoded: unknown = JSON.parse(atob(padded));
+    if (typeof decoded !== 'object' || decoded === null || !('exp' in decoded)) return undefined;
+    const { exp } = decoded as { exp?: unknown };
+    return typeof exp === 'number' ? exp : undefined;
   } catch {
     return undefined;
   }

@@ -1,4 +1,4 @@
-import { Value } from './attributes.js';
+import type { Value } from './attributes.js';
 
 export function effectiveKasKeys(value: Value): Value['kasKeys'] {
   if (value.kasKeys.length) {

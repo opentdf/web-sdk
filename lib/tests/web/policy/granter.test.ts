@@ -115,7 +115,7 @@ describe('policy/granter', () => {
       },
     ]) {
       const expected = e.map(({ kas, sid }) => ({ kas: matr.kases[kas], sid }));
-      it(name, async () => {
+      it(name, () => {
         const p = plan(matr.valuesFor(attrs));
         expect(p).to.deep.equal(expected);
       });
@@ -189,7 +189,7 @@ describe('policy/granter', () => {
       },
     ]) {
       const name = attrs.map((attr) => attr.fqn).join('+');
-      it.only(name, async () => {
+      it.only(name, () => {
         const platformAttrs = attrs.map((attr) => matr.valueFor(attr.fqn));
         const p = plan(platformAttrs);
         expect(p).to.deep.equal(expectedPlan);
@@ -198,7 +198,7 @@ describe('policy/granter', () => {
   });
 
   describe('kasKeys precedence', () => {
-    it('uses value kasKeys over attribute and namespace', async () => {
+    it('uses value kasKeys over attribute and namespace', () => {
       const valueKey = makeSimpleKasKey('https://kas.value/', 'v1');
       const attributeKey = makeSimpleKasKey('https://kas.attribute/', 'a1');
       const namespaceKey = makeSimpleKasKey('https://kas.namespace/', 'n1');
@@ -211,7 +211,7 @@ describe('policy/granter', () => {
       expect(plan([value])).to.deep.equal([{ kas, sid: '1', kid: 'v1' }]);
     });
 
-    it('uses attribute kasKeys when value has none', async () => {
+    it('uses attribute kasKeys when value has none', () => {
       const attributeKey = makeSimpleKasKey('https://kas.attribute/', 'a1');
       const namespaceKey = makeSimpleKasKey('https://kas.namespace/', 'n1');
       const value = buildValue({
@@ -222,7 +222,7 @@ describe('policy/granter', () => {
       expect(plan([value])).to.deep.equal([{ kas, sid: '1', kid: 'a1' }]);
     });
 
-    it('uses namespace kasKeys when value and attribute have none', async () => {
+    it('uses namespace kasKeys when value and attribute have none', () => {
       const namespaceKey = makeSimpleKasKey('https://kas.namespace/', 'n1');
       const value = buildValue({
         namespaceKasKeys: [namespaceKey],
@@ -231,7 +231,7 @@ describe('policy/granter', () => {
       expect(plan([value])).to.deep.equal([{ kas, sid: '1', kid: 'n1' }]);
     });
 
-    it('uses grants when no kasKeys are present', async () => {
+    it('uses grants when no kasKeys are present', () => {
       const value = buildValue({
         grants: [matr.kases[matr.specifiedKas]],
       });
@@ -241,7 +241,7 @@ describe('policy/granter', () => {
       ]);
     });
 
-    it('handles multiple values with per-value kasKeys', async () => {
+    it('handles multiple values with per-value kasKeys', () => {
       const valueKeyA = makeSimpleKasKey('https://kas.a/', 'a1');
       const valueKeyB = makeSimpleKasKey('https://kas.b/', 'b1');
       const valueA = buildValue({

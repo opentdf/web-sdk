@@ -2,7 +2,7 @@ import { Binary } from '../binary.js';
 import { Algorithms } from './algorithms.js';
 import { SymmetricCipher } from './symmetric-cipher-base.js';
 import { decryptBufferSource } from '../crypto/core/symmetric.js';
-import { concatUint8 } from '../utils/index.js';
+import { concatUint8, toArrayBuffer, toCryptoBytes } from '../utils/index.js';
 
 import {
   type CryptoService,
@@ -52,7 +52,7 @@ export class AesGcmCipher extends SymmetricCipher {
     if (result.authTag) {
       toConcat.push(new Uint8Array(result.authTag.asArrayBuffer()));
     }
-    result.payload = Binary.fromArrayBuffer(concatUint8(toConcat).buffer);
+    result.payload = Binary.fromArrayBuffer(toArrayBuffer(concatUint8(toConcat)));
     return result;
   }
 
@@ -60,26 +60,25 @@ export class AesGcmCipher extends SymmetricCipher {
    * Encrypts the payload using AES w/ CBC mode
    * @returns
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   override async decrypt(
     buffer: ArrayBuffer | Uint8Array,
     key: SymmetricKey,
-    iv?: Binary
+    _iv?: Binary
   ): Promise<DecryptResult> {
+    void _iv;
     const input = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
 
     if (this.cryptoService.name === 'BrowserNativeCryptoService') {
       return decryptBufferSource(
-        input.subarray(12),
+        toCryptoBytes(input.subarray(12)),
         key,
-        input.subarray(0, 12),
+        toCryptoBytes(input.subarray(0, 12)),
         Algorithms.AES_256_GCM
       );
     }
 
-    const { payload, payloadIv } = processGcmPayload(
-      input.buffer.slice(input.byteOffset, input.byteOffset + input.byteLength)
-    );
+    const { payload, payloadIv } = processGcmPayload(toArrayBuffer(input));
 
     return this.cryptoService.decrypt(payload, key, payloadIv, Algorithms.AES_256_GCM);
   }

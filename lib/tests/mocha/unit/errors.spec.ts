@@ -1,6 +1,10 @@
 import { assert } from 'chai';
 import { DecryptError, IntegrityError, TdfError } from '../../../src/errors.js';
 
+function causeOf(error: unknown): unknown {
+  return error instanceof Error ? (error as Error & { cause?: unknown }).cause : undefined;
+}
+
 describe('Errors', () => {
   const errorClasses: Record<string, typeof TdfError> = {
     DecryptError,
@@ -58,11 +62,16 @@ describe('scrubbing causes', () => {
     try {
       throw new TdfError('message', cause);
     } catch (e) {
+      assert.instanceOf(e, TdfError);
+      if (!(e instanceof TdfError)) return;
       assert.equal(e.message, 'message');
-      assert.equal(e.cause.extra, undefined);
-      assert.equal(e.cause.message, 'my message');
-      assert.equal(e.cause.cause, undefined);
-      assert.equal(e.cause.stack, cause.stack);
+      const scrubbedCause = causeOf(e);
+      assert.instanceOf(scrubbedCause, Error);
+      if (!(scrubbedCause instanceof Error)) return;
+      assert.equal((scrubbedCause as Error & { extra?: unknown }).extra, undefined);
+      assert.equal(scrubbedCause.message, 'my message');
+      assert.equal(causeOf(scrubbedCause), undefined);
+      assert.equal(scrubbedCause.stack, cause.stack);
     }
   });
 
@@ -74,15 +83,21 @@ describe('scrubbing causes', () => {
     try {
       throw new TdfError('message', cause);
     } catch (e) {
+      assert.instanceOf(e, TdfError);
+      if (!(e instanceof TdfError)) return;
       assert.equal(e.message, 'message');
-      assert.equal(e.cause.extra, undefined);
-      assert.equal(e.cause.message, 'my message');
-      assert.equal(e.cause.stack, cause.stack);
-      assert.equal(e.cause.cause.stack, cause.stack);
-      assert.equal(e.cause.cause.cause.stack, cause.stack);
-      assert.equal(e.cause.cause.cause.cause.stack, cause.stack);
-      assert.equal(e.cause.cause.cause.cause.cause.stack, cause.stack);
-      assert.equal(e.cause.cause.cause.cause.cause.cause, undefined);
+      let scrubbedCause: unknown = causeOf(e);
+      assert.instanceOf(scrubbedCause, Error);
+      if (!(scrubbedCause instanceof Error)) return;
+      assert.equal((scrubbedCause as Error & { extra?: unknown }).extra, undefined);
+      assert.equal(scrubbedCause.message, 'my message');
+      for (let depth = 0; depth < 5; depth += 1) {
+        assert.instanceOf(scrubbedCause, Error);
+        if (!(scrubbedCause instanceof Error)) return;
+        assert.equal(scrubbedCause.stack, cause.stack);
+        scrubbedCause = causeOf(scrubbedCause);
+      }
+      assert.equal(scrubbedCause, undefined);
     }
   });
 });

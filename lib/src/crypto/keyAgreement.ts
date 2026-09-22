@@ -30,6 +30,7 @@
 import { keyAlgorithmToPublicKeyAlgorithm } from '../access.js';
 import { ConfigurationError } from '../errors.js';
 import { AlgorithmName, CipherType, HashType, KeyFormat, KeyType, KeyUsageType } from './enums.js';
+import { toCryptoBytes } from './buffer.js';
 
 const KEY_USAGE_DERIVE_KEY = 'deriveKey';
 
@@ -79,13 +80,13 @@ export async function keyAgreement(
     }
   }
 
-  if (privateKey.type !== KeyType.Private) {
+  if (privateKey.type !== String(KeyType.Private)) {
     throw new ConfigurationError(
       `Expected input of privateKey to be a CryptoKey of type private, not [${privateKey.type}]`
     );
   }
 
-  if (publicKey.type !== KeyType.Public) {
+  if (publicKey.type !== String(KeyType.Public)) {
     throw new ConfigurationError(
       `Expected input of publicKey to be a CryptoKey of type public, not [${publicKey.type}]`
     );
@@ -130,8 +131,8 @@ export async function keyAgreement(
     {
       name: AlgorithmName.HKDF,
       hash: hkdfHash,
-      salt: hkdfSalt,
-      info: hkdfInfo,
+      salt: toCryptoBytes(hkdfSalt),
+      info: toCryptoBytes(hkdfInfo),
     },
     derivedKey,
     {

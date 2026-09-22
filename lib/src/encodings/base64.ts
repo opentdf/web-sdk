@@ -6,7 +6,7 @@ let _lut: number[];
 let _padding: number;
 function lookup(i: number) {
   if (!_lut) {
-    _lut = new Array(256);
+    _lut = new Array<number>(256);
     for (let i = 0; i < 64; i++) {
       _lut[charsStandard.charCodeAt(i)] = i;
     }
@@ -74,8 +74,13 @@ function encodeFallback(input: string, urlSafe?: boolean): string {
  * Copyright (c) 2012 Niklas von Hertzen
  * MIT License
  */
-function encodeArrayBuffer(arrayBuffer: ArrayBufferLike, urlSafe?: boolean): string {
-  const bytes = new Uint8Array(arrayBuffer);
+function encodeArrayBuffer(
+  arrayBuffer: ArrayBufferLike | ArrayBufferView<ArrayBufferLike>,
+  urlSafe?: boolean
+): string {
+  const bytes = ArrayBuffer.isView(arrayBuffer)
+    ? new Uint8Array(arrayBuffer.buffer, arrayBuffer.byteOffset, arrayBuffer.byteLength)
+    : new Uint8Array(arrayBuffer);
   const len = bytes.length;
   const chars = urlSafe ? charsUrlSafe : charsStandard;
   let base64 = '';

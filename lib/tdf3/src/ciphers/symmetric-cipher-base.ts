@@ -6,6 +6,7 @@ import {
   type SymmetricKey,
 } from '../crypto/declarations.js';
 import { encodeArrayBuffer as hexEncode } from '../../../src/encodings/hex.js';
+import { toArrayBuffer } from '../utils/index.js';
 
 export abstract class SymmetricCipher {
   cryptoService: CryptoService;
@@ -25,7 +26,7 @@ export abstract class SymmetricCipher {
       throw Error('No iv length');
     }
     const bytes = await this.cryptoService.randomBytes(this.ivLength);
-    return hexEncode(bytes.buffer);
+    return hexEncode(toArrayBuffer(bytes));
   }
 
   async generateKey(): Promise<SymmetricKey> {

@@ -1,5 +1,5 @@
 import { type AuthConfig, resolveAuthConfig } from './auth/interceptors.js';
-import { RewrapResponse } from './platform/kas/kas_pb.js';
+import type { RewrapResponse } from './platform/kas/kas_pb.js';
 import { getPlatformUrlFromKasEndpoint, validateSecureUrl } from './utils.js';
 import { base64 } from './encodings/index.js';
 import {
@@ -82,7 +82,7 @@ export async function fetchWrappedKey(
 export const rewrapAdditionalContextHeader = (
   fulfillableObligationValueFQNs: string[]
 ): string | undefined => {
-  if (!fulfillableObligationValueFQNs.length) return;
+  if (!fulfillableObligationValueFQNs.length) return undefined;
 
   const context: RewrapAdditionalContext = {
     obligations: {
@@ -113,13 +113,13 @@ export const keyAlgorithmToPublicKeyAlgorithm = (k: CryptoKey): KasPublicKeyAlgo
       case 'P-521':
         return 'ec:secp521r1';
       default:
-        throw new Error(`unsupported EC curve: ${eca.namedCurve}`);
+        throw new Error(`unsupported EC curve: ${String(eca.namedCurve)}`);
     }
   }
   if (a.name === 'RSA-OAEP' || a.name === 'RSASSA-PKCS1-v1_5') {
     const rsaa = a as RsaHashedKeyAlgorithm;
     if (rsaa.publicExponent.toString() !== '1,0,1') {
-      throw new Error(`unsupported RSA public exponent: ${rsaa.publicExponent}`);
+      throw new Error(`unsupported RSA public exponent: ${rsaa.publicExponent.toString()}`);
     }
     switch (rsaa.modulusLength) {
       case 2048:
@@ -127,7 +127,7 @@ export const keyAlgorithmToPublicKeyAlgorithm = (k: CryptoKey): KasPublicKeyAlgo
       case 4096:
         return 'rsa:4096';
       default:
-        throw new Error(`unsupported RSA modulus length: ${rsaa.modulusLength}`);
+        throw new Error(`unsupported RSA modulus length: ${String(rsaa.modulusLength)}`);
     }
   }
   throw new Error(`unsupported key algorithm: ${a.name}`);
@@ -150,7 +150,7 @@ export const publicKeyAlgorithmToJwa = (a: KasPublicKeyAlgorithm): string => {
     case 'mlkem:1024':
       return 'ML-KEM-1024+A256KW';
     default:
-      throw new Error(`unsupported public key algorithm: ${a}`);
+      throw new Error(`unsupported public key algorithm: ${String(a)}`);
   }
 };
 
@@ -299,10 +299,6 @@ async function tryPromisesUntilFirstSuccess<T>(
     return await first();
   } catch (e1) {
     console.info('v2 request error', e1);
-    try {
-      return await second();
-    } catch (err) {
-      throw err;
-    }
+    return await second();
   }
 }

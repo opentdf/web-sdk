@@ -1,6 +1,6 @@
 import { canonicalizeEx } from 'json-canonicalize';
 import { base64, hex } from '../../src/encodings/index.js';
-import { ConfigurationError, IntegrityError, InvalidFileError } from '../../src/errors.js';
+import { asError, ConfigurationError, IntegrityError, InvalidFileError } from '../../src/errors.js';
 import { tdfSpecVersion, version as sdkVersion } from '../../src/version.js';
 import {
   type CryptoService,
@@ -9,6 +9,7 @@ import {
   type SymmetricKey,
 } from './crypto/declarations.js';
 import { decodeProtectedHeader, signJwt, verifyJwt, type JwtHeader } from './crypto/jwt.js';
+import { toArrayBuffer } from './utils/index.js';
 
 export type AssertionKeyAlg = 'ES256' | 'RS256' | 'HS256';
 export type AssertionType = 'handling' | 'other';
@@ -57,7 +58,7 @@ export async function hash(a: Assertion, cryptoService: CryptoService): Promise<
   });
 
   const hashBytes = await cryptoService.digest('SHA-256', new TextEncoder().encode(result));
-  return hex.encodeArrayBuffer(hashBytes.buffer);
+  return hex.encodeArrayBuffer(toArrayBuffer(hashBytes));
 }
 
 /**
@@ -104,14 +105,14 @@ async function sign(
   } else if (key.key instanceof Uint8Array) {
     signingMaterial = await cryptoService.importSymmetricKey(key.key);
   } else {
-    signingMaterial = key.key as PrivateKey | SymmetricKey;
+    signingMaterial = key.key;
   }
 
   let token: string;
   try {
     token = await signJwt(cryptoService, payload, signingMaterial, header);
   } catch (error) {
-    throw new ConfigurationError(`Signing assertion failed: ${error.message}`, error);
+    throw new ConfigurationError(`Signing assertion failed: ${String(error)}`, asError(error));
   }
   thiz.binding.method = 'jws';
   thiz.binding.signature = token;
@@ -173,7 +174,7 @@ export async function verify(
 
     if (header.jwk) {
       // Convert embedded JWK to PEM
-      verificationKey = await cryptoService.jwkToPublicKeyPem(header.jwk as JsonWebKey);
+      verificationKey = await cryptoService.jwkToPublicKeyPem(header.jwk);
     } else if (header.x5c && Array.isArray(header.x5c) && header.x5c.length > 0) {
       // Extract public key from X.509 certificate
       const cert = `-----BEGIN CERTIFICATE-----\n${header.x5c[0]}\n-----END CERTIFICATE-----`;
@@ -185,7 +186,7 @@ export async function verify(
     });
     payload = result.payload as AssertionPayload;
   } catch (error) {
-    throw new InvalidFileError(`Verifying assertion failed: ${error.message}`, error);
+    throw new InvalidFileError(`Verifying assertion failed: ${String(error)}`, asError(error));
   }
   const { assertionHash, assertionSig } = payload;
 
@@ -207,7 +208,7 @@ export async function verify(
       aggregateHash,
       new Uint8Array(hex.decodeArrayBuffer(assertionHash))
     );
-    encodedHash = base64.encodeArrayBuffer(combinedHash);
+    encodedHash = base64.encodeArrayBuffer(toArrayBuffer(combinedHash));
   }
 
   // check if assertionSig is same as encodedHash
@@ -254,7 +255,7 @@ export async function CreateAssertion(
       }
       encodedHash = base64.encode(aggregateHash + assertionHash);
       break;
-    case '4.3.0':
+    case '4.3.0': {
       if (typeof aggregateHash === 'string') {
         throw new ConfigurationError(
           'Aggregate hash must be a typed array for TDF spec version 4.3.0'
@@ -266,6 +267,7 @@ export async function CreateAssertion(
       );
       encodedHash = base64.encodeArrayBuffer(combinedHash);
       break;
+    }
     default:
       throw new ConfigurationError(`Unsupported TDF spec version: [${targetVersion}]`);
   }

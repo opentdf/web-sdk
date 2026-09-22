@@ -9,7 +9,7 @@ import { AttributeNotFoundError, ConfigurationError } from '../../../src/errors.
 // Null/stub auth provider — not needed for validation-only code paths.
 const noopAuthProvider = {
   updateClientPublicKey: async () => {},
-  withCreds: async (req: unknown) => req,
+  withCreds: (req: unknown) => Promise.resolve(req),
 } as never;
 
 const platformUrl = 'http://localhost:3000';

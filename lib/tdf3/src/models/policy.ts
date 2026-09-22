@@ -16,7 +16,7 @@ export type Policy = {
 export function validatePolicyObject(policyMaybe: unknown): policyMaybe is Policy {
   if (typeof policyMaybe !== 'object') {
     throw new ConfigurationError(
-      `The given policy reference must be an object, not: ${policyMaybe}`
+      `The given policy reference must be an object, not: ${JSON.stringify(policyMaybe)}`
     );
   }
   const policy = policyMaybe as Policy;
@@ -27,7 +27,7 @@ export function validatePolicyObject(policyMaybe: unknown): policyMaybe is Polic
 
   if (missingFields.length) {
     throw new ConfigurationError(
-      `The given policy object requires the following properties: ${missingFields}`
+      `The given policy object requires the following properties: ${missingFields.join(', ')}`
     );
   }
   return true;

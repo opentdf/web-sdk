@@ -1,12 +1,14 @@
 import { expect, assert } from 'chai';
 import sinon from 'sinon';
-import { Client, findEntryInCache, HttpRequest } from '../../tdf3/src/client/index.js';
+import type { HttpRequest } from '../../tdf3/src/client/index.js';
+import { Client, findEntryInCache } from '../../tdf3/src/client/index.js';
 import { getMocks } from '../mocks/index.js';
-import { EncryptParams, EncryptParamsBuilder } from '../../tdf3/src/client/builders.js';
-import { KasPublicKeyInfo } from '../../src/access.js';
+import type { EncryptParams } from '../../tdf3/src/client/builders.js';
+import { EncryptParamsBuilder } from '../../tdf3/src/client/builders.js';
+import type { KasPublicKeyInfo } from '../../src/access.js';
 import { valClassA, valueFor } from '../web/policy/mock-attrs.js';
-import { KeyAccessServer } from '../../src/policy/attributes.js';
-import { SourceType, Value } from '../../src/platform/policy/objects_pb.js';
+import type { Value } from '../../src/platform/policy/objects_pb.js';
+import { SourceType } from '../../src/platform/policy/objects_pb.js';
 
 const Mocks = getMocks();
 const kasUrl = 'http://localhost:3000/kas';
@@ -14,10 +16,11 @@ const platformUrl = 'http://localhost:3000';
 
 const authProvider = {
   updateClientPublicKey: async () => {},
-  withCreds: async (httpReq: HttpRequest) => ({
-    ...httpReq,
-    headers: { ...httpReq.headers, Authorization: 'Bearer dummy-auth-token' },
-  }),
+  withCreds: (httpReq: HttpRequest) =>
+    Promise.resolve({
+      ...httpReq,
+      headers: { ...httpReq.headers, Authorization: 'Bearer dummy-auth-token' },
+    }),
 };
 
 const createFakeResponse = (body: unknown, ok = true, status = 200) => {
@@ -35,7 +38,7 @@ describe('Client Caching Behavior', () => {
   let client: Client;
   let fetchStub: sinon.SinonStub;
 
-  beforeEach(async () => {
+  beforeEach(() => {
     client = new Client({
       kasEndpoint: kasUrl,
       platformUrl: platformUrl,
@@ -227,7 +230,7 @@ describe('Client Caching Behavior', () => {
         },
         sourceType: SourceType.EXTERNAL,
         name: kasFetchedUri,
-      } as KeyAccessServer);
+      });
 
       // 2. Define the key that we expect the client to fetch over the network.
       const mockKasFetchedKeyResponse: KasPublicKeyInfo = {

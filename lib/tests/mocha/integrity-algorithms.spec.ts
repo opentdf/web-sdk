@@ -14,7 +14,7 @@
 import { assert } from 'chai';
 
 import { getMocks } from '../mocks/index.js';
-import { AuthProvider, HttpRequest } from '../../src/auth/auth.js';
+import type { AuthProvider, HttpRequest } from '../../src/auth/auth.js';
 import { AesGcmCipher, SplitKey, WebCryptoService } from '../../tdf3/index.js';
 import { Client } from '../../tdf3/src/index.js';
 import { type EncryptParams } from '../../tdf3/src/client/builders.js';
@@ -26,7 +26,7 @@ const kasUrl = 'http://localhost:3000';
 
 const authProvider: AuthProvider = {
   updateClientPublicKey: async () => {},
-  withCreds: async (httpReq: HttpRequest) => httpReq,
+  withCreds: (httpReq: HttpRequest) => Promise.resolve(httpReq),
 };
 
 const SEGMENT_SIZE = 1024;
@@ -64,7 +64,7 @@ async function encryptToBuffer(
     offline: true,
     scope: { dissem: ['user@domain.com'], attributes: [] },
     windowSize: SEGMENT_SIZE,
-    keyMiddleware: async () => ({ keyForEncryption: key, keyForManifest: key }),
+    keyMiddleware: () => Promise.resolve({ keyForEncryption: key, keyForManifest: key }),
     source: new ReadableStream({
       start(controller) {
         controller.enqueue(plaintext);
@@ -125,7 +125,7 @@ describe('integrity algorithm selection (DSPX-4736)', function () {
       assert.fail('expected a ConfigurationError');
     } catch (e) {
       assert.instanceOf(e, ConfigurationError);
-      assert.include((e as Error).message, 'unsupported root integrity algorithm');
+      assert.include(e.message, 'unsupported root integrity algorithm');
     }
   });
 
@@ -137,7 +137,7 @@ describe('integrity algorithm selection (DSPX-4736)', function () {
       assert.fail('expected a ConfigurationError');
     } catch (e) {
       assert.instanceOf(e, ConfigurationError);
-      assert.include((e as Error).message, 'unsupported root integrity algorithm');
+      assert.include(e.message, 'unsupported root integrity algorithm');
     }
   });
 
@@ -149,7 +149,7 @@ describe('integrity algorithm selection (DSPX-4736)', function () {
       assert.fail('expected a ConfigurationError');
     } catch (e) {
       assert.instanceOf(e, ConfigurationError);
-      assert.include((e as Error).message, 'unsupported segment integrity algorithm');
+      assert.include(e.message, 'unsupported segment integrity algorithm');
     }
   });
 

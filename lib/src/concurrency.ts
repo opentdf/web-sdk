@@ -1,5 +1,12 @@
 type LabelledSuccess<T> = { lid: string; value: Promise<T> };
-type LabelledFailure = { lid: string; e: any };
+class LabelledFailure extends Error {
+  constructor(
+    readonly lid: string,
+    readonly error: unknown
+  ) {
+    super(`Promise labelled ${lid} failed`);
+  }
+}
 
 async function labelPromise<T>(
   label: string,
@@ -9,7 +16,7 @@ async function labelPromise<T>(
     const value = await promise();
     return { lid: label, value: Promise.resolve(value) };
   } catch (e) {
-    throw { lid: label, e };
+    throw new LabelledFailure(label, e);
   }
 }
 
@@ -35,8 +42,10 @@ export async function allPool<T>(
         resolved.push(await value);
         delete pool[lid];
       } catch (err) {
-        const { e } = err as LabelledFailure;
-        throw e;
+        if (err instanceof LabelledFailure) {
+          throw err.error;
+        }
+        throw err;
       }
     }
   }
@@ -45,8 +54,8 @@ export async function allPool<T>(
       resolved.push(await labelled.value);
     }
   } catch (err) {
-    if ('lid' in err && 'e' in err) {
-      throw err.e;
+    if (err instanceof LabelledFailure) {
+      throw err.error;
     } else {
       throw err;
     }
@@ -73,9 +82,12 @@ export async function anyPool<T>(
         const { value } = await Promise.race(promises);
         return await value;
       } catch (error) {
-        const { lid, e } = error;
-        rejections.push(e);
-        delete pool[lid];
+        if (error instanceof LabelledFailure) {
+          rejections.push(error.error);
+          delete pool[error.lid];
+        } else {
+          rejections.push(error);
+        }
       }
     }
   }
@@ -85,8 +97,8 @@ export async function anyPool<T>(
   } catch (errors) {
     if (errors instanceof AggregateError) {
       for (const error of errors.errors) {
-        if ('lid' in error && 'e' in error) {
-          rejections.push(error.e);
+        if (error instanceof LabelledFailure) {
+          rejections.push(error.error);
         } else {
           rejections.push(error);
         }

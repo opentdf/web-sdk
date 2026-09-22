@@ -1,5 +1,6 @@
 import { default as dpopFn } from './dpop.js';
-import { HttpRequest, withHeaders } from './auth.js';
+import type { HttpRequest } from './auth.js';
+import { withHeaders } from './auth.js';
 import { isTokenExpired, resolveTokenExpiry } from './tokenExpiry.js';
 import { base64 } from '../encodings/index.js';
 import { ConfigurationError, TdfError } from '../errors.js';
@@ -52,9 +53,7 @@ export type ExternalJwtCredentials = CommonCredentials & {
 };
 
 export type OIDCCredentials =
-  | ClientSecretCredentials
-  | ExternalJwtCredentials
-  | RefreshTokenCredentials;
+  ClientSecretCredentials | ExternalJwtCredentials | RefreshTokenCredentials;
 
 const qstringify = (obj: Record<string, string>) => new URLSearchParams(obj).toString();
 
@@ -228,7 +227,7 @@ export class AccessToken {
         `token/code exchange fail: POST [${this.tokenEndpoint}] => ${response.status} ${response.statusText}`
       );
     }
-    return response.json();
+    return (await response.json()) as AccessTokenResponse;
   }
 
   /**
@@ -286,6 +285,7 @@ export class AccessToken {
    * Calling this function will trigger a forcible token refresh using the cached refresh token, and contact the auth server.
    */
   async refreshTokenClaimsWithClientPubkeyIfNeeded(signingKey: KeyPair): Promise<void> {
+    await Promise.resolve();
     // If we already have a token, and the pubkey is unchanged,
     // we can keep the cached token - otherwise drop it so the next `get()`
     // refetches a token bound to the new public key.

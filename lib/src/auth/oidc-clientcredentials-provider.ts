@@ -1,5 +1,5 @@
 import { ConfigurationError } from '../errors.js';
-import { AuthProvider, type HttpRequest } from './auth.js';
+import type { AuthProvider, HttpRequest } from './auth.js';
 import { AccessToken, type ClientSecretCredentials } from './oidc.js';
 import * as defaultCryptoService from '../../tdf3/src/crypto/index.js';
 import { type CryptoService, type KeyPair } from '../../tdf3/src/crypto/declarations.js';
