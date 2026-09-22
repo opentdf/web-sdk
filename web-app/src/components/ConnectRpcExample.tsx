@@ -36,20 +36,20 @@ export function ConnectRpcExample({ authProvider }: ConnectRpcExampleProps) {
     };
 
     const response = await platform.v1.attributes.listAttributes(request);
-    setResult(response.attributes.map((s) => `${s}`).join(','));
+    setResult(response.attributes.map((s: unknown) => String(s)).join(','));
   };
 
   return (
     <>
       <fieldset>
         <legend>Connect RPC</legend>
-        <button id="wellknown_config" onClick={handleWellknown}>
+        <button id="wellknown_config" onClick={() => void handleWellknown()}>
           Wellknown
         </button>
-        <button id="public_kas_key" onClick={handleKas}>
+        <button id="public_kas_key" onClick={() => void handleKas()}>
           Public Key Kas
         </button>
-        <button id="policy_list_attr" onClick={handlePolicy}>
+        <button id="policy_list_attr" onClick={() => void handlePolicy()}>
           Policy List Attributes
         </button>
         <textarea id="connect_result" value={result} readOnly></textarea>

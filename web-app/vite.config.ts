@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { defineConfig, type Plugin, type PluginOption } from 'vite';
+import { defineConfig, type Plugin, type PluginOption, type ProxyOptions } from 'vite';
 import react from '@vitejs/plugin-react';
 import istanbul from 'vite-plugin-istanbul';
 
@@ -13,11 +13,15 @@ const webAppEntry = fileURLToPath(new URL('index.html', import.meta.url));
 // `npm run dev` should use the packed SDK the same way a consumer would.
 const coverage = !!process.env.COVERAGE;
 
-function proxy(): Record<string, unknown> {
+function proxy(): Record<string, string | ProxyOptions> {
   const { VITE_PROXY } = process.env;
   if (VITE_PROXY) {
     console.log(`using VITE_PROXY [${VITE_PROXY}]`);
-    return JSON.parse(VITE_PROXY);
+    const parsed: unknown = JSON.parse(VITE_PROXY);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new TypeError('VITE_PROXY must contain a JSON object');
+    }
+    return parsed as Record<string, string | ProxyOptions>;
   }
   console.log('using standard VITE_PROXY');
   return {

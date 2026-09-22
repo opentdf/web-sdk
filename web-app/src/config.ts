@@ -22,7 +22,11 @@ function cfg(): TDFConfig {
       reader: 'https://secure.virtru.com/start?htmlProtocol=1',
     };
   }
-  return JSON.parse(VITE_TDF_CFG);
+  const parsed: unknown = JSON.parse(VITE_TDF_CFG as string);
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error('VITE_TDF_CFG must contain a JSON object');
+  }
+  return parsed as TDFConfig;
 }
 
 export const config = cfg();

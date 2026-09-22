@@ -195,7 +195,7 @@ export class OidcClient implements AuthProvider {
     const key = this.ssk('sessions');
     const rawData = sessionStorage.getItem(key);
     if (rawData) {
-      return (this._sessions = JSON.parse(rawData));
+      return (this._sessions = JSON.parse(rawData) as Sessions);
     }
     const config = (await fetchConfig(this.host)) as OpenidConfiguration;
     console.log(config);
@@ -295,7 +295,9 @@ export class OidcClient implements AuthProvider {
     }
     const currentSession = sessions.requests[response.state];
     if (!currentSession) {
-      throw new Error(`OIDC auth error: session storage missing state for ${response}`);
+      throw new Error(
+        `OIDC auth error: session storage missing state for ${JSON.stringify(response)}`
+      );
     }
     const usedRedirectCodes = currentSession.usedCodes;
     console.log('redirect response:', response, usedRedirectCodes);
@@ -473,12 +475,13 @@ export class OidcClient implements AuthProvider {
     if (!response.ok) {
       throw new Error(response.statusText);
     }
-    const { access_token, expires_in, id_token, refresh_token } = await response.json();
+    const { access_token, expires_in, id_token, refresh_token } =
+      (await response.json()) as TokenResponse;
 
-    const { virtru_user_id } = decodeJwt(access_token);
+    const { virtru_user_id } = decodeJwt(access_token) as { virtru_user_id: string };
 
     return {
-      userId: virtru_user_id as string,
+      userId: virtru_user_id,
       accessToken: access_token,
       expiresAt: new Date().getTime() + expires_in * 1000,
       idToken: id_token,
@@ -486,8 +489,9 @@ export class OidcClient implements AuthProvider {
     };
   }
 
-  async updateClientPublicKey(signingKey: KeyPair): Promise<void> {
+  updateClientPublicKey(signingKey: KeyPair): Promise<void> {
     this.signingKey = signingKey;
+    return Promise.resolve();
   }
 
   async withCreds(httpReq: HttpRequest): Promise<HttpRequest> {
