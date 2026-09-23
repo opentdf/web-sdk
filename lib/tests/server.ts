@@ -1,5 +1,6 @@
 import * as jose from 'jose';
-import { createServer, IncomingMessage, RequestListener } from 'node:http';
+import type { IncomingMessage, RequestListener, ServerResponse } from 'node:http';
+import { createServer } from 'node:http';
 import { ml_kem768, ml_kem1024 } from '@noble/post-quantum/ml-kem.js';
 
 import { base64 } from '../src/encodings/index.js';
@@ -7,10 +8,11 @@ import { encryptWithPublicKey } from '../tdf3/src/crypto/index.js';
 import { getMocks } from './mocks/index.js';
 import { keyAgreement, pemPublicToCrypto } from '../src/crypto/index.js';
 import { generateRandomNumber } from '../src/crypto/generateRandomNumber.js';
+import { toArrayBuffer, toCryptoBytes } from '../src/crypto/buffer.js';
 import { formatAsPem, removePemFormatting } from '../tdf3/src/crypto/crypto-utils.js';
 import { Binary } from '../tdf3/index.js';
 import { valueFor } from './web/policy/mock-attrs.js';
-import { AttributeAndValue } from '../src/policy/attributes.js';
+import type { AttributeAndValue } from '../src/policy/attributes.js';
 import { getZtdfSalt } from '../tdf3/src/crypto/salt.js';
 import { DefaultCryptoService } from '../tdf3/src/crypto/index.js';
 import { isMlKemKeyAlgorithm, mlKemAlgorithmToLevel } from '../tdf3/src/crypto/declarations.js';
@@ -33,7 +35,7 @@ const MLKEM_APIS = { 768: ml_kem768, 1024: ml_kem1024 } as const;
 function mlKemPublicKeyPem(level: 768 | 1024): string {
   const der = encodeMlKemSpkiDer(KAS_ML_KEM_KEYS[level].publicKey, level);
   // formatAsPem expects an ArrayBuffer; copy out of the underlying buffer.
-  const ab = der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength);
+  const ab = toArrayBuffer(der);
   return formatAsPem(ab, 'PUBLIC KEY');
 }
 
@@ -50,7 +52,7 @@ if (!(SUPPORTED_BASE_KEY_ALGS as readonly string[]).includes(BASE_KEY_ALG)) {
   );
 }
 
-import { create, toJsonString, fromJson } from '@bufbuild/protobuf';
+import { create, toJsonString, fromJson, type JsonValue } from '@bufbuild/protobuf';
 import { ValueSchema } from '@bufbuild/protobuf/wkt';
 import {
   PolicyRewrapResultSchema,
@@ -64,8 +66,24 @@ const KAS_RSA_PRIVATE_KEY = DefaultCryptoService.importPrivateKey!(Mocks.kasPriv
   usage: 'encrypt',
 });
 
+function parseJson(text: string): unknown {
+  return JSON.parse(text) as unknown;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+function asStringArray(value: unknown): string[] | undefined {
+  return Array.isArray(value) && value.every((item): item is string => typeof item === 'string')
+    ? value
+    : undefined;
+}
+
 function range(start: number, end: number): Uint8Array {
-  const result = [];
+  const result: number[] = [];
   for (let i = start; i <= end; i++) {
     result.push(i);
   }
@@ -88,8 +106,14 @@ function getBody(request: IncomingMessage): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
     const bodyParts: Uint8Array[] = [];
     request
-      .on('data', (chunk) => {
-        bodyParts.push(chunk);
+      .on('data', (chunk: unknown) => {
+        if (chunk instanceof Uint8Array) {
+          bodyParts.push(chunk);
+        } else if (typeof chunk === 'string') {
+          bodyParts.push(new TextEncoder().encode(chunk));
+        } else {
+          reject(new TypeError('Unexpected request body chunk'));
+        }
       })
       .on('end', () => {
         resolve(concat(bodyParts));
@@ -98,7 +122,7 @@ function getBody(request: IncomingMessage): Promise<Uint8Array> {
   });
 }
 
-const kas: RequestListener = async (req, res) => {
+const kasHandler = async (req: IncomingMessage, res: ServerResponse) => {
   console.log('[INFO]: server request: ', req.method, req.url, req.headers);
   res.setHeader(
     'Access-Control-Allow-Headers',
@@ -132,8 +156,8 @@ const kas: RequestListener = async (req, res) => {
     } else if (url.pathname === '/kas.AccessService/PublicKey') {
       const body = await getBody(req);
       const bodyText = new TextDecoder().decode(body);
-      const params = JSON.parse(bodyText);
-      const algorithm = params.algorithm || 'rsa:2048';
+      const params = asRecord(parseJson(bodyText));
+      const algorithm = typeof params?.algorithm === 'string' ? params.algorithm : 'rsa:2048';
 
       const validAlgorithms = ['ec:secp256r1', 'rsa:2048', 'mlkem:768', 'mlkem:1024'];
       if (!validAlgorithms.includes(algorithm)) {
@@ -149,7 +173,7 @@ const kas: RequestListener = async (req, res) => {
         res.end(JSON.stringify({ kid: `mlkem${level}`, publicKey: mlKemPublicKeyPem(level) }));
         return;
       }
-      const fmt = params.fmt || 'pkcs8';
+      const fmt = typeof params?.fmt === 'string' ? params.fmt : 'pkcs8';
       if (!['jwks', 'pkcs8'].includes(fmt)) {
         console.log(`[DEBUG] invalid fmt [${fmt}]`);
         res.writeHead(400);
@@ -168,10 +192,11 @@ const kas: RequestListener = async (req, res) => {
         const statusCode = parseInt(req.headers['x-test-response'] as string);
         res.writeHead(statusCode);
         switch (statusCode) {
-          case 400:
+          case 400: {
             const statusMessage = parseInt(req.headers['x-test-response-message'] as string);
             res.end(JSON.stringify({ error: statusMessage }));
             return;
+          }
           case 401:
             res.end(JSON.stringify({ error: 'Unauthorized' }));
             return;
@@ -181,9 +206,14 @@ const kas: RequestListener = async (req, res) => {
                 '[DEBUG] required obligations header found ',
                 req.headers['x-test-required-obligations'] as string
               );
-              const obligations: string[] = JSON.parse(
-                req.headers['x-test-required-obligations'] as string
+              const obligations = asStringArray(
+                parseJson(req.headers['x-test-required-obligations'] as string)
               );
+              if (!obligations) {
+                res.writeHead(400);
+                res.end('{"error":"Invalid obligations"}');
+                return;
+              }
               console.log('[DEBUG] required obligations: ', obligations);
               const reply = create(RewrapResponseSchema, {
                 responses: [
@@ -244,7 +274,13 @@ const kas: RequestListener = async (req, res) => {
       }
       const body = await getBody(req);
       const bodyText = new TextDecoder().decode(body);
-      const { signedRequestToken } = JSON.parse(bodyText);
+      const signedRequest = asRecord(parseJson(bodyText));
+      const signedRequestToken = signedRequest?.signedRequestToken;
+      if (typeof signedRequestToken !== 'string') {
+        res.writeHead(400);
+        res.end('{"error":"Invalid signed request"}');
+        return;
+      }
       // NOTE: Real KAS will verify JWT here
       const { requestBody } = jose.decodeJwt(signedRequestToken);
 
@@ -255,7 +291,12 @@ const kas: RequestListener = async (req, res) => {
         return;
       }
 
-      const rewrap = fromJson(UnsignedRewrapRequestSchema, JSON.parse(requestBody as string));
+      if (typeof requestBody !== 'string') {
+        res.writeHead(400);
+        res.end('{"error":"Invalid request body"}');
+        return;
+      }
+      const rewrap = fromJson(UnsignedRewrapRequestSchema, parseJson(requestBody) as JsonValue);
       console.log('[INFO]: rewrap request body: ', rewrap);
 
       // All clientPublicKey strings now arrive as PEM SPKI. Decode once and decide
@@ -350,7 +391,7 @@ const kas: RequestListener = async (req, res) => {
           dek = Binary.fromArrayBuffer(dekab);
         } else {
           dek = await DefaultCryptoService.decryptWithPrivateKey(
-            Binary.fromArrayBuffer(wk),
+            Binary.fromArrayBuffer(toArrayBuffer(wk)),
             await KAS_RSA_PRIVATE_KEY
           );
         }
@@ -367,7 +408,7 @@ const kas: RequestListener = async (req, res) => {
           );
           const iv = generateRandomNumber(12);
           const aesCt = await crypto.subtle.encrypt(
-            { name: 'AES-GCM', iv },
+            { name: 'AES-GCM', iv: toCryptoBytes(iv) },
             newAesKey,
             dek.asArrayBuffer()
           );
@@ -446,7 +487,11 @@ const kas: RequestListener = async (req, res) => {
           hkdfHash: 'SHA-256',
         });
         const iv = generateRandomNumber(12);
-        const cek = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, kek, dek.asArrayBuffer());
+        const cek = await crypto.subtle.encrypt(
+          { name: 'AES-GCM', iv: toCryptoBytes(iv) },
+          kek,
+          dek.asArrayBuffer()
+        );
         const entityWrappedKey = new Uint8Array(iv.length + cek.byteLength);
         entityWrappedKey.set(iv);
         entityWrappedKey.set(new Uint8Array(cek), iv.length);
@@ -533,11 +578,12 @@ const kas: RequestListener = async (req, res) => {
 
       const body = await getBody(req);
       const bodyText = new TextDecoder().decode(body);
-      const params = JSON.parse(bodyText);
+      const params = asRecord(parseJson(bodyText));
+      const fqns = asStringArray(params?.fqns) ?? [];
       const fqnAttributeValues: Record<string, AttributeAndValue> = {};
       let skipped = 0;
 
-      for (const v of params.fqns) {
+      for (const v of fqns) {
         const value = valueFor(v);
         if (!value) {
           console.error(`unable to find definition for value [${v}]`);
@@ -574,11 +620,12 @@ const kas: RequestListener = async (req, res) => {
 
       const body = await getBody(req);
       const bodyText = new TextDecoder().decode(body);
-      const params = JSON.parse(bodyText);
+      const params = asRecord(parseJson(bodyText));
+      const fqns = asStringArray(params?.fqns) ?? [];
       const fqnKeyMappings: Record<string, { rule: number; keys: unknown[] }> = {};
       let skipped = 0;
 
-      for (const v of params.fqns) {
+      for (const v of fqns) {
         const value = valueFor(v);
         if (!value?.attribute) {
           console.error(`unable to find definition for value [${v}]`);
@@ -670,6 +717,10 @@ const kas: RequestListener = async (req, res) => {
     res.statusCode = 500;
     res.end('ERROR');
   }
+};
+
+const kas: RequestListener = (req, res) => {
+  void kasHandler(req, res);
 };
 
 const server = createServer(kas);

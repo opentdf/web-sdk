@@ -1,7 +1,5 @@
 {
   "compilerOptions": {
-    "alwaysStrict": true,
-    "baseUrl": "./",
     "composite": true,
     "declaration": true,
     "declarationDir": "./dist/types",
@@ -12,21 +10,18 @@
     "isolatedModules": true,
     "lib": ["dom", "dom.iterable", "es2021", "ES2022.Error"],
     "module": "NodeNext",
-    "noImplicitAny": true,
     "noImplicitOverride": true,
     "noImplicitReturns": true,
-    "noImplicitThis": true,
+    "noFallthroughCasesInSwitch": true,
     "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "outDir": "dist/web",
     "skipLibCheck": true,
     "sourceMap": true,
-    "strict": false,
-    "strictBindCallApply": true,
-    "strictFunctionTypes": true,
-    "strictNullChecks": true,
-    "strictPropertyInitialization": false,
+    "strict": true,
     "target": "es2021",
+    "verbatimModuleSyntax": true
   },
-  "include": ["src", "tests", "tdf3"],
+  "include": ["src", "tdf3"],
   "exclude": ["**/node_modules"]
 }

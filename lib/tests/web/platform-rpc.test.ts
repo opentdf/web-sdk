@@ -1,33 +1,34 @@
 import { expect } from '@esm-bundle/chai';
-import { type AuthProvider, HttpRequest, withHeaders } from '../../src/auth/auth.js';
+import type { HttpRequest } from '../../src/auth/auth.js';
+import { type AuthProvider, withHeaders } from '../../src/auth/auth.js';
 import { authTokenInterceptor } from '../../src/auth/interceptors.js';
 import { PlatformClient } from '../../src/platform.js';
 import { attributeFQNsAsKeyMappings, attributeFQNsAsValues } from '../../src/policy/api.js';
 import { fetchWrappedKey } from '../../src/access/access-rpc.js';
 import { PermissionDeniedError } from '../../src/errors.js';
 
-const authProvider = <AuthProvider>{
-  updateClientPublicKey: async () => {
-    /* mocked function */
-  },
-  withCreds: async (req: HttpRequest): Promise<HttpRequest> =>
-    withHeaders(req, {
-      Authorization:
-        'Bearer dummy-auth-token eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ0ZGYiLCJzdWIiOiJKb2huIERvZSIsImlhdCI6MTUxNjIzOTAyMn0.XFu4sQxAd6n-b7urqTdQ-I9zKqKSQtC04unHsMSpJjc',
-    }),
-};
-
-function authProviderWithHeaders(headers: Record<string, string>): AuthProvider {
-  return <AuthProvider>{
-    updateClientPublicKey: async () => {
-      /* mocked function */
-    },
-    withCreds: async (req: HttpRequest): Promise<HttpRequest> =>
+const authProvider = {
+  updateClientPublicKey: () => Promise.resolve(),
+  withCreds: (req: HttpRequest): Promise<HttpRequest> =>
+    Promise.resolve(
       withHeaders(req, {
         Authorization:
           'Bearer dummy-auth-token eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ0ZGYiLCJzdWIiOiJKb2huIERvZSIsImlhdCI6MTUxNjIzOTAyMn0.XFu4sQxAd6n-b7urqTdQ-I9zKqKSQtC04unHsMSpJjc',
-        ...headers,
-      }),
+      })
+    ),
+};
+
+function authProviderWithHeaders(headers: Record<string, string>): AuthProvider {
+  return {
+    updateClientPublicKey: () => Promise.resolve(),
+    withCreds: (req: HttpRequest): Promise<HttpRequest> =>
+      Promise.resolve(
+        withHeaders(req, {
+          Authorization:
+            'Bearer dummy-auth-token eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ0ZGYiLCJzdWIiOiJKb2huIERvZSIsImlhdCI6MTUxNjIzOTAyMn0.XFu4sQxAd6n-b7urqTdQ-I9zKqKSQtC04unHsMSpJjc',
+          ...headers,
+        })
+      ),
   };
 }
 
@@ -173,7 +174,7 @@ describe('PlatformClient with interceptors (no authProvider)', () => {
 
   it('wellknown configuration via interceptor', async () => {
     const platform = new PlatformClient({
-      interceptors: [authTokenInterceptor(async () => dummyToken)],
+      interceptors: [authTokenInterceptor(() => Promise.resolve(dummyToken))],
       platformUrl,
     });
 
@@ -189,7 +190,7 @@ describe('PlatformClient with interceptors (no authProvider)', () => {
 
   it('policy attribute method via interceptor', async () => {
     const platform = new PlatformClient({
-      interceptors: [authTokenInterceptor(async () => dummyToken)],
+      interceptors: [authTokenInterceptor(() => Promise.resolve(dummyToken))],
       platformUrl,
     });
 
@@ -207,7 +208,7 @@ describe('PlatformClient with interceptors (no authProvider)', () => {
     try {
       const response = await attributeFQNsAsValues(
         platformUrl,
-        { interceptors: [authTokenInterceptor(async () => dummyToken)] },
+        { interceptors: [authTokenInterceptor(() => Promise.resolve(dummyToken))] },
         ...fqns
       );
       expect(response[0].$typeName).to.equal('policy.Value');
@@ -218,7 +219,7 @@ describe('PlatformClient with interceptors (no authProvider)', () => {
 
   it('rewrap key via interceptor', async () => {
     const platform = new PlatformClient({
-      interceptors: [authTokenInterceptor(async () => dummyToken)],
+      interceptors: [authTokenInterceptor(() => Promise.resolve(dummyToken))],
       platformUrl,
     });
 

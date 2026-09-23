@@ -23,7 +23,7 @@
 import { assert } from 'chai';
 
 import { getMocks } from '../mocks/index.js';
-import { AuthProvider, HttpRequest } from '../../src/auth/auth.js';
+import type { AuthProvider, HttpRequest } from '../../src/auth/auth.js';
 import { AesGcmCipher, SplitKey, WebCryptoService } from '../../tdf3/index.js';
 import { Client } from '../../tdf3/src/index.js';
 import { type EncryptParams } from '../../tdf3/src/client/builders.js';
@@ -40,7 +40,7 @@ const kasUrl = 'http://localhost:3000';
 
 const authProvider: AuthProvider = {
   updateClientPublicKey: async () => {},
-  withCreds: async (httpReq: HttpRequest) => httpReq,
+  withCreds: (httpReq: HttpRequest) => Promise.resolve(httpReq),
 };
 
 /** Small enough to keep these tests quick, large enough to be a real segment. */
@@ -86,7 +86,7 @@ async function encryptToBuffer(
     offline: true,
     scope: { dissem: ['user@domain.com'], attributes: [] },
     windowSize: SEGMENT_SIZE,
-    keyMiddleware: async () => ({ keyForEncryption: key, keyForManifest: key }),
+    keyMiddleware: () => Promise.resolve({ keyForEncryption: key, keyForManifest: key }),
     source: new ReadableStream({
       start(controller) {
         controller.enqueue(plaintext);
@@ -182,8 +182,13 @@ async function tamperTdf(
 ): Promise<Uint8Array> {
   const { buffer } = await encryptToBuffer(client, plaintext, overrides);
   const parts = await unpackTdf(buffer);
-  const tampered = tamper(parts) ?? parts;
-  return decryptBuffer(client, packTdf(tampered.payload, tampered.manifest));
+  const tamperedResult = tamper(parts);
+  let tampered = parts;
+  if (tamperedResult) {
+    tampered = tamperedResult;
+  }
+  const decrypted = await decryptBuffer(client, packTdf(tampered.payload, tampered.manifest));
+  return decrypted;
 }
 
 function integrityInfo(manifest: Manifest) {
@@ -222,7 +227,7 @@ function keepSegments(manifest: Manifest, n: number) {
  */
 function reverseSegments(payload: Uint8Array, manifest: Manifest): Uint8Array {
   const info = integrityInfo(manifest);
-  const encryptedSegmentSize = info.encryptedSegmentSizeDefault as number;
+  const encryptedSegmentSize = info.encryptedSegmentSizeDefault ?? 0;
   info.segments = [...info.segments].reverse();
   const blocks: Uint8Array[] = [];
   for (let end = payload.length; end > 0; end -= encryptedSegmentSize) {
@@ -390,7 +395,7 @@ describe('root signature integrity (DSPX-4703)', function () {
               // Flip a byte in the first segment's authentication tag, which
               // both algorithms cover: GMAC *is* the tag, HS256 hashes it.
               const flipped = payload.slice();
-              const segmentSize = integrityInfo(manifest).encryptedSegmentSizeDefault as number;
+              const segmentSize = integrityInfo(manifest).encryptedSegmentSizeDefault ?? 0;
               flipped[segmentSize - 1] ^= 0xff;
               return { payload: flipped, manifest };
             },
@@ -416,7 +421,7 @@ describe('root signature integrity (DSPX-4703)', function () {
         assert.fail('expected an error for an unknown segment hash alg');
       } catch (e) {
         assert.instanceOf(e, Error);
-        assert.match((e as Error).message, /Unsupported segment hash alg/);
+        assert.match(e.message, /Unsupported segment hash alg/);
       }
     });
   });

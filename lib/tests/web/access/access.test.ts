@@ -81,10 +81,10 @@ describe('rewrapAdditionalContextHeader', () => {
     const fqns = ['https://example.com/obl/drm/value/mask'];
     const result = rewrapAdditionalContextHeader(fqns);
 
-    expect(result).to.be.a('string');
+    if (typeof result !== 'string') throw new Error('expected encoded context header');
 
     // Decode and verify structure
-    const decoded = JSON.parse(base64.decode(result!)) as RewrapAdditionalContext;
+    const decoded = JSON.parse(base64.decode(result)) as RewrapAdditionalContext;
     expect(decoded).to.have.property('obligations');
     expect(decoded.obligations).to.have.property('fulfillableFQNs');
     expect(decoded.obligations.fulfillableFQNs).to.deep.equal([
@@ -99,10 +99,10 @@ describe('rewrapAdditionalContextHeader', () => {
     ];
     const result = rewrapAdditionalContextHeader(fqns);
 
-    expect(result).to.be.a('string');
+    if (typeof result !== 'string') throw new Error('expected encoded context header');
 
     // Decode and verify FQNs are lowercased
-    const decoded = JSON.parse(base64.decode(result!)) as RewrapAdditionalContext;
+    const decoded = JSON.parse(base64.decode(result)) as RewrapAdditionalContext;
     expect(decoded.obligations.fulfillableFQNs).to.deep.equal([
       'https://example.com/obl/drm-test/value/mask-123',
       'https://example.com/obl/water_mark/value/apply_now',
@@ -113,14 +113,16 @@ describe('rewrapAdditionalContextHeader', () => {
     const fqns = ['https://example.com/obl/test/value/v1'];
     const result = rewrapAdditionalContextHeader(fqns);
 
-    expect(result).to.be.a('string');
+    if (typeof result !== 'string') throw new Error('expected encoded context header');
 
     // Verify it's valid base64
-    expect(() => base64.decode(result!)).to.not.throw();
+    expect(() => base64.decode(result)).to.not.throw();
 
     // Verify decoded value is valid JSON
-    const decoded = base64.decode(result!);
-    expect(() => JSON.parse(decoded)).to.not.throw();
+    const decoded = base64.decode(result);
+    expect(() => {
+      JSON.parse(decoded);
+    }).to.not.throw();
 
     // Verify structure
     const parsed = JSON.parse(decoded) as RewrapAdditionalContext;

@@ -9,22 +9,41 @@ import {
   type SymmetricKey,
 } from '../declarations.js';
 
+type InternalValue<T> = { readonly _internal: T };
+type InternalCryptoKey = InternalValue<CryptoKey>;
+type InternalBytes = InternalValue<Uint8Array>;
+
+function readInternal(key: object): unknown {
+  return (key as InternalValue<unknown>)._internal;
+}
+
+function isCryptoKey(value: unknown): value is CryptoKey {
+  return typeof value === 'object' && value !== null && 'type' in value && 'algorithm' in value;
+}
+
+function isBytes(value: unknown): value is Uint8Array {
+  return value instanceof Uint8Array;
+}
+
+function unwrapBytes(key: object): Uint8Array {
+  const internal = readInternal(key);
+  if (!isBytes(internal)) throw new TypeError('Key is not owned by this crypto service');
+  return internal;
+}
+
 /**
  * Wrap a CryptoKey as an opaque PublicKey.
  * @internal
  */
 export function wrapPublicKey(key: CryptoKey, algorithm: KeyAlgorithm): PublicKey {
-  const result: any = {
+  const result = {
     _brand: 'PublicKey',
     algorithm,
+    ...(isRsaKeyAlgorithm(algorithm) && { modulusBits: rsaAlgorithmToModulusBits(algorithm) }),
+    ...(isEcKeyAlgorithm(algorithm) && { curve: ecAlgorithmToCurve(algorithm) }),
     _internal: key,
-  };
-  if (isRsaKeyAlgorithm(algorithm)) {
-    result.modulusBits = rsaAlgorithmToModulusBits(algorithm);
-  } else if (isEcKeyAlgorithm(algorithm)) {
-    result.curve = ecAlgorithmToCurve(algorithm);
-  }
-  return result as PublicKey;
+  } as PublicKey & InternalCryptoKey;
+  return result;
 }
 
 /**
@@ -32,17 +51,14 @@ export function wrapPublicKey(key: CryptoKey, algorithm: KeyAlgorithm): PublicKe
  * @internal
  */
 export function wrapPrivateKey(key: CryptoKey, algorithm: KeyAlgorithm): PrivateKey {
-  const result: any = {
+  const result = {
     _brand: 'PrivateKey',
     algorithm,
+    ...(isRsaKeyAlgorithm(algorithm) && { modulusBits: rsaAlgorithmToModulusBits(algorithm) }),
+    ...(isEcKeyAlgorithm(algorithm) && { curve: ecAlgorithmToCurve(algorithm) }),
     _internal: key,
-  };
-  if (isRsaKeyAlgorithm(algorithm)) {
-    result.modulusBits = rsaAlgorithmToModulusBits(algorithm);
-  } else if (isEcKeyAlgorithm(algorithm)) {
-    result.curve = ecAlgorithmToCurve(algorithm);
-  }
-  return result as PrivateKey;
+  } as PrivateKey & InternalCryptoKey;
+  return result;
 }
 
 /**
@@ -50,7 +66,12 @@ export function wrapPrivateKey(key: CryptoKey, algorithm: KeyAlgorithm): Private
  * @internal
  */
 export function unwrapKey(key: PublicKey | PrivateKey): CryptoKey {
-  return (key as any)._internal;
+  if (typeof key !== 'object' || key === null) {
+    throw new TypeError('Key is not owned by this crypto service');
+  }
+  const internal = readInternal(key);
+  if (!isCryptoKey(internal)) throw new TypeError('Key is not owned by this crypto service');
+  return internal;
 }
 
 /**
@@ -58,11 +79,12 @@ export function unwrapKey(key: PublicKey | PrivateKey): CryptoKey {
  * @internal
  */
 export function wrapSymmetricKey(keyBytes: Uint8Array): SymmetricKey {
-  return {
+  const result = {
     _brand: 'SymmetricKey',
     length: keyBytes.length * 8, // bits
     _internal: keyBytes,
-  } as SymmetricKey;
+  } as SymmetricKey & InternalBytes;
+  return result;
 }
 
 /**
@@ -70,7 +92,10 @@ export function wrapSymmetricKey(keyBytes: Uint8Array): SymmetricKey {
  * @internal
  */
 export function unwrapSymmetricKey(key: SymmetricKey): Uint8Array {
-  return (key as any)._internal;
+  if (typeof key !== 'object' || key === null) {
+    throw new TypeError('Key is not owned by this crypto service');
+  }
+  return unwrapBytes(key);
 }
 
 /**
@@ -78,12 +103,13 @@ export function unwrapSymmetricKey(key: SymmetricKey): Uint8Array {
  * @internal
  */
 export function wrapMlKemPublicKey(bytes: Uint8Array, level: 768 | 1024): PublicKey {
-  return {
+  const result = {
     _brand: 'PublicKey',
     algorithm: `mlkem:${level}` as KeyAlgorithm,
     mlKemLevel: level,
     _internal: bytes,
-  } as unknown as PublicKey;
+  } as PublicKey & InternalBytes;
+  return result;
 }
 
 /**
@@ -91,12 +117,13 @@ export function wrapMlKemPublicKey(bytes: Uint8Array, level: 768 | 1024): Public
  * @internal
  */
 export function wrapMlKemPrivateKey(bytes: Uint8Array, level: 768 | 1024): PrivateKey {
-  return {
+  const result = {
     _brand: 'PrivateKey',
     algorithm: `mlkem:${level}` as KeyAlgorithm,
     mlKemLevel: level,
     _internal: bytes,
-  } as unknown as PrivateKey;
+  } as PrivateKey & InternalBytes;
+  return result;
 }
 
 /**
@@ -104,5 +131,9 @@ export function wrapMlKemPrivateKey(bytes: Uint8Array, level: 768 | 1024): Priva
  * @internal
  */
 export function unwrapMlKemKey(key: PublicKey | PrivateKey): Uint8Array {
-  return (key as any)._internal as Uint8Array;
+  if (typeof key !== 'object' || key === null) {
+    throw new TypeError('Key is not owned by this crypto service');
+  }
+  const bytes = unwrapBytes(key);
+  return bytes;
 }

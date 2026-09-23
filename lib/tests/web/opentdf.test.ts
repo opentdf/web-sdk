@@ -5,8 +5,8 @@ import type { Interceptor } from '@connectrpc/connect';
 import { authTokenInterceptor } from '../../src/auth/interceptors.js';
 
 const stubAuthProvider: AuthProvider = {
-  updateClientPublicKey: async () => {},
-  withCreds: async (req) => req,
+  updateClientPublicKey: () => Promise.resolve(),
+  withCreds: (req) => Promise.resolve(req),
 };
 
 describe('OpenTDF constructor', () => {
@@ -55,10 +55,11 @@ describe('OpenTDF constructor', () => {
     it('eagerly binds DPoP keys to the auth provider', async () => {
       let publicKeyUpdated = false;
       const trackingAuthProvider: AuthProvider = {
-        updateClientPublicKey: async () => {
+        updateClientPublicKey: () => {
           publicKeyUpdated = true;
+          return Promise.resolve();
         },
-        withCreds: async (req) => req,
+        withCreds: (req) => Promise.resolve(req),
       };
       const client = new OpenTDF({
         authProvider: trackingAuthProvider,
@@ -70,10 +71,11 @@ describe('OpenTDF constructor', () => {
     it('resolves immediately when DPoP is disabled', async () => {
       let publicKeyUpdated = false;
       const trackingAuthProvider: AuthProvider = {
-        updateClientPublicKey: async () => {
+        updateClientPublicKey: () => {
           publicKeyUpdated = true;
+          return Promise.resolve();
         },
-        withCreds: async (req) => req,
+        withCreds: (req) => Promise.resolve(req),
       };
       const client = new OpenTDF({
         authProvider: trackingAuthProvider,
@@ -85,10 +87,8 @@ describe('OpenTDF constructor', () => {
 
     it('propagates rejection when updateClientPublicKey fails', async () => {
       const failingAuthProvider: AuthProvider = {
-        updateClientPublicKey: async () => {
-          throw new Error('IdP unreachable');
-        },
-        withCreds: async (req) => req,
+        updateClientPublicKey: () => Promise.reject(new Error('IdP unreachable')),
+        withCreds: (req) => Promise.resolve(req),
       };
       const client = new OpenTDF({
         authProvider: failingAuthProvider,
@@ -124,7 +124,7 @@ describe('OpenTDF constructor', () => {
 
     it('does not call updateClientPublicKey with interceptors', async () => {
       const client = new OpenTDF({
-        interceptors: [authTokenInterceptor(async () => 'token')],
+        interceptors: [authTokenInterceptor(() => Promise.resolve('token'))],
       });
       await client.ready;
       // No updateClientPublicKey to call — if we got here, no error was thrown

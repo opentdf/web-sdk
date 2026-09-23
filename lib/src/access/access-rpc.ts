@@ -1,10 +1,6 @@
-import { CallOptions } from '@connectrpc/connect';
-import {
-  isPublicKeyAlgorithm,
-  KasPublicKeyAlgorithm,
-  KasPublicKeyInfo,
-  OriginAllowList,
-} from '../access.js';
+import type { CallOptions } from '@connectrpc/connect';
+import type { KasPublicKeyAlgorithm, KasPublicKeyInfo } from '../access.js';
+import { isPublicKeyAlgorithm, OriginAllowList } from '../access.js';
 
 import { type AuthConfig, resolveInterceptors } from '../auth/interceptors.js';
 import {
@@ -16,8 +12,8 @@ import {
   UnauthenticatedError,
 } from '../errors.js';
 import { PlatformClient } from '../platform.js';
-import { RewrapResponse } from '../platform/kas/kas_pb.js';
-import { ListKeyAccessServersResponse } from '../platform/policy/kasregistry/key_access_server_registry_pb.js';
+import type { RewrapResponse } from '../platform/kas/kas_pb.js';
+import type { ListKeyAccessServersResponse } from '../platform/policy/kasregistry/key_access_server_registry_pb.js';
 import {
   extractRpcErrorMessage,
   getPlatformUrlFromKasEndpoint,

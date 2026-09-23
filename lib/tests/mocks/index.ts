@@ -1,4 +1,5 @@
-import { SignJWT, importPKCS8, JWTPayload } from 'jose';
+import type { JWTPayload } from 'jose';
+import { SignJWT, importPKCS8 } from 'jose';
 import { v4 } from 'uuid';
 
 import { type KeyPair } from '../../tdf3/src/crypto/declarations.js';
@@ -37,12 +38,49 @@ type GetScopeContext = {
   getUserId: () => string;
 };
 
+export type Mocks = {
+  kasPrivateKey: string;
+  kasPublicKey: string;
+  aaPrivateKey: string;
+  aaPublicKey: string;
+  entityPrivateKey: string;
+  entityPublicKey: string;
+  entityECPrivateKey: string;
+  entityECPublicKey: string;
+  extraECPrivateKey: string;
+  extraECPublicKey: string;
+  kasECCert: string;
+  kasECPrivateKey: string;
+  entityKeyPair: () => Promise<KeyPair>;
+  entityECKeyPair: () => Promise<KeyPair>;
+  extraECKeyPair: () => Promise<KeyPair>;
+  createAttribute: (options?: Partial<CreateAttributePayload>) => {
+    attribute: string;
+    displayName: string;
+    pubKey: string;
+    kasUrl: string;
+    isDefault?: string;
+  };
+  createJwtAttribute: (options: CreateAttributePayload) => Promise<{ jwt?: string }>;
+  getUserId: () => string;
+  getMetadataObject: () => {
+    connectOptions: { testUrl: string };
+    policyObject: Record<string, never>;
+  };
+  getPolicyObject: () => {
+    uuid: string;
+    body: { dataAttributes: never[]; dissem: string[] };
+  };
+  getScope: () => { attributes: never[]; dissem: string[] };
+  getKasUrl: () => string;
+};
+
 function getKasUrl() {
   return 'http://local.virtru.com:4000'; // Sensitive
 }
 
-export function getMocks() {
-  return Object.create({
+export function getMocks(): Mocks {
+  return {
     kasPrivateKey,
     kasPublicKey,
     // TODO: diff key then KAS
@@ -141,7 +179,7 @@ tN5S0umLPkMUJ6zBIxh1RQK1ZYjfuKij+EEimbqtte9rYyQr3Q==
       pubKey = kasPublicKey,
       kasUrl = getKasUrl(),
       isDefault = 'not set',
-    }: CreateAttributePayload) {
+    }: Partial<CreateAttributePayload> = {}) {
       if (isDefault === 'not set') {
         // If none of the options are specified this creates a default attribute
         return { attribute, displayName, pubKey, kasUrl };
@@ -174,7 +212,7 @@ tN5S0umLPkMUJ6zBIxh1RQK1ZYjfuKij+EEimbqtte9rYyQr3Q==
     },
 
     getMetadataObject() {
-      const baseObject = {
+      const baseObject: Mocks['getMetadataObject'] extends () => infer T ? T : never = {
         connectOptions: {
           testUrl: 'http://testurl.com', // Sensitive
         },
@@ -206,5 +244,5 @@ tN5S0umLPkMUJ6zBIxh1RQK1ZYjfuKij+EEimbqtte9rYyQr3Q==
     },
 
     getKasUrl,
-  });
+  };
 }

@@ -1,18 +1,19 @@
 import { expect } from '@esm-bundle/chai';
-import { type AuthProvider, HttpRequest, withHeaders } from '../../src/auth/auth.js';
+import type { HttpRequest } from '../../src/auth/auth.js';
+import { withHeaders } from '../../src/auth/auth.js';
 
 import { OpenTDF } from '../../src/opentdf.js';
 import { fromString } from '../../src/seekable.js';
 
-const authProvider = <AuthProvider>{
-  updateClientPublicKey: async () => {
-    /* mocked function */
-  },
-  withCreds: async (req: HttpRequest): Promise<HttpRequest> =>
-    withHeaders(req, {
-      Authorization:
-        'Bearer dummy-auth-token eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ0ZGYiLCJzdWIiOiJKb2huIERvZSIsImlhdCI6MTUxNjIzOTAyMn0.XFu4sQxAd6n-b7urqTdQ-I9zKqKSQtC04unHsMSpJjc',
-    }),
+const authProvider = {
+  updateClientPublicKey: () => Promise.resolve(),
+  withCreds: (req: HttpRequest): Promise<HttpRequest> =>
+    Promise.resolve(
+      withHeaders(req, {
+        Authorization:
+          'Bearer dummy-auth-token eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ0ZGYiLCJzdWIiOiJKb2huIERvZSIsImlhdCI6MTUxNjIzOTAyMn0.XFu4sQxAd6n-b7urqTdQ-I9zKqKSQtC04unHsMSpJjc',
+      })
+    ),
 };
 
 const kasEndpoint = 'http://localhost:3000';
@@ -109,7 +110,9 @@ describe('Local roundtrip Tests', () => {
         source: { type: 'buffer', location: cipherTextArray },
       });
     } catch (e) {
-      expect(e.message).to.contains('platformUrl is required when allowedKasEndpoints is empty');
+      expect((e as Error).message).to.contains(
+        'platformUrl is required when allowedKasEndpoints is empty'
+      );
       return;
     }
   });
@@ -161,11 +164,11 @@ describe('Local roundtrip Tests', () => {
       windowSize: 1024,
     });
     const cipherTextArray = new Uint8Array(await new Response(cipherTextStream).arrayBuffer());
-    const trackingChunker = async (byteStart?: number, byteEnd?: number) => {
+    const trackingChunker = (byteStart?: number, byteEnd?: number) => {
       if (byteStart === undefined) {
-        return cipherTextArray.slice();
+        return Promise.resolve(cipherTextArray.slice());
       }
-      return cipherTextArray.slice(byteStart, byteEnd);
+      return Promise.resolve(cipherTextArray.slice(byteStart, byteEnd));
     };
 
     const ztdfParsed = await client.read({

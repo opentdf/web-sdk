@@ -1,4 +1,4 @@
-import { GetAttributeValuesByFqnsResponse } from '../platform/policy/attributes/attributes_pb.js';
+import type { GetAttributeValuesByFqnsResponse } from '../platform/policy/attributes/attributes_pb.js';
 import { AttributeRuleTypeEnum } from '../platform/policy/objects_pb.js';
 
 export type KasPublicKey = Value['kasKeys'][number];

@@ -1,14 +1,15 @@
 import { expect } from 'chai';
-import { createSandbox, SinonSandbox } from 'sinon';
+import type { SinonSandbox } from 'sinon';
+import { createSandbox } from 'sinon';
 
 import { type Chunker, fromSource, sourceToStream } from '../../../src/seekable.js';
 
 function range(a: number, b?: number): number[] {
   if (!b) {
-    return [...Array(a).keys()];
+    return Array.from({ length: a }, (_, index) => index);
   }
   const l = b - a;
-  const r = new Array(l);
+  const r: number[] = new Array<number>(l);
   for (let i = 0; i < l; i += 1) {
     r[i] = a + i;
   }
@@ -182,11 +183,14 @@ describe('fromSource', () => {
 
   it('should throw an error for unsupported source type', async () => {
     try {
-      await fromSource({ type: 'unsupported', location: 'unsupported' } as any);
+      // @ts-expect-error Deliberately verifies an unsupported source type.
+      await fromSource({ type: 'unsupported', location: 'unsupported' });
       expect.fail();
     } catch (e) {
       expect(e).to.be.an('error');
-      expect(e.message).to.include('Data source type not defined, or not supported');
+      if (e instanceof Error) {
+        expect(e.message).to.include('Data source type not defined, or not supported');
+      }
     }
   });
 });

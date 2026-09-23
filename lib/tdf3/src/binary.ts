@@ -1,5 +1,6 @@
 import { ConfigurationError } from '../../src/errors.js';
-import { buffToString, SupportedEncoding, base64ToBytes } from './utils/index.js';
+import type { SupportedEncoding } from './utils/index.js';
+import { buffToString, base64ToBytes } from './utils/index.js';
 
 /**
  * Provides a binary type that can be initialized with many different forms of

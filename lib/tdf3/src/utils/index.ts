@@ -1,4 +1,5 @@
-import { KeyInfo, SplitKey } from '../models/index.js';
+import type { KeyInfo } from '../models/index.js';
+import { SplitKey } from '../models/index.js';
 import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
 import { ConfigurationError } from '../../../src/errors.js';
 import { type CryptoService } from '../crypto/declarations.js';
@@ -8,12 +9,13 @@ export { ZipReader, readUInt64LE } from './zip-reader.js';
 export { ZipWriter } from './zip-writer.js';
 export { keySplit, keyMerge } from './keysplit.js';
 export { streamToBuffer } from '../client/DecoratedReadableStream.js';
+export { toArrayBuffer, toCryptoBytes } from '../../../src/crypto/buffer.js';
 
 export type SupportedEncoding = 'hex' | 'utf8' | 'utf-8' | 'binary' | 'latin1' | 'base64';
 
 const hexSliceLookupTable = (() => {
   const alphabet = '0123456789abcdef';
-  const table = new Array(256);
+  const table = new Array<string>(256);
   for (let i = 0; i < 16; ++i) {
     const i16 = i * 16;
     for (let j = 0; j < 16; ++j) {
@@ -23,12 +25,14 @@ const hexSliceLookupTable = (() => {
   return table;
 })();
 
-export function concatUint8(uint8Arrays: Uint8Array[]): Uint8Array {
+export function concatUint8(
+  uint8Arrays: Uint8Array<ArrayBufferLike>[]
+): Uint8Array<ArrayBufferLike> {
   const newLength = uint8Arrays.reduce(
     (accumulator, currentValue) => accumulator + currentValue.length,
     0
   );
-  const combinedUint8Array = new Uint8Array(newLength);
+  const combinedUint8Array = new Uint8Array(newLength) as Uint8Array<ArrayBufferLike>;
 
   let offset = 0;
   for (const uint8Array of uint8Arrays) {

@@ -1,18 +1,14 @@
 import { assert } from 'chai';
 import sinon from 'sinon';
-import { Client, HttpRequest } from '../../tdf3/src/client/index.js';
+import type { HttpRequest } from '../../tdf3/src/client/index.js';
+import { Client } from '../../tdf3/src/client/index.js';
 import { getMocks } from '../mocks/index.js';
 import { EncryptParamsBuilder } from '../../tdf3/src/client/builders.js';
-import { GetAttributeValuesByFqnsResponse } from '../../src/platform/policy/attributes/attributes_pb.js';
-import {
-  Attribute,
-  AttributeRuleType,
-  KeyAccessServer,
-  Namespace,
-  Value,
-} from '../../src/policy/attributes.js';
+import type { GetAttributeValuesByFqnsResponse } from '../../src/platform/policy/attributes/attributes_pb.js';
+import type { Attribute, KeyAccessServer, Namespace, Value } from '../../src/policy/attributes.js';
+import { AttributeRuleType } from '../../src/policy/attributes.js';
 import { SourceType } from '../../src/platform/policy/objects_pb.js';
-import { KasPublicKeyInfo } from '../../src/access.js';
+import type { KasPublicKeyInfo } from '../../src/access.js';
 
 const Mocks = getMocks();
 const kasUrl = 'http://localhost:3000/kas';
@@ -20,10 +16,11 @@ const platformUrl = 'http://localhost:3000';
 
 const authProvider = {
   updateClientPublicKey: async () => {},
-  withCreds: async (httpReq: HttpRequest) => ({
-    ...httpReq,
-    headers: { ...httpReq.headers, Authorization: 'Bearer dummy-auth-token' },
-  }),
+  withCreds: (httpReq: HttpRequest) =>
+    Promise.resolve({
+      ...httpReq,
+      headers: { ...httpReq.headers, Authorization: 'Bearer dummy-auth-token' },
+    }),
 };
 
 // const _createFakeResponse = (body: unknown, ok = true, status = 200) => {
@@ -60,7 +57,7 @@ describe('Client Caching Behavior', () => {
   let client: Client;
   let fetchStub: sinon.SinonStub;
 
-  beforeEach(async () => {
+  beforeEach(() => {
     client = new Client({
       kasEndpoint: kasUrl,
       platformUrl: platformUrl,

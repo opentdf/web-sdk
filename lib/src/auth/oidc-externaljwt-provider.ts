@@ -38,7 +38,7 @@ export class OIDCExternalJwtProvider implements AuthProvider {
   }
 
   async updateClientPublicKey(signingKey: KeyPair): Promise<void> {
-    this.oidcAuth.refreshTokenClaimsWithClientPubkeyIfNeeded(signingKey);
+    await this.oidcAuth.refreshTokenClaimsWithClientPubkeyIfNeeded(signingKey);
   }
 
   async withCreds(httpReq: HttpRequest): Promise<HttpRequest> {

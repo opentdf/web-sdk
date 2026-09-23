@@ -1,4 +1,4 @@
-import {
+import type {
   ClientSecretCredentials,
   ExternalJwtCredentials,
   OIDCCredentials,
@@ -35,6 +35,7 @@ export const clientSecretAuthProvider = async (
   clientConfig: ClientSecretCredentials,
   cryptoService: CryptoService = defaultCryptoService
 ): Promise<OIDCClientCredentialsProvider> => {
+  await Promise.resolve();
   return new OIDCClientCredentialsProvider(
     {
       clientId: clientConfig.clientId,
@@ -67,6 +68,7 @@ export const externalAuthProvider = async (
   clientConfig: ExternalJwtCredentials,
   cryptoService: CryptoService = defaultCryptoService
 ): Promise<OIDCExternalJwtProvider> => {
+  await Promise.resolve();
   return new OIDCExternalJwtProvider(
     {
       clientId: clientConfig.clientId,
@@ -97,6 +99,7 @@ export const refreshAuthProvider = async (
   clientConfig: RefreshTokenCredentials,
   cryptoService: CryptoService = defaultCryptoService
 ): Promise<OIDCRefreshTokenProvider> => {
+  await Promise.resolve();
   return new OIDCRefreshTokenProvider(
     {
       clientId: clientConfig.clientId,

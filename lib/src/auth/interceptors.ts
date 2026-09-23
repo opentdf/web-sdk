@@ -142,14 +142,15 @@ export function authProviderInterceptor(authProvider: AuthProvider): Interceptor
           'PlatformClient: DPoP key binding is not complete. ' +
             'If you are using OpenTDF with PlatformClient, create OpenTDF first and ' +
             '`await client.ready` before constructing PlatformClient. ' +
-            `Original error: ${msg}`
+            `Original error: ${msg}`,
+          { cause: err }
         );
       }
       throw err;
     }
 
     Object.entries(token.headers).forEach(([key, value]) => {
-      req.header.set(key, value);
+      req.header.set(key, String(value));
     });
 
     return await next(req);

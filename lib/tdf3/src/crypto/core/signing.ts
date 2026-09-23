@@ -5,6 +5,7 @@ import {
 } from '../declarations.js';
 import { ConfigurationError } from '../../../../src/errors.js';
 import { unwrapKey } from './keys.js';
+import { toCryptoBytes } from '../../../../src/crypto/buffer.js';
 
 /**
  * Get the Web Crypto algorithm parameters for a signing algorithm.
@@ -22,20 +23,20 @@ function getSigningAlgorithmParams(algorithm: AsymmetricSigningAlgorithm): {
     case 'ES256':
       return {
         importParams: { name: 'ECDSA', namedCurve: 'P-256' },
-        signParams: { name: 'ECDSA', hash: 'SHA-256' } as EcdsaParams,
+        signParams: { name: 'ECDSA', hash: 'SHA-256' },
       };
     case 'ES384':
       return {
         importParams: { name: 'ECDSA', namedCurve: 'P-384' },
-        signParams: { name: 'ECDSA', hash: 'SHA-384' } as EcdsaParams,
+        signParams: { name: 'ECDSA', hash: 'SHA-384' },
       };
     case 'ES512':
       return {
         importParams: { name: 'ECDSA', namedCurve: 'P-521' },
-        signParams: { name: 'ECDSA', hash: 'SHA-512' } as EcdsaParams,
+        signParams: { name: 'ECDSA', hash: 'SHA-512' },
       };
     default:
-      throw new ConfigurationError(`Unsupported signing algorithm: ${algorithm}`);
+      throw new ConfigurationError(`Unsupported signing algorithm: ${String(algorithm)}`);
   }
 }
 
@@ -115,7 +116,9 @@ function derToIeeeP1363(signature: Uint8Array, algorithm: AsymmetricSigningAlgor
       componentLen = 66;
       break;
     default:
-      throw new ConfigurationError(`Unsupported algorithm for DER conversion: ${algorithm}`);
+      throw new ConfigurationError(
+        `Unsupported algorithm for DER conversion: ${String(algorithm)}`
+      );
   }
 
   if (signature[0] !== 0x30) {
@@ -186,7 +189,7 @@ export async function sign(
   const key = unwrapKey(privateKey);
 
   // Sign the data
-  const signature = await crypto.subtle.sign(signParams, key, data);
+  const signature = await crypto.subtle.sign(signParams, key, toCryptoBytes(data));
 
   // Convert from IEEE P1363 to DER for EC algorithms
   return ieeeP1363ToDer(new Uint8Array(signature), algorithm);
@@ -210,5 +213,5 @@ export async function verify(
   const ieeeSignature = derToIeeeP1363(signature, algorithm);
 
   // Verify the signature
-  return crypto.subtle.verify(signParams, key, ieeeSignature, data);
+  return crypto.subtle.verify(signParams, key, toCryptoBytes(ieeeSignature), toCryptoBytes(data));
 }

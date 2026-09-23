@@ -1,5 +1,4 @@
 import {
-  type AsymmetricSigningAlgorithm,
   type CryptoService,
   type PrivateKey,
   type PublicKey,
@@ -134,11 +133,7 @@ export async function signJwt(
     if (key._brand !== 'PrivateKey') {
       throw new Error(`${header.alg} requires a PrivateKey`);
     }
-    signature = await cryptoService.sign(
-      signingInputBytes,
-      key,
-      header.alg as AsymmetricSigningAlgorithm
-    );
+    signature = await cryptoService.sign(signingInputBytes, key, header.alg);
   }
 
   // Return compact JWT
@@ -184,7 +179,7 @@ export async function verifyJwt(
   }
 
   // Validate algorithm is in allowlist if provided
-  if (options?.algorithms && !options.algorithms.includes(headerRaw.alg as SigningAlgorithm)) {
+  if (options?.algorithms && !options.algorithms.includes(headerRaw.alg)) {
     throw new joseErrors.JWTInvalid(`Invalid JWT: algorithm "${headerRaw.alg}" not in allowlist`);
   }
 
@@ -197,7 +192,7 @@ export async function verifyJwt(
   );
 
   // Now we know it's a valid algorithm
-  const header = headerRaw as JwtHeader;
+  const header = headerRaw;
 
   // Verify signature via CryptoService - route based on algorithm
   const signingInput = `${headerB64}.${payloadB64}`;
@@ -215,9 +210,7 @@ export async function verifyJwt(
     }
     // Convert Uint8Array to SymmetricKey if needed, otherwise assume it's already SymmetricKey
     const symmetricKey =
-      key instanceof Uint8Array
-        ? await cryptoService.importSymmetricKey(key)
-        : (key as SymmetricKey);
+      key instanceof Uint8Array ? await cryptoService.importSymmetricKey(key) : key;
     valid = await cryptoService.verifyHmac(signingInputBytes, signature, symmetricKey);
   } else {
     // Asymmetric verification - accept string (PEM) or PublicKey
@@ -229,15 +222,8 @@ export async function verifyJwt(
     }
     // Convert PEM string to PublicKey if needed, otherwise assume it's already PublicKey
     const publicKey =
-      typeof key === 'string'
-        ? await cryptoService.importPublicKey(key, { usage: 'sign' })
-        : (key as PublicKey);
-    valid = await cryptoService.verify(
-      signingInputBytes,
-      signature,
-      publicKey,
-      header.alg as AsymmetricSigningAlgorithm
-    );
+      typeof key === 'string' ? await cryptoService.importPublicKey(key, { usage: 'sign' }) : key;
+    valid = await cryptoService.verify(signingInputBytes, signature, publicKey, header.alg);
   }
 
   if (!valid) {
@@ -250,7 +236,7 @@ export async function verifyJwt(
 
   // Decode payload and validate JWT claims
   const payloadBytes = base64urlDecodeBytes(payloadB64);
-  const payload = jwtClaimsSet(header, payloadBytes, options) as JwtPayload;
+  const payload = jwtClaimsSet(header, payloadBytes, options);
 
   return { header, payload };
 }

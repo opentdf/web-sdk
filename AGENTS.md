@@ -11,7 +11,7 @@
 
 ## Build, Test, and Development Commands
 
-- `nvm use` (Node `22`, see `.nvmrc`).
+- `nvm use` (Node `24`, see `.nvmrc`).
 - `make ci`: clean install + pack `lib/`, then install the packed SDK into `cli/` and `web-app/`.
 - `make start`: builds everything, then runs `cd web-app && npm run dev`.
 - `make lint` / `make test` / `make format` / `make license-check`: run the matching `npm run …` in `lib/`, `cli/`, and `web-app/`.

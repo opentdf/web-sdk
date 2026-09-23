@@ -1,5 +1,6 @@
 import { ConfigurationError } from '../errors.js';
 import { AlgorithmName } from './enums.js';
+import { toCryptoBytes } from './buffer.js';
 
 /**
  * Computes an ECDSA signature for the given data using the provided private key.
@@ -21,7 +22,7 @@ export async function computeECDSASig(
       hash: { name: 'SHA-256' },
     },
     privateKey,
-    data
+    toCryptoBytes(data)
   );
   return signature;
 }
@@ -48,8 +49,8 @@ export async function verifyECDSASignature(
       hash: { name: 'SHA-256' },
     },
     publicKey,
-    signature,
-    data
+    toCryptoBytes(signature),
+    toCryptoBytes(data)
   );
   return isValid;
 }
