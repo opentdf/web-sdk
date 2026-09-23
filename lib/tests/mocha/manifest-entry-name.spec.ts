@@ -101,6 +101,16 @@ async function fileNamesOf(buffer: Uint8Array): Promise<string[]> {
   return (await centralDirectoryOf(buffer)).map(({ fileName }) => fileName);
 }
 
+async function policyIdIn(buffer: Uint8Array, entryName: string): Promise<string> {
+  const manifest = await new ZipReader(fromBuffer(buffer)).getManifest(
+    await centralDirectoryOf(buffer),
+    entryName
+  );
+  const policyId = JSON.parse(atob(manifest.encryptionInformation.policy)).uuid;
+  assert.match(policyId, /^[0-9a-f-]{36}$/);
+  return policyId;
+}
+
 async function assertRejects(promise: Promise<unknown>, messageFragment: string): Promise<void> {
   try {
     await promise;
@@ -305,7 +315,15 @@ describe('manifest entry name (platform#3513)', function () {
       it('reads the policy id', async function () {
         assert.equal(
           await client.getPolicyId({ source: { type: 'buffer', location: renamed } }),
-          await client.getPolicyId({ source: { type: 'buffer', location: original } })
+          await policyIdIn(renamed, entryName)
+        );
+      });
+
+      it('reads the policy id when getPolicyId is passed as a callback', async function () {
+        const getPolicyId = client.getPolicyId;
+        assert.equal(
+          await getPolicyId({ source: { type: 'buffer', location: renamed } }),
+          await policyIdIn(renamed, entryName)
         );
       });
     });
