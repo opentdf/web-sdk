@@ -883,7 +883,7 @@ export class Client {
    * @see DecryptParamsBuilder
    */
   async getPolicyId({ source }: { source: DecryptSource }) {
-    const { manifest } = await this.loadTDFStream({ source });
+    const { manifest } = await loadTDFStream(await makeChunkable(source));
     const policyJson = base64.decode(manifest.encryptionInformation.policy);
     return JSON.parse(policyJson).uuid;
   }
