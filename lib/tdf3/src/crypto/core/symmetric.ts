@@ -6,21 +6,22 @@ import {
   type HashAlgorithm,
   type SymmetricKey,
 } from '../declarations.js';
-import { ConfigurationError, DecryptError } from '../../../../src/errors.js';
+import { ConfigurationError, DecryptError, asError } from '../../../../src/errors.js';
 import { encodeArrayBuffer as hexEncode } from '../../../../src/encodings/hex.js';
 import { keyMerge } from '../../utils/keysplit.js';
 import { unwrapSymmetricKey, wrapSymmetricKey } from './keys.js';
+import { toCryptoBytes } from '../../../../src/crypto/buffer.js';
 
 const ENC_DEC_METHODS: KeyUsage[] = ['encrypt', 'decrypt'];
 
-function asUint8ArrayView(buffer: BufferSource): Uint8Array {
+function asUint8ArrayView(buffer: BufferSource): Uint8Array<ArrayBuffer> {
   if (buffer instanceof Uint8Array) {
-    return buffer;
+    return toCryptoBytes(buffer);
   }
   if (ArrayBuffer.isView(buffer)) {
-    return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+    return toCryptoBytes(new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength));
   }
-  return new Uint8Array(buffer);
+  return toCryptoBytes(new Uint8Array(buffer));
 }
 
 /**
@@ -34,6 +35,7 @@ export async function generateKey(length?: number): Promise<SymmetricKey> {
 }
 
 export async function randomBytes(byteLength: number): Promise<Uint8Array> {
+  await Promise.resolve();
   const r = new Uint8Array(byteLength);
   crypto.getRandomValues(r);
   return r;
@@ -50,6 +52,7 @@ export async function randomBytes(byteLength: number): Promise<Uint8Array> {
  * @returns The hex string.
  */
 export async function randomBytesAsHex(length: number): Promise<string> {
+  await Promise.resolve();
   // Create a typed array of the correct length to fill
   const r = new Uint8Array(length);
   crypto.getRandomValues(r);
@@ -120,7 +123,7 @@ async function _doEncrypt(
   let payloadBuffer: BufferSource;
   if ('_brand' in payload && payload._brand === 'SymmetricKey') {
     // Pass Uint8Array directly — Web Crypto respects byteOffset/byteLength on typed array views.
-    payloadBuffer = unwrapSymmetricKey(payload);
+    payloadBuffer = toCryptoBytes(unwrapSymmetricKey(payload));
   } else {
     // Binary payload
     payloadBuffer = (payload as Binary).asArrayBuffer();
@@ -173,8 +176,9 @@ async function _doDecryptBufferSource(
     .decrypt(algoDomString, importedKey, payloadBuffer)
     // Catching this error so we can specifically check for OperationError
     .catch((err) => {
-      if (err.name === 'OperationError') {
-        throw new DecryptError(err);
+      const error = asError(err);
+      if (error.name === 'OperationError') {
+        throw new DecryptError(error.message, error);
       }
 
       throw err;
@@ -183,7 +187,7 @@ async function _doDecryptBufferSource(
 }
 
 function _importKey(keyBytes: Uint8Array, algorithm: AesCbcParams | AesGcmParams) {
-  return crypto.subtle.importKey('raw', keyBytes, algorithm, true, ENC_DEC_METHODS);
+  return crypto.subtle.importKey('raw', toCryptoBytes(keyBytes), algorithm, true, ENC_DEC_METHODS);
 }
 
 /**
@@ -210,7 +214,7 @@ function getSymmetricAlgoDomStringFromIv(
 
   return {
     name: nativeAlgorithm,
-    iv,
+    iv: toCryptoBytes(iv),
   };
 }
 
@@ -239,7 +243,7 @@ export async function digest(algorithm: HashAlgorithm, data: Uint8Array): Promis
     throw new ConfigurationError(`Unsupported hash algorithm: ${algorithm}`);
   }
 
-  const hashBuffer = await crypto.subtle.digest(algorithm, data);
+  const hashBuffer = await crypto.subtle.digest(algorithm, toCryptoBytes(data));
   return new Uint8Array(hashBuffer);
 }
 
@@ -250,13 +254,13 @@ export async function hmac(data: Uint8Array, key: SymmetricKey): Promise<Uint8Ar
   const keyBytes = unwrapSymmetricKey(key);
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
-    keyBytes,
+    toCryptoBytes(keyBytes),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign']
   );
 
-  const signature = await crypto.subtle.sign('HMAC', cryptoKey, data);
+  const signature = await crypto.subtle.sign('HMAC', cryptoKey, toCryptoBytes(data));
   return new Uint8Array(signature);
 }
 
@@ -272,12 +276,12 @@ export async function verifyHmac(
   const keyBytes = unwrapSymmetricKey(key);
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
-    keyBytes,
+    toCryptoBytes(keyBytes),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['verify']
   );
-  return crypto.subtle.verify('HMAC', cryptoKey, signature, data);
+  return crypto.subtle.verify('HMAC', cryptoKey, toCryptoBytes(signature), toCryptoBytes(data));
 }
 
 /**
@@ -285,6 +289,7 @@ export async function verifyHmac(
  * Used for external keys (e.g., unwrapped from KAS).
  */
 export async function importSymmetricKey(keyBytes: Uint8Array): Promise<SymmetricKey> {
+  await Promise.resolve();
   return wrapSymmetricKey(keyBytes);
 }
 
@@ -293,6 +298,7 @@ export async function importSymmetricKey(keyBytes: Uint8Array): Promise<Symmetri
  * Key bytes are extracted internally for merging.
  */
 export async function mergeSymmetricKeys(shares: SymmetricKey[]): Promise<SymmetricKey> {
+  await Promise.resolve();
   const splitBytes = shares.map(unwrapSymmetricKey);
   const merged = keyMerge(splitBytes);
   return wrapSymmetricKey(merged);

@@ -1,6 +1,6 @@
 import { InvalidFileError } from '../../../src/errors.js';
 import { type Chunker } from '../../../src/seekable.js';
-import { Manifest } from '../models/index.js';
+import type { Manifest } from '../models/index.js';
 import { readUInt32LE, readUInt16LE, copyUint8Arr, buffToString } from './index.js';
 
 // TODO: Better document what these constants are
@@ -103,7 +103,7 @@ export class ZipReader {
     const byteEnd = byteStart + cdObj.uncompressedSize;
     const manifest = await this.getChunk(byteStart, byteEnd);
 
-    return JSON.parse(new TextDecoder().decode(manifest));
+    return JSON.parse(new TextDecoder().decode(manifest)) as Manifest;
   }
 
   async adjustHeaders(cdObj: CentralDirectory): Promise<void> {
@@ -147,7 +147,6 @@ export class ZipReader {
     for (let i = chunkBuffer.length - 22; i >= 0; i -= 1) {
       // If what we're locking at isn't the start of a central directory, skip it..
       if (readUInt32LE(chunkBuffer, i) !== CD_SIGNATURE) {
-        // eslint-disable-next-line no-continue
         continue;
       }
       // Slice off that CD from it's start until the end of either the buffer, or whatever the start of the previously
@@ -201,7 +200,7 @@ function parseCentralDirectoryWithNoExtras(cdBuffer: Uint8Array): CentralDirecto
     CENTRAL_DIRECTORY_RECORD_FIXED_SIZE,
     CENTRAL_DIRECTORY_RECORD_FIXED_SIZE + cd.fileNameLength
   );
-  // eslint-disable-next-line no-bitwise
+
   const isUtf8 = !!(cd.generalPurposeBitFlag & 0x800);
   cd.fileName = bufferToString(fileNameBuffer, 0, cd.fileNameLength, isUtf8);
   cd.headerLength = LOCAL_FILE_HEADER_FIXED_SIZE + cd.fileNameLength + cd.extraFieldLength;

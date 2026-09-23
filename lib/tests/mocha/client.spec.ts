@@ -4,14 +4,15 @@ import { Client as TDF } from '../../tdf3/src/index.js';
 import { DecoratedReadableStream } from '../../tdf3/src/client/DecoratedReadableStream.js';
 import { algorithmEnumValueToString, findEntryInCache } from '../../tdf3/src/client/index.js';
 import { getMocks } from '../mocks/index.js';
-import { Algorithm, Value } from '../../src/platform/policy/objects_pb.js';
+import type { Value } from '../../src/platform/policy/objects_pb.js';
+import { Algorithm } from '../../src/platform/policy/objects_pb.js';
 import { create } from '@bufbuild/protobuf';
 import {
   GetAttributeValuesByFqnsResponseSchema,
   GetKeyMappingsByFqnsResponseSchema,
 } from '../../src/platform/policy/attributes/attributes_pb.js';
 import { base64 } from '../../src/encodings/index.js';
-import { Attribute } from 'src/policy/attributes.js';
+import type { Attribute } from '../../src/policy/attributes.js';
 
 describe('client wrapper tests', function () {
   it('client params safe from updating', function () {
@@ -35,7 +36,7 @@ describe('client wrapper tests', function () {
   it('encrypt params null string source', function () {
     const paramsBuilder = new TDF.EncryptParamsBuilder();
     expect(() => {
-      // @ts-ignore
+      // @ts-expect-error Deliberately verifies null is rejected.
       paramsBuilder.setStringSource(null);
     }).to.throw();
   });
@@ -43,7 +44,7 @@ describe('client wrapper tests', function () {
   it('encrypt params bad string source', function () {
     const paramsBuilder = new TDF.EncryptParamsBuilder();
     expect(() => {
-      // @ts-ignore
+      // @ts-expect-error Deliberately verifies a number is rejected.
       paramsBuilder.setStringSource(42);
     }).to.throw();
   });
@@ -51,7 +52,7 @@ describe('client wrapper tests', function () {
   it('encrypt params null file source', function () {
     const paramsBuilder = new TDF.DecryptParamsBuilder();
     expect(() => {
-      // @ts-ignore
+      // @ts-expect-error Deliberately verifies null is rejected.
       paramsBuilder.setFileSource(null);
     }).to.throw();
   });
@@ -87,7 +88,7 @@ describe('client wrapper tests', function () {
   it('encrypt params bad file source', function () {
     const paramsBuilder = new TDF.DecryptParamsBuilder();
     expect(() => {
-      // @ts-ignore
+      // @ts-expect-error Deliberately verifies a number is rejected.
       paramsBuilder.setFileSource(42);
     }).to.throw();
   });
@@ -97,7 +98,7 @@ describe('client wrapper tests', function () {
       .withStringSource('hello world')
       .withPolicyId('foo')
       .build();
-    // @ts-ignore
+    // @ts-expect-error Deliberately verifies the legacy accessor is available.
     assert.equal('foo', params.getPolicyId());
   });
 
@@ -148,10 +149,11 @@ describe('client wrapper tests', function () {
     const Mocks = getMocks();
     const authProvider = {
       updateClientPublicKey: async () => {},
-      withCreds: async (httpReq: TDF.HttpRequest) => ({
-        ...httpReq,
-        headers: { ...httpReq.headers, Authorization: 'Bearer dummy-auth-token' },
-      }),
+      withCreds: (httpReq: TDF.HttpRequest) =>
+        Promise.resolve({
+          ...httpReq,
+          headers: { ...httpReq.headers, Authorization: 'Bearer dummy-auth-token' },
+        }),
     };
 
     const kasValueUri = 'https://kas.value.example/kas';
@@ -257,19 +259,23 @@ describe('client wrapper tests', function () {
       },
     });
 
-    const fetchStub = sinon.stub(globalThis, 'fetch').callsFake(async (input) => {
-      const url = typeof input === 'string' ? input : input.toString();
+    const fetchStub = sinon.stub(globalThis, 'fetch').callsFake((input) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
       if (url.includes('GetKeyMappingsByFqns')) {
-        return new Response(JSON.stringify(getKeyMappingsByFqnsResponse), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        });
+        return Promise.resolve(
+          new Response(JSON.stringify(getKeyMappingsByFqnsResponse), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        );
       }
       if (url.includes('GetAttributeValuesByFqns')) {
-        return new Response(JSON.stringify(getAttributeValuesByFqnsResponse), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        });
+        return Promise.resolve(
+          new Response(JSON.stringify(getAttributeValuesByFqnsResponse), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        );
       }
       throw new Error(`unexpected fetch: ${url}`);
     });
@@ -308,7 +314,9 @@ describe('client wrapper tests', function () {
       );
       assert(cachedValueKey !== null, 'value-level key should be cached');
       assert(cachedAttributeKey !== null, 'attribute-level key should be cached');
-      const policy = JSON.parse(base64.decode(stream.manifest.encryptionInformation.policy));
+      const policy = JSON.parse(base64.decode(stream.manifest.encryptionInformation.policy)) as {
+        body?: { dataAttributes?: Array<{ attribute: string }> };
+      };
       const dataAttributes = policy?.body?.dataAttributes ?? [];
       assert.deepEqual(
         dataAttributes.map((attr: { attribute: string }) => attr.attribute).sort(),
@@ -353,7 +361,7 @@ describe('tdf stream tests', function () {
     });
     assert.equal('hello world', new TextDecoder().decode(await stream.toBuffer()));
   });
-  it('always returns a list of obligations', async function () {
+  it('always returns a list of obligations', function () {
     const pt = new TextEncoder().encode('hello world');
     const stream = new DecoratedReadableStream({
       start(controller) {

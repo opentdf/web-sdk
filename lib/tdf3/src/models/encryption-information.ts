@@ -9,13 +9,9 @@ import {
   type EncryptResult,
   type SymmetricKey,
 } from '../crypto/declarations.js';
-import {
-  ROOT_INTEGRITY_ALGORITHM,
-  SEGMENT_INTEGRITY_ALGORITHM,
-  type RootIntegrityAlgorithm,
-  type SegmentIntegrityAlgorithm,
-} from '../tdf.js';
+import { ROOT_INTEGRITY_ALGORITHM, SEGMENT_INTEGRITY_ALGORITHM } from '../tdf.js';
 import { ConfigurationError } from '../../../src/errors.js';
+import { toArrayBuffer } from '../utils/index.js';
 
 export type KeyInfo = {
   readonly unwrappedKey: SymmetricKey;
@@ -42,11 +38,11 @@ export type EncryptionInformation = {
        * only `HS256` is accepted (see `asRootIntegrityAlgorithm`). Typed as a
        * plain string because a hostile manifest may say anything.
        */
-      alg: RootIntegrityAlgorithm | string;
+      alg: string;
       sig: string;
     };
     /** Untrusted until validated on read; `GMAC` and `HS256` are accepted. */
-    segmentHashAlg?: SegmentIntegrityAlgorithm | string;
+    segmentHashAlg?: string;
     segments: Segment[];
     segmentSizeDefault?: number;
     encryptedSegmentSizeDefault?: number;
@@ -88,21 +84,28 @@ export class SplitKey {
   }
 
   async getKeyAccessObjects(policy: Policy, keyInfo: KeyInfo): Promise<KeyAccessObject[]> {
-    const splitIds = [...new Set(this.keyAccess.map(({ sid }) => sid))].sort((a = '', b = '') =>
+    const splitIds = [...new Set(this.keyAccess.map(({ sid }) => sid || ''))].sort((a, b) =>
       a.localeCompare(b)
     );
     const unwrappedKeySplits = await this.cryptoService.splitSymmetricKey(
       keyInfo.unwrappedKey,
       splitIds.length
     );
-    const splitsByName = Object.fromEntries(
-      splitIds.map((sid, index) => [sid, unwrappedKeySplits[index]])
+    const splitsByName = splitIds.reduce<Record<string, SymmetricKey | undefined>>(
+      (result, sid, index) => {
+        result[sid] = unwrappedKeySplits[index];
+        return result;
+      },
+      {}
     );
 
-    const keyAccessObjects = [];
+    const keyAccessObjects: KeyAccessObject[] = [];
     for (const item of this.keyAccess) {
       // use the key split to encrypt metadata for each key access object
       const unwrappedKeySplit = splitsByName[item.sid || ''];
+      if (!unwrappedKeySplit) {
+        throw new ConfigurationError(`Missing key split for sid [${item.sid || ''}]`);
+      }
 
       const metadata = item.metadata || '';
       const metadataStr = (
@@ -117,7 +120,9 @@ export class SplitKey {
               }
       ) as string;
 
-      const metadataBinary = Binary.fromArrayBuffer(new TextEncoder().encode(metadataStr));
+      const metadataBinary = Binary.fromArrayBuffer(
+        toArrayBuffer(new TextEncoder().encode(metadataStr))
+      );
 
       const encryptedMetadataResult = await this.encrypt(
         metadataBinary,

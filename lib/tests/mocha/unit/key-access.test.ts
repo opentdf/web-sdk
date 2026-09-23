@@ -1,41 +1,47 @@
 import { expect } from 'chai';
 
 import { ECWrapped, Wrapped } from '../../../tdf3/src/models/key-access.js';
-import { Policy } from '../../../tdf3/src/models/policy.js';
+import type { Policy } from '../../../tdf3/src/models/policy.js';
 import { base64 } from '../../../src/encodings/index.js';
-import type { CryptoService, KeyPair } from '../../../tdf3/src/crypto/declarations.js';
+import type { CryptoService, KeyPair, PublicKey } from '../../../tdf3/src/crypto/declarations.js';
 import { Binary } from '../../../tdf3/src/binary.js';
 import { importSymmetricKey } from '../../../tdf3/src/crypto/index.js';
 
 // Mock CryptoService for testing
 const mockCryptoService: CryptoService = {
-  async generateECKeyPair(): Promise<KeyPair> {
-    return {
-      publicKey: { _brand: 'PublicKey', algorithm: 'ec:secp256r1', curve: 'P-256' } as any,
-      privateKey: { _brand: 'PrivateKey', algorithm: 'ec:secp256r1', curve: 'P-256' } as any,
-    };
+  importPublicKey(): Promise<PublicKey> {
+    return Promise.resolve({ _brand: 'PublicKey', algorithm: 'rsa:2048', modulusBits: 2048 });
+  },
+  generateECKeyPair(): Promise<KeyPair> {
+    return Promise.resolve({
+      publicKey: { _brand: 'PublicKey', algorithm: 'ec:secp256r1', curve: 'P-256' },
+      privateKey: { _brand: 'PrivateKey', algorithm: 'ec:secp256r1', curve: 'P-256' },
+    });
   },
   async deriveKeyFromECDH() {
     const keyBytes = new Uint8Array(32);
     return await importSymmetricKey(keyBytes);
   },
-  async randomBytes(length: number): Promise<Uint8Array> {
-    return new Uint8Array(length);
+  randomBytes(length: number): Promise<Uint8Array> {
+    return Promise.resolve(new Uint8Array(length));
   },
-  async encrypt() {
-    return {
+  encrypt() {
+    return Promise.resolve({
       payload: Binary.fromArrayBuffer(new Uint8Array(16).buffer),
       authTag: Binary.fromArrayBuffer(new Uint8Array(16).buffer),
-    };
+    });
   },
-  async hmac(): Promise<string> {
-    return 'mock-hmac-hash';
+  hmac(): Promise<Uint8Array> {
+    return Promise.resolve(new Uint8Array(32));
   },
-  async encryptWithPublicKey() {
-    return Binary.fromString('mock-wrapped-key');
+  digest(): Promise<Uint8Array> {
+    return Promise.resolve(new Uint8Array(32));
   },
-  async exportPublicKeyPem() {
-    return 'ephemeral-public-key-pem';
+  encryptWithPublicKey() {
+    return Promise.resolve(Binary.fromString('mock-wrapped-key'));
+  },
+  exportPublicKeyPem() {
+    return Promise.resolve('ephemeral-public-key-pem');
   },
 } as unknown as CryptoService;
 
@@ -98,7 +104,7 @@ describe('ECWrapped', () => {
     expect(ek).to.have.property('publicKey');
   });
 
-  it('should initialize Wrapped with correct properties', async () => {
+  it('should initialize Wrapped with correct properties', () => {
     const wrapped = new Wrapped(url, kid, publicKey, metadata, mockCryptoService, sid);
     expect(wrapped.type).to.equal('wrapped');
   });

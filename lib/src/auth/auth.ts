@@ -6,15 +6,7 @@ import {
 import { signJwt, type JwtHeader, type JwtPayload } from '../../tdf3/src/crypto/jwt.js';
 
 export type HttpMethod =
-  | 'GET'
-  | 'HEAD'
-  | 'POST'
-  | 'PUT'
-  | 'DELETE'
-  | 'CONNECT'
-  | 'OPTIONS'
-  | 'TRACE'
-  | 'PATCH';
+  'GET' | 'HEAD' | 'POST' | 'PUT' | 'DELETE' | 'CONNECT' | 'OPTIONS' | 'TRACE' | 'PATCH';
 
 /**
  * Generic HTTP request interface used by AuthProvider implementers.

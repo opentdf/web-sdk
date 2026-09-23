@@ -7,6 +7,7 @@ import * as DefaultCryptoService from '../../../tdf3/src/crypto/index.js';
 import { hex, base64 } from '../../../src/encodings/index.js';
 import { signJwt } from '../../../tdf3/src/crypto/jwt.js';
 import type { CryptoService } from '../../../tdf3/src/crypto/declarations.js';
+import { wrapPrivateKey, wrapPublicKey } from '../../../tdf3/src/crypto/core/keys.js';
 
 describe('assertions', () => {
   const cryptoService: CryptoService = DefaultCryptoService;
@@ -29,7 +30,9 @@ describe('assertions', () => {
     });
 
     it('normalizes assertions', async () => {
-      let assertion: any = {
+      const assertion: assertions.Assertion & {
+        signingKey?: assertions.AssertionKey;
+      } = {
         appliesToState: 'unencrypted',
         id: 'system-metadata',
         binding: {
@@ -50,9 +53,9 @@ describe('assertions', () => {
         type: 'other',
       };
 
-      let h1 = await assertions.hash(assertion, cryptoService);
+      const h1 = await assertions.hash(assertion, cryptoService);
       delete assertion.signingKey;
-      let h2 = await assertions.hash(assertion, cryptoService);
+      const h2 = await assertions.hash(assertion, cryptoService);
 
       expect(h1).to.equal(h2);
     });
@@ -70,18 +73,8 @@ describe('assertions', () => {
         ['sign', 'verify']
       );
       const keyPair = {
-        publicKey: {
-          _brand: 'PublicKey',
-          algorithm: 'ec:secp256r1',
-          curve: 'P-256',
-          _internal: webCryptoKeyPair.publicKey,
-        } as any,
-        privateKey: {
-          _brand: 'PrivateKey',
-          algorithm: 'ec:secp256r1',
-          curve: 'P-256',
-          _internal: webCryptoKeyPair.privateKey,
-        } as any,
+        publicKey: wrapPublicKey(webCryptoKeyPair.publicKey, 'ec:secp256r1'),
+        privateKey: wrapPrivateKey(webCryptoKeyPair.privateKey, 'ec:secp256r1'),
       };
       // Get JWK from the public key
       const jwk = await crypto.subtle.exportKey('jwk', webCryptoKeyPair.publicKey);

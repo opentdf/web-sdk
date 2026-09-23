@@ -3,10 +3,10 @@ import { Binary } from '../../tdf3/src/binary.js';
 
 function range(a: number, b?: number): number[] {
   if (!b) {
-    return [...Array(a).keys()];
+    return Array.from({ length: a }, (_, index) => index);
   }
   const l = b - a;
-  const r = new Array(l);
+  const r: number[] = new Array<number>(l);
   for (let i = 0; i < l; i += 1) {
     r[i] = a + i;
   }

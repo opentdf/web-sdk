@@ -17,6 +17,11 @@ const ok = {
   url: 'about:none',
 } as Awaited<ReturnType<typeof fetch>>;
 
+type MockFetch = ((url: RequestInfo | URL, init?: RequestInit) => Promise<Response>) & {
+  lastCall: { firstArg: RequestInfo | URL; lastArg: RequestInit };
+  callCount: number;
+};
+
 function mockFetch(
   r: Partial<AccessTokenResponse> = {},
   {
@@ -24,11 +29,18 @@ function mockFetch(
     status = 200,
     statusText = 'OK',
   }: { ok?: boolean; status?: number; statusText?: string } = {}
-) {
+): MockFetch {
   const json = fake.resolves(r);
   const text = fake.resolves(JSON.stringify(r));
-  return fake.resolves({ json, ok, status, statusText, text });
+  const response = { json, ok, status, statusText, text } as unknown as Response;
+  return fake(() => Promise.resolve(response));
 }
+
+const errorMessage = (error: unknown): string => {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  return 'Unknown error';
+};
 
 // Helper to generate signing keys for tests
 async function generateTestSigningKey(): Promise<KeyPair> {
@@ -84,7 +96,7 @@ describe('AccessToken', () => {
         await accessToken.info('fakeToken');
         assert.fail();
       } catch (e) {
-        expect(e.message).to.match(/Unauthorized/);
+        expect(errorMessage(e)).to.match(/Unauthorized/);
       }
     });
   });
@@ -111,14 +123,15 @@ describe('AccessToken', () => {
         expect(mf.lastCall.firstArg).to.match(
           /\/auth\/realms\/yeet\/protocol\/openid-connect\/token$/
         );
-        const body = qsparse(mf.lastCall.lastArg.body);
+        const request = mf.lastCall.lastArg;
+        const body = qsparse(request.body as string);
         expect(body).to.eql({
           grant_type: 'refresh_token',
           client_id: 'myid',
           refresh_token: 'refresh',
         });
-        expect(mf.lastCall.lastArg.headers).to.have.property('X-VirtruPubKey');
-        expect(mf.lastCall.lastArg.headers).to.have.property('DPoP');
+        expect(request.headers).to.have.property('X-VirtruPubKey');
+        expect(request.headers).to.have.property('DPoP');
       });
       it('passes client creds with refresh grant type to token endpoint and dPoP disabled', async () => {
         const signingKey = await generateTestSigningKey();
@@ -140,14 +153,15 @@ describe('AccessToken', () => {
         expect(mf.lastCall.firstArg).to.match(
           /\/auth\/realms\/yeet\/protocol\/openid-connect\/token$/
         );
-        const body = qsparse(mf.lastCall.lastArg.body);
+        const request = mf.lastCall.lastArg;
+        const body = qsparse(request.body as string);
         expect(body).to.eql({
           grant_type: 'refresh_token',
           client_id: 'myid',
           refresh_token: 'refresh',
         });
-        expect(mf.lastCall.lastArg.headers).not.to.have.property('X-VirtruPubKey');
-        expect(mf.lastCall.lastArg.headers).not.to.have.property('DPoP');
+        expect(request.headers).not.to.have.property('X-VirtruPubKey');
+        expect(request.headers).not.to.have.property('DPoP');
       });
     });
     describe('using browser flow', () => {
@@ -168,7 +182,7 @@ describe('AccessToken', () => {
         const res = await accessToken.get();
         expect(res).to.eql('fake_token');
         expect(mf.lastCall.firstArg).to.match(/\/protocol\/openid-connect\/token$/);
-        const body = qsparse(mf.lastCall.lastArg.body);
+        const body = qsparse(mf.lastCall.lastArg.body as string);
         expect(body).to.eql({
           grant_type: 'refresh_token',
           client_id: 'browserclient',
@@ -197,7 +211,7 @@ describe('AccessToken', () => {
         const res = await accessToken.get();
         expect(res).to.eql('fake_token');
         expect(mf.lastCall.firstArg).to.match(/\/protocol\/openid-connect\/token$/);
-        const body = qsparse(mf.lastCall.lastArg.body);
+        const body = qsparse(mf.lastCall.lastArg.body as string);
         expect(body).to.eql({
           audience: 'myid',
           client_id: 'myid',
@@ -227,7 +241,7 @@ describe('AccessToken', () => {
         const res = await accessToken.get();
         expect(res).to.eql('fake_token');
         expect(mf.lastCall.firstArg).to.match(/\/protocol\/openid-connect\/token$/);
-        const body = qsparse(mf.lastCall.lastArg.body);
+        const body = qsparse(mf.lastCall.lastArg.body as string);
         expect(body).to.eql({
           audience: 'browserclient',
           client_id: 'browserclient',
@@ -259,7 +273,7 @@ describe('AccessToken', () => {
         const atr = await accessTokenClient.get();
         expect(atr).to.eql('notreal');
         expect(mf.lastCall.firstArg).to.eql('https://auth.invalid/protocol/openid-connect/token');
-        const parseArgs = qsparse(mf.lastCall.lastArg.body);
+        const parseArgs = qsparse(mf.lastCall.lastArg.body as string);
         expect(parseArgs).to.have.property('grant_type', 'client_credentials');
         expect(parseArgs).to.have.property('client_id', 'myid');
         expect(parseArgs).to.have.property('client_secret', 'mysecret');
@@ -281,7 +295,7 @@ describe('AccessToken', () => {
 
           await accessTokenClient.get();
         } catch (e) {
-          expect(e.message).to.match(/client identifier/);
+          expect(errorMessage(e)).to.match(/client identifier/);
         }
       });
     });
@@ -318,12 +332,14 @@ describe('AccessToken', () => {
       const json = fake.resolves({ access_token: 'a' });
       const mf = fake((url: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
         if (!init) {
-          return Promise.reject('No init found');
+          return Promise.reject(new Error('No init found'));
         }
         if (init.method === 'POST') {
           return Promise.resolve({ ...ok, json });
         }
-        return Promise.reject(`yee [${url}] [${JSON.stringify(init.headers)}]`);
+        const requestUrl =
+          typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url;
+        return Promise.reject(new Error(`yee [${requestUrl}] [${JSON.stringify(init.headers)}]`));
       });
       const accessTokenClient = new AccessToken(
         {
@@ -351,12 +367,14 @@ describe('AccessToken', () => {
       const json = fake.resolves({ access_token: 'a' });
       const mf = fake((url: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
         if (!init) {
-          return Promise.reject('No init found');
+          return Promise.reject(new Error('No init found'));
         }
         if (init.method === 'POST') {
           return Promise.resolve({ ...ok, json });
         }
-        return Promise.reject(`yee [${url}] [${JSON.stringify(init.headers)}]`);
+        const requestUrl =
+          typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url;
+        return Promise.reject(new Error(`yee [${requestUrl}] [${JSON.stringify(init.headers)}]`));
       });
       const accessTokenClient = new AccessToken(
         {
@@ -424,7 +442,7 @@ describe('AccessToken', () => {
         });
         assert.fail('Expected ConfigurationError');
       } catch (e) {
-        expect(e.message).to.match(/required when DPoP is enabled/);
+        expect(errorMessage(e)).to.match(/required when DPoP is enabled/);
       }
     });
   });

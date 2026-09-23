@@ -34,7 +34,10 @@ export const isValidAsymmetricKeySize = (size: number | undefined, minSize?: num
  * @param  label header and footer label that identifies key type
  * @return formatted output
  */
-export const formatAsPem = (bytes: ArrayBuffer, label: string): string => {
+export const formatAsPem = (
+  bytes: ArrayBufferLike | ArrayBufferView<ArrayBufferLike>,
+  label: string
+): string => {
   let pemCert = `-----BEGIN ${label}-----\n`;
   let nextIndex = 0;
   const base64KeyString = base64.encodeArrayBuffer(bytes);

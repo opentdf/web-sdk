@@ -1,6 +1,7 @@
 import { ConfigurationError } from '../errors.js';
-import { Attribute, AttributeRuleType, KeyAccessServer, Value } from './attributes.js';
-import { SimpleKasPublicKey } from '../platform/policy/objects_pb.js';
+import type { Attribute, KeyAccessServer, Value } from './attributes.js';
+import { AttributeRuleType } from './attributes.js';
+import type { SimpleKasPublicKey } from '../platform/policy/objects_pb.js';
 import { effectiveKasKeys } from './kas-keys.js';
 
 type KeyHolder = KeyAccessServer | (SimpleKasPublicKey & { kasUri: string });
@@ -57,9 +58,9 @@ export function booleanOperatorFor(rule?: AttributeRuleType): BooleanOperator {
 type ValueFQN = string;
 export function plan(dataAttrs: Value[]): KeySplitStep[] {
   // KASes by value
-  const granters: Record<ValueFQN, Set<KeyHolder>> = Object.create(null);
+  const granters = Object.create(null) as Record<ValueFQN, Set<KeyHolder>>;
   // Values grouped by normalized attribute prefix
-  const allClauses: Record<string, AttributeClause> = Object.create(null);
+  const allClauses = Object.create(null) as Record<string, AttributeClause>;
 
   const toKeyHolders = (keys?: Value['kasKeys']): KeyHolder[] => {
     if (!keys?.length) {

@@ -78,7 +78,9 @@ describe('concurrency', () => {
           await anyPool(n, promises);
         } catch (e) {
           expect(e).to.be.instanceOf(AggregateError);
-          expect(e.errors).to.have.lengthOf(3);
+          if (e instanceof AggregateError) {
+            expect(e.errors).to.have.lengthOf(3);
+          }
         }
       });
     });

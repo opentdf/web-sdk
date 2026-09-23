@@ -1,6 +1,5 @@
+import type { KasPublicKeyAlgorithm, KasPublicKeyInfo } from '../../src/access.js';
 import {
-  KasPublicKeyAlgorithm,
-  KasPublicKeyInfo,
   OriginAllowList,
   fetchKasPubKey as fetchKasPubKeyV2,
   fetchWrappedKey,
@@ -20,6 +19,7 @@ import { handleRpcRewrapErrorString } from '../../src/access/access-rpc.js';
 import { allPool, anyPool } from '../../src/concurrency.js';
 import { base64, hex } from '../../src/encodings/index.js';
 import {
+  asError,
   ConfigurationError,
   DecryptError,
   InvalidFileError,
@@ -30,12 +30,12 @@ import {
 } from '../../src/errors.js';
 import { type Chunker } from '../../src/seekable.js';
 import { tdfSpecVersion } from '../../src/version.js';
-import { AssertionConfig, AssertionKey, AssertionVerificationKeys } from './assertions.js';
+import type { AssertionConfig, AssertionKey, AssertionVerificationKeys } from './assertions.js';
 import * as assertions from './assertions.js';
 import { Binary } from './binary.js';
 import { AesGcmCipher } from './ciphers/aes-gcm-cipher.js';
-import { SymmetricCipher } from './ciphers/symmetric-cipher-base.js';
-import { DecryptParams } from './client/builders.js';
+import type { SymmetricCipher } from './ciphers/symmetric-cipher-base.js';
+import type { DecryptParams } from './client/builders.js';
 import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
 import {
   type CryptoService,
@@ -46,26 +46,23 @@ import {
   type SymmetricKey,
 } from './crypto/declarations.js';
 import { Algorithms } from './ciphers/index.js';
-import {
-  ECWrapped,
+import type {
   KeyAccessType,
   KeyInfo,
-  MLKEM_CT_SIZES,
-  MlKemWrapped,
   Manifest,
   Policy,
   SplitKey,
-  Wrapped,
   KeyAccess,
   KeyAccessObject,
   SplitType,
 } from './models/index.js';
+import { ECWrapped, MLKEM_CT_SIZES, MlKemWrapped, Wrapped } from './models/index.js';
 import { unsigned } from './utils/buffer-crc32.js';
-import { ZipReader, ZipWriter, concatUint8, buffToString } from './utils/index.js';
-import { CentralDirectory } from './utils/zip-reader.js';
+import { ZipReader, ZipWriter, concatUint8, buffToString, toArrayBuffer } from './utils/index.js';
+import type { CentralDirectory } from './utils/zip-reader.js';
 import { getZtdfSalt } from './crypto/salt.js';
 import { decodeKemEnvelopeDer } from './crypto/core/mlkem-asn1.js';
-import { Payload } from './models/payload.js';
+import type { Payload } from './models/payload.js';
 import {
   getRequiredObligationFQNs,
   upgradeRewrapResponseV1,
@@ -243,7 +240,7 @@ export function isRootIntegrityAlgorithm(alg: unknown): alg is RootIntegrityAlgo
  */
 export function asSegmentIntegrityAlgorithm(alg: unknown): SegmentIntegrityAlgorithm {
   if (!isSegmentIntegrityAlgorithm(alg)) {
-    throw new UnsupportedError(`Unsupported segment hash alg [${alg}]`);
+    throw new UnsupportedError(`Unsupported segment hash alg [${String(alg)}]`);
   }
   return alg.toUpperCase() as SegmentIntegrityAlgorithm;
 }
@@ -260,7 +257,7 @@ export function asSegmentIntegrityAlgorithm(alg: unknown): SegmentIntegrityAlgor
 export function asRootIntegrityAlgorithm(alg: unknown): RootIntegrityAlgorithm {
   if (!isRootIntegrityAlgorithm(alg)) {
     throw new IntegrityError(
-      `unsupported root integrity algorithm [${alg}]; only [${ROOT_INTEGRITY_ALGORITHM}] is supported`
+      `unsupported root integrity algorithm [${String(alg)}]; only [${ROOT_INTEGRITY_ALGORITHM}] is supported`
     );
   }
   return ROOT_INTEGRITY_ALGORITHM;
@@ -394,8 +391,8 @@ export async function buildKeyAccess({
     pubKey = await extractPemFromKeyString(publicKey, alg, cryptoService);
   } catch (e) {
     throw new ConfigurationError(
-      `TDF.buildKeyAccess: Invalid public key [${publicKey}], caused by [${e}]`,
-      e
+      `TDF.buildKeyAccess: Invalid public key [${publicKey}], caused by [${String(e)}]`,
+      asError(e)
     );
   }
   switch (type) {
@@ -429,7 +426,7 @@ export function validatePolicyObject(policy: Policy): void {
 
   if (missingFields.length) {
     throw new ConfigurationError(
-      `The given policy object requires the following properties: ${missingFields}`
+      `The given policy object requires the following properties: ${missingFields.join(', ')}`
     );
   }
 }
@@ -494,7 +491,7 @@ async function segmentIntegrity(
       // Use CryptoService for HMAC-SHA256 signing
       return cryptoService.hmac(ciphertext, unwrappedKey);
     default:
-      throw new ConfigurationError(`Unsupported segment integrity alg [${algorithmType}]`);
+      throw new ConfigurationError(`Unsupported segment integrity alg [${String(algorithmType)}]`);
   }
 }
 
@@ -515,7 +512,7 @@ async function rootIntegrity(
   // Runtime guard as well as a type-level one: callers may hand us a value
   // parsed out of an untrusted manifest.
   if (!isRootIntegrityAlgorithm(algorithmType)) {
-    throw new ConfigurationError(`unsupported root integrity algorithm [${algorithmType}]`);
+    throw new ConfigurationError(`unsupported root integrity algorithm [${String(algorithmType)}]`);
   }
   return cryptoService.hmac(aggregateHash, unwrappedKey);
 }
@@ -540,10 +537,10 @@ async function segmentIntegrityVersion422(
     case 'HS256': {
       const content = buffToString(new Uint8Array(payloadBinary.asArrayBuffer()), 'utf-8');
       const sig = await cryptoService.hmac(new TextEncoder().encode(content), unwrappedKey);
-      return hex.encodeArrayBuffer(sig.buffer);
+      return hex.encodeArrayBuffer(toArrayBuffer(sig));
     }
     default:
-      throw new ConfigurationError(`Unsupported segment integrity alg [${algorithmType}]`);
+      throw new ConfigurationError(`Unsupported segment integrity alg [${String(algorithmType)}]`);
   }
 }
 
@@ -558,11 +555,11 @@ async function rootIntegrityVersion422(
   cryptoService: CryptoService
 ): Promise<string> {
   if (!isRootIntegrityAlgorithm(algorithmType)) {
-    throw new ConfigurationError(`unsupported root integrity algorithm [${algorithmType}]`);
+    throw new ConfigurationError(`unsupported root integrity algorithm [${String(algorithmType)}]`);
   }
   const content = buffToString(new Uint8Array(aggregateHash.asArrayBuffer()), 'utf-8');
   const sig = await cryptoService.hmac(new TextEncoder().encode(content), unwrappedKey);
-  return hex.encodeArrayBuffer(sig.buffer);
+  return hex.encodeArrayBuffer(toArrayBuffer(sig));
 }
 
 function isTargetSpecLegacyTDF(targetSpecVersion?: string): boolean {
@@ -578,12 +575,12 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
   }
   if (!isRootIntegrityAlgorithm(cfg.rootIntegrityAlgorithm)) {
     throw new ConfigurationError(
-      `unsupported root integrity algorithm [${cfg.rootIntegrityAlgorithm}]; only [${ROOT_INTEGRITY_ALGORITHM}] is supported`
+      `unsupported root integrity algorithm [${String(cfg.rootIntegrityAlgorithm)}]; only [${ROOT_INTEGRITY_ALGORITHM}] is supported`
     );
   }
   if (!isSegmentIntegrityAlgorithm(cfg.segmentIntegrityAlgorithm)) {
     throw new ConfigurationError(
-      `unsupported segment integrity algorithm [${cfg.segmentIntegrityAlgorithm}]`
+      `unsupported segment integrity algorithm [${String(cfg.segmentIntegrityAlgorithm)}]`
     );
   }
 
@@ -595,7 +592,6 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
   const segmentIntegrityAlgorithm =
     cfg.segmentIntegrityAlgorithm.toUpperCase() as SegmentIntegrityAlgorithm;
 
-  // eslint-disable-next-line @typescript-eslint/no-this-alias
   const segmentInfos: Segment[] = [];
 
   cfg.byteLimit ??= Number.MAX_SAFE_INTEGER;
@@ -609,7 +605,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
     },
   ];
 
-  let currentBuffer = new Uint8Array();
+  let currentBuffer: Uint8Array<ArrayBufferLike> = new Uint8Array();
 
   let totalByteCount = 0;
   let bytesProcessed = 0;
@@ -857,7 +853,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
 
     // Don't pass in an IV here. The encrypt function will generate one for you, ensuring that each segment has a unique IV.
     const encryptedResult = await cfg.encryptionInformation.encrypt(
-      Binary.fromArrayBuffer(chunk.buffer),
+      Binary.fromArrayBuffer(toArrayBuffer(chunk)),
       cfg.keyForEncryption.unwrappedKey
     );
     const payloadBuffer = new Uint8Array(encryptedResult.payload.asByteArray());
@@ -1096,9 +1092,9 @@ async function unwrapKey({
 
           // Decrypt using CryptoService with opaque symmetric key
           const decryptResult = await cryptoService.decrypt(
-            Binary.fromArrayBuffer(wrappedKey.buffer),
+            Binary.fromArrayBuffer(toArrayBuffer(wrappedKey)),
             derivedKey, // SymmetricKey (opaque)
-            Binary.fromArrayBuffer(iv.buffer),
+            Binary.fromArrayBuffer(toArrayBuffer(iv)),
             Algorithms.AES_256_GCM
           );
 
@@ -1143,9 +1139,9 @@ async function unwrapKey({
           );
 
           const decryptResult = await cryptoService.decrypt(
-            Binary.fromArrayBuffer(wrappedKey.buffer),
+            Binary.fromArrayBuffer(toArrayBuffer(wrappedKey)),
             sharedSecret,
-            Binary.fromArrayBuffer(iv.buffer),
+            Binary.fromArrayBuffer(toArrayBuffer(iv)),
             Algorithms.AES_256_GCM
           );
 
@@ -1156,7 +1152,7 @@ async function unwrapKey({
           };
         }
 
-        const key = Binary.fromArrayBuffer(entityWrappedKey);
+        const key = Binary.fromArrayBuffer(toArrayBuffer(entityWrappedKey));
         const decryptedKeyBinary = await cryptoService.decryptWithPrivateKey(
           key,
           ephemeralEncryptionKeys.privateKey
@@ -1175,6 +1171,7 @@ async function unwrapKey({
           getPlatformUrlFromKasEndpoint(url),
           requiredObligations
         );
+        break;
       }
 
       default: {
@@ -1203,7 +1200,7 @@ async function unwrapKey({
         try {
           return await tryKasRewrap(keySplitInfo);
         } catch (e) {
-          throw handleRewrapError(e as Error);
+          throw handleRewrapError(e);
         }
       };
     });
@@ -1239,11 +1236,12 @@ async function unwrapKey({
   }
 }
 
-function handleRewrapError(error: Error) {
-  if (error.name === 'InvalidAccessError' || error.name === 'OperationError') {
-    return new DecryptError('unable to unwrap key from kas', error);
+function handleRewrapError(error: unknown): Error {
+  const cause = asError(error);
+  if (cause.name === 'InvalidAccessError' || cause.name === 'OperationError') {
+    return new DecryptError('unable to unwrap key from kas', cause);
   }
-  return error;
+  return cause;
 }
 
 async function decryptChunk(
@@ -1353,7 +1351,7 @@ async function fetchAndDecryptChunkSlice({
     const wrappedError =
       error instanceof InvalidFileError
         ? error
-        : new NetworkError('unable to fetch payload segment', error);
+        : new NetworkError('unable to fetch payload segment', asError(error));
     rejectChunks(slice, wrappedError);
     throw wrappedError;
   }
@@ -1530,8 +1528,7 @@ export async function sliceAndDecrypt({
   segmentIntegrityAlgorithm: SegmentIntegrityAlgorithm;
   specVersion: string;
 }) {
-  for (const index in slice) {
-    const chunk = slice[index];
+  for (const chunk of slice) {
     const { encryptedOffset, encryptedSegmentSize, plainSegmentSize } = chunk;
 
     const offset =
@@ -1559,7 +1556,7 @@ export async function sliceAndDecrypt({
       }
       chunk.decryptedChunk.set(result);
     } catch (e) {
-      chunk.decryptedChunk.reject(e);
+      chunk.decryptedChunk.reject(asError(e));
     }
   }
 }
@@ -1585,7 +1582,10 @@ export async function decryptStreamFrom(
     throw new InvalidFileError('Missing manifest data');
   }
 
-  cfg.keyMiddleware ??= async (key) => key;
+  cfg.keyMiddleware ??= async (key) => {
+    await Promise.resolve();
+    return key;
+  };
 
   const {
     encryptedSegmentSizeDefault: defaultSegmentSize,
@@ -1761,7 +1761,7 @@ export async function decryptStreamFrom(
 }
 
 async function concatenateUint8Array(uint8arrays: Uint8Array[]): Promise<Uint8Array> {
-  const blob = new Blob(uint8arrays);
+  const blob = new Blob(uint8arrays.map(toArrayBuffer));
   const buffer = await blob.arrayBuffer();
   return new Uint8Array(buffer);
 }

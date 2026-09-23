@@ -1,6 +1,20 @@
 import { type Metadata } from '../tdf.js';
 import { type Manifest } from '../models/index.js';
 
+type BufferEncoding =
+  | 'ascii'
+  | 'utf8'
+  | 'utf-8'
+  | 'utf16le'
+  | 'utf-16le'
+  | 'ucs2'
+  | 'ucs-2'
+  | 'base64'
+  | 'base64url'
+  | 'latin1'
+  | 'binary'
+  | 'hex';
+
 /**
  * Drain a stream with a reader rather than `new Response(stream).arrayBuffer()`.
  *
@@ -38,14 +52,16 @@ export type DecoratedReadableStreamSinkOptions = {
 };
 
 export class DecoratedReadableStream {
-  KEK: null | string;
-  algorithm: string;
+  // These decorations are assigned by the encryption/decryption pipeline.
+  KEK!: null | string;
+  algorithm!: string;
   policyUuid?: string;
-  tdfSize: number;
+  tdfSize!: number;
   fileSize: number | undefined;
   stream: ReadableStream<Uint8Array>;
   metadata?: Metadata;
-  manifest: Manifest;
+  // Set by the TDF encryption/decryption pipeline before consumers inspect it.
+  manifest!: Manifest;
   fileStreamServiceWorker?: string;
   requiredObligations?: string[];
 
@@ -63,6 +79,7 @@ export class DecoratedReadableStream {
   }
 
   async getMetadata() {
+    await Promise.resolve();
     return this.metadata;
   }
 

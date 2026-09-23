@@ -13,19 +13,26 @@ function fakeJwt(exp: number): string {
   return `${header}.${payload}.fake-signature`;
 }
 
+function requestInit(init: RequestInit | undefined): RequestInit {
+  if (!init) throw new Error('expected request init');
+  return init;
+}
+
 // Helper: create a mock fetch that returns token responses
 function mockFetch(
   responses: Array<{ access_token: string; refresh_token?: string; expires_in?: number }>
 ) {
   let callIndex = 0;
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const fetchFake = fake(async (_url: string, _opts?: RequestInit) => {
+  const fetchFake = fake((_url: string, _opts?: RequestInit) => {
     const resp = responses[callIndex] ?? responses[responses.length - 1];
     callIndex++;
-    return new Response(JSON.stringify(resp), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return Promise.resolve(
+      new Response(JSON.stringify(resp), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
   });
   replace(globalThis, 'fetch', fetchFake as typeof fetch);
   return fetchFake;
@@ -37,18 +44,22 @@ function mockFetchWithError(
   successResponse: { access_token: string; refresh_token?: string }
 ) {
   let callIndex = 0;
-  const fetchFake = fake(async () => {
+  const fetchFake = fake(() => {
     callIndex++;
     if (callIndex === 1) {
-      return new Response('token request failed', {
-        status: errorStatus,
-        statusText: 'Error',
-      });
+      return Promise.resolve(
+        new Response('token request failed', {
+          status: errorStatus,
+          statusText: 'Error',
+        })
+      );
     }
-    return new Response(JSON.stringify(successResponse), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return Promise.resolve(
+      new Response(JSON.stringify(successResponse), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
   });
   replace(globalThis, 'fetch', fetchFake as typeof fetch);
   return fetchFake;
@@ -73,7 +84,7 @@ describe('clientCredentialsTokenProvider', () => {
 
     const [url, opts] = fetchFake.firstCall.args;
     expect(url).to.equal('http://localhost:8080/auth/realms/opentdf/protocol/openid-connect/token');
-    const body = (opts as RequestInit).body as string;
+    const body = requestInit(opts).body as string;
     expect(body).to.include('grant_type=client_credentials');
     expect(body).to.include('client_id=test-client');
     expect(body).to.include('client_secret=test-secret');
@@ -240,7 +251,7 @@ describe('refreshTokenProvider', () => {
     const result = await provider();
     expect(result).to.equal(token);
 
-    const body = (fetchFake.firstCall.args[1] as RequestInit).body as string;
+    const body = requestInit(fetchFake.firstCall.args[1]).body as string;
     expect(body).to.include('grant_type=refresh_token');
     expect(body).to.include('refresh_token=initial-refresh');
   });
@@ -263,7 +274,7 @@ describe('refreshTokenProvider', () => {
     await provider();
     expect(fetchFake.callCount).to.equal(2);
 
-    const secondBody = (fetchFake.secondCall.args[1] as RequestInit).body as string;
+    const secondBody = requestInit(fetchFake.getCall(1).args[1]).body as string;
     expect(secondBody).to.include('refresh_token=refresh-v2');
   });
 
@@ -325,7 +336,7 @@ describe('externalJwtTokenProvider', () => {
     const result = await provider();
     expect(result).to.equal(token);
 
-    const body = (fetchFake.firstCall.args[1] as RequestInit).body as string;
+    const body = requestInit(fetchFake.firstCall.args[1]).body as string;
     const params = new URLSearchParams(body);
     expect(params.get('grant_type')).to.equal('urn:ietf:params:oauth:grant-type:token-exchange');
     expect(params.get('subject_token')).to.equal('eyJhbGciOi...');
@@ -349,7 +360,7 @@ describe('externalJwtTokenProvider', () => {
     await provider();
     await provider();
 
-    const secondBody = (fetchFake.secondCall.args[1] as RequestInit).body as string;
+    const secondBody = requestInit(fetchFake.getCall(1).args[1]).body as string;
     expect(secondBody).to.include('grant_type=refresh_token');
     expect(secondBody).to.include('refresh_token=exchange-refresh');
   });
@@ -410,7 +421,7 @@ describe('externalJwtTokenProvider', () => {
     await provider();
     await provider();
 
-    const secondBody = (fetchFake.secondCall.args[1] as RequestInit).body as string;
+    const secondBody = requestInit(fetchFake.getCall(1).args[1]).body as string;
     const params = new URLSearchParams(secondBody);
     expect(params.get('grant_type')).to.equal('urn:ietf:params:oauth:grant-type:token-exchange');
     expect(params.get('subject_token')).to.equal('eyJhbGciOi...');

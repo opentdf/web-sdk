@@ -1,4 +1,5 @@
-import { KasPublicKeyAlgorithm, KasPublicKeyInfo, OriginAllowList } from '../access.js';
+import type { KasPublicKeyAlgorithm, KasPublicKeyInfo } from '../access.js';
+import { OriginAllowList } from '../access.js';
 import { type AuthProvider } from '../auth/auth.js';
 import {
   ConfigurationError,
@@ -7,6 +8,7 @@ import {
   PermissionDeniedError,
   ServiceError,
   UnauthenticatedError,
+  asError,
 } from '../errors.js';
 import { validateSecureUrl } from '../utils.js';
 
@@ -19,6 +21,11 @@ export type RewrapResponseLegacy = {
   entityWrappedKey: string;
   sessionPublicKey: string;
   schemaVersion: string;
+};
+
+type KeyAccessServerPage = {
+  keyAccessServers?: Array<{ uri?: string }>;
+  pagination?: { nextOffset?: number };
 };
 
 /**
@@ -56,7 +63,7 @@ export async function fetchWrappedKey(
       body: req.body as BodyInit,
     });
   } catch (e) {
-    throw new NetworkError(`unable to fetch wrapped key from [${url}]`, e);
+    throw new NetworkError(`unable to fetch wrapped key from [${url}]`, asError(e));
   }
 
   if (!response.ok) {
@@ -83,7 +90,7 @@ export async function fetchWrappedKey(
     }
   }
 
-  return response.json();
+  return (await response.json()) as RewrapResponseLegacy;
 }
 
 export async function fetchKeyAccessServers(
@@ -91,7 +98,7 @@ export async function fetchKeyAccessServers(
   authProvider: AuthProvider
 ): Promise<OriginAllowList> {
   let nextOffset = 0;
-  const allServers = [];
+  const allServers: string[] = [];
   do {
     const req = await authProvider.withCreds({
       url: `${platformUrl}/key-access-servers?pagination.offset=${nextOffset}`,
@@ -113,7 +120,7 @@ export async function fetchKeyAccessServers(
         referrerPolicy: 'no-referrer',
       });
     } catch (e) {
-      throw new NetworkError(`unable to fetch kas list from [${req.url}]`, e);
+      throw new NetworkError(`unable to fetch kas list from [${req.url}]`, asError(e));
     }
     // if we get an error from the kas registry, throw an error
     if (!response.ok) {
@@ -121,12 +128,13 @@ export async function fetchKeyAccessServers(
         `unable to fetch kas list from [${req.url}], status: ${response.status}`
       );
     }
-    const { keyAccessServers = [], pagination = {} } = await response.json();
-    allServers.push(...keyAccessServers);
-    nextOffset = pagination.nextOffset || 0;
+    const page = (await response.json()) as KeyAccessServerPage;
+    const keyAccessServers = page.keyAccessServers ?? [];
+    allServers.push(...keyAccessServers.flatMap((server) => (server.uri ? [server.uri] : [])));
+    nextOffset = page.pagination?.nextOffset ?? 0;
   } while (nextOffset > 0);
 
-  const serverUrls = allServers.map((server) => server.uri);
+  const serverUrls = allServers;
   // add base platform kas
   if (!serverUrls.includes(`${platformUrl}/kas`)) {
     serverUrls.push(`${platformUrl}/kas`);
@@ -150,7 +158,7 @@ export async function fetchKasPubKey(
   try {
     pkUrlV2 = new URL(kasEndpoint);
   } catch (e) {
-    throw new ConfigurationError(`KAS definition invalid: [${kasEndpoint}]`, e);
+    throw new ConfigurationError(`KAS definition invalid: [${kasEndpoint}]`, asError(e));
   }
   if (!pkUrlV2.pathname.endsWith('kas_public_key')) {
     if (!pkUrlV2.pathname.endsWith('/')) {
@@ -167,7 +175,7 @@ export async function fetchKasPubKey(
   try {
     kasPubKeyResponseV2 = await fetch(pkUrlV2);
   } catch (e) {
-    throw new NetworkError(`unable to fetch public key from [${pkUrlV2}]`, e);
+    throw new NetworkError(`unable to fetch public key from [${pkUrlV2}]`, asError(e));
   }
   if (!kasPubKeyResponseV2.ok) {
     switch (kasPubKeyResponseV2.status) {
@@ -183,8 +191,8 @@ export async function fetchKasPubKey(
         );
     }
   }
-  const jsonContent = await kasPubKeyResponseV2.json();
-  const { publicKey, kid }: KasPublicKeyInfo = jsonContent;
+  const jsonContent = (await kasPubKeyResponseV2.json()) as Partial<KasPublicKeyInfo>;
+  const { publicKey, kid } = jsonContent;
   if (!publicKey) {
     throw new NetworkError(
       `invalid response from public key endpoint [${JSON.stringify(jsonContent)}]`

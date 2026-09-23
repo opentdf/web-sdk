@@ -9,6 +9,7 @@ import {
 } from '../declarations.js';
 import { ConfigurationError } from '../../../../src/errors.js';
 import { unwrapKey, unwrapSymmetricKey, wrapPrivateKey, wrapPublicKey } from './keys.js';
+import { toCryptoBytes } from '../../../../src/crypto/buffer.js';
 
 const ENC_DEC_METHODS: KeyUsage[] = ['encrypt', 'decrypt'];
 const SIGN_VERIFY_METHODS: KeyUsage[] = ['sign', 'verify'];
@@ -110,14 +111,18 @@ export async function encryptWithPublicKey(
   // Handle SymmetricKey unwrapping
   if ('_brand' in payload && payload._brand === 'SymmetricKey') {
     // Pass Uint8Array directly — Web Crypto respects byteOffset/byteLength on typed array views.
-    payloadBuffer = unwrapSymmetricKey(payload);
+    payloadBuffer = toCryptoBytes(unwrapSymmetricKey(payload));
   } else {
     // Binary payload
     payloadBuffer = (payload as Binary).asArrayBuffer();
   }
 
   const cryptoKey = unwrapKey(publicKey);
-  const result = await crypto.subtle.encrypt({ name: 'RSA-OAEP' }, cryptoKey, payloadBuffer);
+  const result = await crypto.subtle.encrypt(
+    { name: 'RSA-OAEP' },
+    cryptoKey,
+    toCryptoBytes(payloadBuffer)
+  );
   return Binary.fromArrayBuffer(result);
 }
 

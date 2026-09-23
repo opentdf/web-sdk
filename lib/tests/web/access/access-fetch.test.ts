@@ -16,23 +16,31 @@ import {
   UnauthenticatedError,
 } from '../../../src/errors.js';
 import { OriginAllowList } from '../../../src/access.js';
-import type { AuthProvider } from '../../../src/index.js';
+import type { AuthProvider, HttpRequest } from '../../../src/index.js';
 // -------------------------------------------------------------
 
 describe('access-fetch.js', () => {
+  const errorMessage = (error: unknown): string => {
+    if (error instanceof Error) return error.message;
+    if (typeof error === 'string') return error;
+    return 'Unknown error';
+  };
   let fetchStub: sinon.SinonStub;
 
   // A mock authProvider for testing purposes
-  const mockAuthProvider: AuthProvider = {
-    withCreds: sinon.stub().callsFake(async (req) => ({
+  const withCredsStub = sinon.stub().callsFake((req: HttpRequest): Promise<HttpRequest> =>
+    Promise.resolve({
       ...req,
       headers: { ...req.headers, Authorization: 'Bearer test-token' },
-    })),
-  } as unknown as AuthProvider;
+    })
+  );
+  const mockAuthProvider: AuthProvider = {
+    updateClientPublicKey: () => Promise.resolve(),
+    withCreds: withCredsStub,
+  };
 
   // Helper to create mock fetch responses
-  // @ts-expect-error Not caring about any in tests.
-  const createMockResponse = (body, ok = true, status = 200, statusText = 'OK') => {
+  const createMockResponse = (body: unknown, ok = true, status = 200, statusText = 'OK') => {
     return Promise.resolve({
       ok,
       status,
@@ -46,8 +54,7 @@ describe('access-fetch.js', () => {
     // Stub window.fetch before each test
     fetchStub = sinon.stub(window, 'fetch');
     // Reset any previous stub behavior
-    // @ts-expect-error Stub
-    mockAuthProvider.withCreds.resetHistory();
+    withCredsStub.resetHistory();
   });
 
   afterEach(() => {
@@ -71,12 +78,12 @@ describe('access-fetch.js', () => {
       const result = await fetchWrappedKey(url, requestBody, mockAuthProvider);
 
       expect(result).to.deep.equal(mockResponseData);
-      // @ts-expect-error Stub is not typed.
-      expect(mockAuthProvider.withCreds.calledOnce).to.be.true;
+      expect(withCredsStub.calledOnce).to.be.true;
       expect(fetchStub.calledOnce).to.be.true;
       const fetchCall = fetchStub.getCall(0);
       expect(fetchCall.args[0]).to.equal(url);
-      expect(JSON.parse(fetchCall.args[1].body as string)).to.deep.equal(requestBody);
+      const fetchInit = fetchCall.args[1] as RequestInit;
+      expect(JSON.parse(fetchInit.body as string)).to.deep.equal(requestBody);
     });
 
     it('should throw NetworkError if the fetch call fails', async () => {
@@ -88,7 +95,7 @@ describe('access-fetch.js', () => {
         expect.fail('Should have thrown');
       } catch (e) {
         expect(e).to.be.instanceOf(NetworkError);
-        expect(e.message).to.equal(`unable to fetch wrapped key from [${url}]`);
+        expect(errorMessage(e)).to.equal(`unable to fetch wrapped key from [${url}]`);
       }
     });
 
@@ -101,7 +108,7 @@ describe('access-fetch.js', () => {
         expect.fail('Should have thrown');
       } catch (e) {
         expect(e).to.be.instanceOf(InvalidFileError);
-        expect(e.message).to.equal(`400 for [${url}]: rewrap bad request [${errorText}]`);
+        expect(errorMessage(e)).to.equal(`400 for [${url}]: rewrap bad request [${errorText}]`);
       }
     });
 
@@ -113,7 +120,7 @@ describe('access-fetch.js', () => {
         expect.fail('Should have thrown');
       } catch (e) {
         expect(e).to.be.instanceOf(UnauthenticatedError);
-        expect(e.message).to.equal(`401 for [${url}]; rewrap auth failure`);
+        expect(errorMessage(e)).to.equal(`401 for [${url}]; rewrap auth failure`);
       }
     });
 
@@ -125,7 +132,7 @@ describe('access-fetch.js', () => {
         expect.fail('Should have thrown');
       } catch (e) {
         expect(e).to.be.instanceOf(PermissionDeniedError);
-        expect(e.message).to.equal(`403 for [${url}]; rewrap permission denied: forbidden`);
+        expect(errorMessage(e)).to.equal(`403 for [${url}]; rewrap permission denied: forbidden`);
       }
     });
 
@@ -138,7 +145,7 @@ describe('access-fetch.js', () => {
         expect.fail('Should have thrown');
       } catch (e) {
         expect(e).to.be.instanceOf(ServiceError);
-        expect(e.message).to.equal(
+        expect(errorMessage(e)).to.equal(
           `500 for [${url}]: rewrap failure due to service error [${errorText}]`
         );
       }
@@ -152,7 +159,7 @@ describe('access-fetch.js', () => {
         expect.fail('Should have thrown');
       } catch (e) {
         expect(e).to.be.instanceOf(NetworkError);
-        expect(e.message).to.equal(`POST ${url} => 404 Not Found`);
+        expect(errorMessage(e)).to.equal(`POST ${url} => 404 Not Found`);
       }
     });
   });
@@ -212,7 +219,7 @@ describe('access-fetch.js', () => {
         expect.fail('Should have thrown');
       } catch (e) {
         expect(e).to.be.instanceOf(NetworkError);
-        expect(e.message).to.include('unable to fetch kas list');
+        expect(errorMessage(e)).to.include('unable to fetch kas list');
       }
     });
 
@@ -224,8 +231,8 @@ describe('access-fetch.js', () => {
         expect.fail('Should have thrown');
       } catch (e) {
         expect(e).to.be.instanceOf(ServiceError);
-        expect(e.message).to.include('unable to fetch kas list');
-        expect(e.message).to.include('status: 503');
+        expect(errorMessage(e)).to.include('unable to fetch kas list');
+        expect(errorMessage(e)).to.include('status: 503');
       }
     });
   });
@@ -257,7 +264,7 @@ ywIDAQAB
       });
 
       // IMPROVEMENT: Test URL components instead of a hardcoded string.
-      const fetchedUrl = new URL(fetchStub.firstCall.args[0]);
+      const fetchedUrl = new URL(String(fetchStub.firstCall.args[0]));
       expect(fetchedUrl.origin).to.equal(kasEndpoint);
       expect(fetchedUrl.pathname).to.equal('/v2/kas_public_key');
       expect(fetchedUrl.searchParams.get('algorithm')).to.equal('rsa:2048');
@@ -270,7 +277,7 @@ ywIDAQAB
         expect.fail('Should have thrown');
       } catch (e) {
         expect(e).to.be.instanceOf(ConfigurationError);
-        expect(e.message).to.equal('KAS definition not found');
+        expect(errorMessage(e)).to.equal('KAS definition not found');
       }
     });
 
@@ -282,7 +289,7 @@ ywIDAQAB
         expect.fail('Should have thrown');
       } catch (e) {
         expect(e).to.be.instanceOf(ConfigurationError);
-        expect(e.message).to.equal(`KAS definition invalid: [${invalidUrl}]`);
+        expect(errorMessage(e)).to.equal(`KAS definition invalid: [${invalidUrl}]`);
       }
     });
 
@@ -295,7 +302,7 @@ ywIDAQAB
         expect.fail('Should have thrown');
       } catch (e) {
         expect(e).to.be.instanceOf(NetworkError);
-        expect(e.message).to.include('unable to fetch public key');
+        expect(errorMessage(e)).to.include('unable to fetch public key');
       }
     });
 
@@ -308,8 +315,8 @@ ywIDAQAB
       } catch (e) {
         expect(e).to.be.instanceOf(ConfigurationError);
         // IMPROVEMENT: Make error message assertion less brittle
-        expect(e.message).to.include('404 for');
-        expect(e.message).to.include('kas.example.com/v2/kas_public_key');
+        expect(errorMessage(e)).to.include('404 for');
+        expect(errorMessage(e)).to.include('kas.example.com/v2/kas_public_key');
       }
     });
 
@@ -322,8 +329,8 @@ ywIDAQAB
       } catch (e) {
         expect(e).to.be.instanceOf(UnauthenticatedError);
         // IMPROVEMENT: Make error message assertion less brittle
-        expect(e.message).to.include('401 for');
-        expect(e.message).to.include('kas.example.com/v2/kas_public_key');
+        expect(errorMessage(e)).to.include('401 for');
+        expect(errorMessage(e)).to.include('kas.example.com/v2/kas_public_key');
       }
     });
 
@@ -336,8 +343,8 @@ ywIDAQAB
       } catch (e) {
         expect(e).to.be.instanceOf(PermissionDeniedError);
         // IMPROVEMENT: Make error message assertion less brittle
-        expect(e.message).to.include('403 for');
-        expect(e.message).to.include('kas.example.com/v2/kas_public_key');
+        expect(errorMessage(e)).to.include('403 for');
+        expect(errorMessage(e)).to.include('kas.example.com/v2/kas_public_key');
       }
     });
 
@@ -350,7 +357,7 @@ ywIDAQAB
         expect.fail('Should have thrown');
       } catch (e) {
         expect(e).to.be.instanceOf(NetworkError);
-        expect(e.message).to.equal(
+        expect(errorMessage(e)).to.equal(
           `invalid response from public key endpoint [${JSON.stringify(invalidResponse)}]`
         );
       }

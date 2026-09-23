@@ -1,10 +1,10 @@
-import {
+import type {
   Attribute,
-  AttributeRuleType,
   KeyAccessServer,
   Namespace,
   Value,
 } from '../../../src/policy/attributes.js';
+import { AttributeRuleType } from '../../../src/policy/attributes.js';
 import { kasECCert, kasPublicKey } from '../../mocks/pems.js';
 import { KasPublicKeyAlgEnum, SourceType } from '../../../src/platform/policy/objects_pb.js';
 
@@ -104,7 +104,7 @@ export const kases: Record<string, KeyAccessServer> = Object.fromEntries(
       },
       sourceType: SourceType.INTERNAL,
       name: k,
-    } as KeyAccessServer,
+    },
   ])
 );
 
@@ -120,7 +120,7 @@ for (const ns of [nsStandard, nsGranted, nsUngranted]) {
     kasKeys: [],
   };
   if (ns == nsGranted) {
-    namespaces[ns]!.grants = [kases[lessSpecificKas]];
+    namespaces[ns].grants = [kases[lessSpecificKas]];
   }
 }
 
@@ -209,7 +209,7 @@ for (const fqn of [
 ]) {
   const m = fqn.match(/^(https?:\/\/[\w./-]+\/attr\/\S*)\/value\/(\S*)$/);
   if (!m || m.length < 3) {
-    throw Error(`invalid attribute value fqn [${fqn}] m:[${m}]`);
+    throw Error(`invalid attribute value fqn [${fqn}] m:[${m?.join(',') ?? ''}]`);
   }
   const attribute = attributes[m[1]];
   if (!attribute) {

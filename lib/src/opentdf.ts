@@ -2,12 +2,12 @@ import { type AuthProvider } from './auth/providers.js';
 import { type Interceptor } from '@connectrpc/connect';
 import { ConfigurationError, InvalidFileError } from './errors.js';
 export { Client as TDF3Client } from '../tdf3/src/client/index.js';
-import { Chunker, fromSource, sourceToStream, type Source } from './seekable.js';
+import { fromSource, sourceToStream, type Chunker, type Source } from './seekable.js';
 import { Client as TDF3Client } from '../tdf3/src/client/index.js';
 import { type CryptoService, type KeyPair } from '../tdf3/src/crypto/declarations.js';
 import * as DefaultCryptoService from '../tdf3/src/crypto/index.js';
-import {
-  type Assertion,
+import type {
+  Assertion,
   AssertionConfig,
   AssertionVerificationKeys,
 } from '../tdf3/src/assertions.js';
@@ -28,14 +28,14 @@ import {
 import { type KeyAccessObject } from '../tdf3/src/models/key-access.js';
 import {
   decryptStreamFrom,
-  InspectedTDFOverview,
   loadTDFStream,
+  type InspectedTDFOverview,
   type IntegrityAlgorithm,
   type RootIntegrityAlgorithm,
   type SegmentIntegrityAlgorithm,
 } from '../tdf3/src/tdf.js';
 import { base64 } from './encodings/index.js';
-import { Policy } from '../tdf3/src/models/policy.js';
+import type { Policy } from '../tdf3/src/models/policy.js';
 
 export {
   type Assertion,
@@ -294,7 +294,9 @@ export type TDFReader = {
  */
 export class OpenTDF {
   /** The platform URL */
-  readonly platformUrl: string;
+  // The constructor intentionally leaves this absent when no URL is supplied;
+  // the definite-assignment assertion preserves the historical public `.d.ts`.
+  readonly platformUrl!: string;
   /** The policy service endpoint */
   readonly policyEndpoint: string;
   /** The auth provider for the OpenTDF instance (deprecated, use interceptors). */
@@ -463,7 +465,9 @@ class ZTDFReaderWrapper {
       return new ZTDFReader(this.outer.tdf3Client, this.opts, chunker);
     }
     this.state = 'done';
-    throw new InvalidFileError(`unsupported format; prefix not recognized ${prefix}`);
+    throw new InvalidFileError(
+      `unsupported format; prefix not recognized ${Array.from(prefix).join(',')}`
+    );
   }
 
   /** Decrypts the TDF file */
@@ -570,7 +574,10 @@ class ZTDFReader {
         cryptoService,
         dpopKeys,
         fileStreamServiceWorker: this.client.clientConfig.fileStreamServiceWorker,
-        keyMiddleware: async (k) => k,
+        keyMiddleware: async (k) => {
+          await Promise.resolve();
+          return k;
+        },
         progressHandler: this.client.clientConfig.progressHandler,
         assertionVerificationKeys,
         maxConcurrentSegmentBatches,

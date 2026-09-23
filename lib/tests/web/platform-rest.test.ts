@@ -1,21 +1,22 @@
 import { expect } from '@esm-bundle/chai';
-import { type AuthProvider, HttpRequest, withHeaders } from '../../src/auth/auth.js';
+import type { HttpRequest } from '../../src/auth/auth.js';
+import { withHeaders } from '../../src/auth/auth.js';
 import {
   fetchKasPubKey,
   fetchKeyAccessServers,
   fetchWrappedKey,
 } from '../../src/access/access-fetch.js';
 
-const authProvider = <AuthProvider>{
-  updateClientPublicKey: async () => {
-    /* mocked function */
-  },
-  withCreds: async (req: HttpRequest): Promise<HttpRequest> =>
-    withHeaders(req, {
-      Authorization:
-        'Bearer dummy-auth-token eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ0ZGYiLCJzdWIiOiJKb2huIERvZSIsImlhdCI6MTUxNjIzOTAyMn0.XFu4sQxAd6n-b7urqTdQ-I9zKqKSQtC04unHsMSpJjc',
-      'roundtrip-test-response': '200',
-    }),
+const authProvider = {
+  updateClientPublicKey: () => Promise.resolve(),
+  withCreds: (req: HttpRequest): Promise<HttpRequest> =>
+    Promise.resolve(
+      withHeaders(req, {
+        Authorization:
+          'Bearer dummy-auth-token eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ0ZGYiLCJzdWIiOiJKb2huIERvZSIsImlhdCI6MTUxNjIzOTAyMn0.XFu4sQxAd6n-b7urqTdQ-I9zKqKSQtC04unHsMSpJjc',
+        'roundtrip-test-response': '200',
+      })
+    ),
 };
 
 const platformUrl = 'http://localhost:3000';

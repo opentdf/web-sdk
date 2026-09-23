@@ -1,6 +1,6 @@
 {
   "name": "@opentdf/ctl",
-  "version": "0.20.0",
+  "version": "0.21.0",
   "description": "Node based CLI for opentdf",
   "repository": {
     "type": "git",
@@ -23,39 +23,39 @@
     "watch": "(trap 'kill 0' SIGINT; npm run build && (npm run build:watch & npm run test -- --watch))",
     "format": "prettier --write \"{src,tests}/**/*.ts\"",
     "license-check": "license-checker-rseidelsohn --production --onlyAllow 'Apache-2.0; BSD; CC-BY-4.0; ISC; MIT'",
-    "lint": "eslint ./{src,tests}/**/*.ts"
+    "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\""
   },
   "bin": {
     "opentdf": "./bin/opentdf.mjs"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3.3.0",
-    "@eslint/js": "^9.21.0",
+    "@eslint/js": "10.0.1",
     "@esm-bundle/chai": "4.3.4-fix.0",
     "@types/mocha": "10.0.10",
-    "@types/node": "^24.0.0",
+    "@types/node": "24.12.0",
     "@types/readable-stream": "^4.0.18",
     "@types/sinon": "^21.0.0",
     "@types/yargs": "^17.0.33",
     "chai": "^5.2.0",
-    "eslint-config-prettier": "^10.0.2",
-    "eslint-plugin-chai-friendly": "^1.1.0",
-    "eslint-plugin-prettier": "^5.5.5",
-    "globals": "^16.0.0",
+    "eslint": "10.11.0",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-chai-friendly": "1.2.1",
+    "eslint-plugin-prettier": "5.5.6",
+    "globals": "17.12.0",
     "license-checker-rseidelsohn": "^4.4.2",
     "mocha": "^11.1.0",
-    "prettier": "^3.5.3",
+    "prettier": "3.9.8",
     "sinon": "^21.0.1",
     "ts-node": "^10.9.2",
-    "typescript": "^5.8.2",
-    "typescript-eslint": "^8.26.0"
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.70.1"
   },
   "overrides": {
     "serialize-javascript": "^7.0.4",
     "diff": "^8.0.3"
   },
   "dependencies": {
-    "@opentdf/sdk": "file:../lib/opentdf-sdk-0.20.0.tgz",
+    "@opentdf/sdk": "file:../lib/opentdf-sdk-0.21.0.tgz",
     "yargs": "^18.0.0"
   }
 }

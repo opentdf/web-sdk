@@ -2,8 +2,8 @@ import { NetworkError } from '../errors.js';
 import { type AuthConfig, resolveInterceptors } from '../auth/interceptors.js';
 import { extractRpcErrorMessage, getPlatformUrlFromKasEndpoint } from '../utils.js';
 import { PlatformClient } from '../platform.js';
-import { Value } from './attributes.js';
-import {
+import type { Value } from './attributes.js';
+import type {
   GetAttributeValuesByFqnsResponse,
   GetKeyMappingsByFqnsResponse,
 } from '../platform/policy/attributes/attributes_pb.js';

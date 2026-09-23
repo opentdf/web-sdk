@@ -10,9 +10,10 @@ import type {
 import { mlKemAlgorithmToLevel } from '../crypto/declarations.js';
 import { getZtdfSalt } from '../crypto/salt.js';
 import { Algorithms } from '../ciphers/index.js';
-import { Policy } from './policy.js';
+import type { Policy } from './policy.js';
 import { MLKEM_CT_SIZES } from '../crypto/core/mlkem.js';
 import { encodeKemEnvelopeDer } from '../crypto/core/mlkem-asn1.js';
+import { toArrayBuffer } from '../utils/index.js';
 
 export type KeyAccessType = 'remote' | 'wrapped' | 'ec-wrapped' | 'mlkem-wrapped';
 
@@ -62,7 +63,7 @@ export class ECWrapped {
     const encryptResult = await this.cryptoService.encrypt(
       dek,
       derivedKey,
-      Binary.fromArrayBuffer(iv.buffer),
+      Binary.fromArrayBuffer(toArrayBuffer(iv)),
       Algorithms.AES_256_GCM
     );
 
@@ -207,7 +208,7 @@ export class MlKemWrapped {
     const encryptResult = await this.cryptoService.encrypt(
       dek,
       sharedSecret,
-      Binary.fromArrayBuffer(iv.buffer),
+      Binary.fromArrayBuffer(toArrayBuffer(iv)),
       Algorithms.AES_256_GCM
     );
 

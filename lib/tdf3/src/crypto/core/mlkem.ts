@@ -13,7 +13,7 @@ import {
   wrapSymmetricKey,
 } from './keys.js';
 
-const MLKEM: Record<768 | 1024, typeof ml_kem768 | typeof ml_kem1024> = {
+const MLKEM: Record<768 | 1024, typeof ml_kem768> = {
   768: ml_kem768,
   1024: ml_kem1024,
 } as const;
@@ -33,6 +33,7 @@ function assertMlKemLevel(key: PublicKey | PrivateKey): 768 | 1024 {
 }
 
 export async function generateMlKemKeyPair(level: 768 | 1024): Promise<KeyPair> {
+  await Promise.resolve();
   const { publicKey, secretKey } = MLKEM[level].keygen();
   return {
     publicKey: wrapMlKemPublicKey(publicKey, level),
@@ -43,6 +44,7 @@ export async function generateMlKemKeyPair(level: 768 | 1024): Promise<KeyPair> 
 export async function mlKemEncapsulate(
   pk: PublicKey
 ): Promise<{ ciphertext: Uint8Array; sharedSecret: SymmetricKey }> {
+  await Promise.resolve();
   const level = assertMlKemLevel(pk);
   const ekBytes = unwrapMlKemKey(pk);
   const { cipherText, sharedSecret } = MLKEM[level].encapsulate(ekBytes);
@@ -53,6 +55,7 @@ export async function mlKemEncapsulate(
 }
 
 export async function mlKemDecapsulate(sk: PrivateKey, ct: Uint8Array): Promise<SymmetricKey> {
+  await Promise.resolve();
   const level = assertMlKemLevel(sk);
   const dkBytes = unwrapMlKemKey(sk);
   const sharedSecret = MLKEM[level].decapsulate(ct, dkBytes);
