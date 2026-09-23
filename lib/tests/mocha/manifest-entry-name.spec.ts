@@ -19,7 +19,7 @@
 import { assert } from 'chai';
 
 import { getMocks } from '../mocks/index.js';
-import { AuthProvider, HttpRequest } from '../../src/auth/auth.js';
+import type { AuthProvider, HttpRequest } from '../../src/auth/auth.js';
 import { AesGcmCipher, SplitKey, WebCryptoService } from '../../tdf3/index.js';
 import { Client } from '../../tdf3/src/index.js';
 import { manifestEntryName } from '../../tdf3/src/tdf.js';
@@ -34,7 +34,7 @@ const kasUrl = 'http://localhost:3000';
 
 const authProvider: AuthProvider = {
   updateClientPublicKey: async () => {},
-  withCreds: async (httpReq: HttpRequest) => httpReq,
+  withCreds: (httpReq: HttpRequest) => Promise.resolve(httpReq),
 };
 
 const plaintext = new TextEncoder().encode('the manifest is at the archive root');
@@ -81,7 +81,7 @@ async function encryptToBuffer(client: Client.Client): Promise<Uint8Array> {
     metadata: Mocks.getMetadataObject(),
     offline: true,
     scope: { dissem: ['user@domain.com'], attributes: [] },
-    keyMiddleware: async () => ({ keyForEncryption: key, keyForManifest: key }),
+    keyMiddleware: () => Promise.resolve({ keyForEncryption: key, keyForManifest: key }),
     source: new ReadableStream({
       start(controller) {
         controller.enqueue(plaintext);
@@ -105,9 +105,17 @@ async function policyIdIn(buffer: Uint8Array, entryName: string): Promise<string
     await centralDirectoryOf(buffer),
     entryName
   );
-  const policyId = JSON.parse(atob(manifest.encryptionInformation.policy)).uuid;
-  assert.match(policyId, /^[0-9a-f-]{36}$/);
-  return policyId;
+  const policy: unknown = JSON.parse(atob(manifest.encryptionInformation.policy));
+  if (
+    !policy ||
+    typeof policy !== 'object' ||
+    !('uuid' in policy) ||
+    typeof policy.uuid !== 'string'
+  ) {
+    throw new Error('fixture policy has no UUID');
+  }
+  assert.match(policy.uuid, /^[0-9a-f-]{36}$/);
+  return policy.uuid;
 }
 
 async function assertRejects(promise: Promise<unknown>, messageFragment: string): Promise<void> {
@@ -115,7 +123,7 @@ async function assertRejects(promise: Promise<unknown>, messageFragment: string)
     await promise;
   } catch (error) {
     assert.instanceOf(error, InvalidFileError);
-    assert.include((error as Error).message, messageFragment);
+    assert.include(error.message, messageFragment);
     return;
   }
   assert.fail(`Expected a rejection mentioning "${messageFragment}"`);
@@ -299,6 +307,7 @@ describe('manifest entry name (platform#3513)', function () {
       });
 
       it('reads the policy id when getPolicyId is passed as a callback', async function () {
+        // eslint-disable-next-line @typescript-eslint/unbound-method -- An unbound callback is the behavior under test.
         const getPolicyId = client.getPolicyId;
         assert.equal(
           await getPolicyId({ source: { type: 'buffer', location: renamed } }),
