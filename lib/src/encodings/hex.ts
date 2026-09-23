@@ -46,12 +46,16 @@ export function decodeArrayBuffer(hex: string): ArrayBuffer | never {
   return bytes.buffer;
 }
 
-export function encodeArrayBuffer(arrayBuffer: ArrayBuffer): string | never {
+export function encodeArrayBuffer(
+  arrayBuffer: ArrayBufferLike | ArrayBufferView<ArrayBufferLike>
+): string | never {
   if (typeof arrayBuffer !== 'object') {
     throw new TypeError('Expected input to be an ArrayBuffer Object');
   }
 
-  const byteArray = new Uint8Array(arrayBuffer);
+  const byteArray = ArrayBuffer.isView(arrayBuffer)
+    ? new Uint8Array(arrayBuffer.buffer, arrayBuffer.byteOffset, arrayBuffer.byteLength)
+    : new Uint8Array(arrayBuffer);
   let hexString = '';
   let nextHexByte;
 

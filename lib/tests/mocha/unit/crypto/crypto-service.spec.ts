@@ -30,6 +30,18 @@ import { hex } from '../../../../src/encodings/index.js';
 import { Binary } from '../../../../tdf3/src/binary.js';
 import { decodeArrayBuffer, encodeArrayBuffer } from '../../../../src/encodings/base64.js';
 import { kasECCert, kasPublicKey } from '../../../mocks/pems.js';
+import type { KeyPair } from '../../../../tdf3/src/crypto/declarations.js';
+import { wrapPrivateKey, wrapPublicKey } from '../../../../tdf3/src/crypto/core/keys.js';
+
+function opaqueEcKeyPair(
+  keyPair: CryptoKeyPair,
+  algorithm: 'ec:secp256r1' | 'ec:secp384r1' | 'ec:secp521r1'
+): KeyPair {
+  return {
+    publicKey: wrapPublicKey(keyPair.publicKey, algorithm),
+    privateKey: wrapPrivateKey(keyPair.privateKey, algorithm),
+  };
+}
 
 describe('Crypto Service', () => {
   describe('hmac (known-answer)', () => {
@@ -150,7 +162,8 @@ describe('Crypto Service', () => {
           await generateKeyPair(1);
           assert.fail();
         } catch (e) {
-          expect(e.message).to.match(/Invalid key size requested/);
+          expect(e).to.be.instanceOf(Error);
+          if (e instanceof Error) expect(e.message).to.match(/Invalid key size requested/);
         }
       });
       it('invalid length', async () => {
@@ -158,7 +171,8 @@ describe('Crypto Service', () => {
           await generateKeyPair(2000);
           assert.fail();
         } catch (e) {
-          expect(e.message).to.match(/Invalid key size requested/);
+          expect(e).to.be.instanceOf(Error);
+          if (e instanceof Error) expect(e.message).to.match(/Invalid key size requested/);
         }
       });
     });
@@ -452,20 +466,7 @@ describe('Crypto Service', () => {
         ['sign', 'verify']
       );
       // Wrap as opaque keys
-      const ecKeyPair = {
-        publicKey: {
-          _brand: 'PublicKey',
-          algorithm: 'ec:secp256r1',
-          curve: 'P-256',
-          _internal: webCryptoKeyPair.publicKey,
-        } as any,
-        privateKey: {
-          _brand: 'PrivateKey',
-          algorithm: 'ec:secp256r1',
-          curve: 'P-256',
-          _internal: webCryptoKeyPair.privateKey,
-        } as any,
-      };
+      const ecKeyPair = opaqueEcKeyPair(webCryptoKeyPair, 'ec:secp256r1');
       const data = new TextEncoder().encode('test data for ECDSA');
 
       const signature = await sign(data, ecKeyPair.privateKey, 'ES256');
@@ -481,20 +482,7 @@ describe('Crypto Service', () => {
         true,
         ['sign', 'verify']
       );
-      const ecKeyPair = {
-        publicKey: {
-          _brand: 'PublicKey',
-          algorithm: 'ec:secp256r1',
-          curve: 'P-256',
-          _internal: webCryptoKeyPair.publicKey,
-        } as any,
-        privateKey: {
-          _brand: 'PrivateKey',
-          algorithm: 'ec:secp256r1',
-          curve: 'P-256',
-          _internal: webCryptoKeyPair.privateKey,
-        } as any,
-      };
+      const ecKeyPair = opaqueEcKeyPair(webCryptoKeyPair, 'ec:secp256r1');
       const data = new TextEncoder().encode('original data');
       const tamperedData = new TextEncoder().encode('tampered data');
 
@@ -509,20 +497,7 @@ describe('Crypto Service', () => {
         true,
         ['sign', 'verify']
       );
-      const ecKeyPair = {
-        publicKey: {
-          _brand: 'PublicKey',
-          algorithm: 'ec:secp384r1',
-          curve: 'P-384',
-          _internal: webCryptoKeyPair.publicKey,
-        } as any,
-        privateKey: {
-          _brand: 'PrivateKey',
-          algorithm: 'ec:secp384r1',
-          curve: 'P-384',
-          _internal: webCryptoKeyPair.privateKey,
-        } as any,
-      };
+      const ecKeyPair = opaqueEcKeyPair(webCryptoKeyPair, 'ec:secp384r1');
       const data = new TextEncoder().encode('test data for ES384');
 
       const signature = await sign(data, ecKeyPair.privateKey, 'ES384');
@@ -536,20 +511,7 @@ describe('Crypto Service', () => {
         true,
         ['sign', 'verify']
       );
-      const ecKeyPair = {
-        publicKey: {
-          _brand: 'PublicKey',
-          algorithm: 'ec:secp521r1',
-          curve: 'P-521',
-          _internal: webCryptoKeyPair.publicKey,
-        } as any,
-        privateKey: {
-          _brand: 'PrivateKey',
-          algorithm: 'ec:secp521r1',
-          curve: 'P-521',
-          _internal: webCryptoKeyPair.privateKey,
-        } as any,
-      };
+      const ecKeyPair = opaqueEcKeyPair(webCryptoKeyPair, 'ec:secp521r1');
       const data = new TextEncoder().encode('test data for ES512');
 
       const signature = await sign(data, ecKeyPair.privateKey, 'ES512');
@@ -567,20 +529,7 @@ describe('Crypto Service', () => {
         true,
         ['sign', 'verify']
       );
-      const ecKeyPair = {
-        publicKey: {
-          _brand: 'PublicKey',
-          algorithm: 'ec:secp521r1',
-          curve: 'P-521',
-          _internal: webCryptoKeyPair.publicKey,
-        } as any,
-        privateKey: {
-          _brand: 'PrivateKey',
-          algorithm: 'ec:secp521r1',
-          curve: 'P-521',
-          _internal: webCryptoKeyPair.privateKey,
-        } as any,
-      };
+      const ecKeyPair = opaqueEcKeyPair(webCryptoKeyPair, 'ec:secp521r1');
       const data = new TextEncoder().encode('test data for ES512 DER long-form');
 
       const der = await sign(data, ecKeyPair.privateKey, 'ES512');

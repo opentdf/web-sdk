@@ -3,11 +3,8 @@ import { exportSPKI, importX509 } from 'jose';
 import { base64 } from './encodings/index.js';
 import { pemCertToCrypto, pemPublicToCrypto } from './crypto/pemPublicToCrypto.js';
 import { ConfigurationError } from './errors.js';
-import {
-  RewrapResponse,
-  PolicyRewrapResultSchema,
-  KeyAccessRewrapResultSchema,
-} from './platform/kas/kas_pb.js';
+import type { RewrapResponse } from './platform/kas/kas_pb.js';
+import { PolicyRewrapResultSchema, KeyAccessRewrapResultSchema } from './platform/kas/kas_pb.js';
 import { create } from '@bufbuild/protobuf';
 import { ConnectError } from '@connectrpc/connect';
 
@@ -62,7 +59,7 @@ export function padSlashToUrl(u: string): string {
  * @returns true if running in a browser, false otherwise.
  */
 export function isBrowser() {
-  return typeof window !== 'undefined'; // eslint-disable-line
+  return typeof window !== 'undefined';
 }
 
 /**
@@ -242,7 +239,10 @@ export function getRequiredObligationFQNs(response: RewrapResponse) {
   // that matches the expected KAS-provided fulfillable obligations list.
   for (const resp of response.responses) {
     for (const result of resp.results) {
-      if (!result.metadata.hasOwnProperty(REQUIRED_OBLIGATIONS_METADATA_KEY)) {
+      if (
+        Object.getOwnPropertyDescriptor(result.metadata, REQUIRED_OBLIGATIONS_METADATA_KEY) ===
+        undefined
+      ) {
         continue;
       }
       const value = result.metadata[REQUIRED_OBLIGATIONS_METADATA_KEY];

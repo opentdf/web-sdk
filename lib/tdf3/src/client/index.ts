@@ -21,7 +21,6 @@ import {
 import { unwrapHtml } from '../utils/unwrap.js';
 import { OIDCRefreshTokenProvider } from '../../../src/auth/oidc-refreshtoken-provider.js';
 import { OIDCExternalJwtProvider } from '../../../src/auth/oidc-externaljwt-provider.js';
-import { CryptoService } from '../crypto/declarations.js';
 import { type AuthProvider, HttpRequest, withHeaders } from '../../../src/auth/auth.js';
 import { type AuthConfig } from '../../../src/auth/interceptors.js';
 import { type Interceptor } from '@connectrpc/connect';
@@ -31,15 +30,12 @@ import {
   type DecryptParams,
   DecryptParamsBuilder,
   type DecryptSource,
-  type DecryptStreamMiddleware,
   DEFAULT_SEGMENT_SIZE,
-  type EncryptKeyMiddleware,
   type EncryptParams,
   EncryptParamsBuilder,
-  type EncryptStreamMiddleware,
   type Scope,
 } from './builders.js';
-import { DecoratedReadableStream } from './DecoratedReadableStream.js';
+import type { DecoratedReadableStream } from './DecoratedReadableStream.js';
 import {
   fetchKeyAccessServersWithCache,
   type KasAllowListCache,
@@ -52,6 +48,7 @@ import {
   isEcKeyAlgorithm,
   isMlKemKeyAlgorithm,
   isRsaKeyAlgorithm,
+  type CryptoService,
   type KeyPair,
   type SymmetricKey,
 } from '../crypto/declarations.js';
@@ -65,7 +62,7 @@ import {
 import { plan } from '../../../src/policy/granter.js';
 import { attributeFQNsAsKeyMappings } from '../../../src/policy/api.js';
 import { type Chunker, fromBuffer, fromSource } from '../../../src/seekable.js';
-import { Algorithm, SimpleKasKey } from '../../../src/platform/policy/objects_pb.js';
+import { Algorithm, type SimpleKasKey } from '../../../src/platform/policy/objects_pb.js';
 import { effectiveKasKeys } from '../../../src/policy/kas-keys.js';
 
 const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
@@ -222,7 +219,7 @@ function asPolicy(scope: Scope): Policy {
     dataAttributes = scope.attributeValues
       .filter(({ fqn }) => !!fqn)
       .map(({ fqn }): AttributeObject => {
-        return { attribute: fqn! };
+        return { attribute: fqn };
       });
   } else {
     dataAttributes = (scope.attributes ?? []).map((attribute) =>
@@ -341,7 +338,8 @@ export class Client {
    * Policy service endpoint, if present.
    * Required for autoconfiguration with ABAC.
    */
-  readonly policyEndpoint: string;
+  // Assigned when configured; the absent case historically had no own property.
+  readonly policyEndpoint!: string;
 
   /**
    * List of allowed KASes to connect to for rewrap requests.
@@ -403,7 +401,7 @@ export class Client {
     this.cryptoService = clientConfig.cryptoService;
     this.dpopEnabled = !!(clientConfig.dpopEnabled || clientConfig.dpopKeys);
 
-    clientConfig.readerUrl && (this.readerUrl = clientConfig.readerUrl);
+    if (clientConfig.readerUrl) this.readerUrl = clientConfig.readerUrl;
 
     if (clientConfig.kasEndpoint) {
       this.kasEndpoint = clientConfig.kasEndpoint;
@@ -545,7 +543,10 @@ export class Client {
       windowSize = DEFAULT_SEGMENT_SIZE,
       keyMiddleware: keyMiddlewareOpt,
       splitPlan: preconfiguredSplitPlan,
-      streamMiddleware = async (stream: DecoratedReadableStream) => stream,
+      streamMiddleware = async (stream: DecoratedReadableStream) => {
+        await Promise.resolve();
+        return stream;
+      },
       tdfSpecVersion,
       wrappingKeyAlgorithm,
       rootIntegrityAlgorithm = ROOT_INTEGRITY_ALGORITHM,
@@ -553,12 +554,12 @@ export class Client {
     } = opts;
     if (!isRootIntegrityAlgorithm(rootIntegrityAlgorithm)) {
       throw new ConfigurationError(
-        `unsupported root integrity algorithm [${rootIntegrityAlgorithm}]; only [${ROOT_INTEGRITY_ALGORITHM}] is supported`
+        `unsupported root integrity algorithm [${String(rootIntegrityAlgorithm)}]; only [${ROOT_INTEGRITY_ALGORITHM}] is supported`
       );
     }
     if (!isSegmentIntegrityAlgorithm(segmentIntegrityAlgorithm)) {
       throw new ConfigurationError(
-        `unsupported segment integrity algorithm [${segmentIntegrityAlgorithm}]`
+        `unsupported segment integrity algorithm [${String(segmentIntegrityAlgorithm)}]`
       );
     }
     const keyMiddleware = keyMiddlewareOpt ?? (() => defaultKeyMiddleware(this.cryptoService));
@@ -639,7 +640,7 @@ export class Client {
       );
       if (attributeFQNs.length != attributeValues.length || !hasAllFQNs) {
         throw new ConfigurationError(
-          `Attribute mismatch between [${attributeFQNs}] and explicit values ${JSON.stringify(
+          `Attribute mismatch between [${attributeFQNs.join(', ')}] and explicit values ${JSON.stringify(
             attributeValues.map(({ fqn }) => fqn)
           )}`
         );
@@ -697,7 +698,7 @@ export class Client {
         }
 
         switch (item.kas.publicKey.publicKey.case) {
-          case 'remote':
+          case 'remote': {
             const kasPublicKeyInfo = await this._doFetchKasKeyWithCache(
               this.kasKeyInfoCache,
               item.kas.publicKey.publicKey.value,
@@ -711,6 +712,7 @@ export class Client {
               sid: item.sid,
             });
             break;
+          }
 
           case 'cached':
             for (const cachedPublicKey of item.kas.publicKey.publicKey.value.keys) {
@@ -724,7 +726,7 @@ export class Client {
             break;
 
           default:
-            throw new Error(`Unknown public key type: ${item.kas.publicKey.publicKey.case}`);
+            throw new Error('Unknown public key type');
         }
       }
     }
@@ -766,7 +768,7 @@ export class Client {
         } else if (isMlKemKeyAlgorithm(algorithm)) {
           type = 'mlkem-wrapped';
         } else {
-          throw new ConfigurationError(`Unsupported algorithm ${algorithm}`);
+          throw new ConfigurationError(`Unsupported algorithm ${String(algorithm)}`);
         }
         return buildKeyAccess({
           alg: algorithm,
@@ -780,7 +782,7 @@ export class Client {
         });
       })
     );
-    const { keyForEncryption, keyForManifest } = await (keyMiddleware as EncryptKeyMiddleware)();
+    const { keyForEncryption, keyForManifest } = await keyMiddleware();
     const ecfg: EncryptConfiguration = {
       allowList: this.allowedKases,
       byteLimit,
@@ -802,7 +804,7 @@ export class Client {
       tdfSpecVersion,
     };
 
-    return (streamMiddleware as EncryptStreamMiddleware)(await writeStream(ecfg));
+    return streamMiddleware(await writeStream(ecfg));
   }
 
   /**
@@ -820,8 +822,14 @@ export class Client {
   async decrypt({
     source,
     allowList,
-    keyMiddleware = async (key: SymmetricKey) => key,
-    streamMiddleware = async (stream: DecoratedReadableStream) => stream,
+    keyMiddleware = async (key: SymmetricKey) => {
+      await Promise.resolve();
+      return key;
+    },
+    streamMiddleware = async (stream: DecoratedReadableStream) => {
+      await Promise.resolve();
+      return stream;
+    },
     assertionVerificationKeys,
     noVerifyAssertions,
     concurrencyLimit = 1,
@@ -855,7 +863,7 @@ export class Client {
 
     // Await in order to catch any errors from this call.
     // TODO: Write error event to stream and don't await.
-    return await (streamMiddleware as DecryptStreamMiddleware)(
+    return await streamMiddleware(
       await readStream({
         allowList,
         auth: this.auth,
@@ -892,7 +900,8 @@ export class Client {
     const centralDirectory = await zipHelper.getCentralDirectory();
     const manifest = await zipHelper.getManifest(centralDirectory, '0.manifest.json');
     const policyJson = base64.decode(manifest.encryptionInformation.policy);
-    return JSON.parse(policyJson).uuid;
+    const policy = JSON.parse(policyJson) as { uuid?: string };
+    return policy.uuid;
   }
 
   async loadTDFStream({ source }: { source: DecryptSource }) {
@@ -903,4 +912,5 @@ export class Client {
 
 export type { AuthProvider };
 
-export { DecryptParamsBuilder, DecryptSource, EncryptParamsBuilder, HttpRequest, withHeaders };
+export { DecryptParamsBuilder, EncryptParamsBuilder, HttpRequest, withHeaders };
+export type { DecryptSource };

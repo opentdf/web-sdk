@@ -1,5 +1,5 @@
 import { decodeArrayBuffer } from '../../../src/encodings/base64.js';
-import { InvalidFileError } from '../../../src/errors.js';
+import { asError, InvalidFileError } from '../../../src/errors.js';
 
 export function unwrapHtml(htmlPayload: Uint8Array): Uint8Array {
   const html = new TextDecoder().decode(htmlPayload);
@@ -13,6 +13,6 @@ export function unwrapHtml(htmlPayload: Uint8Array): Uint8Array {
   try {
     return new Uint8Array(decodeArrayBuffer(base64Payload));
   } catch (e) {
-    throw new InvalidFileError('There was a problem extracting the TDF3 payload', e);
+    throw new InvalidFileError('There was a problem extracting the TDF3 payload', asError(e));
   }
 }

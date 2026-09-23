@@ -1,5 +1,5 @@
 import { Binary } from './src/binary.js';
-import { DecoratedReadableStream } from './src/client/DecoratedReadableStream.js';
+import type { DecoratedReadableStream } from './src/client/DecoratedReadableStream.js';
 import {
   type DecryptParams,
   DecryptParamsBuilder,
@@ -38,7 +38,7 @@ import {
   SplitKey,
   type EncryptionInformation,
 } from './src/models/encryption-information.js';
-import { AuthProvider, type HttpMethod, HttpRequest, withHeaders } from '../src/auth/auth.js';
+import { type AuthProvider, type HttpMethod, HttpRequest, withHeaders } from '../src/auth/auth.js';
 import { AesGcmCipher } from './src/ciphers/aes-gcm-cipher.js';
 import * as AuthProviders from '../src/auth/providers.js';
 import { version, clientType } from '../src/version.js';
@@ -81,23 +81,26 @@ export {
   AuthProviders,
   Binary,
   Client,
-  ClientConfig,
-  DecoratedReadableStream,
-  DecryptParams,
   DecryptParamsBuilder,
-  DecryptSource,
-  EncryptionInformation,
-  EncryptParams,
   EncryptParamsBuilder,
   Errors,
   HttpRequest,
-  KeyInfo,
   SplitKey,
   TDF3Client,
   clientType,
   createSessionKeys,
   withHeaders,
   version,
+};
+
+export type {
+  ClientConfig,
+  DecoratedReadableStream,
+  DecryptParams,
+  DecryptSource,
+  EncryptionInformation,
+  EncryptParams,
+  KeyInfo,
 };
 
 export { DefaultCryptoService as WebCryptoService } from './src/crypto/index.js';

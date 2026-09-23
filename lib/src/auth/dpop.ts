@@ -66,6 +66,7 @@ function b64u(input: Uint8Array | ArrayBuffer) {
  * Generates 32 random bytes and encodes them using base64url.
  */
 async function randomBytes() {
+  await Promise.resolve();
   return b64u(crypto.getRandomValues(new Uint8Array(32)));
 }
 
@@ -114,7 +115,10 @@ class UnsupportedOperationError extends Error {
   constructor(message?: string) {
     super(message ?? 'operation not supported');
     this.name = this.constructor.name;
-    Error.captureStackTrace?.(this, this.constructor);
+    const errorWithStackTrace = Error as ErrorConstructor & {
+      captureStackTrace?: (target: object, constructor?: object) => void;
+    };
+    errorWithStackTrace.captureStackTrace?.(this, this.constructor);
   }
 }
 

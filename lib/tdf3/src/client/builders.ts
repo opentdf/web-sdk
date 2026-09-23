@@ -1,19 +1,19 @@
 import { validateAttribute, validateAttributeObject } from './validation.js';
-import { AttributeObject, KeyInfo, Policy } from '../models/index.js';
+import type { AttributeObject, KeyInfo, Policy } from '../models/index.js';
 import {
   type Metadata,
   type RootIntegrityAlgorithm,
   type SegmentIntegrityAlgorithm,
 } from '../tdf.js';
-import { Binary } from '../binary.js';
+import type { Binary } from '../binary.js';
 
 import { ConfigurationError } from '../../../src/errors.js';
-import { PemKeyPair, type SymmetricKey } from '../crypto/declarations.js';
-import { DecoratedReadableStream } from './DecoratedReadableStream.js';
+import type { PemKeyPair, SymmetricKey } from '../crypto/declarations.js';
+import type { DecoratedReadableStream } from './DecoratedReadableStream.js';
 import { type Chunker } from '../../../src/seekable.js';
-import { AssertionConfig, AssertionVerificationKeys } from '../assertions.js';
-import { Value } from '../../../src/policy/attributes.js';
-import { KasPublicKeyAlgorithm, OriginAllowList } from '../../../src/access.js';
+import type { AssertionConfig, AssertionVerificationKeys } from '../assertions.js';
+import type { Value } from '../../../src/policy/attributes.js';
+import type { KasPublicKeyAlgorithm, OriginAllowList } from '../../../src/access.js';
 
 export const DEFAULT_SEGMENT_SIZE: number = 1024 * 1024;
 export type Scope = {
@@ -141,7 +141,7 @@ class EncryptParamsBuilder {
     if (!(string && typeof string === 'string')) {
       throw new ConfigurationError('StringSource must be a string');
     }
-    const stream = new ReadableStream({
+    const stream = new ReadableStream<Uint8Array>({
       pull(controller) {
         controller.enqueue(new TextEncoder().encode(string));
         controller.close();
@@ -175,9 +175,9 @@ class EncryptParamsBuilder {
    * @param buf to encrypt.
    */
   setBufferSource(buf: ArrayBuffer) {
-    const stream = new ReadableStream({
+    const stream = new ReadableStream<Uint8Array>({
       pull(controller) {
-        controller.enqueue(buf);
+        controller.enqueue(new Uint8Array(buf));
         controller.close();
       },
     });
@@ -296,7 +296,7 @@ class EncryptParamsBuilder {
    * @return {object} - object containing metadata as key-value pairs.
    */
   getMetadata(): EncryptParams['metadata'] {
-    return this._params.metadata as Metadata;
+    return this._params.metadata;
   }
 
   /**

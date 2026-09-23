@@ -15,6 +15,10 @@ function scrubCause(error?: Error, d?: number): { cause?: Error } {
   return { cause };
 }
 
+export function asError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error));
+}
+
 /**
  * Root class for all errors thrown by this library.
  * This should not be thrown directly, but rather one of its subclasses.

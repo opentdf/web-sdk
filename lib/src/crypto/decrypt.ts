@@ -1,4 +1,5 @@
 import { Ciphers, CipherTagLengths } from './ciphers.js';
+import { toCryptoBytes } from './buffer.js';
 
 /**
  * Decrypt plaintext buffer to plaintext buffer
@@ -21,10 +22,10 @@ export default async function decrypt(
   return crypto.subtle.decrypt(
     {
       name: Ciphers.AesGcm,
-      iv,
+      iv: toCryptoBytes(iv),
       tagLength: tagLength || CipherTagLengths.AesGcm,
     },
     key,
-    ciphertext
+    toCryptoBytes(ciphertext)
   );
 }

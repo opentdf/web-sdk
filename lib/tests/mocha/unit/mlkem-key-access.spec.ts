@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 
 import { MlKemWrapped } from '../../../tdf3/src/models/key-access.js';
-import { Policy } from '../../../tdf3/src/models/policy.js';
+import type { Policy } from '../../../tdf3/src/models/policy.js';
 import { base64 } from '../../../src/encodings/index.js';
 import { ConfigurationError } from '../../../src/errors.js';
 import type { CryptoService, PublicKey } from '../../../tdf3/src/crypto/declarations.js';
@@ -16,8 +16,8 @@ const MLKEM768_CT_LEN = 1088;
 // ML-KEM encapsulation, AES-GCM wrap of the DEK, and the policy-binding HMAC.
 // (No HKDF/digest: ML-KEM uses the raw shared secret directly as the AES key.)
 const mockCryptoService: CryptoService = {
-  async importPublicKey(): Promise<PublicKey> {
-    return { _brand: 'PublicKey', algorithm: 'mlkem:768', mlKemLevel: 768 };
+  importPublicKey(): Promise<PublicKey> {
+    return Promise.resolve({ _brand: 'PublicKey', algorithm: 'mlkem:768', mlKemLevel: 768 });
   },
   async mlKemEncapsulate() {
     return {
@@ -25,17 +25,17 @@ const mockCryptoService: CryptoService = {
       sharedSecret: await importSymmetricKey(new Uint8Array(32)),
     };
   },
-  async randomBytes(length: number): Promise<Uint8Array> {
-    return new Uint8Array(length);
+  randomBytes(length: number): Promise<Uint8Array> {
+    return Promise.resolve(new Uint8Array(length));
   },
-  async encrypt() {
-    return {
+  encrypt() {
+    return Promise.resolve({
       payload: Binary.fromArrayBuffer(new Uint8Array(16).buffer),
       authTag: Binary.fromArrayBuffer(new Uint8Array(16).buffer),
-    };
+    });
   },
-  async hmac(): Promise<Uint8Array> {
-    return new Uint8Array(32);
+  hmac(): Promise<Uint8Array> {
+    return Promise.resolve(new Uint8Array(32));
   },
 } as unknown as CryptoService;
 
@@ -104,8 +104,11 @@ describe('MlKemWrapped', () => {
 
     // wrappedKey is a DER kemEnvelope { [0] kemCiphertext, [1] encryptedDek }
     // where encryptedDek = nonce(12) || aes-256-gcm ct || tag(16).
+    const wrappedKey = kao.wrappedKey;
+    expect(wrappedKey).to.be.a('string');
+    if (!wrappedKey) return;
     const { kemCiphertext, encryptedDek } = decodeKemEnvelopeDer(
-      new Uint8Array(base64.decodeArrayBuffer(kao.wrappedKey!))
+      new Uint8Array(base64.decodeArrayBuffer(wrappedKey))
     );
     expect(kemCiphertext.length).to.equal(MLKEM768_CT_LEN);
     expect(encryptedDek.length).to.equal(12 + 16 + 16);
@@ -121,8 +124,8 @@ describe('MlKemWrapped', () => {
     // A custom (e.g. HSM-backed) service that predates post-quantum support: it
     // implements importPublicKey but omits the optional ML-KEM methods entirely.
     const noMlKemService: CryptoService = {
-      async importPublicKey(): Promise<PublicKey> {
-        return { _brand: 'PublicKey', algorithm: 'mlkem:768', mlKemLevel: 768 };
+      importPublicKey(): Promise<PublicKey> {
+        return Promise.resolve({ _brand: 'PublicKey', algorithm: 'mlkem:768', mlKemLevel: 768 });
       },
     } as unknown as CryptoService;
 

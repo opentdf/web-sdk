@@ -9,6 +9,7 @@ import {
 } from '../declarations.js';
 import { ConfigurationError } from '../../../../src/errors.js';
 import { unwrapKey, wrapPrivateKey, wrapPublicKey, wrapSymmetricKey } from './keys.js';
+import { toCryptoBytes } from '../../../../src/crypto/buffer.js';
 
 /**
  * Map ECCurve to Web Crypto named curve.
@@ -22,7 +23,7 @@ function curveToNamedCurve(curve: ECCurve): string {
     case 'P-521':
       return 'P-521';
     default:
-      throw new ConfigurationError(`Unsupported curve: ${curve}`);
+      throw new ConfigurationError(`Unsupported curve: ${String(curve)}`);
   }
 }
 
@@ -103,8 +104,8 @@ export async function deriveKeyFromECDH(
     {
       name: 'HKDF',
       hash: hkdfParams.hash,
-      salt: hkdfParams.salt,
-      info: hkdfParams.info ?? new Uint8Array(0),
+      salt: toCryptoBytes(hkdfParams.salt),
+      info: toCryptoBytes(hkdfParams.info ?? new Uint8Array(0)),
     },
     hkdfKey,
     { name: 'AES-GCM', length: keyLength },

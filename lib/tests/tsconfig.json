@@ -1,0 +1,11 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "composite": false,
+    "noEmit": false,
+    "outDir": "../dist/web",
+    "rootDir": "..",
+    "types": ["mocha", "node"]
+  },
+  "include": ["./**/*.ts"]
+}

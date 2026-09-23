@@ -82,7 +82,7 @@ async function getRemoteChunk(url: string, range?: string): Promise<Uint8Array> 
         }),
       });
     } catch (e) {
-      console.warn(`fetch failed with network error [${e}], retrying...`);
+      console.warn(`fetch failed with network error [${String(e)}], retrying...`);
       errors.push(e instanceof Error ? e : new Error(String(e)));
       await sleep(2 ** i * 1000);
       continue;
@@ -115,6 +115,7 @@ async function getRemoteChunk(url: string, range?: string): Promise<Uint8Array> 
 }
 
 export const fromUrl = async (location: string): Promise<Chunker> => {
+  await Promise.resolve();
   return async (byteStart?: number, byteEnd?: number): Promise<Uint8Array> => {
     if (byteStart === undefined) {
       return getRemoteChunk(location);
@@ -161,7 +162,9 @@ export const fromSource = async ({ type, location }: Source): Promise<Chunker> =
     case 'stream':
       return fromBuffer(new Uint8Array(await new Response(location).arrayBuffer()));
     default:
-      throw new ConfigurationError(`Data source type not defined, or not supported: ${type}}`);
+      throw new ConfigurationError(
+        `Data source type not defined, or not supported: ${String(type)}}`
+      );
   }
 };
 

@@ -1,8 +1,9 @@
 import { expect } from 'chai';
 
 import * as TDF from '../../../tdf3/src/tdf.js';
-import { KeyAccessObject } from '../../../tdf3/src/models/key-access.js';
-import { PolicyBody, type Policy } from '../../../tdf3/src/models/policy.js';
+import type { KeyAccessObject } from '../../../tdf3/src/models/key-access.js';
+import type { PolicyBody } from '../../../tdf3/src/models/policy.js';
+import { type Policy } from '../../../tdf3/src/models/policy.js';
 import { OriginAllowList } from '../../../src/access.js';
 import { ConfigurationError, InvalidFileError, UnsafeUrlError } from '../../../src/errors.js';
 import { getMocks } from '../../mocks/index.js';
@@ -77,7 +78,7 @@ describe('TDF', () => {
   });
 });
 
-describe('fetchKasPublicKey', async () => {
+describe('fetchKasPublicKey', () => {
   it('missing kas names throw', async () => {
     try {
       await TDF.fetchKasPublicKey('');
@@ -157,12 +158,9 @@ describe('validatePolicyObject', () => {
   testCases.forEach(({ title, policy, error }) => {
     it(`should handle ${title}`, () => {
       if (error) {
-        expect(() => TDF.validatePolicyObject(policy as Policy)).to.throw(
-          ConfigurationError,
-          error
-        );
+        expect(() => TDF.validatePolicyObject(policy)).to.throw(ConfigurationError, error);
       } else {
-        expect(() => TDF.validatePolicyObject(policy as Policy)).to.not.throw();
+        expect(() => TDF.validatePolicyObject(policy)).to.not.throw();
       }
     });
   });

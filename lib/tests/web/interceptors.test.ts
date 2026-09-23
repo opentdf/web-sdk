@@ -1,7 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import { type Interceptor } from '@connectrpc/connect';
-import type { AuthProvider } from '../../src/auth/auth.js';
-import { HttpRequest, withHeaders } from '../../src/auth/auth.js';
+import type { AuthProvider, HttpRequest } from '../../src/auth/auth.js';
+import { withHeaders } from '../../src/auth/auth.js';
 import {
   authTokenInterceptor,
   authTokenDPoPInterceptor,
@@ -19,9 +19,10 @@ async function captureHeaders(
   url = 'https://example.com/v1/test'
 ): Promise<Headers> {
   const headers = new Headers();
-  const mockReq = { header: headers, url } as Parameters<ReturnType<Interceptor>>[0];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mockNext = async (req: any) => req as any;
+  type InterceptorRequest = Parameters<ReturnType<Interceptor>>[0];
+  const mockReq = { header: headers, url } as InterceptorRequest;
+  const mockNext = ((req: InterceptorRequest) =>
+    Promise.resolve(req)) as unknown as Parameters<Interceptor>[0];
   await interceptor(mockNext)(mockReq);
   return headers;
 }
@@ -30,16 +31,16 @@ async function captureHeaders(
 
 describe('authTokenInterceptor', () => {
   it('sets the Authorization header with the token from tokenProvider', async () => {
-    const interceptor = authTokenInterceptor(async () => 'test-token-123');
+    const interceptor = authTokenInterceptor(() => Promise.resolve('test-token-123'));
     const headers = await captureHeaders(interceptor);
     expect(headers.get('Authorization')).to.equal('Bearer test-token-123');
   });
 
   it('calls tokenProvider on each request', async () => {
     let callCount = 0;
-    const interceptor = authTokenInterceptor(async () => {
+    const interceptor = authTokenInterceptor(() => {
       callCount++;
-      return `token-${callCount}`;
+      return Promise.resolve(`token-${callCount}`);
     });
 
     const h1 = await captureHeaders(interceptor);
@@ -56,21 +57,24 @@ describe('authTokenInterceptor', () => {
 describe('authTokenDPoPInterceptor', () => {
   it('sets Authorization, DPoP, and X-VirtruPubKey headers', async () => {
     const interceptor = authTokenDPoPInterceptor({
-      tokenProvider: async () => 'dpop-token',
+      tokenProvider: () => Promise.resolve('dpop-token'),
     });
 
     const headers = await captureHeaders(interceptor);
 
     expect(headers.get('Authorization')).to.equal('Bearer dpop-token');
     expect(headers.get('DPoP')).to.be.a('string');
-    expect(headers.get('DPoP')!.split('.')).to.have.length(3); // JWT format
-    expect(headers.get('X-VirtruPubKey')).to.be.a('string');
-    expect(headers.get('X-VirtruPubKey')!.length).to.be.greaterThan(0);
+    const dpopHeader = headers.get('DPoP');
+    const publicKeyHeader = headers.get('X-VirtruPubKey');
+    if (dpopHeader === null || publicKeyHeader === null) throw new Error('missing DPoP headers');
+    expect(dpopHeader.split('.')).to.have.length(3); // JWT format
+    expect(publicKeyHeader).to.be.a('string');
+    expect(publicKeyHeader.length).to.be.greaterThan(0);
   });
 
   it('exposes dpopKeys as a promise that resolves to a KeyPair', async () => {
     const interceptor = authTokenDPoPInterceptor({
-      tokenProvider: async () => 'token',
+      tokenProvider: () => Promise.resolve('token'),
     });
 
     expect(interceptor.dpopKeys).to.be.instanceOf(Promise);
@@ -85,7 +89,7 @@ describe('authTokenDPoPInterceptor', () => {
     const knownKeys = await cryptoService.generateSigningKeyPair();
 
     const interceptor = authTokenDPoPInterceptor({
-      tokenProvider: async () => 'token',
+      tokenProvider: () => Promise.resolve('token'),
       dpopKeys: knownKeys,
     });
 
@@ -95,11 +99,12 @@ describe('authTokenDPoPInterceptor', () => {
 
   it('generates a valid DPoP proof JWT', async () => {
     const interceptor = authTokenDPoPInterceptor({
-      tokenProvider: async () => 'test-access-token',
+      tokenProvider: () => Promise.resolve('test-access-token'),
     });
 
     const headers = await captureHeaders(interceptor, 'https://example.com/v1/rewrap');
-    const dpopToken = headers.get('DPoP')!;
+    const dpopToken = headers.get('DPoP');
+    if (dpopToken === null) throw new Error('missing DPoP header');
 
     // Decode the JWT payload (middle part)
     const base64UrlDecode = (input: string): string => {
@@ -110,8 +115,16 @@ describe('authTokenDPoPInterceptor', () => {
       return atob(b64);
     };
     const [headerB64, payloadB64] = dpopToken.split('.');
-    const header = JSON.parse(base64UrlDecode(headerB64));
-    const payload = JSON.parse(base64UrlDecode(payloadB64));
+    const header = JSON.parse(base64UrlDecode(headerB64)) as {
+      typ?: unknown;
+      jwk?: unknown;
+    };
+    const payload = JSON.parse(base64UrlDecode(payloadB64)) as {
+      htm?: unknown;
+      htu?: unknown;
+      iat?: unknown;
+      jti?: unknown;
+    };
 
     expect(header.typ).to.equal('dpop+jwt');
     expect(header.jwk).to.be.an('object');
@@ -127,12 +140,14 @@ describe('authTokenDPoPInterceptor', () => {
 describe('authProviderInterceptor', () => {
   it('delegates to authProvider.withCreds and applies returned headers', async () => {
     const mockAuthProvider: AuthProvider = {
-      updateClientPublicKey: async () => {},
-      withCreds: async (req: HttpRequest) =>
-        withHeaders(req, {
-          Authorization: 'Bearer provider-token',
-          'X-Custom': 'custom-value',
-        }),
+      updateClientPublicKey: () => Promise.resolve(),
+      withCreds: (req: HttpRequest) =>
+        Promise.resolve(
+          withHeaders(req, {
+            Authorization: 'Bearer provider-token',
+            'X-Custom': 'custom-value',
+          })
+        ),
     };
 
     const interceptor = authProviderInterceptor(mockAuthProvider);
@@ -144,10 +159,8 @@ describe('authProviderInterceptor', () => {
 
   it('wraps updateClientPublicKey errors with helpful message', async () => {
     const failingProvider: AuthProvider = {
-      updateClientPublicKey: async () => {},
-      withCreds: async () => {
-        throw new Error('public key not configured');
-      },
+      updateClientPublicKey: () => Promise.resolve(),
+      withCreds: () => Promise.reject(new Error('public key not configured')),
     };
 
     const interceptor = authProviderInterceptor(failingProvider);
@@ -164,8 +177,8 @@ describe('authProviderInterceptor', () => {
 
 describe('AuthConfig utilities', () => {
   const stubAuthProvider: AuthProvider = {
-    updateClientPublicKey: async () => {},
-    withCreds: async (req) => req,
+    updateClientPublicKey: () => Promise.resolve(),
+    withCreds: (req) => Promise.resolve(req),
   };
 
   describe('isInterceptorConfig', () => {

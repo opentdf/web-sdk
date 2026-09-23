@@ -6,7 +6,8 @@ import { createConnectTransport } from '@connectrpc/connect-web';
 import type { AuthProvider } from '../tdf3/index.js';
 import { authProviderInterceptor } from './auth/interceptors.js';
 
-import { Client, createClient, Interceptor } from '@connectrpc/connect';
+import type { Client, Interceptor } from '@connectrpc/connect';
+import { createClient } from '@connectrpc/connect';
 import { WellKnownService } from './platform/wellknownconfiguration/wellknown_configuration_pb.js';
 import { AuthorizationService } from './platform/authorization/authorization_pb.js';
 import { AuthorizationService as AuthorizationServiceV2 } from './platform/authorization/v2/authorization_pb.js';

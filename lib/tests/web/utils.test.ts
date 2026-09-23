@@ -18,6 +18,12 @@ import {
 import { create } from '@bufbuild/protobuf';
 
 describe('errors', () => {
+  type ScrubbedError = {
+    message: string;
+    stack?: string;
+    extra?: unknown;
+    cause?: ScrubbedError;
+  };
   it('Avoids errors due to loops', () => {
     const cause = new Error();
     cause.message = 'my message';
@@ -26,17 +32,19 @@ describe('errors', () => {
     try {
       throw new TdfError('message', cause);
     } catch (e) {
+      const caught = e as TdfError;
+      const caughtCause = caught.cause as ScrubbedError | undefined;
       expect(() => {
         throw e;
       }).to.throw('message');
-      expect(e.cause.extra).to.be.undefined;
-      expect(e.cause.message).to.equal('my message');
-      expect(e.cause.stack).to.equal(cause.stack);
-      expect(e.cause.stack).to.equal(cause.stack);
-      expect(e.cause.cause.stack).to.equal(cause.stack);
-      expect(e.cause.cause.cause.stack).to.equal(cause.stack);
-      expect(e.cause.cause.cause.cause.stack).to.equal(cause.stack);
-      expect(e.cause.cause.cause.cause.cause.cause).to.be.undefined;
+      expect(caughtCause?.extra).to.be.undefined;
+      expect(caughtCause?.message).to.equal('my message');
+      expect(caughtCause?.stack).to.equal(cause.stack);
+      expect(caughtCause?.stack).to.equal(cause.stack);
+      expect(caughtCause?.cause?.stack).to.equal(cause.stack);
+      expect(caughtCause?.cause?.cause?.stack).to.equal(cause.stack);
+      expect(caughtCause?.cause?.cause?.cause?.stack).to.equal(cause.stack);
+      expect(caughtCause?.cause?.cause?.cause?.cause?.cause).to.be.undefined;
     }
   });
 });
@@ -138,12 +146,18 @@ describe('skew estimation', () => {
     const nowAndThen = sandbox.stub(Date, 'now');
     nowAndThen.returns(local);
     const fetchLives = sandbox.stub(globalThis, 'fetch');
-    fetchLives.callsFake(async (resource, init) => {
+    fetchLives.callsFake((resource, init) => {
+      const resourceUrl =
+        typeof resource === 'string'
+          ? resource
+          : resource instanceof URL
+            ? resource.toString()
+            : resource.url;
       if (resource === 'http://localhost') {
-        return mockApiResponse(remote);
+        return Promise.resolve(mockApiResponse(remote));
       }
-      console.log(`trying to fetch( resource: [${resource}], init:`, init);
-      return mockApiResponse('Thu, 1 Jan 1970 00:00:01 GMT', 404);
+      console.log(`trying to fetch( resource: [${resourceUrl}], init:`, init);
+      return Promise.resolve(mockApiResponse('Thu, 1 Jan 1970 00:00:01 GMT', 404));
     });
     return sandbox;
   }

@@ -2,25 +2,33 @@
 import { assert } from 'chai';
 
 import { getMocks } from '../mocks/index.js';
-import { KasPublicKeyAlgorithm } from '../../src/access.js';
-import { AuthProvider, HttpRequest } from '../../src/auth/auth.js';
-import { AesGcmCipher, KeyInfo, SplitKey, WebCryptoService } from '../../tdf3/index.js';
+import type { KasPublicKeyAlgorithm } from '../../src/access.js';
+import type { AuthProvider, HttpRequest } from '../../src/auth/auth.js';
+import type { KeyInfo } from '../../tdf3/index.js';
+import { AesGcmCipher, SplitKey, WebCryptoService } from '../../tdf3/index.js';
 import { Client } from '../../tdf3/src/index.js';
-import {
+import type {
   AssertionConfig,
   AssertionVerificationKeys,
-  getSystemMetadataAssertionConfig,
   Assertion,
 } from '../../tdf3/src/assertions.js';
-import { Scope } from '../../tdf3/src/client/builders.js';
+import { getSystemMetadataAssertionConfig } from '../../tdf3/src/assertions.js';
+import type { Scope } from '../../tdf3/src/client/builders.js';
 import { NetworkError } from '../../src/errors.js';
 
 const Mocks = getMocks();
 
+type SystemMetadata = {
+  creation_date: string;
+  tdf_spec_version: string;
+  sdk_version: string;
+  browser_user_agent: string;
+  platform: string;
+};
+
 const authProvider = {
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
   updateClientPublicKey: async () => {},
-  withCreds: async (httpReq: HttpRequest) => httpReq,
+  withCreds: (httpReq: HttpRequest) => Promise.resolve(httpReq),
 };
 
 describe('rewrap error cases', function () {
@@ -35,7 +43,7 @@ describe('rewrap error cases', function () {
     // Setup base auth provider that will be modified per test
     const baseAuthProvider = {
       updateClientPublicKey: async () => {},
-      withCreds: async (httpReq: HttpRequest) => httpReq,
+      withCreds: (httpReq: HttpRequest) => Promise.resolve(httpReq),
     };
 
     client = new Client.Client({
@@ -52,7 +60,7 @@ describe('rewrap error cases', function () {
   });
 
   async function encryptTestData({ customAuthProvider }: { customAuthProvider?: AuthProvider }) {
-    const keyMiddleware = async () => ({ keyForEncryption: key1, keyForManifest: key1 });
+    const keyMiddleware = () => Promise.resolve({ keyForEncryption: key1, keyForManifest: key1 });
 
     if (customAuthProvider) {
       client = new Client.Client({
@@ -84,10 +92,11 @@ describe('rewrap error cases', function () {
   it('should handle 401 Unauthorized error', async function () {
     const authProvider = {
       updateClientPublicKey: async () => {},
-      withCreds: async (httpReq: HttpRequest) => ({
-        ...httpReq,
-        headers: { ...httpReq.headers, authorization: 'Invalid' },
-      }),
+      withCreds: (httpReq: HttpRequest) =>
+        Promise.resolve({
+          ...httpReq,
+          headers: { ...httpReq.headers, authorization: 'Invalid' },
+        }),
     };
 
     const encryptedStream = await encryptTestData({ customAuthProvider: authProvider });
@@ -108,10 +117,11 @@ describe('rewrap error cases', function () {
   it('should handle 403 Forbidden error', async function () {
     const authProvider = {
       updateClientPublicKey: async () => {},
-      withCreds: async (httpReq: HttpRequest) => ({
-        ...httpReq,
-        headers: { ...httpReq.headers, 'x-test-response': '403' },
-      }),
+      withCreds: (httpReq: HttpRequest) =>
+        Promise.resolve({
+          ...httpReq,
+          headers: { ...httpReq.headers, 'x-test-response': '403' },
+        }),
     };
 
     const encryptedStream = await encryptTestData({ customAuthProvider: authProvider });
@@ -133,14 +143,15 @@ describe('rewrap error cases', function () {
     // Modify the mock server to return 400 for invalid body
     const authProvider = {
       updateClientPublicKey: async () => {},
-      withCreds: async (httpReq: HttpRequest) => ({
-        ...httpReq,
-        headers: {
-          ...httpReq.headers,
-          'x-test-response': '400',
-          'x-test-response-message': 'IntegrityError',
-        },
-      }),
+      withCreds: (httpReq: HttpRequest) =>
+        Promise.resolve({
+          ...httpReq,
+          headers: {
+            ...httpReq.headers,
+            'x-test-response': '400',
+            'x-test-response-message': 'IntegrityError',
+          },
+        }),
     };
 
     const encryptedStream = await encryptTestData({ customAuthProvider: authProvider });
@@ -161,10 +172,11 @@ describe('rewrap error cases', function () {
   it('should handle 500 Server error', async function () {
     const authProvider = {
       updateClientPublicKey: async () => {},
-      withCreds: async (httpReq: HttpRequest) => ({
-        ...httpReq,
-        headers: { ...httpReq.headers, 'x-test-response': '500' },
-      }),
+      withCreds: (httpReq: HttpRequest) =>
+        Promise.resolve({
+          ...httpReq,
+          headers: { ...httpReq.headers, 'x-test-response': '500' },
+        }),
     };
 
     const encryptedStream = await encryptTestData({ customAuthProvider: authProvider });
@@ -192,7 +204,7 @@ describe('rewrap error cases', function () {
         clientId: 'id',
         authProvider: {
           updateClientPublicKey: async () => {},
-          withCreds: async (httpReq: HttpRequest) => httpReq,
+          withCreds: (httpReq: HttpRequest) => Promise.resolve(httpReq),
         },
       });
 
@@ -213,15 +225,16 @@ describe('rewrap error cases', function () {
   it('should handle decrypt errors with invalid keys', async function () {
     const authProvider: AuthProvider = {
       updateClientPublicKey: async () => {},
-      withCreds: async (httpReq: HttpRequest) => ({
-        ...httpReq,
-        body: new URLSearchParams({ invalidKey: 'true' }),
-        headers: {
-          ...httpReq.headers,
-          'x-test-response': '400',
-          'x-test-response-message': 'DecryptError',
-        },
-      }),
+      withCreds: (httpReq: HttpRequest) =>
+        Promise.resolve({
+          ...httpReq,
+          body: new URLSearchParams({ invalidKey: 'true' }),
+          headers: {
+            ...httpReq.headers,
+            'x-test-response': '400',
+            'x-test-response-message': 'DecryptError',
+          },
+        }),
     };
 
     const encryptedStream = await encryptTestData({ customAuthProvider: authProvider });
@@ -241,7 +254,7 @@ describe('rewrap error cases', function () {
   });
 });
 
-describe('encrypt decrypt test', async function () {
+describe('encrypt decrypt test', function () {
   const expectedVal = 'hello world';
   const kasUrl = `http://localhost:3000`;
 
@@ -261,7 +274,8 @@ describe('encrypt decrypt test', async function () {
         const cipher = new AesGcmCipher(WebCryptoService);
         const encryptionInformation = new SplitKey(cipher);
         const key1 = await encryptionInformation.generateKey();
-        const keyMiddleware = async () => ({ keyForEncryption: key1, keyForManifest: key1 });
+        const keyMiddleware = () =>
+          Promise.resolve({ keyForEncryption: key1, keyForManifest: key1 });
 
         const client = new Client.Client({
           kasEndpoint: kasUrl,
@@ -377,7 +391,7 @@ describe('encrypt decrypt test', async function () {
     const cipher = new AesGcmCipher(WebCryptoService);
     const encryptionInformation = new SplitKey(cipher);
     const key1 = await encryptionInformation.generateKey();
-    const keyMiddleware = async () => ({ keyForEncryption: key1, keyForManifest: key1 });
+    const keyMiddleware = () => Promise.resolve({ keyForEncryption: key1, keyForManifest: key1 });
 
     const client = new Client.Client({
       kasEndpoint: kasUrl,
@@ -424,7 +438,7 @@ describe('encrypt decrypt test', async function () {
     const cipher = new AesGcmCipher(WebCryptoService);
     const encryptionInformation = new SplitKey(cipher);
     const key1 = await encryptionInformation.generateKey();
-    const keyMiddleware = async () => ({ keyForEncryption: key1, keyForManifest: key1 });
+    const keyMiddleware = () => Promise.resolve({ keyForEncryption: key1, keyForManifest: key1 });
 
     const client = new Client.Client({
       kasEndpoint: kasUrl,
@@ -476,7 +490,7 @@ describe('encrypt decrypt test', async function () {
         'Statement schema should be "system-metadata-v1"'
       );
 
-      const metadataValue = JSON.parse(systemAssertion.statement.value);
+      const metadataValue = JSON.parse(systemAssertion.statement.value) as SystemMetadata;
       assert.property(metadataValue, 'tdf_spec_version', 'Metadata should have tdfSpecVersion');
       assert.property(metadataValue, 'creation_date', 'Metadata should have creationDate');
       assert.property(metadataValue, 'sdk_version', 'Metadata should have sdkVersion');
@@ -505,8 +519,8 @@ describe('encrypt decrypt test', async function () {
       );
 
       // Parse statement.value and compare individual fields, ignoring creationDate for direct equality
-      const expectedMetadataValue = JSON.parse(systemMetadata.statement.value);
-      const actualMetadataValue = JSON.parse(systemAssertion.statement.value);
+      const expectedMetadataValue = JSON.parse(systemMetadata.statement.value) as SystemMetadata;
+      const actualMetadataValue = JSON.parse(systemAssertion.statement.value) as SystemMetadata;
 
       assert.isString(actualMetadataValue.creation_date, 'creation_date should be a string');
       assert.isNotEmpty(actualMetadataValue.creation_date, 'creation_date should not be empty');

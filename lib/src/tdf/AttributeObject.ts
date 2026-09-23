@@ -14,6 +14,7 @@ export async function createAttribute(
   pubKey: KasPublicKeyInfo,
   kasUrl: string
 ): Promise<AttributeObject> {
+  await Promise.resolve();
   return {
     attribute,
     isDefault: false,

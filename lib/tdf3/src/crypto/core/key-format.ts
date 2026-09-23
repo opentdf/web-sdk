@@ -13,6 +13,7 @@ import {
 } from '../declarations.js';
 import { ConfigurationError } from '../../../../src/errors.js';
 import { formatAsPem, removePemFormatting } from '../crypto-utils.js';
+import { toArrayBuffer } from '../../../../src/crypto/buffer.js';
 import { encodeArrayBuffer as hexEncode } from '../../../../src/encodings/hex.js';
 import { decodeArrayBuffer as base64Decode } from '../../../../src/encodings/base64.js';
 import { exportSPKI, importX509 } from 'jose';
@@ -454,10 +455,7 @@ export async function exportPublicKeyPem(key: PublicKey): Promise<string> {
   if (isMlKemKeyAlgorithm(key.algorithm)) {
     const level = mlKemAlgorithmToLevel(key.algorithm);
     const der = encodeMlKemSpkiDer(unwrapMlKemKey(key), level);
-    return formatAsPem(
-      der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength),
-      'PUBLIC KEY'
-    );
+    return formatAsPem(toArrayBuffer(der), 'PUBLIC KEY');
   }
   const cryptoKey = unwrapKey(key);
   const keyBuffer = await crypto.subtle.exportKey('spki', cryptoKey);

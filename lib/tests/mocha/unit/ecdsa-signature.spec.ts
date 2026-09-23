@@ -39,7 +39,8 @@ describe('ECDSA Signature Functions', () => {
 
     it('should throw an error with invalid private key', async () => {
       try {
-        await computeECDSASig(null as any, data);
+        // @ts-expect-error Deliberately verifies an invalid key is rejected.
+        await computeECDSASig(null, data);
       } catch (error) {
         expect(error).to.exist;
       }
