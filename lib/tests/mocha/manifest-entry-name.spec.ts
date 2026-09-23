@@ -28,6 +28,7 @@ import { ZipWriter } from '../../tdf3/src/utils/zip-writer.js';
 import { concatUint8 } from '../../tdf3/src/utils/index.js';
 import { fromBuffer } from '../../src/seekable.js';
 import { InvalidFileError } from '../../src/errors.js';
+import { base64 } from '../../src/encodings/index.js';
 
 const Mocks = getMocks();
 const kasUrl = 'http://localhost:3000';
@@ -127,6 +128,26 @@ async function assertRejects(promise: Promise<unknown>, messageFragment: string)
     return;
   }
   assert.fail(`Expected a rejection mentioning "${messageFragment}"`);
+}
+
+/**
+ * `InvalidFileError` itself, not a subclass: `DecryptError`, `IntegrityError`
+ * and `UnsafeUrlError` all extend it, so `instanceOf` would also accept a
+ * failure from further down the read path.
+ */
+async function assertInvalidFile(promise: Promise<unknown>): Promise<void> {
+  try {
+    await promise;
+  } catch (error) {
+    const { constructor, message } = error as Error;
+    assert.strictEqual(
+      constructor,
+      InvalidFileError,
+      `Expected InvalidFileError, got ${constructor.name}: ${message}`
+    );
+    return;
+  }
+  assert.fail('Expected an InvalidFileError');
 }
 
 type ArchiveEntry = { fileName: string; data: Uint8Array; crc32: number };
@@ -368,6 +389,95 @@ describe('manifest entry name (platform#3513)', function () {
       await assertRejects(
         client.decrypt({ source: { type: 'buffer', location: nameless } }),
         'Unable to retrieve CD manifest'
+      );
+    });
+  });
+
+  /**
+   * The spec name is selected on presence alone, so an entry holding something
+   * other than a manifest now reaches the reader. Each fixture keeps its intact
+   * `0.manifest.json`, so all of them decrypt on an off-spec-only reader —
+   * what's under test is strictly the cost of widening the lookup.
+   */
+  describe('a spec-named entry that is not a TDF manifest', function () {
+    const encode = (text: string) => new TextEncoder().encode(text);
+    const notManifests: [string, Uint8Array][] = [
+      ['a web app manifest', encode('{"name":"my-web-app","icons":[]}')],
+      ['a manifest missing encryptionInformation', encode('{"payload":{"url":"0.payload"}}')],
+      ['a JSON array', encode('[]')],
+      ['JSON null', encode('null')],
+      ['a JSON string', encode('"manifest"')],
+      ['bytes that are not JSON', encode('hello')],
+      ['a zero-length entry', new Uint8Array(0)],
+    ];
+
+    for (const [named, data] of notManifests) {
+      describe(named, function () {
+        let archive: Uint8Array;
+
+        beforeEach(async function () {
+          archive = buildArchive([
+            ...(await entriesOf(await encryptToBuffer(client))),
+            { fileName: SPEC_NAME, data, crc32: 0 },
+          ]);
+        });
+
+        it('is a fixture whose off-spec manifest is still intact', async function () {
+          assert.deepEqual(await fileNamesOf(archive), ['0.payload', OFFSPEC_NAME, SPEC_NAME]);
+          const reader = new ZipReader(fromBuffer(archive));
+          const manifest = await reader.getManifest(
+            await centralDirectoryOf(archive),
+            OFFSPEC_NAME
+          );
+          assert.isString(manifest.encryptionInformation.policy);
+        });
+
+        it('rejects the decrypt as an invalid file', async function () {
+          await assertInvalidFile(
+            client.decrypt({ source: { type: 'buffer', location: archive } })
+          );
+        });
+
+        it('rejects getPolicyId as an invalid file', async function () {
+          await assertInvalidFile(
+            client.getPolicyId({ source: { type: 'buffer', location: archive } })
+          );
+        });
+      });
+    }
+  });
+
+  /**
+   * Why the guard is thin. `getPolicyId` reads `encryptionInformation.policy`
+   * and stops, so demanding the `keyAccess` or `integrityInformation` only
+   * `decrypt` needs would turn this widening into a narrowing.
+   */
+  describe('a spec-named manifest carrying only what its caller reads', function () {
+    const policyId = '4f8d09a3-6b21-4d0e-9f2c-71a5b3e8c604';
+    let archive: Uint8Array;
+
+    beforeEach(async function () {
+      const policy = base64.encode(
+        JSON.stringify({ uuid: policyId, body: { dataAttributes: [], dissem: [] } })
+      );
+      const payload = (await entriesOf(await encryptToBuffer(client))).find(
+        ({ fileName }) => fileName === '0.payload'
+      );
+      assert.isDefined(payload, 'fixture needs the payload entry');
+      archive = buildArchive([
+        payload,
+        {
+          fileName: SPEC_NAME,
+          data: new TextEncoder().encode(JSON.stringify({ encryptionInformation: { policy } })),
+          crc32: 0,
+        },
+      ]);
+    });
+
+    it('reads the policy id rather than rejecting the manifest', async function () {
+      assert.equal(
+        await client.getPolicyId({ source: { type: 'buffer', location: archive } }),
+        policyId
       );
     });
   });

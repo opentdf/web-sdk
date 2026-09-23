@@ -1,6 +1,6 @@
 import { InvalidFileError } from '../../../src/errors.js';
 import { type Chunker } from '../../../src/seekable.js';
-import type { Manifest } from '../models/index.js';
+import { isManifest, type Manifest } from '../models/index.js';
 import { readUInt32LE, readUInt16LE, copyUint8Arr, buffToString } from './index.js';
 
 // TODO: Better document what these constants are
@@ -103,7 +103,20 @@ export class ZipReader {
     const byteEnd = byteStart + cdObj.uncompressedSize;
     const manifest = await this.getChunk(byteStart, byteEnd);
 
-    return JSON.parse(new TextDecoder().decode(manifest)) as Manifest;
+    // Chosen by name, so nothing yet says it holds a manifest.
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(new TextDecoder().decode(manifest));
+    } catch (cause) {
+      throw new InvalidFileError(
+        `manifest entry [${manifestFileName}] is not valid JSON`,
+        cause as Error
+      );
+    }
+    if (!isManifest(parsed)) {
+      throw new InvalidFileError(`manifest entry [${manifestFileName}] is not a TDF manifest`);
+    }
+    return parsed;
   }
 
   async adjustHeaders(cdObj: CentralDirectory): Promise<void> {
