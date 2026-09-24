@@ -48,7 +48,7 @@
     "nyc": "^18.0.0",
     "playwright": "^1.56.1",
     "prettier": "3.9.8",
-    "typescript": "5.9.3",
+    "typescript": "6.0.3",
     "typescript-eslint": "8.70.1",
     "vite": "^8.1.0",
     "vite-plugin-istanbul": "^9.0.1",
