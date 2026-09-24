@@ -1,10 +1,17 @@
 {
-  "extends": "./tsconfig",
+  "extends": "./tsconfig.json",
   "compilerOptions": {
     "module": "CommonJS",
     "outDir": "dist/cjs",
     // This pass transforms the same ESM sources into CommonJS output.
     "verbatimModuleSyntax": false
+    // moduleResolution is intentionally left unset: "CommonJS" implies node10,
+    // which resolves dependencies through the "require"/"node" conditions and so
+    // matches what the emitted require() calls find at runtime. Setting it to
+    // "bundler" would type-check this pass against ESM entry points while still
+    // emitting require(), so it is deliberately avoided. TypeScript 6.0 deprecates
+    // *explicit* node10 and 7.0 removes it; replacing this pass with a
+    // CommonJS-format NodeNext compile is tracked in DSPX-4910.
   },
   "include": ["src", "tdf3"]
 }
