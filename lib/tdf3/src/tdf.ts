@@ -72,6 +72,31 @@ import {
 // TODO: input validation on manifest JSON
 const DEFAULT_SEGMENT_SIZE = 1024 * 1024;
 
+/** Where the spec puts the manifest: at the root of the OpenTDF zip archive. */
+export const manifestFileName = 'manifest.json';
+
+/**
+ * What this SDK called the manifest before opentdf/platform#3513. The `0.` prefix
+ * anticipated several payload/manifest pairs per archive, a design that never
+ * shipped. Still read, never written.
+ */
+export const offspecManifestFileName = '0.manifest.json';
+
+/**
+ * The manifest entry to read from an archive, preferring the spec name when both
+ * are present.
+ *
+ * Resolving against the central directory rather than against a failed read keeps
+ * other failures honest: an oversized manifest under the spec name stays a size
+ * error instead of silently yielding the superseded off-spec entry.
+ */
+export function manifestEntryName(centralDirectory: CentralDirectory[]): string {
+  const offspecOnly =
+    !centralDirectory.some(({ fileName }) => fileName === manifestFileName) &&
+    centralDirectory.some(({ fileName }) => fileName === offspecManifestFileName);
+  return offspecOnly ? offspecManifestFileName : manifestFileName;
+}
+
 const HEX_SEMVER_VERSION = '4.2.2';
 const LEGACY_SEGMENTS_PER_DOWNLOAD = 500;
 const LEGACY_MAX_CONCURRENT_SEGMENT_BATCHES = 3;
@@ -566,7 +591,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
       filename: '0.payload',
     },
     {
-      filename: '0.manifest.json',
+      filename: manifestFileName,
     },
   ];
 
@@ -663,7 +688,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
         _countChunk(payloadDataDescriptor);
 
         // prepare the manifest
-        entryInfos[1].filename = '0.manifest.json';
+        entryInfos[1].filename = manifestFileName;
         entryInfos[1].offset = totalByteCount;
         controller.enqueue(getHeader(entryInfos[1].filename));
         _countChunk(getHeader(entryInfos[1].filename));
@@ -868,7 +893,10 @@ export type InspectedTDFOverview = {
 export async function loadTDFStream(chunker: Chunker): Promise<InspectedTDFOverview> {
   const zipReader = new ZipReader(chunker);
   const centralDirectory = await zipReader.getCentralDirectory();
-  const manifest = await zipReader.getManifest(centralDirectory, '0.manifest.json');
+  const manifest = await zipReader.getManifest(
+    centralDirectory,
+    manifestEntryName(centralDirectory)
+  );
   return { manifest, zipReader, centralDirectory };
 }
 
