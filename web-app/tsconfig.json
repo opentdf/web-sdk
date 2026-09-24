@@ -5,7 +5,9 @@
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
     "jsx": "react-jsx",
-    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    // TypeScript 6.0 makes "DOM" also imply DOM.Iterable and DOM.AsyncIterable.
+    // Listed explicitly so the program is identical on 5.9 and 6.0.
+    "lib": ["DOM", "DOM.Iterable", "DOM.AsyncIterable", "ESNext"],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "noEmit": true,
@@ -14,6 +16,11 @@
     "skipLibCheck": true,
     "strict": true,
     "target": "ESNext",
+    // TypeScript 6.0 defaults this to [], which would drop both ambient packages
+    // this project depends on: src/App.test.tsx imports node:fs and reads
+    // process.env, and src/App.tsx annotates the global FileSystemFileHandle.
+    // vite/client is pulled in by src/vite-env.d.ts and needs no entry here.
+    "types": ["node", "wicg-file-system-access"],
     "useDefineForClassFields": true
   },
   "include": ["src", "public/sw.js"],

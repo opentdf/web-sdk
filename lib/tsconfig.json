@@ -8,7 +8,9 @@
     "forceConsistentCasingInFileNames": true,
     "inlineSources": true,
     "isolatedModules": true,
-    "lib": ["dom", "dom.iterable", "es2021", "ES2022.Error"],
+    // TypeScript 6.0 makes "dom" also imply dom.iterable and dom.asynciterable.
+    // Listed explicitly so the program is identical on 5.9 and 6.0.
+    "lib": ["dom", "dom.iterable", "dom.asynciterable", "es2021", "ES2022.Error"],
     "module": "NodeNext",
     "noImplicitOverride": true,
     "noImplicitReturns": true,
@@ -16,10 +18,17 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "outDir": "dist/web",
+    // Matches the common source dir previously inferred from include (src + tdf3
+    // -> lib/), which TypeScript 6.0 makes the default. The emitted layout must
+    // stay dist/<format>/{src,tdf3}/** because every "exports" target points there.
+    "rootDir": ".",
     "skipLibCheck": true,
     "sourceMap": true,
     "strict": true,
     "target": "es2021",
+    // The SDK sources reference no ambient @types. TypeScript 6.0 defaults this
+    // to [], so it is set explicitly to keep 5.9 and 6.0 building the same program.
+    "types": [],
     "verbatimModuleSyntax": true
   },
   "include": ["src", "tdf3"],
