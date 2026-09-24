@@ -15,7 +15,7 @@
 </div></section>
 <div class="tsd-signature"><span class="tsd-signature-keyword">type</span> <span class="tsd-kind-type-alias">OpenTDFOptions</span> <span class="tsd-signature-symbol">=</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#authprovider">authProvider</a><span class="tsd-signature-symbol">?:</span> <a href="AuthProvider.html" class="tsd-signature-type tsd-kind-type-alias">AuthProvider</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#cryptoservice">cryptoService</a><span class="tsd-signature-symbol">?:</span> <a href="CryptoService.html" class="tsd-signature-type tsd-kind-type-alias">CryptoService</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#defaultcreateoptions">defaultCreateOptions</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">Omit</span><span class="tsd-signature-symbol">&lt;</span><a href="CreateOptions.html" class="tsd-signature-type tsd-kind-type-alias">CreateOptions</a><span class="tsd-signature-symbol">,</span> <span class="tsd-signature-type">&quot;source&quot;</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#defaultreadoptions">defaultReadOptions</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">Omit</span><span class="tsd-signature-symbol">&lt;</span><a href="ReadOptions.html" class="tsd-signature-type tsd-kind-type-alias">ReadOptions</a><span class="tsd-signature-symbol">,</span> <span class="tsd-signature-type">&quot;source&quot;</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#disabledpop">disableDPoP</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#dpopkeys">dpopKeys</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">KeyPair</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#interceptors">interceptors</a><span class="tsd-signature-symbol">?:</span> <a href="Interceptor.html" class="tsd-signature-type tsd-kind-type-alias">Interceptor</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#platformurl">platformUrl</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#policyendpoint">policyEndpoint</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/2757079d1cc4f27c7d3c1b90561ebae6030ce802/lib/src/opentdf.ts#L192">src/opentdf.ts:192</a></li></ul></aside>
+<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/d1859afd0da91a8840799ee7eb4ee7f3c78fa641/lib/src/opentdf.ts#L192">src/opentdf.ts:192</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-accordion" open><summary class="tsd-accordion-summary tsd-index-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
@@ -46,7 +46,7 @@
 <h4 class="tsd-anchor-link" id="deprecated">Deprecated<a href="#deprecated" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>since 0.14.0. Use <code>interceptors</code> with <code>authTokenInterceptor()</code> or <code>authTokenDPoPInterceptor()</code> instead.</p>
 </div></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/2757079d1cc4f27c7d3c1b90561ebae6030ce802/lib/src/opentdf.ts#L209">src/opentdf.ts:209</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/d1859afd0da91a8840799ee7eb4ee7f3c78fa641/lib/src/opentdf.ts#L209">src/opentdf.ts:209</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="cryptoservice"><code class="tsd-tag">Optional</code><span>crypto<wbr/>Service</span><a href="#cryptoservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">cryptoService</span><span class="tsd-signature-symbol">?:</span> <a href="CryptoService.html" class="tsd-signature-type tsd-kind-type-alias">CryptoService</a></div>
@@ -55,28 +55,28 @@ If not provided, defaults to the browser's native Web Crypto API.
 This allows injecting HSM-backed or other secure crypto implementations.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/2757079d1cc4f27c7d3c1b90561ebae6030ce802/lib/src/opentdf.ts#L232">src/opentdf.ts:232</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/d1859afd0da91a8840799ee7eb4ee7f3c78fa641/lib/src/opentdf.ts#L232">src/opentdf.ts:232</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="defaultcreateoptions"><code class="tsd-tag">Optional</code><span>default<wbr/>Create<wbr/>Options</span><a href="#defaultcreateoptions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">defaultCreateOptions</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">Omit</span><span class="tsd-signature-symbol">&lt;</span><a href="CreateOptions.html" class="tsd-signature-type tsd-kind-type-alias">CreateOptions</a><span class="tsd-signature-symbol">,</span> <span class="tsd-signature-type">&quot;source&quot;</span><span class="tsd-signature-symbol">&gt;</span></div>
 <div class="tsd-comment tsd-typography"><p>Default settings for 'encrypt' type requests.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/2757079d1cc4f27c7d3c1b90561ebae6030ce802/lib/src/opentdf.ts#L212">src/opentdf.ts:212</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/d1859afd0da91a8840799ee7eb4ee7f3c78fa641/lib/src/opentdf.ts#L212">src/opentdf.ts:212</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="defaultreadoptions"><code class="tsd-tag">Optional</code><span>default<wbr/>Read<wbr/>Options</span><a href="#defaultreadoptions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">defaultReadOptions</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">Omit</span><span class="tsd-signature-symbol">&lt;</span><a href="ReadOptions.html" class="tsd-signature-type tsd-kind-type-alias">ReadOptions</a><span class="tsd-signature-symbol">,</span> <span class="tsd-signature-type">&quot;source&quot;</span><span class="tsd-signature-symbol">&gt;</span></div>
 <div class="tsd-comment tsd-typography"><p>Default settings for 'decrypt' type requests.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/2757079d1cc4f27c7d3c1b90561ebae6030ce802/lib/src/opentdf.ts#L215">src/opentdf.ts:215</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/d1859afd0da91a8840799ee7eb4ee7f3c78fa641/lib/src/opentdf.ts#L215">src/opentdf.ts:215</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="disabledpop"><code class="tsd-tag">Optional</code><span>disable<wbr/>D<wbr/>Po<wbr/>P</span><a href="#disabledpop" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">disableDPoP</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">boolean</span></div>
 <div class="tsd-comment tsd-typography"><p>If we want to <em>not</em> send a DPoP token.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/2757079d1cc4f27c7d3c1b90561ebae6030ce802/lib/src/opentdf.ts#L218">src/opentdf.ts:218</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/d1859afd0da91a8840799ee7eb4ee7f3c78fa641/lib/src/opentdf.ts#L218">src/opentdf.ts:218</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="dpopkeys"><code class="tsd-tag">Optional</code><span>dpop<wbr/>Keys</span><a href="#dpopkeys" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">dpopKeys</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">KeyPair</span><span class="tsd-signature-symbol">&gt;</span></div>
@@ -85,7 +85,7 @@ These often must be registered via a DPoP flow with the IdP
 which is out of the scope of this library.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/2757079d1cc4f27c7d3c1b90561ebae6030ce802/lib/src/opentdf.ts#L225">src/opentdf.ts:225</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/d1859afd0da91a8840799ee7eb4ee7f3c78fa641/lib/src/opentdf.ts#L225">src/opentdf.ts:225</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="interceptors"><code class="tsd-tag">Optional</code><span>interceptors</span><a href="#interceptors" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">interceptors</span><span class="tsd-signature-symbol">?:</span> <a href="Interceptor.html" class="tsd-signature-type tsd-kind-type-alias">Interceptor</a><span class="tsd-signature-symbol">[]</span></div>
@@ -93,21 +93,21 @@ which is out of the scope of this library.</p>
 Use <code>authTokenInterceptor()</code> or <code>authTokenDPoPInterceptor()</code> to create interceptors.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/2757079d1cc4f27c7d3c1b90561ebae6030ce802/lib/src/opentdf.ts#L203">src/opentdf.ts:203</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/d1859afd0da91a8840799ee7eb4ee7f3c78fa641/lib/src/opentdf.ts#L203">src/opentdf.ts:203</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="platformurl"><code class="tsd-tag">Optional</code><span>platform<wbr/>Url</span><a href="#platformurl" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">platformUrl</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span></div>
 <div class="tsd-comment tsd-typography"><p>Platform URL.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/2757079d1cc4f27c7d3c1b90561ebae6030ce802/lib/src/opentdf.ts#L197">src/opentdf.ts:197</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/d1859afd0da91a8840799ee7eb4ee7f3c78fa641/lib/src/opentdf.ts#L197">src/opentdf.ts:197</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="policyendpoint"><code class="tsd-tag">Optional</code><span>policy<wbr/>Endpoint</span><a href="#policyendpoint" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">policyEndpoint</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span></div>
 <div class="tsd-comment tsd-typography"><p>Policy service endpoint.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/2757079d1cc4f27c7d3c1b90561ebae6030ce802/lib/src/opentdf.ts#L194">src/opentdf.ts:194</a></li></ul></aside></section></section></details></div>
+<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/d1859afd0da91a8840799ee7eb4ee7f3c78fa641/lib/src/opentdf.ts#L194">src/opentdf.ts:194</a></li></ul></aside></section></section></details></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

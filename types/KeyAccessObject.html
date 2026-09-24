@@ -15,7 +15,7 @@
 </div></section>
 <div class="tsd-signature"><span class="tsd-signature-keyword">type</span> <span class="tsd-kind-type-alias">KeyAccessObject</span> <span class="tsd-signature-symbol">=</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#encryptedmetadata">encryptedMetadata</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#ephemeralpublickey">ephemeralPublicKey</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#kid">kid</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#policybinding">policyBinding</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">alg</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">hash</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#protocol">protocol</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">&quot;kas&quot;</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#schemaversion">schemaVersion</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#sid">sid</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#type">type</a><span class="tsd-signature-symbol">:</span> <a href="KeyAccessType.html" class="tsd-signature-type tsd-kind-type-alias">KeyAccessType</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#url">url</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#wrappedkey">wrappedKey</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/2757079d1cc4f27c7d3c1b90561ebae6030ce802/lib/tdf3/src/models/key-access.ts#L262">tdf3/src/models/key-access.ts:262</a></li></ul></aside>
+<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/d1859afd0da91a8840799ee7eb4ee7f3c78fa641/lib/tdf3/src/models/key-access.ts#L262">tdf3/src/models/key-access.ts:262</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-accordion" open><summary class="tsd-accordion-summary tsd-index-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
@@ -46,21 +46,21 @@ and are used to pass information from the client to the KAS.
 The metadata stored here should not be used for primary access decisions.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/2757079d1cc4f27c7d3c1b90561ebae6030ce802/lib/tdf3/src/models/key-access.ts#L318">tdf3/src/models/key-access.ts:318</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/d1859afd0da91a8840799ee7eb4ee7f3c78fa641/lib/tdf3/src/models/key-access.ts#L318">tdf3/src/models/key-access.ts:318</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="ephemeralpublickey"><code class="tsd-tag">Optional</code><span>ephemeral<wbr/>Public<wbr/>Key</span><a href="#ephemeralpublickey" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">ephemeralPublicKey</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span></div>
 <div class="tsd-comment tsd-typography"><p>PEM encoded ephemeral public key, if wrapped with a KAS EC key.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/2757079d1cc4f27c7d3c1b90561ebae6030ce802/lib/tdf3/src/models/key-access.ts#L328">tdf3/src/models/key-access.ts:328</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/d1859afd0da91a8840799ee7eb4ee7f3c78fa641/lib/tdf3/src/models/key-access.ts#L328">tdf3/src/models/key-access.ts:328</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="kid"><code class="tsd-tag">Optional</code><span>kid</span><a href="#kid" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">kid</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span></div>
 <div class="tsd-comment tsd-typography"><p>Additional information for the Key Access service to identify how to unwrap the key.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/2757079d1cc4f27c7d3c1b90561ebae6030ce802/lib/tdf3/src/models/key-access.ts#L287">tdf3/src/models/key-access.ts:287</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/d1859afd0da91a8840799ee7eb4ee7f3c78fa641/lib/tdf3/src/models/key-access.ts#L287">tdf3/src/models/key-access.ts:287</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="policybinding"><code class="tsd-tag">Optional</code><span>policy<wbr/>Binding</span><a href="#policybinding" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">policyBinding</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">alg</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">hash</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">}</span></div>
@@ -70,21 +70,21 @@ without invalidating the binding.
 Specifically, you would have to have access to the key in order to overwrite the policy.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/2757079d1cc4f27c7d3c1b90561ebae6030ce802/lib/tdf3/src/models/key-access.ts#L307">tdf3/src/models/key-access.ts:307</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/d1859afd0da91a8840799ee7eb4ee7f3c78fa641/lib/tdf3/src/models/key-access.ts#L307">tdf3/src/models/key-access.ts:307</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="protocol"><span>protocol</span><a href="#protocol" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">protocol</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">&quot;kas&quot;</span></div>
 <div class="tsd-comment tsd-typography"><p>The protocol used to access the key.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/2757079d1cc4f27c7d3c1b90561ebae6030ce802/lib/tdf3/src/models/key-access.ts#L292">tdf3/src/models/key-access.ts:292</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/d1859afd0da91a8840799ee7eb4ee7f3c78fa641/lib/tdf3/src/models/key-access.ts#L292">tdf3/src/models/key-access.ts:292</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="schemaversion"><code class="tsd-tag">Optional</code><span>schema<wbr/>Version</span><a href="#schemaversion" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">schemaVersion</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span></div>
 <div class="tsd-comment tsd-typography"><p>Version information for the KAO format.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/2757079d1cc4f27c7d3c1b90561ebae6030ce802/lib/tdf3/src/models/key-access.ts#L323">tdf3/src/models/key-access.ts:323</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/d1859afd0da91a8840799ee7eb4ee7f3c78fa641/lib/tdf3/src/models/key-access.ts#L323">tdf3/src/models/key-access.ts:323</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="sid"><code class="tsd-tag">Optional</code><span>sid</span><a href="#sid" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">sid</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span></div>
@@ -95,7 +95,7 @@ To reconstruct such a key when encryptionInformation type is 'split',
 use the xor operation to combine one of each separate sid.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/2757079d1cc4f27c7d3c1b90561ebae6030ce802/lib/tdf3/src/models/key-access.ts#L277">tdf3/src/models/key-access.ts:277</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/d1859afd0da91a8840799ee7eb4ee7f3c78fa641/lib/tdf3/src/models/key-access.ts#L277">tdf3/src/models/key-access.ts:277</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="type"><span>type</span><a href="#type" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">type</span><span class="tsd-signature-symbol">:</span> <a href="KeyAccessType.html" class="tsd-signature-type tsd-kind-type-alias">KeyAccessType</a></div>
@@ -104,14 +104,14 @@ use the xor operation to combine one of each separate sid.</p>
 <strong>remote</strong>: [Unsupported] The wrapped key (see below) is stored remotely and is thus not part of the final TDF manifest.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/2757079d1cc4f27c7d3c1b90561ebae6030ce802/lib/tdf3/src/models/key-access.ts#L268">tdf3/src/models/key-access.ts:268</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/d1859afd0da91a8840799ee7eb4ee7f3c78fa641/lib/tdf3/src/models/key-access.ts#L268">tdf3/src/models/key-access.ts:268</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="url"><span>url</span><a href="#url" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">url</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div>
 <div class="tsd-comment tsd-typography"><p>A locator for a Key Access service capable of granting access to the wrapped key.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/2757079d1cc4f27c7d3c1b90561ebae6030ce802/lib/tdf3/src/models/key-access.ts#L282">tdf3/src/models/key-access.ts:282</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/d1859afd0da91a8840799ee7eb4ee7f3c78fa641/lib/tdf3/src/models/key-access.ts#L282">tdf3/src/models/key-access.ts:282</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="wrappedkey"><code class="tsd-tag">Optional</code><span>wrapped<wbr/>Key</span><a href="#wrappedkey" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">wrappedKey</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span></div>
@@ -120,7 +120,7 @@ It is encrypted using the public key of the KAS,
 then base64 encoded.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/2757079d1cc4f27c7d3c1b90561ebae6030ce802/lib/tdf3/src/models/key-access.ts#L299">tdf3/src/models/key-access.ts:299</a></li></ul></aside></section></section></details></div>
+<li>Defined in <a href="https://github.com/opentdf/web-sdk/blob/d1859afd0da91a8840799ee7eb4ee7f3c78fa641/lib/tdf3/src/models/key-access.ts#L299">tdf3/src/models/key-access.ts:299</a></li></ul></aside></section></section></details></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">
