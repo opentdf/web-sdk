@@ -1,40 +1,45 @@
-import globals from "globals";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import typescriptEslint from "@typescript-eslint/eslint-plugin";
-import js from "@eslint/js";
-import { FlatCompat } from "@eslint/eslintrc";
-import pluginChaiFriendly from "eslint-plugin-chai-friendly";
+import js from '@eslint/js';
+import { defineConfig } from 'eslint/config';
+import chaiFriendly from 'eslint-plugin-chai-friendly';
+import prettierRecommended from 'eslint-plugin-prettier/recommended';
+import globals from 'globals';
+import tseslint from 'typescript-eslint';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const compat = new FlatCompat({
-    baseDirectory: __dirname,
-    recommendedConfig: js.configs.recommended,
-    allConfig: js.configs.all
-});
-
-export default [...compat.extends("plugin:@typescript-eslint/recommended", "plugin:prettier/recommended"), {
+export default defineConfig(
+  {
+    ignores: ['dist/**'],
+  },
+  js.configs.recommended,
+  tseslint.configs.recommendedTypeChecked,
+  {
+    files: ['src/**/*.ts', 'src/**/*.tsx'],
+    languageOptions: {
+      parser: tseslint.parser,
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: globals.browser,
+    },
+  },
+  {
+    files: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'src/**/*.spec.ts', 'src/**/*.spec.tsx'],
     plugins: {
-        "chai-friendly": pluginChaiFriendly,
-        "@typescript-eslint": typescriptEslint,
+      'chai-friendly': chaiFriendly,
     },
     languageOptions: {
-        globals: {
-            ...globals.browser,
-        },
-
-        ecmaVersion: 5,
-        sourceType: "script",
-
-        parserOptions: {
-            project: ["**/tsconfig.json"],
-        },
-
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+      },
     },
     rules: {
-        // See https://www.npmjs.com/package/eslint-plugin-chai-friendly
-        "@typescript-eslint/no-unused-expressions": "off", // disable original rule
-        "chai-friendly/no-unused-expressions": "error"
+      // Chai assertions intentionally use expression statements such as `.to.be.true`.
+      '@typescript-eslint/no-unused-expressions': 'off',
+      'chai-friendly/no-unused-expressions': 'error',
     },
-}];
+  },
+  prettierRecommended
+);

@@ -164,7 +164,7 @@ function drain() {
   let byteCounter = 0;
   let startTime: number;
   let lastLogTime = 0;
-  return new WritableStream({
+  return new WritableStream<Uint8Array>({
     start() {
       startTime = Date.now();
     },
@@ -191,7 +191,7 @@ function randomStream({ length }: RandomInputSource): ReadableStream<Uint8Array>
   let counter = 0;
   const maxChunkSize = 65536;
   return new ReadableStream({
-    async pull(controller) {
+    pull(controller) {
       const nextChunkSize = Math.min(length - counter, maxChunkSize);
       if (nextChunkSize <= 0) {
         controller.close();
@@ -207,7 +207,7 @@ function randomStream({ length }: RandomInputSource): ReadableStream<Uint8Array>
 
 function randomChunker({ length }: RandomInputSource): Chunker {
   const maxChunkSize = 2 ** 20;
-  return async (byteStart?: number, byteEnd?: number) => {
+  return (byteStart?: number, byteEnd?: number): Promise<Uint8Array> => {
     if (!byteStart) {
       byteStart = 0;
     } else if (byteStart < 0) {
@@ -230,11 +230,11 @@ function randomChunker({ length }: RandomInputSource): Chunker {
       throw new Error();
     }
     if (!width) {
-      return value;
+      return Promise.resolve(value);
     }
     // TODO use a seedable PRNG to make this make sense.
     crypto.getRandomValues(value);
-    return value;
+    return Promise.resolve(value);
   };
 }
 
@@ -293,7 +293,7 @@ function App() {
   };
 
   const setFileHandler = (event: ChangeEvent<HTMLInputElement>) => {
-    const target = event.target as HTMLInputElement;
+    const target = event.currentTarget;
     if (target.files?.length) {
       const [file] = target.files;
       selectInputSource({ type: 'file', file });
@@ -302,7 +302,7 @@ function App() {
     }
   };
   const setRandomHandler = (event: ChangeEvent<HTMLInputElement>) => {
-    const target = event.target as HTMLInputElement;
+    const target = event.currentTarget;
     if (target.value && target.validity.valid) {
       selectInputSource({ type: 'bytes', length: parseInt(target.value) });
     } else {
@@ -310,7 +310,7 @@ function App() {
     }
   };
   const setUrlHandler = (event: ChangeEvent<HTMLInputElement>) => {
-    const target = event.target as HTMLInputElement;
+    const target = event.currentTarget;
     if (target.value && target.validity.valid) {
       selectInputSource({ type: 'url', url: new URL(target.value) });
     } else {
@@ -326,7 +326,7 @@ function App() {
     let startTime = Date.now();
     const logEveryBytes = fileSize && fileSize > 100 ? fileSize / 100 : 1000 * 1000 * 16;
     return {
-      reader: new TransformStream({
+      reader: new TransformStream<Uint8Array, Uint8Array>({
         start() {
           const n = Date.now();
           const d = n - startTime;
@@ -335,7 +335,7 @@ function App() {
           }
           startTime = n;
         },
-        async transform(chunk, controller) {
+        transform(chunk, controller) {
           bytesRead += chunk.length;
           const message = `🤓 ${type}ed ${Math.round(
             100 * (bytesRead / fileSize)
@@ -363,8 +363,8 @@ function App() {
           setDownloadState(`🤓 ${type} Complete`);
         },
       }),
-      writer: new TransformStream({
-        async transform(chunk, controller) {
+      writer: new TransformStream<Uint8Array, Uint8Array>({
+        transform(chunk, controller) {
           bytesWritten += chunk.length;
           if (bytesWritten - lastLoggedWritten > logEveryBytes) {
             console.log(`✍️ ${type}ed output bytes: ${bytesWritten.toLocaleString()}`);
@@ -400,13 +400,13 @@ function App() {
     switch (inputSource.type) {
       case 'file':
         size = inputSource.file.size;
-        source = inputSource.file.stream() as unknown as ReadableStream<Uint8Array>;
+        source = inputSource.file.stream();
         break;
       case 'bytes':
         size = inputSource.length;
         source = randomStream(inputSource);
         break;
-      case 'url':
+      case 'url': {
         const fr = await fetch(inputSource.url, { signal: sc.signal });
         if (!fr.ok) {
           throw Error(
@@ -421,6 +421,7 @@ function App() {
         size = parseInt(fr.headers.get('Content-Length') || '-1');
         source = fr.body;
         break;
+      }
     }
 
     const client = new OpenTDF({
@@ -454,7 +455,7 @@ function App() {
         wrappingKeyAlgorithm: encapAlgorithm,
       });
     } catch (e) {
-      setDownloadState(`Encrypt Failed: ${e}`);
+      setDownloadState(`Encrypt Failed: ${e instanceof Error ? e.message : String(e)}`);
       console.error('Encrypt Failed', e);
       return;
     }
@@ -486,7 +487,9 @@ function App() {
         }
       } catch (e) {
         console.warn('failed to read manifest after encrypt', e);
-        setAlgorithmWarning(`Encrypted, but could not read the manifest to inspect it: ${e}`);
+        setAlgorithmWarning(
+          `Encrypted, but could not read the manifest to inspect it: ${e instanceof Error ? e.message : String(e)}`
+        );
       }
     }
     const cipherTextWithProgress = cipherText.pipeThrough(progressTransformers.writer);
@@ -495,19 +498,20 @@ function App() {
         case 'file':
           await toFile(cipherTextWithProgress, downloadName, { signal: sc.signal });
           break;
-        case 'fsapi':
+        case 'fsapi': {
           if (!f) {
             throw new Error();
           }
           const writable = await f.createWritable();
           await cipherTextWithProgress.pipeTo(writable, { signal: sc.signal });
           break;
+        }
         case 'none':
           await cipherTextWithProgress.pipeTo(drain(), { signal: sc.signal });
           break;
       }
     } catch (e) {
-      setDownloadState(`Encrypt Failed: ${e}`);
+      setDownloadState(`Encrypt Failed: ${e instanceof Error ? e.message : String(e)}`);
       console.error('Encrypt Failed', e);
     }
     setStreamController(undefined);
@@ -558,11 +562,12 @@ function App() {
         size = inputSource.length;
         source = { type: 'chunker', location: randomChunker(inputSource) };
         break;
-      case 'url':
+      case 'url': {
         const hr = await fetch(inputSource.url, { method: 'HEAD' });
         size = parseInt(hr.headers.get('Content-Length') || '-1');
         source = { type: 'remote', location: inputSource.url.toString() };
         break;
+      }
     }
     const progressTransformers = makeProgressPair(size, 'Decrypt');
 
@@ -588,13 +593,14 @@ function App() {
         case 'file':
           await toFile(plainTextStream, dfn, { signal: sc.signal });
           break;
-        case 'fsapi':
+        case 'fsapi': {
           if (!f) {
             throw new Error();
           }
           const writable = await f.createWritable();
           await plainTextStream.pipeTo(writable, { signal: sc.signal });
           break;
+        }
         case 'none':
           await plainTextStream.pipeTo(drain(), { signal: sc.signal });
           break;
@@ -605,7 +611,7 @@ function App() {
       );
     } catch (e) {
       console.error('Decrypt Failed', e);
-      setDownloadState(`Decrypt Failed: ${e}`);
+      setDownloadState(`Decrypt Failed: ${e instanceof Error ? e.message : String(e)}`);
     }
     setStreamController(undefined);
     return false;
@@ -613,7 +619,7 @@ function App() {
 
   const SessionInfo =
     authState.sessionState == 'start' ? (
-      <button id="login_button" onClick={() => oidcClient.authViaRedirect()}>
+      <button id="login_button" onClick={() => void oidcClient.authViaRedirect()}>
         Log In
       </button>
     ) : authState.sessionState == 'error' ? (
@@ -621,7 +627,7 @@ function App() {
     ) : authState.sessionState == 'redirecting' ? (
       <>
         <h3 id="error">redirecting???</h3>
-        <button id="login_button" onClick={() => oidcClient.authViaRedirect()}>
+        <button id="login_button" onClick={() => void oidcClient.authViaRedirect()}>
           try again
         </button>
       </>
@@ -734,11 +740,10 @@ function App() {
             <div className="step-body card">
               <button
                 id="cancelStream"
-                onClick={async () => {
+                onClick={() => {
                   console.log(`Cancelling !!!!`);
-                  const p = streamController.abort();
+                  streamController.abort();
                   setStreamController(undefined);
-                  await p;
                 }}
                 type="button"
               >
@@ -755,7 +760,7 @@ function App() {
             <section className="step">
               <h2>Encrypt</h2>
               <div className="step-body card">
-                <button id="encryptButton" onClick={() => handleEncrypt()} type="button">
+                <button id="encryptButton" onClick={() => void handleEncrypt()} type="button">
                   Encrypt
                 </button>
                 <fieldset className="options">
@@ -777,7 +782,7 @@ function App() {
             <section className="step">
               <h2>Decrypt</h2>
               <div className="step-body card">
-                <button id="decryptButton" onClick={() => handleDecrypt()} type="button">
+                <button id="decryptButton" onClick={() => void handleDecrypt()} type="button">
                   decrypt
                 </button>
                 <fieldset className="options">
