@@ -303,6 +303,87 @@ describe('bounded segment scheduler', () => {
       [4, 6],
     ]);
   });
+
+  // The legacy prefetch path swallowed batch failures (`.catch(() => undefined)`),
+  // leaving the consumer awaiting a mailbox that would never settle. Surfacing
+  // them is the point of routing every decrypt through the scheduler.
+  it('surfaces a failing batch instead of stalling, and stops scheduling', async () => {
+    const started: Array<[number, number]> = [];
+    const errors: Array<[string, number, number]> = [];
+    const scheduler = TDF.createBoundedSegmentScheduler({
+      totalSegments: 10,
+      segmentBatchSize: 2,
+      maxConcurrentSegmentBatches: 1,
+      onError: (error, startIndex, endIndex) => {
+        errors.push([error.message, startIndex, endIndex]);
+      },
+      scheduleBatch: (startIndex, endIndex) => {
+        started.push([startIndex, endIndex]);
+        return Promise.reject(new Error('kaboom'));
+      },
+    });
+
+    scheduler.fillWindow();
+    // A rejection travels through more links of the promise chain than a
+    // resolution does, so this needs a deeper flush than the tests above.
+    for (let i = 0; i < 8; i++) {
+      await flushScheduler();
+    }
+
+    expect(errors).to.have.lengthOf(1);
+    expect(errors[0][0]).to.contain('kaboom');
+    expect(errors[0].slice(1)).to.deep.equal([0, 2]);
+
+    // A stopped scheduler must not keep issuing reads for a decrypt that
+    // already failed.
+    scheduler.markConsumed(2);
+    await flushScheduler();
+    expect(started).to.deep.equal([[0, 2]]);
+  });
+});
+
+describe('getBoundedSegmentSchedulerOptions', () => {
+  const MIB = 1024 * 1024;
+
+  it('derives a window from the segment size when nothing is configured', () => {
+    // Bounded scheduling is the default now, and the bound scales with the
+    // segment size rather than being a fixed segment count.
+    expect(TDF.getBoundedSegmentSchedulerOptions({ segmentSize: MIB })).to.deep.equal({
+      segmentBatchSize: 42,
+      maxConcurrentSegmentBatches: 3,
+    });
+    expect(TDF.getBoundedSegmentSchedulerOptions({ segmentSize: 16 * MIB })).to.deep.equal({
+      segmentBatchSize: 2,
+      maxConcurrentSegmentBatches: 3,
+    });
+  });
+
+  it('lets an explicit setting win without rescaling the other', () => {
+    expect(
+      TDF.getBoundedSegmentSchedulerOptions({ segmentSize: 16 * MIB, segmentBatchSize: 500 })
+    ).to.deep.equal({
+      segmentBatchSize: 500,
+      maxConcurrentSegmentBatches: 3,
+    });
+    expect(
+      TDF.getBoundedSegmentSchedulerOptions({
+        segmentSize: 16 * MIB,
+        maxConcurrentSegmentBatches: 1,
+      })
+    ).to.deep.equal({
+      segmentBatchSize: 2,
+      maxConcurrentSegmentBatches: 1,
+    });
+  });
+
+  it('rejects a non-positive setting', () => {
+    expect(() =>
+      TDF.getBoundedSegmentSchedulerOptions({ segmentSize: MIB, segmentBatchSize: 0 })
+    ).to.throw(ConfigurationError, 'segmentBatchSize');
+    expect(() =>
+      TDF.getBoundedSegmentSchedulerOptions({ segmentSize: MIB, maxConcurrentSegmentBatches: -1 })
+    ).to.throw(ConfigurationError, 'maxConcurrentSegmentBatches');
+  });
 });
 
 describe('splitLookupTableFactory', () => {

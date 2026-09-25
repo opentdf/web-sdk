@@ -745,6 +745,10 @@ class DecryptParamsBuilder {
   /**
    * Set the number of payload segments to fetch and decrypt per batch.
    * Adjust together with `withMaxConcurrentSegmentBatches()` for expected throughput.
+   *
+   * Left unset, this is derived from the TDF's segment size so that the
+   * prefetch window stays inside a fixed byte budget. Raising it raises peak
+   * memory in proportion.
    */
   withSegmentBatchSize(size: number): DecryptParamsBuilder {
     this._params.segmentBatchSize = size;
@@ -754,6 +758,8 @@ class DecryptParamsBuilder {
   /**
    * Set the maximum number of payload segment batches to fetch concurrently.
    * Adjust together with `withSegmentBatchSize()` for expected throughput.
+   *
+   * Also derived from the TDF's segment size when unset.
    */
   withMaxConcurrentSegmentBatches(limit: number): DecryptParamsBuilder {
     this._params.maxConcurrentSegmentBatches = limit;
