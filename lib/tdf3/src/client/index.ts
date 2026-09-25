@@ -64,9 +64,7 @@ import { attributeFQNsAsKeyMappings } from '../../../src/policy/api.js';
 import { type Chunker, fromBuffer, fromSource } from '../../../src/seekable.js';
 import { Algorithm, type SimpleKasKey } from '../../../src/platform/policy/objects_pb.js';
 import { effectiveKasKeys } from '../../../src/policy/kas-keys.js';
-import { chooseSegmentSize } from '../utils/scale-limits.js';
-
-const GLOBAL_BYTE_LIMIT = 64 * 1000 * 1000 * 1000; // 64 GB, see WS-9363.
+import { chooseSegmentSize, maxOutputBytes } from '../utils/scale-limits.js';
 
 // No default config for now. Delegate to Virtru wrapper for endpoints.
 const defaultClientConfig = { oidcOrigin: '', cryptoService: defaultCryptoService };
@@ -753,7 +751,15 @@ export class Client {
 
     // TODO: Refactor underlying builder to remove some of this unnecessary config.
 
-    const maxByteLimit = GLOBAL_BYTE_LIMIT;
+    // Derived rather than hardcoded: this used to be a flat 64 GB
+    // (`GLOBAL_BYTE_LIMIT`, "see WS-9363"), which is not a limit the format
+    // imposes anywhere. The real constraints are per-key AES-GCM invocations
+    // and what the manifest can describe, both of which scale with the segment
+    // size chosen above. See `spec/DSPX-4648-web-sdk-large-files.md` item 2.
+    const maxByteLimit = maxOutputBytes({
+      segmentSize: segmentSizeDefault,
+      alg: segmentIntegrityAlg,
+    });
     const byteLimit =
       opts.byteLimit === undefined || opts.byteLimit <= 0 || opts.byteLimit > maxByteLimit
         ? maxByteLimit
