@@ -36,6 +36,8 @@ export type WriteTdfOptions = {
   byteLimit?: number;
   cryptoService?: CryptoService;
   contentStream?: ReadableStream<Uint8Array>;
+  knownSourceSize?: number;
+  manifestMaxSize?: number;
 };
 
 export type WrittenTdf = {
@@ -91,6 +93,8 @@ export async function encryptConfiguration(opts: WriteTdfOptions): Promise<Encry
     segmentIntegrityAlgorithm: opts.segmentIntegrityAlgorithm ?? SEGMENT_INTEGRITY_ALGORITHM,
     segmentSizeDefault: opts.segmentSize,
     ...(opts.assertionConfigs && { assertionConfigs: opts.assertionConfigs }),
+    ...(opts.knownSourceSize !== undefined && { knownSourceSize: opts.knownSourceSize }),
+    ...(opts.manifestMaxSize !== undefined && { manifestMaxSize: opts.manifestMaxSize }),
   };
 }
 

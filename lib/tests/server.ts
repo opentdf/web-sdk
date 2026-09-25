@@ -141,7 +141,10 @@ const kasHandler = async (req: IncomingMessage, res: ServerResponse) => {
   );
   res.setHeader('Access-Control-Allow-Origin', '*');
   // GET should be allowed for everything except rewrap, POST only for rewrap but IDC
-  res.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET, POST');
+  res.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET, HEAD, POST');
+  // Without this the browser tiers cannot read either header off a cross-origin
+  // response, and the remote size probe silently reports "unknown".
+  res.setHeader('Access-Control-Expose-Headers', 'content-length, content-range');
   try {
     const url = new URL(req.url || '', `http://${req?.headers?.host}`);
     if (req.method === 'OPTIONS') {
@@ -527,7 +530,7 @@ const kasHandler = async (req: IncomingMessage, res: ServerResponse) => {
       res.end('{"error": "Unsupported TDF format"}');
       return;
     } else if (url.pathname === '/file') {
-      if (req.method !== 'GET') {
+      if (req.method !== 'GET' && req.method !== 'HEAD') {
         res.writeHead(405);
         res.end(`{"error": "Invalid method [${req.method}]"}`);
         return;
@@ -535,6 +538,17 @@ const kasHandler = async (req: IncomingMessage, res: ServerResponse) => {
       const start = 0;
       const end = 255;
       const fullRange = range(start, end);
+
+      // Size probes (`sourceSize`) lead with HEAD before falling back to a
+      // one-byte range request, so both need to answer honestly here.
+      if (req.method === 'HEAD') {
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/octet-stream');
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Content-Length', fullRange.length);
+        res.end();
+        return;
+      }
 
       const rangeHeader = req.headers.range;
       if (rangeHeader) {
@@ -561,6 +575,10 @@ const kasHandler = async (req: IncomingMessage, res: ServerResponse) => {
         res.statusCode = 206; // Partial Content
         res.setHeader('Content-Type', 'application/octet-stream');
         res.setHeader('Content-Length', rangeData.length);
+        res.setHeader(
+          'Content-Range',
+          `bytes ${rangeStart}-${rangeStart + rangeData.length - 1}/${fullRange.length}`
+        );
         res.end(rangeData);
       } else {
         res.statusCode = 200; // OK
