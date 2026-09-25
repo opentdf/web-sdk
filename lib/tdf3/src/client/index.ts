@@ -1,9 +1,5 @@
 import { v4 } from 'uuid';
-import {
-  keyMiddleware as defaultKeyMiddleware,
-  streamToBuffer,
-  ZipReader,
-} from '../utils/index.js';
+import { keyMiddleware as defaultKeyMiddleware, ZipReader } from '../utils/index.js';
 import { base64 } from '../../../src/encodings/index.js';
 import {
   buildKeyAccess,
@@ -61,7 +57,7 @@ import {
 } from '../models/index.js';
 import { plan } from '../../../src/policy/granter.js';
 import { attributeFQNsAsKeyMappings } from '../../../src/policy/api.js';
-import { type Chunker, fromBuffer, fromSource } from '../../../src/seekable.js';
+import { bufferStream, type Chunker, fromBuffer, fromSource } from '../../../src/seekable.js';
 import { Algorithm, type SimpleKasKey } from '../../../src/platform/policy/objects_pb.js';
 import { effectiveKasKeys } from '../../../src/policy/kas-keys.js';
 import { chooseSegmentSize, maxOutputBytes } from '../utils/scale-limits.js';
@@ -96,13 +92,14 @@ const makeChunkable = async (source: DecryptSource) => {
   if (!source) {
     throw new ConfigurationError('invalid source');
   }
-  // dump stream to buffer
-  // we don't support streams anyways (see zipreader.js)
+  // A zip archive is read out of order -- the central directory is at the end
+  // -- so a single-pass stream has to be buffered whole to be seekable at all.
+  // `bufferStream` bounds that rather than letting it run to an OOM.
   let initialChunker: Chunker;
   let buf = null;
   switch (source.type) {
     case 'stream':
-      buf = await streamToBuffer(source.location);
+      buf = await bufferStream(source.location);
       initialChunker = fromBuffer(buf);
       break;
     case 'buffer':
