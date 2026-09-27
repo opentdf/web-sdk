@@ -34,10 +34,9 @@ export type RewrapRequest = {
 /**
  * Get a rewrapped access key to the document, if possible
  * @param url Key access server rewrap endpoint
- * @param requestBody a signed request with an encrypted document key
- * @param authProvider Authorization middleware
+ * @param signedRequestToken Signed request token containing the encrypted document key.
+ * @param auth Connect interceptors or a legacy auth provider.
  * @param fulfillableObligationFQNs client-configured list of obligation value FQNs that can be fulfilled in this PEP
- * @param clientVersion
  */
 export async function fetchWrappedKey(
   url: string,
@@ -209,7 +208,7 @@ export async function fetchECKasPubKey(kasEndpoint: string): Promise<KasPublicKe
  * This function will first try to fetch the base public key,
  * then it will try to fetch the public key using the RPC method,
  * and finally it will try to fetch the public key using the legacy method.
- * If all attempts fail, it will return the error from RPC Public Key fetch.
+ * If all attempts fail, throws the legacy public-key fetch error.
  * @param kasEndpoint The KAS endpoint URL.
  * @param algorithm Optional algorithm to fetch the public key for.
  * @returns The public key information.
