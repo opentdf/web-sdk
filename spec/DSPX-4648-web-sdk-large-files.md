@@ -47,10 +47,13 @@ ceiling (`MAX_GCM_INVOCATIONS_PER_KEY = 2**32`, `lib/tdf3/src/ciphers/gcm-iv-cou
 collision risk that would otherwise grow with segment count, and turns an open-ended statistical
 risk into a hard, tested, documented ceiling.
 
-Concretely: the IV ceiling sets a **minimum** segment size of `5.4976e13 / 2^32 = 12,800 bytes`
-(12.5 KiB) for a 50TB file. Every segment size this document considers is orders of magnitude above
-that, so the IV ceiling is not the binding constraint — but it is the floor any future segment-size
-change must stay above, and it must appear in the derived byte limit formula in item 2.
+Concretely: the IV ceiling sets a **minimum** segment size of
+`ceil(5.4976e13 / (2^32 - 1)) = 12,801 bytes` (12.5 KiB) for a 50TB file. (The divisor is
+`2^32 - 1`, not `2^32`: invocation 0 is the metadata's and the counter refuses to issue invocation
+`2^32` itself, so a key covers `2^32 - 1` payload segments. See item 2.) Every segment size this
+document considers is orders of magnitude above that, so the IV ceiling is not the binding
+constraint — but it is the floor any future segment-size change must stay above, and it must appear
+in the derived byte limit formula in item 2.
 
 **PR #1017 (ZIP64/APPNOTE conformance)** — replaces the reader's brittle "scan the last 1000 bytes
 for signature bytes" heuristic with real end-of-central-directory parsing, fixes the ZIP64
@@ -177,39 +180,77 @@ Separately, the write and read paths both materialize several full per-segment a
       coordination. PR #1017's notes suggest `segmentSize` is already optional there, but this has
       not been verified against a real cross-SDK round trip.
 
-### 2. Hard 64GB `GLOBAL_BYTE_LIMIT`
+### 2. Hard 64GB `GLOBAL_BYTE_LIMIT` — **DONE** (`DSPX-4652`)
 
-`lib/tdf3/src/client/index.ts:67` (comment: "see WS-9363") silently clamps any caller-supplied
+`lib/tdf3/src/client/index.ts:67` (comment: "see WS-9363") silently clamped any caller-supplied
 `byteLimit` above 64GB down to 64GB (`:719-722`).
 
 Two scope corrections to the previous revision:
 
-- The clamp exists **only in the tdf3 client path**. `writeStream` itself defaults `byteLimit` to
+- The clamp existed **only in the tdf3 client path**. `writeStream` itself defaults `byteLimit` to
   `Number.MAX_SAFE_INTEGER` (`lib/tdf3/src/tdf.ts:417`), so callers driving the lower-level API
-  directly are not subject to 64GB today. Both public entry points (`src/opentdf.ts:386` and the
-  tdf3 client) do route through the clamp.
+  directly were not subject to 64GB. Both public entry points (`src/opentdf.ts:386` and the tdf3
+  client) do route through the clamp.
 - The check is against `totalByteCount` — the **ZIP output size** — evaluated per output chunk in
-  `_countChunk` (`lib/tdf3/src/tdf.ts:661`), so like item 1 it throws mid-stream after the bytes are
-  already written. Same non-fail-fast shape, same fix shape.
+  `_countChunk`, so like item 1 it threw mid-stream after the bytes were already written. Same
+  non-fail-fast shape, same fix shape.
 
-- [ ] Investigate the original WS-9363 rationale before changing it.
-- [ ] Replace the constant with a **derived** ceiling rather than a second arbitrary number:
+- [x] Investigate the original WS-9363 rationale before changing it. The WS project is unrecoverable
+      (pre-migration), so the ticket itself is gone. The closest surviving analysis is **PEP-5451**
+      against the Go SDK: _"The 64 GiB guard is a per-file stand-in for what are really per-segment
+      (AES-GCM 2^36-32 bytes/invocation) and per-DEK (2^32 random-nonce messages) limits… the
+      per-file cap is unjustified for segmented ZTDF."_ Note also that the JS constant was
+      `64 * 1000³` (decimal) where Go's is 64 GiB (binary) — the two SDKs never agreed on the number
+      they were both calling "64 GB", which is further evidence it was a stand-in rather than a
+      format constraint.
+- [x] Replace the constant with a **derived** ceiling rather than a second arbitrary number
+      (`maxSegmentsFor` / `maxEncryptableBytes` / `maxOutputBytes` in `scale-limits.ts`):
 
       ```
-          maxBytes = segmentSize * min(
-            MAX_GCM_INVOCATIONS_PER_KEY,                      // IV ceiling, 2^32
-            floor(manifestMaxSize / perSegmentEntryBytes)     // manifest ceiling
-          )
-          ```
+              maxSegments = min(
+                MAX_PAYLOAD_SEGMENTS_PER_KEY,                     // IV ceiling, 2^32 - 1
+                floor(manifestMaxSize / perSegmentEntryBytes)     // manifest ceiling
+              )
+              maxEncryptableBytes = segmentSize * maxSegments                      // plaintext in
+              maxOutputBytes      = maxSegments * (segmentSize + 28)
+                                    + manifestMaxSize + 64 KiB                     // zip bytes out
+              ```
 
-          At the recommended configuration (16 MiB segments, 256 MiB cap, HS256 at
-          56 B/entry) this yields a manifest ceiling of 4,793,490 segments and
-          `maxBytes ≈ 80.4 TB` — comfortably above 50TB, with the IV ceiling
-          (~72 PB at 16 MiB) not binding. At the current defaults it correctly
-          collapses back to roughly today's behavior.
+              At the recommended configuration (16 MiB segments, 256 MiB cap, HS256 at 56 B/entry) this
+              yields a manifest ceiling of 4,793,490 segments and `maxEncryptableBytes = 80,421,417,123,840`
+              (~80.4 TB) — comfortably above 50 TiB, with the IV ceiling not binding.
 
-- [ ] Apply the same up-front check as item 1: when source length is known, compare against
-      `maxBytes` before encrypting rather than after 64GB of output has been emitted.
+- [x] Apply the same up-front check as item 1: when source length is known, compare against
+      `maxEncryptableBytes` before encrypting rather than after 64GB of output has been emitted.
+
+Two corrections to what this section originally claimed:
+
+- **Off-by-one in the formula.** `GcmIvCounter` reserves invocation 0 for the encrypted metadata and
+  refuses to issue invocation `limit` itself, so a key covers `2^32 - 1` payload segments, not
+  `2^32`. Introduced `MAX_PAYLOAD_SEGMENTS_PER_KEY = MAX_GCM_INVOCATIONS_PER_KEY - 1` and corrected
+  `minSegmentSizeFor`, which moves the 50 TiB floor from 12,800 to **12,801** — a payload sized
+  exactly at the old boundary would have failed mid-stream. A test drives a real `GcmIvCounter` to
+  exhaustion so the `- 1` is pinned to observed behaviour rather than asserted.
+- **"At the current defaults it correctly collapses back to roughly today's behavior" is false.**
+  That was written against the old 10 MB manifest cap (~305 GB GMAC / ~196 GB HS256). Under item 1's
+  256 MiB cap, the derived ceiling at the unchanged 1 MiB default segment is **7,818,748,887,040
+  bytes (~7.8 TB, ~122× the old 64 GB)**. This is a deliberate, tested loosening, not an accident:
+  the 64 GB number was never a format constraint. A test asserts the ratio explicitly.
+
+Also fixed here, found by the browser tier and not by Node: `ByteAccumulator` pre-sized itself
+straight from `knownSourceSize`, so a large-but-legal source could ask for a single multi-gigabyte
+`Uint8Array`. V8 in Node quietly hands back a 64 GiB array it never backs; Chrome throws
+`RangeError: Invalid typed array length`. The hint is now clamped to 256 MiB — above every reachable
+final size, since the manifest budget caps the segment count — and the buffer grows on demand past
+that like any other under-estimate.
+
+Not done, deliberately deferred:
+
+- The clamp still silently lowers an over-large caller-supplied `byteLimit` instead of rejecting it.
+  Changing that is a behavioural break for callers who pass a deliberately huge sentinel.
+- Nothing enforces the ceiling when the source length is unknown until `_countChunk` trips
+  mid-stream. That is inherent to streaming without a length, and the output-side check still
+  catches it.
 
 ### 3. Full-buffer traps in source handling
 
