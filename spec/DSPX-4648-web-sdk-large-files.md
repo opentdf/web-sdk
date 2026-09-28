@@ -207,18 +207,18 @@ Two scope corrections to the previous revision:
       (`maxSegmentsFor` / `maxEncryptableBytes` / `maxOutputBytes` in `scale-limits.ts`):
 
       ```
-                  maxSegments = min(
-                    MAX_PAYLOAD_SEGMENTS_PER_KEY,                     // IV ceiling, 2^32 - 1
-                    floor(manifestMaxSize / perSegmentEntryBytes)     // manifest ceiling
-                  )
-                  maxEncryptableBytes = segmentSize * maxSegments                      // plaintext in
-                  maxOutputBytes      = maxSegments * (segmentSize + 28)
-                                        + manifestMaxSize + 64 KiB                     // zip bytes out
-                  ```
+                      maxSegments = min(
+                        MAX_PAYLOAD_SEGMENTS_PER_KEY,                     // IV ceiling, 2^32 - 1
+                        floor(manifestMaxSize / perSegmentEntryBytes)     // manifest ceiling
+                      )
+                      maxEncryptableBytes = segmentSize * maxSegments                      // plaintext in
+                      maxOutputBytes      = maxSegments * (segmentSize + 28)
+                                            + manifestMaxSize + 64 KiB                     // zip bytes out
+                      ```
 
-                  At the recommended configuration (16 MiB segments, 256 MiB cap, HS256 at 56 B/entry) this
-                  yields a manifest ceiling of 4,793,490 segments and `maxEncryptableBytes = 80,421,417,123,840`
-                  (~80.4 TB) — comfortably above 50 TiB, with the IV ceiling not binding.
+                      At the recommended configuration (16 MiB segments, 256 MiB cap, HS256 at 56 B/entry) this
+                      yields a manifest ceiling of 4,793,490 segments and `maxEncryptableBytes = 80,421,417,123,840`
+                      (~80.4 TB) — comfortably above 50 TiB, with the IV ceiling not binding.
 
 - [x] Apply the same up-front check as item 1: when source length is known, compare against
       `maxEncryptableBytes` before encrypting rather than after 64GB of output has been emitted.
@@ -309,28 +309,65 @@ Not done, deliberately deferred:
 The safe paths remain `'chunker'`, `'file-browser'` (Blob), and `'remote'`, which is now ranged on
 the encrypt path as well as during segment decryption.
 
-### 4. Default decrypt prefetch scheduler isn't consumption-paced
+### 4. Default decrypt prefetch scheduler isn't consumption-paced — **DONE** (`DSPX-4654`)
 
-`updateChunkQueue` (`lib/tdf3/src/tdf.ts:1091`) prefetches in batches of 500 segments, up to 3
+`updateChunkQueue` (`lib/tdf3/src/tdf.ts:1091`) prefetched in batches of 500 segments, up to 3
 concurrent batches, without waiting for the consumer. The paced alternative
-`createBoundedSegmentScheduler` (`:1207`) is opt-in only, selected at `:1509` when the caller sets
+`createBoundedSegmentScheduler` (`:1207`) was opt-in only, selected at `:1509` when the caller set
 `segmentBatchSize`/`maxConcurrentSegmentBatches`.
 
-- [ ] Make `createBoundedSegmentScheduler` the default, or auto-select it once file size/segment
-      count crosses a threshold.
-- [ ] **Budget the prefetch window in bytes, not segments.** This is a new constraint created by
-      item 1: once segment size can be 16 MiB, a window expressed in segment counts is dangerous.
-      The current opt-in defaults pattern of e.g. 8 segments × 3 batches is 24 MiB at 1 MiB segments
-      but **384 MiB at 16 MiB segments** — untenable in a browser tab. Define the window as a byte
-      budget (suggested: 64–128 MiB) and derive `segmentBatchSize` from `budget / segmentSize`.
-- [ ] Choose and document concrete defaults for `segmentBatchSize` and
-      `maxConcurrentSegmentBatches`; the plan previously named neither.
-- [ ] **Call out the error-behavior change.** The legacy path swallows errors
-      (`.catch(() => undefined)`, `lib/tdf3/src/tdf.ts:1118`) while the scheduler surfaces them via
-      `onError`. Switching the default is arguably a bug fix, but it changes observable behavior and
-      will break tests that depend on silent failure. Treat it as an intentional, documented change.
-- [ ] Note that this item does **not** by itself bound decrypt memory — the eager `chunks`
-      allocation in item 1 must also be addressed.
+- [x] Make `createBoundedSegmentScheduler` the default, or auto-select it once file size/segment
+      count crosses a threshold. — Made it the unconditional default. `updateChunkQueue` and the
+      `LEGACY_*` / `DEFAULT_BOUND_*` constants are deleted, not merely bypassed; there is now one
+      prefetch path, so the paced one cannot rot.
+- [x] **Budget the prefetch window in bytes, not segments.** — `derivePrefetchWindow`
+      (`lib/tdf3/src/utils/scale-limits.ts`) divides `DEFAULT_PREFETCH_BYTE_BUDGET = 128 MiB` by the
+      segment size. The budget is charged against the _encrypted_ segment size
+      (`encryptedSegmentSizeDefault`), since ciphertext segments are what the window actually holds.
+- [x] Choose and document concrete defaults for `segmentBatchSize` and
+      `maxConcurrentSegmentBatches`. Derived, so they move with the segment size:
+
+      | segment size | batch × concurrency | window                       |
+          | ------------ | ------------------- | ---------------------------- |
+          | ≤ 87 KiB     | 500 × 3             | ≤ 128 MiB (batch cap binds)  |
+          | 1 MiB        | 42 × 3              | 126 MiB                      |
+          | 4 MiB        | 10 × 3              | 120 MiB                      |
+          | 16 MiB       | 2 × 3               | 96 MiB                       |
+          | 64 MiB       | 1 × 2               | 128 MiB                      |
+          | 256 MiB      | 1 × 1               | 256 MiB (budget blown)       |
+
+          Two deliberate asymmetries. **Concurrency yields before batch size** — three batches of one
+          segment beats one batch of three, because the reads overlap. And `MAX_SEGMENT_BATCH_SIZE = 500`
+          (the legacy value) caps the batch below what the budget would allow: at a 1 KiB segment size
+          the budget permits 131,072 segments, i.e. 43,690 per batch, which is inside 128 MiB but makes
+          the consumer wait on one absurd ranged read for the first byte. Below ~87 KiB segments that
+          cap binds and the window comes out *under* budget — the legacy behaviour tiny-segment files
+          already had.
+
+          The one case that exceeds the budget is a segment larger than the budget itself (the 256 MiB
+          rung). There is no smaller unit to schedule, and refusing to decrypt a validly-formed TDF
+          would be worse than spending the memory.
+
+- [x] **Call out the error-behavior change.** Confirmed and intentional. The legacy path did
+      `.catch(() => undefined)`, which left the consumer awaiting a mailbox that would never settle
+      — a hang, not a clean failure. Every decrypt now surfaces batch failures through the
+      scheduler's `onError`, which rejects the affected chunks. Covered by
+      `'surfaces a failing batch instead of stalling, and stops scheduling'`. No existing test
+      depended on the silent-failure behaviour; all three tiers pass unchanged.
+- [x] Note that this item does **not** by itself bound decrypt memory — the eager `chunks`
+      allocation in item 1 must also be addressed. Still true, and still not addressed. `readStream`
+      materializes one `Chunk` object (hash string + mailbox promise) per segment before the first
+      byte is read. At the 16 MiB segment size a 50 TiB file is 3.28 M segments, so that array is on
+      the order of hundreds of MB of small objects — bounded by the manifest cap from item 1, but
+      not by this item's byte budget. Bounding it means streaming the segment list rather than
+      mapping it, which is a separate change.
+
+Not done, deliberately deferred:
+
+- The byte budget is a fixed 128 MiB rather than a fraction of an observed device memory
+  (`navigator.deviceMemory`, `performance.memory`). A fixed number is predictable across browsers
+  and testable; adaptive sizing can come later if a real workload asks for it.
+- No `progressHandler`-driven backpressure. Pacing is by consumption of the output stream only.
 
 ## Explicit non-goals
 
