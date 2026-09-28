@@ -42,6 +42,15 @@ export function base64Length(byteLength: number): number {
   return 4 * Math.ceil(byteLength / 3);
 }
 
+/** Digest length, in bytes, a segment integrity value occupies before base64. */
+export function segmentDigestBytes(alg: IntegrityAlgorithm): number {
+  const digestBytes = SEGMENT_DIGEST_BYTES[alg];
+  if (!digestBytes) {
+    throw new ConfigurationError(`Unsupported segment integrity alg [${alg}]`);
+  }
+  return digestBytes;
+}
+
 /**
  * Bytes a single full-size `segments` entry adds to the serialized manifest.
  *
@@ -50,11 +59,7 @@ export function base64Length(byteLength: number): number {
  * and is what the limits here are sized against, whichever default is in force.
  */
 export function perSegmentEntryBytes(alg: IntegrityAlgorithm): number {
-  const digestBytes = SEGMENT_DIGEST_BYTES[alg];
-  if (!digestBytes) {
-    throw new ConfigurationError(`Unsupported segment integrity alg [${alg}]`);
-  }
-  return SEGMENT_ENTRY_OVERHEAD_BYTES + base64Length(digestBytes);
+  return SEGMENT_ENTRY_OVERHEAD_BYTES + base64Length(segmentDigestBytes(alg));
 }
 
 /**
@@ -150,6 +155,69 @@ export function estimateManifestBytes({
     assertionBytes +
     estimateSegmentsArrayBytes({ sourceSize, segmentSize, alg, encryptedSegmentOverhead })
   );
+}
+
+/**
+ * Ceiling on the serialized manifest, shared by the read and write paths so a
+ * TDF can never be written successfully and then turn out to be unreadable.
+ *
+ * 256 MiB. Sized so 50 TiB fits at 16 MiB segments with HS256 segment
+ * integrity -- ~184 MB of `segments`, about 28% headroom -- while staying small
+ * enough that the read path's one-shot `JSON.parse` is still viable. A 184 MB
+ * manifest is roughly 3.3M objects and 300-400 MB of transient V8 heap to
+ * parse; that is affordable, and a streaming JSON parser is not needed. If this
+ * is ever raised past ~512 MiB, that decision has to be revisited.
+ */
+export const DEFAULT_MANIFEST_MAX_SIZE = 256 * 2 ** 20;
+
+/**
+ * Segment sizes {@link chooseSegmentSize} will pick from, smallest first.
+ *
+ * Larger segments buy a smaller manifest and pay for it three ways: seek
+ * granularity on decrypt, the blast radius of a failed integrity check (AES-GCM
+ * verification is all-or-nothing per segment, so one bad byte costs a whole
+ * segment re-fetch), and per-segment memory -- which is what bounds the
+ * prefetch window on the read side. The ladder stops at 256 MiB because beyond
+ * that a single segment is too much to hold in a browser tab.
+ */
+export const SEGMENT_SIZE_LADDER: readonly number[] = [1, 4, 16, 64, 256].map(
+  (mib) => mib * 2 ** 20
+);
+
+/**
+ * Share of the manifest budget the `segments` array is allowed to claim. The
+ * rest is headroom for policy, key access, and assertions, whose size is not
+ * known when the segment size has to be chosen.
+ */
+const SEGMENT_ARRAY_BUDGET_FRACTION = 0.8;
+
+/**
+ * Smallest ladder segment size whose `segments` array fits the manifest budget.
+ *
+ * Small inputs keep the historical 1 MiB default, so ordinary files are
+ * unaffected; the size only climbs when the manifest would otherwise not fit.
+ * If nothing on the ladder is enough the largest rung is returned rather than
+ * throwing -- the caller's up-front budget check then rejects with a message
+ * that names the real numbers, which is more useful than an error from here.
+ */
+export function chooseSegmentSize({
+  sourceSize,
+  alg,
+  manifestMaxSize = DEFAULT_MANIFEST_MAX_SIZE,
+  ladder = SEGMENT_SIZE_LADDER,
+}: {
+  sourceSize: number;
+  alg: IntegrityAlgorithm;
+  manifestMaxSize?: number;
+  ladder?: readonly number[];
+}): number {
+  const budget = manifestMaxSize * SEGMENT_ARRAY_BUDGET_FRACTION;
+  for (const segmentSize of ladder) {
+    if (estimateSegmentsArrayBytes({ sourceSize, segmentSize, alg }) <= budget) {
+      return segmentSize;
+    }
+  }
+  return ladder[ladder.length - 1];
 }
 
 /**
