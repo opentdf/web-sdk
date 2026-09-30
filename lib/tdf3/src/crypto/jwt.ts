@@ -1,4 +1,5 @@
 import {
+  isAsymmetricSigningAlgorithm,
   type CryptoService,
   type PrivateKey,
   type PublicKey,
@@ -133,6 +134,9 @@ export async function signJwt(
     if (key._brand !== 'PrivateKey') {
       throw new Error(`${header.alg} requires a PrivateKey`);
     }
+    if (!isAsymmetricSigningAlgorithm(header.alg)) {
+      throw new Error(`Unsupported JWS signing algorithm: ${String(header.alg)}`);
+    }
     signature = await cryptoService.sign(signingInputBytes, key, header.alg);
   }
 
@@ -223,6 +227,10 @@ export async function verifyJwt(
     // Convert PEM string to PublicKey if needed, otherwise assume it's already PublicKey
     const publicKey =
       typeof key === 'string' ? await cryptoService.importPublicKey(key, { usage: 'sign' }) : key;
+    if (!isAsymmetricSigningAlgorithm(header.alg)) {
+      throw new joseErrors.JWTInvalid(`Invalid JWT: unsupported algorithm "${String(header.alg)}"`);
+    }
+    // Sigs are IEEE P1363 for ECDSA (RFC 7518 §3.4), PKCS#1 for RSA.
     valid = await cryptoService.verify(signingInputBytes, signature, publicKey, header.alg);
   }
 
