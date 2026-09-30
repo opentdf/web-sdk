@@ -225,4 +225,109 @@ describe('assertions', () => {
       await assertions.verify(assertion, aggregateHash, key, isLegacyTDF, cryptoService);
     });
   });
+
+  describe('resolveVerificationKey', () => {
+    const defaultKey: assertions.AssertionKey = { alg: 'HS256', key: new Uint8Array(32) };
+    const x5c = ['MIIBfakeLeaf', 'MIIBfakeIntermediate'];
+
+    const assertionWithHeader = async (header: Record<string, unknown>) => {
+      const signingKey = await cryptoService.importSymmetricKey(new Uint8Array(32));
+      const assertion: assertions.Assertion = {
+        id: 'embedded',
+        type: 'handling',
+        scope: 'tdo',
+        appliesToState: 'unencrypted',
+        statement: { format: 'json', schema: 'test-schema', value: '{}' },
+        binding: { method: 'jws', signature: '' },
+      };
+      assertion.binding.signature = await signJwt(cryptoService, {}, signingKey, {
+        alg: 'HS256',
+        ...header,
+      });
+      return assertion;
+    };
+
+    it('ignores embedded keys without a resolver', async () => {
+      const assertion = await assertionWithHeader({ x5c });
+      const key = await assertions.resolveVerificationKey(assertion, { Keys: {} }, defaultKey);
+      expect(key).to.equal(defaultKey);
+    });
+
+    it('prefers a configured key over the resolver', async () => {
+      const assertion = await assertionWithHeader({ x5c });
+      const configured: assertions.AssertionKey = { alg: 'ES256', key: 'configured' };
+      let called = false;
+      const key = await assertions.resolveVerificationKey(
+        assertion,
+        {
+          Keys: { embedded: configured },
+          resolveEmbeddedKey: () => {
+            called = true;
+            return Promise.resolve(defaultKey);
+          },
+        },
+        defaultKey
+      );
+      expect(key).to.equal(configured);
+      expect(called).to.be.false;
+    });
+
+    it('passes the header to the resolver and uses its key', async () => {
+      const assertion = await assertionWithHeader({ x5c });
+      const resolved: assertions.AssertionKey = { alg: 'ES256', key: 'leaf' };
+      let seen: assertions.EmbeddedKeyContext | undefined;
+      const key = await assertions.resolveVerificationKey(
+        assertion,
+        {
+          Keys: {},
+          resolveEmbeddedKey: (ctx) => {
+            seen = ctx;
+            return Promise.resolve(resolved);
+          },
+        },
+        defaultKey
+      );
+      expect(key).to.equal(resolved);
+      expect(seen?.assertion).to.equal(assertion);
+      expect(seen?.header.x5c).to.deep.equal(x5c);
+    });
+
+    it('does not call the resolver when the header embeds no key', async () => {
+      const assertion = await assertionWithHeader({});
+      let called = false;
+      const key = await assertions.resolveVerificationKey(
+        assertion,
+        {
+          Keys: {},
+          resolveEmbeddedKey: () => {
+            called = true;
+            return Promise.resolve(defaultKey);
+          },
+        },
+        { ...defaultKey }
+      );
+      expect(key.alg).to.equal('HS256');
+      expect(called).to.be.false;
+    });
+
+    it('rejects with InvalidFileError when the resolver throws', async () => {
+      const assertion = await assertionWithHeader({ x5c });
+      let caught: unknown;
+      try {
+        await assertions.resolveVerificationKey(
+          assertion,
+          {
+            Keys: {},
+            resolveEmbeddedKey: () => {
+              return Promise.reject(new Error('untrusted chain'));
+            },
+          },
+          defaultKey
+        );
+      } catch (e) {
+        caught = e;
+      }
+      expect(caught).to.be.instanceOf(InvalidFileError);
+    });
+  });
 });

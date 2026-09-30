@@ -1596,18 +1596,14 @@ export async function decryptStreamFrom(
 
   if (!cfg.noVerifyAssertions) {
     for (const assertion of manifest.assertions || []) {
-      // Create a default assertion key
-      let assertionKey: AssertionKey = {
-        alg: 'HS256',
-        key: keyForDecryption, // SymmetricKey (opaque)
-      };
-
-      if (cfg.assertionVerificationKeys) {
-        const foundKey = cfg.assertionVerificationKeys.Keys[assertion.id];
-        if (foundKey) {
-          assertionKey = foundKey;
+      const assertionKey = await assertions.resolveVerificationKey(
+        assertion,
+        cfg.assertionVerificationKeys,
+        {
+          alg: 'HS256',
+          key: keyForDecryption, // SymmetricKey (opaque)
         }
-      }
+      );
       await assertions.verify(
         assertion,
         aggregateHash,
