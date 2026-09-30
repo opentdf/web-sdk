@@ -249,7 +249,7 @@ describe('manifest entry name (platform#3513)', function () {
       assert.equal(manifestEntryName([entry('0.payload'), entry(SPEC_NAME)]), SPEC_NAME);
     });
 
-    it('asks for the off-spec name when the spec name is absent', function () {
+    it('asks for the non-aligned name when the spec name is absent', function () {
       assert.equal(manifestEntryName([entry('0.payload'), entry(OFFSPEC_NAME)]), OFFSPEC_NAME);
     });
 
@@ -257,7 +257,7 @@ describe('manifest entry name (platform#3513)', function () {
       assert.equal(manifestEntryName([entry(OFFSPEC_NAME), entry(SPEC_NAME)]), SPEC_NAME);
     });
 
-    it('asks for the off-spec name when the archive carries neither', function () {
+    it('asks for the non-aligned name when the archive carries neither', function () {
       assert.equal(manifestEntryName([entry('0.payload')]), OFFSPEC_NAME);
     });
   });
@@ -279,7 +279,7 @@ describe('manifest entry name (platform#3513)', function () {
 
   for (const [named, entryName] of [
     ['spec', SPEC_NAME],
-    ['off-spec', OFFSPEC_NAME],
+    ['non-aligned', OFFSPEC_NAME],
   ] as const) {
     describe(`${named}-named archives`, function () {
       let original: Uint8Array;
@@ -319,11 +319,11 @@ describe('manifest entry name (platform#3513)', function () {
 
   /**
    * Resolving the name against the central directory, rather than retrying the
-   * spec name's failure under the off-spec one, is what keeps these honest: a
-   * `try { spec } catch { off-spec }` reader would serve the valid off-spec
+   * spec name's failure under the non-aligned one, is what keeps these honest: a
+   * `try { spec } catch { non-aligned }` reader would serve the valid non-aligned
    * manifest here and swallow the size error entirely.
    */
-  describe('an oversized spec-named entry shadowing a valid off-spec one', function () {
+  describe('an oversized spec-named entry shadowing a valid non-aligned one', function () {
     let shadowed: Uint8Array;
 
     beforeEach(async function () {
@@ -339,7 +339,7 @@ describe('manifest entry name (platform#3513)', function () {
       ]);
     });
 
-    it('is a fixture carrying both names, the off-spec one readable', async function () {
+    it('is a fixture carrying both names, the non-aligned one readable', async function () {
       assert.deepEqual(await fileNamesOf(shadowed), ['0.payload', OFFSPEC_NAME, SPEC_NAME]);
       const centralDirectory = await centralDirectoryOf(shadowed);
       const reader = new ZipReader(fromBuffer(shadowed));
