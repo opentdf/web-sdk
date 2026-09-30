@@ -227,11 +227,14 @@ describe('assertions', () => {
   });
 
   describe('resolveVerificationKey', () => {
+    const aggregateHash = new Uint8Array([1, 2, 3]);
     const defaultKey: assertions.AssertionKey = { alg: 'HS256', key: new Uint8Array(32) };
-    const x5c = ['MIIBfakeLeaf', 'MIIBfakeIntermediate'];
 
-    const assertionWithHeader = async (header: Record<string, unknown>) => {
-      const signingKey = await cryptoService.importSymmetricKey(new Uint8Array(32));
+    // An assertion bound to aggregateHash and signed with `signingKey` under `header`.
+    const boundAssertion = async (
+      signingKey: Parameters<typeof signJwt>[2],
+      header: Parameters<typeof signJwt>[3]
+    ) => {
       const assertion: assertions.Assertion = {
         id: 'embedded',
         type: 'handling',
@@ -240,90 +243,97 @@ describe('assertions', () => {
         statement: { format: 'json', schema: 'test-schema', value: '{}' },
         binding: { method: 'jws', signature: '' },
       };
-      assertion.binding.signature = await signJwt(cryptoService, {}, signingKey, {
-        alg: 'HS256',
-        ...header,
-      });
+      const assertionHash = await assertions.hash(assertion, cryptoService);
+      const combinedHash = new Uint8Array(aggregateHash.length + 32);
+      combinedHash.set(aggregateHash, 0);
+      combinedHash.set(new Uint8Array(hex.decodeArrayBuffer(assertionHash)), aggregateHash.length);
+      const payload: assertions.AssertionPayload = {
+        assertionHash,
+        assertionSig: base64.encodeArrayBuffer(combinedHash),
+      };
+      assertion.binding.signature = await signJwt(cryptoService, payload, signingKey, header);
       return assertion;
     };
 
-    it('ignores embedded keys without a resolver', async () => {
-      const assertion = await assertionWithHeader({ x5c });
-      const key = await assertions.resolveVerificationKey(assertion, { Keys: {} }, defaultKey);
+    const ecdsaWithJwk = async () => {
+      const raw = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, [
+        'sign',
+        'verify',
+      ]);
+      return {
+        privateKey: wrapPrivateKey(raw.privateKey, 'ec:secp256r1'),
+        publicKey: wrapPublicKey(raw.publicKey, 'ec:secp256r1'),
+        jwk: await crypto.subtle.exportKey('jwk', raw.publicKey),
+      };
+    };
+
+    it('verifies with an embedded jwk and reports it as embedded', async () => {
+      const signer = await ecdsaWithJwk();
+      const assertion = await boundAssertion(signer.privateKey, { alg: 'ES256', jwk: signer.jwk });
+
+      const { key, keySource, header } = await assertions.resolveVerificationKey(
+        assertion,
+        { Keys: {} },
+        defaultKey,
+        cryptoService
+      );
+      expect(keySource).to.equal('embedded');
+      expect(header.jwk).to.deep.equal(signer.jwk);
+      await assertions.verify(assertion, aggregateHash, key, false, cryptoService);
+    });
+
+    it('prefers a configured key over an embedded one', async () => {
+      const signer = await ecdsaWithJwk();
+      const assertion = await boundAssertion(signer.privateKey, { alg: 'ES256', jwk: signer.jwk });
+      const configured: assertions.AssertionKey = { alg: 'ES256', key: signer.publicKey };
+
+      const { key, keySource } = await assertions.resolveVerificationKey(
+        assertion,
+        { Keys: { embedded: configured } },
+        defaultKey,
+        cryptoService
+      );
+      expect(keySource).to.equal('configured');
+      expect(key).to.equal(configured);
+    });
+
+    it('uses the default key when the header embeds no key', async () => {
+      const hmacKey = await cryptoService.importSymmetricKey(new Uint8Array(32));
+      const assertion = await boundAssertion(hmacKey, { alg: 'HS256' });
+
+      const { key, keySource } = await assertions.resolveVerificationKey(
+        assertion,
+        undefined,
+        defaultKey,
+        cryptoService
+      );
+      expect(keySource).to.equal('default');
       expect(key).to.equal(defaultKey);
     });
 
-    it('prefers a configured key over the resolver', async () => {
-      const assertion = await assertionWithHeader({ x5c });
-      const configured: assertions.AssertionKey = { alg: 'ES256', key: 'configured' };
-      let called = false;
-      const key = await assertions.resolveVerificationKey(
+    it('ignores an embedded key under a symmetric alg', async () => {
+      const signer = await ecdsaWithJwk();
+      const hmacKey = await cryptoService.importSymmetricKey(new Uint8Array(32));
+      const assertion = await boundAssertion(hmacKey, { alg: 'HS256', jwk: signer.jwk });
+
+      const { keySource } = await assertions.resolveVerificationKey(
         assertion,
-        {
-          Keys: { embedded: configured },
-          resolveEmbeddedKey: () => {
-            called = true;
-            return Promise.resolve(defaultKey);
-          },
-        },
-        defaultKey
+        { Keys: {} },
+        defaultKey,
+        cryptoService
       );
-      expect(key).to.equal(configured);
-      expect(called).to.be.false;
+      expect(keySource).to.equal('default');
     });
 
-    it('passes the header to the resolver and uses its key', async () => {
-      const assertion = await assertionWithHeader({ x5c });
-      const resolved: assertions.AssertionKey = { alg: 'ES256', key: 'leaf' };
-      let seen: assertions.EmbeddedKeyContext | undefined;
-      const key = await assertions.resolveVerificationKey(
-        assertion,
-        {
-          Keys: {},
-          resolveEmbeddedKey: (ctx) => {
-            seen = ctx;
-            return Promise.resolve(resolved);
-          },
-        },
-        defaultKey
+    it('rejects a malformed binding with InvalidFileError', async () => {
+      const assertion = await boundAssertion(
+        await cryptoService.importSymmetricKey(new Uint8Array(32)),
+        { alg: 'HS256' }
       );
-      expect(key).to.equal(resolved);
-      expect(seen?.assertion).to.equal(assertion);
-      expect(seen?.header.x5c).to.deep.equal(x5c);
-    });
-
-    it('does not call the resolver when the header embeds no key', async () => {
-      const assertion = await assertionWithHeader({});
-      let called = false;
-      const key = await assertions.resolveVerificationKey(
-        assertion,
-        {
-          Keys: {},
-          resolveEmbeddedKey: () => {
-            called = true;
-            return Promise.resolve(defaultKey);
-          },
-        },
-        { ...defaultKey }
-      );
-      expect(key.alg).to.equal('HS256');
-      expect(called).to.be.false;
-    });
-
-    it('rejects with InvalidFileError when the resolver throws', async () => {
-      const assertion = await assertionWithHeader({ x5c });
+      assertion.binding.signature = 'not-a-jws';
       let caught: unknown;
       try {
-        await assertions.resolveVerificationKey(
-          assertion,
-          {
-            Keys: {},
-            resolveEmbeddedKey: () => {
-              return Promise.reject(new Error('untrusted chain'));
-            },
-          },
-          defaultKey
-        );
+        await assertions.resolveVerificationKey(assertion, undefined, defaultKey, cryptoService);
       } catch (e) {
         caught = e;
       }

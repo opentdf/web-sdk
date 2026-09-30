@@ -383,6 +383,15 @@ describe('encrypt decrypt test', function () {
 
         const { value: decryptedText } = await decryptStream.stream.getReader().read();
         assert.equal(new TextDecoder().decode(decryptedText), expectedVal);
+
+        const keySources = Object.fromEntries(
+          (decryptStream.assertionResults ?? []).map(({ id, keySource }) => [id, keySource])
+        );
+        assert.include(keySources, {
+          assertion1: 'configured',
+          assertion2: 'configured',
+          assertion3: 'default',
+        });
       });
     }
   }

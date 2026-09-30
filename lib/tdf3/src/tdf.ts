@@ -1594,23 +1594,21 @@ export async function decryptStreamFrom(
     cfg.cryptoService
   );
 
+  let assertionResults: assertions.AssertionVerificationResult[] | undefined;
   if (!cfg.noVerifyAssertions) {
+    assertionResults = [];
     for (const assertion of manifest.assertions || []) {
-      const assertionKey = await assertions.resolveVerificationKey(
+      const { key, keySource, header } = await assertions.resolveVerificationKey(
         assertion,
         cfg.assertionVerificationKeys,
         {
           alg: 'HS256',
           key: keyForDecryption, // SymmetricKey (opaque)
-        }
-      );
-      await assertions.verify(
-        assertion,
-        aggregateHash,
-        assertionKey,
-        isLegacyTDF,
+        },
         cfg.cryptoService
       );
+      await assertions.verify(assertion, aggregateHash, key, isLegacyTDF, cfg.cryptoService);
+      assertionResults.push({ id: assertion.id, keySource, header });
     }
   }
 
@@ -1715,6 +1713,7 @@ export async function decryptStreamFrom(
   outputStream.requiredObligations = requiredObligations;
   outputStream.manifest = manifest;
   outputStream.metadata = metadata;
+  outputStream.assertionResults = assertionResults;
   return outputStream;
 }
 
