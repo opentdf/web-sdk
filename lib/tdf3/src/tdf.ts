@@ -96,7 +96,7 @@ export const manifestEntryNameToWrite: string = offspecManifestFileName;
  *
  * Resolving against the central directory rather than against a failed read keeps
  * other failures honest: an oversized manifest under the spec name stays a size
- * error instead of silently yielding an off-spec entry. The cost of preferring
+ * error instead of silently yielding a non-aligned entry. The cost of preferring
  * the spec name is that an archive carrying both entries resolves to the spec
  * one even when this SDK wrote the other — see the PR discussion of appended
  * central-directory records.
