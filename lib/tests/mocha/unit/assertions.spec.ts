@@ -8,6 +8,7 @@ import { hex, base64 } from '../../../src/encodings/index.js';
 import { signJwt } from '../../../tdf3/src/crypto/jwt.js';
 import type { CryptoService } from '../../../tdf3/src/crypto/declarations.js';
 import { wrapPrivateKey, wrapPublicKey } from '../../../tdf3/src/crypto/core/keys.js';
+import { InvalidFileError } from '../../../src/errors.js';
 
 describe('assertions', () => {
   const cryptoService: CryptoService = DefaultCryptoService;
@@ -114,13 +115,70 @@ describe('assertions', () => {
 
       assertion.binding.signature = token;
 
-      // Verify should work with embedded JWK - dummy key is ignored when JWK is present
-      const dummyKey: assertions.AssertionKey = {
+      // An embedded JWK is informational; verification uses the caller's key.
+      const trustedKey: assertions.AssertionKey = {
         alg: 'ES256',
-        key: keyPair.publicKey, // Not actually used since JWK is in header
+        key: keyPair.publicKey,
       };
 
-      await assertions.verify(assertion, aggregateHash, dummyKey, isLegacyTDF, cryptoService);
+      await assertions.verify(assertion, aggregateHash, trustedKey, isLegacyTDF, cryptoService);
+    });
+
+    it('should not let an embedded jwk override the configured verification key', async () => {
+      const generateEcdsa = async () => {
+        const raw = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, [
+          'sign',
+          'verify',
+        ]);
+        return {
+          raw,
+          publicKey: wrapPublicKey(raw.publicKey, 'ec:secp256r1'),
+          privateKey: wrapPrivateKey(raw.privateKey, 'ec:secp256r1'),
+        };
+      };
+      const trusted = await generateEcdsa();
+      const untrusted = await generateEcdsa();
+
+      const assertion: assertions.Assertion = {
+        id: 'test-assertion-untrusted-jwk',
+        type: 'handling',
+        scope: 'tdo',
+        appliesToState: 'unencrypted',
+        statement: {
+          format: 'json',
+          schema: 'test-schema',
+          value: '{"foo":"bar"}',
+        },
+        binding: {
+          method: 'jws',
+          signature: '',
+        },
+      };
+
+      const assertionHash = await assertions.hash(assertion, cryptoService);
+      const combinedHash = new Uint8Array(aggregateHash.length + 32);
+      combinedHash.set(aggregateHash, 0);
+      combinedHash.set(new Uint8Array(hex.decodeArrayBuffer(assertionHash)), aggregateHash.length);
+      const payload: assertions.AssertionPayload = {
+        assertionHash,
+        assertionSig: base64.encodeArrayBuffer(combinedHash),
+      };
+
+      // Signed by a key the verifier does not trust, which advertises itself in the header.
+      assertion.binding.signature = await signJwt(cryptoService, payload, untrusted.privateKey, {
+        alg: 'ES256',
+        jwk: await crypto.subtle.exportKey('jwk', untrusted.raw.publicKey),
+      });
+
+      const trustedKey: assertions.AssertionKey = { alg: 'ES256', key: trusted.publicKey };
+
+      let caught: unknown;
+      try {
+        await assertions.verify(assertion, aggregateHash, trustedKey, isLegacyTDF, cryptoService);
+      } catch (e) {
+        caught = e;
+      }
+      expect(caught).to.be.instanceOf(InvalidFileError);
     });
 
     it('should fallback to provided key if no key in header', async () => {
@@ -165,6 +223,121 @@ describe('assertions', () => {
       assertion.binding.signature = token;
 
       await assertions.verify(assertion, aggregateHash, key, isLegacyTDF, cryptoService);
+    });
+  });
+
+  describe('resolveVerificationKey', () => {
+    const aggregateHash = new Uint8Array([1, 2, 3]);
+    const defaultKey: assertions.AssertionKey = { alg: 'HS256', key: new Uint8Array(32) };
+
+    // An assertion bound to aggregateHash and signed with `signingKey` under `header`.
+    const boundAssertion = async (
+      signingKey: Parameters<typeof signJwt>[2],
+      header: Parameters<typeof signJwt>[3]
+    ) => {
+      const assertion: assertions.Assertion = {
+        id: 'embedded',
+        type: 'handling',
+        scope: 'tdo',
+        appliesToState: 'unencrypted',
+        statement: { format: 'json', schema: 'test-schema', value: '{}' },
+        binding: { method: 'jws', signature: '' },
+      };
+      const assertionHash = await assertions.hash(assertion, cryptoService);
+      const combinedHash = new Uint8Array(aggregateHash.length + 32);
+      combinedHash.set(aggregateHash, 0);
+      combinedHash.set(new Uint8Array(hex.decodeArrayBuffer(assertionHash)), aggregateHash.length);
+      const payload: assertions.AssertionPayload = {
+        assertionHash,
+        assertionSig: base64.encodeArrayBuffer(combinedHash),
+      };
+      assertion.binding.signature = await signJwt(cryptoService, payload, signingKey, header);
+      return assertion;
+    };
+
+    const ecdsaWithJwk = async () => {
+      const raw = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, [
+        'sign',
+        'verify',
+      ]);
+      return {
+        privateKey: wrapPrivateKey(raw.privateKey, 'ec:secp256r1'),
+        publicKey: wrapPublicKey(raw.publicKey, 'ec:secp256r1'),
+        jwk: await crypto.subtle.exportKey('jwk', raw.publicKey),
+      };
+    };
+
+    it('verifies with an embedded jwk and reports it as embedded', async () => {
+      const signer = await ecdsaWithJwk();
+      const assertion = await boundAssertion(signer.privateKey, { alg: 'ES256', jwk: signer.jwk });
+
+      const { key, keySource, header } = await assertions.resolveVerificationKey(
+        assertion,
+        { Keys: {} },
+        defaultKey,
+        cryptoService
+      );
+      expect(keySource).to.equal('embedded');
+      expect(header.jwk).to.deep.equal(signer.jwk);
+      await assertions.verify(assertion, aggregateHash, key, false, cryptoService);
+    });
+
+    it('prefers a configured key over an embedded one', async () => {
+      const signer = await ecdsaWithJwk();
+      const assertion = await boundAssertion(signer.privateKey, { alg: 'ES256', jwk: signer.jwk });
+      const configured: assertions.AssertionKey = { alg: 'ES256', key: signer.publicKey };
+
+      const { key, keySource } = await assertions.resolveVerificationKey(
+        assertion,
+        { Keys: { embedded: configured } },
+        defaultKey,
+        cryptoService
+      );
+      expect(keySource).to.equal('configured');
+      expect(key).to.equal(configured);
+    });
+
+    it('uses the default key when the header embeds no key', async () => {
+      const hmacKey = await cryptoService.importSymmetricKey(new Uint8Array(32));
+      const assertion = await boundAssertion(hmacKey, { alg: 'HS256' });
+
+      const { key, keySource } = await assertions.resolveVerificationKey(
+        assertion,
+        undefined,
+        defaultKey,
+        cryptoService
+      );
+      expect(keySource).to.equal('default');
+      expect(key).to.equal(defaultKey);
+    });
+
+    it('ignores an embedded key under a symmetric alg', async () => {
+      const signer = await ecdsaWithJwk();
+      const hmacKey = await cryptoService.importSymmetricKey(new Uint8Array(32));
+      const assertion = await boundAssertion(hmacKey, { alg: 'HS256', jwk: signer.jwk });
+
+      const { keySource } = await assertions.resolveVerificationKey(
+        assertion,
+        { Keys: {} },
+        defaultKey,
+        cryptoService
+      );
+      expect(keySource).to.equal('default');
+    });
+
+    it('rejects a malformed binding with InvalidFileError', async () => {
+      const assertion = await boundAssertion(
+        await cryptoService.importSymmetricKey(new Uint8Array(32)),
+        { alg: 'HS256' }
+      );
+      assertion.binding.signature = 'not-a-jws';
+      let caught: unknown;
+      try {
+        await assertions.resolveVerificationKey(assertion, undefined, defaultKey, cryptoService);
+      } catch (e) {
+        caught = e;
+      }
+      expect(caught).to.be.instanceOf(InvalidFileError);
     });
   });
 });

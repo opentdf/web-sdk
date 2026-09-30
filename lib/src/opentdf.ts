@@ -10,6 +10,7 @@ import type {
   Assertion,
   AssertionConfig,
   AssertionVerificationKeys,
+  AssertionVerificationResult,
 } from '../tdf3/src/assertions.js';
 import {
   fetchKeyAccessServersWithCache,
@@ -238,6 +239,11 @@ export type DecoratedStream = ReadableStream<Uint8Array> & {
   metadata?: Promise<unknown>;
   /** The TDF manifest. */
   manifest?: Promise<Manifest>;
+  /**
+   * How each assertion was verified. Assertions verified with an `embedded` key are
+   * self-consistent but not necessarily trusted. Unset when verification is skipped.
+   */
+  assertionResults?: Promise<AssertionVerificationResult[] | undefined>;
 };
 
 /**
@@ -594,6 +600,7 @@ class ZTDFReader {
     const stream: DecoratedStream = oldStream.stream;
     stream.manifest = Promise.resolve(overview.manifest);
     stream.metadata = Promise.resolve(oldStream.metadata);
+    stream.assertionResults = Promise.resolve(oldStream.assertionResults);
     return stream;
   }
 

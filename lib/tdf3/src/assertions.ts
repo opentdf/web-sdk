@@ -161,25 +161,14 @@ export async function verify(
 ): Promise<void> {
   let payload: AssertionPayload;
   try {
-    // Parse JWT header to check for embedded keys (jwk or x5c)
-    const header = decodeProtectedHeader(thiz.binding.signature);
-
     // Runtime check: ensure we have a verification key, not a signing key
     if (typeof key.key === 'object' && '_brand' in key.key && key.key._brand === 'PrivateKey') {
       throw new ConfigurationError(
         'Cannot verify assertion with PrivateKey. Use PublicKey or SymmetricKey for verification.'
       );
     }
-    let verificationKey: string | Uint8Array | PublicKey | SymmetricKey = key.key;
 
-    if (header.jwk) {
-      // Convert embedded JWK to PEM
-      verificationKey = await cryptoService.jwkToPublicKeyPem(header.jwk);
-    } else if (header.x5c && Array.isArray(header.x5c) && header.x5c.length > 0) {
-      // Extract public key from X.509 certificate
-      const cert = `-----BEGIN CERTIFICATE-----\n${header.x5c[0]}\n-----END CERTIFICATE-----`;
-      verificationKey = await cryptoService.extractPublicKeyPem(cert);
-    }
+    const verificationKey: string | Uint8Array | PublicKey | SymmetricKey = key.key;
 
     const result = await verifyJwt(cryptoService, thiz.binding.signature, verificationKey, {
       algorithms: [key.alg],
@@ -307,6 +296,73 @@ export type AssertionVerificationKeys = {
   DefaultKey?: AssertionKey;
   Keys: Record<string, AssertionKey>;
 };
+
+/**
+ * Which key verified an assertion.
+ * - `configured`: from `assertionVerificationKeys.Keys`, so trusted by the caller.
+ * - `default`: the TDF payload key (HS256), held by anyone who can decrypt.
+ * - `embedded`: the `jwk` or `x5c` in the assertion's own protected header. This only
+ *   proves the assertion is self-consistent; the caller decides whether to trust
+ *   that key, for example by validating the `x5c` chain.
+ */
+export type AssertionKeySource = 'configured' | 'embedded' | 'default';
+
+export type AssertionVerificationResult = {
+  id: string;
+  keySource: AssertionKeySource;
+  /** The assertion's JWS protected header, including any `jwk` / `x5c`. */
+  header: JwtHeader;
+};
+
+const embeddedKeyAlgs: readonly AssertionKeyAlg[] = ['ES256', 'RS256'];
+
+async function embeddedKey(
+  header: JwtHeader,
+  cryptoService: CryptoService
+): Promise<AssertionKey | undefined> {
+  const alg = header.alg as AssertionKeyAlg;
+  if (!embeddedKeyAlgs.includes(alg)) {
+    return undefined;
+  }
+  if (header.jwk) {
+    return { alg, key: await cryptoService.jwkToPublicKeyPem(header.jwk) };
+  }
+  if (Array.isArray(header.x5c) && header.x5c.length > 0) {
+    const cert = `-----BEGIN CERTIFICATE-----\n${header.x5c[0]}\n-----END CERTIFICATE-----`;
+    return { alg, key: await cryptoService.extractPublicKeyPem(cert) };
+  }
+  return undefined;
+}
+
+/**
+ * Selects the key to verify an assertion with. A key configured for the assertion ID
+ * always wins, so an embedded header key can never replace it. Otherwise an
+ * asymmetric key embedded in the header is used, else `defaultKey`.
+ *
+ * @throws {InvalidFileError} If the binding header cannot be decoded.
+ */
+export async function resolveVerificationKey(
+  assertion: Assertion,
+  verificationKeys: AssertionVerificationKeys | undefined,
+  defaultKey: AssertionKey,
+  cryptoService: CryptoService
+): Promise<{ key: AssertionKey; keySource: AssertionKeySource; header: JwtHeader }> {
+  let header: JwtHeader;
+  try {
+    header = decodeProtectedHeader(assertion.binding.signature);
+  } catch (error) {
+    throw new InvalidFileError(`Verifying assertion failed: ${String(error)}`, asError(error));
+  }
+  const configured = verificationKeys?.Keys[assertion.id];
+  if (configured) {
+    return { key: configured, keySource: 'configured', header };
+  }
+  const embedded = await embeddedKey(header, cryptoService);
+  if (embedded) {
+    return { key: embedded, keySource: 'embedded', header };
+  }
+  return { key: defaultKey, keySource: 'default', header };
+}
 
 /**
  * Metadata structure for system information.

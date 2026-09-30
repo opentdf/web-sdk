@@ -1,5 +1,6 @@
 import { type Metadata } from '../tdf.js';
 import { type Manifest } from '../models/index.js';
+import { type AssertionVerificationResult } from '../assertions.js';
 
 type BufferEncoding =
   | 'ascii'
@@ -64,6 +65,8 @@ export class DecoratedReadableStream {
   manifest!: Manifest;
   fileStreamServiceWorker?: string;
   requiredObligations?: string[];
+  // Per-assertion verification outcome; unset when assertion verification is skipped.
+  assertionResults?: AssertionVerificationResult[];
 
   constructor(
     underlyingSource: UnderlyingSource & {
