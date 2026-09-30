@@ -10,7 +10,6 @@ import { exportPublicKeyJwk } from '../../../tdf3/src/crypto/core/key-format.js'
 import { signJwt } from '../../../tdf3/src/crypto/jwt.js';
 import type { CryptoService } from '../../../tdf3/src/crypto/declarations.js';
 import { ecdsaKeyPair } from '../helpers/jws-keys.js';
-import { IntegrityError } from '../../../src/errors.js';
 
 describe('assertions', () => {
   const cryptoService: CryptoService = DefaultCryptoService;
@@ -204,79 +203,6 @@ describe('assertions', () => {
       assertion.binding.signature = token;
 
       await assertions.verify(assertion, aggregateHash, key, isLegacyTDF, cryptoService);
-    });
-
-    describe('assertion signature encoding', () => {
-      // assertionSig is base64 over the aggregate hash followed by the
-      // assertion hash, which writers have spelled two ways: as raw bytes
-      // (4.3.0 and later) or as its hex string (earlier). Which one a file
-      // used is not taken from the spec version, so verify accepts either,
-      // whatever `isLegacyTDF` says.
-      const raw = (h: string) => new Uint8Array(hex.decodeArrayBuffer(h));
-      const asHex = (h: string) => new TextEncoder().encode(h);
-
-      async function hs256Setup(spelling: (assertionHash: string) => Uint8Array) {
-        const symmetricKey = await cryptoService.importSymmetricKey(
-          await cryptoService.randomBytes(32)
-        );
-        const key: assertions.AssertionKey = { alg: 'HS256', key: symmetricKey };
-        const assertion: assertions.Assertion = {
-          id: 'test-assertion-encoding',
-          type: 'handling',
-          scope: 'tdo',
-          appliesToState: 'unencrypted',
-          statement: { format: 'json', schema: 'test-schema', value: '{"foo":"bar"}' },
-          binding: { method: 'jws', signature: '' },
-        };
-        const assertionHash = await assertions.hash(assertion, cryptoService);
-        const spelled = spelling(assertionHash);
-        const combined = new Uint8Array(aggregateHash.length + spelled.length);
-        combined.set(aggregateHash, 0);
-        combined.set(spelled, aggregateHash.length);
-        const payload: assertions.AssertionPayload = {
-          assertionHash,
-          assertionSig: base64.encodeArrayBuffer(combined),
-        };
-        assertion.binding.signature = await signJwt(cryptoService, payload, symmetricKey, {
-          alg: 'HS256',
-        });
-        return { assertion, key };
-      }
-
-      for (const legacy of [false, true]) {
-        it(`accepts a raw assertion hash with isLegacyTDF=${legacy}`, async () => {
-          const { assertion, key } = await hs256Setup(raw);
-          await assertions.verify(assertion, aggregateHash, key, legacy, cryptoService);
-        });
-
-        it(`accepts a hex assertion hash with isLegacyTDF=${legacy}`, async () => {
-          const { assertion, key } = await hs256Setup(asHex);
-          await assertions.verify(assertion, aggregateHash, key, legacy, cryptoService);
-        });
-
-        for (const [label, spelling] of [
-          ['raw', raw],
-          ['hex', asHex],
-        ] as const) {
-          it(`rejects a ${label} signature over another aggregate with isLegacyTDF=${legacy}`, async () => {
-            const { assertion, key } = await hs256Setup(spelling);
-            let caught: unknown;
-            try {
-              await assertions.verify(
-                assertion,
-                new Uint8Array([9, 9, 9]),
-                key,
-                legacy,
-                cryptoService
-              );
-            } catch (e) {
-              caught = e;
-            }
-            expect(caught).to.be.instanceOf(IntegrityError);
-            expect((caught as Error).message).to.match(/assertion signature/);
-          });
-        }
-      }
     });
   });
 });

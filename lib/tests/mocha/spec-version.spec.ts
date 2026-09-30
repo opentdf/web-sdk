@@ -5,15 +5,13 @@
  * also carry the version under the non-aligned name `tdf_spec_version`, both
  * at the root and under `payload`, so the reader looks in all three places.
  *
- * None of those decide how the integrity digests are encoded, though. The
- * field is unauthenticated, and it only ever tracked the encoding because this
- * SDK's writer sets both from one setting. The reader recomputes each digest
- * and accepts either spelling a writer has used for it: base64 of the raw
- * bytes (4.3.0 and later) or base64 of their hex (earlier). These tests pin
- * that a file decrypts whatever its version label says, and that tampering is
- * still caught either way.
+ * The version decides how the integrity digests are read: base64 of the raw
+ * bytes for 4.3.0 and later, base64 of their hex before that, and hex when no
+ * version is recorded. So a raw-digest file only decrypts if its version is
+ * found, which is what these tests pin for each placement. Values that are not
+ * strings are skipped rather than read as a version.
  *
- * Mirrors opentdf/platform#4060.
+ * Mirrors the version lookup in opentdf/platform#4060.
  */
 import { assert } from 'chai';
 
@@ -76,7 +74,7 @@ async function encryptToBuffer(
     scope: { dissem: ['user@domain.com'], attributes: [] },
     windowSize: SEGMENT_SIZE,
     // Exercise the assertion signature too: it is the third digest whose
-    // encoding used to follow the spec version.
+    // encoding follows the spec version.
     systemMetadataAssertion: true,
     keyMiddleware: () => Promise.resolve({ keyForEncryption: key, keyForManifest: key }),
     source: new ReadableStream({
@@ -134,6 +132,15 @@ function relabel(manifest: Manifest, placement?: Placement, value?: unknown) {
       break;
   }
 }
+
+/** Values found under the version keys that are not a version. */
+const JUNK: readonly (readonly [string, unknown])[] = [
+  ['null', null],
+  ['a number', 430],
+  ['an object', { major: 4 }],
+  ['an array', ['4.3.0']],
+  ['empty', ''],
+];
 
 function flipFirstByteOfBase64(value: string): string {
   const decoded = new Uint8Array(base64.decodeArrayBuffer(value));
@@ -211,33 +218,14 @@ describe('TDF spec version in the manifest', function () {
       });
     }
 
-    it('decrypts with no version at all', async function () {
-      const got = await editAndDecrypt(client, plaintext, RAW, ({ manifest }) => relabel(manifest));
-      assert.deepEqual(got, plaintext);
-    });
-
-    it('decrypts when mislabelled 4.2.2', async function () {
-      const got = await editAndDecrypt(client, plaintext, RAW, ({ manifest }) =>
-        relabel(manifest, 'schemaVersion', '4.2.2')
-      );
-      assert.deepEqual(got, plaintext);
-    });
-
-    for (const placement of ['root tdf_spec_version', 'payload tdf_spec_version'] as const) {
-      for (const [label, value] of [
-        ['null', null],
-        ['a number', 430],
-        ['an object', { major: 4 }],
-        ['an array', ['4.3.0']],
-        ['empty', ''],
-      ] as const) {
-        it(`skips ${label} in ${placement} without throwing`, async function () {
-          const got = await editAndDecrypt(client, plaintext, RAW, ({ manifest }) =>
-            relabel(manifest, placement, value)
-          );
-          assert.deepEqual(got, plaintext);
+    for (const [label, value] of JUNK) {
+      it(`skips ${label} in root tdf_spec_version and falls through to payload`, async function () {
+        const got = await editAndDecrypt(client, plaintext, RAW, ({ manifest }) => {
+          relabel(manifest, 'payload tdf_spec_version', '4.3.0');
+          (manifest as unknown as Record<string, unknown>).tdf_spec_version = value;
         });
-      }
+        assert.deepEqual(got, plaintext);
+      });
     }
 
     for (const [name, tamper] of Object.entries(TAMPERS)) {
@@ -256,17 +244,17 @@ describe('TDF spec version in the manifest', function () {
       assert.deepEqual(await decryptBuffer(client, buffer), plaintext);
     });
 
-    for (const placement of [
-      'schemaVersion',
-      'root tdf_spec_version',
-      'payload tdf_spec_version',
-    ] as const) {
-      it(`decrypts when ${placement} claims 4.3.0`, async function () {
-        const got = await editAndDecrypt(client, plaintext, HEX, ({ manifest }) =>
-          relabel(manifest, placement, '4.3.0')
-        );
-        assert.deepEqual(got, plaintext);
-      });
+    // A value that is not a version must not be read as one: if it were, the
+    // file would be taken for 4.3.0 and its hex digests would not match.
+    for (const placement of ['root tdf_spec_version', 'payload tdf_spec_version'] as const) {
+      for (const [label, value] of JUNK) {
+        it(`skips ${label} in ${placement} without throwing`, async function () {
+          const got = await editAndDecrypt(client, plaintext, HEX, ({ manifest }) =>
+            relabel(manifest, placement, value)
+          );
+          assert.deepEqual(got, plaintext);
+        });
+      }
     }
 
     for (const [name, tamper] of Object.entries(TAMPERS)) {
@@ -274,16 +262,6 @@ describe('TDF spec version in the manifest', function () {
         await expectIntegrityError(
           editAndDecrypt(client, plaintext, HEX, tamper),
           `${name} must be caught`
-        );
-      });
-
-      it(`rejects ${name} when relabelled 4.3.0`, async function () {
-        await expectIntegrityError(
-          editAndDecrypt(client, plaintext, HEX, (parts) => {
-            relabel(parts.manifest, 'schemaVersion', '4.3.0');
-            tamper(parts);
-          }),
-          `${name} must be caught whatever the label says`
         );
       });
     }

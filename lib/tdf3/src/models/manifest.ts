@@ -33,9 +33,9 @@ export type Manifest = {
  * with a `null` value. Nothing is ever written under the non-aligned name: the
  * writer emits `schemaVersion` only.
  *
- * The result is metadata. It does not decide whether a file verifies: the
- * reader accepts either encoding of each integrity digest, so the field (which
- * is unauthenticated) has no say in it.
+ * The reader uses the result to choose how the integrity digests are encoded:
+ * hex before 4.3.0, raw bytes since. A manifest that records no version is read
+ * as 4.2.2.
  *
  * Mirrors the Go SDK's `Manifest.UnmarshalJSON` (opentdf/platform#4060).
  */
