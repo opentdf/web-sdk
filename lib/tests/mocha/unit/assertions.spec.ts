@@ -8,6 +8,7 @@ import { hex, base64 } from '../../../src/encodings/index.js';
 import { signJwt } from '../../../tdf3/src/crypto/jwt.js';
 import type { CryptoService } from '../../../tdf3/src/crypto/declarations.js';
 import { wrapPrivateKey, wrapPublicKey } from '../../../tdf3/src/crypto/core/keys.js';
+import { InvalidFileError } from '../../../src/errors.js';
 
 describe('assertions', () => {
   const cryptoService: CryptoService = DefaultCryptoService;
@@ -114,13 +115,70 @@ describe('assertions', () => {
 
       assertion.binding.signature = token;
 
-      // Verify should work with embedded JWK - dummy key is ignored when JWK is present
-      const dummyKey: assertions.AssertionKey = {
+      // An embedded JWK is informational; verification uses the caller's key.
+      const trustedKey: assertions.AssertionKey = {
         alg: 'ES256',
-        key: keyPair.publicKey, // Not actually used since JWK is in header
+        key: keyPair.publicKey,
       };
 
-      await assertions.verify(assertion, aggregateHash, dummyKey, isLegacyTDF, cryptoService);
+      await assertions.verify(assertion, aggregateHash, trustedKey, isLegacyTDF, cryptoService);
+    });
+
+    it('should not let an embedded jwk override the configured verification key', async () => {
+      const generateEcdsa = async () => {
+        const raw = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, [
+          'sign',
+          'verify',
+        ]);
+        return {
+          raw,
+          publicKey: wrapPublicKey(raw.publicKey, 'ec:secp256r1'),
+          privateKey: wrapPrivateKey(raw.privateKey, 'ec:secp256r1'),
+        };
+      };
+      const trusted = await generateEcdsa();
+      const untrusted = await generateEcdsa();
+
+      const assertion: assertions.Assertion = {
+        id: 'test-assertion-untrusted-jwk',
+        type: 'handling',
+        scope: 'tdo',
+        appliesToState: 'unencrypted',
+        statement: {
+          format: 'json',
+          schema: 'test-schema',
+          value: '{"foo":"bar"}',
+        },
+        binding: {
+          method: 'jws',
+          signature: '',
+        },
+      };
+
+      const assertionHash = await assertions.hash(assertion, cryptoService);
+      const combinedHash = new Uint8Array(aggregateHash.length + 32);
+      combinedHash.set(aggregateHash, 0);
+      combinedHash.set(new Uint8Array(hex.decodeArrayBuffer(assertionHash)), aggregateHash.length);
+      const payload: assertions.AssertionPayload = {
+        assertionHash,
+        assertionSig: base64.encodeArrayBuffer(combinedHash),
+      };
+
+      // Signed by a key the verifier does not trust, which advertises itself in the header.
+      assertion.binding.signature = await signJwt(cryptoService, payload, untrusted.privateKey, {
+        alg: 'ES256',
+        jwk: await crypto.subtle.exportKey('jwk', untrusted.raw.publicKey),
+      });
+
+      const trustedKey: assertions.AssertionKey = { alg: 'ES256', key: trusted.publicKey };
+
+      let caught: unknown;
+      try {
+        await assertions.verify(assertion, aggregateHash, trustedKey, isLegacyTDF, cryptoService);
+      } catch (e) {
+        caught = e;
+      }
+      expect(caught).to.be.instanceOf(InvalidFileError);
     });
 
     it('should fallback to provided key if no key in header', async () => {

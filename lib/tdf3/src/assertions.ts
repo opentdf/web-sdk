@@ -8,7 +8,7 @@ import {
   type PublicKey,
   type SymmetricKey,
 } from './crypto/declarations.js';
-import { decodeProtectedHeader, signJwt, verifyJwt, type JwtHeader } from './crypto/jwt.js';
+import { signJwt, verifyJwt, type JwtHeader } from './crypto/jwt.js';
 import { toArrayBuffer } from './utils/index.js';
 
 export type AssertionKeyAlg = 'ES256' | 'RS256' | 'HS256';
@@ -161,25 +161,17 @@ export async function verify(
 ): Promise<void> {
   let payload: AssertionPayload;
   try {
-    // Parse JWT header to check for embedded keys (jwk or x5c)
-    const header = decodeProtectedHeader(thiz.binding.signature);
-
     // Runtime check: ensure we have a verification key, not a signing key
     if (typeof key.key === 'object' && '_brand' in key.key && key.key._brand === 'PrivateKey') {
       throw new ConfigurationError(
         'Cannot verify assertion with PrivateKey. Use PublicKey or SymmetricKey for verification.'
       );
     }
-    let verificationKey: string | Uint8Array | PublicKey | SymmetricKey = key.key;
 
-    if (header.jwk) {
-      // Convert embedded JWK to PEM
-      verificationKey = await cryptoService.jwkToPublicKeyPem(header.jwk);
-    } else if (header.x5c && Array.isArray(header.x5c) && header.x5c.length > 0) {
-      // Extract public key from X.509 certificate
-      const cert = `-----BEGIN CERTIFICATE-----\n${header.x5c[0]}\n-----END CERTIFICATE-----`;
-      verificationKey = await cryptoService.extractPublicKeyPem(cert);
-    }
+    // Always verify with the caller-configured key. Any `jwk` or `x5c` in the
+    // JWS protected header is attacker-controllable manifest data and must not
+    // select the verification key.
+    const verificationKey: string | Uint8Array | PublicKey | SymmetricKey = key.key;
 
     const result = await verifyJwt(cryptoService, thiz.binding.signature, verificationKey, {
       algorithms: [key.alg],
