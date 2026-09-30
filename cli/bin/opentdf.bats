@@ -62,6 +62,31 @@
   [[ $output == *"Must specify file or pipe"* ]]
 }
 
+# `supports <feature>` is a capability probe for scripts that gate on which CLI
+# build they got (the roundtrip harness skips its DPoP leg when this fails).
+# Exit status is the whole contract, so both directions are pinned here.
+
+@test "supports dpop" {
+  run $BATS_TEST_DIRNAME/opentdf.mjs supports dpop
+  echo "$output"
+  [ "$status" -eq 0 ]
+}
+
+@test "supports rejects an unknown feature" {
+  run $BATS_TEST_DIRNAME/opentdf.mjs supports telepathy
+  echo "$output"
+  [ "$status" -ne 0 ]
+  [[ $output == *"Invalid values"* ]]
+  [[ $output == *"telepathy"* ]]
+}
+
+@test "supports requires a feature argument" {
+  run $BATS_TEST_DIRNAME/opentdf.mjs supports
+  echo "$output"
+  [ "$status" -ne 0 ]
+  [[ $output == *"Not enough"* ]]
+}
+
 @test "version command" {
   run $BATS_TEST_DIRNAME/opentdf.mjs --version
   echo "$output"
