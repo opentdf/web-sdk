@@ -147,7 +147,9 @@ export function isAssertionConfig(obj: unknown): obj is AssertionConfig {
  * @param thiz - The assertion to verify.
  * @param aggregateHash - The aggregate hash for integrity checking.
  * @param key - The key used for verification.
- * @param isLegacyTDF - Whether this is a legacy TDF format.
+ * @param _isLegacyTDF - Ignored. The assertion signature is accepted with the
+ *   assertion hash in either encoding a writer has used, so the caller no
+ *   longer needs to say which one to expect.
  * @param cryptoService - The crypto service to use for verification.
  * @throws {InvalidFileError} If the verification fails.
  * @throws {IntegrityError} If the integrity check fails.
@@ -156,7 +158,8 @@ export async function verify(
   thiz: Assertion,
   aggregateHash: Uint8Array,
   key: AssertionKey,
-  isLegacyTDF: boolean,
+  /** @deprecated Ignored; kept so existing callers still compile. */
+  _isLegacyTDF: boolean,
   cryptoService: CryptoService
 ): Promise<void> {
   let payload: AssertionPayload;
@@ -198,21 +201,32 @@ export async function verify(
     throw new IntegrityError('Assertion hash mismatch');
   }
 
-  let encodedHash: string;
-  if (isLegacyTDF) {
-    const aggregateHashAsStr = new TextDecoder('utf-8').decode(aggregateHash);
-    const combinedHash = aggregateHashAsStr + hashOfAssertion;
-    encodedHash = base64.encode(combinedHash);
-  } else {
-    const combinedHash = concatenateUint8Arrays(
-      aggregateHash,
-      new Uint8Array(hex.decodeArrayBuffer(assertionHash))
+  // assertionSig is base64 over the aggregate hash followed by the assertion
+  // hash, and writers have spelled the assertion hash two ways: raw bytes (TDF
+  // spec 4.3.0 and later) or its hex string (earlier). That choice used to be
+  // read off the manifest's spec version, which is unauthenticated and only
+  // tracked the encoding because this SDK's writer sets both from one setting.
+  //
+  // Unlike the segment and root digests, the spelling cannot be told apart by
+  // comparing one recorded value, because the assertion hash is concatenated
+  // into a larger buffer before encoding. Both candidates are built instead,
+  // and either may match. That is sound on the same grounds: hex is an
+  // invertible encoding of the same hash, and both candidates are checked
+  // against a payload whose signature was already verified above.
+  //
+  // The aggregate hash is used as given in both candidates: it is the recorded
+  // segment hashes, byte for byte, so it already carries the writer's spelling.
+  const signedOver = (assertionHashBytes: Uint8Array) =>
+    base64.encodeArrayBuffer(
+      toArrayBuffer(concatenateUint8Arrays(aggregateHash, assertionHashBytes))
     );
-    encodedHash = base64.encodeArrayBuffer(toArrayBuffer(combinedHash));
-  }
+  const rawAssertionHash = new Uint8Array(hex.decodeArrayBuffer(hashOfAssertion));
+  const hexAssertionHash = new TextEncoder().encode(hashOfAssertion);
 
-  // check if assertionSig is same as encodedHash
-  if (assertionSig !== encodedHash) {
+  if (
+    assertionSig !== signedOver(rawAssertionHash) &&
+    assertionSig !== signedOver(hexAssertionHash)
+  ) {
     throw new IntegrityError('Failed integrity check on assertion signature');
   }
 }

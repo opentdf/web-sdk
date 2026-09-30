@@ -533,6 +533,33 @@ function isTargetSpecLegacyTDF(targetSpecVersion?: string): boolean {
   return targetSpecVersion === HEX_SEMVER_VERSION;
 }
 
+/**
+ * Whether `recorded`, the value a manifest records for a segment hash or the
+ * root signature, matches `digest`, the raw digest recomputed from the file's
+ * own bytes.
+ *
+ * The recorded value is base64 over one of two spellings of the same keyed
+ * digest: the raw bytes (TDF spec 4.3.0 and later) or their hex (earlier).
+ * Either is accepted, and the manifest's spec-version field is not consulted.
+ * That field is unauthenticated, and it only ever tracked the encoding because
+ * this SDK's writer sets both from one setting; writers that did not keep the
+ * two in step produced files that verified under one reading and failed under
+ * the other.
+ *
+ * Accepting both weakens nothing. Hex is an invertible encoding of the same
+ * HMAC (or GCM tag), so producing either spelling requires the payload key
+ * exactly as much as producing the other.
+ */
+export function digestMatchesRecorded(
+  recorded: string,
+  digest: ArrayBufferLike | ArrayBufferView<ArrayBufferLike>
+): boolean {
+  if (recorded === base64.encodeArrayBuffer(digest)) {
+    return true;
+  }
+  return recorded === base64.encode(hex.encodeArrayBuffer(digest));
+}
+
 export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedReadableStream> {
   if (!cfg.auth) {
     throw new ConfigurationError('No authorization middleware defined');
@@ -1240,7 +1267,6 @@ async function decryptChunk(
   hash: string,
   cipher: SymmetricCipher,
   segmentIntegrityAlgorithm: SegmentIntegrityAlgorithm,
-  specVersion: string,
   cryptoService: CryptoService
 ): Promise<DecryptResult> {
   const segmentSig = await segmentIntegrity(
@@ -1250,11 +1276,7 @@ async function decryptChunk(
     cryptoService
   );
 
-  const segmentHash = isTargetSpecLegacyTDF(specVersion)
-    ? base64.encode(hex.encodeArrayBuffer(segmentSig))
-    : base64.encodeArrayBuffer(segmentSig);
-
-  if (hash !== segmentHash) {
+  if (!digestMatchesRecorded(hash, segmentSig)) {
     throw new IntegrityError('Failed integrity check on segment hash');
   }
   return await cipher.decrypt(encryptedChunk, reconstructedKey);
@@ -1267,8 +1289,7 @@ async function updateChunkQueue(
   reconstructedKey: SymmetricKey,
   cipher: SymmetricCipher,
   segmentIntegrityAlgorithm: SegmentIntegrityAlgorithm,
-  cryptoService: CryptoService,
-  specVersion: string
+  cryptoService: CryptoService
 ) {
   let requests = [];
 
@@ -1285,7 +1306,6 @@ async function updateChunkQueue(
         cipher,
         segmentIntegrityAlgorithm,
         cryptoService,
-        specVersion,
         slice: chunks.slice(i, i + LEGACY_SEGMENTS_PER_DOWNLOAD),
       }).catch(() => undefined)
     );
@@ -1312,7 +1332,6 @@ async function fetchAndDecryptChunkSlice({
   cipher,
   segmentIntegrityAlgorithm,
   cryptoService,
-  specVersion,
   slice,
 }: {
   centralDirectory: CentralDirectory[];
@@ -1321,7 +1340,6 @@ async function fetchAndDecryptChunkSlice({
   cipher: SymmetricCipher;
   segmentIntegrityAlgorithm: SegmentIntegrityAlgorithm;
   cryptoService: CryptoService;
-  specVersion: string;
   slice: Chunk[];
 }) {
   const firstChunk = slice[0];
@@ -1354,7 +1372,6 @@ async function fetchAndDecryptChunkSlice({
       slice,
       cipher,
       segmentIntegrityAlgorithm,
-      specVersion,
     });
   } catch (error) {
     const wrappedError = asDecryptError(error, 'failed to decrypt payload segment');
@@ -1508,7 +1525,6 @@ export async function sliceAndDecrypt({
   cipher,
   cryptoService,
   segmentIntegrityAlgorithm,
-  specVersion,
 }: {
   buffer: Uint8Array;
   reconstructedKey: SymmetricKey;
@@ -1516,7 +1532,6 @@ export async function sliceAndDecrypt({
   cipher: SymmetricCipher;
   cryptoService: CryptoService;
   segmentIntegrityAlgorithm: SegmentIntegrityAlgorithm;
-  specVersion: string;
 }) {
   for (const chunk of slice) {
     const { encryptedOffset, encryptedSegmentSize, plainSegmentSize } = chunk;
@@ -1536,7 +1551,6 @@ export async function sliceAndDecrypt({
         chunk.hash,
         cipher,
         segmentIntegrityAlgorithm,
-        specVersion,
         cryptoService
       );
       if (plainSegmentSize && result.payload.length() !== plainSegmentSize) {
@@ -1596,9 +1610,15 @@ export async function decryptStreamFrom(
   const keyForDecryption = await cfg.keyMiddleware(reconstructedKey);
   const encryptedSegmentSizeDefault = defaultSegmentSize || DEFAULT_SEGMENT_SIZE;
 
-  // check if the TDF is a legacy TDF
-  const specVersion = manifest.schemaVersion || manifest.tdf_spec_version || '4.2.2';
-  const isLegacyTDF = isTargetSpecLegacyTDF(specVersion);
+  // The manifest's spec version (see resolveSpecVersion) is deliberately not
+  // consulted here. It used to pick the encoding of every integrity digest --
+  // hex before 4.3.0, raw bytes since -- but it is unauthenticated, and it only
+  // tracked the encoding because this SDK's writer sets both from one setting.
+  // Each check below accepts either spelling instead; see digestMatchesRecorded.
+  //
+  // The aggregate hash needs no such care: it is built from the recorded
+  // segment hashes exactly as they appear in the manifest, so it is already the
+  // byte string the writer signed, whichever spelling that writer used.
 
   // Decode each hash and store it in an array of Uint8Array
   const segmentHashList = segments.map(
@@ -1636,21 +1656,13 @@ export async function decryptStreamFrom(
           assertionKey = foundKey;
         }
       }
-      await assertions.verify(
-        assertion,
-        aggregateHash,
-        assertionKey,
-        isLegacyTDF,
-        cfg.cryptoService
-      );
+      // `isLegacyTDF` is ignored by verify, which accepts either encoding of
+      // the assertion hash; see the comment on the spec version above.
+      await assertions.verify(assertion, aggregateHash, assertionKey, false, cfg.cryptoService);
     }
   }
 
-  const rootSig = isLegacyTDF
-    ? base64.encode(hex.encodeArrayBuffer(payloadSig))
-    : base64.encodeArrayBuffer(payloadSig);
-
-  if (manifest.encryptionInformation.integrityInformation.rootSignature.sig !== rootSig) {
+  if (!digestMatchesRecorded(rootSignature.sig, payloadSig)) {
     throw new IntegrityError('Failed integrity check on root signature');
   }
 
@@ -1695,7 +1707,6 @@ export async function decryptStreamFrom(
           cipher,
           segmentIntegrityAlgorithm: segmentIntegrityAlg,
           cryptoService: cfg.cryptoService,
-          specVersion,
           slice: chunks.slice(startIndex, endIndex),
         }),
     });
@@ -1708,8 +1719,7 @@ export async function decryptStreamFrom(
       keyForDecryption,
       cipher,
       segmentIntegrityAlg,
-      cfg.cryptoService,
-      specVersion
+      cfg.cryptoService
     );
   }
 
