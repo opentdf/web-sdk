@@ -129,7 +129,7 @@ describe('manifest entry name (platform#3513)', function () {
       );
     });
 
-    it('falls back to the off-spec name when the spec name is absent', function () {
+    it('falls back to the non-aligned name when the spec name is absent', function () {
       assert.equal(
         manifestEntryName([entry('0.payload'), entry(offspecManifestFileName)]),
         offspecManifestFileName
@@ -195,7 +195,7 @@ describe('manifest entry name (platform#3513)', function () {
     });
   });
 
-  describe('off-spec archives', function () {
+  describe('non-aligned archives', function () {
     let client: Client.Client;
     let offspec: Uint8Array;
 
@@ -204,19 +204,19 @@ describe('manifest entry name (platform#3513)', function () {
       offspec = await renameManifestEntry(await encryptToBuffer(client), offspecManifestFileName);
     });
 
-    it('is a fixture that really uses the off-spec name', async function () {
+    it('is a fixture that really uses the non-aligned name', async function () {
       assert.deepEqual(
         (await centralDirectoryOf(offspec)).map(({ fileName }) => fileName),
         ['0.payload', offspecManifestFileName]
       );
     });
 
-    it('decrypts an archive whose manifest entry uses the off-spec name', async function () {
+    it('decrypts an archive whose manifest entry uses the non-aligned name', async function () {
       const stream = await client.decrypt({ source: { type: 'buffer', location: offspec } });
       assert.deepEqual(new Uint8Array(await stream.toBuffer()), plaintext);
     });
 
-    it('reads the policy id from an archive using the off-spec name', async function () {
+    it('reads the policy id from an archive using the non-aligned name', async function () {
       const policyId = await client.getPolicyId({ source: { type: 'buffer', location: offspec } });
       assert.isString(policyId);
     });

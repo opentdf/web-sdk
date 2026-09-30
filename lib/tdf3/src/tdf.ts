@@ -91,7 +91,7 @@ export const offspecManifestFileName = '0.manifest.json';
  *
  * Resolving against the central directory rather than against a failed read keeps
  * other failures honest: an oversized manifest under the spec name stays a size
- * error instead of silently yielding the superseded off-spec entry.
+ * error instead of silently yielding the superseded non-aligned entry.
  */
 export function manifestEntryName(centralDirectory: CentralDirectory[]): string {
   const offspecOnly =
