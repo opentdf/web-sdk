@@ -41,6 +41,7 @@ import {
   type AsymmetricSigningAlgorithm,
   type CryptoService,
   type DecryptResult,
+  isHybridKeyAlgorithm,
   isMlKemKeyAlgorithm,
   type KeyAlgorithm,
   type KeyPair,
@@ -58,7 +59,7 @@ import type {
   KeyAccessObject,
   SplitType,
 } from './models/index.js';
-import { ECWrapped, MLKEM_CT_SIZES, MlKemWrapped, Wrapped } from './models/index.js';
+import { ECWrapped, HybridWrapped, MLKEM_CT_SIZES, MlKemWrapped, Wrapped } from './models/index.js';
 import { unsigned } from './utils/buffer-crc32.js';
 import { ZipReader, ZipWriter, concatUint8, buffToString, toArrayBuffer } from './utils/index.js';
 import type { CentralDirectory } from './utils/zip-reader.js';
@@ -414,6 +415,18 @@ export async function buildKeyAccess({
         );
       }
       return new MlKemWrapped(url, kid, pubKey, metadata, cryptoService, sid, alg);
+    case 'hybrid-wrapped':
+      if (!isHybridKeyAlgorithm(alg)) {
+        throw new ConfigurationError(
+          `buildKeyAccess: algorithm [${alg}] is not valid for hybrid-wrapped`
+        );
+      }
+      if (!kid?.trim()) {
+        throw new ConfigurationError(
+          `buildKeyAccess: kid is required for hybrid algorithm [${alg}]`
+        );
+      }
+      return new HybridWrapped(url, kid, pubKey, metadata, cryptoService, sid, alg);
     default:
       throw new ConfigurationError(`buildKeyAccess: Key access type [${type}] is unsupported`);
   }
