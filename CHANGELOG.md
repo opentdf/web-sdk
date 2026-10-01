@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.22.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.21.0...sdk-v0.22.0) (2026-10-01)
+
+
+### Bug Fixes
+
+* **sdk:** emit RFC 7518 raw ECDSA signatures in JWS (DSPX-3397) ([#987](https://github.com/opentdf/web-sdk/issues/987)) ([aaf46a7](https://github.com/opentdf/web-sdk/commit/aaf46a7d52dcd73bdd01bbb44cc3ba3afd3a8e96))
+* **sdk:** read manifest.json from a TDF archive ([#1042](https://github.com/opentdf/web-sdk/issues/1042)) ([55a0521](https://github.com/opentdf/web-sdk/commit/55a0521b1499b392c75373e11ec5930c6a43f0c7))
+
 ## [0.21.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.20.0...sdk-v0.21.0) (2026-09-18)
 
 
