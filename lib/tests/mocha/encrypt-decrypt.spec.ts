@@ -4,8 +4,8 @@ import { assert } from 'chai';
 import { getMocks } from '../mocks/index.js';
 import type { KasPublicKeyAlgorithm } from '../../src/access.js';
 import type { AuthProvider, HttpRequest } from '../../src/auth/auth.js';
-import type { KeyInfo } from '../../tdf3/index.js';
-import { AesGcmCipher, SplitKey, WebCryptoService } from '../../tdf3/index.js';
+import type { CryptoService, KeyInfo } from '../../tdf3/index.js';
+import { AesGcmCipher, Binary, SplitKey, WebCryptoService } from '../../tdf3/index.js';
 import { Client } from '../../tdf3/src/index.js';
 import type {
   AssertionConfig,
@@ -14,9 +14,22 @@ import type {
 } from '../../tdf3/src/assertions.js';
 import { getSystemMetadataAssertionConfig } from '../../tdf3/src/assertions.js';
 import type { Scope } from '../../tdf3/src/client/builders.js';
-import { NetworkError } from '../../src/errors.js';
+import { base64 } from '../../src/encodings/index.js';
+import { ConfigurationError, NetworkError } from '../../src/errors.js';
+import { fromBuffer } from '../../src/seekable.js';
+import { ZipReader } from '../../tdf3/src/utils/zip-reader.js';
 
 const Mocks = getMocks();
+
+/** Resolve to the error `promise` rejects with, or fail if it resolves. */
+async function rejection(promise: Promise<unknown>): Promise<Error> {
+  try {
+    await promise;
+  } catch (e) {
+    return e as Error;
+  }
+  return assert.fail('expected a rejection');
+}
 
 type SystemMetadata = {
   creation_date: string;
@@ -387,6 +400,264 @@ describe('encrypt decrypt test', function () {
     }
   }
 
+  it('writes deterministic payload IVs after the reserved metadata IV', async function () {
+    const cipher = new AesGcmCipher(WebCryptoService);
+    const encryptionInformation = new SplitKey(cipher);
+    const key = await encryptionInformation.generateKey();
+    const client = new Client.Client({
+      kasEndpoint: kasUrl,
+      platformUrl: kasUrl,
+      dpopKeys: Mocks.entityKeyPair(),
+      clientId: 'id',
+      authProvider,
+    });
+
+    const encryptedStream = await client.encrypt({
+      metadata: Mocks.getMetadataObject(),
+      wrappingKeyAlgorithm: 'rsa:2048',
+      offline: true,
+      scope: { dissem: ['user@domain.com'], attributes: [] },
+      keyMiddleware: () => Promise.resolve({ keyForEncryption: key, keyForManifest: key }),
+      windowSize: 3,
+      source: new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('1234567'));
+          controller.close();
+        },
+      }),
+    });
+
+    const encryptedTdf = await encryptedStream.toBuffer();
+    const { manifest } = encryptedStream;
+
+    // Invocation zero of the stream's counter: the same 8-byte fixed field the
+    // payload uses, then four zero bytes.
+    const metadataIv = Uint8Array.from(
+      Binary.fromBase64(manifest.encryptionInformation.method.iv).asByteArray()
+    );
+    assert.lengthOf(metadataIv, 12);
+    const fixedField = metadataIv.subarray(0, 8);
+    assert.deepEqual(metadataIv.subarray(8), new Uint8Array(4));
+    // A constant fixed field would mean every TDF reuses these IVs.
+    assert.notDeepEqual(fixedField, new Uint8Array(8), 'fixed field should be random');
+
+    const zipReader = new ZipReader(fromBuffer(encryptedTdf));
+    const centralDirectory = await zipReader.getCentralDirectory();
+    const { encryptedSegmentSizeDefault, segmentSizeDefault, segments } =
+      manifest.encryptionInformation.integrityInformation;
+    assert.lengthOf(segments, 3);
+    assert.equal(segmentSizeDefault, 3);
+    // 12 byte IV + 3 byte segment + 16 byte tag.
+    assert.equal(encryptedSegmentSizeDefault, 31);
+    let encryptedOffset = 0;
+
+    for (const [index, segmentInfo] of segments.entries()) {
+      const encryptedSize = segmentInfo.encryptedSegmentSize ?? encryptedSegmentSizeDefault;
+      if (encryptedSize === undefined) {
+        assert.fail(`payload segment ${index} has no encrypted size`);
+      }
+      const encryptedSegment = await zipReader.getPayloadSegment(
+        centralDirectory,
+        '0.payload',
+        encryptedOffset,
+        encryptedSize
+      );
+      const expectedIv = new Uint8Array(12);
+      expectedIv.set(fixedField);
+      new DataView(expectedIv.buffer).setUint32(8, index + 1);
+      assert.deepEqual(
+        encryptedSegment.subarray(0, 12),
+        expectedIv,
+        `payload segment ${index} should use invocation ${index + 1} of the stream's fixed field`
+      );
+      encryptedOffset += encryptedSize;
+    }
+
+    // '1234567' is 7 bytes in 3 byte segments, so the last one is short and
+    // must carry its own sizes rather than inherit the defaults.
+    assert.equal(segments[2].segmentSize, 1);
+    assert.equal(segments[2].encryptedSegmentSize, 29);
+  });
+
+  it('gives two TDFs sharing one key disjoint IVs (DSPX-4496)', async function () {
+    const cipher = new AesGcmCipher(WebCryptoService);
+    const encryptionInformation = new SplitKey(cipher);
+    // The hazard this guards: `keyMiddleware` lets a caller hand the same
+    // symmetric key to two encrypts. Deterministic IVs would then repeat
+    // exactly, which breaks AES-GCM's confidentiality *and* its authenticity.
+    const key = await encryptionInformation.generateKey();
+    const client = new Client.Client({
+      kasEndpoint: kasUrl,
+      platformUrl: kasUrl,
+      dpopKeys: Mocks.entityKeyPair(),
+      clientId: 'id',
+      authProvider,
+    });
+
+    const encryptOnce = async () => {
+      const stream = await client.encrypt({
+        metadata: Mocks.getMetadataObject(),
+        wrappingKeyAlgorithm: 'rsa:2048',
+        offline: true,
+        scope: { dissem: ['user@domain.com'], attributes: [] },
+        keyMiddleware: () => Promise.resolve({ keyForEncryption: key, keyForManifest: key }),
+        windowSize: 3,
+        source: new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode('1234567'));
+            controller.close();
+          },
+        }),
+      });
+      const buffer = await stream.toBuffer();
+      const zipReader = new ZipReader(fromBuffer(buffer));
+      const centralDirectory = await zipReader.getCentralDirectory();
+      const firstSegment = await zipReader.getPayloadSegment(centralDirectory, '0.payload', 0, 31);
+      return {
+        metadataIv: stream.manifest.encryptionInformation.method.iv,
+        firstPayloadIv: firstSegment.subarray(0, 12),
+      };
+    };
+
+    const a = await encryptOnce();
+    const b = await encryptOnce();
+
+    assert.notEqual(a.metadataIv, b.metadataIv, 'metadata IVs must differ');
+    assert.notDeepEqual(a.firstPayloadIv, b.firstPayloadIv, 'payload IVs must differ');
+  });
+
+  it('spends no payload IV on an empty payload', async function () {
+    const cipher = new AesGcmCipher(WebCryptoService);
+    const encryptionInformation = new SplitKey(cipher);
+    const key = await encryptionInformation.generateKey();
+    const client = new Client.Client({
+      kasEndpoint: kasUrl,
+      platformUrl: kasUrl,
+      allowedKases: [kasUrl],
+      dpopKeys: Mocks.entityKeyPair(),
+      clientId: 'id',
+      authProvider,
+    });
+
+    const encryptedStream = await client.encrypt({
+      metadata: Mocks.getMetadataObject(),
+      wrappingKeyAlgorithm: 'rsa:2048',
+      offline: true,
+      scope: { dissem: ['user@domain.com'], attributes: [] },
+      keyMiddleware: () => Promise.resolve({ keyForEncryption: key, keyForManifest: key }),
+      source: new ReadableStream({
+        start(controller) {
+          controller.close();
+        },
+      }),
+    });
+    const encryptedTdf = await encryptedStream.toBuffer();
+
+    // No segments means no `next()` call, so nothing follows invocation zero.
+    const { segments } = encryptedStream.manifest.encryptionInformation.integrityInformation;
+    assert.lengthOf(segments, 0);
+
+    const decryptStream = await client.decrypt({
+      source: { type: 'buffer', location: encryptedTdf },
+      wrappingKeyAlgorithm: 'rsa:2048',
+    });
+    assert.lengthOf(await decryptStream.toBuffer(), 0);
+  });
+
+  it('rejects a zero window size instead of hanging', async function () {
+    const cipher = new AesGcmCipher(WebCryptoService);
+    const encryptionInformation = new SplitKey(cipher);
+    const key = await encryptionInformation.generateKey();
+    const client = new Client.Client({
+      kasEndpoint: kasUrl,
+      platformUrl: kasUrl,
+      dpopKeys: Mocks.entityKeyPair(),
+      clientId: 'id',
+      authProvider,
+    });
+
+    // `windowSize: 0` used to spin forever in the segmentation loop, which
+    // never accumulates enough bytes to emit a zero-length segment. The
+    // destructuring default in `Client.encrypt` only fires on `undefined`, so
+    // zero reaches the writer.
+    const error = await rejection(
+      client.encrypt({
+        metadata: Mocks.getMetadataObject(),
+        wrappingKeyAlgorithm: 'rsa:2048',
+        offline: true,
+        scope: { dissem: ['user@domain.com'], attributes: [] },
+        keyMiddleware: () => Promise.resolve({ keyForEncryption: key, keyForManifest: key }),
+        windowSize: 0,
+        source: new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode(expectedVal));
+            controller.close();
+          },
+        }),
+      })
+    );
+    assert.instanceOf(error, ConfigurationError);
+    assert.match(error.message, /segment size must be a positive integer/);
+  });
+
+  it('fails the write when the cipher disagrees with its own size arithmetic', async function () {
+    // `encryptedSegmentSizeDefault` is now computed rather than measured, so a
+    // crypto service whose output length does not match `encryptedPayloadSize`
+    // would silently desynchronize the manifest from the payload. Truncating
+    // the auth tag by one byte is the cheapest way to produce that mismatch.
+    let segmentsEncrypted = 0;
+    const truncatingCryptoService: CryptoService = new Proxy(WebCryptoService, {
+      get(target, property, receiver) {
+        if (property !== 'encrypt') {
+          return Reflect.get(target, property, receiver) as unknown;
+        }
+        return async (...args: Parameters<CryptoService['encrypt']>) => {
+          const result = await target.encrypt(...args);
+          // Let the metadata and the first two payload segments through, so
+          // the failure lands mid-stream rather than on the first `pull`.
+          if (result.authTag && ++segmentsEncrypted > 3) {
+            const tag = result.authTag.asByteArray();
+            result.authTag = Binary.fromByteArray(tag.slice(0, tag.length - 1));
+          }
+          return result;
+        };
+      },
+    });
+
+    const cipher = new AesGcmCipher(truncatingCryptoService);
+    const encryptionInformation = new SplitKey(cipher);
+    const key = await encryptionInformation.generateKey();
+    const client = new Client.Client({
+      kasEndpoint: kasUrl,
+      platformUrl: kasUrl,
+      dpopKeys: Mocks.entityKeyPair(),
+      clientId: 'id',
+      authProvider,
+      cryptoService: truncatingCryptoService,
+    });
+
+    const encryptedStream = await client.encrypt({
+      metadata: Mocks.getMetadataObject(),
+      wrappingKeyAlgorithm: 'rsa:2048',
+      offline: true,
+      scope: { dissem: ['user@domain.com'], attributes: [] },
+      keyMiddleware: () => Promise.resolve({ keyForEncryption: key, keyForManifest: key }),
+      windowSize: 3,
+      source: new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('123456789012'));
+          controller.close();
+        },
+      }),
+    });
+
+    // Also pins the propagation path: `writeStream` raises this from inside
+    // `pull`, and `IvExhaustionError` would surface the same way.
+    const error = await rejection(encryptedStream.toBuffer());
+    assert.instanceOf(error, ConfigurationError);
+    assert.match(error.message, /but reports 31$/);
+  });
+
   it('decrypts when the same KAS wraps the same split twice (DSPX-3379)', async function () {
     const cipher = new AesGcmCipher(WebCryptoService);
     const encryptionInformation = new SplitKey(cipher);
@@ -425,6 +696,20 @@ describe('encrypt decrypt test', function () {
     assert.equal(kaos.length, 2, 'expected two KAOs for the duplicated split');
     assert.equal(kaos[0].url, kaos[1].url);
     assert.equal(kaos[0].sid, kaos[1].sid);
+
+    // Both KAOs encrypt their metadata under invocation zero of the stream's
+    // counter, which is what `method.iv` records. They share an `sid`, so they
+    // share a split key too -- safe only because the metadata plaintext is
+    // byte-identical. Giving them differing metadata without differing IVs
+    // would be outright AES-GCM nonce reuse.
+    const metadataIv = encryptedStream.manifest.encryptionInformation.method.iv;
+    const kaoMetadata = ({ encryptedMetadata }: (typeof kaos)[number]) =>
+      JSON.parse(base64.decode(encryptedMetadata ?? '')) as { iv: string; ciphertext: string };
+    for (const [index, kao] of kaos.entries()) {
+      const { iv, ciphertext } = kaoMetadata(kao);
+      assert.equal(iv, metadataIv, `KAO ${index} should use the metadata IV`);
+      assert.equal(ciphertext, kaoMetadata(kaos[0]).ciphertext);
+    }
 
     const decryptStream = await client.decrypt({
       source: { type: 'stream', location: encryptedStream.stream },

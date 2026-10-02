@@ -34,6 +34,7 @@ import type { AssertionConfig, AssertionKey, AssertionVerificationKeys } from '.
 import * as assertions from './assertions.js';
 import { Binary } from './binary.js';
 import { AesGcmCipher } from './ciphers/aes-gcm-cipher.js';
+import { GCM_FIXED_FIELD_LENGTH, GcmIvCounter } from './ciphers/gcm-iv-counter.js';
 import type { SymmetricCipher } from './ciphers/symmetric-cipher-base.js';
 import type { DecryptParams } from './client/builders.js';
 import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
@@ -437,6 +438,7 @@ async function _generateManifest(
   keyInfo: KeyInfo,
   encryptionInformation: SplitKey,
   policy: Policy,
+  metadataIv: Binary,
   mimeType?: string,
   targetSpecVersion?: string
 ): Promise<Manifest> {
@@ -449,7 +451,7 @@ async function _generateManifest(
     ...(mimeType && { mimeType }),
   };
 
-  const encryptionInformationStr = await encryptionInformation.write(policy, keyInfo);
+  const encryptionInformationStr = await encryptionInformation.write(policy, keyInfo, metadataIv);
   const assertions: assertions.Assertion[] = [];
   const partial = {
     payload,
@@ -585,6 +587,14 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
       `unsupported segment integrity algorithm [${String(cfg.segmentIntegrityAlgorithm)}]`
     );
   }
+  // `client.encrypt` forwards `windowSize` here unchecked. Zero would loop
+  // forever accumulating an empty segment; a fractional or negative size would
+  // write a manifest whose declared segment sizes no reader can follow.
+  if (!Number.isInteger(cfg.segmentSizeDefault) || cfg.segmentSizeDefault <= 0) {
+    throw new ConfigurationError(
+      `segment size must be a positive integer; got [${cfg.segmentSizeDefault}]`
+    );
+  }
 
   // The guards above are deliberately case-insensitive, so callers may pass user
   // input straight through. Manifests, however, are read back by strict parsers --
@@ -615,12 +625,21 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
   let fileByteCount = 0;
   let aggregateHash422 = '';
   const segmentHashList: Uint8Array[] = [];
+  // NIST SP 800-38D 8.2.1: a fresh random 8-byte fixed field, then a counter.
+  // Drawn per stream rather than per key, because `keyMiddleware` lets a caller
+  // reuse a `KeyInfo` across encrypts and a repeated (key, IV) pair is fatal to
+  // AES-GCM. Randomness comes from the injected crypto service so FIPS builds
+  // stay inside their boundary.
+  const payloadIv = new GcmIvCounter(await cfg.cryptoService.randomBytes(GCM_FIXED_FIELD_LENGTH));
 
   const zipWriter = new ZipWriter();
   const manifest = await _generateManifest(
     cfg.keyForManifest,
     cfg.encryptionInformation,
     cfg.policy,
+    // Invocation zero of the same counter, so the key access object metadata
+    // shares the payload's fixed field instead of a constant IV.
+    Binary.fromArrayBuffer(toArrayBuffer(payloadIv.metadataIv())),
     cfg.mimeType,
     cfg.tdfSpecVersion
   );
@@ -630,14 +649,14 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
     throw new ConfigurationError('internal: please use "loadTDFStream" first to load a manifest.');
   }
 
-  // determine default segment size by writing empty buffer
+  // Derive the encrypted segment size arithmetically rather than by encrypting
+  // a throwaway segment and measuring it: the probe spent a whole AES-GCM
+  // invocation, and an encryption of the caller's key, to learn a constant.
+  // `_encryptAndCountSegment` cross-checks the arithmetic against every
+  // segment it writes, not just the first.
   const { segmentSizeDefault } = cfg;
-  const encryptedBlargh = await cfg.encryptionInformation.encrypt(
-    Binary.fromArrayBuffer(new ArrayBuffer(segmentSizeDefault)),
-    cfg.keyForEncryption.unwrappedKey
-  );
-  const payloadBuffer = new Uint8Array(encryptedBlargh.payload.asByteArray());
-  const encryptedSegmentSizeDefault = payloadBuffer.length;
+  const encryptedSegmentSizeDefault =
+    cfg.encryptionInformation.cipher.encryptedPayloadSize(segmentSizeDefault);
 
   // start writing the content
   entryInfos[0].filename = '0.payload';
@@ -853,12 +872,26 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
     bytesProcessed += chunk.length;
     cfg.progressHandler?.(bytesProcessed);
 
-    // Don't pass in an IV here. The encrypt function will generate one for you, ensuring that each segment has a unique IV.
+    const iv = payloadIv.next();
     const encryptedResult = await cfg.encryptionInformation.encrypt(
       Binary.fromArrayBuffer(toArrayBuffer(chunk)),
-      cfg.keyForEncryption.unwrappedKey
+      cfg.keyForEncryption.unwrappedKey,
+      Binary.fromArrayBuffer(toArrayBuffer(iv))
     );
     const payloadBuffer = new Uint8Array(encryptedResult.payload.asByteArray());
+
+    // Tripwire for a `encryptedPayloadSize` that disagrees with the cipher it
+    // describes -- an injected `CryptoService` using a shorter auth tag, say.
+    // Without it the mismatch is absorbed by the per-segment `encryptedSegmentSize`
+    // written below, and surfaces only in a reader that prefers the manifest's
+    // `encryptedSegmentSizeDefault` over the per-segment field.
+    const expectedSize = cfg.encryptionInformation.cipher.encryptedPayloadSize(chunk.length);
+    if (payloadBuffer.length !== expectedSize) {
+      throw new ConfigurationError(
+        `Cipher [${cfg.encryptionInformation.cipher.name}] produced ${payloadBuffer.length} bytes for a ${chunk.length} byte segment, but reports ${expectedSize}`
+      );
+    }
+
     let hash: string;
     if (isTargetSpecLegacyTDF(cfg.tdfSpecVersion)) {
       const payloadSigStr = await segmentIntegrityVersion422(
