@@ -4,7 +4,7 @@
  * @private
  */
 
-import { type CryptoService, type SymmetricKey } from './declarations.js';
+import { type AesGcmEncryptor, type CryptoService, type SymmetricKey } from './declarations.js';
 import {
   decrypt,
   digest,
@@ -19,6 +19,7 @@ import {
   verifyHmac,
 } from './core/symmetric.js';
 import { keySplit } from '../utils/keysplit.js';
+import { deterministicAesGcmEncryptor } from '../ciphers/aes-gcm-encryptor.js';
 import { unwrapSymmetricKey, wrapSymmetricKey } from './core/keys.js';
 import {
   decryptWithPrivateKey,
@@ -65,6 +66,14 @@ export async function splitSymmetricKey(
   return splits.map(wrapSymmetricKey);
 }
 
+/**
+ * AES-256-GCM encryptor with deterministic IVs (NIST SP 800-38D 8.2.1): a
+ * random 8-byte fixed field drawn per encryptor, then a 4-byte counter.
+ */
+export async function createAesGcmEncryptor(key: SymmetricKey): Promise<AesGcmEncryptor> {
+  return deterministicAesGcmEncryptor(key, randomBytes, encrypt);
+}
+
 export {
   decrypt,
   decryptWithPrivateKey,
@@ -104,6 +113,7 @@ export {
 export const DefaultCryptoService: CryptoService = {
   name,
   method,
+  createAesGcmEncryptor,
   decrypt,
   decryptWithPrivateKey,
   deriveKeyFromECDH,

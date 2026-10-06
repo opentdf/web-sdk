@@ -14,6 +14,9 @@ import {
 } from './src/client/builders.js';
 import { type ClientConfig, createSessionKeys } from './src/client/index.js';
 import {
+  type AesGcmEncryptor,
+  type AesGcmEncryptResult,
+  type AesGcmIvConstruction,
   type AsymmetricSigningAlgorithm,
   type CryptoService,
   type DecryptResult,
@@ -46,6 +49,9 @@ import { Algorithms, type AlgorithmName, type AlgorithmUrn } from './src/ciphers
 import { type Chunker } from '../src/seekable.js';
 
 export type {
+  AesGcmEncryptor,
+  AesGcmEncryptResult,
+  AesGcmIvConstruction,
   AlgorithmName,
   AlgorithmUrn,
   AsymmetricSigningAlgorithm,

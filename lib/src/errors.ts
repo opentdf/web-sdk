@@ -73,6 +73,18 @@ export class IntegrityError extends InvalidFileError {
 }
 
 /**
+ * One key's AES-GCM encryptor reached its invocation limit part way through a
+ * write: 2^32 for deterministic IVs, or the lower limit a provider declares
+ * for random IVs. Not a `ConfigurationError`: the caller passed valid options,
+ * and the stream encrypted many segments successfully before running out. The
+ * partial output is unusable and must be discarded; retry with a larger
+ * segment size or split the input.
+ */
+export class IvExhaustionError extends TdfError {
+  override name = 'IvExhaustionError';
+}
+
+/**
  * Thrown when a KAS URL found in one or more required key access objects are not in the list of known and allowed KASes in the client.
  * This may indicate a malicious file - e.g. an attempt to DDoS a server by listing it as the KAS for many files, or to siphon credentials using a lookalike URL.
  */
