@@ -533,7 +533,7 @@ async function segmentIntegrityVersion422(
     case 'GMAC':
       // read out the auth tag AES-GCM baked into these exact bytes
       return buffToString(
-        Uint8Array.from(payloadBinary.asByteArray()).slice(-GMAC_TAG_LENGTH),
+        new Uint8Array(payloadBinary.asArrayBuffer()).slice(-GMAC_TAG_LENGTH),
         'hex'
       );
     case 'HS256': {
@@ -636,8 +636,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
     Binary.fromArrayBuffer(new ArrayBuffer(segmentSizeDefault)),
     cfg.keyForEncryption.unwrappedKey
   );
-  const payloadBuffer = new Uint8Array(encryptedBlargh.payload.asByteArray());
-  const encryptedSegmentSizeDefault = payloadBuffer.length;
+  const encryptedSegmentSizeDefault = encryptedBlargh.payload.length();
 
   // start writing the content
   entryInfos[0].filename = '0.payload';
@@ -858,7 +857,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
       Binary.fromArrayBuffer(toArrayBuffer(chunk)),
       cfg.keyForEncryption.unwrappedKey
     );
-    const payloadBuffer = new Uint8Array(encryptedResult.payload.asByteArray());
+    const payloadBuffer = new Uint8Array(encryptedResult.payload.asArrayBuffer());
     let hash: string;
     if (isTargetSpecLegacyTDF(cfg.tdfSpecVersion)) {
       const payloadSigStr = await segmentIntegrityVersion422(
@@ -872,7 +871,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
       hash = base64.encode(payloadSigStr);
     } else {
       const payloadSig = await segmentIntegrity(
-        new Uint8Array(encryptedResult.payload.asArrayBuffer()),
+        payloadBuffer,
         cfg.keyForEncryption.unwrappedKey,
         segmentIntegrityAlgorithm,
         cfg.cryptoService
@@ -888,7 +887,8 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
       encryptedSegmentSize:
         payloadBuffer.length === encryptedSegmentSizeDefault ? undefined : payloadBuffer.length,
     });
-    const result = new Uint8Array(encryptedResult.payload.asByteArray());
+    // Keep emitted chunks independent of the crypto service's payload buffer.
+    const result = payloadBuffer.slice();
     _countChunk(result);
 
     return result;
