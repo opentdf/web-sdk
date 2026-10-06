@@ -59,4 +59,10 @@ describe('SymmetricCipher', () => {
       .to.throw(ConfigurationError)
       .that.matches(/Cipher \[NO-SUCH-CIPHER\] does not implement encryptedPayloadSize/);
   });
+
+  it('still hands out a random IV for deprecated callers', async () => {
+    const iv = await new AesGcmCipher(WebCryptoService).generateInitializationVector();
+    // Hex, so twice the 12 byte IV length.
+    expect(iv).to.have.lengthOf(24);
+  });
 });

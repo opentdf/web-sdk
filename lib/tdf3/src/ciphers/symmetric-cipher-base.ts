@@ -22,6 +22,12 @@ export abstract class SymmetricCipher {
     this.cryptoService = cryptoService;
   }
 
+  /**
+   * @deprecated The TDF writer no longer draws per-segment IVs at random; it
+   * derives them from a per-stream counter (see `GcmIvCounter`). Nothing in the
+   * SDK calls this, and using its output as a payload IV would reintroduce the
+   * collision risk the counter exists to remove.
+   */
   async generateInitializationVector(): Promise<string> {
     if (!this.ivLength) {
       throw Error('No iv length');
