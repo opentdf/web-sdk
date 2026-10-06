@@ -15,7 +15,7 @@ import type { AssertionConfig, AssertionVerificationKeys } from '../assertions.j
 import type { Value } from '../../../src/policy/attributes.js';
 import type { KasPublicKeyAlgorithm, OriginAllowList } from '../../../src/access.js';
 
-export const DEFAULT_SEGMENT_SIZE: number = 1024 * 1024;
+export const DEFAULT_SEGMENT_SIZE: number = 2 * 1024 * 1024;
 export type Scope = {
   dissem?: string[];
   policyId?: string;
@@ -368,7 +368,7 @@ class EncryptParamsBuilder {
    * This window will match the "segment size" defined in the
    * <a href="https://github.com/virtru/tdf3-spec">TDF spec</a>, so a larger window
    * will result in more compact ciphertext.
-   * @return {number} The sliding window size, in bytes (1MB by default).
+   * @return {number} The sliding window size, in bytes (2 MiB by default).
    */
   getStreamWindowSize(): number | undefined {
     return this._params.windowSize;
@@ -381,7 +381,7 @@ class EncryptParamsBuilder {
    * This window will match the "segment size" defined in the
    * <a href="https://github.com/virtru/tdf3-spec">TDF spec</a>, so a larger window
    * will result in more compact ciphertext.
-   * @param {number} numBytes sliding window size, in bytes (1MB by default).
+   * @param {number} numBytes sliding window size, in bytes (2 MiB by default).
    */
   setStreamWindowSize(numBytes: number) {
     if (numBytes <= 0) {
@@ -397,7 +397,7 @@ class EncryptParamsBuilder {
    * This window will match the "segment size" defined in the
    * <a href="https://github.com/virtru/tdf3-spec">TDF spec</a>, so a larger window
    * will result in more compact ciphertext.
-   * @param {number} numBytes sliding window size, in bytes (1MB by default).
+   * @param {number} numBytes sliding window size, in bytes (2 MiB by default).
    * @return {EncryptParamsBuilder} - this object.
    */
   withStreamWindowSize(numBytes: number): EncryptParamsBuilder {

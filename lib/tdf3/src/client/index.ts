@@ -518,7 +518,7 @@ export class Client {
    * @param [metadata] Additional non-secret data to store with the TDF
    * @param [opts] Test only
    * @param [mimeType] mime type of source. defaults to `unknown`
-   * @param [windowSize] - segment size in bytes. Defaults to a a million bytes.
+   * @param [windowSize] - segment size in bytes. Defaults to 2 MiB (2,097,152 bytes).
    * @param [keyMiddleware] - function that handle keys
    * @param [streamMiddleware] - function that handle stream
    * @param [eo] - (deprecated) entity object

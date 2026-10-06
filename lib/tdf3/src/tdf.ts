@@ -72,6 +72,9 @@ import {
 } from '../../src/utils.js';
 
 // TODO: input validation on manifest JSON
+// Read-side fallback for manifests that omit `encryptedSegmentSizeDefault`.
+// Deliberately not the writer's default (`DEFAULT_SEGMENT_SIZE` in
+// `client/builders.ts`): changing that must not change how old files parse.
 const DEFAULT_SEGMENT_SIZE = 1024 * 1024;
 
 /** Where the spec puts the manifest: at the root of the OpenTDF zip archive. */
