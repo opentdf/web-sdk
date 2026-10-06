@@ -1,9 +1,10 @@
-import { base64, hex } from '../../../src/encodings/index.js';
+import { base64 } from '../../../src/encodings/index.js';
 import { Binary } from '../binary.js';
 import { type SymmetricCipher } from '../ciphers/symmetric-cipher-base.js';
 import { type KeyAccess, type KeyAccessObject } from './key-access.js';
 import { type Policy } from './policy.js';
 import {
+  type AesGcmEncryptor,
   type CryptoService,
   type DecryptResult,
   type EncryptResult,
@@ -11,7 +12,18 @@ import {
 } from '../crypto/declarations.js';
 import { ROOT_INTEGRITY_ALGORITHM, SEGMENT_INTEGRITY_ALGORITHM } from '../tdf.js';
 import { ConfigurationError } from '../../../src/errors.js';
-import { toArrayBuffer } from '../utils/index.js';
+import { concatUint8, toArrayBuffer } from '../utils/index.js';
+
+/**
+ * Supplies the encryptor for one split key's metadata. `splitCount` is the
+ * number of distinct splits; when it is 1 the split share is the whole key, so
+ * a caller already holding an encryptor for that key should return it rather
+ * than open a second one.
+ */
+export type MetadataEncryptorSource = (
+  splitKey: SymmetricKey,
+  splitCount: number
+) => Promise<AesGcmEncryptor>;
 
 export type KeyInfo = {
   readonly unwrappedKey: SymmetricKey;
@@ -66,16 +78,33 @@ export class SplitKey {
 
   async generateKey(): Promise<KeyInfo> {
     const unwrappedKey = await this.cipher.generateKey();
-    const unwrappedKeyIvBinary = await this.generateIvBinary();
-    return { unwrappedKey, unwrappedKeyIvBinary };
+    // A random IV, used only by callers that go on to invoke `write` or
+    // `getKeyAccessObjects` directly without an encryptor source. On the
+    // `writeStream` path metadata IVs come from each split key's encryptor,
+    // and this draw is discarded.
+    const { ivLength } = this.cipher;
+    if (!ivLength) {
+      // Hard coded as part of the cipher object. This should not be reachable.
+      throw new ConfigurationError('uninitialized cipher iv length');
+    }
+    const iv = await this.cryptoService.randomBytes(ivLength);
+    return { unwrappedKey, unwrappedKeyIvBinary: Binary.fromArrayBuffer(toArrayBuffer(iv)) };
   }
 
+  /**
+   * @param ivBinary required. Declared optional only so that callers compiled
+   * against an older release still typecheck; omitting it now throws rather
+   * than falling back to a fresh random IV. The writer no longer calls this;
+   * it encrypts through an `AesGcmEncryptor` that chooses its own IVs.
+   */
   async encrypt(
     contentBinary: Binary,
     key: SymmetricKey,
-    ivBinaryOptional?: Binary
+    ivBinary?: Binary
   ): Promise<EncryptResult> {
-    const ivBinary = ivBinaryOptional || (await this.generateIvBinary());
+    if (!ivBinary) {
+      throw new ConfigurationError('encrypt requires an explicit iv');
+    }
     return this.cipher.encrypt(contentBinary, key, ivBinary);
   }
 
@@ -83,7 +112,28 @@ export class SplitKey {
     return this.cipher.decrypt(content, key);
   }
 
-  async getKeyAccessObjects(policy: Policy, keyInfo: KeyInfo): Promise<KeyAccessObject[]> {
+  /**
+   * @param metadata How to encrypt each key access object's metadata. Given a
+   * {@link MetadataEncryptorSource}, every distinct split key gets its own
+   * encryptor and every key access object a fresh IV from it; this is what
+   * `writeStream` does. Given a `Binary`, every key access object is encrypted
+   * under that one IV, which is safe only because distinct `sid`s use distinct
+   * split keys and same-`sid` objects encrypt byte-identical metadata.
+   * Defaults to `keyInfo.unwrappedKeyIvBinary`.
+   */
+  async getKeyAccessObjects(
+    policy: Policy,
+    keyInfo: KeyInfo,
+    metadata: Binary | MetadataEncryptorSource = keyInfo.unwrappedKeyIvBinary
+  ): Promise<KeyAccessObject[]> {
+    return (await this.writeKeyAccessObjects(policy, keyInfo, metadata)).keyAccessObjects;
+  }
+
+  private async writeKeyAccessObjects(
+    policy: Policy,
+    keyInfo: KeyInfo,
+    metadata: Binary | MetadataEncryptorSource
+  ): Promise<{ keyAccessObjects: KeyAccessObject[]; firstMetadataIv?: string }> {
     const splitIds = [...new Set(this.keyAccess.map(({ sid }) => sid || ''))].sort((a, b) =>
       a.localeCompare(b)
     );
@@ -98,63 +148,93 @@ export class SplitKey {
       },
       {}
     );
+    const encryptorsByName: Record<string, AesGcmEncryptor | undefined> = {};
 
     const keyAccessObjects: KeyAccessObject[] = [];
+    let firstMetadataIv: string | undefined;
     for (const item of this.keyAccess) {
       // use the key split to encrypt metadata for each key access object
-      const unwrappedKeySplit = splitsByName[item.sid || ''];
+      const sid = item.sid || '';
+      const unwrappedKeySplit = splitsByName[sid];
       if (!unwrappedKeySplit) {
-        throw new ConfigurationError(`Missing key split for sid [${item.sid || ''}]`);
+        throw new ConfigurationError(`Missing key split for sid [${sid}]`);
       }
 
-      const metadata = item.metadata || '';
+      const metadataField = item.metadata || '';
       const metadataStr = (
-        typeof metadata === 'object'
-          ? JSON.stringify(metadata)
-          : typeof metadata === 'string'
-            ? metadata
+        typeof metadataField === 'object'
+          ? JSON.stringify(metadataField)
+          : typeof metadataField === 'string'
+            ? metadataField
             : () => {
                 throw new ConfigurationError(
                   "KAO generation failure: metadata isn't a string or object"
                 );
               }
       ) as string;
+      const metadataBytes = new TextEncoder().encode(metadataStr);
 
-      const metadataBinary = Binary.fromArrayBuffer(
-        toArrayBuffer(new TextEncoder().encode(metadataStr))
-      );
+      let ciphertext: string;
+      let iv: string;
+      if (typeof metadata === 'function') {
+        // One encryptor per split key, so two same-`sid` key access objects
+        // draw distinct IVs from it rather than sharing one.
+        encryptorsByName[sid] ??= await metadata(unwrappedKeySplit, splitIds.length);
+        const result = await encryptorsByName[sid].encrypt(metadataBytes);
+        ciphertext = base64.encodeArrayBuffer(
+          concatUint8([result.iv, result.ciphertext, result.tag])
+        );
+        iv = base64.encodeArrayBuffer(result.iv);
+      } else {
+        const encryptedMetadataResult = await this.encrypt(
+          Binary.fromArrayBuffer(toArrayBuffer(metadataBytes)),
+          unwrappedKeySplit,
+          metadata
+        );
+        ciphertext = base64.encode(encryptedMetadataResult.payload.asString());
+        iv = base64.encode(metadata.asString());
+      }
+      firstMetadataIv ??= iv;
 
-      const encryptedMetadataResult = await this.encrypt(
-        metadataBinary,
-        unwrappedKeySplit,
-        keyInfo.unwrappedKeyIvBinary
-      );
-
-      const encryptedMetadataOb = {
-        ciphertext: base64.encode(encryptedMetadataResult.payload.asString()),
-        iv: base64.encode(keyInfo.unwrappedKeyIvBinary.asString()),
-      };
-
-      const encryptedMetadataStr = JSON.stringify(encryptedMetadataOb);
+      const encryptedMetadataStr = JSON.stringify({ ciphertext, iv });
       const keyAccessObject = await item.write(policy, unwrappedKeySplit, encryptedMetadataStr);
       keyAccessObjects.push(keyAccessObject);
     }
 
-    return keyAccessObjects;
+    return { keyAccessObjects, firstMetadataIv };
   }
 
+  /**
+   * @deprecated Payload IVs now come from the key's `AesGcmEncryptor`, not
+   * from a fresh random draw. Retained so callers compiled against an older release
+   * keep working; do not use its output as a payload IV.
+   */
   async generateIvBinary(): Promise<Binary> {
-    const iv = await this.cipher.generateInitializationVector();
-    return Binary.fromString(hex.decode(iv));
+    const { ivLength } = this.cipher;
+    if (!ivLength) {
+      // Hard coded as part of the cipher object. This should not be reachable.
+      throw new ConfigurationError('uninitialized cipher iv length');
+    }
+    const iv = await this.cryptoService.randomBytes(ivLength);
+    return Binary.fromArrayBuffer(toArrayBuffer(iv));
   }
 
-  async write(policy: Policy, keyInfo: KeyInfo): Promise<EncryptionInformation> {
+  /** @param metadata see {@link getKeyAccessObjects}. */
+  async write(
+    policy: Policy,
+    keyInfo: KeyInfo,
+    metadata: Binary | MetadataEncryptorSource = keyInfo.unwrappedKeyIvBinary
+  ): Promise<EncryptionInformation> {
     const algorithm = this.cipher?.name;
     if (!algorithm) {
       // Hard coded as part of the cipher object. This should not be reachable.
       throw new ConfigurationError('uninitialized cipher type');
     }
-    const keyAccessObjects = await this.getKeyAccessObjects(policy, keyInfo);
+    const { keyAccessObjects, firstMetadataIv } = await this.writeKeyAccessObjects(
+      policy,
+      keyInfo,
+      metadata
+    );
 
     // For now we're only concerned with a single (first) key access object
     const policyForManifest = base64.encode(JSON.stringify(policy));
@@ -165,7 +245,10 @@ export class SplitKey {
       method: {
         algorithm,
         isStreamable: false,
-        iv: base64.encode(keyInfo.unwrappedKeyIvBinary.asString()),
+        // Vestigial: payload segments carry their own IV prefix and each key
+        // access object records its own metadata IV alongside its ciphertext.
+        // Kept equal to the first key access object's for schema compatibility.
+        iv: firstMetadataIv ?? '',
       },
       integrityInformation: {
         rootSignature: {

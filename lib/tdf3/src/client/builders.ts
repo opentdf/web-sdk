@@ -24,6 +24,15 @@ export type Scope = {
   attributeValues?: Value[];
 };
 
+/**
+ * Supplies the symmetric key material for one `encrypt` call, in place of the
+ * freshly generated default.
+ *
+ * Returning the same `KeyInfo` from more than one call is supported: each
+ * stream draws its own random AES-GCM fixed field, so IVs never repeat even
+ * under a repeated key. Note, though, that every TDF sharing a key is
+ * recoverable from any one compromise of it.
+ */
 export type EncryptKeyMiddleware = (...args: unknown[]) => Promise<{
   keyForEncryption: KeyInfo;
   keyForManifest: KeyInfo;
