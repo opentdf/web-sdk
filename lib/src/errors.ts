@@ -57,7 +57,9 @@ export class AttributeValidationError extends ConfigurationError {
 /**
  * Errors that indicate the TDF object is corrupt, invalid, or fails validation or decrypt.
  */
-export class InvalidFileError extends TdfError {}
+export class InvalidFileError extends TdfError {
+  override name = 'InvalidFileError';
+}
 
 /**
  * Indicates a decrypt failure, either due to an incorrect key, corrupt ciphertext, or inappropriate key parameters.

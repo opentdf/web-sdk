@@ -600,4 +600,42 @@ describe('encrypt decrypt test', function () {
     const { value: decryptedText } = await decryptStream.stream.getReader().read();
     assert.equal(new TextDecoder().decode(decryptedText), expectedVal);
   });
+
+  it('rejects a zero window size instead of hanging', async function () {
+    const cipher = new AesGcmCipher(WebCryptoService);
+    const encryptionInformation = new SplitKey(cipher);
+    const key = await encryptionInformation.generateKey();
+    const client = new Client.Client({
+      kasEndpoint: kasUrl,
+      platformUrl: kasUrl,
+      dpopKeys: Mocks.entityKeyPair(),
+      clientId: 'id',
+      authProvider,
+    });
+
+    // `windowSize: 0` used to spin forever in the segmentation loop, which
+    // never accumulates enough bytes to emit a zero-length segment. The
+    // destructuring default in `Client.encrypt` only fires on `undefined`, so
+    // zero reaches the writer.
+    try {
+      await client.encrypt({
+        metadata: Mocks.getMetadataObject(),
+        wrappingKeyAlgorithm: 'rsa:2048',
+        offline: true,
+        scope: { dissem: ['user@domain.com'], attributes: [] },
+        keyMiddleware: () => Promise.resolve({ keyForEncryption: key, keyForManifest: key }),
+        windowSize: 0,
+        source: new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode(expectedVal));
+            controller.close();
+          },
+        }),
+      });
+      assert.fail('a zero window size should be rejected');
+    } catch (e) {
+      assert.equal((e as Error).name, 'ConfigurationError');
+      assert.match((e as Error).message, /segment size must be a positive integer/);
+    }
+  });
 });
