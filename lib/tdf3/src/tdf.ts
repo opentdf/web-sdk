@@ -638,13 +638,9 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
     throw new ConfigurationError('internal: please use "loadTDFStream" first to load a manifest.');
   }
 
-  // determine default segment size by writing empty buffer
   const { segmentSizeDefault } = cfg;
-  const encryptedBlargh = await cfg.encryptionInformation.encrypt(
-    Binary.fromArrayBuffer(new ArrayBuffer(segmentSizeDefault)),
-    cfg.keyForEncryption.unwrappedKey
-  );
-  const encryptedSegmentSizeDefault = encryptedBlargh.payload.length();
+  const encryptedSegmentSizeDefault =
+    cfg.encryptionInformation.cipher.encryptedPayloadSize(segmentSizeDefault);
 
   // start writing the content
   entryInfos[0].filename = '0.payload';
@@ -866,6 +862,15 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
       cfg.keyForEncryption.unwrappedKey
     );
     const payloadBuffer = new Uint8Array(encryptedResult.payload.asArrayBuffer());
+
+    // Since `CryptoService` is an extension point, double check its output matches the expected size.
+    const expectedSize = cfg.encryptionInformation.cipher.encryptedPayloadSize(chunk.length);
+    if (payloadBuffer.length !== expectedSize) {
+      throw new ConfigurationError(
+        `Cipher [${cfg.encryptionInformation.cipher.name}] produced ${payloadBuffer.length} bytes for a ${chunk.length} byte segment, but reports ${expectedSize}`
+      );
+    }
+
     let hash: string;
     if (isTargetSpecLegacyTDF(cfg.tdfSpecVersion)) {
       const payloadSigStr = await segmentIntegrityVersion422(

@@ -4,8 +4,8 @@ import { assert } from 'chai';
 import { getMocks } from '../mocks/index.js';
 import type { KasPublicKeyAlgorithm } from '../../src/access.js';
 import type { AuthProvider, HttpRequest } from '../../src/auth/auth.js';
-import type { KeyInfo } from '../../tdf3/index.js';
-import { AesGcmCipher, SplitKey, WebCryptoService } from '../../tdf3/index.js';
+import type { CryptoService, KeyInfo } from '../../tdf3/index.js';
+import { AesGcmCipher, Binary, SplitKey, WebCryptoService } from '../../tdf3/index.js';
 import { Client } from '../../tdf3/src/index.js';
 import type {
   AssertionConfig,
@@ -14,9 +14,19 @@ import type {
 } from '../../tdf3/src/assertions.js';
 import { getSystemMetadataAssertionConfig } from '../../tdf3/src/assertions.js';
 import type { Scope } from '../../tdf3/src/client/builders.js';
-import { NetworkError } from '../../src/errors.js';
+import { ConfigurationError, NetworkError } from '../../src/errors.js';
 
 const Mocks = getMocks();
+
+/** Resolve to the error `promise` rejects with, or fail if it resolves. */
+async function rejection(promise: Promise<unknown>): Promise<Error> {
+  try {
+    await promise;
+  } catch (e) {
+    return e as Error;
+  }
+  return assert.fail('expected a rejection');
+}
 
 type SystemMetadata = {
   creation_date: string;
@@ -386,6 +396,65 @@ describe('encrypt decrypt test', function () {
       });
     }
   }
+
+  it('fails the write when the cipher disagrees with its own size arithmetic', async function () {
+    // An injected `CryptoService` whose output length differs from what
+    // `encryptedPayloadSize` predicts would silently desynchronize the
+    // manifest's `encryptedSegmentSizeDefault` from the payload. Truncating
+    // the auth tag by one byte is the cheapest way to produce that mismatch.
+    let segmentsEncrypted = 0;
+    const truncatingCryptoService: CryptoService = new Proxy(WebCryptoService, {
+      get(target, property, receiver) {
+        if (property !== 'encrypt') {
+          return Reflect.get(target, property, receiver) as unknown;
+        }
+        return async (...args: Parameters<CryptoService['encrypt']>) => {
+          const result = await target.encrypt(...args);
+          // Let the metadata and the first two payload segments through, so
+          // the failure lands mid-stream rather than on the first `pull`.
+          if (result.authTag && ++segmentsEncrypted > 3) {
+            const tag = result.authTag.asByteArray();
+            result.authTag = Binary.fromByteArray(tag.slice(0, tag.length - 1));
+          }
+          return result;
+        };
+      },
+    });
+
+    const cipher = new AesGcmCipher(truncatingCryptoService);
+    const encryptionInformation = new SplitKey(cipher);
+    const key = await encryptionInformation.generateKey();
+    const client = new Client.Client({
+      kasEndpoint: kasUrl,
+      platformUrl: kasUrl,
+      dpopKeys: Mocks.entityKeyPair(),
+      clientId: 'id',
+      authProvider,
+      cryptoService: truncatingCryptoService,
+    });
+
+    const encryptedStream = await client.encrypt({
+      metadata: Mocks.getMetadataObject(),
+      wrappingKeyAlgorithm: 'rsa:2048',
+      offline: true,
+      scope: { dissem: ['user@domain.com'], attributes: [] },
+      keyMiddleware: () => Promise.resolve({ keyForEncryption: key, keyForManifest: key }),
+      windowSize: 3,
+      source: new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('123456789012'));
+          controller.close();
+        },
+      }),
+    });
+
+    // Also pins the propagation path: `writeStream` raises this from inside
+    // `pull`, not from `encrypt`.
+    const error = await rejection(encryptedStream.toBuffer());
+    assert.equal(segmentsEncrypted, 4);
+    assert.instanceOf(error, ConfigurationError);
+    assert.match(error.message, /produced 30 bytes for a 3 byte segment, but reports 31$/);
+  });
 
   it('decrypts when the same KAS wraps the same split twice (DSPX-3379)', async function () {
     const cipher = new AesGcmCipher(WebCryptoService);
