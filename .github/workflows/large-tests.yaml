@@ -90,3 +90,51 @@ jobs:
       - run: npm run license-check
       - run: npm run lint
       - run: npm pack
+
+  large-file-roundtrip:
+    needs:
+      - cli
+      - lib
+    runs-on: ubuntu-22.04 # NOTE: Playwright not yet supported on 24.04
+    defaults:
+      run:
+        working-directory: .github/workflows/roundtrip
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 #v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 #v7.0.0
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: './web-app/package-lock.json'
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c #v8.0.1
+        with:
+          name: opentdf-sdk-lib
+          path: lib/
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c #v8.0.1
+        with:
+          name: opentdf-ctl
+          path: cli/
+      - name: Git clone backend
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 #v7.0.1
+        with:
+          path: .github/workflows/roundtrip/platform
+          repository: opentdf/platform
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c #v6.4.0
+        with:
+          go-version-file: .github/workflows/roundtrip/platform/service/go.mod
+          check-latest: false
+          cache-dependency-path: |
+            .github/workflows/roundtrip/platform/lib/fixtures/go.sum
+            .github/workflows/roundtrip/platform/lib/ocrypto/go.sum
+            .github/workflows/roundtrip/platform/protocol/go/go.sum
+            .github/workflows/roundtrip/platform/sdk/go.sum
+            .github/workflows/roundtrip/platform/service/go.sum
+      - name: Allow Go toolchain auto-download
+        # See the matching step in reusable_build-and-test.yaml.
+        run: echo "GOTOOLCHAIN=auto" >> "$GITHUB_ENV"
+      - run: docker compose up -d --wait --wait-timeout 240
+      - env:
+          PLAYWRIGHT_TESTS_TO_RUN: huge
+        run: |-
+          ./wait-and-test.sh platform
