@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.22.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.21.0...sdk-v0.22.0) (2026-10-07)
+
+
+### Features
+
+* **sdk:** default encrypt segment size to 2 MiB (DSPX-4496) ([#1062](https://github.com/opentdf/web-sdk/issues/1062)) ([ba89c8e](https://github.com/opentdf/web-sdk/commit/ba89c8e039dadbeae4d62f430486d929ddaec7c8))
+
+
+### Bug Fixes
+
+* **sdk:** avoid byte-array conversions in TDF3 encryption ([#1065](https://github.com/opentdf/web-sdk/issues/1065)) ([c1d480f](https://github.com/opentdf/web-sdk/commit/c1d480f458b6a62b2a4605d9c63e0c5c5cce22ff))
+* **sdk:** emit RFC 7518 raw ECDSA signatures in JWS (DSPX-3397) ([#987](https://github.com/opentdf/web-sdk/issues/987)) ([aaf46a7](https://github.com/opentdf/web-sdk/commit/aaf46a7d52dcd73bdd01bbb44cc3ba3afd3a8e96))
+* **sdk:** read manifest.json from a TDF archive ([#1042](https://github.com/opentdf/web-sdk/issues/1042)) ([55a0521](https://github.com/opentdf/web-sdk/commit/55a0521b1499b392c75373e11ec5930c6a43f0c7))
+* **sdk:** reject non-positive segment sizes in writeStream (DSPX-4496) ([#1059](https://github.com/opentdf/web-sdk/issues/1059)) ([158ff29](https://github.com/opentdf/web-sdk/commit/158ff2907c6cb876eecc79716e0fb857e216939d))
+* **sdk:** require 12-byte AES-GCM IVs (DSPX-4496) ([#1060](https://github.com/opentdf/web-sdk/issues/1060)) ([cf239ec](https://github.com/opentdf/web-sdk/commit/cf239ec7462db54de78bca2a1b9edba014ce4003))
+* **sdk:** thread wrappingKeyAlgorithm through decrypt rewrap ([#975](https://github.com/opentdf/web-sdk/issues/975)) ([cae9a68](https://github.com/opentdf/web-sdk/commit/cae9a68924926570c2f54a5a4df610f06e3baf1c))
+
 ## [0.21.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.20.0...sdk-v0.21.0) (2026-09-18)
 
 
