@@ -13,6 +13,47 @@ export type DecryptResult = {
 };
 
 /**
+ * How an {@link AesGcmEncryptor} builds its 96-bit IVs.
+ *
+ * - `'deterministic'`: NIST SP 800-38D 8.2.1, a fixed field followed by an
+ *   invocation counter. Distinct by construction for every call.
+ * - `'rbg'`: NIST SP 800-38D 8.2.2, drawn from a random bit generator.
+ *   Distinct with high probability; collision risk grows with the number of
+ *   calls under one key, so such encryptors should report a lower
+ *   {@link AesGcmEncryptor.invocationLimit} (at most 2^26).
+ */
+export type AesGcmIvConstruction = 'deterministic' | 'rbg';
+
+/** One AES-256-GCM encryption, with the IV the encryptor chose for it. */
+export type AesGcmEncryptResult = {
+  /** The 12-byte IV the encryptor generated. Record it; never reuse it. */
+  readonly iv: Uint8Array;
+  /** Ciphertext, the same length as the plaintext, without the tag. */
+  readonly ciphertext: Uint8Array;
+  /** The 16-byte authentication tag. */
+  readonly tag: Uint8Array;
+};
+
+/**
+ * AES-256-GCM encryption under a single key, with IV generation owned by the
+ * encryptor. Callers cannot supply an IV; they only read back the one the
+ * encryptor used. This lets a provider keep IV generation -- and any counter
+ * state it needs -- inside its own module boundary.
+ */
+export type AesGcmEncryptor = {
+  /** How this encryptor builds IVs. Informational; callers do not branch on it. */
+  readonly ivConstruction: AesGcmIvConstruction;
+  /**
+   * Maximum number of {@link encrypt} calls this encryptor permits, counting
+   * attempts rather than successes: a call that fails still spends its IV.
+   * Must be a positive integer no greater than 2^32.
+   */
+  readonly invocationLimit: number;
+  /** Encrypt `plaintext` under a fresh IV, with no additional authenticated data. */
+  encrypt: (plaintext: Uint8Array) => Promise<AesGcmEncryptResult>;
+};
+
+/**
  * PEM formatted keypair.
  * Used for import/export compatibility. Internal code should use KeyPair (opaque keys).
  */
@@ -499,6 +540,20 @@ export type CryptoService = {
    * @throws ConfigurationError if not supported by the implementation
    */
   mergeSymmetricKeys: (shares: SymmetricKey[]) => Promise<SymmetricKey>;
+
+  /**
+   * Create an AES-256-GCM encryptor bound to `key` that generates its own IVs.
+   *
+   * The TDF writer uses this for payload segments and key access object
+   * metadata, and never supplies an IV of its own. Each call must return an
+   * encryptor with independent IV state: two encryptors for the same key must
+   * not repeat each other's IVs.
+   *
+   * Optional so that implementations predating it keep compiling. Without it,
+   * the writer falls back to building deterministic IVs itself and passing
+   * them to {@link encrypt}, which keeps IVs unique but outside the provider.
+   */
+  createAesGcmEncryptor?: (key: SymmetricKey) => Promise<AesGcmEncryptor>;
 
   // === Optional post-quantum capability (ML-KEM, NIST FIPS 203) ===
   //
