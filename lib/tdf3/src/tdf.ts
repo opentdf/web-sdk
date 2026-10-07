@@ -585,6 +585,14 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
       `unsupported segment integrity algorithm [${String(cfg.segmentIntegrityAlgorithm)}]`
     );
   }
+  // `client.encrypt` forwards `windowSize` here unchecked. Zero would loop
+  // forever accumulating an empty segment; a fractional or negative size would
+  // write a manifest whose declared segment sizes no reader can follow.
+  if (!Number.isInteger(cfg.segmentSizeDefault) || cfg.segmentSizeDefault <= 0) {
+    throw new ConfigurationError(
+      `segment size must be a positive integer; got [${cfg.segmentSizeDefault}]`
+    );
+  }
 
   // The guards above are deliberately case-insensitive, so callers may pass user
   // input straight through. Manifests, however, are read back by strict parsers --
