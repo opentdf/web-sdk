@@ -34,6 +34,7 @@ import type { AssertionConfig, AssertionKey, AssertionVerificationKeys } from '.
 import * as assertions from './assertions.js';
 import { Binary } from './binary.js';
 import { AesGcmCipher } from './ciphers/aes-gcm-cipher.js';
+import { createAesGcmEncryptorFor } from './ciphers/aes-gcm-encryptor.js';
 import type { SymmetricCipher } from './ciphers/symmetric-cipher-base.js';
 import type { DecryptParams } from './client/builders.js';
 import { DecoratedReadableStream } from './client/DecoratedReadableStream.js';
@@ -56,6 +57,7 @@ import type {
   SplitKey,
   KeyAccess,
   KeyAccessObject,
+  MetadataEncryptorSource,
   SplitType,
 } from './models/index.js';
 import { ECWrapped, MLKEM_CT_SIZES, MlKemWrapped, Wrapped } from './models/index.js';
@@ -437,6 +439,7 @@ async function _generateManifest(
   keyInfo: KeyInfo,
   encryptionInformation: SplitKey,
   policy: Policy,
+  metadata: MetadataEncryptorSource,
   mimeType?: string,
   targetSpecVersion?: string
 ): Promise<Manifest> {
@@ -449,7 +452,7 @@ async function _generateManifest(
     ...(mimeType && { mimeType }),
   };
 
-  const encryptionInformationStr = await encryptionInformation.write(policy, keyInfo);
+  const encryptionInformationStr = await encryptionInformation.write(policy, keyInfo, metadata);
   const assertions: assertions.Assertion[] = [];
   const partial = {
     payload,
@@ -623,12 +626,28 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
   let fileByteCount = 0;
   let aggregateHash422 = '';
   const segmentHashList: Uint8Array[] = [];
+  // Every AES-GCM call below goes through an encryptor that chooses its own
+  // IVs; the writer only records them. A provider without encryptors gets a
+  // deterministic SDK-side one, with a fresh random fixed field per encryptor
+  // because `keyMiddleware` lets a caller reuse a `KeyInfo` across encrypts.
+  const encryptorCryptoService = cfg.encryptionInformation.cryptoService;
+  const payloadEncryptor = await createAesGcmEncryptorFor(
+    encryptorCryptoService,
+    cfg.keyForEncryption.unwrappedKey
+  );
 
   const zipWriter = new ZipWriter();
   const manifest = await _generateManifest(
     cfg.keyForManifest,
     cfg.encryptionInformation,
     cfg.policy,
+    // A single split share is the whole key, so when the manifest and payload
+    // keys match, metadata is just the payload encryptor's first call -- one
+    // IV sequence per key, not two. Otherwise each split key gets its own.
+    (splitKey, splitCount) =>
+      splitCount === 1 && cfg.keyForManifest.unwrappedKey === cfg.keyForEncryption.unwrappedKey
+        ? Promise.resolve(payloadEncryptor)
+        : createAesGcmEncryptorFor(encryptorCryptoService, splitKey),
     cfg.mimeType,
     cfg.tdfSpecVersion
   );
@@ -861,12 +880,9 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
     bytesProcessed += chunk.length;
     cfg.progressHandler?.(bytesProcessed);
 
-    // Don't pass in an IV here. The encrypt function will generate one for you, ensuring that each segment has a unique IV.
-    const encryptedResult = await cfg.encryptionInformation.encrypt(
-      Binary.fromArrayBuffer(toArrayBuffer(chunk)),
-      cfg.keyForEncryption.unwrappedKey
-    );
-    const payloadBuffer = new Uint8Array(encryptedResult.payload.asArrayBuffer());
+    const { iv, ciphertext, tag } = await payloadEncryptor.encrypt(chunk);
+    const payloadBuffer = concatUint8([iv, ciphertext, tag]);
+    const payloadBinary = Binary.fromArrayBuffer(toArrayBuffer(payloadBuffer));
 
     // Tripwire for a `encryptedPayloadSize` that disagrees with the cipher it
     // describes -- an injected `CryptoService` using a shorter auth tag, say.
@@ -883,7 +899,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
     let hash: string;
     if (isTargetSpecLegacyTDF(cfg.tdfSpecVersion)) {
       const payloadSigStr = await segmentIntegrityVersion422(
-        encryptedResult.payload,
+        payloadBinary,
         cfg.keyForEncryption.unwrappedKey,
         segmentIntegrityAlgorithm,
         cfg.cryptoService
@@ -909,11 +925,9 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
       encryptedSegmentSize:
         payloadBuffer.length === encryptedSegmentSizeDefault ? undefined : payloadBuffer.length,
     });
-    // Keep emitted chunks independent of the crypto service's payload buffer.
-    const result = payloadBuffer.slice();
-    _countChunk(result);
+    _countChunk(payloadBuffer);
 
-    return result;
+    return payloadBuffer;
   }
 }
 
