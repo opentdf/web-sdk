@@ -12,9 +12,11 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-// The file sink uses StreamSaver, which on WebKit buffers the whole output as
-// a Blob; Playwright's WebKit cancels multi-GiB downloads made that way.
-test.skip(({ browserName }) => browserName === 'webkit', 'StreamSaver buffers in memory on WebKit');
+// Chromium only for now. The file sink uses StreamSaver, which on WebKit
+// buffers the whole output as a Blob, and Playwright's WebKit cancels
+// multi-GiB downloads made that way. Firefox passes at 3 GiB but took the CI
+// runner down at 4 GiB; restoring it is tracked in DSPX-5084.
+test.skip(({ browserName }) => browserName !== 'chromium', 'Chromium only; see DSPX-5084');
 
 const GiB = 2 ** 30;
 
