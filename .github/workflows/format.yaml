@@ -24,7 +24,7 @@ jobs:
       - name: Commit changes
         id: auto-commit
         if: ${{ github.event.pull_request.head.repo.full_name == 'opentdf/web-sdk' }}
-        uses: stefanzweifel/git-auto-commit-action@e348103e9026cc0eee72ae06630dbe30c8bf7a79 #v5.1.0
+        uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d #v7.2.0
         with:
           commit_message: |-
             🤖 🎨 Autoformat
