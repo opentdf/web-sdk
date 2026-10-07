@@ -101,6 +101,14 @@ jobs:
         working-directory: .github/workflows/roundtrip
     timeout-minutes: 120
     steps:
+      - name: Free disk space
+        # The largest case keeps ~5 GiB of ciphertext and ~5 GiB of plaintext
+        # on disk at once, more than the runner leaves free by default.
+        working-directory: /
+        run: |-
+          df -h /
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 #v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 #v7.0.0
         with:
