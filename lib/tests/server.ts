@@ -479,7 +479,7 @@ const kasHandler = async (req: IncomingMessage, res: ServerResponse) => {
             name: 'ECDH',
             namedCurve: 'P-256',
           },
-          false,
+          true,
           ['deriveBits', 'deriveKey']
         );
         const kek = await keyAgreement(sessionKeyPair.privateKey, clientPublicKey!, {
@@ -495,7 +495,15 @@ const kasHandler = async (req: IncomingMessage, res: ServerResponse) => {
         const entityWrappedKey = new Uint8Array(iv.length + cek.byteLength);
         entityWrappedKey.set(iv);
         entityWrappedKey.set(new Uint8Array(cek), iv.length);
+        // The client needs the KAS's ephemeral EC public key to complete its own
+        // ECDH derivation; without this the client can never recompute `kek`.
+        const sessionPublicKeySpki = await crypto.subtle.exportKey(
+          'spki',
+          sessionKeyPair.publicKey
+        );
+        const sessionPublicKey = formatAsPem(sessionPublicKeySpki, 'PUBLIC KEY');
         const reply = create(RewrapResponseSchema, {
+          sessionPublicKey,
           responses: [
             create(PolicyRewrapResultSchema, {
               results: [
