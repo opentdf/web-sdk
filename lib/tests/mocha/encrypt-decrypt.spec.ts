@@ -434,6 +434,48 @@ describe('encrypt decrypt test', function () {
     assert.equal(new TextDecoder().decode(decryptedText), expectedVal);
   });
 
+  it('writes 2 MiB segments when no window size is given', async function () {
+    const cipher = new AesGcmCipher(WebCryptoService);
+    const encryptionInformation = new SplitKey(cipher);
+    const key = await encryptionInformation.generateKey();
+    const client = new Client.Client({
+      kasEndpoint: kasUrl,
+      platformUrl: kasUrl,
+      allowedKases: [kasUrl],
+      dpopKeys: Mocks.entityKeyPair(),
+      clientId: 'id',
+      authProvider,
+    });
+
+    const encryptedStream = await client.encrypt({
+      metadata: Mocks.getMetadataObject(),
+      wrappingKeyAlgorithm: 'rsa:2048',
+      offline: true,
+      scope: { dissem: ['user@domain.com'], attributes: [] },
+      keyMiddleware: () => Promise.resolve({ keyForEncryption: key, keyForManifest: key }),
+      source: new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode(expectedVal));
+          controller.close();
+        },
+      }),
+    });
+    const encryptedTdf = await encryptedStream.toBuffer();
+
+    // Matches the default segment size of the other SDKs.
+    const { segmentSizeDefault, encryptedSegmentSizeDefault } =
+      encryptedStream.manifest.encryptionInformation.integrityInformation;
+    assert.equal(segmentSizeDefault, 2 * 1024 * 1024);
+    // 12 byte IV + segment + 16 byte tag.
+    assert.equal(encryptedSegmentSizeDefault, 2 * 1024 * 1024 + 28);
+
+    const decryptStream = await client.decrypt({
+      source: { type: 'buffer', location: encryptedTdf },
+      wrappingKeyAlgorithm: 'rsa:2048',
+    });
+    assert.equal(new TextDecoder().decode(await decryptStream.toBuffer()), expectedVal);
+  });
+
   it('decrypt signs the rewrap request token with EC dpop keys (ES256)', async function () {
     // Regression for DSPX-3397: the rewrap request token was always signed with
     // RS256, which made WebCrypto reject EC dpop keys ("Unable to use this key to

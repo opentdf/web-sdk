@@ -125,7 +125,7 @@ export type CreateZTDFOptions = CreateOptions & {
 
   /**
    * The segment size for the content; smaller is slower, but allows faster random access.
-   * The current default is 1 MiB (2^20 bytes).
+   * The current default is 2 MiB (2^21 bytes).
    */
   windowSize?: number;
 
