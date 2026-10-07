@@ -3,6 +3,7 @@ import { Algorithms } from './algorithms.js';
 import { SymmetricCipher } from './symmetric-cipher-base.js';
 import { decryptBufferSource } from '../crypto/core/symmetric.js';
 import { concatUint8, toArrayBuffer, toCryptoBytes } from '../utils/index.js';
+import { ConfigurationError } from '../../../src/errors.js';
 
 import {
   type CryptoService,
@@ -45,6 +46,14 @@ export class AesGcmCipher extends SymmetricCipher {
    * it's parts.  There is no need to process the payload.
    */
   override async encrypt(payload: Binary, key: SymmetricKey, iv: Binary): Promise<EncryptResult> {
+    // The reader (`processGcmPayload`) assumes a 12-byte IV prefix. Any other
+    // length would write a TDF that cannot be parsed back, so refuse here
+    // rather than emit the damage.
+    if (iv.length() !== IV_LENGTH) {
+      throw new ConfigurationError(
+        `Invalid AES-GCM IV length: ${iv.length()}; must be exactly ${IV_LENGTH} bytes`
+      );
+    }
     const toConcat: Uint8Array[] = [];
     const result = await this.cryptoService.encrypt(payload, key, iv, Algorithms.AES_256_GCM);
     toConcat.push(new Uint8Array(iv.asArrayBuffer()));
@@ -57,16 +66,13 @@ export class AesGcmCipher extends SymmetricCipher {
   }
 
   /**
-   * Encrypts the payload using AES w/ CBC mode
-   * @returns
+   * Decrypts one `encrypt` output. The IV comes from the buffer's own 12-byte
+   * prefix, so the base class's optional `iv` argument is not accepted here.
    */
-
   override async decrypt(
     buffer: ArrayBuffer | Uint8Array,
-    key: SymmetricKey,
-    _iv?: Binary
+    key: SymmetricKey
   ): Promise<DecryptResult> {
-    void _iv;
     const input = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
 
     if (this.cryptoService.name === 'BrowserNativeCryptoService') {
