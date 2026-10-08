@@ -7,6 +7,7 @@ import {
 } from '../crypto/declarations.js';
 import { encodeArrayBuffer as hexEncode } from '../../../src/encodings/hex.js';
 import { toArrayBuffer } from '../utils/index.js';
+import { ConfigurationError } from '../../../src/errors.js';
 
 export abstract class SymmetricCipher {
   cryptoService: CryptoService;
@@ -34,6 +35,19 @@ export abstract class SymmetricCipher {
       throw Error('No key length');
     }
     return this.cryptoService.generateKey(this.keyLength);
+  }
+
+  /**
+   * Exact number of bytes {@link encrypt} returns for `plaintextSize` bytes of input.
+   *
+   * Concrete rather than `abstract` so duck-typed ciphers written against
+   * prior releases satisfy this class structurally.
+   */
+  encryptedPayloadSize(plaintextSize: number): number {
+    void plaintextSize;
+    throw new ConfigurationError(
+      `Cipher [${this.name}] does not implement encryptedPayloadSize; it cannot be used to write a TDF`
+    );
   }
 
   abstract encrypt(payload: Binary, key: SymmetricKey, iv: Binary): Promise<EncryptResult>;
