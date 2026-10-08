@@ -8,6 +8,12 @@ on:
   release:
     types:
       - created
+  workflow_dispatch:
+    inputs:
+      release-tag:
+        description: "Existing SDK release tag to publish (e.g. sdk-v0.22.0)"
+        required: true
+        type: string
 
 # Default empty permissions for all jobs
 permissions: {}
@@ -19,3 +25,5 @@ jobs:
       id-token: write
       packages: write
     uses: opentdf/web-sdk/.github/workflows/reusable_deliver.yaml@main
+    with:
+      release-tag: ${{ inputs.release-tag || '' }}
