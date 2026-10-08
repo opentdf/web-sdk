@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.22.0...sdk-v0.23.0) (2026-10-08)
+
+
+### Bug Fixes
+
+* **ci:** resume partial package releases ([#1073](https://github.com/opentdf/web-sdk/issues/1073)) ([e52ac7b](https://github.com/opentdf/web-sdk/commit/e52ac7bb2409bf0e9935e94f50cc6d6ad4a73e51))
+
 ## [0.22.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.21.0...sdk-v0.22.0) (2026-10-07)
 
 
