@@ -24,6 +24,7 @@ import {
   DecryptError,
   InvalidFileError,
   IntegrityError,
+  IvExhaustionError,
   NetworkError,
   UnsafeUrlError,
   UnsupportedFeatureError as UnsupportedError,
@@ -113,6 +114,34 @@ export function manifestEntryName(centralDirectory: CentralDirectory[]): string 
 }
 
 const HEX_SEMVER_VERSION = '4.2.2';
+
+/**
+ * Most payload segments a writer may encrypt under one data encryption key.
+ *
+ * Each segment is one AES-GCM invocation with a random 96-bit IV. For k
+ * invocations the birthday bound gives a collision probability of about
+ * k^2 / 2^97, and NIST SP 800-38D §8 caps that at 2^-32, i.e. k <= ~2^32.5.
+ * Invocation 0 is reserved for the key access metadata, which leaves
+ * 2^32 - 1 for the payload and keeps the total at or below 2^32.
+ */
+export const MAX_PAYLOAD_SEGMENTS_PER_KEY = 2 ** 32 - 1;
+
+/**
+ * Checks there is room for one more payload segment encryption under the
+ * current key, given how many have already been attempted (failed attempts
+ * included). Throws {@link IvExhaustionError} before the segment that would
+ * exceed {@link MAX_PAYLOAD_SEGMENTS_PER_KEY} is encrypted.
+ *
+ * @returns the attempt count including this segment.
+ */
+export function reservePayloadSegment(attempted: number): number {
+  if (attempted >= MAX_PAYLOAD_SEGMENTS_PER_KEY) {
+    throw new IvExhaustionError(
+      `AES-GCM IV space exhausted: refusing to encrypt more than ${MAX_PAYLOAD_SEGMENTS_PER_KEY} segments under one key, as the IV collision risk would exceed 2^-32; use a larger segment size or split the input`
+    );
+  }
+  return attempted + 1;
+}
 const LEGACY_SEGMENTS_PER_DOWNLOAD = 500;
 const LEGACY_MAX_CONCURRENT_SEGMENT_BATCHES = 3;
 const DEFAULT_BOUND_SEGMENT_BATCH_SIZE = LEGACY_SEGMENTS_PER_DOWNLOAD;
@@ -624,6 +653,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
   let bytesProcessed = 0;
   let crcCounter = 0;
   let fileByteCount = 0;
+  let segmentEncryptAttempts = 0;
   let aggregateHash422 = '';
   const segmentHashList: Uint8Array[] = [];
 
@@ -856,6 +886,8 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
   }
 
   async function _encryptAndCountSegment(chunk: Uint8Array) {
+    // Count the attempt before encrypting, so failed attempts still use up the budget.
+    segmentEncryptAttempts = reservePayloadSegment(segmentEncryptAttempts);
     bytesProcessed += chunk.length;
     cfg.progressHandler?.(bytesProcessed);
 
