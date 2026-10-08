@@ -5,7 +5,12 @@ import type { KeyAccessObject } from '../../../tdf3/src/models/key-access.js';
 import type { PolicyBody } from '../../../tdf3/src/models/policy.js';
 import { type Policy } from '../../../tdf3/src/models/policy.js';
 import { OriginAllowList } from '../../../src/access.js';
-import { ConfigurationError, InvalidFileError, UnsafeUrlError } from '../../../src/errors.js';
+import {
+  ConfigurationError,
+  InvalidFileError,
+  IvExhaustionError,
+  UnsafeUrlError,
+} from '../../../src/errors.js';
 import { getMocks } from '../../mocks/index.js';
 import * as DefaultCryptoService from '../../../tdf3/src/crypto/index.js';
 import type { CryptoService } from '../../../tdf3/src/crypto/declarations.js';
@@ -363,5 +368,37 @@ describe('splitLookupTableFactory', () => {
     expect(result).to.deep.equal({
       '': [keyAccess[0]],
     });
+  });
+});
+
+describe('AES-GCM payload segment budget', () => {
+  it('caps payload segments at 2^32 - 1 per key', () => {
+    expect(TDF.MAX_PAYLOAD_SEGMENTS_PER_KEY).to.equal(2 ** 32 - 1);
+    // Plus invocation 0 for metadata, total invocations stay within 2^32,
+    // which keeps the random-IV collision bound k^2 / 2^97 at or below 2^-32.
+    const k = TDF.MAX_PAYLOAD_SEGMENTS_PER_KEY + 1;
+    expect(Math.log2(k) * 2 - 97).to.be.at.most(-32);
+  });
+
+  it('counts each reservation', () => {
+    expect(TDF.reservePayloadSegment(0)).to.equal(1);
+    expect(TDF.reservePayloadSegment(41)).to.equal(42);
+  });
+
+  it('allows the last segment under the cap', () => {
+    expect(TDF.reservePayloadSegment(TDF.MAX_PAYLOAD_SEGMENTS_PER_KEY - 1)).to.equal(
+      TDF.MAX_PAYLOAD_SEGMENTS_PER_KEY
+    );
+  });
+
+  it('throws IvExhaustionError before the segment that would exceed the cap', () => {
+    for (const attempted of [
+      TDF.MAX_PAYLOAD_SEGMENTS_PER_KEY,
+      TDF.MAX_PAYLOAD_SEGMENTS_PER_KEY + 1,
+    ]) {
+      expect(() => TDF.reservePayloadSegment(attempted))
+        .to.throw(IvExhaustionError, /AES-GCM IV space exhausted/)
+        .with.property('name', 'IvExhaustionError');
+    }
   });
 });
