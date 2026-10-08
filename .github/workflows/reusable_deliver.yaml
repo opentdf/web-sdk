@@ -8,6 +8,7 @@ on:
         default: ""
 
 env:
+  CHECKOUT_REF: ${{ inputs.release-tag && format('refs/tags/{0}', inputs.release-tag) || github.sha }}
   PUBLISH_REF: ${{ inputs.release-tag && format('refs/tags/{0}', inputs.release-tag) || github.ref }}
 
 # Default empty permissions for all jobs
@@ -21,11 +22,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: "Validate release tag"
+        if: ${{ inputs.release-tag != '' }}
+        env:
+          RELEASE_TAG: ${{ inputs.release-tag }}
+        run: |
+          if [[ ! $RELEASE_TAG =~ ^sdk[-/]v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::release-tag must look like sdk-v1.2.3, got [$RELEASE_TAG]"
+            exit 1
+          fi
+
       - name: "Checkout repo"
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          ref: ${{ inputs.release-tag || github.sha }}
+          ref: ${{ env.CHECKOUT_REF }}
 
       - name: "Use current publisher for release retry"
         if: ${{ inputs.release-tag != '' }}
@@ -42,7 +53,6 @@ jobs:
           registry-url: https://npm.pkg.github.com
 
       - name: "Check version number is same between tag, library, and/or release"
-        id: check-version
         run: |
           scripts/check-version-is.sh "$PUBLISH_REF"
 
@@ -97,11 +107,21 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest
     steps:
+      - name: "Validate release tag"
+        if: ${{ inputs.release-tag != '' }}
+        env:
+          RELEASE_TAG: ${{ inputs.release-tag }}
+        run: |
+          if [[ ! $RELEASE_TAG =~ ^sdk[-/]v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::release-tag must look like sdk-v1.2.3, got [$RELEASE_TAG]"
+            exit 1
+          fi
+
       - name: "Checkout repo"
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          ref: ${{ inputs.release-tag || github.sha }}
+          ref: ${{ env.CHECKOUT_REF }}
 
       - name: "Use current publisher for release retry"
         if: ${{ inputs.release-tag != '' }}
@@ -116,6 +136,10 @@ jobs:
         with:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
+
+      - name: "Check version number is same between tag, library, and/or release"
+        run: |
+          scripts/check-version-is.sh "$PUBLISH_REF"
 
       - name: "Run: make all"
         run: |
