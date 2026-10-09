@@ -389,54 +389,120 @@ describe('zip utilities', () => {
 });
 
 describe('reader', () => {
-  it('fails on bad manifest size', async () => {
+  // There is deliberately no fixed manifest size cap (DSPX-4502, DSPX-4651);
+  // a declared size that the archive cannot back is still rejected.
+  it('rejects a manifest declared larger than the archive', async () => {
+    const zipFile = buildZip(
+      [{ name: '0.manifest.json', data: manifestBytes({ payload: { type: 'reference' } }) }],
+      {
+        zip64: false,
+        mapCentralDirectoryRecord: (record) => {
+          // 20 - compressed size, 24 - uncompressed size
+          setU32(record, 20, 1024 * 1024 * 128);
+          setU32(record, 24, 1024 * 1024 * 128);
+          return record;
+        },
+      }
+    );
+    const message = await expectInvalidFile(
+      () => new ZipReader(fromBuffer(zipFile)).getCentralDirectory(),
+      'manifest larger than archive'
+    );
+    expect(message).to.contain('0.manifest.json');
+    expect(message).to.contain('extends past the start of the central directory');
+  });
+
+  it('rejects a declared manifest size the source cannot supply', async () => {
     const reader = new ZipReader(() => Promise.resolve(new Uint8Array([])));
     const fileName = '0.manifest.json';
-    try {
-      expect(
-        await reader.getManifest(
+    const message = await expectInvalidFile(
+      () =>
+        reader.getManifest(
           [
             {
               fileName,
               relativeOffsetOfLocalHeader: 0,
               headerLength: 1024,
-              uncompressedSize: 1024 * 1024 * 128,
+              uncompressedSize: 2 ** 31,
             } as CentralDirectory,
           ],
           fileName
-        )
-      ).to.be.undefined;
-    } catch (e) {
-      expect(e).to.be.instanceOf(Error);
-      if (e instanceof Error) expect(e.message).to.contain('too large');
-    }
+        ),
+      'short manifest read'
+    );
+    expect(message).to.contain(`manifest [${fileName}] truncated`);
+    expect(message).to.contain('read [0]');
   });
 
-  // DSPX-4591 finding 4: `>>` coerces to signed 32 bits, so 2 GiB used to be
-  // reported as a negative number of KiB.
-  it('reports oversized manifests without 32 bit wraparound', async () => {
-    const reader = new ZipReader(() => Promise.resolve(new Uint8Array([])));
+  it('reports a declared manifest size that cannot be allocated', async () => {
+    const reader = new ZipReader(() =>
+      Promise.reject(new RangeError('Array buffer allocation failed'))
+    );
     const fileName = '0.manifest.json';
-    let message = '';
+    const message = await expectInvalidFile(
+      () =>
+        reader.getManifest(
+          [
+            {
+              fileName,
+              relativeOffsetOfLocalHeader: 0,
+              headerLength: 1024,
+              uncompressedSize: 2 ** 31,
+            } as CentralDirectory,
+          ],
+          fileName
+        ),
+      'allocation failure'
+    );
+    expect(message).to.contain(`manifest [${fileName}]: unable to allocate [${2 ** 31}] bytes`);
+  });
+
+  // DSPX-5202: engines cap string length (about 512 MiB in V8), so decoding a
+  // larger manifest throws. Stubbed so the test does not allocate that much.
+  it('reports a manifest too large to decode, not as invalid JSON', async () => {
+    const reader = new ZipReader(
+      fromBuffer(
+        buildZip(
+          [{ name: '0.manifest.json', data: manifestBytes({ payload: { type: 'reference' } }) }],
+          { zip64: false }
+        )
+      )
+    );
+    const centralDirectory = await reader.getCentralDirectory();
+    const decode = sinon
+      .stub(TextDecoder.prototype, 'decode')
+      .throws(new RangeError('Invalid string length'));
+    let message: string;
     try {
-      await reader.getManifest(
-        [
-          {
-            fileName,
-            relativeOffsetOfLocalHeader: 0,
-            headerLength: 1024,
-            uncompressedSize: 2 ** 31,
-          } as CentralDirectory,
-        ],
-        fileName
+      message = await expectInvalidFile(
+        () => reader.getManifest(centralDirectory, '0.manifest.json'),
+        'manifest decode failure'
       );
-      expect.fail('expected an oversized manifest to be rejected');
-    } catch (e) {
-      message = messageOf(e);
+    } finally {
+      decode.restore();
     }
-    expect(message).to.contain('too large');
-    expect(message).to.not.contain('-');
-    expect(message).to.contain((2 ** 21).toLocaleString());
+    expect(message).to.contain('too large to decode');
+    expect(message).to.not.contain('not valid JSON');
+  });
+
+  it('reads a manifest larger than the former 10 MiB cap', async () => {
+    const padLength = 10 * 1024 * 1024 + 1;
+    const manifest = { payload: { type: 'reference' }, pad: 'x'.repeat(padLength) };
+    const reader = new ZipReader(
+      fromBuffer(
+        buildZip([{ name: '0.manifest.json', data: manifestBytes(manifest) }], { zip64: false })
+      )
+    );
+    const centralDirectory = await reader.getCentralDirectory();
+    expect(centralDirectory[0].uncompressedSize).to.be.greaterThan(10 * 1024 * 1024);
+    // Compare piecewise so a failure does not diff a 10 MiB string.
+    const { pad, ...rest } = (await reader.getManifest(
+      centralDirectory,
+      '0.manifest.json'
+    )) as unknown as typeof manifest;
+    expect(rest).to.eql({ payload: { type: 'reference' } });
+    expect(pad.length).to.equal(padLength);
+    expect(pad === manifest.pad, 'pad round-trips').to.be.true;
   });
 
   describe('getCentralDirectory', () => {
@@ -993,8 +1059,8 @@ describe('reader', () => {
         zip64: false,
         mapCentralDirectoryRecord: (record, i) => {
           if (i === 0) {
-            // 20 - compressed size, 24 - uncompressed size; still under the
-            // manifest size limit.
+            // 20 - compressed size, 24 - uncompressed size; runs past the
+            // start of the central directory.
             setU32(record, 20, 1024 * 1024);
             setU32(record, 24, 1024 * 1024);
           }

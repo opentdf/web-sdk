@@ -106,10 +106,10 @@ export const manifestEntryNameToWrite: string = offspecManifestFileName;
  * carries it, otherwise the name this SDK writes.
  *
  * Resolving against the central directory rather than against a failed read keeps
- * other failures honest: an oversized manifest under the spec name stays a size
- * error instead of silently yielding a non-aligned entry. The cost of preferring
- * the spec name is that an archive carrying both entries resolves to the spec
- * one even when this SDK wrote the other — see the PR discussion of appended
+ * other failures honest: an out-of-bounds or truncated manifest under the spec
+ * name stays a read error instead of silently yielding a non-aligned entry. The
+ * cost of preferring the spec name is that an archive carrying both entries
+ * resolves to the spec one even when this SDK wrote the other — see the PR discussion of appended
  * central-directory records.
  */
 export function manifestEntryName(centralDirectory: CentralDirectory[]): string {
