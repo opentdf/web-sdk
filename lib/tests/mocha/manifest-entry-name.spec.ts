@@ -51,7 +51,10 @@ const OFFSPEC_NAME = '0.manifest.json';
 /** What `writeStream` stamps on every entry it writes. */
 const EXTERNAL_FILE_ATTRIBUTES = 2175008768;
 
-/** Comfortably past the reader's 10 MiB manifest ceiling. */
+/**
+ * Far more than the archive holds, so no reader can honour it: the entry must be
+ * rejected on size, whether by a manifest ceiling or by the bounds checks.
+ */
 const OVERSIZED = 1024 * 1024 * 128;
 
 /**
@@ -324,10 +327,11 @@ describe('manifest entry name (platform#3513)', function () {
    * manifest here and swallow the size error entirely.
    */
   describe('an oversized spec-named entry shadowing a valid non-aligned one', function () {
+    let entries: ArchiveEntry[];
     let shadowed: Uint8Array;
 
     beforeEach(async function () {
-      const entries = await entriesOf(
+      entries = await entriesOf(
         await renameManifestEntry(await encryptToBuffer(client), OFFSPEC_NAME)
       );
       shadowed = buildArchive(entries, [
@@ -339,25 +343,34 @@ describe('manifest entry name (platform#3513)', function () {
       ]);
     });
 
-    it('is a fixture carrying both names, the non-aligned one readable', async function () {
-      assert.deepEqual(await fileNamesOf(shadowed), ['0.payload', OFFSPEC_NAME, SPEC_NAME]);
-      const centralDirectory = await centralDirectoryOf(shadowed);
-      const reader = new ZipReader(fromBuffer(shadowed));
-      const manifest = await reader.getManifest(centralDirectory, OFFSPEC_NAME);
+    it('is a fixture whose non-aligned manifest is readable without the shadow', async function () {
+      const unshadowed = buildArchive(entries);
+      assert.deepEqual(await fileNamesOf(unshadowed), ['0.payload', OFFSPEC_NAME]);
+      const manifest = await new ZipReader(fromBuffer(unshadowed)).getManifest(
+        await centralDirectoryOf(unshadowed),
+        OFFSPEC_NAME
+      );
       assert.isString(manifest.encryptionInformation.policy);
+    });
+
+    // The oversized entry runs past the start of the central directory, so the
+    // reader rejects it while reading the central directory, before any name is
+    // resolved. Either way, the error names the spec entry, not the fallback.
+    it('rejects the oversized spec-named entry', async function () {
+      await assertRejects(centralDirectoryOf(shadowed), `entry [${SPEC_NAME}]`);
     });
 
     it('fails the decrypt on size rather than falling back', async function () {
       await assertRejects(
         client.decrypt({ source: { type: 'buffer', location: shadowed } }),
-        'too large'
+        `entry [${SPEC_NAME}]`
       );
     });
 
     it('fails getPolicyId on size rather than falling back', async function () {
       await assertRejects(
         client.getPolicyId({ source: { type: 'buffer', location: shadowed } }),
-        'too large'
+        `entry [${SPEC_NAME}]`
       );
     });
   });
