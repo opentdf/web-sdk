@@ -24,6 +24,25 @@ export type Scope = {
   attributeValues?: Value[];
 };
 
+/**
+ * Supplies the payload key for a single `encrypt` call. Called once per TDF.
+ *
+ * Every call MUST return a newly generated, random key, never one that was
+ * cached, derived deterministically, or returned for a previous TDF. Reusing
+ * a payload key across TDFs:
+ * - lets anyone authorized to open one TDF decrypt every other TDF sharing the
+ *   key, regardless of its policy;
+ * - pushes the key past the AES-GCM per-key segment limit, since that limit is
+ *   only enforced within a single `encrypt` call.
+ *
+ * `keyForManifest` is the key split and wrapped into the key access objects;
+ * `keyForEncryption` encrypts and signs the payload. These should normally be
+ * the same key. If they differ, the TDF can only be decrypted with a matching
+ * decrypt `keyMiddleware` that maps one to the other.
+ *
+ * The default (`keyMiddleware` in `tdf3/src/utils`) generates a fresh key each
+ * call; prefer it unless you need custom key handling.
+ */
 export type EncryptKeyMiddleware = (...args: unknown[]) => Promise<{
   keyForEncryption: KeyInfo;
   keyForManifest: KeyInfo;
@@ -51,6 +70,7 @@ export type EncryptParams = {
   getPolicyId?: () => Scope['policyId'];
   mimeType?: string;
   payloadKey?: Binary;
+  /** Must return a new key on every call; see {@link EncryptKeyMiddleware}. */
   keyMiddleware?: EncryptKeyMiddleware;
   splitPlan?: SplitStep[];
   streamMiddleware?: EncryptStreamMiddleware;
