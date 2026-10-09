@@ -50,8 +50,6 @@ const INITIAL_EOCDR_SEARCH_SIZE = 1024;
  */
 const MAX_CENTRAL_DIRECTORY_SIZE = 16 * 1024 * 1024;
 
-const manifestMaxSize = 1024 * 1024 * 10; // 10 MB
-
 const cp437 =
   '\u0000☺☻♥♦♣♠•◘○◙♂♀♪♫☼►◄↕‼¶§▬↨↑↓→←∟↔▲▼ !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~⌂ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■ ';
 
@@ -287,12 +285,11 @@ export class ZipReader {
     if (!cdObj) {
       throw new InvalidFileError('Unable to retrieve CD manifest');
     }
+    // NOTE(DSPX-4502, DSPX-4651): there is deliberately no fixed manifest size
+    // cap. Very large payloads (up to 50 TiB) have manifests well over 1 GiB. A
+    // hostile declared size is instead caught by readRange: the manifest must end
+    // before the central directory starts, and short reads are rejected.
     const byteStart = cdObj.relativeOffsetOfLocalHeader + cdObj.headerLength;
-    if (cdObj.uncompressedSize > manifestMaxSize) {
-      throw new InvalidFileError(
-        `manifest file too large: ${Math.floor(cdObj.uncompressedSize / 1024).toLocaleString()} KiB`
-      );
-    }
     const byteEnd = byteStart + cdObj.uncompressedSize;
     const manifest = await this.readRange(byteStart, byteEnd, `manifest [${manifestFileName}]`);
 
