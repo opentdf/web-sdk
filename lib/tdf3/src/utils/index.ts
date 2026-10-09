@@ -1,7 +1,7 @@
 import type { KeyInfo } from '../models/index.js';
 import { SplitKey } from '../models/index.js';
 import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
-import { ConfigurationError } from '../../../src/errors.js';
+import { ConfigurationError, InvalidFileError } from '../../../src/errors.js';
 import { type CryptoService } from '../crypto/declarations.js';
 import { decodeArrayBuffer, encodeArrayBuffer } from '../../../src/encodings/base64.js';
 
@@ -43,7 +43,22 @@ export function concatUint8(
   return combinedUint8Array;
 }
 
+/**
+ * Throws unless `[offset, offset + size)` lies within `uint8Array`. Indexing a
+ * typed array out of range yields `undefined`, which bitwise operators silently
+ * coerce to 0, so an unchecked read of a truncated or hostile buffer returns a
+ * plausible-looking number instead of failing.
+ */
+function assertReadable(uint8Array: Uint8Array, offset: number, size: number): void {
+  if (!Number.isSafeInteger(offset) || offset < 0 || offset + size > uint8Array.length) {
+    throw new InvalidFileError(
+      `read of [${size}] bytes at offset [${offset}] is out of bounds for buffer of length [${uint8Array.length}]`
+    );
+  }
+}
+
 export function readUInt32LE(uint8Array: Uint8Array, offset: number): number {
+  assertReadable(uint8Array, offset, 4);
   return (
     (uint8Array[offset] |
       (uint8Array[offset + 1] << 8) |
@@ -54,6 +69,7 @@ export function readUInt32LE(uint8Array: Uint8Array, offset: number): number {
 }
 
 export function readUInt16LE(uint8Array: Uint8Array, offset: number): number {
+  assertReadable(uint8Array, offset, 2);
   return uint8Array[offset] | (uint8Array[offset + 1] << 8);
 }
 
