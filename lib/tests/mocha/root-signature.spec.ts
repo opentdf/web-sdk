@@ -263,6 +263,15 @@ describe('root signature integrity (DSPX-4703)', function () {
       assert.deepEqual(got, plaintext);
     });
 
+    // The reader ignores payload.isEncrypted; that is only safe because writers
+    // never emit false. Pin the writer side of that policy.
+    it('writer always marks the payload as encrypted', async function () {
+      const { buffer, manifest } = await encryptToBuffer(client, plaintext);
+      assert.isTrue(manifest.payload.isEncrypted);
+      const { manifest: stored } = await loadTDFStream(fromBuffer(buffer));
+      assert.isTrue(stored.payload.isEncrypted);
+    });
+
     it('positive: the fixture really is multi-segment', async function () {
       const { manifest } = await encryptToBuffer(client, plaintext);
       assert.lengthOf(integrityInfo(manifest).segments, SEGMENT_COUNT);
