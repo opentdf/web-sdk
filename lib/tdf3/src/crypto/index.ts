@@ -30,6 +30,7 @@ import {
 } from './core/rsa.js';
 import { deriveKeyFromECDH, generateECKeyPair } from './core/ec.js';
 import { generateMlKemKeyPair, mlKemDecapsulate, mlKemEncapsulate } from './core/mlkem.js';
+import { hybridEncapsulate } from './core/hybrid.js';
 import { sign, verify } from './core/signing.js';
 import {
   exportPrivateKeyPem,
@@ -90,6 +91,7 @@ export {
   mergeSymmetricKeys,
   mlKemDecapsulate,
   mlKemEncapsulate,
+  hybridEncapsulate,
   parsePublicKeyPem,
   publicKeyPemToJwk,
   randomBytes,
@@ -126,6 +128,7 @@ export const DefaultCryptoService: CryptoService = {
   mergeSymmetricKeys,
   mlKemDecapsulate,
   mlKemEncapsulate,
+  hybridEncapsulate,
   parsePublicKeyPem,
   randomBytes,
   hmac,
