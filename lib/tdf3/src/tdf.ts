@@ -58,7 +58,13 @@ import type {
   KeyAccessObject,
   SplitType,
 } from './models/index.js';
-import { ECWrapped, MLKEM_CT_SIZES, MlKemWrapped, Wrapped } from './models/index.js';
+import {
+  ECWrapped,
+  MLKEM_CT_SIZES,
+  MlKemWrapped,
+  Wrapped,
+  resolveSpecVersion,
+} from './models/index.js';
 import { unsigned } from './utils/buffer-crc32.js';
 import { ZipReader, ZipWriter, concatUint8, buffToString, toArrayBuffer } from './utils/index.js';
 import type { CentralDirectory } from './utils/zip-reader.js';
@@ -1651,8 +1657,9 @@ export async function decryptStreamFrom(
   const keyForDecryption = await cfg.keyMiddleware(reconstructedKey);
   const encryptedSegmentSizeDefault = defaultSegmentSize || DEFAULT_SEGMENT_SIZE;
 
-  // check if the TDF is a legacy TDF
-  const specVersion = manifest.schemaVersion || manifest.tdf_spec_version || '4.2.2';
+  // check if the TDF is a legacy TDF. See resolveSpecVersion for where the
+  // version is looked for; a manifest that records none is read as 4.2.2.
+  const specVersion = resolveSpecVersion(manifest) || '4.2.2';
   const isLegacyTDF = isTargetSpecLegacyTDF(specVersion);
 
   // Decode each hash and store it in an array of Uint8Array
