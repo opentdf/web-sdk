@@ -98,6 +98,39 @@ describe('zip utilities', () => {
         'UEsHCDcTAAD0AQAAAAAAAPQBAAAAAAAA'
       );
     });
+    // DSPX-4591 finding 3: the record is `signature, crc-32, compressed size,
+    // uncompressed size`. The non-zip64 branch used to write the uncompressed size
+    // into both slots, which only looked right because we always STORE.
+    it('standard, distinct compressed size', () => {
+      const zipWriter = new ZipWriter();
+      zipWriter.zip64 = false;
+      const descriptorBuffer = zipWriter.writeDataDescriptor(0x1337, 500, 321);
+      const view = new DataView(
+        descriptorBuffer.buffer,
+        descriptorBuffer.byteOffset,
+        descriptorBuffer.byteLength
+      );
+      expect(descriptorBuffer.length).to.equal(16);
+      expect(view.getUint32(0, true)).to.equal(0x08074b50);
+      expect(view.getUint32(4, true)).to.equal(0x1337);
+      expect(view.getUint32(8, true)).to.equal(321);
+      expect(view.getUint32(12, true)).to.equal(500);
+    });
+    it('zip64, distinct compressed size', () => {
+      const zipWriter = new ZipWriter();
+      zipWriter.zip64 = true;
+      const descriptorBuffer = zipWriter.writeDataDescriptor(0x1337, 500, 321);
+      const view = new DataView(
+        descriptorBuffer.buffer,
+        descriptorBuffer.byteOffset,
+        descriptorBuffer.byteLength
+      );
+      expect(descriptorBuffer.length).to.equal(24);
+      expect(view.getUint32(0, true)).to.equal(0x08074b50);
+      expect(view.getUint32(4, true)).to.equal(0x1337);
+      expect(view.getBigUint64(8, true)).to.equal(321n);
+      expect(view.getBigUint64(16, true)).to.equal(500n);
+    });
   });
 
   // CHARACTERISTIC TESTS of zip files.
