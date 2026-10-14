@@ -135,6 +135,24 @@ describe('chunkers', () => {
         }).to.throw('404');
       }
     });
+    it('rejects non-integer byte ranges before fetching', async () => {
+      const { fromUrl } = await import('../../../src/seekable.js');
+      const { InvalidFileError } = await import('../../../src/errors.js');
+      const c: Chunker = await fromUrl('http://localhost:3000/file');
+      for (const [start, end] of [
+        [NaN, undefined],
+        [1e21, undefined],
+        [0, 0.5],
+        [0, Infinity],
+      ]) {
+        try {
+          await c(start, end);
+          expect.fail(`expected [${start}, ${end}) to be rejected`);
+        } catch (e) {
+          expect(e).to.be.instanceOf(InvalidFileError);
+        }
+      }
+    });
   });
 });
 
