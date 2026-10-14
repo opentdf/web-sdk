@@ -93,7 +93,7 @@ export class SplitKey {
    * How many AES-GCM invocations {@link getKeyAccessObjects} makes under the
    * payload key itself: one per key access object when there is a single
    * split, since the one share of a single split is the key; none otherwise,
-   * as each split's share is then an independent random key.
+   * as each split's share is then a different, uniformly random key.
    */
   payloadKeyMetadataInvocations(): number {
     return this.splitIds().length === 1 ? this.keyAccess.length : 0;
@@ -138,10 +138,11 @@ export class SplitKey {
         toArrayBuffer(new TextEncoder().encode(metadataStr))
       );
 
-      // A fresh IV for every object. Objects that share a split share its key
-      // (with a single split, the payload key itself), so a fixed IV is only
-      // safe while their metadata is identical, as `Client.encrypt` makes it;
-      // per-object metadata would reuse the AES-GCM nonce.
+      // Each object gets its own random IV. Objects that share a split share
+      // its key (with a single split, the payload key itself), so one shared
+      // IV would repeat the AES-GCM nonce whenever their metadata differs.
+      // With a single split, each call is also charged against the payload
+      // key's budget; see `payloadKeyMetadataInvocations`.
       const metadataIv = await this.generateIvBinary();
       const encryptedMetadataResult = await this.encrypt(
         metadataBinary,

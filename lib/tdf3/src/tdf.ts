@@ -141,7 +141,9 @@ export const MAX_INVOCATIONS_PER_KEY = 2 ** 32;
  * Most payload segments one write can hold in the usual case: a single key
  * access object, whose metadata takes one of the {@link MAX_INVOCATIONS_PER_KEY}.
  * Each extra object sharing the data key takes one more; see
- * `SplitKey.payloadKeyMetadataInvocations`.
+ * `SplitKey.payloadKeyMetadataInvocations`. Informational: the writer enforces
+ * {@link MAX_INVOCATIONS_PER_KEY}, so with several splits, whose metadata is
+ * not charged, a write can hold up to 2^32 segments.
  */
 export const MAX_PAYLOAD_SEGMENTS_PER_KEY = MAX_INVOCATIONS_PER_KEY - 1;
 
@@ -698,6 +700,8 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
 
   // Generating the manifest encrypted the key access metadata; when that used
   // the data key itself, those invocations come out of the payload's budget.
+  // This assumes `keyForManifest` is `keyForEncryption`, as the default
+  // `keyMiddleware` makes it; if they differ it over-charges, which is safe.
   let payloadKeyInvocations = cfg.encryptionInformation.payloadKeyMetadataInvocations();
 
   const { segmentSizeDefault } = cfg;
