@@ -673,169 +673,186 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
     },
 
     pull: async (controller: ReadableStreamDefaultController) => {
-      let isDone;
+      try {
+        let isDone;
 
-      while (currentBuffer.length < segmentSizeDefault && !isDone) {
-        const { value, done } = await sourceReader.read();
-        isDone = done;
-        if (value) {
-          currentBuffer = concatUint8([currentBuffer, value]);
+        while (currentBuffer.length < segmentSizeDefault && !isDone) {
+          const { value, done } = await sourceReader.read();
+          isDone = done;
+          if (value) {
+            currentBuffer = concatUint8([currentBuffer, value]);
+          }
         }
-      }
 
-      while (
-        currentBuffer.length >= segmentSizeDefault &&
-        !!controller.desiredSize &&
-        controller.desiredSize > 0
-      ) {
-        const segment = currentBuffer.slice(0, segmentSizeDefault);
-        const encryptedSegment = await _encryptAndCountSegment(segment);
-        controller.enqueue(encryptedSegment);
+        while (
+          currentBuffer.length >= segmentSizeDefault &&
+          !!controller.desiredSize &&
+          controller.desiredSize > 0
+        ) {
+          const segment = currentBuffer.slice(0, segmentSizeDefault);
+          const encryptedSegment = await _encryptAndCountSegment(segment);
+          controller.enqueue(encryptedSegment);
 
-        currentBuffer = currentBuffer.slice(segmentSizeDefault);
-      }
-
-      const isFinalChunkLeft = isDone && currentBuffer.length;
-
-      if (isFinalChunkLeft) {
-        const encryptedSegment = await _encryptAndCountSegment(currentBuffer);
-        controller.enqueue(encryptedSegment);
-        currentBuffer = new Uint8Array();
-      }
-
-      if (isDone && currentBuffer.length === 0) {
-        entryInfos[0].crcCounter = crcCounter;
-        entryInfos[0].fileByteCount = fileByteCount;
-        const payloadDataDescriptor = zipWriter.writeDataDescriptor(crcCounter, fileByteCount);
-
-        controller.enqueue(payloadDataDescriptor);
-        _countChunk(payloadDataDescriptor);
-
-        // prepare the manifest
-        entryInfos[1].filename = manifestEntryNameToWrite;
-        entryInfos[1].offset = totalByteCount;
-        controller.enqueue(getHeader(entryInfos[1].filename));
-        _countChunk(getHeader(entryInfos[1].filename));
-        crcCounter = 0;
-        fileByteCount = 0;
-
-        let aggregateHash: string | Uint8Array;
-        if (isTargetSpecLegacyTDF(cfg.tdfSpecVersion)) {
-          aggregateHash = aggregateHash422;
-          const payloadSigStr = await rootIntegrityVersion422(
-            Binary.fromString(aggregateHash),
-            cfg.keyForEncryption.unwrappedKey,
-            rootIntegrityAlgorithm,
-            cfg.cryptoService
-          );
-          manifest.encryptionInformation.integrityInformation.rootSignature.sig =
-            base64.encode(payloadSigStr);
-        } else {
-          // hash the concat of all hashes
-          aggregateHash = await concatenateUint8Array(segmentHashList);
-
-          const payloadSig = await rootIntegrity(
-            aggregateHash,
-            cfg.keyForEncryption.unwrappedKey,
-            rootIntegrityAlgorithm,
-            cfg.cryptoService
-          );
-
-          const rootSig = base64.encodeArrayBuffer(payloadSig);
-          manifest.encryptionInformation.integrityInformation.rootSignature.sig = rootSig;
+          currentBuffer = currentBuffer.slice(segmentSizeDefault);
         }
-        manifest.encryptionInformation.integrityInformation.rootSignature.alg =
-          rootIntegrityAlgorithm;
 
-        manifest.encryptionInformation.integrityInformation.segmentSizeDefault = segmentSizeDefault;
-        manifest.encryptionInformation.integrityInformation.encryptedSegmentSizeDefault =
-          encryptedSegmentSizeDefault;
-        manifest.encryptionInformation.integrityInformation.segmentHashAlg =
-          segmentIntegrityAlgorithm;
-        manifest.encryptionInformation.integrityInformation.segments = segmentInfos;
+        const isFinalChunkLeft = isDone && currentBuffer.length;
 
-        manifest.encryptionInformation.method.isStreamable = true;
-        const signedAssertions: assertions.Assertion[] = [];
-        if (cfg.systemMetadataAssertion) {
-          const systemMetadataConfigBase = assertions.getSystemMetadataAssertionConfig();
-          const signingKeyForSystemMetadata: AssertionKey = {
-            alg: 'HS256', // Default algorithm, can be configured if needed
-            key: cfg.keyForEncryption.unwrappedKey,
-          };
-          signedAssertions.push(
-            await assertions.CreateAssertion(
+        if (isFinalChunkLeft) {
+          const encryptedSegment = await _encryptAndCountSegment(currentBuffer);
+          controller.enqueue(encryptedSegment);
+          currentBuffer = new Uint8Array();
+        }
+
+        if (isDone && currentBuffer.length === 0) {
+          entryInfos[0].crcCounter = crcCounter;
+          entryInfos[0].fileByteCount = fileByteCount;
+          const payloadDataDescriptor = zipWriter.writeDataDescriptor(crcCounter, fileByteCount);
+
+          controller.enqueue(payloadDataDescriptor);
+          _countChunk(payloadDataDescriptor);
+
+          // prepare the manifest
+          entryInfos[1].filename = manifestEntryNameToWrite;
+          entryInfos[1].offset = totalByteCount;
+          controller.enqueue(getHeader(entryInfos[1].filename));
+          _countChunk(getHeader(entryInfos[1].filename));
+          crcCounter = 0;
+          fileByteCount = 0;
+
+          let aggregateHash: string | Uint8Array;
+          if (isTargetSpecLegacyTDF(cfg.tdfSpecVersion)) {
+            aggregateHash = aggregateHash422;
+            const payloadSigStr = await rootIntegrityVersion422(
+              Binary.fromString(aggregateHash),
+              cfg.keyForEncryption.unwrappedKey,
+              rootIntegrityAlgorithm,
+              cfg.cryptoService
+            );
+            manifest.encryptionInformation.integrityInformation.rootSignature.sig =
+              base64.encode(payloadSigStr);
+          } else {
+            // hash the concat of all hashes
+            aggregateHash = await concatenateUint8Array(segmentHashList);
+
+            const payloadSig = await rootIntegrity(
               aggregateHash,
-              {
-                ...systemMetadataConfigBase, // Spread the properties from the base config
-                signingKey: signingKeyForSystemMetadata, // Add the signing key
-              },
-              cfg.cryptoService,
-              cfg.tdfSpecVersion // Pass the TDF spec version
-            )
-          );
-        }
-        if (cfg.assertionConfigs && cfg.assertionConfigs.length > 0) {
-          await Promise.all(
-            cfg.assertionConfigs.map(async (assertionConfig) => {
-              // Create assertion using the assertionConfig values
-              const signingKey: AssertionKey = assertionConfig.signingKey ?? {
-                alg: 'HS256',
-                key: cfg.keyForEncryption.unwrappedKey,
-              };
-              const assertion = await assertions.CreateAssertion(
+              cfg.keyForEncryption.unwrappedKey,
+              rootIntegrityAlgorithm,
+              cfg.cryptoService
+            );
+
+            const rootSig = base64.encodeArrayBuffer(payloadSig);
+            manifest.encryptionInformation.integrityInformation.rootSignature.sig = rootSig;
+          }
+          manifest.encryptionInformation.integrityInformation.rootSignature.alg =
+            rootIntegrityAlgorithm;
+
+          manifest.encryptionInformation.integrityInformation.segmentSizeDefault =
+            segmentSizeDefault;
+          manifest.encryptionInformation.integrityInformation.encryptedSegmentSizeDefault =
+            encryptedSegmentSizeDefault;
+          manifest.encryptionInformation.integrityInformation.segmentHashAlg =
+            segmentIntegrityAlgorithm;
+          manifest.encryptionInformation.integrityInformation.segments = segmentInfos;
+
+          manifest.encryptionInformation.method.isStreamable = true;
+          const signedAssertions: assertions.Assertion[] = [];
+          if (cfg.systemMetadataAssertion) {
+            const systemMetadataConfigBase = assertions.getSystemMetadataAssertionConfig();
+            const signingKeyForSystemMetadata: AssertionKey = {
+              alg: 'HS256', // Default algorithm, can be configured if needed
+              key: cfg.keyForEncryption.unwrappedKey,
+            };
+            signedAssertions.push(
+              await assertions.CreateAssertion(
                 aggregateHash,
                 {
-                  ...assertionConfig,
-                  signingKey,
+                  ...systemMetadataConfigBase, // Spread the properties from the base config
+                  signingKey: signingKeyForSystemMetadata, // Add the signing key
                 },
                 cfg.cryptoService,
-                cfg.tdfSpecVersion
-              );
+                cfg.tdfSpecVersion // Pass the TDF spec version
+              )
+            );
+          }
+          if (cfg.assertionConfigs && cfg.assertionConfigs.length > 0) {
+            await Promise.all(
+              cfg.assertionConfigs.map(async (assertionConfig) => {
+                // Create assertion using the assertionConfig values
+                const signingKey: AssertionKey = assertionConfig.signingKey ?? {
+                  alg: 'HS256',
+                  key: cfg.keyForEncryption.unwrappedKey,
+                };
+                const assertion = await assertions.CreateAssertion(
+                  aggregateHash,
+                  {
+                    ...assertionConfig,
+                    signingKey,
+                  },
+                  cfg.cryptoService,
+                  cfg.tdfSpecVersion
+                );
 
-              // Add signed assertion to the signedAssertions array
-              signedAssertions.push(assertion);
-            })
+                // Add signed assertion to the signedAssertions array
+                signedAssertions.push(assertion);
+              })
+            );
+          }
+
+          manifest.assertions = signedAssertions;
+
+          // write the manifest
+          const manifestBuffer = new TextEncoder().encode(JSON.stringify(manifest));
+          controller.enqueue(manifestBuffer);
+          _countChunk(manifestBuffer);
+          entryInfos[1].crcCounter = crcCounter;
+          entryInfos[1].fileByteCount = fileByteCount;
+          const manifestDataDescriptor = zipWriter.writeDataDescriptor(crcCounter, fileByteCount);
+          controller.enqueue(manifestDataDescriptor);
+          _countChunk(manifestDataDescriptor);
+
+          // write the central directory out
+          const centralDirectoryByteCount = totalByteCount;
+          for (let i = 0; i < entryInfos.length; i++) {
+            const entryInfo = entryInfos[i];
+            const result = zipWriter.writeCentralDirectoryRecord(
+              entryInfo.fileByteCount || 0,
+              entryInfo.filename,
+              entryInfo.offset || 0,
+              entryInfo.crcCounter || 0,
+              2175008768
+            );
+            controller.enqueue(result);
+            _countChunk(result);
+          }
+          const endOfCentralDirectoryByteCount = totalByteCount - centralDirectoryByteCount;
+          const finalChunk = zipWriter.writeEndOfCentralDirectoryRecord(
+            entryInfos.length,
+            endOfCentralDirectoryByteCount,
+            centralDirectoryByteCount
           );
+          controller.enqueue(finalChunk);
+          _countChunk(finalChunk);
+
+          controller.close();
         }
-
-        manifest.assertions = signedAssertions;
-
-        // write the manifest
-        const manifestBuffer = new TextEncoder().encode(JSON.stringify(manifest));
-        controller.enqueue(manifestBuffer);
-        _countChunk(manifestBuffer);
-        entryInfos[1].crcCounter = crcCounter;
-        entryInfos[1].fileByteCount = fileByteCount;
-        const manifestDataDescriptor = zipWriter.writeDataDescriptor(crcCounter, fileByteCount);
-        controller.enqueue(manifestDataDescriptor);
-        _countChunk(manifestDataDescriptor);
-
-        // write the central directory out
-        const centralDirectoryByteCount = totalByteCount;
-        for (let i = 0; i < entryInfos.length; i++) {
-          const entryInfo = entryInfos[i];
-          const result = zipWriter.writeCentralDirectoryRecord(
-            entryInfo.fileByteCount || 0,
-            entryInfo.filename,
-            entryInfo.offset || 0,
-            entryInfo.crcCounter || 0,
-            2175008768
-          );
-          controller.enqueue(result);
-          _countChunk(result);
-        }
-        const endOfCentralDirectoryByteCount = totalByteCount - centralDirectoryByteCount;
-        const finalChunk = zipWriter.writeEndOfCentralDirectoryRecord(
-          entryInfos.length,
-          endOfCentralDirectoryByteCount,
-          centralDirectoryByteCount
-        );
-        controller.enqueue(finalChunk);
-        _countChunk(finalChunk);
-
-        controller.close();
+      } catch (e) {
+        // Without this the input stays locked and open (file handle, socket,
+        // download) after the write fails. Best effort and not awaited: a slow
+        // or failed cancel must not delay or replace the error the consumer
+        // needs to see. A source that itself errored rejects cancel with that
+        // same error, so only warn about a different one.
+        sourceReader.cancel(e).catch((cancelErr) => {
+          if (cancelErr !== e) {
+            console.warn('TDF write: failed to cancel source stream after error:', cancelErr);
+          }
+        });
+        throw e;
       }
     },
+
+    cancel: (reason: unknown) => sourceReader.cancel(reason),
   };
 
   const plaintextStream = new DecoratedReadableStream(underlingSource);

@@ -1,5 +1,6 @@
 // Simplest HTTP server that supports RANGE headers AFAIK.
 import { assert } from 'chai';
+import sinon from 'sinon';
 
 import { getMocks } from '../mocks/index.js';
 import type { KasPublicKeyAlgorithm } from '../../src/access.js';
@@ -454,6 +455,130 @@ describe('encrypt decrypt test', function () {
     assert.equal(segmentsEncrypted, 4);
     assert.instanceOf(error, ConfigurationError);
     assert.match(error.message, /produced 30 bytes for a 3 byte segment, but reports 31$/);
+  });
+
+  describe('releases the source when the write stops early', function () {
+    let warn: sinon.SinonStub;
+    beforeEach(function () {
+      warn = sinon.stub(console, 'warn');
+    });
+    afterEach(function () {
+      warn.restore();
+    });
+
+    /** An endless source that records why it was cancelled, then throws `cancelError` if set. */
+    function endlessSource(cancelError?: Error) {
+      const cancelled: { reason?: unknown; called: boolean } = { called: false };
+      const source = new ReadableStream<Uint8Array>({
+        pull(controller) {
+          controller.enqueue(new TextEncoder().encode('123'));
+        },
+        cancel(reason) {
+          cancelled.called = true;
+          cancelled.reason = reason;
+          if (cancelError) {
+            throw cancelError;
+          }
+        },
+      });
+      return { source, cancelled };
+    }
+
+    /** A crypto service that rejects with `failure` once the write is mid-stream. */
+    function failingCryptoService(failure: Error): CryptoService {
+      let encrypts = 0;
+      return new Proxy(WebCryptoService, {
+        get(target, property, receiver) {
+          if (property !== 'encrypt') {
+            return Reflect.get(target, property, receiver) as unknown;
+          }
+          return (...args: Parameters<CryptoService['encrypt']>) => {
+            // The metadata, then two payload segments, then fail mid-stream.
+            if (++encrypts > 3) {
+              return Promise.reject(failure);
+            }
+            return target.encrypt(...args);
+          };
+        },
+      });
+    }
+
+    /** Let the un-awaited source cancel settle, then return its warnings. */
+    async function cancelWarnings() {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      return warn.getCalls().filter((c) => String(c.args[0]).includes('cancel source'));
+    }
+
+    async function encryptWith(cryptoService: CryptoService, source: ReadableStream<Uint8Array>) {
+      const encryptionInformation = new SplitKey(new AesGcmCipher(cryptoService));
+      const key = await encryptionInformation.generateKey();
+      const client = new Client.Client({
+        kasEndpoint: kasUrl,
+        platformUrl: kasUrl,
+        dpopKeys: Mocks.entityKeyPair(),
+        clientId: 'id',
+        authProvider,
+        cryptoService,
+      });
+      return client.encrypt({
+        metadata: Mocks.getMetadataObject(),
+        offline: true,
+        scope: { dissem: ['user@domain.com'], attributes: [] },
+        keyMiddleware: () => Promise.resolve({ keyForEncryption: key, keyForManifest: key }),
+        windowSize: 3,
+        source,
+      });
+    }
+
+    it('cancels the source with the error that failed the write', async function () {
+      const failure = new Error('cipher failed');
+      const { source, cancelled } = endlessSource();
+      const encryptedStream = await encryptWith(failingCryptoService(failure), source);
+
+      const error = await rejection(encryptedStream.toBuffer());
+      assert.strictEqual(error, failure);
+      assert.isTrue(cancelled.called);
+      assert.strictEqual(cancelled.reason, failure);
+      assert.isEmpty(await cancelWarnings());
+    });
+
+    it('keeps the write error and warns when cancelling the source fails', async function () {
+      const failure = new Error('cipher failed');
+      const cancelError = new Error('close failed');
+      const { source } = endlessSource(cancelError);
+      const encryptedStream = await encryptWith(failingCryptoService(failure), source);
+
+      const error = await rejection(encryptedStream.toBuffer());
+      assert.strictEqual(error, failure);
+      const warnings = await cancelWarnings();
+      assert.lengthOf(warnings, 1);
+      assert.strictEqual(warnings[0].args[1], cancelError);
+    });
+
+    it('does not warn when the source itself failed the write', async function () {
+      const failure = new Error('read failed');
+      const source = new ReadableStream<Uint8Array>({
+        pull(controller) {
+          controller.error(failure);
+        },
+      });
+      const encryptedStream = await encryptWith(WebCryptoService, source);
+
+      const error = await rejection(encryptedStream.toBuffer());
+      assert.strictEqual(error, failure);
+      assert.isEmpty(await cancelWarnings());
+    });
+
+    it('cancels the source when the consumer cancels', async function () {
+      const { source, cancelled } = endlessSource();
+      const encryptedStream = await encryptWith(WebCryptoService, source);
+
+      const reader = encryptedStream.stream.getReader();
+      await reader.read();
+      await reader.cancel('consumer gave up');
+      assert.isTrue(cancelled.called);
+      assert.equal(cancelled.reason, 'consumer gave up');
+    });
   });
 
   it('decrypts when the same KAS wraps the same split twice (DSPX-3379)', async function () {
