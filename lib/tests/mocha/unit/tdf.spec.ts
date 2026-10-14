@@ -15,6 +15,9 @@ import { getMocks } from '../../mocks/index.js';
 import * as DefaultCryptoService from '../../../tdf3/src/crypto/index.js';
 import type { CryptoService } from '../../../tdf3/src/crypto/declarations.js';
 import { isMlKemKeyAlgorithm } from '../../../tdf3/src/crypto/declarations.js';
+import { AesGcmCipher } from '../../../tdf3/src/ciphers/aes-gcm-cipher.js';
+import { SplitKey } from '../../../tdf3/src/models/encryption-information.js';
+import { Wrapped } from '../../../tdf3/src/models/key-access.js';
 
 const sampleCert = `
 -----BEGIN CERTIFICATE-----
@@ -52,7 +55,8 @@ HJg=
 -----END CERTIFICATE-----
 `.trim();
 
-const { kasECCert } = getMocks();
+const Mocks = getMocks();
+const { kasECCert } = Mocks;
 
 // `process` is undefined in the browser test runner (karma), so guard access.
 // BASE_KEY_ALG is a local-dev toggle used to point the mock server at an
@@ -374,10 +378,9 @@ describe('splitLookupTableFactory', () => {
 describe('AES-GCM payload segment budget', () => {
   it('caps payload segments at 2^32 - 1 per key', () => {
     expect(TDF.MAX_PAYLOAD_SEGMENTS_PER_KEY).to.equal(2 ** 32 - 1);
-    // Plus invocation 0 for metadata, total invocations stay within 2^32,
-    // which keeps the random-IV collision bound k^2 / 2^97 at or below 2^-32.
-    const k = TDF.MAX_PAYLOAD_SEGMENTS_PER_KEY + 1;
-    expect(Math.log2(k) * 2 - 97).to.be.at.most(-32);
+    // NIST SP 800-38D §8.3: at most 2^32 random-IV invocations per key,
+    // counting the one set aside for the key access metadata.
+    expect(TDF.MAX_PAYLOAD_SEGMENTS_PER_KEY + 1).to.be.at.most(2 ** 32);
   });
 
   it('counts each reservation', () => {
@@ -400,5 +403,95 @@ describe('AES-GCM payload segment budget', () => {
         .to.throw(IvExhaustionError, /AES-GCM IV space exhausted/)
         .with.property('name', 'IvExhaustionError');
     }
+  });
+
+  it('honors an explicit budget', () => {
+    expect(TDF.reservePayloadSegment(1, 2)).to.equal(2);
+    expect(() => TDF.reservePayloadSegment(2, 2)).to.throw(IvExhaustionError);
+  });
+
+  describe('writeStream', () => {
+    let payloadEncrypts: number;
+    let progress: number[];
+
+    /**
+     * Writes `plaintext` in `segmentSize` segments with the budget lowered to
+     * `maxPayloadSegments`, counting only the encryptions that happen after
+     * `writeStream` returns: the key access metadata is encrypted while the
+     * manifest is generated, before then.
+     */
+    async function write(plaintext: string, segmentSize: number, maxPayloadSegments: number) {
+      let counting = false;
+      payloadEncrypts = 0;
+      progress = [];
+      const countingCryptoService: CryptoService = new Proxy(DefaultCryptoService, {
+        get(target, property, receiver) {
+          if (property !== 'encrypt') {
+            return Reflect.get(target, property, receiver) as unknown;
+          }
+          return (...args: Parameters<CryptoService['encrypt']>) => {
+            if (counting) {
+              payloadEncrypts++;
+            }
+            return target.encrypt(...args);
+          };
+        },
+      });
+      const encryptionInformation = new SplitKey(new AesGcmCipher(countingCryptoService));
+      encryptionInformation.keyAccess = [
+        new Wrapped(Mocks.getKasUrl(), undefined, Mocks.kasPublicKey, {}, countingCryptoService),
+      ];
+      const key = await encryptionInformation.generateKey();
+      const stream = await TDF.writeStream({
+        auth: { updateClientPublicKey: async () => {}, withCreds: (r) => Promise.resolve(r) },
+        byteLimit: Number.MAX_SAFE_INTEGER,
+        contentStream: new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode(plaintext));
+            controller.close();
+          },
+        }),
+        cryptoService: countingCryptoService,
+        dpopKeys: await Mocks.entityKeyPair(),
+        encryptionInformation,
+        keyForEncryption: key,
+        keyForManifest: key,
+        maxPayloadSegments,
+        policy: Mocks.getPolicyObject(),
+        progressHandler: (bytes) => progress.push(bytes),
+        rootIntegrityAlgorithm: 'HS256',
+        segmentIntegrityAlgorithm: 'GMAC',
+        segmentSizeDefault: segmentSize,
+      });
+      counting = true;
+      return stream.toBuffer();
+    }
+
+    it('writes exactly up to the budget', async () => {
+      await write('abc', 1, 3);
+      expect(payloadEncrypts).to.equal(3);
+    });
+
+    it('refuses the segment past the budget without encrypting it', async () => {
+      // One segment per `pull`, so this also shows the count spans pulls.
+      const error = await write('abcd', 1, 3).then(
+        () => expect.fail('expected the write to fail'),
+        (e: unknown) => e
+      );
+      expect(error).to.be.instanceOf(IvExhaustionError);
+      expect((error as Error).message).to.match(/more than 3 segments/);
+      expect(payloadEncrypts).to.equal(3);
+      expect(progress).to.deep.equal([1, 2, 3]);
+    });
+
+    it('refuses a short final segment past the budget', async () => {
+      // 3 + 3 + a 1-byte tail, which `pull` encrypts from a separate call site.
+      const error = await write('1234567', 3, 2).then(
+        () => expect.fail('expected the write to fail'),
+        (e: unknown) => e
+      );
+      expect(error).to.be.instanceOf(IvExhaustionError);
+      expect(payloadEncrypts).to.equal(2);
+    });
   });
 });
