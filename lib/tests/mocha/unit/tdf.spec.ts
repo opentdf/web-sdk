@@ -392,7 +392,7 @@ describe('AES-GCM payload segment budget', () => {
   it('caps payload segments at 2^32 - 1 per key', () => {
     expect(TDF.MAX_PAYLOAD_SEGMENTS_PER_KEY).to.equal(2 ** 32 - 1);
     // NIST SP 800-38D §8.3 allows at most 2^32 random-IV invocations per key;
-    // the payload cap keeps one free for the key access metadata.
+    // the payload cap keeps one free for a single key access object's metadata.
     expect(TDF.MAX_PAYLOAD_SEGMENTS_PER_KEY + 1).to.be.at.most(2 ** 32);
   });
 
