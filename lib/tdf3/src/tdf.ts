@@ -128,8 +128,10 @@ const DEFAULT_BOUND_MAX_CONCURRENT_SEGMENT_BATCHES = LEGACY_MAX_CONCURRENT_SEGME
  * raise it. At k = 2^32 invocations the IV collision probability is about
  * k^2 / 2^97 = 2^-33, within §8's 2^-32 requirement. One invocation is set
  * aside for the key access metadata, which is encrypted under the data key
- * itself when there is a single key split; that leaves 2^32 - 1 for payload
- * segments.
+ * itself when there is a single key split, once per key access object, each
+ * with its own random IV. That leaves 2^32 - 1 for payload segments in the
+ * usual single-object case; each extra object sharing the data key takes one
+ * more.
  *
  * The writer counts per {@link writeStream} call, so this holds per key only
  * because each write uses a freshly generated key (the default

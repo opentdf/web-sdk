@@ -124,15 +124,20 @@ export class SplitKey {
         toArrayBuffer(new TextEncoder().encode(metadataStr))
       );
 
+      // A fresh IV for every object. Objects that share a split share its key
+      // (with a single split, the payload key itself), so a fixed IV is only
+      // safe while their metadata is identical, as `Client.encrypt` makes it;
+      // per-object metadata would reuse the AES-GCM nonce.
+      const metadataIv = await this.generateIvBinary();
       const encryptedMetadataResult = await this.encrypt(
         metadataBinary,
         unwrappedKeySplit,
-        keyInfo.unwrappedKeyIvBinary
+        metadataIv
       );
 
       const encryptedMetadataOb = {
         ciphertext: base64.encode(encryptedMetadataResult.payload.asString()),
-        iv: base64.encode(keyInfo.unwrappedKeyIvBinary.asString()),
+        iv: base64.encode(metadataIv.asString()),
       };
 
       const encryptedMetadataStr = JSON.stringify(encryptedMetadataOb);
