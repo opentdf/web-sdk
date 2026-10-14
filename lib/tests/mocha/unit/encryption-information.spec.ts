@@ -45,4 +45,33 @@ describe('SplitKey key access metadata', () => {
       expect(JSON.parse(payload.asString('utf8'))).to.deep.equal({ kas: ['kas-a', 'kas-b'][i] });
     }
   });
+
+  describe('payloadKeyMetadataInvocations', () => {
+    function withSids(...sids: (string | undefined)[]): SplitKey {
+      const splitKey = new SplitKey(new AesGcmCipher(DefaultCryptoService));
+      splitKey.keyAccess = sids.map(
+        (sid) =>
+          new Wrapped(
+            Mocks.getKasUrl(),
+            undefined,
+            Mocks.kasPublicKey,
+            {},
+            DefaultCryptoService,
+            sid
+          )
+      );
+      return splitKey;
+    }
+
+    it('counts every object when there is a single split', () => {
+      expect(withSids(undefined).payloadKeyMetadataInvocations()).to.equal(1);
+      expect(withSids(undefined, undefined).payloadKeyMetadataInvocations()).to.equal(2);
+      expect(withSids('a', 'a', 'a').payloadKeyMetadataInvocations()).to.equal(3);
+    });
+
+    it('counts none when there are several splits', () => {
+      expect(withSids('a', 'b').payloadKeyMetadataInvocations()).to.equal(0);
+      expect(withSids('a', 'a', 'b').payloadKeyMetadataInvocations()).to.equal(0);
+    });
+  });
 });
