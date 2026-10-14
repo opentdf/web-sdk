@@ -114,38 +114,50 @@ export function manifestEntryName(centralDirectory: CentralDirectory[]): string 
 }
 
 const HEX_SEMVER_VERSION = '4.2.2';
-
-/**
- * Most payload segments a writer may encrypt under one data encryption key.
- *
- * Each segment is one AES-GCM invocation with a random 96-bit IV. For k
- * invocations the birthday bound gives a collision probability of about
- * k^2 / 2^97, and NIST SP 800-38D §8 caps that at 2^-32, i.e. k <= ~2^32.5.
- * Invocation 0 is reserved for the key access metadata, which leaves
- * 2^32 - 1 for the payload and keeps the total at or below 2^32.
- */
-export const MAX_PAYLOAD_SEGMENTS_PER_KEY = 2 ** 32 - 1;
-
-/**
- * Checks there is room for one more payload segment encryption under the
- * current key, given how many have already been attempted (failed attempts
- * included). Throws {@link IvExhaustionError} before the segment that would
- * exceed {@link MAX_PAYLOAD_SEGMENTS_PER_KEY} is encrypted.
- *
- * @returns the attempt count including this segment.
- */
-export function reservePayloadSegment(attempted: number): number {
-  if (attempted >= MAX_PAYLOAD_SEGMENTS_PER_KEY) {
-    throw new IvExhaustionError(
-      `AES-GCM IV space exhausted: refusing to encrypt more than ${MAX_PAYLOAD_SEGMENTS_PER_KEY} segments under one key, as the IV collision risk would exceed 2^-32; use a larger segment size or split the input`
-    );
-  }
-  return attempted + 1;
-}
 const LEGACY_SEGMENTS_PER_DOWNLOAD = 500;
 const LEGACY_MAX_CONCURRENT_SEGMENT_BATCHES = 3;
 const DEFAULT_BOUND_SEGMENT_BATCH_SIZE = LEGACY_SEGMENTS_PER_DOWNLOAD;
 const DEFAULT_BOUND_MAX_CONCURRENT_SEGMENT_BATCHES = LEGACY_MAX_CONCURRENT_SEGMENT_BATCHES;
+
+/**
+ * Most payload segments a writer may encrypt under one data encryption key.
+ *
+ * Each segment is one AES-GCM invocation with a random 96-bit IV (the RBG-based
+ * construction, NIST SP 800-38D §8.2.2). §8.3 caps the total invocations under
+ * one key at 2^32 for that construction. The cap is the binding limit, not a
+ * conservative rounding: it is what keeps the IV collision probability
+ * (~k^2 / 2^97, about 2^-33 at k = 2^32) within §8's 2^-32 requirement, so do
+ * not raise it. One invocation is set aside for the key access metadata, which
+ * is encrypted under the data key itself when there is a single key split;
+ * that leaves 2^32 - 1 for payload segments.
+ *
+ * The writer counts per {@link writeStream} call, so this holds per key only
+ * because each write uses a freshly generated key (the default
+ * `keyMiddleware`). A `keyMiddleware` that reuses a key across writes gets a
+ * fresh budget on every write.
+ */
+export const MAX_PAYLOAD_SEGMENTS_PER_KEY = 2 ** 32 - 1;
+
+/**
+ * Checks there is room for one more payload segment encryption, given how many
+ * have already been attempted. Throws {@link IvExhaustionError} before the
+ * segment that would exceed `max` is encrypted.
+ *
+ * @param max - the budget; only tests pass anything but
+ *   {@link MAX_PAYLOAD_SEGMENTS_PER_KEY}.
+ * @returns the attempt count including this segment.
+ */
+export function reservePayloadSegment(
+  attempted: number,
+  max: number = MAX_PAYLOAD_SEGMENTS_PER_KEY
+): number {
+  if (attempted >= max) {
+    throw new IvExhaustionError(
+      `AES-GCM IV space exhausted: refusing to encrypt more than ${max} segments under one key, as NIST SP 800-38D §8.3 limits random-IV invocations per key; use a larger segment size or split the input`
+    );
+  }
+  return attempted + 1;
+}
 
 /**
  * Configuration for TDF3
@@ -317,6 +329,11 @@ export type EncryptConfiguration = {
   assertionConfigs?: AssertionConfig[];
   systemMetadataAssertion?: boolean;
   tdfSpecVersion?: string;
+  /**
+   * @internal Test seam: overrides {@link MAX_PAYLOAD_SEGMENTS_PER_KEY} so the
+   * cap is reachable without encrypting 2^32 segments.
+   */
+  maxPayloadSegments?: number;
 };
 
 export type DecryptConfiguration = {
@@ -886,8 +903,9 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
   }
 
   async function _encryptAndCountSegment(chunk: Uint8Array) {
-    // Count the attempt before encrypting, so failed attempts still use up the budget.
-    segmentEncryptAttempts = reservePayloadSegment(segmentEncryptAttempts);
+    // Reserve before the IV is drawn, so the count can never trail the real
+    // number of invocations under the key.
+    segmentEncryptAttempts = reservePayloadSegment(segmentEncryptAttempts, cfg.maxPayloadSegments);
     bytesProcessed += chunk.length;
     cfg.progressHandler?.(bytesProcessed);
 
