@@ -83,10 +83,24 @@ export class SplitKey {
     return this.cipher.decrypt(content, key);
   }
 
-  async getKeyAccessObjects(policy: Policy, keyInfo: KeyInfo): Promise<KeyAccessObject[]> {
-    const splitIds = [...new Set(this.keyAccess.map(({ sid }) => sid || ''))].sort((a, b) =>
+  private splitIds(): string[] {
+    return [...new Set(this.keyAccess.map(({ sid }) => sid || ''))].sort((a, b) =>
       a.localeCompare(b)
     );
+  }
+
+  /**
+   * How many AES-GCM invocations {@link getKeyAccessObjects} makes under the
+   * payload key itself: one per key access object when there is a single
+   * split, since the one share of a single split is the key; none otherwise,
+   * as each split's share is then an independent random key.
+   */
+  payloadKeyMetadataInvocations(): number {
+    return this.splitIds().length === 1 ? this.keyAccess.length : 0;
+  }
+
+  async getKeyAccessObjects(policy: Policy, keyInfo: KeyInfo): Promise<KeyAccessObject[]> {
+    const splitIds = this.splitIds();
     const unwrappedKeySplits = await this.cryptoService.splitSymmetricKey(
       keyInfo.unwrappedKey,
       splitIds.length
