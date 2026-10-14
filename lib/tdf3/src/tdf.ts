@@ -124,17 +124,18 @@ const DEFAULT_BOUND_MAX_CONCURRENT_SEGMENT_BATCHES = LEGACY_MAX_CONCURRENT_SEGME
  *
  * Each segment is one AES-GCM invocation with a random 96-bit IV (the RBG-based
  * construction, NIST SP 800-38D §8.2.2). §8.3 caps the total invocations under
- * one key at 2^32 for that construction. The cap is the binding limit, not a
- * conservative rounding: it is what keeps the IV collision probability
- * (~k^2 / 2^97, about 2^-33 at k = 2^32) within §8's 2^-32 requirement, so do
- * not raise it. One invocation is set aside for the key access metadata, which
- * is encrypted under the data key itself when there is a single key split;
- * that leaves 2^32 - 1 for payload segments.
+ * one key at 2^32 for that construction. That is a normative "shall", so do not
+ * raise it. At k = 2^32 invocations the IV collision probability is about
+ * k^2 / 2^97 = 2^-33, within §8's 2^-32 requirement. One invocation is set
+ * aside for the key access metadata, which is encrypted under the data key
+ * itself when there is a single key split; that leaves 2^32 - 1 for payload
+ * segments.
  *
  * The writer counts per {@link writeStream} call, so this holds per key only
  * because each write uses a freshly generated key (the default
- * `keyMiddleware`). A `keyMiddleware` that reuses a key across writes gets a
- * fresh budget on every write.
+ * `keyMiddleware`). A `keyMiddleware` that reuses a key across writes is not
+ * covered: each write starts a fresh count, so the total under that key can
+ * exceed the cap.
  */
 export const MAX_PAYLOAD_SEGMENTS_PER_KEY = 2 ** 32 - 1;
 
@@ -143,8 +144,9 @@ export const MAX_PAYLOAD_SEGMENTS_PER_KEY = 2 ** 32 - 1;
  * have already been attempted. Throws {@link IvExhaustionError} before the
  * segment that would exceed `max` is encrypted.
  *
- * @param max - the budget; only tests pass anything but
- *   {@link MAX_PAYLOAD_SEGMENTS_PER_KEY}.
+ * @param attempted - segment encryptions already attempted under the key.
+ * @param max - the budget; defaults to {@link MAX_PAYLOAD_SEGMENTS_PER_KEY},
+ *   and is lowered only through the `maxPayloadSegments` test seam.
  * @returns the attempt count including this segment.
  */
 export function reservePayloadSegment(
