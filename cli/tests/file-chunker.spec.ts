@@ -75,6 +75,40 @@ describe('openFileChunker', function () {
     expect(got.subarray(-3)).to.deep.equal(data.subarray(-3));
   });
 
+  it('rejects a file rewritten between reads', async function () {
+    const p = join(dir, 'rewritten.txt');
+    await writeFile(p, 'AAAABBBB');
+    const c = await openTracked(p);
+    expect(text(await c(0, 4))).to.equal('AAAA');
+
+    await writeFile(p, 'CCCCDDDD');
+    let err: unknown;
+    try {
+      await c(4, 8);
+    } catch (e) {
+      err = e;
+    }
+    expect(err).to.be.instanceOf(Error);
+    expect((err as Error).message).to.include('file changed while reading');
+  });
+
+  it('rejects a truncated file instead of ending the encrypt stream early', async function () {
+    const p = join(dir, 'truncated.txt');
+    await writeFile(p, 'AAAABBBB');
+    const c = await openTracked(p);
+    await writeFile(p, 'AAAA');
+
+    const stream = await sourceToStream({ type: 'chunker', location: c });
+    let err: unknown;
+    try {
+      await new Response(stream).arrayBuffer();
+    } catch (e) {
+      err = e;
+    }
+    expect(err).to.be.instanceOf(Error);
+    expect((err as Error).message).to.include('file changed while reading');
+  });
+
   it('rejects reads after close, and close is idempotent', async function () {
     const p = join(dir, 'closed.txt');
     await writeFile(p, 'x');

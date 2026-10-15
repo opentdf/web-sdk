@@ -51,17 +51,33 @@ export function resolveRange(
 export async function openFileChunker(path: string): Promise<FileChunker> {
   const handle: FileHandle = await open(path, 'r');
   let size: number;
+  let originalStats: Awaited<ReturnType<FileHandle['stat']>>;
   try {
-    const stats = await handle.stat();
+    const stats = await handle.stat({ bigint: true });
     if (!stats.isFile()) {
       throw new Error(`not a regular file [${path}]`);
     }
-    size = stats.size;
+    if (stats.size > BigInt(Number.MAX_SAFE_INTEGER)) {
+      throw new Error(`file is too large to address safely [${path}]`);
+    }
+    size = Number(stats.size);
+    originalStats = stats;
   } catch (e) {
     await handle.close();
     throw e;
   }
   let closed: Promise<void> | undefined;
+
+  const assertUnchanged = async () => {
+    const stats = await handle.stat({ bigint: true });
+    if (
+      stats.size !== originalStats.size ||
+      stats.mtimeNs !== originalStats.mtimeNs ||
+      stats.ctimeNs !== originalStats.ctimeNs
+    ) {
+      throw new Error(`file changed while reading [${path}]`);
+    }
+  };
 
   const chunker = async (byteStart?: number, byteEnd?: number): Promise<Uint8Array> => {
     if (closed) {
@@ -74,11 +90,11 @@ export async function openFileChunker(path: string): Promise<FileChunker> {
       const length = Math.min(buf.length - filled, MAX_READ);
       const { bytesRead } = await handle.read(buf, filled, length, start + filled);
       if (bytesRead === 0) {
-        // File shrank since it was opened; return what we have.
-        return buf.subarray(0, filled);
+        throw new Error(`file changed while reading [${path}]`);
       }
       filled += bytesRead;
     }
+    await assertUnchanged();
     return buf;
   };
 
