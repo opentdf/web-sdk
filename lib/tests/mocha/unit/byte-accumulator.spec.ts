@@ -57,6 +57,17 @@ describe('ByteAccumulator', () => {
     expect(acc.subarray()).to.deep.equal(concatenate(runs));
   });
 
+  // A hint is only ever an optimization, and it comes from a caller-supplied
+  // source length. Chrome refuses a typed array this large outright, so an
+  // absurd hint has to clamp rather than reach the allocator.
+  it('clamps an absurd hint instead of attempting the allocation', () => {
+    const acc = new ByteAccumulator(64 * 1024 * 1024 * 1024);
+    expect(acc.length).to.equal(0);
+    const run = digest(3, 16);
+    acc.push(run);
+    expect(acc.subarray()).to.deep.equal(run);
+  });
+
   it('accepts a run larger than the whole current capacity', () => {
     const acc = new ByteAccumulator(1);
     const big = digest(7, 5000);
