@@ -289,9 +289,14 @@ export function base64ToBytes(str: string): Uint8Array {
 }
 
 /**
+ * Generates a fresh symmetric key and returns it as both `keyForEncryption`
+ * and `keyForManifest` (`keyForEncryption === keyForManifest`).
  *
- * Function generates key, it returned both KeyForEncryption and KeyForManifest.
- *   `KeyForEncryption === KeyForManifest` produces true;
+ * Call this once per `encrypt`, as the default `keyMiddleware` does. Hoisting
+ * the result to share a key across TDFs is safe with respect to deterministic
+ * AES-GCM IVs -- each stream draws its own random fixed field -- but see
+ * `EncryptKeyMiddleware` for RBG providers, and note that one key compromise
+ * exposes every TDF that shared it.
  *
  * @returns {Object}:
  * {
