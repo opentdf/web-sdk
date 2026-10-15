@@ -27,7 +27,14 @@ export const fromBrowserFile = (fileRef: Blob): Chunker => {
     if (byteStart === undefined) {
       return new Uint8Array(await fileRef.arrayBuffer());
     }
-    const chunkBlob = fileRef.slice(byteStart, byteEnd);
+    // Resolve negative offsets here rather than in Blob.slice. Bun's
+    // file-backed Blob (Bun.file, and node:fs openAsBlob under Bun) returns
+    // no bytes for slice(-n) until its size has been read, which made every
+    // TDF look like it had no central directory (DSPX-5162).
+    const { size } = fileRef;
+    const start = byteStart < 0 ? Math.max(0, size + byteStart) : byteStart;
+    const end = byteEnd !== undefined && byteEnd < 0 ? Math.max(0, size + byteEnd) : byteEnd;
+    const chunkBlob = fileRef.slice(start, end);
     const arrayBuffer = await new Response(chunkBlob).arrayBuffer();
     return new Uint8Array(arrayBuffer);
   };

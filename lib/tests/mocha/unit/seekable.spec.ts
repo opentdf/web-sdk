@@ -60,6 +60,44 @@ describe('chunkers', () => {
     });
   });
 
+  describe('fromBrowserFile', () => {
+    const r = range(256);
+    const b = new Uint8Array(r);
+    // Records slice() arguments. Bun's file-backed Blob mis-handles negative
+    // offsets, so the chunker must only ever pass absolute ones (DSPX-5162).
+    class RecordingBlob extends Blob {
+      calls: [number | undefined, number | undefined][] = [];
+      override slice(start?: number, end?: number, contentType?: string): Blob {
+        this.calls.push([start, end]);
+        return super.slice(start, end, contentType);
+      }
+    }
+    it('one', async () => {
+      const { fromBrowserFile } = await import('../../../src/seekable.js');
+      const blob = new RecordingBlob([b]);
+      expect(Array.from(await fromBrowserFile(blob)(1, 2))).to.deep.equal([1]);
+      expect(blob.calls).to.deep.equal([[1, 2]]);
+    });
+    it('negative two resolves against size', async () => {
+      const { fromBrowserFile } = await import('../../../src/seekable.js');
+      const blob = new RecordingBlob([b]);
+      expect(Array.from(await fromBrowserFile(blob)(-2))).to.deep.equal([254, 255]);
+      expect(blob.calls).to.deep.equal([[254, undefined]]);
+    });
+    it('negative three to negative two resolves against size', async () => {
+      const { fromBrowserFile } = await import('../../../src/seekable.js');
+      const blob = new RecordingBlob([b]);
+      expect(Array.from(await fromBrowserFile(blob)(-3, -2))).to.deep.equal([253]);
+      expect(blob.calls).to.deep.equal([[253, 254]]);
+    });
+    it('negative past the start clamps to zero', async () => {
+      const { fromBrowserFile } = await import('../../../src/seekable.js');
+      const blob = new RecordingBlob([b]);
+      expect(Array.from(await fromBrowserFile(blob)(-1000))).to.deep.equal(r);
+      expect(blob.calls).to.deep.equal([[0, undefined]]);
+    });
+  });
+
   describe('fromUrl', () => {
     const r = range(256);
     const b = new Uint8Array(r);
