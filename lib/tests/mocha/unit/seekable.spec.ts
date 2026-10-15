@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import type { SinonSandbox } from 'sinon';
 import { createSandbox } from 'sinon';
 
+import { InvalidFileError } from '../../../src/errors.js';
 import { type Chunker, fromSource, sourceToStream } from '../../../src/seekable.js';
 
 function range(a: number, b?: number): number[] {
@@ -110,6 +111,27 @@ describe('chunkers', () => {
           throw e;
         }).to.throw('416');
       }
+    });
+    it('uses HEAD to bound later ranges when a suffix response omits Content-Range', async () => {
+      const fetchStub = box.stub(globalThis, 'fetch').callsFake((_input, init) => {
+        if (init?.method === 'HEAD') {
+          return Promise.resolve(
+            new Response(null, { status: 200, headers: { 'Content-Length': '1024' } })
+          );
+        }
+        return Promise.resolve(new Response(new Uint8Array(1024), { status: 206 }));
+      });
+      const { fromUrl } = await import('../../../src/seekable.js');
+      const chunker = await fromUrl('https://example.test/archive.tdf');
+      await chunker(-1024);
+      try {
+        await chunker(1024, 1025);
+        expect.fail('expected the out-of-bounds request to be rejected');
+      } catch (e) {
+        expect(e).to.be.instanceOf(InvalidFileError);
+      }
+      expect(fetchStub.callCount).to.equal(2);
+      expect(fetchStub.secondCall.args[1]?.method).to.equal('HEAD');
     });
     it('broken stream all', async () => {
       const { fromUrl } = await import('../../../src/seekable.js');

@@ -1,8 +1,9 @@
 import { expect } from 'chai';
+import sinon from 'sinon';
 
 import { InvalidFileError } from '../../../src/errors.js';
 import { encodeArrayBuffer } from '../../../src/encodings/base64.js';
-import { fromBuffer } from '../../../src/seekable.js';
+import { fromBuffer, fromUrl } from '../../../src/seekable.js';
 import type { CentralDirectory } from '../../../tdf3/src/utils/zip-reader.js';
 import { parseCDBuffer, readUInt64LE, ZipReader } from '../../../tdf3/src/utils/zip-reader.js';
 import { ZipWriter, dateToDosDateTime, writeUInt64LE } from '../../../tdf3/src/utils/zip-writer.js';
@@ -454,6 +455,16 @@ describe('reader', () => {
       expect(await reader.getManifest(centralDirectory, '0.manifest.json')).to.eql(manifest);
     });
 
+    for (const zip64 of [false, true]) {
+      it(`can read a ${zip64 ? 'zip64' : 'non-zip64'} central directory twice`, async () => {
+        const zipFile = buildZip([{ name: '0.manifest.json', data: manifestBytes(manifest) }], {
+          zip64,
+        });
+        const reader = new ZipReader(fromBuffer(zipFile));
+        expect(await reader.getCentralDirectory()).to.eql(await reader.getCentralDirectory());
+      });
+    }
+
     // DSPX-4591 finding 1: the EOCD is not necessarily the last bytes of the file.
     it('reads an archive with a trailing comment', async () => {
       const comment = new TextEncoder().encode('a comment that follows the EOCD record');
@@ -804,6 +815,50 @@ describe('reader', () => {
         () => new ZipReader(fromBuffer(zipFile)).getCentralDirectory(),
         'zip64 local header offset past EOF'
       );
+    });
+
+    it('rejects remote EOCD offsets past EOF before requesting them', async () => {
+      const zipFile = buildZip(entries(), { zip64: false });
+      setU32(zipFile, zipFile.length - EOCD_SIZE + 16, 0x7fffffff);
+      const ranges: string[] = [];
+      const fetchStub = sinon.stub(globalThis, 'fetch').callsFake((_input, init) => {
+        ranges.push(new Headers(init?.headers).get('Range') ?? '');
+        return Promise.resolve(
+          new Response(new Uint8Array(zipFile), {
+            status: 206,
+            headers: { 'Content-Range': `bytes 0-${zipFile.length - 1}/${zipFile.length}` },
+          })
+        );
+      });
+      try {
+        const reader = new ZipReader(await fromUrl('https://example.test/archive.tdf'));
+        await expectInvalidFile(() => reader.getCentralDirectory(), 'remote EOCD offset');
+        expect(ranges).to.eql(['bytes=-1024']);
+      } finally {
+        fetchStub.restore();
+      }
+    });
+
+    it('rejects remote zip64 locator offsets past EOF before requesting them', async () => {
+      const zipFile = buildZip(entries());
+      setU64(zipFile, zipFile.length - EOCD_SIZE - ZIP64_LOCATOR_SIZE + 8, 2n ** 40n);
+      const ranges: string[] = [];
+      const fetchStub = sinon.stub(globalThis, 'fetch').callsFake((_input, init) => {
+        ranges.push(new Headers(init?.headers).get('Range') ?? '');
+        return Promise.resolve(
+          new Response(new Uint8Array(zipFile), {
+            status: 206,
+            headers: { 'Content-Range': `bytes 0-${zipFile.length - 1}/${zipFile.length}` },
+          })
+        );
+      });
+      try {
+        const reader = new ZipReader(await fromUrl('https://example.test/archive.tdf'));
+        await expectInvalidFile(() => reader.getCentralDirectory(), 'remote zip64 locator offset');
+        expect(ranges).to.eql(['bytes=-1024']);
+      } finally {
+        fetchStub.restore();
+      }
     });
 
     it('rejects a local header offset that does not point at a local header', async () => {

@@ -375,6 +375,47 @@ describe('manifest entry name (platform#3513)', function () {
     });
   });
 
+  describe('a readable archive with a broken spec-named manifest', function () {
+    let bothNames: Uint8Array;
+
+    beforeEach(async function () {
+      const entries = await entriesOf(
+        await renameManifestEntry(await encryptToBuffer(client), OFFSPEC_NAME)
+      );
+      bothNames = buildArchive([
+        ...entries,
+        { fileName: SPEC_NAME, data: new TextEncoder().encode('{'), crc32: 0 },
+      ]);
+    });
+
+    it('keeps the non-aligned manifest readable after resolving both names', async function () {
+      const reader = new ZipReader(fromBuffer(bothNames));
+      const directory = await reader.getCentralDirectory();
+      assert.deepEqual(
+        directory.map(({ fileName }) => fileName),
+        ['0.payload', OFFSPEC_NAME, SPEC_NAME]
+      );
+      assert.isString(
+        (await reader.getManifest(directory, OFFSPEC_NAME)).encryptionInformation.policy
+      );
+      await assertRejects(reader.getManifest(directory, SPEC_NAME), `manifest [${SPEC_NAME}]`);
+    });
+
+    it('does not fall back to the non-aligned manifest during decrypt', async function () {
+      await assertRejects(
+        client.decrypt({ source: { type: 'buffer', location: bothNames } }),
+        `manifest [${SPEC_NAME}]`
+      );
+    });
+
+    it('does not fall back to the non-aligned manifest for getPolicyId', async function () {
+      await assertRejects(
+        client.getPolicyId({ source: { type: 'buffer', location: bothNames } }),
+        `manifest [${SPEC_NAME}]`
+      );
+    });
+  });
+
   describe('archives with no manifest entry under either name', function () {
     it('reports a missing manifest', async function () {
       const nameless = await renameManifestEntry(await encryptToBuffer(client), 'not-a-manifest');

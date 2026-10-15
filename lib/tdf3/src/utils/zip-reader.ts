@@ -137,12 +137,17 @@ export class ZipReader {
   /**
    * Reads exactly the bytes `[byteStart, byteEnd)` of the archive.
    *
-   * The range is validated against {@link dataRegionEnd} (when known) before
-   * anything is requested, and the result is checked for a short read: buffer and
-   * Blob sources silently clamp out-of-range slices, and a remote server may
-   * return fewer bytes than asked for.
+   * Entry data is bounded by {@link dataRegionEnd} before anything is requested.
+   * Directory records are allowed beyond that bound, including on repeated reads.
+   * The result is checked for a short read: buffer and Blob sources silently
+   * clamp out-of-range slices, and a remote server may return fewer bytes.
    */
-  private async readRange(byteStart: number, byteEnd: number, what: string): Promise<Uint8Array> {
+  private async readRange(
+    byteStart: number,
+    byteEnd: number,
+    what: string,
+    withinDataRegion = true
+  ): Promise<Uint8Array> {
     if (!Number.isSafeInteger(byteStart) || !Number.isSafeInteger(byteEnd)) {
       throw new InvalidFileError(
         `${what}: byte range [${byteStart}, ${byteEnd}) is not representable`
@@ -151,7 +156,7 @@ export class ZipReader {
     if (byteStart < 0 || byteEnd < byteStart) {
       throw new InvalidFileError(`${what}: invalid byte range [${byteStart}, ${byteEnd})`);
     }
-    if (this.dataRegionEnd !== undefined && byteEnd > this.dataRegionEnd) {
+    if (withinDataRegion && this.dataRegionEnd !== undefined && byteEnd > this.dataRegionEnd) {
       throw new InvalidFileError(
         `${what}: byte range [${byteStart}, ${byteEnd}) extends past the start of the central directory at [${this.dataRegionEnd}]`
       );
@@ -183,7 +188,8 @@ export class ZipReader {
     const cdChunk = await this.readRange(
       eocd.centralDirectoryOffset,
       eocd.centralDirectoryOffset + eocd.centralDirectorySize,
-      'central directory truncated'
+      'central directory truncated',
+      false
     );
     this.dataRegionEnd = eocd.centralDirectoryOffset;
 
@@ -276,7 +282,8 @@ export class ZipReader {
     const record = await this.readRange(
       zip64EocdrOffset,
       zip64EocdrOffset + ZIP64_END_OF_CENTRAL_DIRECTORY_RECORD_SIZE,
-      'zip64 end of central directory record truncated'
+      'zip64 end of central directory record truncated',
+      false
     );
     if (readUInt32LE(record, 0) !== ZIP64_EOCDR_SIGNATURE) {
       throw new InvalidFileError(

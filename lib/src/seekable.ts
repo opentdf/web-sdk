@@ -65,7 +65,17 @@ async function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function getRemoteChunk(url: string, range?: string): Promise<Uint8Array> {
+type RemoteChunk = { data: Uint8Array; totalLength?: number };
+
+function safeLength(value: string | null): number | undefined {
+  if (!value || !/^\d+$/.test(value)) {
+    return undefined;
+  }
+  const length = Number(value);
+  return Number.isSafeInteger(length) ? length : undefined;
+}
+
+async function getRemoteChunk(url: string, range?: string): Promise<RemoteChunk> {
   // loop with fetch for three times, with an exponential backoff
   // if the fetch fails with a network error
   // this is to handle transient network errors
@@ -109,16 +119,43 @@ async function getRemoteChunk(url: string, range?: string): Promise<Uint8Array> 
         `empty response for range request: requested [${range}] from [${url}]`
       );
     }
-    return new Uint8Array(data);
+    const contentRange = res.headers.get('Content-Range');
+    const totalLength =
+      res.status === 200
+        ? data.byteLength
+        : safeLength(/^bytes \d+-\d+\/(\d+)$/i.exec(contentRange ?? '')?.[1] ?? null);
+    return { data: new Uint8Array(data), totalLength };
   }
   throw new AggregateError(errors, 'fetch failed after 3 retries');
 }
 
 export const fromUrl = async (location: string): Promise<Chunker> => {
   await Promise.resolve();
+  let knownLength: number | undefined;
+  let suffixRead = false;
   return async (byteStart?: number, byteEnd?: number): Promise<Uint8Array> => {
     if (byteStart === undefined) {
-      return getRemoteChunk(location);
+      const chunk = await getRemoteChunk(location);
+      knownLength = chunk.totalLength;
+      return chunk.data;
+    }
+    // ZIP readers start with a suffix read. Learn the archive length from that
+    // response before using offsets supplied by the archive in later requests.
+    if (byteStart >= 0 && suffixRead && knownLength === undefined) {
+      const head = await fetch(location, { method: 'HEAD', redirect: 'follow' });
+      knownLength = head.ok ? safeLength(head.headers.get('Content-Length')) : undefined;
+      if (knownLength === undefined) {
+        throw new InvalidFileError(`unable to determine length of remote file [${location}]`);
+      }
+    }
+    if (
+      byteStart >= 0 &&
+      knownLength !== undefined &&
+      (byteStart >= knownLength || (byteEnd !== undefined && byteEnd > knownLength))
+    ) {
+      throw new InvalidFileError(
+        `byte range [${byteStart}, ${byteEnd ?? 'end'}) extends past remote file length [${knownLength}]`
+      );
     }
     let rangeHeader = `${byteStart}`;
     if (byteEnd && byteEnd < 0) {
@@ -127,7 +164,15 @@ export const fromUrl = async (location: string): Promise<Chunker> => {
     } else if (byteEnd) {
       rangeHeader += `-${byteEnd - 1}`;
     }
-    return await getRemoteChunk(location, rangeHeader);
+    const chunk = await getRemoteChunk(location, rangeHeader);
+    knownLength = chunk.totalLength ?? knownLength;
+    if (byteStart < 0) {
+      suffixRead = true;
+      if (knownLength === undefined && chunk.data.length < -byteStart) {
+        knownLength = chunk.data.length;
+      }
+    }
+    return chunk.data;
   };
 };
 
