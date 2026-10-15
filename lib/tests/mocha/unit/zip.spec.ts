@@ -775,9 +775,8 @@ describe('reader', () => {
 
     it('rejects a zip64 end of central directory with 0xffffffffffffffff entries', async () => {
       const zipFile = buildZip(entries());
-      // zip64 EOCD record (56) + locator (20) + EOCD (22) end the file; the
-      // entry count lives at offset 32 of the zip64 EOCD record.
-      setU64(zipFile, zipFile.length - 22 - 20 - 56 + 32, 0xffffffffffffffffn);
+      // 32 - total number of entries in the zip64 EOCD record
+      setU64(zipFile, zipFile.length - ZIP64_TRAILER_SIZE + 32, 0xffffffffffffffffn);
       await expectInvalidFile(
         () => new ZipReader(fromBuffer(zipFile)).getCentralDirectory(),
         'zip64 EOCD overflow'

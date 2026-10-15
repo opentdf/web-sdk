@@ -3,7 +3,7 @@ import { type Chunker } from '../../../src/seekable.js';
 import type { Manifest } from '../models/index.js';
 import { readUInt32LE, readUInt16LE, copyUint8Arr, buffToString } from './index.js';
 
-// Signatures and fixed record sizes from PKWARE APPNOTE.TXT sections 4.3.12-4.3.16.
+// Signatures and fixed record sizes from PKWARE APPNOTE.TXT sections 4.3.7-4.3.16.
 /** Local file header signature (APPNOTE 4.3.7). */
 const LOCAL_FILE_HEADER_SIGNATURE = 0x04034b50;
 /** Central file header signature (APPNOTE 4.3.12). */
@@ -126,7 +126,9 @@ export class ZipReader {
    * directory (APPNOTE 4.3.6), so this is an upper bound on every byte range an
    * entry may reference. It lets us reject hostile offsets and sizes before they
    * are sliced or sent to a server as an HTTP Range, without needing to know the
-   * length of the underlying source.
+   * length of the underlying source. Until then (for example, when a central
+   * directory read by another reader is passed in) entry reads are only checked
+   * for short reads.
    */
   private dataRegionEnd?: number;
 
@@ -137,10 +139,15 @@ export class ZipReader {
   /**
    * Reads exactly the bytes `[byteStart, byteEnd)` of the archive.
    *
-   * Entry data is bounded by {@link dataRegionEnd} before anything is requested.
-   * Directory records are allowed beyond that bound, including on repeated reads.
-   * The result is checked for a short read: buffer and Blob sources silently
-   * clamp out-of-range slices, and a remote server may return fewer bytes.
+   * When `withinDataRegion` is set and {@link dataRegionEnd} is known, the range
+   * must end before the central directory, and is rejected before anything is
+   * requested. Central directory and zip64 records pass `false`, since they sit
+   * at or after that offset. The result is checked for a short read: buffer and
+   * Blob sources silently clamp out-of-range slices, and a remote server may
+   * return fewer bytes.
+   *
+   * @param what names the structure being read, as a prefix for error messages
+   * @throws InvalidFileError if the range is invalid, out of bounds or short
    */
   private async readRange(
     byteStart: number,
@@ -168,7 +175,7 @@ export class ZipReader {
     const chunk = await this.getChunk(byteStart, byteEnd);
     if (chunk.length !== expected) {
       throw new InvalidFileError(
-        `${what}: expected [${expected}] bytes at [${byteStart}], read [${chunk.length}]`
+        `${what} truncated: expected [${expected}] bytes at [${byteStart}], read [${chunk.length}]`
       );
     }
     return chunk;
@@ -188,7 +195,7 @@ export class ZipReader {
     const cdChunk = await this.readRange(
       eocd.centralDirectoryOffset,
       eocd.centralDirectoryOffset + eocd.centralDirectorySize,
-      'central directory truncated',
+      'central directory',
       false
     );
     this.dataRegionEnd = eocd.centralDirectoryOffset;
@@ -282,7 +289,7 @@ export class ZipReader {
     const record = await this.readRange(
       zip64EocdrOffset,
       zip64EocdrOffset + ZIP64_END_OF_CENTRAL_DIRECTORY_RECORD_SIZE,
-      'zip64 end of central directory record truncated',
+      'zip64 end of central directory record',
       false
     );
     if (readUInt32LE(record, 0) !== ZIP64_EOCDR_SIGNATURE) {
@@ -301,8 +308,10 @@ export class ZipReader {
   }
 
   /**
-   * Gets the manifest
-   * @returns The manifest as a buffer represented as JSON
+   * Reads and parses the manifest entry.
+   * @returns The manifest, parsed from JSON
+   * @throws InvalidFileError if the entry is missing, too large, out of bounds,
+   * short, or not a JSON object
    */
   async getManifest(cdBuffers: CentralDirectory[], manifestFileName: string): Promise<Manifest> {
     const cdObj = cdBuffers.find(({ fileName }) => fileName === manifestFileName);
@@ -351,8 +360,10 @@ export class ZipReader {
         `stored entry [${cdObj.fileName}] has compressed size [${cdObj.compressedSize}] but uncompressed size [${cdObj.uncompressedSize}]`
       );
     }
-    // Calculate header length -- tdf3-js writes 0 in all the header fields
-    // and does not include extra field for zip64
+    // Read the local header at the length the central directory implies, check
+    // its signature, then recompute the length from the local header's own name
+    // and extra field lengths. tdf3-js writes 0 in the local header size fields
+    // and omits the zip64 extra field there, so the two can differ.
     const headerChunk = await this.readRange(
       cdObj.relativeOffsetOfLocalHeader,
       cdObj.relativeOffsetOfLocalHeader + cdObj.headerLength,

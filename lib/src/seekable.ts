@@ -23,6 +23,8 @@ export type Source =
  * @param fileRef the browser file data
  */
 export const fromBrowserFile = (fileRef: Blob): Chunker => {
+  // Reads issued before the length is known, other than the first suffix read,
+  // are not bounds checked here; ZipReader always starts with a suffix read.
   return async (byteStart?: number, byteEnd?: number): Promise<Uint8Array> => {
     if (byteStart === undefined) {
       return new Uint8Array(await fileRef.arrayBuffer());
@@ -177,6 +179,7 @@ export const fromUrl = async (location: string): Promise<Chunker> => {
     knownLength = chunk.totalLength ?? knownLength;
     if (byteStart < 0) {
       suffixRead = true;
+      // A suffix longer than the file returns the whole file.
       if (knownLength === undefined && chunk.data.length < -byteStart) {
         knownLength = chunk.data.length;
       }

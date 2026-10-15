@@ -136,8 +136,8 @@ type ArchiveEntry = { fileName: string; data: Uint8Array; crc32: number };
 
 /**
  * A central-directory record with no data of its own: it names `fileName` but
- * points at the local header of `sameDataAs` and reports `uncompressedSize`
- * rather than that entry's real size. Lets a fixture claim a second name for the
+ * points at the local header of `sameDataAs` and reports `uncompressedSize` as
+ * both its compressed and uncompressed size, rather than that entry's real size. Lets a fixture claim a second name for the
  * manifest without disturbing the entry that name shadows.
  */
 type AliasRecord = { fileName: string; sameDataAs: string; uncompressedSize: number };
@@ -321,10 +321,8 @@ describe('manifest entry name (platform#3513)', function () {
   }
 
   /**
-   * Resolving the name against the central directory, rather than retrying the
-   * spec name's failure under the non-aligned one, is what keeps these honest: a
-   * `try { spec } catch { non-aligned }` reader would serve the valid non-aligned
-   * manifest here and swallow the size error entirely.
+   * The shadowing entry runs past the start of the central directory, so it is
+   * rejected while the central directory is read, before either name resolves.
    */
   describe('an oversized spec-named entry shadowing a valid non-aligned one', function () {
     let entries: ArchiveEntry[];
@@ -353,9 +351,7 @@ describe('manifest entry name (platform#3513)', function () {
       assert.isString(manifest.encryptionInformation.policy);
     });
 
-    // The oversized entry runs past the start of the central directory, so the
-    // reader rejects it while reading the central directory, before any name is
-    // resolved. Either way, the error names the spec entry, not the fallback.
+    // The error names the spec entry, not the fallback.
     it('rejects the oversized spec-named entry', async function () {
       await assertRejects(centralDirectoryOf(shadowed), `entry [${SPEC_NAME}]`);
     });
@@ -375,6 +371,12 @@ describe('manifest entry name (platform#3513)', function () {
     });
   });
 
+  /**
+   * Resolving the name against the central directory, rather than retrying the
+   * spec name's failure under the non-aligned one, is what keeps these honest: a
+   * `try { spec } catch { non-aligned }` reader would serve the valid non-aligned
+   * manifest here and swallow the spec manifest's error entirely.
+   */
   describe('a readable archive with a broken spec-named manifest', function () {
     let bothNames: Uint8Array;
 
