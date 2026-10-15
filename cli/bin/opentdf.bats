@@ -42,6 +42,24 @@
   [[ $output == *"File is not accessable [noone]"* ]]
 }
 
+@test "accepts a UTF-8 BOM in an assertions file" {
+  printf '\357\273\277[]' > "$BATS_TEST_TMPDIR/assertions.json"
+  echo "hello" > "$BATS_TEST_TMPDIR/plain.txt"
+  run $BATS_TEST_DIRNAME/opentdf.mjs --oidcEndpoint "http://invalid" --assertions "$BATS_TEST_TMPDIR/assertions.json" encrypt "$BATS_TEST_TMPDIR/plain.txt"
+  echo "$output"
+  [ "$status" -eq 1 ]
+  [[ $output == *"Auth expects clientId and clientSecret"* ]]
+}
+
+@test "accepts a UTF-8 BOM in an assertion verification keys file" {
+  printf '\357\273\277{"Keys":{}}' > "$BATS_TEST_TMPDIR/keys.json"
+  echo "x" > "$BATS_TEST_TMPDIR/input.tdf"
+  run $BATS_TEST_DIRNAME/opentdf.mjs --assertionVerificationKeys "$BATS_TEST_TMPDIR/keys.json" inspect "$BATS_TEST_TMPDIR/input.tdf"
+  echo "$output"
+  [[ $output == *"unsupported format; prefix not recognized"* ]]
+  [[ $output != *"Failed to open/parse assertion verification keys"* ]]
+}
+
 # Integrity algorithms are accepted in any casing but must reach the manifest
 # uppercase, since readers match the spec's spelling exactly. This runs against a
 # closed local port, so it gets as far as the create options and then fails to

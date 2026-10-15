@@ -56,6 +56,11 @@ const lowercaseIntegrityAlgorithm = (v: unknown) =>
 const asError = (value: unknown): Error =>
   value instanceof Error ? value : new Error(String(value));
 
+// TextDecoder, like Blob.text(), removes a leading UTF-8 BOM. readFile's
+// 'utf8' string decoding leaves it in place, which JSON.parse rejects.
+const readJsonFileText = async (path: string): Promise<string> =>
+  new TextDecoder().decode(await readFile(path));
+
 const parseJwt = (jwt: string, field = 1) => {
   return JSON.parse(base64.decode(jwt.split('.')[field])) as unknown;
 };
@@ -136,7 +141,7 @@ async function parseAssertionVerificationKeys(
   } catch (err) {
     // try as file name:
     try {
-      u = JSON.parse(await readFile(s, 'utf8')) as assertions.AssertionVerificationKeys;
+      u = JSON.parse(await readJsonFileText(s)) as assertions.AssertionVerificationKeys;
     } catch (err2) {
       const cause = asError(err2);
       throw new CLIError(
@@ -234,7 +239,7 @@ async function parseAssertionConfig(s: string): Promise<assertions.AssertionConf
   } catch (err) {
     // try as file name:
     try {
-      u = JSON.parse(await readFile(s, 'utf8')) as unknown;
+      u = JSON.parse(await readJsonFileText(s)) as unknown;
     } catch (err2) {
       const cause = asError(err2);
       throw new CLIError(
