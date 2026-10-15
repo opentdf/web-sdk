@@ -318,19 +318,38 @@ export class ZipReader {
     const byteEnd = byteStart + cdObj.uncompressedSize;
     const manifest = await this.readRange(byteStart, byteEnd, `manifest [${manifestFileName}]`);
 
+    let parsed: unknown;
     try {
-      return JSON.parse(new TextDecoder().decode(manifest)) as Manifest;
+      parsed = JSON.parse(new TextDecoder().decode(manifest));
     } catch (e) {
       throw new InvalidFileError(
         `manifest [${manifestFileName}] is not valid JSON`,
         e instanceof Error ? e : undefined
       );
     }
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      throw new InvalidFileError(`manifest [${manifestFileName}] is not a JSON object`);
+    }
+    return parsed as Manifest;
   }
 
   async adjustHeaders(cdObj: CentralDirectory): Promise<void> {
     if (!cdObj) {
       throw new InvalidFileError('Unable to retrieve CD adjust');
+    }
+    // Entries are read verbatim, so only stored entries are supported, and a
+    // stored entry's sizes must agree (APPNOTE 4.4.5, 4.4.8). Otherwise the
+    // manifest read (by uncompressed size) and the data bound (by compressed
+    // size) would disagree about where the entry ends.
+    if (cdObj.compressionMethod !== 0) {
+      throw new InvalidFileError(
+        `entry [${cdObj.fileName}] uses unsupported compression method [${cdObj.compressionMethod}]`
+      );
+    }
+    if (cdObj.compressedSize !== cdObj.uncompressedSize) {
+      throw new InvalidFileError(
+        `stored entry [${cdObj.fileName}] has compressed size [${cdObj.compressedSize}] but uncompressed size [${cdObj.uncompressedSize}]`
+      );
     }
     // Calculate header length -- tdf3-js writes 0 in all the header fields
     // and does not include extra field for zip64

@@ -883,8 +883,9 @@ describe('reader', () => {
         zip64: false,
         mapCentralDirectoryRecord: (record, i) => {
           if (i === 1) {
-            // 20 - compressed size
+            // 20 - compressed size, 24 - uncompressed size
             setU32(record, 20, 0x7fffffff);
+            setU32(record, 24, 0x7fffffff);
           }
           return record;
         },
@@ -901,18 +902,78 @@ describe('reader', () => {
         zip64: false,
         mapCentralDirectoryRecord: (record, i) => {
           if (i === 0) {
-            // 24 - uncompressed size; still under the manifest size limit.
+            // 20 - compressed size, 24 - uncompressed size; still under the
+            // manifest size limit.
+            setU32(record, 20, 1024 * 1024);
             setU32(record, 24, 1024 * 1024);
           }
           return record;
         },
       });
-      const reader = new ZipReader(fromBuffer(zipFile));
-      const centralDirectory = await reader.getCentralDirectory();
-      await expectInvalidFile(
-        () => reader.getManifest(centralDirectory, '0.manifest.json'),
+      const message = await expectInvalidFile(
+        () => new ZipReader(fromBuffer(zipFile)).getCentralDirectory(),
         'manifest past EOF'
       );
+      expect(message).to.contain('0.manifest.json');
+    });
+
+    it('rejects a manifest read that runs into the central directory', async () => {
+      const zipFile = buildZip(entries(), { zip64: false });
+      const reader = new ZipReader(fromBuffer(zipFile));
+      const centralDirectory = await reader.getCentralDirectory();
+      const [manifestRecord] = centralDirectory;
+      const message = await expectInvalidFile(
+        () =>
+          reader.getManifest(
+            [{ ...manifestRecord, uncompressedSize: 1024 * 1024 }],
+            '0.manifest.json'
+          ),
+        'manifest read past the central directory'
+      );
+      expect(message).to.contain('central directory');
+    });
+
+    for (const zip64 of [false, true]) {
+      it(`rejects ${zip64 ? 'zip64' : 'non-zip64'} sizes that disagree for a stored entry`, async () => {
+        const zipFile = buildZip(entries(), {
+          zip64,
+          mapCentralDirectoryRecord: (record, i) => {
+            if (i === 0) {
+              if (zip64) {
+                // zip64 extra field data: uncompressed size (8), compressed size (8)
+                setU64(record, zip64ExtraOffsetField(record) - 16, 1024n * 1024n);
+              } else {
+                // 24 - uncompressed size
+                setU32(record, 24, 1024 * 1024);
+              }
+            }
+            return record;
+          },
+        });
+        const message = await expectInvalidFile(
+          () => new ZipReader(fromBuffer(zipFile)).getCentralDirectory(),
+          'size mismatch'
+        );
+        expect(message).to.contain('uncompressed size [1048576]');
+      });
+    }
+
+    it('rejects a compressed entry', async () => {
+      const zipFile = buildZip(entries(), {
+        zip64: false,
+        mapCentralDirectoryRecord: (record, i) => {
+          if (i === 1) {
+            // 10 - compression method; 8 is deflate
+            setU16(record, 10, 8);
+          }
+          return record;
+        },
+      });
+      const message = await expectInvalidFile(
+        () => new ZipReader(fromBuffer(zipFile)).getCentralDirectory(),
+        'deflated entry'
+      );
+      expect(message).to.contain('compression method [8]');
     });
 
     it('rejects a manifest that is not JSON', async () => {
@@ -924,6 +985,21 @@ describe('reader', () => {
         'manifest not JSON'
       );
     });
+
+    for (const json of ['null', '42', '"manifest"', '[]']) {
+      it(`rejects a manifest that is ${json} rather than an object`, async () => {
+        const zipFile = buildZip([
+          { name: '0.manifest.json', data: new TextEncoder().encode(json) },
+        ]);
+        const reader = new ZipReader(fromBuffer(zipFile));
+        const centralDirectory = await reader.getCentralDirectory();
+        const message = await expectInvalidFile(
+          () => reader.getManifest(centralDirectory, '0.manifest.json'),
+          `manifest ${json}`
+        );
+        expect(message).to.contain('not a JSON object');
+      });
+    }
 
     it('rejects payload segments outside the payload entry', async () => {
       const reader = new ZipReader(fromBuffer(buildZip(entries())));
