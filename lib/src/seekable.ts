@@ -133,6 +133,7 @@ export const fromUrl = async (location: string): Promise<Chunker> => {
   await Promise.resolve();
   let knownLength: number | undefined;
   let suffixRead = false;
+  let headAttempted = false;
   return async (byteStart?: number, byteEnd?: number): Promise<Uint8Array> => {
     if (byteStart === undefined) {
       const chunk = await getRemoteChunk(location);
@@ -141,11 +142,19 @@ export const fromUrl = async (location: string): Promise<Chunker> => {
     }
     // ZIP readers start with a suffix read. Learn the archive length from that
     // response before using offsets supplied by the archive in later requests.
-    if (byteStart >= 0 && suffixRead && knownLength === undefined) {
-      const head = await fetch(location, { method: 'HEAD', redirect: 'follow' });
-      knownLength = head.ok ? safeLength(head.headers.get('Content-Length')) : undefined;
-      if (knownLength === undefined) {
-        throw new InvalidFileError(`unable to determine length of remote file [${location}]`);
+    // Cross-origin responses hide Content-Range unless the server exposes it, so
+    // fall back to a single HEAD. That is best effort: presigned GET URLs and some
+    // servers reject HEAD, and ZipReader still bounds entry data and rejects short
+    // reads without a known length.
+    if (byteStart >= 0 && suffixRead && knownLength === undefined && !headAttempted) {
+      headAttempted = true;
+      try {
+        const head = await fetch(location, { method: 'HEAD', redirect: 'follow' });
+        if (head.ok) {
+          knownLength = safeLength(head.headers.get('Content-Length'));
+        }
+      } catch {
+        // Leave the length unknown; the range request below surfaces real failures.
       }
     }
     if (

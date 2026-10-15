@@ -133,6 +133,28 @@ describe('chunkers', () => {
       expect(fetchStub.callCount).to.equal(2);
       expect(fetchStub.secondCall.args[1]?.method).to.equal('HEAD');
     });
+    for (const [name, head] of [
+      ['rejects HEAD', () => Promise.resolve(new Response(null, { status: 403 }))],
+      ['omits Content-Length on HEAD', () => Promise.resolve(new Response(null, { status: 200 }))],
+      ['fails HEAD at the network', () => Promise.reject(new TypeError('Failed to fetch'))],
+    ] as const) {
+      it(`continues without a length when the server ${name}`, async () => {
+        const body = new Uint8Array(range(256));
+        const fetchStub = box.stub(globalThis, 'fetch').callsFake((_input, init) => {
+          if (init?.method === 'HEAD') {
+            return head();
+          }
+          return Promise.resolve(new Response(body, { status: 206 }));
+        });
+        const { fromUrl } = await import('../../../src/seekable.js');
+        const chunker = await fromUrl('https://example.test/archive.tdf');
+        await chunker(-256);
+        expect(await chunker(0, 256)).to.deep.equal(body);
+        expect(await chunker(0, 256)).to.deep.equal(body);
+        const methods = fetchStub.getCalls().map((c) => c.args[1]?.method ?? 'GET');
+        expect(methods).to.deep.equal(['GET', 'HEAD', 'GET', 'GET']);
+      });
+    }
     it('broken stream all', async () => {
       const { fromUrl } = await import('../../../src/seekable.js');
       try {
