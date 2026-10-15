@@ -191,8 +191,29 @@ async function expectCentralDirectoryRejected(zipFile: Uint8Array, expected: str
   } catch (e) {
     error = e;
   }
-  expect(error, 'expected getCentralDirectory to reject').to.exist;
+  expect(error, 'expected getCentralDirectory to reject').to.be.instanceOf(InvalidFileError);
   expect(messageOf(error)).to.contain(expected);
+}
+
+/** Serves `zipFile` the way a range-capable server does, recording each Range header. */
+function stubRangeServer(zipFile: Uint8Array, ranges: string[]) {
+  return sinon.stub(globalThis, 'fetch').callsFake((_input, init) => {
+    if (init?.method === 'HEAD') {
+      ranges.push('HEAD');
+      return Promise.resolve(new Response(null, { status: 405 }));
+    }
+    const range = new Headers(init?.headers).get('Range') ?? '';
+    ranges.push(range);
+    const [, from, to] = /^bytes=(-?\d*)-?(\d*)$/.exec(range) ?? [];
+    const start = from.startsWith('-') ? zipFile.length + Number(from) : Number(from);
+    const end = to ? Number(to) + 1 : zipFile.length;
+    return Promise.resolve(
+      new Response(zipFile.slice(start, end), {
+        status: 206,
+        headers: { 'Content-Range': `bytes ${start}-${end - 1}/${zipFile.length}` },
+      })
+    );
+  });
 }
 
 describe('zip utilities', () => {
@@ -860,6 +881,77 @@ describe('reader', () => {
       }
     });
 
+    it('reads a remote archive with bounded range requests', async () => {
+      const zipFile = buildZip(entries());
+      const ranges: string[] = [];
+      const fetchStub = stubRangeServer(zipFile, ranges);
+      try {
+        const reader = new ZipReader(await fromUrl('https://example.test/archive.tdf'));
+        const centralDirectory = await reader.getCentralDirectory();
+        expect(await reader.getManifest(centralDirectory, '0.manifest.json')).to.eql(manifest);
+        expect(
+          await reader.getPayloadSegment(centralDirectory, '0.payload', 0, payload.length)
+        ).to.eql(payload);
+        expect(ranges[0]).to.equal('bytes=-1024');
+        expect(ranges).to.not.include('HEAD');
+      } finally {
+        fetchStub.restore();
+      }
+    });
+
+    it('rejects a zip64 local header offset whose header end is not representable', async () => {
+      const zipFile = buildZip(entries(), {
+        mapCentralDirectoryRecord: (record, i) => {
+          if (i === 1) {
+            setU64(record, zip64ExtraOffsetField(record), BigInt(Number.MAX_SAFE_INTEGER));
+          }
+          return record;
+        },
+      });
+      const message = await expectInvalidFile(
+        () => new ZipReader(fromBuffer(zipFile)).getCentralDirectory(),
+        'unsafe local header end'
+      );
+      expect(message).to.contain('not representable');
+    });
+
+    it('rejects a local header whose extra field runs past the central directory', async () => {
+      const zipFile = buildZip(entries());
+      const payloadHeader = (await new ZipReader(fromBuffer(zipFile)).getCentralDirectory()).find(
+        ({ fileName }) => fileName === '0.payload'
+      )!.relativeOffsetOfLocalHeader;
+      // 28 - local header extra field length
+      setU16(zipFile, payloadHeader + 28, 0xffff);
+      const message = await expectInvalidFile(
+        () => new ZipReader(fromBuffer(zipFile)).getCentralDirectory(),
+        'hostile local header'
+      );
+      expect(message).to.contain('entry [0.payload]');
+    });
+
+    it('accepts an entry that ends exactly at the central directory, but not one byte past', async () => {
+      // The data descriptor sits between the last entry's data and the central
+      // directory, so these sizes end the entry at, then just past, its start.
+      const atBound = payload.length + DATA_DESCRIPTOR_SIZE;
+      const withLastEntrySize = (size: number) =>
+        buildZip(entries(), {
+          zip64: false,
+          mapCentralDirectoryRecord: (record, i) => {
+            if (i === 1) {
+              setU32(record, 20, size);
+              setU32(record, 24, size);
+            }
+            return record;
+          },
+        });
+      await new ZipReader(fromBuffer(withLastEntrySize(atBound))).getCentralDirectory();
+      const message = await expectInvalidFile(
+        () => new ZipReader(fromBuffer(withLastEntrySize(atBound + 1))).getCentralDirectory(),
+        'one byte past the central directory'
+      );
+      expect(message).to.contain('entry [0.payload]');
+    });
+
     it('rejects a local header offset that does not point at a local header', async () => {
       const zipFile = buildZip(entries(), {
         zip64: false,
@@ -1019,6 +1111,22 @@ describe('reader', () => {
           `segment [${offset}, +${size})`
         );
       }
+    });
+
+    it('returns an empty segment at the end of the payload without reading', async () => {
+      const zipFile = buildZip(entries());
+      const full = fromBuffer(zipFile);
+      const reads: number[][] = [];
+      const reader = new ZipReader((start, end) => {
+        reads.push([start ?? 0, end ?? 0]);
+        return full(start, end);
+      });
+      const centralDirectory = await reader.getCentralDirectory();
+      const before = reads.length;
+      expect(
+        await reader.getPayloadSegment(centralDirectory, '0.payload', payload.length, 0)
+      ).to.eql(new Uint8Array(0));
+      expect(reads.length).to.equal(before);
     });
 
     it('detects short reads from the source', async () => {

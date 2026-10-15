@@ -133,6 +133,31 @@ describe('chunkers', () => {
       expect(fetchStub.callCount).to.equal(2);
       expect(fetchStub.secondCall.args[1]?.method).to.equal('HEAD');
     });
+    it('accepts a range ending at the remote length and rejects one past it', async () => {
+      const body = new Uint8Array(range(256));
+      box.stub(globalThis, 'fetch').callsFake((_input, init) => {
+        const header = new Headers(init?.headers).get('Range') ?? '';
+        const [, from, to] = /^bytes=(-?\d*)-?(\d*)$/.exec(header) ?? [];
+        const start = from.startsWith('-') ? body.length + Number(from) : Number(from);
+        const end = to ? Number(to) + 1 : body.length;
+        return Promise.resolve(
+          new Response(body.slice(start, end), {
+            status: 206,
+            headers: { 'Content-Range': `bytes ${start}-${end - 1}/${body.length}` },
+          })
+        );
+      });
+      const { fromUrl } = await import('../../../src/seekable.js');
+      const chunker = await fromUrl('https://example.test/archive.tdf');
+      await chunker(-16);
+      expect(await chunker(255, 256)).to.deep.equal(body.slice(255));
+      try {
+        await chunker(255, 257);
+        expect.fail('expected the out-of-bounds request to be rejected');
+      } catch (e) {
+        expect(e).to.be.instanceOf(InvalidFileError);
+      }
+    });
     for (const [name, head] of [
       ['rejects HEAD', () => Promise.resolve(new Response(null, { status: 403 }))],
       ['omits Content-Length on HEAD', () => Promise.resolve(new Response(null, { status: 200 }))],
