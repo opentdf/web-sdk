@@ -23,7 +23,11 @@ import type { AuthProvider, HttpRequest } from '../../src/auth/auth.js';
 import { AesGcmCipher, SplitKey, WebCryptoService } from '../../tdf3/index.js';
 import { Client } from '../../tdf3/src/index.js';
 import { manifestEntryName } from '../../tdf3/src/tdf.js';
-import { type CentralDirectory, ZipReader } from '../../tdf3/src/utils/zip-reader.js';
+import {
+  type CentralDirectory,
+  MANIFEST_MAX_SIZE,
+  ZipReader,
+} from '../../tdf3/src/utils/zip-reader.js';
 import { ZipWriter } from '../../tdf3/src/utils/zip-writer.js';
 import { concatUint8 } from '../../tdf3/src/utils/index.js';
 import { fromBuffer } from '../../src/seekable.js';
@@ -51,8 +55,8 @@ const OFFSPEC_NAME = '0.manifest.json';
 /** What `writeStream` stamps on every entry it writes. */
 const EXTERNAL_FILE_ATTRIBUTES = 2175008768;
 
-/** Comfortably past the reader's 10 MiB manifest ceiling. */
-const OVERSIZED = 1024 * 1024 * 128;
+/** Comfortably past the reader's manifest ceiling, whatever it is set to. */
+const OVERSIZED = 2 * MANIFEST_MAX_SIZE;
 
 /**
  * A central-directory record with only the field `manifestEntryName` consults.
