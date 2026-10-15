@@ -51,7 +51,10 @@ const OFFSPEC_NAME = '0.manifest.json';
 /** What `writeStream` stamps on every entry it writes. */
 const EXTERNAL_FILE_ATTRIBUTES = 2175008768;
 
-/** Comfortably past the reader's 10 MiB manifest ceiling. */
+/**
+ * Far more than the archive holds, so no reader can honour it: the entry must be
+ * rejected on size, whether by a manifest ceiling or by the bounds checks.
+ */
 const OVERSIZED = 1024 * 1024 * 128;
 
 /**
@@ -133,8 +136,8 @@ type ArchiveEntry = { fileName: string; data: Uint8Array; crc32: number };
 
 /**
  * A central-directory record with no data of its own: it names `fileName` but
- * points at the local header of `sameDataAs` and reports `uncompressedSize`
- * rather than that entry's real size. Lets a fixture claim a second name for the
+ * points at the local header of `sameDataAs` and reports `uncompressedSize` as
+ * both its compressed and uncompressed size, rather than that entry's real size. Lets a fixture claim a second name for the
  * manifest without disturbing the entry that name shadows.
  */
 type AliasRecord = { fileName: string; sameDataAs: string; uncompressedSize: number };
@@ -318,16 +321,15 @@ describe('manifest entry name (platform#3513)', function () {
   }
 
   /**
-   * Resolving the name against the central directory, rather than retrying the
-   * spec name's failure under the non-aligned one, is what keeps these honest: a
-   * `try { spec } catch { non-aligned }` reader would serve the valid non-aligned
-   * manifest here and swallow the size error entirely.
+   * The shadowing entry runs past the start of the central directory, so it is
+   * rejected while the central directory is read, before either name resolves.
    */
   describe('an oversized spec-named entry shadowing a valid non-aligned one', function () {
+    let entries: ArchiveEntry[];
     let shadowed: Uint8Array;
 
     beforeEach(async function () {
-      const entries = await entriesOf(
+      entries = await entriesOf(
         await renameManifestEntry(await encryptToBuffer(client), OFFSPEC_NAME)
       );
       shadowed = buildArchive(entries, [
@@ -339,25 +341,79 @@ describe('manifest entry name (platform#3513)', function () {
       ]);
     });
 
-    it('is a fixture carrying both names, the non-aligned one readable', async function () {
-      assert.deepEqual(await fileNamesOf(shadowed), ['0.payload', OFFSPEC_NAME, SPEC_NAME]);
-      const centralDirectory = await centralDirectoryOf(shadowed);
-      const reader = new ZipReader(fromBuffer(shadowed));
-      const manifest = await reader.getManifest(centralDirectory, OFFSPEC_NAME);
+    it('is a fixture whose non-aligned manifest is readable without the shadow', async function () {
+      const unshadowed = buildArchive(entries);
+      assert.deepEqual(await fileNamesOf(unshadowed), ['0.payload', OFFSPEC_NAME]);
+      const manifest = await new ZipReader(fromBuffer(unshadowed)).getManifest(
+        await centralDirectoryOf(unshadowed),
+        OFFSPEC_NAME
+      );
       assert.isString(manifest.encryptionInformation.policy);
+    });
+
+    // The error names the spec entry, not the fallback.
+    it('rejects the oversized spec-named entry', async function () {
+      await assertRejects(centralDirectoryOf(shadowed), `entry [${SPEC_NAME}]`);
     });
 
     it('fails the decrypt on size rather than falling back', async function () {
       await assertRejects(
         client.decrypt({ source: { type: 'buffer', location: shadowed } }),
-        'too large'
+        `entry [${SPEC_NAME}]`
       );
     });
 
     it('fails getPolicyId on size rather than falling back', async function () {
       await assertRejects(
         client.getPolicyId({ source: { type: 'buffer', location: shadowed } }),
-        'too large'
+        `entry [${SPEC_NAME}]`
+      );
+    });
+  });
+
+  /**
+   * Resolving the name against the central directory, rather than retrying the
+   * spec name's failure under the non-aligned one, is what keeps these honest: a
+   * `try { spec } catch { non-aligned }` reader would serve the valid non-aligned
+   * manifest here and swallow the spec manifest's error entirely.
+   */
+  describe('a readable archive with a broken spec-named manifest', function () {
+    let bothNames: Uint8Array;
+
+    beforeEach(async function () {
+      const entries = await entriesOf(
+        await renameManifestEntry(await encryptToBuffer(client), OFFSPEC_NAME)
+      );
+      bothNames = buildArchive([
+        ...entries,
+        { fileName: SPEC_NAME, data: new TextEncoder().encode('{'), crc32: 0 },
+      ]);
+    });
+
+    it('keeps the non-aligned manifest readable after resolving both names', async function () {
+      const reader = new ZipReader(fromBuffer(bothNames));
+      const directory = await reader.getCentralDirectory();
+      assert.deepEqual(
+        directory.map(({ fileName }) => fileName),
+        ['0.payload', OFFSPEC_NAME, SPEC_NAME]
+      );
+      assert.isString(
+        (await reader.getManifest(directory, OFFSPEC_NAME)).encryptionInformation.policy
+      );
+      await assertRejects(reader.getManifest(directory, SPEC_NAME), `manifest [${SPEC_NAME}]`);
+    });
+
+    it('does not fall back to the non-aligned manifest during decrypt', async function () {
+      await assertRejects(
+        client.decrypt({ source: { type: 'buffer', location: bothNames } }),
+        `manifest [${SPEC_NAME}]`
+      );
+    });
+
+    it('does not fall back to the non-aligned manifest for getPolicyId', async function () {
+      await assertRejects(
+        client.getPolicyId({ source: { type: 'buffer', location: bothNames } }),
+        `manifest [${SPEC_NAME}]`
       );
     });
   });

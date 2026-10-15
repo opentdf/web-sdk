@@ -3,7 +3,9 @@ import { type Chunker } from '../../../src/seekable.js';
 import type { Manifest } from '../models/index.js';
 import { readUInt32LE, readUInt16LE, copyUint8Arr, buffToString } from './index.js';
 
-// Signatures and fixed record sizes from PKWARE APPNOTE.TXT sections 4.3.12-4.3.16.
+// Signatures and fixed record sizes from PKWARE APPNOTE.TXT sections 4.3.7-4.3.16.
+/** Local file header signature (APPNOTE 4.3.7). */
+const LOCAL_FILE_HEADER_SIGNATURE = 0x04034b50;
 /** Central file header signature (APPNOTE 4.3.12). */
 const CD_SIGNATURE = 0x02014b50;
 /** End of central directory record signature (APPNOTE 4.3.16). */
@@ -118,8 +120,65 @@ export type EndOfCentralDirectory = {
 export class ZipReader {
   getChunk: Chunker;
 
+  /**
+   * Offset of the start of the central directory, once {@link getCentralDirectory}
+   * has read it. Local file headers and file data always precede the central
+   * directory (APPNOTE 4.3.6), so this is an upper bound on every byte range an
+   * entry may reference. It lets us reject hostile offsets and sizes before they
+   * are sliced or sent to a server as an HTTP Range, without needing to know the
+   * length of the underlying source. Until then (for example, when a central
+   * directory read by another reader is passed in) entry reads are only checked
+   * for short reads.
+   */
+  private dataRegionEnd?: number;
+
   constructor(getChunk: Chunker) {
     this.getChunk = getChunk;
+  }
+
+  /**
+   * Reads exactly the bytes `[byteStart, byteEnd)` of the archive.
+   *
+   * When `withinDataRegion` is set and {@link dataRegionEnd} is known, the range
+   * must end before the central directory, and is rejected before anything is
+   * requested. Central directory and zip64 records pass `false`, since they sit
+   * at or after that offset. The result is checked for a short read: buffer and
+   * Blob sources silently clamp out-of-range slices, and a remote server may
+   * return fewer bytes.
+   *
+   * @param what names the structure being read, as a prefix for error messages
+   * @throws InvalidFileError if the range is invalid, out of bounds or short
+   */
+  private async readRange(
+    byteStart: number,
+    byteEnd: number,
+    what: string,
+    withinDataRegion = true
+  ): Promise<Uint8Array> {
+    if (!Number.isSafeInteger(byteStart) || !Number.isSafeInteger(byteEnd)) {
+      throw new InvalidFileError(
+        `${what}: byte range [${byteStart}, ${byteEnd}) is not representable`
+      );
+    }
+    if (byteStart < 0 || byteEnd < byteStart) {
+      throw new InvalidFileError(`${what}: invalid byte range [${byteStart}, ${byteEnd})`);
+    }
+    if (withinDataRegion && this.dataRegionEnd !== undefined && byteEnd > this.dataRegionEnd) {
+      throw new InvalidFileError(
+        `${what}: byte range [${byteStart}, ${byteEnd}) extends past the start of the central directory at [${this.dataRegionEnd}]`
+      );
+    }
+    const expected = byteEnd - byteStart;
+    if (expected === 0) {
+      return new Uint8Array(0);
+    }
+    const chunk = await this.getChunk(byteStart, byteEnd);
+    if (chunk.length !== expected) {
+      throw new InvalidFileError(
+        `${what} truncated: expected [${expected}] bytes at [${byteStart}], read [${chunk.length}]`
+      );
+    }
+    return chunk;
   }
 
   /**
@@ -133,15 +192,13 @@ export class ZipReader {
    */
   async getCentralDirectory(): Promise<CentralDirectory[]> {
     const eocd = await this.getEndOfCentralDirectory();
-    const cdChunk = await this.getChunk(
+    const cdChunk = await this.readRange(
       eocd.centralDirectoryOffset,
-      eocd.centralDirectoryOffset + eocd.centralDirectorySize
+      eocd.centralDirectoryOffset + eocd.centralDirectorySize,
+      'central directory',
+      false
     );
-    if (cdChunk.length !== eocd.centralDirectorySize) {
-      throw new InvalidFileError(
-        `central directory truncated: expected [${eocd.centralDirectorySize}] bytes at [${eocd.centralDirectoryOffset}], read [${cdChunk.length}]`
-      );
-    }
+    this.dataRegionEnd = eocd.centralDirectoryOffset;
 
     const cdParsedBuffers = this.getCDBuffers(cdChunk, eocd.entryCount).map((buffer) =>
       parseCDBuffer(buffer, eocd.zip64)
@@ -229,14 +286,13 @@ export class ZipReader {
     }
     // 8 - relative offset of the zip64 end of central directory record (8 bytes)
     const zip64EocdrOffset = readUInt64LE(tail, locatorOffset + 8);
-    const record = await this.getChunk(
+    const record = await this.readRange(
       zip64EocdrOffset,
-      zip64EocdrOffset + ZIP64_END_OF_CENTRAL_DIRECTORY_RECORD_SIZE
+      zip64EocdrOffset + ZIP64_END_OF_CENTRAL_DIRECTORY_RECORD_SIZE,
+      'zip64 end of central directory record',
+      false
     );
-    if (
-      record.length < ZIP64_END_OF_CENTRAL_DIRECTORY_RECORD_SIZE ||
-      readUInt32LE(record, 0) !== ZIP64_EOCDR_SIGNATURE
-    ) {
+    if (readUInt32LE(record, 0) !== ZIP64_EOCDR_SIGNATURE) {
       throw new InvalidFileError(
         `invalid zip64 end of central directory record at [${zip64EocdrOffset}]`
       );
@@ -252,8 +308,10 @@ export class ZipReader {
   }
 
   /**
-   * Gets the manifest
-   * @returns The manifest as a buffer represented as JSON
+   * Reads and parses the manifest entry.
+   * @returns The manifest, parsed from JSON
+   * @throws InvalidFileError if the entry is missing, too large, out of bounds,
+   * short, or not a JSON object
    */
   async getManifest(cdBuffers: CentralDirectory[], manifestFileName: string): Promise<Manifest> {
     const cdObj = cdBuffers.find(({ fileName }) => fileName === manifestFileName);
@@ -267,22 +325,69 @@ export class ZipReader {
       );
     }
     const byteEnd = byteStart + cdObj.uncompressedSize;
-    const manifest = await this.getChunk(byteStart, byteEnd);
+    const manifest = await this.readRange(byteStart, byteEnd, `manifest [${manifestFileName}]`);
 
-    return JSON.parse(new TextDecoder().decode(manifest)) as Manifest;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(new TextDecoder().decode(manifest));
+    } catch (e) {
+      throw new InvalidFileError(
+        `manifest [${manifestFileName}] is not valid JSON`,
+        e instanceof Error ? e : undefined
+      );
+    }
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      throw new InvalidFileError(`manifest [${manifestFileName}] is not a JSON object`);
+    }
+    return parsed as Manifest;
   }
 
   async adjustHeaders(cdObj: CentralDirectory): Promise<void> {
     if (!cdObj) {
       throw new InvalidFileError('Unable to retrieve CD adjust');
     }
-    // Calculate header length -- tdf3-js writes 0 in all the header fields
-    // and does not include extra field for zip64
-    const headerChunk = await this.getChunk(
+    // Entries are read verbatim, so only stored entries are supported, and a
+    // stored entry's sizes must agree (APPNOTE 4.4.5, 4.4.8). Otherwise the
+    // manifest read (by uncompressed size) and the data bound (by compressed
+    // size) would disagree about where the entry ends.
+    if (cdObj.compressionMethod !== 0) {
+      throw new InvalidFileError(
+        `entry [${cdObj.fileName}] uses unsupported compression method [${cdObj.compressionMethod}]`
+      );
+    }
+    if (cdObj.compressedSize !== cdObj.uncompressedSize) {
+      throw new InvalidFileError(
+        `stored entry [${cdObj.fileName}] has compressed size [${cdObj.compressedSize}] but uncompressed size [${cdObj.uncompressedSize}]`
+      );
+    }
+    // Read the local header at the length the central directory implies, check
+    // its signature, then recompute the length from the local header's own name
+    // and extra field lengths. tdf3-js writes 0 in the local header size fields
+    // and omits the zip64 extra field there, so the two can differ.
+    const headerChunk = await this.readRange(
       cdObj.relativeOffsetOfLocalHeader,
-      cdObj.relativeOffsetOfLocalHeader + cdObj.headerLength
+      cdObj.relativeOffsetOfLocalHeader + cdObj.headerLength,
+      `local file header for [${cdObj.fileName}]`
     );
+    if (readUInt32LE(headerChunk, 0) !== LOCAL_FILE_HEADER_SIGNATURE) {
+      throw new InvalidFileError(
+        `invalid local file header signature for [${cdObj.fileName}] at [${cdObj.relativeOffsetOfLocalHeader}]`
+      );
+    }
     cdObj.headerLength = recalculateHeaderLength(headerChunk);
+
+    // The local header's own name and extra field lengths may differ from the
+    // central directory's; whatever they say, the entry's data must still end
+    // before the central directory begins.
+    const dataEnd = cdObj.relativeOffsetOfLocalHeader + cdObj.headerLength + cdObj.compressedSize;
+    if (
+      !Number.isSafeInteger(dataEnd) ||
+      (this.dataRegionEnd !== undefined && dataEnd > this.dataRegionEnd)
+    ) {
+      throw new InvalidFileError(
+        `entry [${cdObj.fileName}] of [${cdObj.compressedSize}] bytes at [${cdObj.relativeOffsetOfLocalHeader}] extends past the start of the central directory`
+      );
+    }
   }
 
   async getPayloadSegment(
@@ -295,11 +400,22 @@ export class ZipReader {
     if (!cdObj) {
       throw new InvalidFileError('Unable to retrieve CD');
     }
+    // Segment offsets and sizes come from the manifest, so they are untrusted too.
+    if (
+      !Number.isSafeInteger(encrpytedSegmentOffset) ||
+      !Number.isSafeInteger(encryptedSegmentSize) ||
+      encrpytedSegmentOffset < 0 ||
+      encryptedSegmentSize < 0 ||
+      encrpytedSegmentOffset + encryptedSegmentSize > cdObj.compressedSize
+    ) {
+      throw new InvalidFileError(
+        `payload segment [${encrpytedSegmentOffset}, +${encryptedSegmentSize}) is outside entry [${payloadName}] of [${cdObj.compressedSize}] bytes`
+      );
+    }
     const byteStart =
       cdObj.relativeOffsetOfLocalHeader + cdObj.headerLength + encrpytedSegmentOffset;
-    // TODO: what's the exact byte start?
     const byteEnd = byteStart + encryptedSegmentSize;
-    return this.getChunk(byteStart, byteEnd);
+    return this.readRange(byteStart, byteEnd, `payload segment of [${payloadName}]`);
   }
 
   /**

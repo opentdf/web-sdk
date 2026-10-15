@@ -1,8 +1,9 @@
 import { expect } from 'chai';
+import sinon from 'sinon';
 
 import { InvalidFileError } from '../../../src/errors.js';
 import { encodeArrayBuffer } from '../../../src/encodings/base64.js';
-import { fromBuffer } from '../../../src/seekable.js';
+import { fromBuffer, fromUrl } from '../../../src/seekable.js';
 import type { CentralDirectory } from '../../../tdf3/src/utils/zip-reader.js';
 import { parseCDBuffer, readUInt64LE, ZipReader } from '../../../tdf3/src/utils/zip-reader.js';
 import { ZipWriter, dateToDosDateTime, writeUInt64LE } from '../../../tdf3/src/utils/zip-writer.js';
@@ -36,11 +37,6 @@ function u32(buf: Uint8Array, offset: number): number {
   return (u16(buf, offset) + u16(buf, offset + 2) * 0x10000) >>> 0;
 }
 
-function setU32(buf: Uint8Array, offset: number, value: number): void {
-  setU16(buf, offset, value & 0xffff);
-  setU16(buf, offset + 2, (value >>> 16) & 0xffff);
-}
-
 /** Size of the end of central directory record when the archive has no comment. */
 const EOCD_SIZE = 22;
 /** Size of the zip64 end of central directory locator. */
@@ -49,6 +45,34 @@ const ZIP64_LOCATOR_SIZE = 20;
 const ZIP64_EOCD_RECORD_SIZE = 56;
 /** Bytes ZipWriter appends after the central directory in a comment-less zip64 archive. */
 const ZIP64_TRAILER_SIZE = ZIP64_EOCD_RECORD_SIZE + ZIP64_LOCATOR_SIZE + EOCD_SIZE;
+
+function setU32(buf: Uint8Array, offset: number, value: number): void {
+  new DataView(buf.buffer, buf.byteOffset, buf.byteLength).setUint32(offset, value, true);
+}
+
+function setU64(buf: Uint8Array, offset: number, value: bigint): void {
+  new DataView(buf.buffer, buf.byteOffset, buf.byteLength).setBigUint64(offset, value, true);
+}
+
+/**
+ * Offset of the relative header offset inside the zip64 extended information
+ * extra field that ZipWriter emits: the field follows the file name, and its
+ * data (after a 4 byte header) is uncompressed size, compressed size, offset.
+ */
+function zip64ExtraOffsetField(record: Uint8Array): number {
+  return 46 + u16(record, 28) + 4 + 16;
+}
+
+/** Asserts that `fn` rejects with an InvalidFileError and returns its message. */
+async function expectInvalidFile(fn: () => Promise<unknown>, why: string): Promise<string> {
+  try {
+    await fn();
+  } catch (e) {
+    expect(e, why).to.be.instanceOf(InvalidFileError);
+    return messageOf(e);
+  }
+  expect.fail(`expected an InvalidFileError: ${why}`);
+}
 
 type ZipEntry = { name: string; data: Uint8Array };
 
@@ -167,8 +191,29 @@ async function expectCentralDirectoryRejected(zipFile: Uint8Array, expected: str
   } catch (e) {
     error = e;
   }
-  expect(error, 'expected getCentralDirectory to reject').to.exist;
+  expect(error, 'expected getCentralDirectory to reject').to.be.instanceOf(InvalidFileError);
   expect(messageOf(error)).to.contain(expected);
+}
+
+/** Serves `zipFile` the way a range-capable server does, recording each Range header. */
+function stubRangeServer(zipFile: Uint8Array, ranges: string[]) {
+  return sinon.stub(globalThis, 'fetch').callsFake((_input, init) => {
+    if (init?.method === 'HEAD') {
+      ranges.push('HEAD');
+      return Promise.resolve(new Response(null, { status: 405 }));
+    }
+    const range = new Headers(init?.headers).get('Range') ?? '';
+    ranges.push(range);
+    const [, from, to] = /^bytes=(-?\d*)-?(\d*)$/.exec(range) ?? [];
+    const start = from.startsWith('-') ? zipFile.length + Number(from) : Number(from);
+    const end = to ? Number(to) + 1 : zipFile.length;
+    return Promise.resolve(
+      new Response(zipFile.slice(start, end), {
+        status: 206,
+        headers: { 'Content-Range': `bytes ${start}-${end - 1}/${zipFile.length}` },
+      })
+    );
+  });
 }
 
 describe('zip utilities', () => {
@@ -214,6 +259,10 @@ describe('zip utilities', () => {
     it('unsafe ints throw', () => {
       const b0 = new Uint8Array(8);
       new DataView(b0.buffer).setBigUint64(0, 9007199254740992n, true);
+      expect(() => readUInt64LE(b0, 0)).to.throw(InvalidFileError, /exceeds/);
+    });
+    it('0xffffffffffffffff throws InvalidFileError', () => {
+      const b0 = new Uint8Array(8).fill(0xff);
       expect(() => readUInt64LE(b0, 0)).to.throw(InvalidFileError, /exceeds/);
     });
   });
@@ -426,6 +475,16 @@ describe('reader', () => {
       ]);
       expect(await reader.getManifest(centralDirectory, '0.manifest.json')).to.eql(manifest);
     });
+
+    for (const zip64 of [false, true]) {
+      it(`can read a ${zip64 ? 'zip64' : 'non-zip64'} central directory twice`, async () => {
+        const zipFile = buildZip([{ name: '0.manifest.json', data: manifestBytes(manifest) }], {
+          zip64,
+        });
+        const reader = new ZipReader(fromBuffer(zipFile));
+        expect(await reader.getCentralDirectory()).to.eql(await reader.getCentralDirectory());
+      });
+    }
 
     // DSPX-4591 finding 1: the EOCD is not necessarily the last bytes of the file.
     it('reads an archive with a trailing comment', async () => {
@@ -663,7 +722,7 @@ describe('reader', () => {
         writeUInt64LE(zipFile, zipFile.length, zip64LocatorStart(zipFile) + 8);
         await expectCentralDirectoryRejected(
           zipFile,
-          'invalid zip64 end of central directory record'
+          'zip64 end of central directory record truncated'
         );
       });
 
@@ -705,6 +764,405 @@ describe('reader', () => {
           'central directory ended early: found [2] of [3]'
         );
       });
+    });
+  });
+
+  // DSPX-4591 findings 5 and 6: hostile offsets and sizes must surface as
+  // InvalidFileError, never as a generic Error, a SyntaxError from parsing an
+  // empty manifest, or an out-of-range read that silently returns garbage.
+  describe('hostile offsets and sizes', () => {
+    const manifest = { payload: { type: 'reference' } };
+    const payload = new Uint8Array([1, 2, 3, 4, 5]);
+    const entries = () => [
+      { name: '0.manifest.json', data: manifestBytes(manifest) },
+      { name: '0.payload', data: payload },
+    ];
+
+    it('rejects a zip64 local header offset of 0xffffffffffffffff', async () => {
+      const zipFile = buildZip(entries(), {
+        mapCentralDirectoryRecord: (record, i) => {
+          if (i === 1) {
+            setU64(record, zip64ExtraOffsetField(record), 0xffffffffffffffffn);
+          }
+          return record;
+        },
+      });
+      const message = await expectInvalidFile(
+        () => new ZipReader(fromBuffer(zipFile)).getCentralDirectory(),
+        'zip64 overflow'
+      );
+      expect(message).to.contain('MAX_SAFE_INTEGER');
+    });
+
+    it('rejects a zip64 end of central directory with 0xffffffffffffffff entries', async () => {
+      const zipFile = buildZip(entries());
+      // 32 - total number of entries in the zip64 EOCD record
+      setU64(zipFile, zipFile.length - ZIP64_TRAILER_SIZE + 32, 0xffffffffffffffffn);
+      await expectInvalidFile(
+        () => new ZipReader(fromBuffer(zipFile)).getCentralDirectory(),
+        'zip64 EOCD overflow'
+      );
+    });
+
+    it('rejects a local header offset past the end of the file', async () => {
+      const zipFile = buildZip(entries(), {
+        zip64: false,
+        mapCentralDirectoryRecord: (record, i) => {
+          if (i === 0) {
+            // 42 - relative offset of local file header
+            setU32(record, 42, 0x7fffffff);
+          }
+          return record;
+        },
+      });
+      const message = await expectInvalidFile(
+        () => new ZipReader(fromBuffer(zipFile)).getCentralDirectory(),
+        'local header offset past EOF'
+      );
+      expect(message).to.contain('central directory');
+    });
+
+    it('rejects a safe zip64 local header offset past the end of the file', async () => {
+      const zipFile = buildZip(entries(), {
+        mapCentralDirectoryRecord: (record, i) => {
+          if (i === 0) {
+            setU64(record, zip64ExtraOffsetField(record), 2n ** 40n);
+          }
+          return record;
+        },
+      });
+      await expectInvalidFile(
+        () => new ZipReader(fromBuffer(zipFile)).getCentralDirectory(),
+        'zip64 local header offset past EOF'
+      );
+    });
+
+    it('rejects remote EOCD offsets past EOF before requesting them', async () => {
+      const zipFile = buildZip(entries(), { zip64: false });
+      setU32(zipFile, zipFile.length - EOCD_SIZE + 16, 0x7fffffff);
+      const ranges: string[] = [];
+      const fetchStub = sinon.stub(globalThis, 'fetch').callsFake((_input, init) => {
+        ranges.push(new Headers(init?.headers).get('Range') ?? '');
+        return Promise.resolve(
+          new Response(new Uint8Array(zipFile), {
+            status: 206,
+            headers: { 'Content-Range': `bytes 0-${zipFile.length - 1}/${zipFile.length}` },
+          })
+        );
+      });
+      try {
+        const reader = new ZipReader(await fromUrl('https://example.test/archive.tdf'));
+        await expectInvalidFile(() => reader.getCentralDirectory(), 'remote EOCD offset');
+        expect(ranges).to.eql(['bytes=-1024']);
+      } finally {
+        fetchStub.restore();
+      }
+    });
+
+    it('rejects remote zip64 locator offsets past EOF before requesting them', async () => {
+      const zipFile = buildZip(entries());
+      setU64(zipFile, zipFile.length - EOCD_SIZE - ZIP64_LOCATOR_SIZE + 8, 2n ** 40n);
+      const ranges: string[] = [];
+      const fetchStub = sinon.stub(globalThis, 'fetch').callsFake((_input, init) => {
+        ranges.push(new Headers(init?.headers).get('Range') ?? '');
+        return Promise.resolve(
+          new Response(new Uint8Array(zipFile), {
+            status: 206,
+            headers: { 'Content-Range': `bytes 0-${zipFile.length - 1}/${zipFile.length}` },
+          })
+        );
+      });
+      try {
+        const reader = new ZipReader(await fromUrl('https://example.test/archive.tdf'));
+        await expectInvalidFile(() => reader.getCentralDirectory(), 'remote zip64 locator offset');
+        expect(ranges).to.eql(['bytes=-1024']);
+      } finally {
+        fetchStub.restore();
+      }
+    });
+
+    it('reads a remote archive with bounded range requests', async () => {
+      const zipFile = buildZip(entries());
+      const ranges: string[] = [];
+      const fetchStub = stubRangeServer(zipFile, ranges);
+      try {
+        const reader = new ZipReader(await fromUrl('https://example.test/archive.tdf'));
+        const centralDirectory = await reader.getCentralDirectory();
+        expect(await reader.getManifest(centralDirectory, '0.manifest.json')).to.eql(manifest);
+        expect(
+          await reader.getPayloadSegment(centralDirectory, '0.payload', 0, payload.length)
+        ).to.eql(payload);
+        expect(ranges[0]).to.equal('bytes=-1024');
+        expect(ranges).to.not.include('HEAD');
+      } finally {
+        fetchStub.restore();
+      }
+    });
+
+    it('rejects a zip64 local header offset whose header end is not representable', async () => {
+      const zipFile = buildZip(entries(), {
+        mapCentralDirectoryRecord: (record, i) => {
+          if (i === 1) {
+            setU64(record, zip64ExtraOffsetField(record), BigInt(Number.MAX_SAFE_INTEGER));
+          }
+          return record;
+        },
+      });
+      const message = await expectInvalidFile(
+        () => new ZipReader(fromBuffer(zipFile)).getCentralDirectory(),
+        'unsafe local header end'
+      );
+      expect(message).to.contain('not representable');
+    });
+
+    it('rejects a local header whose extra field runs past the central directory', async () => {
+      const zipFile = buildZip(entries());
+      const payloadHeader = (await new ZipReader(fromBuffer(zipFile)).getCentralDirectory()).find(
+        ({ fileName }) => fileName === '0.payload'
+      )!.relativeOffsetOfLocalHeader;
+      // 28 - local header extra field length
+      setU16(zipFile, payloadHeader + 28, 0xffff);
+      const message = await expectInvalidFile(
+        () => new ZipReader(fromBuffer(zipFile)).getCentralDirectory(),
+        'hostile local header'
+      );
+      expect(message).to.contain('entry [0.payload]');
+    });
+
+    it('accepts an entry that ends exactly at the central directory, but not one byte past', async () => {
+      // The data descriptor sits between the last entry's data and the central
+      // directory, so these sizes end the entry at, then just past, its start.
+      const atBound = payload.length + DATA_DESCRIPTOR_SIZE;
+      const withLastEntrySize = (size: number) =>
+        buildZip(entries(), {
+          zip64: false,
+          mapCentralDirectoryRecord: (record, i) => {
+            if (i === 1) {
+              setU32(record, 20, size);
+              setU32(record, 24, size);
+            }
+            return record;
+          },
+        });
+      await new ZipReader(fromBuffer(withLastEntrySize(atBound))).getCentralDirectory();
+      const message = await expectInvalidFile(
+        () => new ZipReader(fromBuffer(withLastEntrySize(atBound + 1))).getCentralDirectory(),
+        'one byte past the central directory'
+      );
+      expect(message).to.contain('entry [0.payload]');
+    });
+
+    it('rejects a local header offset that does not point at a local header', async () => {
+      const zipFile = buildZip(entries(), {
+        zip64: false,
+        mapCentralDirectoryRecord: (record, i) => {
+          if (i === 1) {
+            setU32(record, 42, 1);
+          }
+          return record;
+        },
+      });
+      const message = await expectInvalidFile(
+        () => new ZipReader(fromBuffer(zipFile)).getCentralDirectory(),
+        'misaligned local header'
+      );
+      expect(message).to.contain('local file header');
+    });
+
+    it('rejects a compressed size past the end of the file', async () => {
+      const zipFile = buildZip(entries(), {
+        zip64: false,
+        mapCentralDirectoryRecord: (record, i) => {
+          if (i === 1) {
+            // 20 - compressed size, 24 - uncompressed size
+            setU32(record, 20, 0x7fffffff);
+            setU32(record, 24, 0x7fffffff);
+          }
+          return record;
+        },
+      });
+      const message = await expectInvalidFile(
+        () => new ZipReader(fromBuffer(zipFile)).getCentralDirectory(),
+        'compressed size past EOF'
+      );
+      expect(message).to.contain('0.payload');
+    });
+
+    it('rejects a manifest size that runs into the central directory', async () => {
+      const zipFile = buildZip(entries(), {
+        zip64: false,
+        mapCentralDirectoryRecord: (record, i) => {
+          if (i === 0) {
+            // 20 - compressed size, 24 - uncompressed size; still under the
+            // manifest size limit.
+            setU32(record, 20, 1024 * 1024);
+            setU32(record, 24, 1024 * 1024);
+          }
+          return record;
+        },
+      });
+      const message = await expectInvalidFile(
+        () => new ZipReader(fromBuffer(zipFile)).getCentralDirectory(),
+        'manifest past EOF'
+      );
+      expect(message).to.contain('0.manifest.json');
+    });
+
+    it('rejects a manifest read that runs into the central directory', async () => {
+      const zipFile = buildZip(entries(), { zip64: false });
+      const reader = new ZipReader(fromBuffer(zipFile));
+      const centralDirectory = await reader.getCentralDirectory();
+      const [manifestRecord] = centralDirectory;
+      const message = await expectInvalidFile(
+        () =>
+          reader.getManifest(
+            [{ ...manifestRecord, uncompressedSize: 1024 * 1024 }],
+            '0.manifest.json'
+          ),
+        'manifest read past the central directory'
+      );
+      expect(message).to.contain('central directory');
+    });
+
+    for (const zip64 of [false, true]) {
+      it(`rejects ${zip64 ? 'zip64' : 'non-zip64'} sizes that disagree for a stored entry`, async () => {
+        const zipFile = buildZip(entries(), {
+          zip64,
+          mapCentralDirectoryRecord: (record, i) => {
+            if (i === 0) {
+              if (zip64) {
+                // zip64 extra field data: uncompressed size (8), compressed size (8)
+                setU64(record, zip64ExtraOffsetField(record) - 16, 1024n * 1024n);
+              } else {
+                // 24 - uncompressed size
+                setU32(record, 24, 1024 * 1024);
+              }
+            }
+            return record;
+          },
+        });
+        const message = await expectInvalidFile(
+          () => new ZipReader(fromBuffer(zipFile)).getCentralDirectory(),
+          'size mismatch'
+        );
+        expect(message).to.contain('uncompressed size [1048576]');
+      });
+    }
+
+    it('rejects a compressed entry', async () => {
+      const zipFile = buildZip(entries(), {
+        zip64: false,
+        mapCentralDirectoryRecord: (record, i) => {
+          if (i === 1) {
+            // 10 - compression method; 8 is deflate
+            setU16(record, 10, 8);
+          }
+          return record;
+        },
+      });
+      const message = await expectInvalidFile(
+        () => new ZipReader(fromBuffer(zipFile)).getCentralDirectory(),
+        'deflated entry'
+      );
+      expect(message).to.contain('compression method [8]');
+    });
+
+    it('rejects a manifest that is not JSON', async () => {
+      const zipFile = buildZip([{ name: '0.manifest.json', data: new Uint8Array([0x7b]) }]);
+      const reader = new ZipReader(fromBuffer(zipFile));
+      const centralDirectory = await reader.getCentralDirectory();
+      await expectInvalidFile(
+        () => reader.getManifest(centralDirectory, '0.manifest.json'),
+        'manifest not JSON'
+      );
+    });
+
+    for (const json of ['null', '42', '"manifest"', '[]']) {
+      it(`rejects a manifest that is ${json} rather than an object`, async () => {
+        const zipFile = buildZip([
+          { name: '0.manifest.json', data: new TextEncoder().encode(json) },
+        ]);
+        const reader = new ZipReader(fromBuffer(zipFile));
+        const centralDirectory = await reader.getCentralDirectory();
+        const message = await expectInvalidFile(
+          () => reader.getManifest(centralDirectory, '0.manifest.json'),
+          `manifest ${json}`
+        );
+        expect(message).to.contain('not a JSON object');
+      });
+    }
+
+    it('rejects payload segments outside the payload entry', async () => {
+      const reader = new ZipReader(fromBuffer(buildZip(entries())));
+      const centralDirectory = await reader.getCentralDirectory();
+      expect(await reader.getPayloadSegment(centralDirectory, '0.payload', 1, 4)).to.eql(
+        payload.slice(1)
+      );
+      for (const [offset, size] of [
+        [0, payload.length + 1],
+        [payload.length, 1],
+        [-1, 2],
+        [0, -1],
+        [0.5, 1],
+        [2 ** 53, 1],
+      ]) {
+        await expectInvalidFile(
+          () => reader.getPayloadSegment(centralDirectory, '0.payload', offset, size),
+          `segment [${offset}, +${size})`
+        );
+      }
+    });
+
+    it('returns an empty segment at the end of the payload without reading', async () => {
+      const zipFile = buildZip(entries());
+      const full = fromBuffer(zipFile);
+      const reads: number[][] = [];
+      const reader = new ZipReader((start, end) => {
+        reads.push([start ?? 0, end ?? 0]);
+        return full(start, end);
+      });
+      const centralDirectory = await reader.getCentralDirectory();
+      const before = reads.length;
+      expect(
+        await reader.getPayloadSegment(centralDirectory, '0.payload', payload.length, 0)
+      ).to.eql(new Uint8Array(0));
+      expect(reads.length).to.equal(before);
+    });
+
+    it('detects short reads from the source', async () => {
+      const zipFile = buildZip(entries());
+      const full = fromBuffer(zipFile);
+      let truncate = false;
+      const reader = new ZipReader(async (start, end) => {
+        const chunk = await full(start, end);
+        return truncate ? chunk.slice(0, chunk.length - 1) : chunk;
+      });
+      const centralDirectory = await reader.getCentralDirectory();
+      truncate = true;
+      const manifestMessage = await expectInvalidFile(
+        () => reader.getManifest(centralDirectory, '0.manifest.json'),
+        'short manifest read'
+      );
+      expect(manifestMessage).to.contain('read [');
+      await expectInvalidFile(
+        () => reader.getPayloadSegment(centralDirectory, '0.payload', 0, payload.length),
+        'short payload read'
+      );
+      await expectInvalidFile(
+        () => new ZipReader(reader.getChunk).getCentralDirectory(),
+        'short tail read'
+      );
+    });
+
+    it('detects a short local header read', async () => {
+      const zipFile = buildZip(entries());
+      const full = fromBuffer(zipFile);
+      // Every read that starts at offset 0 (the first local header) comes back short.
+      const reader = new ZipReader(async (start, end) => {
+        const chunk = await full(start, end);
+        return start === 0 ? chunk.slice(0, 10) : chunk;
+      });
+      await expectInvalidFile(() => reader.getCentralDirectory(), 'short local header read');
     });
   });
 
