@@ -32,14 +32,21 @@
   echo "$output"
   [ "$status" -eq 1 ]
   [[ $output == *"oidcEndpoint must be specified"* ]]
-  [[ $output != *"not accessable"* ]]
+  [[ $output != *"not accessible"* ]]
 }
 
 @test "fails on an unreadable input file" {
   run $BATS_TEST_DIRNAME/opentdf.mjs --kasEndpoint "https://example.com" --oidcEndpoint "http://invalid" --concurrencyLimit 1 --auth "b:c" encrypt noone
   echo "$output"
   [ "$status" -eq 1 ]
-  [[ $output == *"File is not accessable [noone]"* ]]
+  [[ $output == *"File is not accessible [noone]: ENOENT"* ]]
+}
+
+@test "explains why an input file is rejected" {
+  run $BATS_TEST_DIRNAME/opentdf.mjs --kasEndpoint "https://example.com" --oidcEndpoint "http://invalid" --auth "b:c" encrypt "$BATS_TEST_TMPDIR"
+  echo "$output"
+  [ "$status" -eq 1 ]
+  [[ $output == *"File is not accessible [$BATS_TEST_TMPDIR]: not a regular file"* ]]
 }
 
 @test "accepts a UTF-8 BOM in an assertions file" {

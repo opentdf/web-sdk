@@ -369,7 +369,8 @@ async function fileAsSource(file: string): Promise<Source> {
     // which breaks every read of a file >= 4 GiB (DSPX-5160).
     location = await openFileChunker(file);
   } catch (e) {
-    throw new CLIError('CRITICAL', `File is not accessable [${file}]`, asError(e));
+    const cause = asError(e);
+    throw new CLIError('CRITICAL', `File is not accessible [${file}]: ${cause.message}`, cause);
   }
   log('DEBUG', `Using input from file [${file}] (${location.size} bytes)`);
   return { type: 'chunker', location };
