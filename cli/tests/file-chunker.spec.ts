@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import { execFileSync } from 'node:child_process';
 import { openAsBlob } from 'node:fs';
 import { mkdtemp, open, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -122,18 +123,34 @@ describe('openFileChunker', function () {
       err = e;
     }
     expect(err).to.be.instanceOf(Error);
+    expect((err as Error).message).to.include('file is closed');
   });
 
-  it('fails to open a missing file or a directory', async function () {
-    for (const p of [join(dir, 'nope'), dir]) {
-      let err: unknown;
-      try {
-        opened.push(await openFileChunker(p));
-      } catch (e) {
-        err = e;
-      }
-      expect(err, p).to.be.instanceOf(Error);
+  const openError = async (p: string): Promise<Error> => {
+    try {
+      opened.push(await openFileChunker(p));
+    } catch (e) {
+      return e as Error;
     }
+    throw new Error(`expected open to fail [${p}]`);
+  };
+
+  it('fails to open a missing file', async function () {
+    expect((await openError(join(dir, 'nope'))).message).to.include('ENOENT');
+  });
+
+  it('rejects a directory as not a regular file', async function () {
+    expect((await openError(dir)).message).to.include('not a regular file');
+  });
+
+  // Opening a FIFO with no writer blocks forever unless opened non-blocking.
+  it('rejects a FIFO without blocking', async function () {
+    if (process.platform === 'win32') {
+      this.skip();
+    }
+    const p = join(dir, 'fifo');
+    execFileSync('mkfifo', [p]);
+    expect((await openError(p)).message).to.include('not a regular file');
   });
 
   // DSPX-5160: a sparse file just over 4 GiB, with a known tail. Occupies only

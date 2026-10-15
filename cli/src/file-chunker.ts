@@ -1,3 +1,4 @@
+import { constants } from 'node:fs';
 import { type FileHandle, open } from 'node:fs/promises';
 import { type Chunker } from '@opentdf/sdk';
 
@@ -6,6 +7,13 @@ import { type Chunker } from '@opentdf/sdk';
  * 2^31-1 bytes, so larger ranges are read in a loop.
  */
 const MAX_READ = 1 << 30;
+
+/**
+ * Open flags. `O_NONBLOCK` keeps `open()` from blocking on a FIFO with no
+ * writer, so the `isFile()` check below can reject it; it has no effect on
+ * reads from regular files. Not defined on Windows, where it is not needed.
+ */
+const OPEN_FLAGS = constants.O_RDONLY | (constants.O_NONBLOCK ?? 0);
 
 /**
  * A {@link Chunker} over a local file, plus the means to release it.
@@ -49,7 +57,7 @@ export function resolveRange(
  * an empty chunk is returned). Call `close()` when finished.
  */
 export async function openFileChunker(path: string): Promise<FileChunker> {
-  const handle: FileHandle = await open(path, 'r');
+  const handle: FileHandle = await open(path, OPEN_FLAGS);
   let size: number;
   let originalStats: Awaited<ReturnType<FileHandle['stat']>>;
   try {
@@ -63,7 +71,8 @@ export async function openFileChunker(path: string): Promise<FileChunker> {
     size = Number(stats.size);
     originalStats = stats;
   } catch (e) {
-    await handle.close();
+    // Report why the file was rejected, not a secondary close failure.
+    await handle.close().catch(() => {});
     throw e;
   }
   let closed: Promise<void> | undefined;
