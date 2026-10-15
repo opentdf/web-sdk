@@ -1,5 +1,5 @@
-import { createWriteStream, openAsBlob } from 'node:fs';
-import { stat } from 'node:fs/promises';
+import { createWriteStream } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { Writable } from 'node:stream';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
@@ -19,6 +19,7 @@ import {
   PUBLIC_KEY_ALGORITHMS,
 } from '@opentdf/sdk';
 import { CLIError, Level, log } from './logger.js';
+import { type FileChunker, openFileChunker } from './file-chunker.js';
 import * as assertions from '@opentdf/sdk/assertions';
 import { base64 } from '@opentdf/sdk/encodings';
 import { type KeyPair } from '@opentdf/sdk/singlecontainer';
@@ -54,6 +55,11 @@ const lowercaseIntegrityAlgorithm = (v: unknown) =>
 
 const asError = (value: unknown): Error =>
   value instanceof Error ? value : new Error(String(value));
+
+// TextDecoder, like Blob.text(), removes a leading UTF-8 BOM. readFile's
+// 'utf8' string decoding leaves it in place, which JSON.parse rejects.
+const readJsonFileText = async (path: string): Promise<string> =>
+  new TextDecoder().decode(await readFile(path));
 
 const parseJwt = (jwt: string, field = 1) => {
   return JSON.parse(base64.decode(jwt.split('.')[field])) as unknown;
@@ -135,8 +141,7 @@ async function parseAssertionVerificationKeys(
   } catch (err) {
     // try as file name:
     try {
-      const jsonFile = await openAsBlob(s);
-      u = JSON.parse(await jsonFile.text()) as assertions.AssertionVerificationKeys;
+      u = JSON.parse(await readJsonFileText(s)) as assertions.AssertionVerificationKeys;
     } catch (err2) {
       const cause = asError(err2);
       throw new CLIError(
@@ -186,7 +191,17 @@ async function parseAssertionVerificationKeys(
 }
 
 async function parseReadOptions(argv: Partial<mainArgs>): Promise<ReadOptions> {
-  const r: ReadOptions = { source: await fileAsSource(argv.file as string) };
+  const source = await fileAsSource(argv.file as string);
+  try {
+    return await parseReadOptionsFor(source, argv);
+  } catch (e) {
+    await closeSource(source);
+    throw e;
+  }
+}
+
+async function parseReadOptionsFor(source: Source, argv: Partial<mainArgs>): Promise<ReadOptions> {
+  const r: ReadOptions = { source };
   if (argv.noVerifyAssertions) {
     r.noVerify = true;
   }
@@ -234,8 +249,7 @@ async function parseAssertionConfig(s: string): Promise<assertions.AssertionConf
   } catch (err) {
     // try as file name:
     try {
-      const jsonFile = await openAsBlob(s);
-      u = JSON.parse(await jsonFile.text()) as unknown;
+      u = JSON.parse(await readJsonFileText(s)) as unknown;
     } catch (err2) {
       const cause = asError(err2);
       throw new CLIError(
@@ -347,9 +361,14 @@ async function parseCreateTDFOptions(
 ): Promise<CreateTDFOptions> {
   const c: CreateTDFOptions = { ...(await parseCreateOptions(argv)), ...flags };
   if (argv.assertions?.length) {
-    // Reads from disk (parseAssertionConfig falls back to openAsBlob), so it
+    // Reads from disk (parseAssertionConfig falls back to reading a file), so it
     // stays here rather than in the pure pass.
-    c.assertionConfigs = await parseAssertionConfig(argv.assertions);
+    try {
+      c.assertionConfigs = await parseAssertionConfig(argv.assertions);
+    } catch (e) {
+      await closeSource(c.source);
+      throw e;
+    }
   }
   log('DEBUG', `CreateTDFOptions: ${JSON.stringify(c)}`);
   return c;
@@ -359,16 +378,31 @@ async function fileAsSource(file: string): Promise<Source> {
   if (!file) {
     throw new CLIError('CRITICAL', 'Must specify file or pipe');
   }
+  let location: FileChunker;
   try {
-    const stats = await stat(file);
-    if (!stats?.isFile()) {
-      throw new CLIError('CRITICAL', `File does not exist [${file}]`);
-    }
+    // Not fs.openAsBlob: Node truncates a file-backed Blob's size to 32 bits,
+    // which breaks every read of a file >= 4 GiB (DSPX-5160).
+    location = await openFileChunker(file);
   } catch (e) {
-    throw new CLIError('CRITICAL', `File is not accessable [${file}]`, asError(e));
+    const cause = asError(e);
+    throw new CLIError('CRITICAL', `File is not accessible [${file}]: ${cause.message}`, cause);
   }
-  log('DEBUG', `Using input from file [${file}]`);
-  return { type: 'file-browser', location: await openAsBlob(file) };
+  log('DEBUG', `Using input from file [${file}] (${location.size} bytes)`);
+  return { type: 'chunker', location };
+}
+
+/**
+ * Releases the file handle, if any, opened by {@link fileAsSource}. Never
+ * throws, so it can run in `finally` without replacing the real error.
+ */
+async function closeSource(source?: Source): Promise<void> {
+  if (source?.type === 'chunker' && 'close' in source.location) {
+    try {
+      await (source.location as FileChunker).close();
+    } catch (e) {
+      log('WARNING', `Failed to close input file: ${asError(e).message}`);
+    }
+  }
 }
 
 export const handleArgs = (args: string[]) => {
@@ -606,8 +640,10 @@ export const handleArgs = (args: string[]) => {
             platformUrl: argv.platformUrl || guessPolicyUrl(argv),
             authProvider: new InvalidAuthProvider(),
           });
+          let readOptions: ReadOptions | undefined;
           try {
-            const reader = ct.open(await parseReadOptions(argv));
+            readOptions = await parseReadOptions(argv);
+            const reader = ct.open(readOptions);
             const manifest = await reader.manifest();
             try {
               const dataAttributes = await reader.attributes();
@@ -617,6 +653,7 @@ export const handleArgs = (args: string[]) => {
               console.log(JSON.stringify({ manifest }, null, 2));
             }
           } finally {
+            await closeSource(readOptions?.source);
             ct.close();
           }
         }
@@ -656,10 +693,12 @@ export const handleArgs = (args: string[]) => {
             policyEndpoint: guessedPolicyEndpoint,
             platformUrl: argv.platformUrl || guessedPolicyEndpoint,
           });
+          let readOptions: ReadOptions | undefined;
           try {
             log('SILLY', `Initialized client`);
             log('DEBUG', `About to TDF3 decrypt [${String(argv.file)}]`);
-            const ct = await client.read(await parseReadOptions(argv));
+            readOptions = await parseReadOptions(argv);
+            const ct = await client.read(readOptions);
             const destination = argv.output ? createWriteStream(argv.output) : process.stdout;
             await ct.pipeTo(Writable.toWeb(destination) as WritableStream<Uint8Array>);
 
@@ -695,6 +734,7 @@ export const handleArgs = (args: string[]) => {
             console.assert(accessToken, 'No access_token found');
             console.assert(!argv.dpop || dpopToken, 'DPoP requested but absent');
           } finally {
+            await closeSource(readOptions?.source);
             client.close();
           }
         }
@@ -720,30 +760,34 @@ export const handleArgs = (args: string[]) => {
             throw new CLIError('CRITICAL', 'oidcEndpoint must be specified');
           }
           const createOptions = await parseCreateTDFOptions(argv, createFlags);
-          const authProvider = await processAuth(argv);
-          log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
-          const guessedPolicyEndpoint = guessPolicyUrl(argv);
-
-          const client = new OpenTDF({
-            authProvider,
-            defaultCreateOptions: {
-              defaultKASEndpoint: argv.kasEndpoint,
-            },
-            disableDPoP: !argv.dpop,
-            policyEndpoint: guessedPolicyEndpoint,
-            platformUrl: argv.platformUrl || guessedPolicyEndpoint,
-          });
           try {
-            log('SILLY', `Initialized client`);
-            log('DEBUG', `TDF Create`);
-            const ct: DecoratedStream = await client.createTDF(createOptions);
-            if (!ct) {
-              throw new CLIError('CRITICAL', 'Encrypt configuration error: No output?');
+            const authProvider = await processAuth(argv);
+            log('DEBUG', `Initialized auth provider ${JSON.stringify(authProvider)}`);
+            const guessedPolicyEndpoint = guessPolicyUrl(argv);
+
+            const client = new OpenTDF({
+              authProvider,
+              defaultCreateOptions: {
+                defaultKASEndpoint: argv.kasEndpoint,
+              },
+              disableDPoP: !argv.dpop,
+              policyEndpoint: guessedPolicyEndpoint,
+              platformUrl: argv.platformUrl || guessedPolicyEndpoint,
+            });
+            try {
+              log('SILLY', `Initialized client`);
+              log('DEBUG', `TDF Create`);
+              const ct: DecoratedStream = await client.createTDF(createOptions);
+              if (!ct) {
+                throw new CLIError('CRITICAL', 'Encrypt configuration error: No output?');
+              }
+              const destination = argv.output ? createWriteStream(argv.output) : process.stdout;
+              await ct.pipeTo(Writable.toWeb(destination) as WritableStream<Uint8Array>);
+            } finally {
+              client.close();
             }
-            const destination = argv.output ? createWriteStream(argv.output) : process.stdout;
-            await ct.pipeTo(Writable.toWeb(destination) as WritableStream<Uint8Array>);
           } finally {
-            client.close();
+            await closeSource(createOptions.source);
           }
         }
       )

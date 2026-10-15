@@ -32,14 +32,39 @@
   echo "$output"
   [ "$status" -eq 1 ]
   [[ $output == *"oidcEndpoint must be specified"* ]]
-  [[ $output != *"not accessable"* ]]
+  [[ $output != *"not accessible"* ]]
 }
 
 @test "fails on an unreadable input file" {
   run $BATS_TEST_DIRNAME/opentdf.mjs --kasEndpoint "https://example.com" --oidcEndpoint "http://invalid" --concurrencyLimit 1 --auth "b:c" encrypt noone
   echo "$output"
   [ "$status" -eq 1 ]
-  [[ $output == *"File is not accessable [noone]"* ]]
+  [[ $output == *"File is not accessible [noone]: ENOENT"* ]]
+}
+
+@test "explains why an input file is rejected" {
+  run $BATS_TEST_DIRNAME/opentdf.mjs --kasEndpoint "https://example.com" --oidcEndpoint "http://invalid" --auth "b:c" encrypt "$BATS_TEST_TMPDIR"
+  echo "$output"
+  [ "$status" -eq 1 ]
+  [[ $output == *"File is not accessible [$BATS_TEST_TMPDIR]: not a regular file"* ]]
+}
+
+@test "accepts a UTF-8 BOM in an assertions file" {
+  printf '\357\273\277[]' > "$BATS_TEST_TMPDIR/assertions.json"
+  echo "hello" > "$BATS_TEST_TMPDIR/plain.txt"
+  run $BATS_TEST_DIRNAME/opentdf.mjs --oidcEndpoint "http://invalid" --assertions "$BATS_TEST_TMPDIR/assertions.json" encrypt "$BATS_TEST_TMPDIR/plain.txt"
+  echo "$output"
+  [ "$status" -eq 1 ]
+  [[ $output == *"Auth expects clientId and clientSecret"* ]]
+}
+
+@test "accepts a UTF-8 BOM in an assertion verification keys file" {
+  printf '\357\273\277{"Keys":{}}' > "$BATS_TEST_TMPDIR/keys.json"
+  echo "x" > "$BATS_TEST_TMPDIR/input.tdf"
+  run $BATS_TEST_DIRNAME/opentdf.mjs --assertionVerificationKeys "$BATS_TEST_TMPDIR/keys.json" inspect "$BATS_TEST_TMPDIR/input.tdf"
+  echo "$output"
+  [[ $output == *"unsupported format; prefix not recognized"* ]]
+  [[ $output != *"Failed to open/parse assertion verification keys"* ]]
 }
 
 # Integrity algorithms are accepted in any casing but must reach the manifest
