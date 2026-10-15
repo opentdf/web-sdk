@@ -2,7 +2,16 @@ import { expect } from 'chai';
 import type { SinonSandbox } from 'sinon';
 import { createSandbox } from 'sinon';
 
-import { type Chunker, fromSource, sourceSize, sourceToStream } from '../../../src/seekable.js';
+import { ConfigurationError } from '../../../src/errors.js';
+import {
+  bufferStream,
+  type Chunker,
+  fromSource,
+  MAX_BUFFERED_STREAM_BYTES,
+  sourceSize,
+  sourceToStream,
+  STREAM_CHUNK_SIZE,
+} from '../../../src/seekable.js';
 
 function range(a: number, b?: number): number[] {
   if (!b) {
@@ -288,12 +297,110 @@ describe('sourceToStream', () => {
     expect(result).to.deep.equal(b);
   });
 
-  it('should return a ReadableStream for remote source', async () => {
-    const stream = await sourceToStream({
-      type: 'remote',
-      location: 'http://localhost:3000/file',
+  describe('remote', () => {
+    const url = 'http://localhost:3000/file';
+
+    it('should return a ReadableStream for remote source', async () => {
+      const stream = await sourceToStream({ type: 'remote', location: url });
+      expect(stream).to.be.an.instanceOf(ReadableStream);
+      expect(await saveToBuffer(stream)).to.deep.equal(new Uint8Array(range(256)));
     });
-    expect(stream).to.be.an.instanceOf(ReadableStream);
+
+    // The bug this replaces: the `default:` branch issued one unranged GET,
+    // which buffers the entire object no matter how large it is.
+    it('pulls a large object in bounded ranges rather than one GET', async () => {
+      const total = 2 * STREAM_CHUNK_SIZE + 1024;
+      const ranges: string[] = [];
+      box.stub(globalThis, 'fetch').callsFake((_input, init?: RequestInit) => {
+        if (init?.method === 'HEAD') {
+          return Promise.resolve(
+            new Response(null, { status: 200, headers: { 'Content-Length': `${total}` } })
+          );
+        }
+        const header = (init?.headers as Record<string, string> | undefined)?.Range;
+        if (!header) {
+          return Promise.reject(new Error('unranged GET issued for a remote source'));
+        }
+        ranges.push(header);
+        const [start, end] = header.replace('bytes=', '').split('-').map(Number);
+        return Promise.resolve(new Response(new Uint8Array(end - start + 1), { status: 206 }));
+      });
+
+      const stream = await sourceToStream({ type: 'remote', location: url });
+      expect((await saveToBuffer(stream)).length).to.equal(total);
+      expect(ranges).to.deep.equal([
+        `bytes=0-${STREAM_CHUNK_SIZE - 1}`,
+        `bytes=${STREAM_CHUNK_SIZE}-${2 * STREAM_CHUNK_SIZE - 1}`,
+        `bytes=${2 * STREAM_CHUNK_SIZE}-${total - 1}`,
+      ]);
+    });
+
+    // The last range stops exactly at the end. Reading past it would be a 416,
+    // turning a clean finish into a thrown error.
+    it('never requests a range past the end of the object', async () => {
+      const fetchSpy = box.spy(globalThis, 'fetch');
+      await saveToBuffer(await sourceToStream({ type: 'remote', location: url }));
+      const rangeHeaders = fetchSpy
+        .getCalls()
+        .map((call) => (call.args[1]?.headers as Record<string, string> | undefined)?.Range)
+        .filter(Boolean);
+      expect(rangeHeaders).to.deep.equal(['bytes=0-255']);
+    });
+
+    it('reuses a size the caller already probed instead of probing again', async () => {
+      const fetchSpy = box.spy(globalThis, 'fetch');
+      const stream = await sourceToStream({ type: 'remote', location: url }, 256);
+      expect(await saveToBuffer(stream)).to.deep.equal(new Uint8Array(range(256)));
+      expect(fetchSpy.getCalls().map((call) => call.args[1]?.method)).to.not.include('HEAD');
+    });
+
+    // Without a length there is no way to know where to stop, so this keeps the
+    // historical single-GET behaviour rather than walking into a 416.
+    it('falls back to one unranged GET when the size is unknowable', async () => {
+      const real = globalThis.fetch;
+      const ranged: string[] = [];
+      box.stub(globalThis, 'fetch').callsFake(async (input, init?: RequestInit) => {
+        if (init?.method === 'HEAD') {
+          return new Response(null, { status: 405 });
+        }
+        const header = (init?.headers as Record<string, string> | undefined)?.Range;
+        if (header === 'bytes=0-0') {
+          // The size probe's fallback: answer without disclosing a total.
+          return new Response(new Uint8Array(1), {
+            status: 206,
+            headers: { 'Content-Range': 'bytes 0-0/*' },
+          });
+        }
+        if (header) {
+          ranged.push(header);
+        }
+        return real(input, init);
+      });
+
+      const stream = await sourceToStream({ type: 'remote', location: url });
+      expect(await saveToBuffer(stream)).to.deep.equal(new Uint8Array(range(256)));
+      expect(ranged, 'should not have attempted a ranged read').to.be.empty;
+    });
+
+    it('errors rather than truncating when a read comes back short', async () => {
+      box
+        .stub(globalThis, 'fetch')
+        .callsFake((_input, init?: RequestInit) =>
+          Promise.resolve(
+            init?.method === 'HEAD'
+              ? new Response(null, { status: 200, headers: { 'Content-Length': '256' } })
+              : new Response(new Uint8Array(0), { status: 206 })
+          )
+        );
+
+      let error: Error | undefined;
+      try {
+        await saveToBuffer(await sourceToStream({ type: 'remote', location: url }));
+      } catch (e) {
+        error = e as Error;
+      }
+      expect(error?.message).to.contain('truncated');
+    });
   });
 
   it('should return a ReadableStream for stream source', async () => {
@@ -318,6 +425,88 @@ describe('sourceToStream', () => {
     expect(stream).to.be.an.instanceOf(ReadableStream);
     const result = await saveToBuffer(stream);
     expect(result).to.deep.equal(b);
+  });
+});
+
+describe('bufferStream', () => {
+  /** A stream of `count` runs of `size` bytes, reporting how far it was read. */
+  function runs(count: number, size: number) {
+    const counter = { pulls: 0 };
+    let emitted = 0;
+    const stream = new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          counter.pulls += 1;
+          if (emitted >= count) {
+            controller.close();
+            return;
+          }
+          controller.enqueue(new Uint8Array(size).fill(emitted % 256));
+          emitted += 1;
+        },
+      },
+      { highWaterMark: 0 }
+    );
+    return { stream, counter };
+  }
+
+  it('joins the chunks in order', async () => {
+    const { stream } = runs(4, 8);
+    const buffered = await bufferStream(stream);
+    expect(buffered.length).to.equal(32);
+    expect([...buffered.subarray(0, 9)]).to.deep.equal([0, 0, 0, 0, 0, 0, 0, 0, 1]);
+  });
+
+  it('handles an empty stream', async () => {
+    const { stream } = runs(0, 8);
+    expect((await bufferStream(stream)).length).to.equal(0);
+  });
+
+  it('admits a stream exactly at the limit', async () => {
+    const { stream } = runs(4, 8);
+    expect((await bufferStream(stream, 32)).length).to.equal(32);
+  });
+
+  // The point of counting as we go rather than calling `Response.arrayBuffer()`:
+  // a 50 GB stream should cost the limit, not 50 GB.
+  it('refuses past the limit without draining the rest', async () => {
+    const { stream, counter } = runs(100, 8);
+    let error: Error | undefined;
+    try {
+      await bufferStream(stream, 32);
+    } catch (e) {
+      error = e as Error;
+    }
+    expect(error).to.be.instanceOf(ConfigurationError);
+    expect(error?.message).to.contain('too large to make seekable');
+    expect(error?.message, 'should name the alternatives').to.contain('chunker');
+    expect(counter.pulls, 'kept reading past the limit').to.equal(5);
+  });
+
+  it('defaults to a limit under the browser ArrayBuffer wall it exists to beat', () => {
+    expect(MAX_BUFFERED_STREAM_BYTES).to.equal(1024 * 1024 * 1024);
+    expect(MAX_BUFFERED_STREAM_BYTES).to.be.below(2 ** 31);
+  });
+
+  // The decrypt path: `fromSource` has to make a stream seekable, and this is
+  // where the cost shows up. Re-enqueuing one buffer keeps the test's own
+  // footprint at a megabyte while the accounting sees a gigabyte go by.
+  it('bounds a stream decrypt source at the default limit', async () => {
+    const shared = new Uint8Array(1024 * 1024);
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        controller.enqueue(shared);
+      },
+    });
+
+    let error: Error | undefined;
+    try {
+      await fromSource({ type: 'stream', location: stream });
+    } catch (e) {
+      error = e as Error;
+    }
+    expect(error).to.be.instanceOf(ConfigurationError);
+    expect(error?.message).to.contain('too large to make seekable');
   });
 });
 
