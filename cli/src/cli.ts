@@ -191,7 +191,17 @@ async function parseAssertionVerificationKeys(
 }
 
 async function parseReadOptions(argv: Partial<mainArgs>): Promise<ReadOptions> {
-  const r: ReadOptions = { source: await fileAsSource(argv.file as string) };
+  const source = await fileAsSource(argv.file as string);
+  try {
+    return await parseReadOptionsFor(source, argv);
+  } catch (e) {
+    await closeSource(source);
+    throw e;
+  }
+}
+
+async function parseReadOptionsFor(source: Source, argv: Partial<mainArgs>): Promise<ReadOptions> {
+  const r: ReadOptions = { source };
   if (argv.noVerifyAssertions) {
     r.noVerify = true;
   }
@@ -353,7 +363,12 @@ async function parseCreateTDFOptions(
   if (argv.assertions?.length) {
     // Reads from disk (parseAssertionConfig falls back to reading a file), so it
     // stays here rather than in the pure pass.
-    c.assertionConfigs = await parseAssertionConfig(argv.assertions);
+    try {
+      c.assertionConfigs = await parseAssertionConfig(argv.assertions);
+    } catch (e) {
+      await closeSource(c.source);
+      throw e;
+    }
   }
   log('DEBUG', `CreateTDFOptions: ${JSON.stringify(c)}`);
   return c;
@@ -376,10 +391,17 @@ async function fileAsSource(file: string): Promise<Source> {
   return { type: 'chunker', location };
 }
 
-/** Releases the file handle, if any, opened by {@link fileAsSource}. */
+/**
+ * Releases the file handle, if any, opened by {@link fileAsSource}. Never
+ * throws, so it can run in `finally` without replacing the real error.
+ */
 async function closeSource(source?: Source): Promise<void> {
   if (source?.type === 'chunker' && 'close' in source.location) {
-    await (source.location as FileChunker).close();
+    try {
+      await (source.location as FileChunker).close();
+    } catch (e) {
+      log('WARNING', `Failed to close input file: ${asError(e).message}`);
+    }
   }
 }
 
@@ -631,8 +653,8 @@ export const handleArgs = (args: string[]) => {
               console.log(JSON.stringify({ manifest }, null, 2));
             }
           } finally {
-            ct.close();
             await closeSource(readOptions?.source);
+            ct.close();
           }
         }
       )
@@ -712,8 +734,8 @@ export const handleArgs = (args: string[]) => {
             console.assert(accessToken, 'No access_token found');
             console.assert(!argv.dpop || dpopToken, 'DPoP requested but absent');
           } finally {
-            client.close();
             await closeSource(readOptions?.source);
+            client.close();
           }
         }
       )
