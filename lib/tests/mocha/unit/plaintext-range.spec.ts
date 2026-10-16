@@ -67,7 +67,6 @@ describe('planPlaintextRange', () => {
         indices: [1],
         skip: 2,
         take: 5,
-        checkLengths: true,
       });
     });
 
@@ -81,7 +80,6 @@ describe('planPlaintextRange', () => {
         indices: [0, 1, 2],
         skip: 9,
         take: 13,
-        checkLengths: true,
       });
     });
 
@@ -91,7 +89,6 @@ describe('planPlaintextRange', () => {
           indices: [2, 3],
           skip: 10,
           take: 4,
-          checkLengths: true,
         });
       }
       expect(plan(chunks, 33)).to.include({ skip: 13, take: 1 });
@@ -102,7 +99,6 @@ describe('planPlaintextRange', () => {
         indices: [0],
         skip: 3,
         take: 2,
-        checkLengths: true,
       });
     });
 
@@ -111,7 +107,6 @@ describe('planPlaintextRange', () => {
         indices: [0, 1],
         skip: 15,
         take: 1,
-        checkLengths: true,
       });
     });
 
@@ -125,13 +120,11 @@ describe('planPlaintextRange', () => {
         indices: [4100, 4101, 4102],
         skip: 3,
         take: 2 * MIB,
-        checkLengths: true,
       });
       expect(plan(many, 5000 * MIB + 1)).to.deep.equal({
         indices: [4999, 5000],
         skip: MIB + 1,
         take: 6,
-        checkLengths: true,
       });
     });
   });
@@ -145,7 +138,6 @@ describe('planPlaintextRange', () => {
           indices: [],
           skip: 0,
           take: 0,
-          checkLengths: false,
         });
       }
     });
@@ -175,7 +167,6 @@ describe('planPlaintextRange', () => {
         indices: chunks.map(({ index }) => index),
         skip: 12,
         take: 3,
-        checkLengths: false,
       });
     };
 

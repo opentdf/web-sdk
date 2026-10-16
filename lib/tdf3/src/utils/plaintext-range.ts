@@ -28,13 +28,6 @@ export type RangePlan<T> = {
   skip: number;
   /** Plaintext bytes to return after that. */
   take: number;
-  /**
-   * When set, every decrypted segment's plaintext length must equal its
-   * recorded `plainSegmentSize`: that check is what authenticates the layout
-   * the positions were computed from. When unset, positions come from
-   * decrypting sequentially from segment 0, so recorded sizes are not relied on.
-   */
-  checkLengths: boolean;
 };
 
 function isNonNegativeSafeInteger(value: unknown): value is number {
@@ -69,7 +62,7 @@ function uniformSegmentSize(
   chunks: RangeSegment[],
   encryptedSize: (plaintextSize: number) => number
 ): number | undefined {
-  const size = chunks[0].plainSegmentSize;
+  const size = chunks[0]?.plainSegmentSize;
   if (!size) {
     return undefined;
   }
@@ -99,13 +92,19 @@ function uniformSegmentSize(
  * - **Uniform layout** (what every SDK writer produces): segment i starts at
  *   i * S. S comes from the manifest, so the plan always decrypts at least one
  *   non-last segment, whose authenticated length must equal S; a range inside
- *   the last segment also reads the one before it, and drops its output. Every
- *   decrypted segment is length-checked (`checkLengths`).
+ *   the last segment also reads the one before it, and drops its output. (A
+ *   lone segment starts at 0, so there is nothing to confirm.)
  * - **Any other layout**: decrypt from segment 0 and drop the output before the
  *   offset, so positions are those of the authenticated plaintext itself.
  *   Slower, but no SDK writer produces such files.
  *
- * The end-of-file checks use the recorded plaintext size.
+ * Either way, the caller must check that every decrypted segment's plaintext
+ * length equals its recorded `plainSegmentSize` (zero included): `skip` and
+ * `take` are computed from those sizes.
+ *
+ * The end-of-file checks use the recorded plaintext size, before the root
+ * signature is verified, so a `PlaintextRangeError` can also come from a
+ * tampered manifest; a decrypt that goes ahead fails its length checks instead.
  *
  * @param encryptedSize the cipher's ciphertext size for a given plaintext size
  * @throws PlaintextRangeError if the range is malformed or starts past the end
@@ -139,12 +138,12 @@ export function planPlaintextRange<T extends RangeSegment>(
   }
   const take = Math.min(range.length ?? total - offset, total - offset);
   if (take === 0) {
-    return { chunks: [], skip: 0, take, checkLengths: false };
+    return { chunks: [], skip: 0, take };
   }
 
   const segmentSize = uniformSegmentSize(chunks, encryptedSize);
   if (segmentSize === undefined) {
-    return { chunks, skip: offset, take, checkLengths: false };
+    return { chunks, skip: offset, take };
   }
   const lastIndex = chunks.length - 1;
   let first = Math.floor(offset / segmentSize);
@@ -157,6 +156,5 @@ export function planPlaintextRange<T extends RangeSegment>(
     chunks: chunks.slice(first, last + 1),
     skip: offset - first * segmentSize,
     take,
-    checkLengths: true,
   };
 }

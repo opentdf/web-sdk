@@ -1714,25 +1714,19 @@ export async function decryptStreamFrom(
     }
   );
   const cipher = new AesGcmCipher(cfg.cryptoService);
-  // A range read fetches only the segments it needs (see planPlaintextRange for
-  // how their positions are authenticated), so prefetch is bounded by the
-  // range. Output outside the range is dropped as segments are handed out.
+  // A range read fetches only the segments planPlaintextRange picks (see there
+  // for how their positions are authenticated); for files the SDK writes, those
+  // are the segments covering the range. Output outside the range is dropped as
+  // segments are handed out, and reading stops once the range is satisfied.
   // Planning needs only the manifest, so a bad range is refused before the
   // rewrap.
   const {
     chunks,
     skip: rangeSkip,
     take: rangeTake,
-    checkLengths,
   } = cfg.range
     ? planPlaintextRange(allChunks, cfg.range, (size) => cipher.encryptedPayloadSize(size))
-    : { chunks: allChunks, skip: 0, take: Infinity, checkLengths: false };
-  // Don't size a batch past the segments there are to read: a small range would
-  // otherwise allocate for, and wait on, a full derived batch.
-  schedulerOptions.segmentBatchSize = Math.min(
-    schedulerOptions.segmentBatchSize,
-    Math.max(chunks.length, 1)
-  );
+    : { chunks: allChunks, skip: 0, take: Infinity };
   const { metadata, reconstructedKey, requiredObligations } = await unwrapKey({
     fulfillableObligations: cfg.fulfillableObligations,
     manifest,
@@ -1822,10 +1816,11 @@ export async function decryptStreamFrom(
         specVersion,
         slice,
       });
-      if (checkLengths) {
+      if (cfg.range) {
         // The range's positions assume these lengths; each segment's hash has
-        // just authenticated its real one. Checked per batch, so no plaintext
-        // from a batch with a mismatch reaches the reader.
+        // just authenticated its real one. sliceAndDecrypt skips segments that
+        // record no size, so check all of them here, zero included. Checked per
+        // batch, so no plaintext from a batch with a mismatch reaches the reader.
         slice.forEach(({ plainSegmentSize }, i) => {
           if (plaintexts[i].length !== plainSegmentSize) {
             throw new IntegrityError(
@@ -1859,6 +1854,13 @@ export async function decryptStreamFrom(
         if (!draining.length) {
           const { done, value: batch } = await batches.read();
           if (done) {
+            if (cfg.range && remaining) {
+              // The length checks should make this unreachable; never let a
+              // range read end short without saying so.
+              throw new IntegrityError(
+                `plaintext ended [${remaining}] bytes short of the requested range`
+              );
+            }
             controller.close();
             return;
           }
@@ -1882,8 +1884,8 @@ export async function decryptStreamFrom(
         const output =
           dropped || end < plaintext.length ? plaintext.subarray(dropped, end) : plaintext;
         remaining -= output.length;
-        // Progress counts the ciphertext of the segments read, whole, trimmed
-        // or dropped.
+        // Progress counts the ciphertext of the segments handed through here,
+        // whole, trimmed or dropped.
         progress += encryptedSegmentSize;
         cfg.progressHandler?.(progress);
         if (output.length) {

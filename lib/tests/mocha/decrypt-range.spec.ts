@@ -444,6 +444,43 @@ describe('decrypt plaintext range', function () {
         await expectCorrectOrRejected(tdf, { offset, length: 10 });
       }
     });
+
+    it('relabelling the layout and splicing the payload to fit the last segment', async function () {
+      // The real last segment now sits where the relabelled layout puts it, so
+      // it passes its hash check. Only reading segment n-2 too, whose length
+      // must match the relabelled size, stops plaintext[7168..] being returned
+      // as plaintext[7000..].
+      const tdf = await edit(
+        (segments) => segments,
+        (payload) =>
+          concatUint8([
+            payload.subarray(0, 7 * (1000 + GCM_OVERHEAD)),
+            payload.subarray(7 * ENCRYPTED_SEGMENT_SIZE),
+          ]),
+        (info) => {
+          info.segmentSizeDefault = 1000;
+          info.encryptedSegmentSizeDefault = 1000 + GCM_OVERHEAD;
+        }
+      );
+      await expectRejection(
+        decryptRange({ offset: 7000, length: 10 }, { source: { type: 'buffer', location: tdf } }),
+        InvalidFileError
+      );
+    });
+
+    it('recording a zero size for the last segment', async function () {
+      // A zero size makes the layout non-uniform and understates the total by
+      // the last segment's 500 bytes, so the read to the end would stop short.
+      const tdf = await edit((segments) => [
+        ...segments.slice(0, -1),
+        { ...segments[segments.length - 1], segmentSize: 0 },
+      ]);
+      await expectRejection(
+        decryptRange({ offset: 7000 }, { source: { type: 'buffer', location: tdf } }),
+        IntegrityError,
+        /does not match the manifest/
+      );
+    });
   });
 
   describe('a layout no SDK writer produces', function () {
