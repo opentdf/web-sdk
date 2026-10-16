@@ -1,5 +1,5 @@
 import { open, stat } from 'node:fs/promises';
-import { type Chunker, type PlaintextRange, type Source } from '@opentdf/sdk';
+import { type Chunker, type PlaintextRange, PlaintextRangeError, type Source } from '@opentdf/sdk';
 import { CLIError } from './logger.js';
 
 /**
@@ -40,6 +40,15 @@ export function rangeFromArgs({
     range.length = parseByteCount('length', length);
   }
   return range;
+}
+
+/**
+ * Turns the SDK's error for an unsatisfiable or malformed range (such as an
+ * offset past the end of the plaintext) into a CLI error, which prints just
+ * its message and exits with status 1. Other errors pass through unchanged.
+ */
+export function asRangeCliError(e: unknown): unknown {
+  return e instanceof PlaintextRangeError ? new CLIError('CRITICAL', e.message, e) : e;
 }
 
 /**

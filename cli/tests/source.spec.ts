@@ -3,7 +3,14 @@ import { mkdtemp, open, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { CLIError } from '../src/logger.js';
-import { fromLocalFile, parseByteCount, rangeFromArgs, tdfSource } from '../src/source.js';
+import { PlaintextRangeError } from '@opentdf/sdk';
+import {
+  asRangeCliError,
+  fromLocalFile,
+  parseByteCount,
+  rangeFromArgs,
+  tdfSource,
+} from '../src/source.js';
 
 describe('parseByteCount', function () {
   it('accepts decimal integers, including past 4 GiB', function () {
@@ -43,6 +50,24 @@ describe('rangeFromArgs', function () {
 
   it('rejects a bad length', function () {
     expect(() => rangeFromArgs({ offset: '1', length: '-5' })).to.throw(CLIError, '--length');
+  });
+});
+
+describe('asRangeCliError', function () {
+  it('reports an unsatisfiable range as a CLI error', function () {
+    const e = asRangeCliError(
+      new PlaintextRangeError('range offset [11] is past the end of the plaintext [10]')
+    );
+    expect(e).to.be.instanceOf(CLIError);
+    expect((e as CLIError).prefix).to.equal('CRITICAL');
+    expect((e as Error).message).to.equal(
+      'range offset [11] is past the end of the plaintext [10]'
+    );
+  });
+
+  it('passes other errors through', function () {
+    const other = new Error('boom');
+    expect(asRangeCliError(other)).to.equal(other);
   });
 });
 

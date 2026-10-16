@@ -20,7 +20,7 @@ import {
 } from '@opentdf/sdk';
 import { CLIError, Level, log } from './logger.js';
 import { type FileChunker, openFileChunker } from './file-chunker.js';
-import { isUrl, rangeFromArgs } from './source.js';
+import { asRangeCliError, isUrl, rangeFromArgs } from './source.js';
 import * as assertions from '@opentdf/sdk/assertions';
 import { base64 } from '@opentdf/sdk/encodings';
 import { type KeyPair } from '@opentdf/sdk/singlecontainer';
@@ -722,7 +722,9 @@ export const handleArgs = (args: string[]) => {
             log('SILLY', `Initialized client`);
             log('DEBUG', `About to TDF3 decrypt [${String(argv.file)}]`);
             readOptions = await parseReadOptions(argv);
-            const ct = await client.read(readOptions);
+            const ct = await client.read(readOptions).catch((e: unknown) => {
+              throw asRangeCliError(e);
+            });
             const destination = argv.output ? createWriteStream(argv.output) : process.stdout;
             await ct.pipeTo(Writable.toWeb(destination) as WritableStream<Uint8Array>);
 
