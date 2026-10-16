@@ -69,6 +69,7 @@ import { unsigned } from './utils/buffer-crc32.js';
 import { ZipReader, ZipWriter, concatUint8, buffToString, toArrayBuffer } from './utils/index.js';
 import type { CentralDirectory } from './utils/zip-reader.js';
 import { derivePrefetchWindow } from './utils/prefetch-window.js';
+import { type PlaintextRange, plaintextRangeChunks } from './utils/plaintext-range.js';
 import { getZtdfSalt } from './crypto/salt.js';
 import { decodeKemEnvelopeDer } from './crypto/core/mlkem-asn1.js';
 import type { Payload } from './models/payload.js';
@@ -302,6 +303,8 @@ export type DecryptConfiguration = {
   segmentBatchSize?: number;
   maxConcurrentSegmentBatches?: number;
   wrappingKeyAlgorithm?: KasPublicKeyAlgorithm;
+  /** Limits the output to a span of the plaintext. */
+  range?: PlaintextRange;
 };
 
 export type UpsertConfiguration = {
@@ -1580,6 +1583,41 @@ export async function decryptStreamFrom(
     ...cfg,
     segmentSize: largestEncryptedSegmentSize,
   });
+
+  let mapOfRequestsOffset = 0;
+  const allChunks = segments.map(
+    ({
+      hash,
+      encryptedSegmentSize = encryptedSegmentSizeDefault,
+      segmentSize = segmentSizeDefault,
+    }) => {
+      const chunk: Chunk = {
+        hash,
+        encryptedOffset: mapOfRequestsOffset,
+        encryptedSegmentSize,
+        plainSegmentSize: segmentSize,
+      };
+      mapOfRequestsOffset += encryptedSegmentSize;
+      return chunk;
+    }
+  );
+  // A range read fetches only the segments that cover it, so prefetch is
+  // bounded by the range. Bytes outside it are trimmed from the first and last
+  // segments as they are handed out. Mapping the range needs only the manifest,
+  // so an unsatisfiable range is also refused before the rewrap.
+  const {
+    chunks,
+    skip: rangeSkip,
+    take: rangeTake,
+  } = cfg.range
+    ? plaintextRangeChunks(allChunks, cfg.range)
+    : { chunks: allChunks, skip: 0, take: Infinity };
+  // Don't size a batch past the segments there are to read: a small range would
+  // otherwise allocate for, and wait on, a full derived batch.
+  schedulerOptions.segmentBatchSize = Math.min(
+    schedulerOptions.segmentBatchSize,
+    Math.max(chunks.length, 1)
+  );
   const { metadata, reconstructedKey, requiredObligations } = await unwrapKey({
     fulfillableObligations: cfg.fulfillableObligations,
     manifest,
@@ -1651,24 +1689,6 @@ export async function decryptStreamFrom(
     throw new IntegrityError('Failed integrity check on root signature');
   }
 
-  let mapOfRequestsOffset = 0;
-  const chunks = segments.map(
-    ({
-      hash,
-      encryptedSegmentSize = encryptedSegmentSizeDefault,
-      segmentSize = segmentSizeDefault,
-    }) => {
-      const chunk: Chunk = {
-        hash,
-        encryptedOffset: mapOfRequestsOffset,
-        encryptedSegmentSize,
-        plainSegmentSize: segmentSize,
-      };
-      mapOfRequestsOffset += encryptedSegmentSize;
-      return chunk;
-    }
-  );
-
   const cipher = new AesGcmCipher(cfg.cryptoService);
   // Segment GMAC is sound (it is the AEAD's own tag), so both algorithms stay
   // valid here; only unknown ones are rejected.
@@ -1691,6 +1711,9 @@ export async function decryptStreamFrom(
   }).getReader();
 
   let progress = 0;
+  // Plaintext still to drop from the front, and still to hand out, for a range.
+  let skip = rangeSkip;
+  let remaining = rangeTake;
   // The batch being drained, one segment per pull. Taking segments off the
   // front releases each one as soon as it is handed to the consumer.
   let draining: Array<{ plaintext: Uint8Array; encryptedSegmentSize: number }> = [];
@@ -1716,7 +1739,12 @@ export async function decryptStreamFrom(
       }
 
       const { plaintext, encryptedSegmentSize } = draining.shift()!;
-      controller.enqueue(plaintext);
+      const end = Math.min(plaintext.length, skip + remaining);
+      const output = skip || end < plaintext.length ? plaintext.subarray(skip, end) : plaintext;
+      skip = 0;
+      remaining -= output.length;
+      controller.enqueue(output);
+      // Progress counts the ciphertext of the segments read, whole or trimmed.
       progress += encryptedSegmentSize;
       cfg.progressHandler?.(progress);
     },

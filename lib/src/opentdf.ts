@@ -34,6 +34,7 @@ import {
   type RootIntegrityAlgorithm,
   type SegmentIntegrityAlgorithm,
 } from '../tdf3/src/tdf.js';
+import { type PlaintextRange } from '../tdf3/src/utils/plaintext-range.js';
 import { base64 } from './encodings/index.js';
 import type { Policy } from '../tdf3/src/models/policy.js';
 
@@ -46,6 +47,7 @@ export {
   type KeyAccessObject,
   type Manifest,
   type Payload,
+  type PlaintextRange,
   type RootIntegrityAlgorithm,
   type Segment,
   type SegmentIntegrityAlgorithm,
@@ -194,6 +196,18 @@ export type ReadOptions = {
 
   /** Type of key to use for wrapping responses. */
   wrappingKeyAlgorithm?: KasPublicKeyAlgorithm;
+
+  /**
+   * Decrypt only this span of the plaintext. `offset` and `length` are
+   * plaintext byte positions: non-negative safe integers. Omitting `length`
+   * reads to the end, and a span running past the end stops there. An offset
+   * at or past the end of the plaintext is an error.
+   *
+   * Only the segments covering the span are fetched and decrypted, and each is
+   * still checked against the root-signed segment hashes. The progress handler
+   * reports the ciphertext bytes of those segments.
+   */
+  range?: PlaintextRange;
 };
 
 /** Defaults and shared settings that are relevant to creating TDF objects. */
@@ -542,6 +556,7 @@ class ZTDFReader {
       assertionVerificationKeys,
       maxConcurrentSegmentBatches,
       noVerify: noVerifyAssertions,
+      range,
       segmentBatchSize,
       wrappingKeyAlgorithm,
     } = this.opts;
@@ -590,6 +605,7 @@ class ZTDFReader {
         assertionVerificationKeys,
         maxConcurrentSegmentBatches,
         noVerifyAssertions,
+        range,
         segmentBatchSize,
         wrappingKeyAlgorithm,
         fulfillableObligations: this.opts.fulfillableObligationFQNs || [],

@@ -2,6 +2,7 @@ import { expect } from 'chai';
 
 import { type AttributeObject } from '../../../tdf3/src/models/attribute.js';
 import { DecryptParamsBuilder, EncryptParamsBuilder } from '../../../tdf3/src/client/builders.js';
+import { ConfigurationError } from '../../../src/errors.js';
 
 const aex = {
   kasUrl: 'https://kas',
@@ -67,5 +68,22 @@ describe('DecryptParamsBuilder', () => {
 
     expect(params.segmentBatchSize).to.equal(4);
     expect(params.maxConcurrentSegmentBatches).to.equal(2);
+  });
+
+  it('should store a plaintext range', () => {
+    const build = (builder: DecryptParamsBuilder) => builder.withStringSource('ciphertext').build();
+    expect(build(new DecryptParamsBuilder().withRange(2 ** 33, 10)).range).to.deep.equal({
+      offset: 2 ** 33,
+      length: 10,
+    });
+    expect(build(new DecryptParamsBuilder().withRange(5)).range).to.deep.equal({ offset: 5 });
+  });
+
+  it('should reject an invalid plaintext range', () => {
+    expect(() => new DecryptParamsBuilder().withRange(-1)).to.throw(ConfigurationError, 'offset');
+    expect(() => new DecryptParamsBuilder().withRange(0, 1.5)).to.throw(
+      ConfigurationError,
+      'length'
+    );
   });
 });
