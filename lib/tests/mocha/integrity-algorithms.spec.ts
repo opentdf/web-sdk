@@ -58,13 +58,15 @@ async function encryptToBuffer(
   overrides: EncryptOverrides = {}
 ): Promise<{ buffer: Uint8Array; manifest: Manifest }> {
   const encryptionInformation = new SplitKey(new AesGcmCipher(WebCryptoService));
-  const key = await encryptionInformation.generateKey();
   const stream = await client.encrypt({
     metadata: Mocks.getMetadataObject(),
     offline: true,
     scope: { dissem: ['user@domain.com'], attributes: [] },
     windowSize: SEGMENT_SIZE,
-    keyMiddleware: () => Promise.resolve({ keyForEncryption: key, keyForManifest: key }),
+    keyMiddleware: async () => {
+      const key = await encryptionInformation.generateKey();
+      return { keyForEncryption: key, keyForManifest: key };
+    },
     source: new ReadableStream({
       start(controller) {
         controller.enqueue(plaintext);

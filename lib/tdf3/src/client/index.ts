@@ -519,7 +519,8 @@ export class Client {
    * @param [opts] Test only
    * @param [mimeType] mime type of source. defaults to `unknown`
    * @param [windowSize] - segment size in bytes. Defaults to 2 MiB (2,097,152 bytes).
-   * @param [keyMiddleware] - function that handle keys
+   * @param [keyMiddleware] - supplies the payload key; must return a newly generated key on
+   * every call, never one reused from another TDF. See `EncryptKeyMiddleware`.
    * @param [streamMiddleware] - function that handle stream
    * @param [eo] - (deprecated) entity object
    * @return a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} a new stream containing the TDF ciphertext

@@ -289,9 +289,11 @@ export function base64ToBytes(str: string): Uint8Array {
 }
 
 /**
+ * Default encrypt key middleware. Generates a new random payload key on every
+ * call and returns it as both `keyForEncryption` and `keyForManifest`
+ * (`keyForEncryption === keyForManifest`).
  *
- * Function generates key, it returned both KeyForEncryption and KeyForManifest.
- *   `KeyForEncryption === KeyForManifest` produces true;
+ * A fresh key per TDF is required; see `EncryptKeyMiddleware` in `client/builders.ts`.
  *
  * @returns {Object}:
  * {
