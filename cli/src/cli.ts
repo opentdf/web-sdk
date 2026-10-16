@@ -20,6 +20,7 @@ import {
 } from '@opentdf/sdk';
 import { CLIError, Level, log } from './logger.js';
 import { type FileChunker, openFileChunker } from './file-chunker.js';
+import { isUrl, rangeFromArgs } from './source.js';
 import * as assertions from '@opentdf/sdk/assertions';
 import { base64 } from '@opentdf/sdk/encodings';
 import { type KeyPair } from '@opentdf/sdk/singlecontainer';
@@ -191,7 +192,11 @@ async function parseAssertionVerificationKeys(
 }
 
 async function parseReadOptions(argv: Partial<mainArgs>): Promise<ReadOptions> {
-  const source = await fileAsSource(argv.file as string);
+  const file = argv.file as string;
+  // A URL is read with HTTP Range requests; a local file by position.
+  const source: Source = isUrl(file)
+    ? { type: 'remote', location: file }
+    : await fileAsSource(file);
   try {
     return await parseReadOptionsFor(source, argv);
   } catch (e) {
@@ -202,6 +207,10 @@ async function parseReadOptions(argv: Partial<mainArgs>): Promise<ReadOptions> {
 
 async function parseReadOptionsFor(source: Source, argv: Partial<mainArgs>): Promise<ReadOptions> {
   const r: ReadOptions = { source };
+  const range = rangeFromArgs(argv);
+  if (range) {
+    r.range = range;
+  }
   if (argv.noVerifyAssertions) {
     r.noVerify = true;
   }
@@ -475,6 +484,16 @@ export const handleArgs = (args: string[]) => {
         default: '',
         validate: parseAssertionVerificationKeys,
       })
+      .option('offset', {
+        group: 'Decrypt',
+        desc: 'First plaintext byte to decrypt; only the segments covering the range are read',
+        type: 'string',
+      })
+      .option('length', {
+        group: 'Decrypt',
+        desc: 'Number of plaintext bytes to decrypt; omit to read to the end',
+        type: 'string',
+      })
       .option('concurrencyLimit', {
         alias: 'concurrency-limit',
         group: 'Decrypt',
@@ -663,13 +682,18 @@ export const handleArgs = (args: string[]) => {
         'decrypt [file]',
         'Decrypt TDF to string',
         (yargs) => {
-          yargs.strict().positional('file', {
-            describe: 'path to plain text file',
-            type: 'string',
-          });
+          yargs
+            .strict()
+            .positional('file', {
+              describe: 'path or http(s) URL of the TDF',
+              type: 'string',
+            })
+            .example('$0 decrypt --offset 1048576 --length 4096 my.tdf', '# 4 KiB at 1 MiB');
         },
         async (argv) => {
           log('DEBUG', 'Running decrypt command');
+          // Bad range flags fail before any I/O.
+          rangeFromArgs(argv);
           const allowedKases = argv.allowList?.split(',');
           log('DEBUG', `Allowed KASes: ${JSON.stringify(allowedKases)}`);
           const ignoreAllowList = !!argv.ignoreAllowList;

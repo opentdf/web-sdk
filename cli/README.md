@@ -28,6 +28,18 @@ bin/opentdf.mjs \
   decrypt sample.tdf
 ```
 
+### Decrypting part of a file
+
+`decrypt` takes a plaintext byte range with `--offset` and `--length`. Only the segments that cover
+the range are read and decrypted. Omitting `--length` reads to the end; an offset at or past the end
+of the plaintext is an error. The input may be a local path or an `http(s)` URL, which is read with
+HTTP Range requests.
+
+```sh
+bin/opentdf.mjs <auth options> --offset 1048576 --length 4096 \
+  decrypt https://example.com/sample.tdf
+```
+
 ### References
 
 - [yargs](http://yargs.js.org)
