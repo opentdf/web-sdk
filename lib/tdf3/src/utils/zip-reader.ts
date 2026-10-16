@@ -50,8 +50,6 @@ const INITIAL_EOCDR_SEARCH_SIZE = 1024;
  */
 const MAX_CENTRAL_DIRECTORY_SIZE = 16 * 1024 * 1024;
 
-const manifestMaxSize = 1024 * 1024 * 10; // 10 MB
-
 const cp437 =
   '\u0000☺☻♥♦♣♠•◘○◙♂♀♪♫☼►◄↕‼¶§▬↨↑↓→←∟↔▲▼ !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~⌂ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■ ';
 
@@ -147,7 +145,8 @@ export class ZipReader {
    * return fewer bytes.
    *
    * @param what names the structure being read, as a prefix for error messages
-   * @throws InvalidFileError if the range is invalid, out of bounds or short
+   * @throws InvalidFileError if the range is invalid, out of bounds, short, or
+   * too large to allocate
    */
   private async readRange(
     byteStart: number,
@@ -172,7 +171,17 @@ export class ZipReader {
     if (expected === 0) {
       return new Uint8Array(0);
     }
-    const chunk = await this.getChunk(byteStart, byteEnd);
+    let chunk: Uint8Array;
+    try {
+      chunk = await this.getChunk(byteStart, byteEnd);
+    } catch (e) {
+      // Without a fixed size cap, a large declared size can exceed what the
+      // runtime is able to allocate; report it as a bad file, not a RangeError.
+      if (e instanceof RangeError) {
+        throw new InvalidFileError(`${what}: unable to allocate [${expected}] bytes`, e);
+      }
+      throw e;
+    }
     if (chunk.length !== expected) {
       throw new InvalidFileError(
         `${what} truncated: expected [${expected}] bytes at [${byteStart}], read [${chunk.length}]`
@@ -310,8 +319,8 @@ export class ZipReader {
   /**
    * Reads and parses the manifest entry.
    * @returns The manifest, parsed from JSON
-   * @throws InvalidFileError if the entry is missing, too large, out of bounds,
-   * short, or not a JSON object
+   * @throws InvalidFileError if the entry is missing, out of bounds, short, too
+   * large to decode, not valid JSON, or not a JSON object
    */
   async getManifest(cdBuffers: CentralDirectory[], manifestFileName: string): Promise<Manifest> {
     const cdObj = cdBuffers.find(({ fileName }) => fileName === manifestFileName);
@@ -319,17 +328,21 @@ export class ZipReader {
       throw new InvalidFileError('Unable to retrieve CD manifest');
     }
     const byteStart = cdObj.relativeOffsetOfLocalHeader + cdObj.headerLength;
-    if (cdObj.uncompressedSize > manifestMaxSize) {
-      throw new InvalidFileError(
-        `manifest file too large: ${Math.floor(cdObj.uncompressedSize / 1024).toLocaleString()} KiB`
-      );
-    }
     const byteEnd = byteStart + cdObj.uncompressedSize;
     const manifest = await this.readRange(byteStart, byteEnd, `manifest [${manifestFileName}]`);
 
+    let text: string;
+    try {
+      text = new TextDecoder().decode(manifest);
+    } catch (e) {
+      throw new InvalidFileError(
+        `manifest [${manifestFileName}] of [${manifest.length}] bytes is too large to decode`,
+        e instanceof Error ? e : undefined
+      );
+    }
     let parsed: unknown;
     try {
-      parsed = JSON.parse(new TextDecoder().decode(manifest));
+      parsed = JSON.parse(text);
     } catch (e) {
       throw new InvalidFileError(
         `manifest [${manifestFileName}] is not valid JSON`,
