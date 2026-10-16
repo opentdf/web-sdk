@@ -53,6 +53,27 @@ describe('Local roundtrip Tests', () => {
     const actual = await new Response(ztdfParsed).arrayBuffer();
     expect(new TextDecoder().decode(actual)).to.be.equal('hello world');
   });
+  it(`ztdf roundtrip with a plaintext range`, async () => {
+    const client = new OpenTDF({
+      authProvider,
+      defaultReadOptions: {
+        allowedKASEndpoints: [kasEndpoint],
+      },
+    });
+    const cipherTextStream = await client.createZTDF({
+      autoconfigure: false,
+      defaultKASEndpoint: kasEndpoint,
+      source: { type: 'chunker', location: fromString('hello world') },
+    });
+    const cipherTextArray = new Uint8Array(await new Response(cipherTextStream).arrayBuffer());
+
+    const ztdfParsed = await client.read({
+      source: { type: 'buffer', location: cipherTextArray },
+      range: { offset: 6, length: 3 },
+    });
+    const actual = await new Response(ztdfParsed).arrayBuffer();
+    expect(new TextDecoder().decode(actual)).to.be.equal('wor');
+  });
   it(`ztdf roundtrip string with platformUrl`, async () => {
     const client = new OpenTDF({
       authProvider,
