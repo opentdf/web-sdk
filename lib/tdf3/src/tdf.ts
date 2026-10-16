@@ -159,6 +159,11 @@ export function reservePayloadSegment(
   attempted: number,
   max: number = MAX_PAYLOAD_SEGMENTS_PER_KEY
 ): number {
+  if (!Number.isInteger(max) || max < 0 || max > MAX_PAYLOAD_SEGMENTS_PER_KEY) {
+    throw new ConfigurationError(
+      `maxPayloadSegments must be an integer from 0 to ${MAX_PAYLOAD_SEGMENTS_PER_KEY}; got [${max}]`
+    );
+  }
   if (attempted >= max) {
     throw new IvExhaustionError(
       `AES-GCM IV space exhausted: refusing to encrypt more than ${max} segments under one key, as NIST SP 800-38D §8.3 limits random-IV invocations per key; use a larger segment size or split the input`
