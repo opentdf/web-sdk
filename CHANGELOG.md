@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.23.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.22.0...sdk-v0.23.0) (2026-10-16)
+
+
+### Bug Fixes
+
+* **ci:** resume partial package releases ([#1073](https://github.com/opentdf/web-sdk/issues/1073)) ([e52ac7b](https://github.com/opentdf/web-sdk/commit/e52ac7bb2409bf0e9935e94f50cc6d6ad4a73e51))
+* **cli:** read file input by position instead of openAsBlob (DSPX-5160) ([#1089](https://github.com/opentdf/web-sdk/issues/1089)) ([a7bd3ca](https://github.com/opentdf/web-sdk/commit/a7bd3cad36956d1151dcd2957fe4b748cf638239))
+* **sdk:** cancel the source stream when a TDF write fails or is cancelled ([#1084](https://github.com/opentdf/web-sdk/issues/1084)) ([d3867eb](https://github.com/opentdf/web-sdk/commit/d3867ebde48a4cf0a000b8fe7b485700d2836f57))
+* **sdk:** drop the fixed manifest size cap (DSPX-4651) ([#1088](https://github.com/opentdf/web-sdk/issues/1088)) ([cb44787](https://github.com/opentdf/web-sdk/commit/cb44787b25dc4c8877bb2093f4c69de8528e4b70))
+* **sdk:** parse the zip EOCD and honour zip64 extras by sentinel (DSPX-4591) ([#1017](https://github.com/opentdf/web-sdk/issues/1017)) ([d757d83](https://github.com/opentdf/web-sdk/commit/d757d8399b21eeafd571b27c8a65ffc0c22ec590))
+* **sdk:** read the TDF spec version from all three places ([#1054](https://github.com/opentdf/web-sdk/issues/1054)) ([ebc317a](https://github.com/opentdf/web-sdk/commit/ebc317a3b0114fde2fd246cddd2f709f129b3b6e))
+* **sdk:** typed errors and bounds checks for hostile zip offsets (DSPX-4591) ([#1079](https://github.com/opentdf/web-sdk/issues/1079)) ([3f6a31e](https://github.com/opentdf/web-sdk/commit/3f6a31e586da719eff75e20a95c04047ca2eae5c))
+
 ## [0.22.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.21.0...sdk-v0.22.0) (2026-10-07)
 
 
