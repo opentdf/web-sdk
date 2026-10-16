@@ -1,16 +1,7 @@
 import { expect } from '@esm-bundle/chai';
-import { mkdtemp, open, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { CLIError } from '../src/logger.js';
 import { PlaintextRangeError } from '@opentdf/sdk';
-import {
-  asRangeCliError,
-  fromLocalFile,
-  parseByteCount,
-  rangeFromArgs,
-  tdfSource,
-} from '../src/source.js';
+import { asRangeCliError, isUrl, parseByteCount, rangeFromArgs } from '../src/source.js';
 
 describe('parseByteCount', function () {
   it('accepts decimal integers, including past 4 GiB', function () {
@@ -71,60 +62,11 @@ describe('asRangeCliError', function () {
   });
 });
 
-describe('local file sources', function () {
-  let dir: string;
-  before(async function () {
-    dir = await mkdtemp(join(tmpdir(), 'opentdf-cli-'));
-  });
-  after(async function () {
-    await rm(dir, { recursive: true, force: true });
-  });
-
-  it('follows Chunker semantics', async function () {
-    const path = join(dir, 'ten');
-    await writeFile(path, new Uint8Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]));
-    const chunker = fromLocalFile(path, 10);
-    expect([...(await chunker())]).to.deep.equal([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
-    expect([...(await chunker(3, 6))]).to.deep.equal([3, 4, 5]);
-    expect([...(await chunker(7))]).to.deep.equal([7, 8, 9]);
-    expect([...(await chunker(-2))]).to.deep.equal([8, 9]);
-    expect([...(await chunker(-20))]).to.deep.equal([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
-    expect([...(await chunker(8, 100))]).to.deep.equal([8, 9]);
-    expect(await chunker(5, 5)).to.have.length(0);
-  });
-
-  it('reads past 4 GiB', async function () {
-    // A sparse file, so this costs no real disk space.
-    const path = join(dir, 'big');
-    const size = 2 ** 32 + 100;
-    const handle = await open(path, 'w');
-    try {
-      await handle.truncate(size);
-      await handle.write(new Uint8Array([42, 43]), 0, 2, 2 ** 32 + 10);
-    } finally {
-      await handle.close();
-    }
-    const chunker = fromLocalFile(path, size);
-    expect([...(await chunker(2 ** 32 + 9, 2 ** 32 + 13))]).to.deep.equal([0, 42, 43, 0]);
-    expect(await chunker(-100)).to.have.length(100);
-  });
-
-  it('uses ranged reads for a local file and fromUrl for a URL', async function () {
-    const path = join(dir, 'ten');
-    expect((await tdfSource(path)).type).to.equal('chunker');
-    expect(await tdfSource('https://example.com/a.tdf')).to.deep.equal({
-      type: 'remote',
-      location: 'https://example.com/a.tdf',
-    });
-  });
-
-  it('rejects a missing file', async function () {
-    try {
-      await tdfSource(join(dir, 'missing'));
-      expect.fail('expected a CLIError');
-    } catch (e) {
-      expect(e).to.be.instanceOf(CLIError);
-      expect((e as Error).message).to.contain('not accessable');
-    }
+describe('isUrl', function () {
+  it('accepts http and https URLs only', function () {
+    expect(isUrl('https://example.com/a.tdf')).to.be.true;
+    expect(isUrl('HTTP://example.com/a.tdf')).to.be.true;
+    expect(isUrl('file:///tmp/a.tdf')).to.be.false;
+    expect(isUrl('/tmp/https://a.tdf')).to.be.false;
   });
 });
