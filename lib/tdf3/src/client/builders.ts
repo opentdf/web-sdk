@@ -14,6 +14,7 @@ import { type Chunker } from '../../../src/seekable.js';
 import type { AssertionConfig, AssertionVerificationKeys } from '../assertions.js';
 import type { Value } from '../../../src/policy/attributes.js';
 import type { KasPublicKeyAlgorithm, OriginAllowList } from '../../../src/access.js';
+import { type PlaintextRange, validatePlaintextRange } from '../utils/plaintext-range.js';
 
 export const DEFAULT_SEGMENT_SIZE: number = 2 * 1024 * 1024;
 export type Scope = {
@@ -545,6 +546,8 @@ export type DecryptParams = {
   concurrencyLimit?: number;
   segmentBatchSize?: number;
   maxConcurrentSegmentBatches?: number;
+  /** Decrypt only this span of the plaintext; see {@link DecryptParamsBuilder#withRange}. */
+  range?: PlaintextRange;
   noVerifyAssertions?: boolean;
   wrappingKeyAlgorithm?: KasPublicKeyAlgorithm;
   fulfillableObligationFQNs?: string[];
@@ -755,6 +758,20 @@ class DecryptParamsBuilder {
    */
   withMaxConcurrentSegmentBatches(limit: number): DecryptParamsBuilder {
     this._params.maxConcurrentSegmentBatches = limit;
+    return this;
+  }
+
+  /**
+   * Decrypt only `length` plaintext bytes starting at plaintext byte `offset`,
+   * with `Blob.slice` semantics: omitting `length` reads to the end, a span
+   * running past the end stops there, and an offset equal to the plaintext size
+   * reads nothing. An offset past the end throws a `PlaintextRangeError` when
+   * decrypting; a malformed range throws one here.
+   */
+  withRange(offset: number, length?: number): DecryptParamsBuilder {
+    const range: PlaintextRange = length === undefined ? { offset } : { offset, length };
+    validatePlaintextRange(range);
+    this._params.range = range;
     return this;
   }
 
