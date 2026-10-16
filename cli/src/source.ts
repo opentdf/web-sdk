@@ -1,5 +1,4 @@
-import { open, stat } from 'node:fs/promises';
-import { type Chunker, type PlaintextRange, PlaintextRangeError, type Source } from '@opentdf/sdk';
+import { type PlaintextRange, PlaintextRangeError } from '@opentdf/sdk';
 import { CLIError } from './logger.js';
 
 /**
@@ -51,72 +50,7 @@ export function asRangeCliError(e: unknown): unknown {
   return e instanceof PlaintextRangeError ? new CLIError('CRITICAL', e.message, e) : e;
 }
 
-/**
- * Reads a local file with positioned reads, following `Chunker` semantics: no
- * start reads everything, a negative start is a suffix, and ranges are clamped
- * to the file. Unlike `fs.openAsBlob`, whose `size` wraps at 4 GiB on some Node
- * releases, this addresses files of any safe-integer size. The file is opened
- * per read, so there is no handle to close.
- */
-export function fromLocalFile(path: string, size: number): Chunker {
-  return async (byteStart?: number, byteEnd?: number) => {
-    let start = byteStart ?? 0;
-    if (start < 0) {
-      start = Math.max(size + start, 0);
-    }
-    const end = Math.min(byteEnd ?? size, size);
-    const length = Math.max(end - start, 0);
-    const buffer = new Uint8Array(length);
-    if (!length) {
-      return buffer;
-    }
-    const handle = await open(path, 'r');
-    try {
-      let read = 0;
-      while (read < length) {
-        const { bytesRead } = await handle.read(buffer, read, length - read, start + read);
-        if (!bytesRead) {
-          // The file shrank under us; return what there is.
-          return buffer.subarray(0, read);
-        }
-        read += bytesRead;
-      }
-      return buffer;
-    } finally {
-      await handle.close();
-    }
-  };
-}
-
 /** True for an `http:` or `https:` URL, which is read with HTTP Range requests. */
 export function isUrl(location: string): boolean {
   return /^https?:\/\//i.test(location);
-}
-
-/**
- * The source for reading a TDF: a URL goes through `fromUrl` (ranged
- * requests), and a local file through positioned reads.
- */
-export async function tdfSource(location: string): Promise<Source> {
-  if (!location) {
-    throw new CLIError('CRITICAL', 'Must specify file or pipe');
-  }
-  if (isUrl(location)) {
-    return { type: 'remote', location };
-  }
-  let size: number;
-  try {
-    const stats = await stat(location);
-    if (!stats.isFile()) {
-      throw new Error('not a file');
-    }
-    size = stats.size;
-  } catch (e) {
-    throw new CLIError(
-      'CRITICAL',
-      `File is not accessable [${location}]`,
-      e instanceof Error ? e : new Error(String(e))
-    );
-  }
-  return { type: 'chunker', location: fromLocalFile(location, size) };
 }
