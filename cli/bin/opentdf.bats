@@ -87,6 +87,22 @@
   [[ $output == *"Must specify file or pipe"* ]]
 }
 
+@test "rejects a bad plaintext range before anything else" {
+  run $BATS_TEST_DIRNAME/opentdf.mjs --offset=1.5 decrypt noone
+  echo "$output"
+  [ "$status" -eq 1 ]
+  [[ $output == *"--offset must be a non-negative integer"* ]]
+  [[ $output != *"oidcEndpoint"* ]]
+  [[ $output != *"noone"* ]]
+}
+
+@test "decrypt fails on an unreadable input file" {
+  run $BATS_TEST_DIRNAME/opentdf.mjs --kasEndpoint "https://example.com" --oidcEndpoint "http://invalid" --concurrencyLimit 1 --auth "b:c" --offset 10 --length 5 decrypt noone
+  echo "$output"
+  [ "$status" -eq 1 ]
+  [[ $output == *"File is not accessable [noone]"* ]]
+}
+
 @test "version command" {
   run $BATS_TEST_DIRNAME/opentdf.mjs --version
   echo "$output"
