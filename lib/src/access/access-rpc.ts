@@ -61,7 +61,10 @@ export function handleRpcRewrapError(e: unknown, platformUrl: string): never {
         throw new InvalidFileError(`400 for [${platformUrl}]: rewrap bad request [${e.message}]`);
       case Code.PermissionDenied: // 403 Forbidden
         throw new PermissionDeniedError(
-          `403 for [${platformUrl}]; rewrap permission denied: forbidden`
+          `403 for [${platformUrl}]; rewrap permission denied: forbidden`,
+          undefined,
+          undefined,
+          e.rawMessage
         );
       case Code.Unauthenticated: // 401 Unauthorized
         throw new UnauthenticatedError(`401 for [${platformUrl}]; rewrap auth failure`);
@@ -91,14 +94,12 @@ export function handleRpcRewrapErrorString(
     throw new InvalidFileError(`400 for [${platformUrl}]: rewrap bad request [${e}]`);
   }
   if (e.includes(Code[Code.PermissionDenied])) {
-    if (requiredObligations && requiredObligations.length > 0) {
-      throw new PermissionDeniedError(
-        `403 for [${platformUrl}]; rewrap permission denied: forbidden`,
-        requiredObligations
-      );
-    }
+    // The constructor keeps the obligations only when there are some.
     throw new PermissionDeniedError(
-      `403 for [${platformUrl}]; rewrap permission denied: forbidden`
+      `403 for [${platformUrl}]; rewrap permission denied: forbidden`,
+      requiredObligations,
+      undefined,
+      e
     );
   }
   if (e.includes(Code[Code.Unauthenticated])) {

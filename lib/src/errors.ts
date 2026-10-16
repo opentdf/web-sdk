@@ -110,11 +110,19 @@ export class UnauthenticatedError extends TdfError {
 export class PermissionDeniedError extends TdfError {
   override name = 'PermissionDeniedError';
   readonly requiredObligations?: string[];
+  /**
+   * The error the key access server returned with the denial, as it sent it. For a rewrap, it
+   * ends with the KAS's cause category, such as `forbidden` or `forbidden: pdp-denied`.
+   */
+  readonly reason?: string;
 
-  constructor(message: string, obligations?: string[], cause?: Error) {
+  constructor(message: string, obligations?: string[], cause?: Error, reason?: string) {
     super(message, cause);
     if (obligations && obligations.length > 0) {
       this.requiredObligations = obligations;
+    }
+    if (reason) {
+      this.reason = reason;
     }
   }
 }
