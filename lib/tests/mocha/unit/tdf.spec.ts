@@ -18,6 +18,9 @@ import { isMlKemKeyAlgorithm } from '../../../tdf3/src/crypto/declarations.js';
 import { AesGcmCipher } from '../../../tdf3/src/ciphers/aes-gcm-cipher.js';
 import { SplitKey } from '../../../tdf3/src/models/encryption-information.js';
 import { Wrapped } from '../../../tdf3/src/models/key-access.js';
+import { Binary } from '../../../tdf3/src/binary.js';
+import { concatUint8 } from '../../../tdf3/src/utils/index.js';
+import { base64 } from '../../../src/encodings/index.js';
 
 const sampleCert = `
 -----BEGIN CERTIFICATE-----
@@ -283,6 +286,64 @@ describe('prefetchSegmentBatches', () => {
     await settle();
     expect(fetched).to.have.lengthOf(4, 'each batch read lets one more start');
   });
+});
+
+describe('sliceAndDecrypt', () => {
+  const cryptoService = DefaultCryptoService.DefaultCryptoService;
+  const SEGMENT_SIZE = 16;
+  const SEGMENT_COUNT = 5;
+
+  /** Encrypts distinguishable segments and lays out their ciphertext back to back. */
+  async function encryptSegments() {
+    const cipher = new AesGcmCipher(cryptoService);
+    const key = await cipher.generateKey();
+    const plaintexts: Uint8Array[] = [];
+    const ciphertexts: Uint8Array[] = [];
+    const chunks: TDF.Chunk[] = [];
+    let encryptedOffset = 0;
+    for (let i = 0; i < SEGMENT_COUNT; i++) {
+      const plaintext = new Uint8Array(SEGMENT_SIZE).fill(i + 1);
+      const { payload } = await cipher.encrypt(
+        Binary.fromArrayBuffer(plaintext.buffer),
+        key,
+        Binary.fromArrayBuffer((await cryptoService.randomBytes(12)).buffer as ArrayBuffer)
+      );
+      const ciphertext = new Uint8Array(payload.asArrayBuffer());
+      chunks.push({
+        // GMAC segment hash: the GCM tag at the end of the ciphertext.
+        hash: base64.encodeArrayBuffer(ciphertext.slice(-16).buffer),
+        encryptedOffset,
+        encryptedSegmentSize: ciphertext.length,
+        plainSegmentSize: SEGMENT_SIZE,
+      });
+      encryptedOffset += ciphertext.length;
+      plaintexts.push(plaintext);
+      ciphertexts.push(ciphertext);
+    }
+    return { cipher, key, plaintexts, ciphertexts, chunks };
+  }
+
+  // Regression: offsets inside the buffer were computed with `%` rather than by
+  // subtraction, which misplaces segments in many spans not starting at 0.
+  for (const [start, end] of [
+    [0, 3],
+    [1, 4],
+    [2, 5],
+  ]) {
+    it(`decrypts a span of segments [${start}, ${end})`, async () => {
+      const { cipher, key, plaintexts, ciphertexts, chunks } = await encryptSegments();
+      const result = await TDF.sliceAndDecrypt({
+        buffer: concatUint8(ciphertexts.slice(start, end)),
+        reconstructedKey: key,
+        slice: chunks.slice(start, end),
+        cipher,
+        cryptoService,
+        segmentIntegrityAlgorithm: 'GMAC',
+        specVersion: '4.3.0',
+      });
+      expect(result).to.deep.equal(plaintexts.slice(start, end));
+    });
+  }
 });
 
 describe('splitLookupTableFactory', () => {

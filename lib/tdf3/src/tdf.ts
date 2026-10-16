@@ -204,7 +204,7 @@ type EntryInfo = {
   fileByteCount?: number;
 };
 
-type Chunk = {
+export type Chunk = {
   hash: string;
   plainSegmentSize?: number;
   encryptedOffset: number;
@@ -1600,8 +1600,8 @@ export async function sliceAndDecrypt({
   for (const chunk of slice) {
     const { encryptedOffset, encryptedSegmentSize, plainSegmentSize } = chunk;
 
-    const offset =
-      slice[0].encryptedOffset === 0 ? encryptedOffset : encryptedOffset % slice[0].encryptedOffset;
+    // `buffer` starts at the slice's first segment, so offsets are relative to it.
+    const offset = encryptedOffset - slice[0].encryptedOffset;
     const encryptedChunk = buffer.subarray(offset, offset + (encryptedSegmentSize as number));
 
     if (encryptedChunk.length !== encryptedSegmentSize) {
