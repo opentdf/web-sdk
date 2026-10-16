@@ -73,6 +73,20 @@ export class IntegrityError extends InvalidFileError {
 }
 
 /**
+ * A write used up the AES-GCM invocation budget for a single data encryption
+ * key. Payload segments use random 96-bit IVs, so the chance of an IV
+ * collision grows with the square of the segment count; NIST SP 800-38D §8.3
+ * therefore allows at most 2^32 invocations per key, and the writer stops
+ * before the segment that would exceed it. Not a
+ * `ConfigurationError`: the options were valid, and many segments were
+ * encrypted before the budget ran out. The partial output is unusable and must
+ * be discarded; retry with a larger segment size or split the input.
+ */
+export class IvExhaustionError extends TdfError {
+  override name = 'IvExhaustionError';
+}
+
+/**
  * Thrown when a KAS URL found in one or more required key access objects are not in the list of known and allowed KASes in the client.
  * This may indicate a malicious file - e.g. an attempt to DDoS a server by listing it as the KAS for many files, or to siphon credentials using a lookalike URL.
  */

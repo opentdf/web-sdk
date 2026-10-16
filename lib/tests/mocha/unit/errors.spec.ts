@@ -1,5 +1,5 @@
 import { assert } from 'chai';
-import { DecryptError, IntegrityError, TdfError } from '../../../src/errors.js';
+import { DecryptError, IntegrityError, IvExhaustionError, TdfError } from '../../../src/errors.js';
 
 function causeOf(error: unknown): unknown {
   return error instanceof Error ? (error as Error & { cause?: unknown }).cause : undefined;
@@ -9,6 +9,7 @@ describe('Errors', () => {
   const errorClasses: Record<string, typeof TdfError> = {
     DecryptError,
     IntegrityError,
+    IvExhaustionError,
     TdfError,
   };
 
