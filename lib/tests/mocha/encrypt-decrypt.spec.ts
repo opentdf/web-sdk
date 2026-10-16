@@ -15,7 +15,11 @@ import type {
 } from '../../tdf3/src/assertions.js';
 import { getSystemMetadataAssertionConfig } from '../../tdf3/src/assertions.js';
 import type { Scope } from '../../tdf3/src/client/builders.js';
-import { ConfigurationError, NetworkError } from '../../src/errors.js';
+import { loadTDFStream } from '../../tdf3/src/tdf.js';
+import { concatUint8 } from '../../tdf3/src/utils/index.js';
+import { type Chunker, fromBuffer } from '../../src/seekable.js';
+import { ConfigurationError, InvalidFileError, NetworkError } from '../../src/errors.js';
+import { packTdf, unpackTdf, type TdfParts } from './helpers/tdf-archive.js';
 
 const Mocks = getMocks();
 
@@ -873,5 +877,193 @@ describe('encrypt decrypt test', function () {
       assert.equal((e as Error).name, 'ConfigurationError');
       assert.match((e as Error).message, /segment size must be a positive integer/);
     }
+  });
+});
+
+/**
+ * Collects unhandled rejections in Node and browsers alike. Mocha's own Node
+ * listener would otherwise swallow them, so a leak would not fail the suite.
+ */
+function captureUnhandledRejections() {
+  const reasons: unknown[] = [];
+  const onNode = (reason: unknown) => reasons.push(reason);
+  const onBrowser = (event: PromiseRejectionEvent) => {
+    reasons.push(event.reason);
+    event.preventDefault();
+  };
+  const proc = (globalThis as { process?: NodeJS.Process }).process;
+  if (proc?.on) {
+    proc.on('unhandledRejection', onNode);
+  } else {
+    globalThis.addEventListener('unhandledrejection', onBrowser);
+  }
+  return {
+    reasons,
+    async stop() {
+      // Unhandled rejections are reported on a later macrotask.
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      if (proc?.on) {
+        proc.off('unhandledRejection', onNode);
+      } else {
+        globalThis.removeEventListener('unhandledrejection', onBrowser);
+      }
+    },
+  };
+}
+
+describe('decrypt prefetch', function () {
+  const kasUrl = 'http://localhost:3000';
+  const SEGMENT_SIZE = 1024;
+  const SEGMENT_COUNT = 8;
+  // Distinguishable segments, so a dropped or reordered segment is visible.
+  const plaintext = new Uint8Array(SEGMENT_COUNT * SEGMENT_SIZE);
+  for (let i = 0; i < SEGMENT_COUNT; i++) {
+    plaintext.fill('A'.charCodeAt(0) + i, i * SEGMENT_SIZE, (i + 1) * SEGMENT_SIZE);
+  }
+
+  let rewraps: number;
+  let client: Client.Client;
+  let buffer: Uint8Array;
+
+  beforeEach(async function () {
+    rewraps = 0;
+    client = new Client.Client({
+      kasEndpoint: kasUrl,
+      platformUrl: kasUrl,
+      dpopKeys: Mocks.entityKeyPair(),
+      clientId: 'id',
+      authProvider: {
+        updateClientPublicKey: async () => {},
+        withCreds: (httpReq: HttpRequest) => {
+          if (/rewrap/i.test(httpReq.url)) {
+            rewraps += 1;
+          }
+          return Promise.resolve(httpReq);
+        },
+      },
+    });
+    const key = await new SplitKey(new AesGcmCipher(WebCryptoService)).generateKey();
+    const stream = await client.encrypt({
+      metadata: Mocks.getMetadataObject(),
+      offline: true,
+      scope: { dissem: ['user@domain.com'], attributes: [] },
+      windowSize: SEGMENT_SIZE,
+      keyMiddleware: () => Promise.resolve({ keyForEncryption: key, keyForManifest: key }),
+      source: new ReadableStream({
+        start(controller) {
+          controller.enqueue(plaintext);
+          controller.close();
+        },
+      }),
+    });
+    buffer = await stream.toBuffer();
+  });
+
+  /** Rebuild the TDF around an edited manifest. */
+  async function withManifest(
+    edit: (info: TdfParts['manifest']['encryptionInformation']['integrityInformation']) => void
+  ) {
+    const { payload, manifest } = await unpackTdf(buffer);
+    edit(manifest.encryptionInformation.integrityInformation);
+    return packTdf(payload, manifest);
+  }
+
+  it('surfaces a failed ranged read to the reader and stops fetching', async function () {
+    const { manifest, centralDirectory } = await loadTDFStream(fromBuffer(buffer));
+    const entry = centralDirectory.find(({ fileName }) => fileName === '0.payload')!;
+    const payloadStart = entry.relativeOffsetOfLocalHeader + entry.headerLength;
+    const payloadEnd = payloadStart + entry.compressedSize;
+    const batchBytes =
+      2 * manifest.encryptionInformation.integrityInformation.encryptedSegmentSizeDefault!;
+    const batchStart = (n: number) => payloadStart + n * batchBytes;
+
+    const base = fromBuffer(buffer);
+    const starts: Array<number | undefined> = [];
+    // The connection drops partway: every read from batch 1 on fails. Batch 2
+    // is already prefetched when batch 1 fails, so its rejection is one the
+    // reader never awaits.
+    const chunker: Chunker = (byteStart, byteEnd) => {
+      starts.push(byteStart);
+      return byteStart !== undefined && byteStart >= batchStart(1) && byteStart < payloadEnd
+        ? Promise.reject(new Error('connection reset'))
+        : base(byteStart, byteEnd);
+    };
+
+    const unhandled = captureUnhandledRejections();
+    const received: Uint8Array[] = [];
+    let failure: unknown;
+    try {
+      const stream = await client.decrypt({
+        source: { type: 'chunker', location: chunker },
+        segmentBatchSize: 2,
+        maxConcurrentSegmentBatches: 2,
+      });
+      const reader = stream.stream.getReader();
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        received.push(value);
+      }
+    } catch (e) {
+      failure = e;
+    } finally {
+      await unhandled.stop();
+    }
+
+    assert.instanceOf(failure, NetworkError);
+    // The batch before the failure is delivered intact.
+    assert.deepEqual(concatUint8(received), plaintext.slice(0, 2 * SEGMENT_SIZE));
+    assert.include(starts, batchStart(2), 'the batch after the failure was prefetched');
+    assert.notInclude(starts, batchStart(3), 'fetching stops at the failure');
+    assert.isEmpty(unhandled.reasons, 'a failed decrypt must not leak rejections');
+  });
+
+  describe('rejects bad input before the KAS rewrap', function () {
+    for (const bad of [-1, 1.5, '1024']) {
+      it(`manifest encryptedSegmentSizeDefault of ${JSON.stringify(bad)}`, async function () {
+        const tampered = await withManifest((info) => {
+          (info as { encryptedSegmentSizeDefault: unknown }).encryptedSegmentSizeDefault = bad;
+        });
+        const e = await rejection(
+          client.decrypt({ source: { type: 'buffer', location: tampered } })
+        );
+        assert.instanceOf(e, InvalidFileError);
+        assert.match(e.message, /positive integer/);
+        assert.equal(rewraps, 0, 'a malformed file must not cost a KAS call');
+      });
+
+      it(`manifest segment encryptedSegmentSize of ${JSON.stringify(bad)}`, async function () {
+        const tampered = await withManifest((info) => {
+          (info.segments[0] as { encryptedSegmentSize?: unknown }).encryptedSegmentSize = bad;
+        });
+        const e = await rejection(
+          client.decrypt({ source: { type: 'buffer', location: tampered } })
+        );
+        assert.instanceOf(e, InvalidFileError);
+        assert.match(e.message, /positive integer/);
+        assert.equal(rewraps, 0, 'a malformed file must not cost a KAS call');
+      });
+    }
+
+    it('a non-positive segmentBatchSize', async function () {
+      const e = await rejection(
+        client.decrypt({ source: { type: 'buffer', location: buffer }, segmentBatchSize: 0 })
+      );
+      assert.instanceOf(e, ConfigurationError);
+      assert.match(e.message, /segmentBatchSize/);
+      assert.equal(rewraps, 0, 'a bad config must not cost a KAS call');
+    });
+  });
+
+  it('falls back to per-segment sizes when the manifest omits the default', async function () {
+    const tampered = await withManifest((info) => {
+      const size = info.encryptedSegmentSizeDefault;
+      info.segments = info.segments.map((s) => ({ ...s, encryptedSegmentSize: size }));
+      delete (info as { encryptedSegmentSizeDefault?: number }).encryptedSegmentSizeDefault;
+    });
+    const stream = await client.decrypt({ source: { type: 'buffer', location: tampered } });
+    assert.deepEqual(new Uint8Array(await stream.toBuffer()), plaintext);
+    // Also shows the rewrap counter used above really sees rewraps.
+    assert.equal(rewraps, 1);
   });
 });

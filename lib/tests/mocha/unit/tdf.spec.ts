@@ -166,100 +166,113 @@ describe('validatePolicyObject', () => {
   });
 });
 
-function createDeferred<T>() {
-  let reject!: (error: unknown) => void;
-  let resolve!: (value: T | PromiseLike<T>) => void;
-  const promise = new Promise<T>((innerResolve, innerReject) => {
-    resolve = innerResolve;
-    reject = innerReject;
+describe('getBoundedSegmentSchedulerOptions', () => {
+  const MIB = 1024 * 1024;
+
+  it('derives a window from the segment size when nothing is configured', () => {
+    // With nothing configured, the bound scales with the segment size rather
+    // than being a fixed segment count.
+    expect(TDF.getBoundedSegmentSchedulerOptions({ segmentSize: MIB })).to.deep.equal({
+      segmentBatchSize: 42,
+      maxConcurrentSegmentBatches: 3,
+    });
+    expect(TDF.getBoundedSegmentSchedulerOptions({ segmentSize: 16 * MIB })).to.deep.equal({
+      segmentBatchSize: 2,
+      maxConcurrentSegmentBatches: 3,
+    });
   });
-  return { promise, reject, resolve };
-}
 
-async function flushScheduler() {
-  await Promise.resolve();
-  await Promise.resolve();
-}
-
-describe('bounded segment scheduler', () => {
-  it('honors the configured batch size', async () => {
-    const started: Array<[number, number]> = [];
-    const deferred = createDeferred<void>();
-    const scheduler = TDF.createBoundedSegmentScheduler({
-      totalSegments: 6,
+  it('lets an explicit setting win without rescaling the other', () => {
+    expect(
+      TDF.getBoundedSegmentSchedulerOptions({ segmentSize: 16 * MIB, segmentBatchSize: 500 })
+    ).to.deep.equal({
+      segmentBatchSize: 500,
+      maxConcurrentSegmentBatches: 3,
+    });
+    expect(
+      TDF.getBoundedSegmentSchedulerOptions({
+        segmentSize: 16 * MIB,
+        maxConcurrentSegmentBatches: 1,
+      })
+    ).to.deep.equal({
       segmentBatchSize: 2,
       maxConcurrentSegmentBatches: 1,
-      scheduleBatch: (startIndex, endIndex) => {
-        started.push([startIndex, endIndex]);
-        return deferred.promise;
-      },
     });
-
-    scheduler.fillWindow();
-    await flushScheduler();
-    expect(started).to.deep.equal([[0, 2]]);
-
-    deferred.resolve();
-    await flushScheduler();
-
-    scheduler.markConsumed();
-    await flushScheduler();
-    expect(started).to.deep.equal([[0, 2]]);
-
-    scheduler.markConsumed();
-    await flushScheduler();
-    expect(started).to.deep.equal([
-      [0, 2],
-      [2, 4],
-    ]);
   });
 
-  it('bounds scheduled work to the configured prefetch window', async () => {
-    const started: Array<[number, number]> = [];
-    const deferredBatches = [
-      createDeferred<void>(),
-      createDeferred<void>(),
-      createDeferred<void>(),
-    ];
-    let nextDeferred = 0;
-    const scheduler = TDF.createBoundedSegmentScheduler({
-      totalSegments: 10,
-      segmentBatchSize: 2,
-      maxConcurrentSegmentBatches: 2,
-      scheduleBatch: (startIndex, endIndex) => {
-        started.push([startIndex, endIndex]);
-        return deferredBatches[nextDeferred++].promise;
+  it('rejects a non-positive setting', () => {
+    expect(() =>
+      TDF.getBoundedSegmentSchedulerOptions({ segmentSize: MIB, segmentBatchSize: 0 })
+    ).to.throw(ConfigurationError, 'segmentBatchSize');
+    expect(() =>
+      TDF.getBoundedSegmentSchedulerOptions({ segmentSize: MIB, maxConcurrentSegmentBatches: -1 })
+    ).to.throw(ConfigurationError, 'maxConcurrentSegmentBatches');
+  });
+});
+
+describe('prefetchSegmentBatches', () => {
+  const chunks = Array.from({ length: 8 }, (_, i) => ({
+    hash: `${i}`,
+    encryptedOffset: i * 100,
+    encryptedSegmentSize: 100,
+  }));
+  // The stream pulls on later tasks, so let it run to quiescence.
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  /** A batch stream whose fetches stay pending until released. */
+  function heldBatches(segmentBatchSize: number, maxConcurrentSegmentBatches: number) {
+    const fetched: string[][] = [];
+    const held: Array<() => void> = [];
+    const reader = TDF.prefetchSegmentBatches({
+      chunks,
+      segmentBatchSize,
+      maxConcurrentSegmentBatches,
+      fetchBatch: (slice) => {
+        fetched.push(slice.map(({ hash }) => hash));
+        return new Promise((resolve) => held.push(() => resolve([])));
       },
-    });
+    }).getReader();
+    const releaseAll = () => held.splice(0).forEach((release) => release());
+    return { fetched, reader, releaseAll };
+  }
 
-    scheduler.fillWindow();
-    await flushScheduler();
+  it('slices chunks into ordered batches and closes after the last', async () => {
+    const { fetched, reader, releaseAll } = heldBatches(3, 2);
+    releaseAll();
+    const slices: string[][] = [];
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      slices.push(value.slice.map(({ hash }) => hash));
+      releaseAll();
+    }
+    const expected = [
+      ['0', '1', '2'],
+      ['3', '4', '5'],
+      ['6', '7'],
+    ];
+    expect(slices).to.deep.equal(expected);
+    expect(fetched).to.deep.equal(expected);
+  });
 
-    expect(started).to.deep.equal([
-      [0, 2],
-      [2, 4],
-    ]);
-    expect(scheduler.snapshot()).to.deep.equal({
-      consumedSegments: 0,
-      inFlightBatches: 2,
-      maxPrefetchedSegments: 4,
-      scheduledSegments: 4,
-    });
+  it('keeps at most maxConcurrentSegmentBatches batches ahead of the reader', async () => {
+    const { fetched, reader, releaseAll } = heldBatches(1, 3);
+    await settle();
+    // The queue holds one fewer than the limit: the reader holds the other.
+    expect(fetched).to.have.lengthOf(2, 'fills the queue without waiting for the reader');
 
-    deferredBatches[0].resolve();
-    await flushScheduler();
-    expect(started).to.deep.equal([
-      [0, 2],
-      [2, 4],
-    ]);
+    await reader.read();
+    await settle();
+    expect(fetched).to.have.lengthOf(3, 'the batch the reader holds still counts');
 
-    scheduler.markConsumed(2);
-    await flushScheduler();
-    expect(started).to.deep.equal([
-      [0, 2],
-      [2, 4],
-      [4, 6],
-    ]);
+    // Finishing those fetches frees nothing: their plaintext is still unread.
+    releaseAll();
+    await settle();
+    expect(fetched).to.have.lengthOf(3, 'completed but unread batches still count');
+
+    await reader.read();
+    await settle();
+    expect(fetched).to.have.lengthOf(4, 'each batch read lets one more start');
   });
 });
 
