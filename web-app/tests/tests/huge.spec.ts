@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test';
 import { test, expect } from '../fixtures.js';
 import fs from 'node:fs';
-import { appUrl, authorize, loadFile } from './acts.js';
+import { appUrl, authorize, downloadPath, loadFile } from './acts.js';
 
 test.beforeEach(async ({ page }) => {
   page.on('pageerror', (err) => {
@@ -12,11 +12,14 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-// Chromium only for now. The file sink uses StreamSaver, which on WebKit
-// buffers the whole output as a Blob, and Playwright's WebKit cancels
-// multi-GiB downloads made that way. Firefox passes at 3 GiB but took the CI
-// runner down at 4 GiB; restoring it is tracked in DSPX-5084.
-test.skip(({ browserName }) => browserName !== 'chromium', 'Chromium only; see DSPX-5084');
+// Playwright's patched Firefox keeps a copy of every response body, downloads
+// included, in its parent process, so these sizes exhaust memory (DSPX-5084).
+// Run Firefox with playwright.moz-firefox.config.ts instead, which drives
+// stock Firefox.
+test.skip(
+  ({ browserName }) => browserName === 'firefox',
+  "Playwright's Firefox buffers downloads in memory; use playwright.moz-firefox.config.ts"
+);
 
 const GiB = 2 ** 30;
 
@@ -50,7 +53,7 @@ for (const { name, bytes } of sizes) {
     await page.locator('#encryptButton').click();
 
     const download = await downloadPromise;
-    const cipherTextPath = await download.path();
+    const cipherTextPath = await downloadPath(download);
     try {
       expect(download.suggestedFilename()).toContain('bytes');
       expect(cipherTextPath).toBeTruthy();
@@ -68,7 +71,7 @@ for (const { name, bytes } of sizes) {
       expect(decryptTuningLogs).toEqual([
         'Using decrypt read tuning {"segmentBatchSize":2,"maxConcurrentSegmentBatches":1}',
       ]);
-      const plainTextPath = await download2.path();
+      const plainTextPath = await downloadPath(download2);
       if (!plainTextPath) {
         throw new Error();
       }
