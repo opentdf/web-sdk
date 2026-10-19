@@ -19,6 +19,36 @@ export type KeyAccessType = 'remote' | 'wrapped' | 'ec-wrapped' | 'mlkem-wrapped
 
 export const schemaVersion = '1.0';
 
+/**
+ * Computes the policy binding hash for a key access object.
+ *
+ * @param cryptoService - The crypto service to use for HMAC computation
+ * @param policyStr - JSON-stringified policy
+ * @param dek - Data encryption key
+ * @param hexless - If true, returns Base64(HMAC); if false, returns Base64(hex(HMAC)) (legacy)
+ * @returns Base64-encoded policy binding hash
+ * @internal
+ */
+export async function policyBindingHash(
+  cryptoService: CryptoService,
+  policyStr: string,
+  dek: SymmetricKey,
+  hexless: boolean
+): Promise<string> {
+  const hmacResult = await cryptoService.hmac(
+    new TextEncoder().encode(base64.encode(policyStr)),
+    dek
+  );
+
+  if (hexless) {
+    // Hexless form: Base64(HMAC)
+    return base64.encodeArrayBuffer(toArrayBuffer(hmacResult));
+  } else {
+    // Legacy form: Base64(hex(HMAC))
+    return base64.encode(hex.encodeArrayBuffer(toArrayBuffer(hmacResult)));
+  }
+}
+
 export class ECWrapped {
   readonly type = 'ec-wrapped';
   readonly ephemeralKeyPair: Promise<KeyPair>;
@@ -39,7 +69,8 @@ export class ECWrapped {
   async write(
     policy: Policy,
     dek: SymmetricKey,
-    encryptedMetadataStr: string
+    encryptedMetadataStr: string,
+    hexless = false
   ): Promise<KeyAccessObject> {
     const policyStr = JSON.stringify(policy);
     const ek = await this.ephemeralKeyPair;
@@ -77,10 +108,7 @@ export class ECWrapped {
     entityWrappedKey.set(ciphertext, iv.length);
     entityWrappedKey.set(authTag, iv.length + ciphertext.length);
 
-    const policyBinding = hex.encodeArrayBuffer(
-      (await this.cryptoService.hmac(new TextEncoder().encode(base64.encode(policyStr)), dek))
-        .buffer
-    );
+    const policyBinding = await policyBindingHash(this.cryptoService, policyStr, dek, hexless);
 
     // Export ephemeral public key to PEM for manifest
     const ephemeralPublicKeyPem = await this.cryptoService.exportPublicKeyPem(ek.publicKey);
@@ -93,7 +121,7 @@ export class ECWrapped {
       encryptedMetadata: base64.encode(encryptedMetadataStr),
       policyBinding: {
         alg: 'HS256',
-        hash: base64.encode(policyBinding),
+        hash: policyBinding,
       },
       schemaVersion,
       ephemeralPublicKey: ephemeralPublicKeyPem,
@@ -125,7 +153,8 @@ export class Wrapped {
   async write(
     policy: Policy,
     key: SymmetricKey,
-    encryptedMetadataStr: string
+    encryptedMetadataStr: string,
+    hexless = false
   ): Promise<KeyAccessObject> {
     const policyStr = JSON.stringify(policy);
     // Import KAS public key from PEM
@@ -134,10 +163,7 @@ export class Wrapped {
     });
     const wrappedKeyBinary = await this.cryptoService.encryptWithPublicKey(key, kasPublicKey);
 
-    const policyBinding = hex.encodeArrayBuffer(
-      (await this.cryptoService.hmac(new TextEncoder().encode(base64.encode(policyStr)), key))
-        .buffer
-    );
+    const policyBinding = await policyBindingHash(this.cryptoService, policyStr, key, hexless);
 
     this.keyAccessObject = {
       type: 'wrapped',
@@ -147,7 +173,7 @@ export class Wrapped {
       encryptedMetadata: base64.encode(encryptedMetadataStr),
       policyBinding: {
         alg: 'HS256',
-        hash: base64.encode(policyBinding),
+        hash: policyBinding,
       },
       schemaVersion,
     };
@@ -185,7 +211,8 @@ export class MlKemWrapped {
   async write(
     policy: Policy,
     dek: SymmetricKey,
-    encryptedMetadataStr: string
+    encryptedMetadataStr: string,
+    hexless = false
   ): Promise<KeyAccessObject> {
     const policyStr = JSON.stringify(policy);
 
@@ -226,10 +253,7 @@ export class MlKemWrapped {
     // wrappedKey = base64( DER( kemEnvelope { [0] kemCiphertext, [1] encryptedDek } ) )
     const blob = encodeKemEnvelopeDer(kemCiphertext, encryptedDek);
 
-    const policyBinding = hex.encodeArrayBuffer(
-      (await this.cryptoService.hmac(new TextEncoder().encode(base64.encode(policyStr)), dek))
-        .buffer
-    );
+    const policyBinding = await policyBindingHash(this.cryptoService, policyStr, dek, hexless);
 
     const kao: KeyAccessObject = {
       type: 'mlkem-wrapped',
@@ -239,7 +263,7 @@ export class MlKemWrapped {
       encryptedMetadata: base64.encode(encryptedMetadataStr),
       policyBinding: {
         alg: 'HS256',
-        hash: base64.encode(policyBinding),
+        hash: policyBinding,
       },
       schemaVersion,
     };

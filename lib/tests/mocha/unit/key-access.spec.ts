@@ -1,11 +1,12 @@
 import { expect } from 'chai';
 
-import { ECWrapped, Wrapped } from '../../../tdf3/src/models/key-access.js';
+import { ECWrapped, Wrapped, policyBindingHash } from '../../../tdf3/src/models/key-access.js';
 import type { Policy } from '../../../tdf3/src/models/policy.js';
 import { base64 } from '../../../src/encodings/index.js';
 import type { CryptoService, KeyPair, PublicKey } from '../../../tdf3/src/crypto/declarations.js';
 import { Binary } from '../../../tdf3/src/binary.js';
 import { importSymmetricKey } from '../../../tdf3/src/crypto/index.js';
+import * as DefaultCryptoService from '../../../tdf3/src/crypto/index.js';
 
 // Mock CryptoService for testing
 const mockCryptoService: CryptoService = {
@@ -94,6 +95,24 @@ describe('ECWrapped', () => {
         expect(keyAccessObject).to.have.property('kid', kid);
         expect(keyAccessObject).to.have.property('sid', sid);
       });
+
+      it(`writes a 32-byte policy binding for ${typeName} when hexless is set`, async () => {
+        const wrappedInstance = new (typeName === 'ECWrapped' ? ECWrapped : Wrapped)(
+          url,
+          kid,
+          publicKey,
+          metadata,
+          mockCryptoService,
+          sid
+        );
+        const dek = await importSymmetricKey(dekBytes);
+
+        const legacy = await wrappedInstance.write(policy, dek, encryptedMetadataStr);
+        expect(base64.decodeArrayBuffer(legacy.policyBinding!.hash).byteLength).to.equal(64);
+
+        const hexless = await wrappedInstance.write(policy, dek, encryptedMetadataStr, true);
+        expect(base64.decodeArrayBuffer(hexless.policyBinding!.hash).byteLength).to.equal(32);
+      });
     });
   });
 
@@ -127,5 +146,56 @@ describe('ECWrapped', () => {
   it(`should handle undefined sid for Wrapped`, () => {
     const wrappedInstance = new Wrapped(url, kid, publicKey, metadata, mockCryptoService);
     expect(wrappedInstance.sid).to.be.undefined;
+  });
+});
+
+describe('policyBindingHash', () => {
+  it('should compute known answer legacy binding', async () => {
+    // Known-answer test from Go's TestCreatePolicyBinding
+    const fixedKey = new Uint8Array(32);
+    for (let i = 0; i < 32; i++) {
+      fixedKey[i] = i;
+    }
+    const dek = await importSymmetricKey(fixedKey);
+    const policyStr = JSON.stringify({ uuid: 'test' });
+
+    const binding = await policyBindingHash(DefaultCryptoService, policyStr, dek, false);
+
+    expect(binding).to.equal(
+      'YzFjZTM3OWQ0Y2FiMTZkNmRhNzJkYjllYWQ2NGQ3Y2I0Y2E5YmRhY2FiOGMwNjg1ZmY5MmUzZjc0YWEyYzEyZA=='
+    );
+  });
+
+  it('should compute known answer hexless binding', async () => {
+    // Known-answer test from Go's TestCreatePolicyBinding (hexless variant)
+    const fixedKey = new Uint8Array(32);
+    for (let i = 0; i < 32; i++) {
+      fixedKey[i] = i;
+    }
+    const dek = await importSymmetricKey(fixedKey);
+    const policyStr = JSON.stringify({ uuid: 'test' });
+
+    const binding = await policyBindingHash(DefaultCryptoService, policyStr, dek, true);
+
+    expect(binding).to.equal('wc43nUyrFtbactuerWTXy0ypvayrjAaF/5Lj90qiwS0=');
+  });
+
+  it('should use the injected crypto service hmac', async () => {
+    let hmacCalled = false;
+    const testCryptoService = {
+      ...mockCryptoService,
+      hmac() {
+        hmacCalled = true;
+        return Promise.resolve(new Uint8Array(32));
+      },
+    } as unknown as CryptoService;
+
+    const fixedKey = new Uint8Array(32);
+    const dek = await importSymmetricKey(fixedKey);
+    const policyStr = JSON.stringify({ uuid: 'test' });
+
+    await policyBindingHash(testCryptoService, policyStr, dek, false);
+
+    expect(hmacCalled).to.be.true;
   });
 });

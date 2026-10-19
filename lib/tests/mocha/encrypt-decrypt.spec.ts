@@ -20,6 +20,7 @@ import { concatUint8 } from '../../tdf3/src/utils/index.js';
 import { type Chunker, fromBuffer } from '../../src/seekable.js';
 import { ConfigurationError, InvalidFileError, NetworkError } from '../../src/errors.js';
 import { packTdf, unpackTdf, type TdfParts } from './helpers/tdf-archive.js';
+import { base64 } from '../../src/encodings/index.js';
 
 const Mocks = getMocks();
 
@@ -1065,5 +1066,142 @@ describe('decrypt prefetch', function () {
     assert.deepEqual(new Uint8Array(await stream.toBuffer()), plaintext);
     // Also shows the rewrap counter used above really sees rewraps.
     assert.equal(rewraps, 1);
+  });
+});
+
+describe('hexless policy binding', function () {
+  const kasUrl = 'http://localhost:3000';
+  let client: Client.Client;
+
+  beforeEach(function () {
+    client = new Client.Client({
+      kasEndpoint: kasUrl,
+      platformUrl: kasUrl,
+      dpopKeys: Mocks.entityKeyPair(),
+      clientId: 'id',
+      authProvider,
+    });
+  });
+
+  async function decryptToBytes(buffer: Uint8Array) {
+    const stream = await client.decrypt({ source: { type: 'buffer', location: buffer } });
+    return { manifest: stream.manifest, plaintext: await stream.toBuffer() };
+  }
+
+  it('every key access object gets the hexless binding (two-KAS split)', async function () {
+    const plaintext = new Uint8Array([1, 2, 3, 4]);
+    const key = await new SplitKey(new AesGcmCipher(WebCryptoService)).generateKey();
+    const stream = await client.encrypt({
+      metadata: Mocks.getMetadataObject(),
+      offline: true,
+      scope: { dissem: ['user@domain.com'], attributes: [] },
+      windowSize: 1024 * 1024,
+      keyMiddleware: () => Promise.resolve({ keyForEncryption: key, keyForManifest: key }),
+      splitPlan: [
+        { kas: kasUrl, sid: 'split1' },
+        { kas: kasUrl, sid: 'split2' },
+      ],
+      hexlessPolicyBinding: true,
+      source: new ReadableStream({
+        start(controller) {
+          controller.enqueue(plaintext);
+          controller.close();
+        },
+      }),
+    });
+    const buffer = await stream.toBuffer();
+    const { manifest } = await unpackTdf(buffer);
+
+    // Two KAOs for two-KAS split
+    assert.equal(manifest.encryptionInformation.keyAccess.length, 2);
+
+    // Each hash decodes to 32 bytes (44-char base64)
+    for (const kao of manifest.encryptionInformation.keyAccess) {
+      assert.isDefined(kao.policyBinding);
+      const decoded = base64.decodeArrayBuffer(kao.policyBinding.hash);
+      assert.equal(decoded.byteLength, 32, 'hexless binding should be 32 bytes');
+      assert.equal(kao.policyBinding.hash.length, 44, 'hexless binding should be 44-char base64');
+    }
+
+    // The mock KAS rejects hexless bindings, so both rewraps must carry the
+    // legacy form for this to decrypt.
+    assert.deepEqual((await decryptToBytes(buffer)).plaintext, plaintext);
+  });
+
+  it('tdfSpecVersion 4.2.2 overrides hexlessPolicyBinding', async function () {
+    const plaintext = new Uint8Array([1, 2, 3, 4]);
+    const key = await new SplitKey(new AesGcmCipher(WebCryptoService)).generateKey();
+    const stream = await client.encrypt({
+      metadata: Mocks.getMetadataObject(),
+      offline: true,
+      scope: { dissem: ['user@domain.com'], attributes: [] },
+      windowSize: 1024 * 1024,
+      keyMiddleware: () => Promise.resolve({ keyForEncryption: key, keyForManifest: key }),
+      tdfSpecVersion: '4.2.2',
+      hexlessPolicyBinding: true,
+      source: new ReadableStream({
+        start(controller) {
+          controller.enqueue(plaintext);
+          controller.close();
+        },
+      }),
+    });
+    const buffer = await stream.toBuffer();
+    const { manifest } = await unpackTdf(buffer);
+
+    // Legacy binding (88-char base64, decodes to 64 hex chars)
+    const kao = manifest.encryptionInformation.keyAccess[0];
+    assert.isDefined(kao.policyBinding);
+    assert.equal(kao.policyBinding.hash.length, 88, 'legacy binding should be 88-char base64');
+    const decoded = base64.decodeArrayBuffer(kao.policyBinding.hash);
+    assert.equal(decoded.byteLength, 64, 'legacy binding decodes to 64 bytes (hex-encoded)');
+
+    assert.deepEqual((await decryptToBytes(buffer)).plaintext, plaintext);
+  });
+
+  it('rewrap request carries the legacy binding for a hexless TDF', async function () {
+    const plaintext = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]);
+    const key = await new SplitKey(new AesGcmCipher(WebCryptoService)).generateKey();
+    const stream = await client.encrypt({
+      metadata: Mocks.getMetadataObject(),
+      offline: true,
+      scope: { dissem: ['user@domain.com'], attributes: [] },
+      windowSize: 1024 * 1024,
+      keyMiddleware: () => Promise.resolve({ keyForEncryption: key, keyForManifest: key }),
+      hexlessPolicyBinding: true,
+      source: new ReadableStream({
+        start(controller) {
+          controller.enqueue(plaintext);
+          controller.close();
+        },
+      }),
+    });
+    const buffer = await stream.toBuffer();
+
+    const { manifest } = await unpackTdf(buffer);
+    const writtenKao = manifest.encryptionInformation.keyAccess[0];
+    assert.isDefined(writtenKao.policyBinding);
+    assert.equal(
+      base64.decodeArrayBuffer(writtenKao.policyBinding.hash).byteLength,
+      32,
+      'manifest binding should be hexless (32 bytes)'
+    );
+
+    // The mock KAS, like a KAS without the dual-accept fix, rejects a binding
+    // that base64-decodes to 32 bytes. Decrypt succeeds only if the reader
+    // re-encoded the binding to Base64(hex(HMAC)) in the rewrap request.
+    const decrypted = await decryptToBytes(buffer);
+    assert.deepEqual(decrypted.plaintext, plaintext, 'decrypt should produce original plaintext');
+
+    // The re-encoding is confined to the request: the manifest the reader
+    // parsed still holds the hexless binding.
+    const readKao = decrypted.manifest.encryptionInformation.keyAccess[0];
+    assert.isDefined(readKao.policyBinding);
+    assert.equal(readKao.policyBinding.hash, writtenKao.policyBinding.hash);
+    assert.equal(
+      base64.decodeArrayBuffer(readKao.policyBinding.hash).byteLength,
+      32,
+      'reader manifest binding should still be 32 bytes after decrypt'
+    );
   });
 });

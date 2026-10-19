@@ -136,6 +136,18 @@ export type CreateZTDFOptions = CreateOptions & {
   tdfSpecVersion?: '4.2.2' | '4.3.0';
 
   /**
+   * Write each key access object's policy binding hash as Base64(HMAC), dropping
+   * the hex layer of the legacy Base64(hex(HMAC)) written by default. Base64(HMAC)
+   * is the form the TDF spec defines. Only a KAS carrying the policy binding
+   * dual-accept fix can verify the hexless form directly. This SDK's reader
+   * re-encodes it for older KAS, but other and older readers forward it unchanged,
+   * so a TDF written with this option may not decrypt through an older reader
+   * against an older KAS. A tdfSpecVersion before 4.3.0 overrides this option and
+   * keeps the legacy form.
+   */
+  hexlessPolicyBinding?: boolean;
+
+  /**
    * Algorithm used for the root signature over the aggregate of segment
    * hashes. `HS256` only. Defaults to `HS256`.
    */
@@ -419,6 +431,7 @@ export class OpenTDF {
       windowSize: opts.windowSize,
       wrappingKeyAlgorithm: opts.wrappingKeyAlgorithm,
       tdfSpecVersion: opts.tdfSpecVersion,
+      hexlessPolicyBinding: opts.hexlessPolicyBinding,
       rootIntegrityAlgorithm: opts.rootIntegrityAlgorithm,
       segmentIntegrityAlgorithm: opts.segmentIntegrityAlgorithm,
     });

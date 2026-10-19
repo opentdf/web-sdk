@@ -114,6 +114,25 @@ describe('MlKemWrapped', () => {
     expect(encryptedDek.length).to.equal(12 + 16 + 16);
   });
 
+  it('writes a 32-byte policy binding when hexless is set', async () => {
+    const mlKemWrapped = new MlKemWrapped(
+      url,
+      kid,
+      publicKey,
+      metadata,
+      mockCryptoService,
+      sid,
+      alg
+    );
+    const dek = await importSymmetricKey(new Uint8Array([1, 2, 3, 4, 5]));
+
+    const legacy = await mlKemWrapped.write(policy, dek, encryptedMetadataStr);
+    expect(base64.decodeArrayBuffer(legacy.policyBinding!.hash).byteLength).to.equal(64);
+
+    const hexless = await mlKemWrapped.write(policy, dek, encryptedMetadataStr, true);
+    expect(base64.decodeArrayBuffer(hexless.policyBinding!.hash).byteLength).to.equal(32);
+  });
+
   it('requires a non-empty kid', () => {
     expect(
       () => new MlKemWrapped(url, '', publicKey, metadata, mockCryptoService, sid, alg)
