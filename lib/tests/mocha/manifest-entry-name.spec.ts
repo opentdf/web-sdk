@@ -6,9 +6,10 @@
  * design that allowed several payload/manifest pairs per archive and never
  * shipped.
  *
- * This change is read-only: the reader accepts either name, preferring the spec
- * one. The writer still emits `0.manifest.json` — renaming it is a breaking
- * file-format change tracked separately.
+ * The reader accepts either name, preferring the spec one. The writer emits
+ * `0.manifest.json` by default; the `unprefixedManifestName` encrypt option opts
+ * into `manifest.json`. Changing the default is a breaking file-format change
+ * tracked separately.
  *
  * Every fixture here is an archive this SDK wrote, rebuilt with its manifest
  * entry renamed, so what they pin is name resolution and nothing more. They are
@@ -277,6 +278,51 @@ describe('manifest entry name (platform#3513)', function () {
       const buffer = await encryptToBuffer(client);
       const stream = await client.decrypt({ source: { type: 'buffer', location: buffer } });
       assert.deepEqual(new Uint8Array(await stream.toBuffer()), plaintext);
+    });
+
+    it('writes manifest.json with unprefixedManifestName', async function () {
+      const encryptionInformation = new SplitKey(new AesGcmCipher(WebCryptoService));
+      const key = await encryptionInformation.generateKey();
+      const stream = await client.encrypt({
+        metadata: Mocks.getMetadataObject(),
+        offline: true,
+        scope: { dissem: ['user@domain.com'], attributes: [] },
+        keyMiddleware: () => Promise.resolve({ keyForEncryption: key, keyForManifest: key }),
+        unprefixedManifestName: true,
+        source: new ReadableStream({
+          start(controller) {
+            controller.enqueue(plaintext);
+            controller.close();
+          },
+        }),
+      });
+      const buffer = new Uint8Array(await stream.toBuffer());
+      assert.deepEqual(await fileNamesOf(buffer), ['0.payload', SPEC_NAME]);
+      const decrypted = await client.decrypt({ source: { type: 'buffer', location: buffer } });
+      assert.deepEqual(new Uint8Array(await decrypted.toBuffer()), plaintext);
+    });
+
+    it('tdfSpecVersion 4.2.2 overrides unprefixedManifestName', async function () {
+      const encryptionInformation = new SplitKey(new AesGcmCipher(WebCryptoService));
+      const key = await encryptionInformation.generateKey();
+      const stream = await client.encrypt({
+        metadata: Mocks.getMetadataObject(),
+        offline: true,
+        scope: { dissem: ['user@domain.com'], attributes: [] },
+        keyMiddleware: () => Promise.resolve({ keyForEncryption: key, keyForManifest: key }),
+        unprefixedManifestName: true,
+        tdfSpecVersion: '4.2.2',
+        source: new ReadableStream({
+          start(controller) {
+            controller.enqueue(plaintext);
+            controller.close();
+          },
+        }),
+      });
+      const buffer = new Uint8Array(await stream.toBuffer());
+      assert.deepEqual(await fileNamesOf(buffer), ['0.payload', OFFSPEC_NAME]);
+      const decrypted = await client.decrypt({ source: { type: 'buffer', location: buffer } });
+      assert.deepEqual(new Uint8Array(await decrypted.toBuffer()), plaintext);
     });
   });
 

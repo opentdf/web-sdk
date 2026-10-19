@@ -93,3 +93,9 @@
   [[ $output == *"@opentdf/sdk\":\""* ]]
   [[ $output == *"tdfSpecVersion\":\""* ]]
 }
+
+@test "encrypt help shows unprefixedManifestName flag" {
+  run $BATS_TEST_DIRNAME/opentdf.mjs encrypt --help
+  echo "$output"
+  [[ $output == *"--unprefixedManifestName"* ]]
+}

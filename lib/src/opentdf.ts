@@ -136,6 +136,14 @@ export type CreateZTDFOptions = CreateOptions & {
   tdfSpecVersion?: '4.2.2' | '4.3.0';
 
   /**
+   * Store the manifest under the zip entry name manifest.json, the name the TDF
+   * spec defines, instead of the legacy 0.manifest.json written by default.
+   * Readers that predate manifest.json support can't open the result. A
+   * tdfSpecVersion before 4.3.0 overrides this option and keeps the legacy name.
+   */
+  unprefixedManifestName?: boolean;
+
+  /**
    * Algorithm used for the root signature over the aggregate of segment
    * hashes. `HS256` only. Defaults to `HS256`.
    */
@@ -419,6 +427,7 @@ export class OpenTDF {
       windowSize: opts.windowSize,
       wrappingKeyAlgorithm: opts.wrappingKeyAlgorithm,
       tdfSpecVersion: opts.tdfSpecVersion,
+      unprefixedManifestName: opts.unprefixedManifestName,
       rootIntegrityAlgorithm: opts.rootIntegrityAlgorithm,
       segmentIntegrityAlgorithm: opts.segmentIntegrityAlgorithm,
     });
