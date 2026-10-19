@@ -68,6 +68,7 @@
   },
   "scripts": {
     "build": "npm run vendor:jose-jwt-helpers && npm run clean && tsc && tsc --project tests/tsconfig.json && tsc --project tsconfig.commonjs.json && ../scripts/add-module-types.sh",
+    "bench:encrypt": "node scripts/bench-encrypt.mjs",
     "build:watch": "tsc --watch",
     "clean": "rm -rf {build,coverage,dist,tests/mocha/dist}",
     "coverage:merge": "for x in mocha wtr; do cp coverage/$x/coverage-final.json coverage/$x.json; done; nyc report --reporter text --reporter lcov -t coverage --lines 75 --statements 75 --branches 70 --functions 65 --check-coverage >coverage/coverage.txt",
