@@ -1,7 +1,5 @@
 import { clsx } from 'clsx';
 import { useState, useEffect, type ChangeEvent } from 'react';
-import streamsaver from 'streamsaver';
-import { showSaveFilePicker } from 'native-file-system-adapter';
 import './App.css';
 import {
   type Chunker,
@@ -21,19 +19,7 @@ import {
   decryptedFileName,
   expectedKaoType,
 } from './fileNames.js';
-
-async function toFile(
-  stream: ReadableStream<Uint8Array>,
-  filepath = 'download.tdf',
-  options?: StreamPipeOptions
-): Promise<void> {
-  const fileStream = streamsaver.createWriteStream(filepath, {
-    writableStrategy: { highWaterMark: 1 },
-    readableStrategy: { highWaterMark: 1 },
-  });
-
-  return stream.pipeTo(fileStream, options);
-}
+import { canSaveAs, toFile } from './downloadSink.js';
 
 const oidcClient = new OidcClient(config.oidc.host, config.oidc.clientId, 'otdf-sample-web-app');
 
@@ -46,14 +32,13 @@ async function getNewFileHandle(
       {
         description: `${extension} files`,
         accept: {
-          'application/octet-stream': [`.${extension}`],
+          'application/octet-stream': [`.${extension}` as const],
         },
       },
     ],
     suggestedName,
   };
-  //@ts-expect-error //TS2739: not a complete file picker interface
-  return showSaveFilePicker(options);
+  return window.showSaveFilePicker(options);
 }
 
 type CurrentDataController = AbortController | undefined;
@@ -718,8 +703,14 @@ function App() {
                   value="fsapi"
                   onChange={(e) => setSinkType(e.target.value as SinkType)}
                   checked={sinkType === 'fsapi'}
+                  disabled={!canSaveAs()}
                 />{' '}
-                <label htmlFor="fsapiSink">Save As</label>
+                <label
+                  htmlFor="fsapiSink"
+                  title={canSaveAs() ? undefined : 'This browser has no File System Access API'}
+                >
+                  Save As
+                </label>
                 <br />
                 <input
                   type="radio"
