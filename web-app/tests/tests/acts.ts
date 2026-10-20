@@ -1,6 +1,7 @@
-import { existsSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
+import { existsSync, mkdirSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
-import type { Download, Page } from '@playwright/test';
+import { expect, type Download, type Page } from '@playwright/test';
 
 export const appUrl = 'http://localhost:65432/';
 
@@ -22,21 +23,36 @@ export const authorize = async (page: Page) => {
 };
 
 /**
- * Where a finished download landed. Stock Firefox (playwright.moz-firefox.config.ts)
- * ignores Playwright's download folder and saves under the suggested name in
- * PLAYWRIGHT_DOWNLOAD_DIR instead, so `download.path()` names a missing file.
+ * Where a finished download landed, after checking which way it was saved. The
+ * in-memory Blob fallback writes the same bytes as the service worker, so
+ * without this check a broken worker would go unnoticed.
+ *
+ * Stock Firefox (playwright.moz-firefox.config.ts) ignores Playwright's download
+ * folder and saves under the suggested name in PLAYWRIGHT_DOWNLOAD_DIR, so
+ * `download.path()` names a missing file. It would save a later download with
+ * the same name as `name(1).ext`, so each file is moved into a folder of its
+ * own once found. That relies on one download at a time, so that config runs a
+ * single worker.
  */
-export const downloadPath = async (download: Download): Promise<string> => {
+export const downloadPath = async (
+  download: Download,
+  via: 'service-worker' | 'blob' = 'service-worker'
+): Promise<string> => {
+  expect(download.url()).toContain(via === 'blob' ? 'blob:' : '/__download__/');
   const reported = await download.path();
   if (existsSync(reported)) {
     return reported;
   }
   const dir = process.env.PLAYWRIGHT_DOWNLOAD_DIR;
-  const saved = dir && join(dir, download.suggestedFilename());
-  if (!saved || !existsSync(saved)) {
-    throw new Error(`Download ${download.suggestedFilename()} is not at ${reported} or ${saved}`);
+  const name = download.suggestedFilename();
+  const saved = dir && join(dir, name);
+  if (!dir || !saved || !existsSync(saved)) {
+    throw new Error(`Download ${name} is not at ${reported} or ${saved}`);
   }
-  return saved;
+  const claimed = join(dir, 'claimed', randomUUID());
+  mkdirSync(claimed, { recursive: true });
+  renameSync(saved, join(claimed, name));
+  return join(claimed, name);
 };
 
 export const loadFile = async (page: Page, path: string) => {

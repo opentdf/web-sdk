@@ -14,8 +14,9 @@ test.beforeEach(async ({ page }) => {
 
 // Playwright's patched Firefox keeps a copy of every response body, downloads
 // included, in its parent process, so these sizes exhaust memory (DSPX-5084).
-// Run Firefox with playwright.moz-firefox.config.ts instead, which drives
-// stock Firefox.
+// playwright.moz-firefox.config.ts drives stock Firefox instead, but its BiDi
+// channel buffers too, so use it only on a workstation with RAM to spare.
+// WebKit's memory can also grow when the source outruns the disk (DSPX-5246).
 test.skip(
   ({ browserName }) => browserName === 'firefox',
   "Playwright's Firefox buffers downloads in memory; use playwright.moz-firefox.config.ts"

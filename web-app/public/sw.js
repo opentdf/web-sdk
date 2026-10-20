@@ -1,18 +1,23 @@
 // Streams downloads from the page straight into the browser's download manager,
 // so a multi-GiB encrypt or decrypt never has to fit in memory or in storage
-// quota. The page side, and the message protocol, live in src/downloadSink.ts.
+// quota. The page side lives in src/downloadSink.ts; spec/DSPX-159.md lists
+// every message.
 //
 // 1. The page posts { type: 'register', id, filename } with a MessagePort.
 // 2. We wrap the port in a ReadableStream and reply { type: 'ready' }.
-// 3. The page points a hidden iframe at <scope>__download__/<id>/<filename>,
-//    and we answer that navigation with the stream as an attachment.
+// 3. The page points a hidden iframe at <scope>__download__/<id>/<filename>.
+//    We answer that navigation with the stream as an attachment and post
+//    { type: 'started' }.
 // 4. Each time the stream wants more, we post { type: 'pull' }; the page sends
-//    one { type: 'chunk' } per pull, so backpressure from the download manager
-//    reaches all the way back to the SDK.
+//    one { type: 'chunk' } per pull. The stream fills its HIGH_WATER_MARK_BYTES
+//    queue as soon as it is registered; after that, pulls follow the download
+//    manager's reads, so backpressure reaches all the way back to the SDK.
+// 5. After the page posts { type: 'close' } and the browser has read the last
+//    byte, we post { type: 'done' }.
 
 const HIGH_WATER_MARK_BYTES = 4 * 2 ** 20;
 
-/** @type {Map<string, { stream: ReadableStream<Uint8Array>, filename: string }>} */
+/** @type {Map<string, { stream: ReadableStream<Uint8Array>, source: PortSource, filename: string }>} */
 const pending = new Map();
 
 function downloadBase() {
@@ -38,16 +43,18 @@ class PortSource {
           controller.enqueue(new Uint8Array(data.chunk));
           break;
         case 'close':
+          // Keep the port open: the page waits for 'done'.
           controller.close();
-          this.port.close();
           break;
         case 'abort':
           // Erroring the body makes the browser mark the download failed,
-          // rather than leaving a truncated file that looks complete.
-          controller.error(new Error(data.reason));
-          this.port.close();
-          this.forget();
+          // rather than leaving a truncated file that looks complete. This
+          // also arrives after 'close' if the download never started.
+          controller.error(new Error(String(data.reason ?? 'aborted')));
+          this.end();
           break;
+        default:
+          console.warn(`download worker: unknown message type ${data?.type}`);
       }
     };
   }
@@ -58,12 +65,43 @@ class PortSource {
 
   /** @param {unknown} reason */
   cancel(reason) {
-    // The user cancelled in the download UI. Firefox reports this; Chromium
-    // does not (https://crbug.com/638494), so there the page finds out only
-    // when it aborts on its own.
-    this.port.postMessage({ type: 'cancel', reason: String(reason) });
-    this.port.close();
+    // The user cancelled in the download UI. Firefox is expected to report
+    // this (not yet verified); Chromium does not (https://crbug.com/638494),
+    // so there the page notices only when its stall watchdog fires.
+    this.port.postMessage({ type: 'cancel', reason: String(reason ?? 'no reason given') });
+    this.end();
   }
+
+  end() {
+    this.port.close();
+    this.forget();
+  }
+}
+
+/**
+ * Passes the body through, posting { type: 'done' } once the browser has read
+ * all of it, so the page does not report success while bytes are still queued.
+ * @param {ReadableStream<Uint8Array>} stream
+ * @param {PortSource} source
+ */
+function reportWhenRead(stream, source) {
+  const reader = stream.getReader();
+  return new ReadableStream(
+    {
+      async pull(controller) {
+        const { done, value } = await reader.read();
+        if (done) {
+          controller.close();
+          source.port.postMessage({ type: 'done' });
+          source.end();
+        } else {
+          controller.enqueue(value);
+        }
+      },
+      cancel: (reason) => reader.cancel(reason),
+    },
+    { highWaterMark: 0 }
+  );
 }
 
 /** @param {string} filename */
@@ -77,8 +115,8 @@ function contentDisposition(filename) {
   return `attachment; filename="${ascii}"; filename*=UTF-8''${encoded}`;
 }
 
-self.addEventListener('install', () => {
-  self.skipWaiting();
+self.addEventListener('install', (event) => {
+  event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener('activate', (event) => {
@@ -101,11 +139,12 @@ self.addEventListener('message', (event) => {
     return;
   }
   const { id, filename } = data;
+  const source = new PortSource(port, () => pending.delete(id));
   const stream = new ReadableStream(
-    new PortSource(port, () => pending.delete(id)),
+    source,
     new ByteLengthQueuingStrategy({ highWaterMark: HIGH_WATER_MARK_BYTES })
   );
-  pending.set(id, { stream, filename });
+  pending.set(id, { stream, source, filename });
   port.postMessage({ type: 'ready' });
 });
 
@@ -123,8 +162,9 @@ self.addEventListener('fetch', (event) => {
   }
   // Single use: a second request for the same id gets a 404.
   pending.delete(id);
+  entry.source.port.postMessage({ type: 'started' });
   event.respondWith(
-    new Response(entry.stream, {
+    new Response(reportWhenRead(entry.stream, entry.source), {
       headers: {
         'Cache-Control': 'no-store',
         'Content-Disposition': contentDisposition(entry.filename),
