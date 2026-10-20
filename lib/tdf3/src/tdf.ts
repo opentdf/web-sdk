@@ -66,7 +66,7 @@ import {
   resolveSpecVersion,
 } from './models/index.js';
 import { unsigned } from './utils/buffer-crc32.js';
-import { ZipReader, ZipWriter, concatUint8, buffToString, toArrayBuffer } from './utils/index.js';
+import { ZipReader, ZipWriter, buffToString, toArrayBuffer } from './utils/index.js';
 import type { CentralDirectory } from './utils/zip-reader.js';
 import { derivePrefetchWindow } from './utils/prefetch-window.js';
 import { getZtdfSalt } from './crypto/salt.js';
@@ -610,7 +610,14 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
     },
   ];
 
-  let currentBuffer: Uint8Array<ArrayBufferLike> = new Uint8Array();
+  // Plaintext waiting to be encrypted: complete segments, then the one being
+  // filled. Each input byte is copied once, into the segment it belongs to, so
+  // filling a segment costs O(segment size) however small the input chunks are.
+  // A segment's buffer is allocated at full size when its first byte arrives,
+  // so even a tiny input holds one `segmentSizeDefault` buffer.
+  const fullSegments: Uint8Array[] = [];
+  let partialSegment: Uint8Array | undefined;
+  let partialLength = 0;
 
   let totalByteCount = 0;
   let bytesProcessed = 0;
@@ -662,35 +669,31 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
       try {
         let isDone;
 
-        while (currentBuffer.length < segmentSizeDefault && !isDone) {
+        while (!fullSegments.length && !isDone) {
           const { value, done } = await sourceReader.read();
           isDone = done;
           if (value) {
-            currentBuffer = concatUint8([currentBuffer, value]);
+            _appendPlaintext(_asBytes(value));
           }
         }
 
-        while (
-          currentBuffer.length >= segmentSizeDefault &&
-          !!controller.desiredSize &&
-          controller.desiredSize > 0
-        ) {
-          const segment = currentBuffer.slice(0, segmentSizeDefault);
-          const encryptedSegment = await _encryptAndCountSegment(segment);
+        while (fullSegments.length && !!controller.desiredSize && controller.desiredSize > 0) {
+          const encryptedSegment = await _encryptAndCountSegment(fullSegments.shift()!);
           controller.enqueue(encryptedSegment);
-
-          currentBuffer = currentBuffer.slice(segmentSizeDefault);
         }
 
-        const isFinalChunkLeft = isDone && currentBuffer.length;
+        const isFinalChunkLeft = isDone && !fullSegments.length && partialLength;
 
         if (isFinalChunkLeft) {
-          const encryptedSegment = await _encryptAndCountSegment(currentBuffer);
+          const encryptedSegment = await _encryptAndCountSegment(
+            partialSegment!.subarray(0, partialLength)
+          );
           controller.enqueue(encryptedSegment);
-          currentBuffer = new Uint8Array();
+          partialSegment = undefined;
+          partialLength = 0;
         }
 
-        if (isDone && currentBuffer.length === 0) {
+        if (isDone && !fullSegments.length && partialLength === 0) {
           entryInfos[0].crcCounter = crcCounter;
           entryInfos[0].fileByteCount = fileByteCount;
           const payloadDataDescriptor = zipWriter.writeDataDescriptor(crcCounter, fileByteCount);
@@ -851,6 +854,40 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
     return zipWriter.getLocalFileHeader(filename, 0, 0, 0);
   }
 
+  // `contentStream` is typed as bytes, but JavaScript callers can enqueue
+  // anything. A chunk without a `length` would otherwise drop out of the
+  // payload unnoticed.
+  function _asBytes(chunk: unknown): Uint8Array {
+    if (chunk instanceof Uint8Array) {
+      return chunk;
+    }
+    if (ArrayBuffer.isView(chunk)) {
+      return new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength);
+    }
+    if (chunk instanceof ArrayBuffer) {
+      return new Uint8Array(chunk);
+    }
+    throw new ConfigurationError(
+      `contentStream must yield binary chunks; got ${Object.prototype.toString.call(chunk)}`
+    );
+  }
+
+  function _appendPlaintext(chunk: Uint8Array) {
+    let offset = 0;
+    while (offset < chunk.length) {
+      partialSegment ??= new Uint8Array(segmentSizeDefault);
+      const n = Math.min(chunk.length - offset, segmentSizeDefault - partialLength);
+      partialSegment.set(chunk.subarray(offset, offset + n), partialLength);
+      partialLength += n;
+      offset += n;
+      if (partialLength === segmentSizeDefault) {
+        fullSegments.push(partialSegment);
+        partialSegment = undefined;
+        partialLength = 0;
+      }
+    }
+  }
+
   function _countChunk(chunk: string | Uint8Array) {
     if (typeof chunk === 'string') {
       chunk = new TextEncoder().encode(chunk);
@@ -865,21 +902,33 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
   }
 
   async function _encryptAndCountSegment(chunk: Uint8Array) {
-    bytesProcessed += chunk.length;
+    // Read once: a `CryptoService` may transfer the buffer below, detaching `chunk`.
+    const plaintextLength = chunk.length;
+    bytesProcessed += plaintextLength;
     cfg.progressHandler?.(bytesProcessed);
+
+    // A full segment views the whole of a buffer that `_appendPlaintext`
+    // allocated and no longer references, so it is handed over without another
+    // copy. The final short segment is a `subarray` of its buffer and is copied.
+    const plaintext =
+      chunk.buffer instanceof ArrayBuffer &&
+      chunk.byteOffset === 0 &&
+      chunk.byteLength === chunk.buffer.byteLength
+        ? chunk.buffer
+        : toArrayBuffer(chunk);
 
     // Don't pass in an IV here. The encrypt function will generate one for you, ensuring that each segment has a unique IV.
     const encryptedResult = await cfg.encryptionInformation.encrypt(
-      Binary.fromArrayBuffer(toArrayBuffer(chunk)),
+      Binary.fromArrayBuffer(plaintext),
       cfg.keyForEncryption.unwrappedKey
     );
     const payloadBuffer = new Uint8Array(encryptedResult.payload.asArrayBuffer());
 
     // Since `CryptoService` is an extension point, double check its output matches the expected size.
-    const expectedSize = cfg.encryptionInformation.cipher.encryptedPayloadSize(chunk.length);
+    const expectedSize = cfg.encryptionInformation.cipher.encryptedPayloadSize(plaintextLength);
     if (payloadBuffer.length !== expectedSize) {
       throw new ConfigurationError(
-        `Cipher [${cfg.encryptionInformation.cipher.name}] produced ${payloadBuffer.length} bytes for a ${chunk.length} byte segment, but reports ${expectedSize}`
+        `Cipher [${cfg.encryptionInformation.cipher.name}] produced ${payloadBuffer.length} bytes for a ${plaintextLength} byte segment, but reports ${expectedSize}`
       );
     }
 
@@ -908,7 +957,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
 
     segmentInfos.push({
       hash,
-      segmentSize: chunk.length === segmentSizeDefault ? undefined : chunk.length,
+      segmentSize: plaintextLength === segmentSizeDefault ? undefined : plaintextLength,
       encryptedSegmentSize:
         payloadBuffer.length === encryptedSegmentSizeDefault ? undefined : payloadBuffer.length,
     });

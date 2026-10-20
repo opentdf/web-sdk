@@ -25,14 +25,13 @@ const hexSliceLookupTable = (() => {
   return table;
 })();
 
-export function concatUint8(
-  uint8Arrays: Uint8Array<ArrayBufferLike>[]
-): Uint8Array<ArrayBufferLike> {
+/** Joins `uint8Arrays` into a new array that spans the whole of its own buffer. */
+export function concatUint8(uint8Arrays: Uint8Array<ArrayBufferLike>[]): Uint8Array<ArrayBuffer> {
   const newLength = uint8Arrays.reduce(
     (accumulator, currentValue) => accumulator + currentValue.length,
     0
   );
-  const combinedUint8Array = new Uint8Array(newLength) as Uint8Array<ArrayBufferLike>;
+  const combinedUint8Array = new Uint8Array(newLength);
 
   let offset = 0;
   for (const uint8Array of uint8Arrays) {

@@ -66,7 +66,7 @@ export class AesGcmCipher extends SymmetricCipher {
     if (result.authTag) {
       toConcat.push(new Uint8Array(result.authTag.asArrayBuffer()));
     }
-    result.payload = Binary.fromArrayBuffer(toArrayBuffer(concatUint8(toConcat)));
+    result.payload = Binary.fromArrayBuffer(concatUint8(toConcat).buffer);
     return result;
   }
 
