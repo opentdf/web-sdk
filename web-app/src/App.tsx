@@ -366,6 +366,14 @@ function App() {
     };
   };
 
+  // Appends, so it doesn't hide a wrapping-algorithm warning from the same run.
+  const warnBuffering = (reason: string) => {
+    const warning =
+      `Streaming download unavailable (${reason}), so the whole output is held in memory; ` +
+      'files larger than available memory will fail.';
+    setAlgorithmWarning((previous) => (previous ? `${previous} ${warning}` : warning));
+  };
+
   const handleEncrypt = async () => {
     if (!inputSource) {
       console.warn('No input source selected');
@@ -481,11 +489,14 @@ function App() {
     try {
       switch (sinkType) {
         case 'file':
-          await toFile(cipherTextWithProgress, downloadName, { signal: sc.signal });
+          await toFile(cipherTextWithProgress, downloadName, {
+            signal: sc.signal,
+            onFallback: warnBuffering,
+          });
           break;
         case 'fsapi': {
           if (!f) {
-            throw new Error();
+            throw new Error('No file handle from the Save As picker');
           }
           const writable = await f.createWritable();
           await cipherTextWithProgress.pipeTo(writable, { signal: sc.signal });
@@ -576,11 +587,11 @@ function App() {
         .pipeThrough(progressTransformers.writer);
       switch (sinkType) {
         case 'file':
-          await toFile(plainTextStream, dfn, { signal: sc.signal });
+          await toFile(plainTextStream, dfn, { signal: sc.signal, onFallback: warnBuffering });
           break;
         case 'fsapi': {
           if (!f) {
-            throw new Error();
+            throw new Error('No file handle from the Save As picker');
           }
           const writable = await f.createWritable();
           await plainTextStream.pipeTo(writable, { signal: sc.signal });

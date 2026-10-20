@@ -18,7 +18,8 @@ import base from './playwright.config.js';
  * but not on a CI runner.
  *
  * Stock Firefox ignores Playwright's download folder, so point it at one we
- * know; downloadPath() in tests/acts.ts looks there.
+ * know; downloadPath() in tests/acts.ts looks there. Downloads are found by
+ * name, so run one test at a time.
  */
 const downloadDir = join(tmpdir(), 'playwright-moz-firefox-downloads');
 process.env.PLAYWRIGHT_DOWNLOAD_DIR = downloadDir;
@@ -30,6 +31,7 @@ mkdirSync(downloadDir, { recursive: true });
 
 export default {
   ...base,
+  workers: 1,
   projects: [
     {
       name: 'moz-firefox',

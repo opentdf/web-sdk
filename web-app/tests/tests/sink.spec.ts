@@ -12,7 +12,9 @@ import { appUrl, downloadPath } from './acts.js';
 // example, 12 GiB at 32 MiB/s takes about six and a half minutes:
 //
 //   SINK_TEST_BYTES=12884901888 SINK_TEST_MIBPS=32 PLAYWRIGHT_TESTS_TO_RUN=sink \
-//     npx playwright test --project firefox
+//     npx playwright test --project chromium
+//
+// Not --project firefox: Playwright's Firefox keeps every download in memory.
 
 const largeBytes = Number(process.env.SINK_TEST_BYTES ?? 0);
 const mibPerSecond = Number(process.env.SINK_TEST_MIBPS ?? 0);
@@ -105,9 +107,13 @@ async function sampleBrowserMemory(browserName: string) {
 
 const gib = (kib: number) => `${(kib / 2 ** 20).toFixed(2)} GiB`;
 
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page, serviceWorkers }) => {
   page.on('pageerror', (err) => console.error(err));
   await page.goto(appUrl);
+  // A cold runner can take longer to install the worker than toFile waits.
+  if (serviceWorkers === 'allow') {
+    await page.evaluate(() => navigator.serviceWorker.ready);
+  }
 });
 
 test('streams a download through the service worker', async ({ page }) => {
@@ -122,14 +128,48 @@ test('streams a download through the service worker', async ({ page }) => {
 });
 
 test('an abort fails the download instead of truncating it', async ({ page, browserName }) => {
-  // Firefox does error the download (the worker logs it), but Playwright's
-  // Firefox never settles download.failure() for it.
+  // Firefox does error the download, but Playwright's Firefox never settles
+  // download.failure() for it.
   test.skip(browserName === 'firefox', 'Playwright does not report the failed download');
   const downloadPromise = page.waitForEvent('download');
+  // The worker queues 4 MiB before the browser starts reading, so aborting at
+  // 8 MiB happens after the download has started.
   const result = await streamDownload(page, 64 * 2 ** 20, 8 * 2 ** 20);
-  expect(result).toMatch(/^rejected/);
+  expect(result).toMatch(/^rejected: .*test abort/);
   const download = await downloadPromise;
   expect(await download.failure()).not.toBeNull();
+});
+
+for (const bytes of [2 ** 20, 16 * 2 ** 20]) {
+  test(`a blocked download fails instead of hanging (${bytes} bytes)`, async ({ page }) => {
+    test.setTimeout(30_000);
+    // Below the worker's 4 MiB queue, every byte is accepted before the iframe
+    // would be read, so this once reported success with no file; above it, the
+    // pipe waited forever for credit.
+    await page.evaluate(() => {
+      const csp = document.createElement('meta');
+      csp.httpEquiv = 'Content-Security-Policy';
+      csp.content = "frame-src 'none'";
+      document.head.append(csp);
+    });
+    const result = await streamDownload(page, bytes);
+    expect(result).toMatch(/^rejected: The download never reached the service worker/);
+  });
+}
+
+test.describe('without a service worker', () => {
+  test.use({ serviceWorkers: 'block' });
+
+  test('falls back to an in-memory Blob', async ({ page }) => {
+    // toFile waits up to 5 s for a worker before giving up.
+    test.setTimeout(30_000);
+    const bytes = 2 ** 20 + 17;
+    const downloadPromise = page.waitForEvent('download');
+    const strategy = await streamDownload(page, bytes);
+    const download = await downloadPromise;
+    await expectPattern(await downloadPath(download, 'blob'), bytes);
+    expect(strategy).toBe('blob');
+  });
 });
 
 test('large download keeps memory flat', async ({ page, browserName }) => {
