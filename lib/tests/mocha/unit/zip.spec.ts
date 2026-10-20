@@ -421,6 +421,7 @@ describe('reader', () => {
           [
             {
               fileName,
+              compressionMethod: 0,
               relativeOffsetOfLocalHeader: 0,
               headerLength: 1024,
               uncompressedSize: 2 ** 31,
@@ -445,6 +446,7 @@ describe('reader', () => {
           [
             {
               fileName,
+              compressionMethod: 0,
               relativeOffsetOfLocalHeader: 0,
               headerLength: 1024,
               uncompressedSize: 2 ** 31,
@@ -1115,22 +1117,23 @@ describe('reader', () => {
       });
     }
 
-    it('rejects a compressed entry', async () => {
+    it('rejects an entry compressed with a method other than deflate', async () => {
       const zipFile = buildZip(entries(), {
         zip64: false,
         mapCentralDirectoryRecord: (record, i) => {
           if (i === 1) {
-            // 10 - compression method; 8 is deflate
-            setU16(record, 10, 8);
+            // 10 - compression method; 12 is bzip2. Deflate (8) is read; see
+            // zip-deflate.spec.ts.
+            setU16(record, 10, 12);
           }
           return record;
         },
       });
       const message = await expectInvalidFile(
         () => new ZipReader(fromBuffer(zipFile)).getCentralDirectory(),
-        'deflated entry'
+        'bzip2 entry'
       );
-      expect(message).to.contain('compression method [8]');
+      expect(message).to.contain('compression method [12]');
     });
 
     it('rejects a manifest that is not JSON', async () => {

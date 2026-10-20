@@ -1,7 +1,7 @@
-import { InvalidFileError } from '../../../src/errors.js';
+import { InvalidFileError, UnsupportedFeatureError, asError } from '../../../src/errors.js';
 import { type Chunker } from '../../../src/seekable.js';
 import type { Manifest } from '../models/index.js';
-import { readUInt32LE, readUInt16LE, copyUint8Arr, buffToString } from './index.js';
+import { readUInt32LE, readUInt16LE, copyUint8Arr, buffToString, concatUint8 } from './index.js';
 
 // Signatures and fixed record sizes from PKWARE APPNOTE.TXT sections 4.3.7-4.3.16.
 /** Local file header signature (APPNOTE 4.3.7). */
@@ -49,6 +49,25 @@ const INITIAL_EOCDR_SEARCH_SIZE = 1024;
  * hostile or corrupt EOCD from asking us to allocate the declared 4 GiB.
  */
 const MAX_CENTRAL_DIRECTORY_SIZE = 16 * 1024 * 1024;
+
+/** Compression method 0: the entry's data is stored as is (APPNOTE 4.4.5). */
+const COMPRESSION_METHOD_STORED = 0;
+/** Compression method 8: the entry's data is raw DEFLATE, RFC 1951 (APPNOTE 4.4.5). */
+const COMPRESSION_METHOD_DEFLATED = 8;
+
+/**
+ * Compressed bytes fetched per ranged read while inflating a deflated entry. For
+ * a remote source each read is one HTTP Range request. One read is kept in flight
+ * ahead of the decompressor.
+ */
+const INFLATE_READ_SIZE = 1024 * 1024;
+/**
+ * Compressed bytes handed to the decompressor per write. Deflate expands by at
+ * most about 1032:1, so even a runtime that inflates a whole write before
+ * applying backpressure produces at most about 16 MiB from one. That bounds how
+ * far inflating can run past an entry's declared size before it is stopped.
+ */
+const INFLATE_WRITE_SIZE = 16 * 1024;
 
 const cp437 =
   '\u0000☺☻♥♦♣♠•◘○◙♂♀♪♫☼►◄↕‼¶§▬↨↑↓→←∟↔▲▼ !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~⌂ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■ ';
@@ -107,6 +126,36 @@ export type EndOfCentralDirectory = {
   /** True if the values above were read from a ZIP64 end of central directory record. */
   zip64: boolean;
 };
+
+/**
+ * Reads one archive entry by offset into its uncompressed bytes. Get one from
+ * {@link ZipReader.openEntry}.
+ *
+ * A stored entry is read with one ranged read per call, so calls may overlap and
+ * come in any order. A deflated entry can only be decoded front to back, so it is
+ * read through a single forward-only cursor: calls are served one at a time, in
+ * the order they were made, and a call for bytes behind the cursor inflates the
+ * entry again from its start. Read a deflated entry in ascending order, with one
+ * reader per pass.
+ */
+export interface ZipEntryReader {
+  /**
+   * Reads `size` bytes at `offset` into the entry's uncompressed bytes, into a
+   * buffer of its own.
+   * @throws InvalidFileError if the range is outside the entry, the source is
+   * short, or a deflated entry is corrupt or does not match its declared size
+   */
+  read(offset: number, size: number): Promise<Uint8Array>;
+  /**
+   * Confirms that the entry holds exactly its declared uncompressed size. A
+   * deflated entry is inflated to its end, past whatever was read; a stored
+   * entry's bounds were already checked against the central directory.
+   * @throws InvalidFileError if a deflated entry inflates to any other size
+   */
+  finish(): Promise<void>;
+  /** Stops any inflating in progress. Later calls reject. */
+  close(): void;
+}
 
 /**
  *
@@ -327,9 +376,21 @@ export class ZipReader {
     if (!cdObj) {
       throw new InvalidFileError('Unable to retrieve CD manifest');
     }
-    const byteStart = cdObj.relativeOffsetOfLocalHeader + cdObj.headerLength;
-    const byteEnd = byteStart + cdObj.uncompressedSize;
-    const manifest = await this.readRange(byteStart, byteEnd, `manifest [${manifestFileName}]`);
+    let manifest: Uint8Array;
+    if (supportedCompressionMethod(cdObj) === COMPRESSION_METHOD_DEFLATED) {
+      // Bounded, like a stored manifest, by its declared uncompressed size.
+      const entry = this.entryReader(cdObj);
+      try {
+        manifest = await entry.read(0, cdObj.uncompressedSize);
+        await entry.finish();
+      } finally {
+        entry.close();
+      }
+    } else {
+      const byteStart = cdObj.relativeOffsetOfLocalHeader + cdObj.headerLength;
+      const byteEnd = byteStart + cdObj.uncompressedSize;
+      manifest = await this.readRange(byteStart, byteEnd, `manifest [${manifestFileName}]`);
+    }
 
     let text: string;
     try {
@@ -359,16 +420,16 @@ export class ZipReader {
     if (!cdObj) {
       throw new InvalidFileError('Unable to retrieve CD adjust');
     }
-    // Entries are read verbatim, so only stored entries are supported, and a
-    // stored entry's sizes must agree (APPNOTE 4.4.5, 4.4.8). Otherwise the
-    // manifest read (by uncompressed size) and the data bound (by compressed
-    // size) would disagree about where the entry ends.
-    if (cdObj.compressionMethod !== 0) {
-      throw new InvalidFileError(
-        `entry [${cdObj.fileName}] uses unsupported compression method [${cdObj.compressionMethod}]`
-      );
-    }
-    if (cdObj.compressedSize !== cdObj.uncompressedSize) {
+    // Only stored and deflated entries can be read (APPNOTE 4.4.5). A stored
+    // entry is read verbatim, so its sizes must agree (APPNOTE 4.4.8); otherwise
+    // the manifest read (by uncompressed size) and the data bound (by compressed
+    // size) would disagree about where the entry ends. A deflated entry's
+    // compressed size bounds the bytes read from the archive, and its
+    // uncompressed size is exactly what they must inflate to.
+    if (
+      supportedCompressionMethod(cdObj) === COMPRESSION_METHOD_STORED &&
+      cdObj.compressedSize !== cdObj.uncompressedSize
+    ) {
       throw new InvalidFileError(
         `stored entry [${cdObj.fileName}] has compressed size [${cdObj.compressedSize}] but uncompressed size [${cdObj.uncompressedSize}]`
       );
@@ -403,32 +464,65 @@ export class ZipReader {
     }
   }
 
+  /**
+   * Opens the entry named `fileName` for reading by offset into its
+   * uncompressed bytes. See {@link ZipEntryReader} for how stored and deflated
+   * entries differ.
+   * @throws InvalidFileError if there is no such entry, or it uses an
+   * unsupported compression method
+   * @throws UnsupportedFeatureError if the entry is deflated and this runtime
+   * has no `DecompressionStream`
+   */
+  openEntry(cdBuffers: CentralDirectory[], fileName: string): ZipEntryReader {
+    const cdObj = cdBuffers.find((cd) => cd.fileName === fileName);
+    if (!cdObj) {
+      throw new InvalidFileError('Unable to retrieve CD');
+    }
+    return this.entryReader(cdObj);
+  }
+
+  private entryReader(cdObj: CentralDirectory): ZipEntryReader {
+    const { fileName } = cdObj;
+    const dataStart = cdObj.relativeOffsetOfLocalHeader + cdObj.headerLength;
+    if (supportedCompressionMethod(cdObj) === COMPRESSION_METHOD_DEFLATED) {
+      return new InflatingEntryReader(
+        (start, end) =>
+          this.readRange(dataStart + start, dataStart + end, `compressed entry [${fileName}]`),
+        fileName,
+        cdObj.compressedSize,
+        cdObj.uncompressedSize
+      );
+    }
+    return {
+      read: async (offset, size) => {
+        checkEntryRange(fileName, cdObj.compressedSize, offset, size);
+        return this.readRange(dataStart + offset, dataStart + offset + size, `entry [${fileName}]`);
+      },
+      finish: () => Promise.resolve(),
+      close: () => undefined,
+    };
+  }
+
+  /**
+   * Reads `encryptedSegmentSize` bytes at `encrpytedSegmentOffset` into the
+   * payload entry's uncompressed bytes.
+   *
+   * Each call opens the entry afresh, so for a deflated entry it inflates
+   * everything before the offset again. To read a deflated entry segment by
+   * segment, read it through one {@link openEntry} reader.
+   */
   async getPayloadSegment(
     cdBuffers: CentralDirectory[],
     payloadName: string,
     encrpytedSegmentOffset: number,
     encryptedSegmentSize: number
   ): Promise<Uint8Array> {
-    const cdObj = cdBuffers.find(({ fileName }) => payloadName === fileName);
-    if (!cdObj) {
-      throw new InvalidFileError('Unable to retrieve CD');
+    const entry = this.openEntry(cdBuffers, payloadName);
+    try {
+      return await entry.read(encrpytedSegmentOffset, encryptedSegmentSize);
+    } finally {
+      entry.close();
     }
-    // Segment offsets and sizes come from the manifest, so they are untrusted too.
-    if (
-      !Number.isSafeInteger(encrpytedSegmentOffset) ||
-      !Number.isSafeInteger(encryptedSegmentSize) ||
-      encrpytedSegmentOffset < 0 ||
-      encryptedSegmentSize < 0 ||
-      encrpytedSegmentOffset + encryptedSegmentSize > cdObj.compressedSize
-    ) {
-      throw new InvalidFileError(
-        `payload segment [${encrpytedSegmentOffset}, +${encryptedSegmentSize}) is outside entry [${payloadName}] of [${cdObj.compressedSize}] bytes`
-      );
-    }
-    const byteStart =
-      cdObj.relativeOffsetOfLocalHeader + cdObj.headerLength + encrpytedSegmentOffset;
-    const byteEnd = byteStart + encryptedSegmentSize;
-    return this.readRange(byteStart, byteEnd, `payload segment of [${payloadName}]`);
   }
 
   /**
@@ -471,6 +565,279 @@ export class ZipReader {
       offset += recordLength;
     }
     return cdBuffers;
+  }
+}
+
+/**
+ * The compression method of `cdObj`, if this reader can extract it.
+ * @throws InvalidFileError for any method other than stored (0) or deflated (8)
+ */
+function supportedCompressionMethod(cdObj: CentralDirectory): number {
+  const { compressionMethod, fileName } = cdObj;
+  if (
+    compressionMethod !== COMPRESSION_METHOD_STORED &&
+    compressionMethod !== COMPRESSION_METHOD_DEFLATED
+  ) {
+    throw new InvalidFileError(
+      `entry [${fileName}] uses unsupported compression method [${compressionMethod}]`
+    );
+  }
+  return compressionMethod;
+}
+
+/**
+ * Rejects a read of `size` bytes at `offset` that is not inside an entry of
+ * `entrySize` uncompressed bytes. Offsets and sizes come from the manifest, so
+ * they are untrusted too.
+ */
+function checkEntryRange(fileName: string, entrySize: number, offset: number, size: number) {
+  if (
+    !Number.isSafeInteger(offset) ||
+    !Number.isSafeInteger(size) ||
+    offset < 0 ||
+    size < 0 ||
+    offset + size > entrySize
+  ) {
+    throw new InvalidFileError(
+      `byte range [${offset}, +${size}) is outside entry [${fileName}] of [${entrySize}] bytes`
+    );
+  }
+}
+
+/** `bytes` as an ArrayBuffer-backed view, copied only if it is backed by a SharedArrayBuffer. */
+function asArrayBufferView(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
+  return bytes.buffer instanceof ArrayBuffer
+    ? (bytes as Uint8Array<ArrayBuffer>)
+    : new Uint8Array(bytes);
+}
+
+/** One pass of the decompressor over a deflated entry. */
+type Inflation = {
+  reader: ReadableStreamDefaultReader<Uint8Array>;
+  /**
+   * Set if fetching compressed bytes failed. The decompressor is then aborted
+   * with that error, which is what the reader should report.
+   */
+  sourceError?: { error: unknown };
+};
+
+/**
+ * Reads a deflated entry (compression method 8) through the runtime's
+ * `DecompressionStream('deflate-raw')`.
+ *
+ * Deflate can only be decoded front to back, and an offset into the inflated
+ * bytes says nothing about where they sit in the compressed ones. So reads are
+ * served by one forward-only cursor, one at a time, in the order they were made.
+ * Bytes before a read's offset are inflated and dropped, and a read behind the
+ * cursor inflates the entry again from its start. The compressed bytes are
+ * fetched in sequential ranged reads of {@link INFLATE_READ_SIZE}, one read ahead
+ * of the decompressor, so neither the compressed nor the inflated entry is ever
+ * held in full. Unlike a stored entry, a deflated one gets no parallel range
+ * reads.
+ *
+ * The central directory's sizes are binding. The compressed size bounds what is
+ * fetched from the archive, and the entry must inflate to exactly its
+ * uncompressed size. Inflating stops as soon as the output passes that size, so
+ * a small entry cannot inflate to a large one, and buffers grow only with bytes
+ * actually inflated, never with a declared size alone.
+ *
+ * The CRC-32 is not checked, just as it is not for stored entries. It is no
+ * defense against tampering, since anyone can recompute it. A TDF's integrity
+ * rests on its segment hashes and root signature instead.
+ */
+class InflatingEntryReader implements ZipEntryReader {
+  /** Offset into the inflated entry of the next byte the cursor hands out. */
+  private position = 0;
+  /** Bytes the current inflation has produced so far. */
+  private inflated = 0;
+  /** Inflated bytes not handed out yet. They start at {@link position}. */
+  private leftover?: Uint8Array;
+  private inflation?: Inflation;
+  /** Set once a call fails or the reader is closed. Every later call rejects with it. */
+  private failure?: { error: unknown };
+  /** Settles once the latest call has. Each call waits for the one before it. */
+  private queue: Promise<unknown> = Promise.resolve();
+
+  constructor(
+    private readonly readCompressed: (start: number, end: number) => Promise<Uint8Array>,
+    private readonly fileName: string,
+    private readonly compressedSize: number,
+    private readonly uncompressedSize: number
+  ) {
+    if (typeof DecompressionStream === 'undefined') {
+      throw new UnsupportedFeatureError(
+        `entry [${fileName}] is deflate-compressed, and this runtime has no DecompressionStream`
+      );
+    }
+  }
+
+  async read(offset: number, size: number): Promise<Uint8Array> {
+    // Neither a bad range nor an empty one touches the cursor. The call is
+    // queued synchronously, so reads still run in the order they were made.
+    checkEntryRange(this.fileName, this.uncompressedSize, offset, size);
+    if (size === 0) {
+      return new Uint8Array(0);
+    }
+    return this.enqueue(() => this.readAt(offset, size));
+  }
+
+  finish(): Promise<void> {
+    return this.enqueue(async () => {
+      // Inflate and drop whatever no read asked for, then expect the end of the
+      // deflate stream. `pull` rejects any byte past the declared size.
+      while (this.position < this.uncompressedSize) {
+        await this.take(this.uncompressedSize - this.position);
+      }
+      while (await this.pull()) {
+        // Only empty pieces can get here.
+      }
+    });
+  }
+
+  close(): void {
+    this.fail(new Error(`entry [${this.fileName}] reader is closed`));
+  }
+
+  private enqueue<T>(call: () => Promise<T>): Promise<T> {
+    const result = this.queue.then(async () => {
+      if (this.failure) {
+        throw this.failure.error;
+      }
+      try {
+        return await call();
+      } catch (error) {
+        this.fail(error);
+        throw error;
+      }
+    });
+    this.queue = result.catch(() => undefined);
+    return result;
+  }
+
+  private fail(error: unknown) {
+    this.failure ??= { error };
+    this.stopInflating();
+  }
+
+  private stopInflating() {
+    this.inflation?.reader.cancel().catch(() => undefined);
+    this.inflation = undefined;
+    this.leftover = undefined;
+    this.position = 0;
+    this.inflated = 0;
+  }
+
+  private async readAt(offset: number, size: number): Promise<Uint8Array> {
+    if (offset < this.position) {
+      this.stopInflating();
+    }
+    while (this.position < offset) {
+      await this.take(offset - this.position);
+    }
+    const parts: Uint8Array[] = [];
+    for (let collected = 0; collected < size;) {
+      const part = await this.take(size - collected);
+      parts.push(part);
+      collected += part.length;
+    }
+    // Always copied: each part is a view of the decompressor's output, which
+    // the leftover, and so the next read, may share.
+    return concatUint8(parts);
+  }
+
+  /** Hands out up to `max` inflated bytes at the cursor, inflating more if needed. */
+  private async take(max: number): Promise<Uint8Array> {
+    let piece = this.leftover ?? (await this.pull());
+    if (!piece) {
+      throw new InvalidFileError(
+        `entry [${this.fileName}] inflates to [${this.inflated}] bytes, fewer than its declared uncompressed size [${this.uncompressedSize}]`
+      );
+    }
+    this.leftover = undefined;
+    if (piece.length > max) {
+      this.leftover = piece.subarray(max);
+      piece = piece.subarray(0, max);
+    }
+    this.position += piece.length;
+    return piece;
+  }
+
+  /**
+   * The next piece of inflated output, or undefined at the end of the deflate
+   * stream.
+   * @throws InvalidFileError as soon as the entry inflates past its declared
+   * uncompressed size, or if its data is not valid deflate
+   */
+  private async pull(): Promise<Uint8Array | undefined> {
+    const inflation = (this.inflation ??= this.startInflating());
+    let result: ReadableStreamReadResult<Uint8Array>;
+    try {
+      result = await inflation.reader.read();
+    } catch (error) {
+      if (inflation.sourceError) {
+        throw inflation.sourceError.error;
+      }
+      throw new InvalidFileError(
+        `entry [${this.fileName}] is not valid deflate data`,
+        asError(error)
+      );
+    }
+    // Closed or failed while waiting, which also ends the stream early.
+    if (this.failure) {
+      throw this.failure.error;
+    }
+    if (inflation.sourceError) {
+      throw inflation.sourceError.error;
+    }
+    if (result.done) {
+      return undefined;
+    }
+    this.inflated += result.value.length;
+    if (this.inflated > this.uncompressedSize) {
+      throw new InvalidFileError(
+        `entry [${this.fileName}] inflates to more than its declared uncompressed size [${this.uncompressedSize}]`
+      );
+    }
+    return result.value;
+  }
+
+  /**
+   * Starts feeding the compressed entry to a new decompressor, which pulls it
+   * through as fast as {@link pull} drains the output.
+   */
+  private startInflating(): Inflation {
+    const decompressor = new DecompressionStream('deflate-raw');
+    const writer = decompressor.writable.getWriter();
+    const inflation: Inflation = { reader: decompressor.readable.getReader() };
+    const fetchFrom = (start: number): Promise<Uint8Array<ArrayBuffer>> => {
+      const end = Math.min(start + INFLATE_READ_SIZE, this.compressedSize);
+      const chunk = this.readCompressed(start, end).then(asArrayBufferView, (error: unknown) => {
+        inflation.sourceError ??= { error };
+        throw error;
+      });
+      // Fetched one ahead, so if inflating stops first nothing awaits it.
+      chunk.catch(() => undefined);
+      return chunk;
+    };
+    const feed = async () => {
+      let fetched = 0;
+      let next = this.compressedSize > 0 ? fetchFrom(0) : undefined;
+      while (next) {
+        const chunk = await next;
+        fetched += chunk.length;
+        next = fetched < this.compressedSize ? fetchFrom(fetched) : undefined;
+        for (let i = 0; i < chunk.length; i += INFLATE_WRITE_SIZE) {
+          await writer.write(chunk.subarray(i, i + INFLATE_WRITE_SIZE));
+        }
+      }
+      await writer.close();
+    };
+    feed().catch((error: unknown) => {
+      // Fails the pending `pull`. A no-op if the decompressor has already
+      // failed, or was cancelled, which is what stopped the feed.
+      writer.abort(error).catch(() => undefined);
+    });
+    return inflation;
   }
 }
 
