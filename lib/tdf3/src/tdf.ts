@@ -287,8 +287,8 @@ export type EncryptConfiguration = {
    * dual-accept fix can verify the hexless form directly. This SDK's reader
    * re-encodes it for older KAS, but other and older readers forward it unchanged,
    * so a TDF written with this option may not decrypt through an older reader
-   * against an older KAS. A tdfSpecVersion before 4.3.0 overrides this option and
-   * keeps the legacy form.
+   * against an older KAS. A tdfSpecVersion of 4.2.2, the legacy format, overrides
+   * this option and keeps the legacy form; no other version does.
    */
   hexlessPolicyBinding?: boolean;
 };
