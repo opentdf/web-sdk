@@ -333,6 +333,37 @@ const kasHandler = async (req: IncomingMessage, res: ServerResponse) => {
           res.end('{"error": "Invalid wrapped key"}');
           return;
         }
+        // Behave like a KAS without the policy binding dual-accept fix
+        // (opentdf/platform#4223): it hex-decodes the base64-decoded binding, so
+        // the hexless Base64(HMAC) form, 32 bytes after base64, never verifies
+        // and the key access object fails with KAS's generic bad request error.
+        // Readers must re-encode the binding to Base64(hex(HMAC)) before rewrap.
+        const policyBindingHash = keyAccessObject?.policyBinding?.hash ?? '';
+        if (base64.decodeArrayBuffer(policyBindingHash).byteLength === 32) {
+          console.log('[DEBUG] rejecting a policy binding that decodes to 32 bytes');
+          const reply = create(RewrapResponseSchema, {
+            responses: [
+              create(PolicyRewrapResultSchema, {
+                results: [
+                  create(KeyAccessRewrapResultSchema, {
+                    status: 'fail',
+                    result: {
+                      case: 'error',
+                      value:
+                        'invalid_argument: request error\nrpc error: code = InvalidArgument desc = bad request',
+                    },
+                    keyAccessObjectId:
+                      rewrap.requests?.[0]?.keyAccessObjects?.[0]?.keyAccessObjectId || '',
+                  }),
+                ],
+              }),
+            ],
+          });
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(toJsonString(RewrapResponseSchema, reply));
+          return;
+        }
         const kid = keyAccessObject?.kid || '';
         const isECWrapped = kid == 'e1';
         const isMlKemWrapped = kid === 'mlkem768' || kid === 'mlkem1024';

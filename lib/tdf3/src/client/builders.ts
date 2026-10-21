@@ -70,6 +70,17 @@ export type EncryptParams = {
   offline?: boolean;
   // TDF spec version to target
   tdfSpecVersion?: string;
+  /**
+   * Write each key access object's policy binding hash as Base64(HMAC), dropping
+   * the hex layer of the legacy Base64(hex(HMAC)) written by default. Base64(HMAC)
+   * is the form the TDF spec defines. Only a KAS carrying the policy binding
+   * dual-accept fix can verify the hexless form directly. This SDK's reader
+   * re-encodes it for older KAS, but other and older readers forward it unchanged,
+   * so a TDF written with this option may not decrypt through an older reader
+   * against an older KAS. A tdfSpecVersion of 4.2.2, the legacy format, overrides
+   * this option and keeps the legacy form; no other version does.
+   */
+  hexlessPolicyBinding?: boolean;
 };
 
 // 'Readonly<EncryptParams>': scope, metadata, offline, windowSize, asHtml

@@ -310,6 +310,7 @@ type CreateTDFFlags = Pick<
   | 'wrappingKeyAlgorithm'
   | 'mimeType'
   | 'tdfSpecVersion'
+  | 'hexlessPolicyBinding'
   | 'rootIntegrityAlgorithm'
   | 'segmentIntegrityAlgorithm'
 >;
@@ -331,6 +332,9 @@ function parseCreateTDFFlags(argv: Partial<mainArgs>): CreateTDFFlags {
   }
   if (argv.tdfSpecVersion) {
     c.tdfSpecVersion = argv.tdfSpecVersion as never;
+  }
+  if (argv.hexlessPolicyBinding) {
+    c.hexlessPolicyBinding = true;
   }
   if (argv.rootIntegrityAlgorithm?.length) {
     // Only HMAC is supported for the root integrity algorithm.
@@ -602,6 +606,12 @@ export const handleArgs = (args: string[]) => {
           type: 'string',
           description: 'TDF spec version for file creation',
           default: tdfSpecVersion,
+        },
+        hexlessPolicyBinding: {
+          group: 'Encrypt Options:',
+          type: 'boolean',
+          description: 'Write policy binding as Base64(HMAC) instead of legacy Base64(hex(HMAC))',
+          default: false,
         },
       })
 

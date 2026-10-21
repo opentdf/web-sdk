@@ -93,3 +93,9 @@
   [[ $output == *"@opentdf/sdk\":\""* ]]
   [[ $output == *"tdfSpecVersion\":\""* ]]
 }
+
+@test "hexlessPolicyBinding flag appears in encrypt help" {
+  run $BATS_TEST_DIRNAME/opentdf.mjs encrypt --help
+  echo "$output"
+  [[ $output == *"--hexlessPolicyBinding"* ]]
+}

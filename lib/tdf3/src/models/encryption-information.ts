@@ -83,7 +83,11 @@ export class SplitKey {
     return this.cipher.decrypt(content, key);
   }
 
-  async getKeyAccessObjects(policy: Policy, keyInfo: KeyInfo): Promise<KeyAccessObject[]> {
+  async getKeyAccessObjects(
+    policy: Policy,
+    keyInfo: KeyInfo,
+    hexless = false
+  ): Promise<KeyAccessObject[]> {
     const splitIds = [...new Set(this.keyAccess.map(({ sid }) => sid || ''))].sort((a, b) =>
       a.localeCompare(b)
     );
@@ -136,7 +140,12 @@ export class SplitKey {
       };
 
       const encryptedMetadataStr = JSON.stringify(encryptedMetadataOb);
-      const keyAccessObject = await item.write(policy, unwrappedKeySplit, encryptedMetadataStr);
+      const keyAccessObject = await item.write(
+        policy,
+        unwrappedKeySplit,
+        encryptedMetadataStr,
+        hexless
+      );
       keyAccessObjects.push(keyAccessObject);
     }
 
@@ -148,13 +157,13 @@ export class SplitKey {
     return Binary.fromString(hex.decode(iv));
   }
 
-  async write(policy: Policy, keyInfo: KeyInfo): Promise<EncryptionInformation> {
+  async write(policy: Policy, keyInfo: KeyInfo, hexless = false): Promise<EncryptionInformation> {
     const algorithm = this.cipher?.name;
     if (!algorithm) {
       // Hard coded as part of the cipher object. This should not be reachable.
       throw new ConfigurationError('uninitialized cipher type');
     }
-    const keyAccessObjects = await this.getKeyAccessObjects(policy, keyInfo);
+    const keyAccessObjects = await this.getKeyAccessObjects(policy, keyInfo, hexless);
 
     // For now we're only concerned with a single (first) key access object
     const policyForManifest = base64.encode(JSON.stringify(policy));

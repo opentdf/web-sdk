@@ -544,6 +544,7 @@ export class Client {
         return stream;
       },
       tdfSpecVersion,
+      hexlessPolicyBinding,
       wrappingKeyAlgorithm,
       rootIntegrityAlgorithm = ROOT_INTEGRITY_ALGORITHM,
       segmentIntegrityAlgorithm = SEGMENT_INTEGRITY_ALGORITHM,
@@ -798,6 +799,7 @@ export class Client {
       assertionConfigs: opts.assertionConfigs,
       systemMetadataAssertion: opts.systemMetadataAssertion,
       tdfSpecVersion,
+      hexlessPolicyBinding,
     };
 
     return streamMiddleware(await writeStream(ecfg));

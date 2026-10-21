@@ -378,3 +378,37 @@ describe('splitLookupTableFactory', () => {
     });
   });
 });
+
+describe('legacyPolicyBindingHash', () => {
+  it('should re-encode hexless binding to legacy form', () => {
+    // 32-byte decoded value → Base64(hex(raw))
+    const raw = 'wc43nUyrFtbactuerWTXy0ypvayrjAaF/5Lj90qiwS0=';
+    const legacy =
+      'YzFjZTM3OWQ0Y2FiMTZkNmRhNzJkYjllYWQ2NGQ3Y2I0Y2E5YmRhY2FiOGMwNjg1ZmY5MmUzZjc0YWEyYzEyZA==';
+
+    expect(TDF.legacyPolicyBindingHash(raw)).to.equal(legacy);
+  });
+
+  it('should pass through legacy binding unchanged', () => {
+    const legacy =
+      'YzFjZTM3OWQ0Y2FiMTZkNmRhNzJkYjllYWQ2NGQ3Y2I0Y2E5YmRhY2FiOGMwNjg1ZmY5MmUzZjc0YWEyYzEyZA==';
+
+    expect(TDF.legacyPolicyBindingHash(legacy)).to.equal(legacy);
+  });
+
+  it('should pass through invalid base64', () => {
+    const invalid = 'not!base64';
+
+    expect(TDF.legacyPolicyBindingHash(invalid)).to.equal(invalid);
+  });
+
+  it('should pass through other lengths', () => {
+    const other = 'AAAAAAAAAAAAAAAAAAAAAA==';
+
+    expect(TDF.legacyPolicyBindingHash(other)).to.equal(other);
+  });
+
+  it('should pass through empty string', () => {
+    expect(TDF.legacyPolicyBindingHash('')).to.equal('');
+  });
+});

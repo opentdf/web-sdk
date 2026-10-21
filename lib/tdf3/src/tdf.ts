@@ -280,6 +280,17 @@ export type EncryptConfiguration = {
   assertionConfigs?: AssertionConfig[];
   systemMetadataAssertion?: boolean;
   tdfSpecVersion?: string;
+  /**
+   * Write each key access object's policy binding hash as Base64(HMAC), dropping
+   * the hex layer of the legacy Base64(hex(HMAC)) written by default. Base64(HMAC)
+   * is the form the TDF spec defines. Only a KAS carrying the policy binding
+   * dual-accept fix can verify the hexless form directly. This SDK's reader
+   * re-encodes it for older KAS, but other and older readers forward it unchanged,
+   * so a TDF written with this option may not decrypt through an older reader
+   * against an older KAS. A tdfSpecVersion of 4.2.2, the legacy format, overrides
+   * this option and keeps the legacy form; no other version does.
+   */
+  hexlessPolicyBinding?: boolean;
 };
 
 export type DecryptConfiguration = {
@@ -433,7 +444,8 @@ async function _generateManifest(
   encryptionInformation: SplitKey,
   policy: Policy,
   mimeType?: string,
-  targetSpecVersion?: string
+  targetSpecVersion?: string,
+  hexless = false
 ): Promise<Manifest> {
   // (maybe) Fields are quoted to avoid renaming
   const payload: Payload = {
@@ -444,7 +456,7 @@ async function _generateManifest(
     ...(mimeType && { mimeType }),
   };
 
-  const encryptionInformationStr = await encryptionInformation.write(policy, keyInfo);
+  const encryptionInformationStr = await encryptionInformation.write(policy, keyInfo, hexless);
   const assertions: assertions.Assertion[] = [];
   const partial = {
     payload,
@@ -563,6 +575,36 @@ function isTargetSpecLegacyTDF(targetSpecVersion?: string): boolean {
   return targetSpecVersion === HEX_SEMVER_VERSION;
 }
 
+/**
+ * Re-encodes a hexless policy binding hash to the legacy form for older KAS.
+ * A 32-byte decoded value is re-encoded as Base64(hex(raw)); anything else
+ * passes through unchanged.
+ *
+ * @param hash - Policy binding hash (Base64-encoded)
+ * @returns Legacy policy binding hash or original value
+ */
+export function legacyPolicyBindingHash(hash: string): string {
+  if (!hash) {
+    return hash;
+  }
+
+  let decoded: ArrayBuffer;
+  try {
+    decoded = base64.decodeArrayBuffer(hash);
+  } catch {
+    // Invalid base64 passes through
+    return hash;
+  }
+
+  if (decoded.byteLength !== 32) {
+    // Other lengths pass through
+    return hash;
+  }
+
+  // Re-encode as Base64(hex(raw))
+  return base64.encode(hex.encodeArrayBuffer(decoded));
+}
+
 export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedReadableStream> {
   if (!cfg.auth) {
     throw new ConfigurationError('No authorization middleware defined');
@@ -596,6 +638,8 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
   const rootIntegrityAlgorithm = cfg.rootIntegrityAlgorithm.toUpperCase() as RootIntegrityAlgorithm;
   const segmentIntegrityAlgorithm =
     cfg.segmentIntegrityAlgorithm.toUpperCase() as SegmentIntegrityAlgorithm;
+
+  const hexless = cfg.hexlessPolicyBinding && !isTargetSpecLegacyTDF(cfg.tdfSpecVersion);
 
   const segmentInfos: Segment[] = [];
 
@@ -632,7 +676,8 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
     cfg.encryptionInformation,
     cfg.policy,
     cfg.mimeType,
-    cfg.tdfSpecVersion
+    cfg.tdfSpecVersion,
+    hexless
   );
 
   if (!manifest) {
@@ -1105,7 +1150,12 @@ async function unwrapKey({
       ...(keySplitInfo.wrappedKey && {
         wrappedKey: new Uint8Array(base64.decodeArrayBuffer(keySplitInfo.wrappedKey)),
       }),
-      ...(keySplitInfo.policyBinding && { policyBinding: keySplitInfo.policyBinding }),
+      ...(keySplitInfo.policyBinding && {
+        policyBinding: {
+          hash: legacyPolicyBindingHash(keySplitInfo.policyBinding.hash),
+          algorithm: keySplitInfo.policyBinding.alg || '',
+        },
+      }),
       ...(keySplitInfo.kid && { kid: keySplitInfo.kid }),
       ...(keySplitInfo.sid && { splitId: keySplitInfo.sid }),
       ...(keySplitInfo.encryptedMetadata && { encryptedMetadata: keySplitInfo.encryptedMetadata }),
