@@ -203,7 +203,10 @@ test('an abort still works once the source has closed', async ({ page }) => {
 test.describe('without a service worker', () => {
   test.use({ serviceWorkers: 'block' });
 
-  test('falls back to an in-memory Blob', async ({ page }) => {
+  test('falls back to an in-memory Blob', async ({ page, browserName }) => {
+    // Stock Firefox saves the file, but Playwright's BiDi driver reports only
+    // downloads that come from a navigation, not a click on a Blob link.
+    test.skip(browserName === '_bidiFirefox', 'Playwright BiDi misses Blob downloads');
     const bytes = 2 ** 20 + 17;
     const downloadPromise = page.waitForEvent('download');
     const strategy = await streamDownload(page, bytes);
