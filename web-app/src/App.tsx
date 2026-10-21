@@ -359,8 +359,9 @@ function App() {
         },
         flush() {
           const d = Date.now() - startTime;
-          console.log(`✍️ ${type} Complete after ${d.toLocaleString()} milliseconds`);
-          setDownloadState(`✍️ ${type} Complete`);
+          console.log(`✍️ ${type}ed output ended after ${d.toLocaleString()} milliseconds`);
+          // The sink may still be saving; the handler reports completion.
+          setDownloadState(`✍️ ${type}ed; finishing...`);
         },
       }),
     };
@@ -506,6 +507,7 @@ function App() {
           await cipherTextWithProgress.pipeTo(drain(), { signal: sc.signal });
           break;
       }
+      setDownloadState('✍️ Encrypt Complete');
     } catch (e) {
       setDownloadState(`Encrypt Failed: ${e instanceof Error ? e.message : String(e)}`);
       console.error('Encrypt Failed', e);
@@ -601,6 +603,7 @@ function App() {
           await plainTextStream.pipeTo(drain(), { signal: sc.signal });
           break;
       }
+      setDownloadState('✍️ Decrypt Complete');
       const { fqns: requiredObligations } = await reader.obligations();
       console.log(
         `Found required obligations count: ${requiredObligations.length}. ${requiredObligations.length ?? JSON.stringify(requiredObligations)}`
