@@ -23,13 +23,27 @@ const sinkModule = `${appUrl}src/downloadSink.ts`;
 // shows up as a mismatch.
 const PERIOD = 251;
 
-async function streamDownload(page: Page, bytes: number, abortAfter?: number, mibps = 0) {
+type StreamOptions = {
+  // Abort once this many bytes have been produced, or this long after starting.
+  abortAfter?: number;
+  abortAfterMs?: number;
+  mibps?: number;
+};
+
+async function streamDownload(
+  page: Page,
+  bytes: number,
+  { abortAfter, abortAfterMs, mibps = 0 }: StreamOptions = {}
+) {
   return page.evaluate(
-    async ({ sinkModule, bytes, abortAfter, mibps, PERIOD }) => {
+    async ({ sinkModule, bytes, abortAfter, abortAfterMs, mibps, PERIOD }) => {
       const { toFile } = await import(sinkModule);
       const chunkSize = 2 ** 20;
       const pattern = new Uint8Array(chunkSize + PERIOD).map((_, i) => i % PERIOD);
       const abort = new AbortController();
+      if (abortAfterMs !== undefined) {
+        setTimeout(() => abort.abort(new Error('test abort')), abortAfterMs);
+      }
       let offset = 0;
       const started = performance.now();
       const source = new ReadableStream<Uint8Array>({
@@ -57,7 +71,7 @@ async function streamDownload(page: Page, bytes: number, abortAfter?: number, mi
         return `rejected: ${e instanceof Error ? e.message : String(e)}`;
       }
     },
-    { sinkModule, bytes, abortAfter, mibps, PERIOD }
+    { sinkModule, bytes, abortAfter, abortAfterMs, mibps, PERIOD }
   );
 }
 
@@ -134,28 +148,43 @@ test('an abort fails the download instead of truncating it', async ({ page, brow
   const downloadPromise = page.waitForEvent('download');
   // The worker queues 4 MiB before the browser starts reading, so aborting at
   // 8 MiB happens after the download has started.
-  const result = await streamDownload(page, 64 * 2 ** 20, 8 * 2 ** 20);
+  const result = await streamDownload(page, 64 * 2 ** 20, { abortAfter: 8 * 2 ** 20 });
   expect(result).toMatch(/^rejected: .*test abort/);
   const download = await downloadPromise;
   expect(await download.failure()).not.toBeNull();
 });
 
+// Keeps the download's iframe request from ever reaching the worker.
+async function blockFrames(page: Page) {
+  await page.evaluate(() => {
+    const csp = document.createElement('meta');
+    csp.httpEquiv = 'Content-Security-Policy';
+    csp.content = "frame-src 'none'";
+    document.head.append(csp);
+  });
+}
+
 for (const bytes of [2 ** 20, 16 * 2 ** 20]) {
   test(`a blocked download fails instead of hanging (${bytes} bytes)`, async ({ page }) => {
     test.setTimeout(30_000);
-    // Below the worker's 4 MiB queue, every byte is accepted before the iframe
-    // would be read, so this once reported success with no file; above it, the
-    // pipe waited forever for credit.
-    await page.evaluate(() => {
-      const csp = document.createElement('meta');
-      csp.httpEquiv = 'Content-Security-Policy';
-      csp.content = "frame-src 'none'";
-      document.head.append(csp);
-    });
+    // Below the worker's 4 MiB queue, every byte fits in it without the
+    // browser reading any, so this once reported success with no file; above
+    // it, the pipe waited forever for credit.
+    await blockFrames(page);
     const result = await streamDownload(page, bytes);
     expect(result).toMatch(/^rejected: The download never reached the service worker/);
   });
 }
+
+test('an abort still works once the source has closed', async ({ page }) => {
+  // The whole source fits in the worker's queue, so the sink is already
+  // waiting in close(), where pipeTo no longer watches its signal.
+  await blockFrames(page);
+  const started = Date.now();
+  const result = await streamDownload(page, 2 ** 20, { abortAfterMs: 500 });
+  expect(result).toMatch(/^rejected: .*test abort/);
+  expect(Date.now() - started).toBeLessThan(5_000);
+});
 
 test.describe('without a service worker', () => {
   test.use({ serviceWorkers: 'block' });
@@ -178,7 +207,7 @@ test('large download keeps memory flat', async ({ page, browserName }) => {
   const stopSampling = await sampleBrowserMemory(browserName);
   const started = Date.now();
   const downloadPromise = page.waitForEvent('download');
-  const strategy = await streamDownload(page, largeBytes, undefined, mibPerSecond);
+  const strategy = await streamDownload(page, largeBytes, { mibps: mibPerSecond });
   const download = await downloadPromise;
   const path = await downloadPath(download);
   const { baselineKiB, peakKiB } = stopSampling();
