@@ -129,9 +129,15 @@ async function streamThroughWorker(
   // Ping the worker holding the stream, not registration.active, which an
   // update can replace mid-download.
   const keepalive = setInterval(() => worker.postMessage({ type: 'ping' }), KEEPALIVE_MS);
+  // pipeTo stops watching its signal once the source has closed, but close()
+  // can then wait minutes for the browser to finish reading.
+  const { signal } = options;
+  const onAbort = () => sink.fail(signal?.reason);
+  signal?.addEventListener('abort', onAbort, { once: true });
   try {
     await stream.pipeTo(new WritableStream(sink, { highWaterMark: 1 }), options);
   } finally {
+    signal?.removeEventListener('abort', onAbort);
     clearInterval(keepalive);
     sink.dispose();
     setTimeout(() => iframe.remove(), CLEANUP_DELAY_MS);
@@ -213,6 +219,11 @@ class PortSink implements UnderlyingSink<Uint8Array> {
 
   dispose() {
     clearTimeout(this.#startTimer);
+  }
+
+  /** Fails the pipe from outside it, even while close() waits for 'done'. */
+  fail(reason: unknown) {
+    this.#fail(reason instanceof Error ? reason : new Error(String(reason)));
   }
 
   async write(chunk: Uint8Array) {
