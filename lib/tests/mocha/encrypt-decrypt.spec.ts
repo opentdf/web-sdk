@@ -5,7 +5,7 @@ import sinon from 'sinon';
 import { getMocks } from '../mocks/index.js';
 import type { KasPublicKeyAlgorithm } from '../../src/access.js';
 import type { AuthProvider, HttpRequest } from '../../src/auth/auth.js';
-import type { CryptoService, KeyInfo } from '../../tdf3/index.js';
+import type { CryptoService } from '../../tdf3/index.js';
 import { AesGcmCipher, Binary, SplitKey, WebCryptoService } from '../../tdf3/index.js';
 import { Client } from '../../tdf3/src/index.js';
 import type {
@@ -52,9 +52,8 @@ describe('rewrap error cases', function () {
   let client: Client.Client;
   let cipher: AesGcmCipher;
   let encryptionInformation: SplitKey;
-  let key1: KeyInfo;
 
-  beforeEach(async function () {
+  beforeEach(function () {
     // Setup base auth provider that will be modified per test
     const baseAuthProvider = {
       updateClientPublicKey: async () => {},
@@ -71,11 +70,13 @@ describe('rewrap error cases', function () {
 
     cipher = new AesGcmCipher(WebCryptoService);
     encryptionInformation = new SplitKey(cipher);
-    key1 = await encryptionInformation.generateKey();
   });
 
   async function encryptTestData({ customAuthProvider }: { customAuthProvider?: AuthProvider }) {
-    const keyMiddleware = () => Promise.resolve({ keyForEncryption: key1, keyForManifest: key1 });
+    const keyMiddleware = async () => {
+      const key = await encryptionInformation.generateKey();
+      return { keyForEncryption: key, keyForManifest: key };
+    };
 
     if (customAuthProvider) {
       client = new Client.Client({
@@ -288,9 +289,10 @@ describe('encrypt decrypt test', function () {
       it(`encrypt-decrypt stream source happy path {encap: ${encapKeyType}, rewrap: ${rewrapKeyType}}`, async function () {
         const cipher = new AesGcmCipher(WebCryptoService);
         const encryptionInformation = new SplitKey(cipher);
-        const key1 = await encryptionInformation.generateKey();
-        const keyMiddleware = () =>
-          Promise.resolve({ keyForEncryption: key1, keyForManifest: key1 });
+        const keyMiddleware = async () => {
+          const key = await encryptionInformation.generateKey();
+          return { keyForEncryption: key, keyForManifest: key };
+        };
 
         const client = new Client.Client({
           kasEndpoint: kasUrl,
@@ -428,7 +430,6 @@ describe('encrypt decrypt test', function () {
 
     const cipher = new AesGcmCipher(truncatingCryptoService);
     const encryptionInformation = new SplitKey(cipher);
-    const key = await encryptionInformation.generateKey();
     const client = new Client.Client({
       kasEndpoint: kasUrl,
       platformUrl: kasUrl,
@@ -443,7 +444,10 @@ describe('encrypt decrypt test', function () {
       wrappingKeyAlgorithm: 'rsa:2048',
       offline: true,
       scope: { dissem: ['user@domain.com'], attributes: [] },
-      keyMiddleware: () => Promise.resolve({ keyForEncryption: key, keyForManifest: key }),
+      keyMiddleware: async () => {
+        const key = await encryptionInformation.generateKey();
+        return { keyForEncryption: key, keyForManifest: key };
+      },
       windowSize: 3,
       source: new ReadableStream({
         start(controller) {
@@ -588,8 +592,10 @@ describe('encrypt decrypt test', function () {
   it('decrypts when the same KAS wraps the same split twice (DSPX-3379)', async function () {
     const cipher = new AesGcmCipher(WebCryptoService);
     const encryptionInformation = new SplitKey(cipher);
-    const key1 = await encryptionInformation.generateKey();
-    const keyMiddleware = () => Promise.resolve({ keyForEncryption: key1, keyForManifest: key1 });
+    const keyMiddleware = async () => {
+      const key = await encryptionInformation.generateKey();
+      return { keyForEncryption: key, keyForManifest: key };
+    };
 
     const client = new Client.Client({
       kasEndpoint: kasUrl,
@@ -635,7 +641,6 @@ describe('encrypt decrypt test', function () {
   it('writes 2 MiB segments when no window size is given', async function () {
     const cipher = new AesGcmCipher(WebCryptoService);
     const encryptionInformation = new SplitKey(cipher);
-    const key = await encryptionInformation.generateKey();
     const client = new Client.Client({
       kasEndpoint: kasUrl,
       platformUrl: kasUrl,
@@ -650,7 +655,10 @@ describe('encrypt decrypt test', function () {
       wrappingKeyAlgorithm: 'rsa:2048',
       offline: true,
       scope: { dissem: ['user@domain.com'], attributes: [] },
-      keyMiddleware: () => Promise.resolve({ keyForEncryption: key, keyForManifest: key }),
+      keyMiddleware: async () => {
+        const key = await encryptionInformation.generateKey();
+        return { keyForEncryption: key, keyForManifest: key };
+      },
       source: new ReadableStream({
         start(controller) {
           controller.enqueue(new TextEncoder().encode(expectedVal));
@@ -680,8 +688,10 @@ describe('encrypt decrypt test', function () {
     // sign"). The token alg must follow the dpop key algorithm.
     const cipher = new AesGcmCipher(WebCryptoService);
     const encryptionInformation = new SplitKey(cipher);
-    const key1 = await encryptionInformation.generateKey();
-    const keyMiddleware = () => Promise.resolve({ keyForEncryption: key1, keyForManifest: key1 });
+    const keyMiddleware = async () => {
+      const key = await encryptionInformation.generateKey();
+      return { keyForEncryption: key, keyForManifest: key };
+    };
 
     const client = new Client.Client({
       kasEndpoint: kasUrl,
@@ -724,8 +734,10 @@ describe('encrypt decrypt test', function () {
   it('encrypt-decrypt with system metadata assertion', async function () {
     const cipher = new AesGcmCipher(WebCryptoService);
     const encryptionInformation = new SplitKey(cipher);
-    const key1 = await encryptionInformation.generateKey();
-    const keyMiddleware = () => Promise.resolve({ keyForEncryption: key1, keyForManifest: key1 });
+    const keyMiddleware = async () => {
+      const key = await encryptionInformation.generateKey();
+      return { keyForEncryption: key, keyForManifest: key };
+    };
 
     const client = new Client.Client({
       kasEndpoint: kasUrl,
@@ -844,7 +856,6 @@ describe('encrypt decrypt test', function () {
   it('rejects a zero window size instead of hanging', async function () {
     const cipher = new AesGcmCipher(WebCryptoService);
     const encryptionInformation = new SplitKey(cipher);
-    const key = await encryptionInformation.generateKey();
     const client = new Client.Client({
       kasEndpoint: kasUrl,
       platformUrl: kasUrl,
@@ -863,7 +874,10 @@ describe('encrypt decrypt test', function () {
         wrappingKeyAlgorithm: 'rsa:2048',
         offline: true,
         scope: { dissem: ['user@domain.com'], attributes: [] },
-        keyMiddleware: () => Promise.resolve({ keyForEncryption: key, keyForManifest: key }),
+        keyMiddleware: async () => {
+          const key = await encryptionInformation.generateKey();
+          return { keyForEncryption: key, keyForManifest: key };
+        },
         windowSize: 0,
         source: new ReadableStream({
           start(controller) {
