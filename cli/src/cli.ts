@@ -310,6 +310,7 @@ type CreateTDFFlags = Pick<
   | 'wrappingKeyAlgorithm'
   | 'mimeType'
   | 'tdfSpecVersion'
+  | 'unprefixedManifestName'
   | 'rootIntegrityAlgorithm'
   | 'segmentIntegrityAlgorithm'
 >;
@@ -331,6 +332,9 @@ function parseCreateTDFFlags(argv: Partial<mainArgs>): CreateTDFFlags {
   }
   if (argv.tdfSpecVersion) {
     c.tdfSpecVersion = argv.tdfSpecVersion as never;
+  }
+  if (argv.unprefixedManifestName) {
+    c.unprefixedManifestName = true;
   }
   if (argv.rootIntegrityAlgorithm?.length) {
     // Only HMAC is supported for the root integrity algorithm.
@@ -602,6 +606,12 @@ export const handleArgs = (args: string[]) => {
           type: 'string',
           description: 'TDF spec version for file creation',
           default: tdfSpecVersion,
+        },
+        unprefixedManifestName: {
+          group: 'Encrypt Options:',
+          type: 'boolean',
+          description: 'Store manifest as manifest.json instead of 0.manifest.json',
+          default: false,
         },
       })
 

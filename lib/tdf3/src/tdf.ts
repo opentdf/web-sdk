@@ -94,11 +94,12 @@ export const manifestFileName = 'manifest.json';
 export const offspecManifestFileName = '0.manifest.json';
 
 /**
- * The name `writeStream` gives the manifest entry. Distinct from the constants
- * above on purpose: moving the writer to the spec name (a breaking file-format
- * change, tracked in opentdf/platform#3513) means repointing *this* binding, and
- * repointing it leaves the read side below untouched, so archives written by
- * every earlier release keep opening.
+ * The name `writeStream` gives the manifest entry by default, that is, unless
+ * `unprefixedManifestName` opts into the spec name (see `manifestEntryNameFor`).
+ * Distinct from the constants above on purpose: making the spec name the default
+ * (a breaking file-format change, tracked in opentdf/platform#3513) means
+ * repointing *this* binding, and repointing it leaves the read side below
+ * untouched, so archives written by every earlier release keep opening.
  */
 export const manifestEntryNameToWrite: string = offspecManifestFileName;
 
@@ -120,6 +121,18 @@ export function manifestEntryName(centralDirectory: CentralDirectory[]): string 
 }
 
 const HEX_SEMVER_VERSION = '4.2.2';
+
+/**
+ * The manifest entry name to write for a given configuration: the legacy
+ * prefixed name when the target is a legacy TDF, the spec name when
+ * unprefixedManifestName is enabled, and `manifestEntryNameToWrite` otherwise.
+ */
+export function manifestEntryNameFor(cfg: EncryptConfiguration): string {
+  if (isTargetSpecLegacyTDF(cfg.tdfSpecVersion)) {
+    return offspecManifestFileName;
+  }
+  return cfg.unprefixedManifestName ? manifestFileName : manifestEntryNameToWrite;
+}
 
 /**
  * Configuration for TDF3
@@ -280,6 +293,14 @@ export type EncryptConfiguration = {
   assertionConfigs?: AssertionConfig[];
   systemMetadataAssertion?: boolean;
   tdfSpecVersion?: string;
+  /**
+   * Store the manifest under the zip entry name manifest.json, the name the TDF
+   * spec defines, instead of the legacy 0.manifest.json written by default.
+   * Readers that predate manifest.json support can't open the result. A
+   * tdfSpecVersion of 4.2.2, the legacy format, overrides this option and keeps
+   * the legacy name; no other version does.
+   */
+  unprefixedManifestName?: boolean;
 };
 
 export type DecryptConfiguration = {
@@ -606,7 +627,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
       filename: '0.payload',
     },
     {
-      filename: manifestEntryNameToWrite,
+      filename: manifestEntryNameFor(cfg),
     },
   ];
 
@@ -702,7 +723,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
           _countChunk(payloadDataDescriptor);
 
           // prepare the manifest
-          entryInfos[1].filename = manifestEntryNameToWrite;
+          entryInfos[1].filename = manifestEntryNameFor(cfg);
           entryInfos[1].offset = totalByteCount;
           controller.enqueue(getHeader(entryInfos[1].filename));
           _countChunk(getHeader(entryInfos[1].filename));

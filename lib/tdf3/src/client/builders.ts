@@ -70,6 +70,14 @@ export type EncryptParams = {
   offline?: boolean;
   // TDF spec version to target
   tdfSpecVersion?: string;
+  /**
+   * Store the manifest under the zip entry name manifest.json, the name the TDF
+   * spec defines, instead of the legacy 0.manifest.json written by default.
+   * Readers that predate manifest.json support can't open the result. A
+   * tdfSpecVersion of 4.2.2, the legacy format, overrides this option and keeps
+   * the legacy name; no other version does.
+   */
+  unprefixedManifestName?: boolean;
 };
 
 // 'Readonly<EncryptParams>': scope, metadata, offline, windowSize, asHtml
