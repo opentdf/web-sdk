@@ -31,8 +31,8 @@ export const authorize = async (page: Page) => {
  * folder and saves under the suggested name in PLAYWRIGHT_DOWNLOAD_DIR, so
  * `download.path()` names a missing file. It would save a later download with
  * the same name as `name(1).ext`, so each file is moved into a folder of its
- * own once found. That relies on one download at a time, so that config runs a
- * single worker.
+ * own once found. That relies on one download at a time, so that config runs
+ * one test at a time (`workers: 1`).
  */
 export const downloadPath = async (
   download: Download,
