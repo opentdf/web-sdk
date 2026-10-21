@@ -11,6 +11,11 @@
 
 export type SinkStrategy = 'service-worker' | 'blob';
 
+/** The download itself failed, as opposed to the stream feeding it. */
+export class DownloadError extends Error {
+  override name = 'DownloadError';
+}
+
 export type ToFileOptions = StreamPipeOptions & {
   /**
    * Called with the reason before falling back to buffering the whole output
@@ -108,7 +113,7 @@ async function findWorker(): Promise<{ worker: ServiceWorker; scope: string } | 
     return `service worker registration failed: ${e instanceof Error ? e.message : String(e)}`;
   }
   if (!registration?.active) {
-    return `no service worker became active within ${WORKER_TIMEOUT_MS / 1000} s`;
+    return 'no service worker is active';
   }
   return { worker: registration.active, scope: registration.scope };
 }
@@ -188,13 +193,13 @@ class PortSink implements UnderlyingSink<Uint8Array> {
           break;
         case 'cancel':
           // The worker has already closed its end.
-          this.#fail(new Error(`Download cancelled: ${data.reason}`), false);
+          this.#fail(new DownloadError(`Download cancelled: ${data.reason}`), false);
           break;
       }
       this.#wake?.();
     };
     port1.onmessageerror = () =>
-      this.#fail(new Error('A message from the download worker could not be read'));
+      this.#fail(new DownloadError('A message from the download worker could not be read'));
   }
 
   start(controller: WritableStreamDefaultController) {
@@ -210,9 +215,11 @@ class PortSink implements UnderlyingSink<Uint8Array> {
     this.#startTimer = setTimeout(
       () =>
         this.#fail(
-          new Error(
-            'The download never reached the service worker; a Content-Security-Policy ' +
-              'frame-src, a browser extension or DevTools "Bypass for network" may be blocking it'
+          new DownloadError(
+            `The download didn't start within ${START_TIMEOUT_MS / 1000} s: the browser never ` +
+              "fetched it from the app's service worker. A frame-src Content-Security-Policy, " +
+              'a browser extension, DevTools "Bypass for network" or a site update can cause ' +
+              'this. Reload the page and try again.'
           )
         ),
       START_TIMEOUT_MS
@@ -259,9 +266,9 @@ class PortSink implements UnderlyingSink<Uint8Array> {
         ? setTimeout(
             () =>
               this.#fail(
-                new Error(
+                new DownloadError(
                   `Download stalled: the browser read nothing for ${STALL_TIMEOUT_MS / 60_000} minutes. ` +
-                    'Was it cancelled in the downloads list?'
+                    "Was it cancelled or paused in the browser's downloads list?"
                 )
               ),
             STALL_TIMEOUT_MS
