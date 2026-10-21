@@ -3,10 +3,11 @@
  *
  * The page hands the stream to our own service worker (public/sw.js) over a
  * MessagePort, then navigates a hidden iframe to a URL the worker answers with
- * a streamed attachment. The browser's download manager pulls from that
- * response, and each pull grants the page one more chunk, so backpressure
- * reaches back through the SDK to its source. This replaces StreamSaver, which
- * did the same through a service worker on a third-party origin.
+ * a streamed attachment. Once the worker's 4 MiB queue has filled, each pull
+ * by the browser's download manager grants the page one more chunk, so
+ * backpressure reaches back through the SDK to its source. This replaces
+ * StreamSaver, which did the same through a service worker on a third-party
+ * origin.
  */
 
 export type SinkStrategy = 'service-worker' | 'blob';
@@ -165,8 +166,8 @@ class PortSink implements UnderlyingSink<Uint8Array> {
   #startTimer?: ReturnType<typeof setTimeout>;
   // Wakes a write or close waiting for the next message from the worker.
   #wake?: () => void;
-  // Set when the download is cancelled, stalls or the stream aborts; wakes a
-  // waiting write or close so it can throw.
+  // Set when the download is cancelled, never starts, stalls or the stream
+  // aborts; wakes a waiting write or close so it can throw.
   #stopped?: Error;
   #controller?: WritableStreamDefaultController;
 

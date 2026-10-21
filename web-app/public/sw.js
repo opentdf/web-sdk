@@ -1,7 +1,6 @@
 // Streams downloads from the page straight into the browser's download manager,
 // so a multi-GiB encrypt or decrypt never has to fit in memory or in storage
-// quota. The page side lives in src/downloadSink.ts; spec/DSPX-159.md lists
-// every message.
+// quota. The page side lives in web-app/src/downloadSink.ts.
 //
 // 1. The page posts { type: 'register', id, filename } with a MessagePort.
 // 2. We wrap the port in a ReadableStream and reply { type: 'ready' }.
@@ -14,6 +13,11 @@
 //    manager's reads, so backpressure reaches all the way back to the SDK.
 // 5. After the page posts { type: 'close' } and the browser has read the last
 //    byte, we post { type: 'done' }.
+//
+// Either side can end a download early: the page posts
+// { type: 'abort', reason }, and we post { type: 'cancel', reason } when the
+// browser cancels the response. While streaming, the page also posts
+// { type: 'ping' } every 10 s, so the browser doesn't stop us mid-download.
 
 const HIGH_WATER_MARK_BYTES = 4 * 2 ** 20;
 
@@ -48,8 +52,8 @@ class PortSource {
           break;
         case 'abort':
           // Erroring the body makes the browser mark the download failed,
-          // rather than leaving a truncated file that looks complete. This
-          // also arrives after 'close' if the download never started.
+          // rather than leaving a truncated file that looks complete. This can
+          // also arrive after 'close', if the download never started or stalled.
           controller.error(new Error(String(data.reason ?? 'aborted')));
           this.end();
           break;
