@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { toFile } from './downloadSink.js';
+import { DownloadError, toFile } from './downloadSink.js';
 
 // Drives the page side of the download protocol against a scripted worker, with
 // fake timers so the start and stall timeouts run instantly. Port messages
@@ -118,7 +118,8 @@ describe('toFile through the service worker', () => {
     expect(worker.types()).toEqual(['chunk', 'close']);
     await vi.advanceTimersByTimeAsync(10_000);
     await flush();
-    expect(String(result.error)).toMatch(/never reached the service worker/);
+    expect(result.error).toBeInstanceOf(DownloadError);
+    expect(String(result.error)).toMatch(/didn't start within 10 s/);
     expect(worker.types()).toEqual(['chunk', 'close', 'abort']);
   });
 
@@ -132,6 +133,7 @@ describe('toFile through the service worker', () => {
     expect(result.settled).toBe(false);
     await vi.advanceTimersByTimeAsync(1);
     await flush();
+    expect(result.error).toBeInstanceOf(DownloadError);
     expect(String(result.error)).toMatch(/Download stalled/);
     expect(worker.types()).toEqual(['chunk', 'abort']);
   });
@@ -158,6 +160,7 @@ describe('toFile through the service worker', () => {
     worker.send({ type: 'ready' }, { type: 'started' });
     worker.send({ type: 'cancel', reason: 'user cancelled' });
     await flush();
+    expect(result.error).toBeInstanceOf(DownloadError);
     expect(String(result.error)).toMatch(/Download cancelled: user cancelled/);
     expect(worker.types()).not.toContain('abort');
   });
@@ -171,6 +174,8 @@ describe('toFile through the service worker', () => {
     expect(worker.types()).toEqual(['chunk', 'close']);
     abort.abort(new Error('user abort'));
     await flush();
+    // The caller's own abort, not a failed download.
+    expect(result.error).not.toBeInstanceOf(DownloadError);
     expect(String(result.error)).toMatch(/user abort/);
     expect(worker.types()).toEqual(['chunk', 'close', 'abort']);
   });

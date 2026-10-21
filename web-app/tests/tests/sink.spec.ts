@@ -186,7 +186,7 @@ for (const bytes of [2 ** 20, 16 * 2 ** 20]) {
     // it, the pipe waited forever for credit.
     await blockFrames(page);
     const result = await streamDownload(page, bytes);
-    expect(result).toMatch(/^rejected: The download never reached the service worker/);
+    expect(result).toMatch(/^rejected: The download didn't start within 10 s/);
   });
 }
 

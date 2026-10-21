@@ -19,7 +19,7 @@ import {
   decryptedFileName,
   expectedKaoType,
 } from './fileNames.js';
-import { canSaveAs, toFile } from './downloadSink.js';
+import { canSaveAs, DownloadError, toFile } from './downloadSink.js';
 
 const oidcClient = new OidcClient(config.oidc.host, config.oidc.clientId, 'otdf-sample-web-app');
 
@@ -143,6 +143,11 @@ function fileNameFor(inputSource: InputSource) {
   const { pathname } = inputSource.url;
   const i = pathname.lastIndexOf('/');
   return pathname.slice(i + 1);
+}
+
+// The SDK can have succeeded when only saving its output failed.
+function failureLabel(e: unknown, type: 'Encrypt' | 'Decrypt') {
+  return e instanceof DownloadError ? `${type}ed, but saving failed` : `${type} Failed`;
 }
 
 function drain() {
@@ -509,7 +514,9 @@ function App() {
       }
       setDownloadState('✍️ Encrypt Complete');
     } catch (e) {
-      setDownloadState(`Encrypt Failed: ${e instanceof Error ? e.message : String(e)}`);
+      setDownloadState(
+        `${failureLabel(e, 'Encrypt')}: ${e instanceof Error ? e.message : String(e)}`
+      );
       console.error('Encrypt Failed', e);
     }
     setStreamController(undefined);
@@ -610,7 +617,9 @@ function App() {
       );
     } catch (e) {
       console.error('Decrypt Failed', e);
-      setDownloadState(`Decrypt Failed: ${e instanceof Error ? e.message : String(e)}`);
+      setDownloadState(
+        `${failureLabel(e, 'Decrypt')}: ${e instanceof Error ? e.message : String(e)}`
+      );
     }
     setStreamController(undefined);
     return false;
