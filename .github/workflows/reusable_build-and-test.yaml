@@ -329,7 +329,7 @@ jobs:
           go env GOWORK
       - run: docker compose up -d --wait --wait-timeout 240
       - env:
-          PLAYWRIGHT_TESTS_TO_RUN: roundtrip
+          PLAYWRIGHT_TESTS_TO_RUN: roundtrip sink
         run: |-
           ./wait-and-test.sh platform
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 #v7.0.2

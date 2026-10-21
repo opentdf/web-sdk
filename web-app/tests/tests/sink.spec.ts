@@ -121,6 +121,10 @@ async function sampleBrowserMemory(browserName: string) {
 
 const gib = (kib: number) => `${(kib / 2 ** 20).toFixed(2)} GiB`;
 
+// The hook below can wait out a cold worker install, and several tests wait
+// out toFile's 5 s worker or 10 s start timeouts.
+test.describe.configure({ timeout: 30_000 });
+
 test.beforeEach(async ({ page, serviceWorkers }) => {
   page.on('pageerror', (err) => console.error(err));
   await page.goto(appUrl);
@@ -166,7 +170,6 @@ async function blockFrames(page: Page) {
 
 for (const bytes of [2 ** 20, 16 * 2 ** 20]) {
   test(`a blocked download fails instead of hanging (${bytes} bytes)`, async ({ page }) => {
-    test.setTimeout(30_000);
     // Below the worker's 4 MiB queue, every byte fits in it without the
     // browser reading any, so this once reported success with no file; above
     // it, the pipe waited forever for credit.
@@ -190,8 +193,6 @@ test.describe('without a service worker', () => {
   test.use({ serviceWorkers: 'block' });
 
   test('falls back to an in-memory Blob', async ({ page }) => {
-    // toFile waits up to 5 s for a worker before giving up.
-    test.setTimeout(30_000);
     const bytes = 2 ** 20 + 17;
     const downloadPromise = page.waitForEvent('download');
     const strategy = await streamDownload(page, bytes);
