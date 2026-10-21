@@ -1,7 +1,5 @@
 import { clsx } from 'clsx';
 import { useState, useEffect, type ChangeEvent } from 'react';
-import streamsaver from 'streamsaver';
-import { showSaveFilePicker } from 'native-file-system-adapter';
 import './App.css';
 import {
   type Chunker,
@@ -21,19 +19,7 @@ import {
   decryptedFileName,
   expectedKaoType,
 } from './fileNames.js';
-
-async function toFile(
-  stream: ReadableStream<Uint8Array>,
-  filepath = 'download.tdf',
-  options?: StreamPipeOptions
-): Promise<void> {
-  const fileStream = streamsaver.createWriteStream(filepath, {
-    writableStrategy: { highWaterMark: 1 },
-    readableStrategy: { highWaterMark: 1 },
-  });
-
-  return stream.pipeTo(fileStream, options);
-}
+import { canSaveAs, DownloadError, toFile } from './downloadSink.js';
 
 const oidcClient = new OidcClient(config.oidc.host, config.oidc.clientId, 'otdf-sample-web-app');
 
@@ -46,14 +32,13 @@ async function getNewFileHandle(
       {
         description: `${extension} files`,
         accept: {
-          'application/octet-stream': [`.${extension}`],
+          'application/octet-stream': [`.${extension}` as const],
         },
       },
     ],
     suggestedName,
   };
-  //@ts-expect-error //TS2739: not a complete file picker interface
-  return showSaveFilePicker(options);
+  return window.showSaveFilePicker(options);
 }
 
 type CurrentDataController = AbortController | undefined;
@@ -158,6 +143,11 @@ function fileNameFor(inputSource: InputSource) {
   const { pathname } = inputSource.url;
   const i = pathname.lastIndexOf('/');
   return pathname.slice(i + 1);
+}
+
+// The SDK can have succeeded when only saving its output failed.
+function failureLabel(e: unknown, type: 'Encrypt' | 'Decrypt') {
+  return e instanceof DownloadError ? `${type}ed, but saving failed` : `${type} Failed`;
 }
 
 function drain() {
@@ -374,11 +364,20 @@ function App() {
         },
         flush() {
           const d = Date.now() - startTime;
-          console.log(`✍️ ${type} Complete after ${d.toLocaleString()} milliseconds`);
-          setDownloadState(`✍️ ${type} Complete`);
+          console.log(`✍️ ${type}ed output ended after ${d.toLocaleString()} milliseconds`);
+          // The sink may still be saving; the handler reports completion.
+          setDownloadState(`✍️ ${type}ed; finishing...`);
         },
       }),
     };
+  };
+
+  // Appends, so it doesn't hide a wrapping-algorithm warning from the same run.
+  const warnBuffering = (reason: string) => {
+    const warning =
+      `Streaming download unavailable (${reason}), so the whole output is held in memory; ` +
+      'files larger than available memory will fail.';
+    setAlgorithmWarning((previous) => (previous ? `${previous} ${warning}` : warning));
   };
 
   const handleEncrypt = async () => {
@@ -496,11 +495,14 @@ function App() {
     try {
       switch (sinkType) {
         case 'file':
-          await toFile(cipherTextWithProgress, downloadName, { signal: sc.signal });
+          await toFile(cipherTextWithProgress, downloadName, {
+            signal: sc.signal,
+            onFallback: warnBuffering,
+          });
           break;
         case 'fsapi': {
           if (!f) {
-            throw new Error();
+            throw new Error('No file handle from the Save As picker');
           }
           const writable = await f.createWritable();
           await cipherTextWithProgress.pipeTo(writable, { signal: sc.signal });
@@ -510,8 +512,11 @@ function App() {
           await cipherTextWithProgress.pipeTo(drain(), { signal: sc.signal });
           break;
       }
+      setDownloadState('✍️ Encrypt Complete');
     } catch (e) {
-      setDownloadState(`Encrypt Failed: ${e instanceof Error ? e.message : String(e)}`);
+      setDownloadState(
+        `${failureLabel(e, 'Encrypt')}: ${e instanceof Error ? e.message : String(e)}`
+      );
       console.error('Encrypt Failed', e);
     }
     setStreamController(undefined);
@@ -591,11 +596,11 @@ function App() {
         .pipeThrough(progressTransformers.writer);
       switch (sinkType) {
         case 'file':
-          await toFile(plainTextStream, dfn, { signal: sc.signal });
+          await toFile(plainTextStream, dfn, { signal: sc.signal, onFallback: warnBuffering });
           break;
         case 'fsapi': {
           if (!f) {
-            throw new Error();
+            throw new Error('No file handle from the Save As picker');
           }
           const writable = await f.createWritable();
           await plainTextStream.pipeTo(writable, { signal: sc.signal });
@@ -605,13 +610,16 @@ function App() {
           await plainTextStream.pipeTo(drain(), { signal: sc.signal });
           break;
       }
+      setDownloadState('✍️ Decrypt Complete');
       const { fqns: requiredObligations } = await reader.obligations();
       console.log(
         `Found required obligations count: ${requiredObligations.length}. ${requiredObligations.length ?? JSON.stringify(requiredObligations)}`
       );
     } catch (e) {
       console.error('Decrypt Failed', e);
-      setDownloadState(`Decrypt Failed: ${e instanceof Error ? e.message : String(e)}`);
+      setDownloadState(
+        `${failureLabel(e, 'Decrypt')}: ${e instanceof Error ? e.message : String(e)}`
+      );
     }
     setStreamController(undefined);
     return false;
@@ -718,8 +726,14 @@ function App() {
                   value="fsapi"
                   onChange={(e) => setSinkType(e.target.value as SinkType)}
                   checked={sinkType === 'fsapi'}
+                  disabled={!canSaveAs()}
                 />{' '}
-                <label htmlFor="fsapiSink">Save As</label>
+                <label
+                  htmlFor="fsapiSink"
+                  title={canSaveAs() ? undefined : 'This browser has no File System Access API'}
+                >
+                  Save As
+                </label>
                 <br />
                 <input
                   type="radio"
