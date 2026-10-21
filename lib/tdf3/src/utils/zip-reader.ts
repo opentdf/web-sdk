@@ -68,6 +68,15 @@ const INFLATE_READ_SIZE = 1024 * 1024;
  * far inflating can run past an entry's declared size before it is stopped.
  */
 const INFLATE_WRITE_SIZE = 16 * 1024;
+/**
+ * A deflated entry may declare an uncompressed size up to the larger of the
+ * archive's length and this. The inflater never produces more than the declared
+ * size, so this caps the memory a small archive can make it use: deflate expands
+ * up to about 1032:1, and the manifest is buffered whole before it is validated.
+ * A TDF payload is ciphertext, which does not compress, so a genuine one never
+ * declares more than the archive holds.
+ */
+const DEFLATED_SIZE_FLOOR = 10 * 1024 * 1024;
 
 const cp437 =
   '\u0000☺☻♥♦♣♠•◘○◙♂♀♪♫☼►◄↕‼¶§▬↨↑↓→←∟↔▲▼ !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~⌂ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■ ';
@@ -125,6 +134,12 @@ export type EndOfCentralDirectory = {
   centralDirectoryOffset: number;
   /** True if the values above were read from a ZIP64 end of central directory record. */
   zip64: boolean;
+  /**
+   * Length of the archive as its end records lay it out: the central directory,
+   * then the ZIP64 end records if any, then the end of central directory record
+   * and its comment. Exact for archives without padding between those records.
+   */
+  archiveLength: number;
 };
 
 /**
@@ -178,6 +193,14 @@ export class ZipReader {
    * for short reads.
    */
   private dataRegionEnd?: number;
+
+  /**
+   * The archive's length, once {@link getCentralDirectory} has read it (see
+   * {@link EndOfCentralDirectory.archiveLength}). It sets how large a deflated
+   * entry may declare itself; until it is known, only
+   * {@link DEFLATED_SIZE_FLOOR} applies.
+   */
+  private archiveLength?: number;
 
   constructor(getChunk: Chunker) {
     this.getChunk = getChunk;
@@ -257,6 +280,7 @@ export class ZipReader {
       false
     );
     this.dataRegionEnd = eocd.centralDirectoryOffset;
+    this.archiveLength = eocd.archiveLength;
 
     const cdParsedBuffers = this.getCDBuffers(cdChunk, eocd.entryCount).map((buffer) =>
       parseCDBuffer(buffer, eocd.zip64)
@@ -325,7 +349,20 @@ export class ZipReader {
       );
     }
 
-    return { entryCount, centralDirectorySize, centralDirectoryOffset, zip64: needsZip64 };
+    const archiveLength =
+      centralDirectoryOffset +
+      centralDirectorySize +
+      (needsZip64
+        ? ZIP64_END_OF_CENTRAL_DIRECTORY_RECORD_SIZE + ZIP64_END_OF_CENTRAL_DIRECTORY_LOCATOR_SIZE
+        : 0) +
+      (tail.length - eocdrOffset);
+    return {
+      entryCount,
+      centralDirectorySize,
+      centralDirectoryOffset,
+      zip64: needsZip64,
+      archiveLength,
+    };
   }
 
   /**
@@ -335,7 +372,7 @@ export class ZipReader {
   private async getZip64EndOfCentralDirectory(
     tail: Uint8Array,
     eocdrOffset: number
-  ): Promise<Omit<EndOfCentralDirectory, 'zip64'>> {
+  ): Promise<Omit<EndOfCentralDirectory, 'zip64' | 'archiveLength'>> {
     const locatorOffset = eocdrOffset - ZIP64_END_OF_CENTRAL_DIRECTORY_LOCATOR_SIZE;
     if (locatorOffset < 0 || readUInt32LE(tail, locatorOffset) !== ZIP64_EOCDL_SIGNATURE) {
       throw new InvalidFileError(
@@ -378,7 +415,8 @@ export class ZipReader {
     }
     let manifest: Uint8Array;
     if (supportedCompressionMethod(cdObj) === COMPRESSION_METHOD_DEFLATED) {
-      // Bounded, like a stored manifest, by its declared uncompressed size.
+      // Bounded by its declared uncompressed size, which entryReader has
+      // capped (see DEFLATED_SIZE_FLOOR).
       const entry = this.entryReader(cdObj);
       try {
         manifest = await entry.read(0, cdObj.uncompressedSize);
@@ -425,11 +463,11 @@ export class ZipReader {
     // the manifest read (by uncompressed size) and the data bound (by compressed
     // size) would disagree about where the entry ends. A deflated entry's
     // compressed size bounds the bytes read from the archive, and its
-    // uncompressed size is exactly what they must inflate to.
-    if (
-      supportedCompressionMethod(cdObj) === COMPRESSION_METHOD_STORED &&
-      cdObj.compressedSize !== cdObj.uncompressedSize
-    ) {
+    // uncompressed size is exactly what they must inflate to, so it is capped
+    // here, before any of the entry is read.
+    if (supportedCompressionMethod(cdObj) === COMPRESSION_METHOD_DEFLATED) {
+      this.checkDeclaredInflatedSize(cdObj);
+    } else if (cdObj.compressedSize !== cdObj.uncompressedSize) {
       throw new InvalidFileError(
         `stored entry [${cdObj.fileName}] has compressed size [${cdObj.compressedSize}] but uncompressed size [${cdObj.uncompressedSize}]`
       );
@@ -485,6 +523,8 @@ export class ZipReader {
     const { fileName } = cdObj;
     const dataStart = cdObj.relativeOffsetOfLocalHeader + cdObj.headerLength;
     if (supportedCompressionMethod(cdObj) === COMPRESSION_METHOD_DEFLATED) {
+      // Again here, for a central directory passed in without adjustHeaders.
+      this.checkDeclaredInflatedSize(cdObj);
       return new InflatingEntryReader(
         (start, end) =>
           this.readRange(dataStart + start, dataStart + end, `compressed entry [${fileName}]`),
@@ -501,6 +541,21 @@ export class ZipReader {
       finish: () => Promise.resolve(),
       close: () => undefined,
     };
+  }
+
+  /**
+   * Rejects a deflated entry that declares an uncompressed size larger than the
+   * larger of the archive's length and {@link DEFLATED_SIZE_FLOOR}.
+   */
+  private checkDeclaredInflatedSize(cdObj: CentralDirectory) {
+    const limit = Math.max(this.archiveLength ?? 0, DEFLATED_SIZE_FLOOR);
+    if (cdObj.uncompressedSize > limit) {
+      const archiveLength =
+        this.archiveLength === undefined ? '(unknown)' : `[${this.archiveLength}]`;
+      throw new InvalidFileError(
+        `deflated entry [${cdObj.fileName}] declares uncompressed size [${cdObj.uncompressedSize}], over the limit [${limit}]: the larger of the archive length ${archiveLength} and [${DEFLATED_SIZE_FLOOR}]`
+      );
+    }
   }
 
   /**
@@ -639,7 +694,9 @@ type Inflation = {
  * fetched from the archive, and the entry must inflate to exactly its
  * uncompressed size. Inflating stops as soon as the output passes that size, so
  * a small entry cannot inflate to a large one, and buffers grow only with bytes
- * actually inflated, never with a declared size alone.
+ * actually inflated, never with a declared size alone. {@link ZipReader} caps
+ * the declared size itself before opening the entry (see
+ * {@link DEFLATED_SIZE_FLOOR}).
  *
  * The CRC-32 is not checked, just as it is not for stored entries. It is no
  * defense against tampering, since anyone can recompute it. A TDF's integrity

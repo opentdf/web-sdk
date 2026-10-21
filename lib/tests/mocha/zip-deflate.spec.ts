@@ -32,6 +32,12 @@ const DEFLATED = 8;
 const SPEC_MANIFEST = 'manifest.json';
 const OFFSPEC_MANIFEST = '0.manifest.json';
 const PAYLOAD = '0.payload';
+/**
+ * A deflated entry may declare an uncompressed size up to the larger of the
+ * archive's length and this. Spelled out rather than imported, so the tests
+ * notice if it changes.
+ */
+const DEFLATED_SIZE_FLOOR = 10 * 1024 * 1024;
 
 const authProvider: AuthProvider = {
   updateClientPublicKey: async () => {},
@@ -292,6 +298,20 @@ function dataRange(cd: CentralDirectory): [number, number] {
   return [start, start + cd.compressedSize];
 }
 
+/**
+ * Where each entry's data sits in the archive `buildZip` writes for `entries`
+ * without zip64, worked out from the layout rather than read back, for archives
+ * the reader refuses to open.
+ */
+function dataRangesOf(entries: FixtureEntry[]): Array<[number, number]> {
+  let offset = 0;
+  return entries.map(({ fileName, data }) => {
+    const start = offset + 30 + new TextEncoder().encode(fileName).length;
+    offset = start + data.length;
+    return [start, offset];
+  });
+}
+
 function captureUnhandledRejections() {
   const reasons: unknown[] = [];
   const onNode = (reason: unknown) => reasons.push(reason);
@@ -497,6 +517,71 @@ describe('deflate-compressed zip entries', function () {
       assert.instanceOf(failure, NetworkError);
       assert.isEmpty(unhandled.reasons, 'a failed decrypt must not leak rejections');
     });
+
+    it('rejects a tiny archive whose deflated manifest declares more than 10 MiB, before reading entry data', async function () {
+      const contents = await contentsOf(tdf);
+      // A real manifest, padded with an extra field so it inflates past the
+      // floor. It compresses to almost nothing.
+      const manifest = JSON.parse(new TextDecoder().decode(contents.manifest)) as Record<
+        string,
+        unknown
+      >;
+      manifest.padding = ' '.repeat(DEFLATED_SIZE_FLOOR);
+      const entries = [
+        storedEntry(PAYLOAD, contents.payload),
+        await deflatedEntry(OFFSPEC_MANIFEST, new TextEncoder().encode(JSON.stringify(manifest))),
+      ];
+      const archive = buildZip(entries);
+      assert.isBelow(archive.length, 1024 * 1024);
+      assert.isAbove(entries[1].uncompressedSize, DEFLATED_SIZE_FLOOR);
+
+      const { chunker, reads } = recording(archive);
+      await assertInvalidFile(
+        decrypt(client, chunker),
+        new RegExp(
+          `deflated entry \\[0\\.manifest\\.json\\] declares uncompressed size \\[${entries[1].uncompressedSize}\\], over the limit \\[${DEFLATED_SIZE_FLOOR}\\]`
+        )
+      );
+      for (const [start, end] of dataRangesOf(entries)) {
+        for (const [s, e] of reads) {
+          assert.isFalse(s < end && e > start, `read [${s}, ${e}) overlaps entry data`);
+        }
+      }
+    });
+
+    it('rejects a deflated payload that declares more than the limit', async function () {
+      const contents = await contentsOf(tdf);
+      const payload = await deflatedEntry(PAYLOAD, contents.payload);
+      const manifest = storedEntry(OFFSPEC_MANIFEST, contents.manifest);
+      const archiveDeclaring = (uncompressedSize: number) =>
+        buildZip([{ ...payload, uncompressedSize }, manifest]);
+
+      // Exactly at the limit is allowed by the central directory; it fails
+      // later, on its real size.
+      await centralDirectoryOf(archiveDeclaring(DEFLATED_SIZE_FLOOR));
+      await assertInvalidFile(
+        decrypt(client, archiveDeclaring(DEFLATED_SIZE_FLOOR + 1)),
+        new RegExp(
+          `deflated entry \\[0\\.payload\\] declares uncompressed size \\[${DEFLATED_SIZE_FLOOR + 1}\\], over the limit \\[${DEFLATED_SIZE_FLOOR}\\]`
+        )
+      );
+    });
+  });
+
+  describe('a deflated payload larger than 10 MiB', function () {
+    it('decrypts, since the limit grows with the archive', async function () {
+      this.timeout(60_000);
+      // Ciphertext does not compress, so the compressed entry, and so the
+      // archive, is larger than the payload it inflates to.
+      const plaintext = patterned(DEFLATED_SIZE_FLOOR + 512 * 1024);
+      const archive = await rebuild(await encrypt(client, plaintext));
+      const payloadRecord = (await centralDirectoryOf(archive)).find(
+        ({ fileName }) => fileName === PAYLOAD
+      )!;
+      assert.isAbove(payloadRecord.uncompressedSize, DEFLATED_SIZE_FLOOR);
+      assert.isBelow(payloadRecord.uncompressedSize, archive.length);
+      assert.deepEqual(await decrypt(client, archive), plaintext);
+    });
   });
 
   describe('a payload larger than one compressed read', function () {
@@ -633,6 +718,29 @@ describe('deflate-compressed zip entries', function () {
         .filter(([s]) => s >= start && s < end)
         .reduce((n, [s, e]) => n + (e - s), 0);
       assert.isBelow(fetched, end - start, 'reading stopped before the end of the entry');
+    });
+
+    it('checks the limit on a central directory passed in without validation', async function () {
+      const archive = buildZip([await deflatedEntry(PAYLOAD, patterned(5000))]);
+      const { reader, centralDirectory } = await readerFor(archive);
+      const lying = centralDirectory.map((cd) => ({
+        ...cd,
+        uncompressedSize: DEFLATED_SIZE_FLOOR + 1,
+      }));
+      await assertInvalidFile(
+        reader.getPayloadSegment(lying, PAYLOAD, 0, 10),
+        new RegExp(
+          `over the limit \\[${DEFLATED_SIZE_FLOOR}\\]: the larger of the archive length \\[${archive.length}\\]`
+        )
+      );
+      // A reader that never read the central directory does not know the
+      // archive length, so only the floor applies.
+      const fresh = new ZipReader(fromBuffer(archive));
+      assert.throws(
+        () => fresh.openEntry(lying, PAYLOAD),
+        InvalidFileError,
+        /archive length \(unknown\)/
+      );
     });
 
     it('rejects a zip bomb without inflating it', async function () {
