@@ -57,6 +57,13 @@ class PortSource {
           console.warn(`download worker: unknown message type ${data?.type}`);
       }
     };
+    // A chunk that can't be deserialized is lost, and the page has already
+    // spent its credit on it; fail rather than save a file with a hole in it.
+    this.port.onmessageerror = () => {
+      const error = new Error('a message from the page could not be read');
+      controller.error(error);
+      this.cancel(error.message);
+    };
   }
 
   pull() {

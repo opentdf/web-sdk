@@ -193,6 +193,8 @@ class PortSink implements UnderlyingSink<Uint8Array> {
       }
       this.#wake?.();
     };
+    port1.onmessageerror = () =>
+      this.#fail(new Error('A message from the download worker could not be read'));
   }
 
   start(controller: WritableStreamDefaultController) {
