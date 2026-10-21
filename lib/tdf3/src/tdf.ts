@@ -67,7 +67,7 @@ import {
 } from './models/index.js';
 import { unsigned } from './utils/buffer-crc32.js';
 import { ZipReader, ZipWriter, buffToString, toArrayBuffer } from './utils/index.js';
-import type { CentralDirectory } from './utils/zip-reader.js';
+import type { CentralDirectory, ZipEntryReader } from './utils/zip-reader.js';
 import { derivePrefetchWindow } from './utils/prefetch-window.js';
 import { getZtdfSalt } from './crypto/salt.js';
 import { decodeKemEnvelopeDer } from './crypto/core/mlkem-asn1.js';
@@ -1372,6 +1372,13 @@ async function decryptChunk(
   return await cipher.decrypt(encryptedChunk, reconstructedKey);
 }
 
+/** Reports a failed payload read as a bad file, an unsupported one, or else a failed fetch. */
+function asPayloadReadError(error: unknown, message: string): Error {
+  return error instanceof InvalidFileError || error instanceof UnsupportedError
+    ? error
+    : new NetworkError(message, asError(error));
+}
+
 function asDecryptError(error: unknown, fallbackMessage: string): Error {
   if (error instanceof Error) {
     return error;
@@ -1380,8 +1387,7 @@ function asDecryptError(error: unknown, fallbackMessage: string): Error {
 }
 
 async function fetchAndDecryptChunkSlice({
-  centralDirectory,
-  zipReader,
+  payload,
   reconstructedKey,
   cipher,
   segmentIntegrityAlgorithm,
@@ -1389,8 +1395,8 @@ async function fetchAndDecryptChunkSlice({
   specVersion,
   slice,
 }: {
-  centralDirectory: CentralDirectory[];
-  zipReader: ZipReader;
+  /** Opens the payload entry, or returns the reader already open. */
+  payload: () => ZipEntryReader;
   reconstructedKey: SymmetricKey;
   cipher: SymmetricCipher;
   segmentIntegrityAlgorithm: SegmentIntegrityAlgorithm;
@@ -1405,16 +1411,9 @@ async function fetchAndDecryptChunkSlice({
     0
   );
   try {
-    buffer = await zipReader.getPayloadSegment(
-      centralDirectory,
-      '0.payload',
-      firstChunk.encryptedOffset,
-      bufferSize
-    );
+    buffer = await payload().read(firstChunk.encryptedOffset, bufferSize);
   } catch (error) {
-    throw error instanceof InvalidFileError
-      ? error
-      : new NetworkError('unable to fetch payload segment', asError(error));
+    throw asPayloadReadError(error, 'unable to fetch payload segment');
   }
 
   try {
@@ -1723,13 +1722,19 @@ export async function decryptStreamFrom(
   // valid here; only unknown ones are rejected.
   const segmentIntegrityAlg = asSegmentIntegrityAlgorithm(segmentHashAlg || rootIntegrityAlgorithm);
 
+  // Every batch reads through this one reader. Batches still fetch and decrypt
+  // concurrently, but a deflated payload can only be inflated front to back, so
+  // its reader serves their reads one at a time, in order, from a single
+  // sequential pass over the compressed entry rather than parallel range reads.
+  // Opened by the first batch, so a TDF with no segments never touches it.
+  let payload: ZipEntryReader | undefined;
+  const openPayload = () => (payload ??= zipReader.openEntry(centralDirectory, '0.payload'));
   const batches = prefetchSegmentBatches({
     chunks,
     ...schedulerOptions,
     fetchBatch: (slice) =>
       fetchAndDecryptChunkSlice({
-        centralDirectory,
-        zipReader,
+        payload: openPayload,
         reconstructedKey: keyForDecryption,
         cipher,
         segmentIntegrityAlgorithm: segmentIntegrityAlg,
@@ -1748,6 +1753,13 @@ export async function decryptStreamFrom(
       if (!draining.length) {
         const { done, value: batch } = await batches.read();
         if (done) {
+          // A deflated payload must inflate to exactly its declared size,
+          // including any bytes after the last segment.
+          try {
+            await payload?.finish();
+          } catch (error) {
+            throw asPayloadReadError(error, 'unable to fetch payload');
+          }
           controller.close();
           return;
         }
@@ -1760,6 +1772,7 @@ export async function decryptStreamFrom(
         } catch (e) {
           // Drop the queued batches and stop fetching more.
           batches.cancel(e).catch(() => undefined);
+          payload?.close();
           throw e;
         }
       }
@@ -1769,7 +1782,10 @@ export async function decryptStreamFrom(
       progress += encryptedSegmentSize;
       cfg.progressHandler?.(progress);
     },
-    cancel: (reason: unknown) => batches.cancel(reason),
+    cancel: (reason: unknown) => {
+      payload?.close();
+      return batches.cancel(reason);
+    },
     ...(cfg.fileStreamServiceWorker && { fileStreamServiceWorker: cfg.fileStreamServiceWorker }),
   };
 
