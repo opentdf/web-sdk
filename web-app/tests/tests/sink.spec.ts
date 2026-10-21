@@ -145,6 +145,17 @@ test('streams a download through the service worker', async ({ page }) => {
   expect(strategy).toBe('service-worker');
 });
 
+test('a download that outlasts the start timeout completes', async ({ page }) => {
+  // Paced past toFile's 10 s start timeout, so this fails if the worker stops
+  // reporting that the download started.
+  const bytes = 12 * 2 ** 20;
+  const downloadPromise = page.waitForEvent('download');
+  const strategy = await streamDownload(page, bytes, { mibps: 1 });
+  const download = await downloadPromise;
+  await expectPattern(await downloadPath(download), bytes);
+  expect(strategy).toBe('service-worker');
+});
+
 test('an abort fails the download instead of truncating it', async ({ page, browserName }) => {
   // Firefox does error the download, but Playwright's Firefox never settles
   // download.failure() for it.
