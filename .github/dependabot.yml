@@ -3,28 +3,67 @@ updates:
   - package-ecosystem: npm
     directory: /lib
     schedule:
-      interval: daily
+      interval: weekly
+    # Version updates only; security updates are not delayed.
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: 'fix(sdk):'
       prefix-development: 'chore(sdk):'
+    ignore:
+      # Track the Node major in .nvmrc
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+    # Production deps and majors stay as individual PRs so `fix(sdk):` releases are reviewable.
+    groups:
+      dev-security:
+        applies-to: security-updates
+        dependency-type: development
+        patterns: ['*']
+      dev-minor-patch:
+        dependency-type: development
+        update-types: [minor, patch]
   - package-ecosystem: npm
     directory: /cli
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: 'fix(cli):'
       prefix-development: 'chore(cli):'
+    ignore:
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+    groups:
+      security:
+        applies-to: security-updates
+        patterns: ['*']
+      dev-minor-patch:
+        dependency-type: development
+        update-types: [minor, patch]
   - package-ecosystem: npm
     directories:
       - /web-app
       - /web-app/tests
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: 'chore(docs):'
+    groups:
+      security:
+        applies-to: security-updates
+        patterns: ['*']
+      minor-patch:
+        update-types: [minor, patch]
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
     commit-message:
       prefix: 'chore(ci):'
+    groups:
+      actions-minor-patch:
+        update-types: [minor, patch]
