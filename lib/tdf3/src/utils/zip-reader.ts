@@ -1,4 +1,3 @@
-import { unsigned } from './buffer-crc32.js';
 import { InvalidFileError } from '../../../src/errors.js';
 import { type Chunker } from '../../../src/seekable.js';
 import type { Manifest } from '../models/index.js';
@@ -402,44 +401,6 @@ export class ZipReader {
         `entry [${cdObj.fileName}] of [${cdObj.compressedSize}] bytes at [${cdObj.relativeOffsetOfLocalHeader}] extends past the start of the central directory`
       );
     }
-  }
-
-  /** Read a stored entry in bounded chunks and verify its ZIP CRC (not authentication). */
-  async validateEntry(entry: CentralDirectory): Promise<void> {
-    if (this.dataRegionEnd === undefined) {
-      throw new InvalidFileError('Read the central directory before validating entries');
-    }
-    const header = await this.readRange(
-      entry.relativeOffsetOfLocalHeader,
-      entry.relativeOffsetOfLocalHeader + entry.headerLength,
-      `local header [${entry.fileName}]`
-    );
-    const localName = bufferToString(
-      header,
-      LOCAL_FILE_HEADER_FIXED_SIZE,
-      LOCAL_FILE_HEADER_FIXED_SIZE + readUInt16LE(header, 26),
-      !!(readUInt16LE(header, 6) & 0x800)
-    );
-    if (
-      localName !== entry.fileName ||
-      readUInt16LE(header, 8) !== entry.compressionMethod ||
-      (readUInt16LE(header, 6) & 1) !== 0 ||
-      (entry.generalPurposeBitFlag & 1) !== 0
-    ) {
-      throw new InvalidFileError(`Inconsistent or encrypted ZIP entry [${entry.fileName}]`);
-    }
-    const start = entry.relativeOffsetOfLocalHeader + entry.headerLength;
-    let crc = 0;
-    for (let offset = 0; offset < entry.compressedSize; offset += 1024 * 1024) {
-      const bytes = await this.readRange(
-        start + offset,
-        start + Math.min(offset + 1024 * 1024, entry.compressedSize),
-        `entry [${entry.fileName}]`
-      );
-      crc = unsigned(bytes, crc);
-    }
-    if (crc !== entry.crc32)
-      throw new InvalidFileError(`ZIP checksum mismatch for [${entry.fileName}]`);
   }
 
   async getPayloadSegment(

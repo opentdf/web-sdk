@@ -84,10 +84,12 @@ const client = new OpenTDF({
 });
 ```
 
-## Validate an existing encrypted TDF
+## Validate an existing TDF
 
-Use `validateTdf` to check an existing encrypted TDF before storing or forwarding it. It accepts a
-`Uint8Array` or browser `Blob` and returns the parsed manifest:
+Use `validateTdf` before storing or forwarding a TDF. Like the Go SDK's
+`IsValidTdf`, it opens the archive, reads the manifest, and validates it against the
+lax manifest schema. It accepts a `Uint8Array` or browser `Blob` and returns the
+parsed manifest:
 
 ```typescript
 import { validateTdf } from '@opentdf/sdk';
@@ -96,12 +98,7 @@ const manifest = await validateTdf(new Uint8Array(await file.arrayBuffer()));
 console.log(manifest.payload.mimeType);
 ```
 
-Validation checks archive bounds, duplicate and overlapping entries, the referenced payload,
-encryption and segment declarations, payload length, and the manifest and payload ZIP checksums. It
-supports stored ZIP entries with `manifest.json` or the legacy `0.manifest.json` name. It reads the
-entire payload in bounded chunks; the manifest is decoded in memory. It does not initialize a client
-or contact KAS.
-
-ZIP checksums detect accidental corruption, not tampering. A successful result is not proof of
-decryptability, cryptographic integrity, authorization, or compliance with a service's policy
-requirements. Those checks remain with decryption and the receiving service.
+Validation does not initialize a client or contact KAS. It does not check the
+referenced payload's existence, length, checksums, or cryptographic integrity.
+A successful result does not establish decryptability, authorization, or compliance
+with a service's policy requirements.
