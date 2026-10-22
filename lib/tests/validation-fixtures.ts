@@ -34,7 +34,7 @@ function concat(chunks: Uint8Array[]): Uint8Array {
   return out;
 }
 
-/** Duplicate-manifest archives exported byte-for-byte to the Go verifier. */
+/** Archive edge cases exported byte-for-byte to the Go verifier. */
 export function archiveParityCases(): {
   name: string;
   bytes: Uint8Array;
@@ -43,7 +43,7 @@ export function archiveParityCases(): {
 }[] {
   const good = manifestCases[0].manifest;
   const encode = (value: unknown) => new TextEncoder().encode(JSON.stringify(value));
-  return ['manifest.json', '0.manifest.json'].flatMap((name) =>
+  const duplicates = ['manifest.json', '0.manifest.json'].flatMap((name) =>
     [false, true].map((validLast) => ({
       name: `duplicate ${name}: ${validLast ? 'valid' : 'invalid'} last entry wins`,
       bytes: archive([
@@ -54,4 +54,10 @@ export function archiveParityCases(): {
       expected: validLast ? good : undefined,
     }))
   );
+  const bomCases = ['manifest.json', '0.manifest.json'].map((name) => ({
+    name: `UTF-8 BOM in ${name}`,
+    bytes: archive([{ name, data: concat([new Uint8Array([0xef, 0xbb, 0xbf]), encode(good)]) }]),
+    valid: false,
+  }));
+  return [...duplicates, ...bomCases];
 }

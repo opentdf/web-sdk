@@ -337,7 +337,8 @@ export class ZipReader {
 
     let text: string;
     try {
-      text = new TextDecoder().decode(manifest);
+      // Preserve a leading BOM so JSON.parse rejects it, matching Go's JSON reader.
+      text = new TextDecoder('utf-8', { ignoreBOM: true }).decode(manifest);
     } catch (e) {
       throw new InvalidFileError(
         `manifest [${manifestFileName}] of [${manifest.length}] bytes is too large to decode`,

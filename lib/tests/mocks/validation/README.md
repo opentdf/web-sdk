@@ -3,7 +3,7 @@
 `manifest-cases.ts` records 42 acceptance and rejection cases for the lax schema used by Go's
 `IsValidTdf`. Node and browser tests import the same module without filesystem access.
 `archiveParityCases()` adds four duplicate-manifest archives covering both supported names and both
-entry orders.
+entry orders, plus two BOM-prefixed manifest archives that must be rejected.
 
 To compare byte-identical archives with Go, first export the TypeScript fixtures:
 
