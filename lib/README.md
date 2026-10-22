@@ -95,10 +95,14 @@ parsed manifest:
 import { validateTdf } from '@opentdf/sdk';
 
 const manifest = await validateTdf(new Uint8Array(await file.arrayBuffer()));
-console.log(manifest.payload.mimeType);
+console.log(manifest);
 ```
 
 Validation does not initialize a client or contact KAS. It does not check the
 referenced payload's existence, length, checksums, or cryptographic integrity.
 A successful result does not establish decryptability, authorization, or compliance
 with a service's policy requirements.
+
+The result is a record with unknown fields, not the complete `Manifest` type:
+the lax schema intentionally permits absent fields. Check any fields your
+application needs before using them. Schema validation loads only when called.

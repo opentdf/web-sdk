@@ -1,19 +1,11 @@
 import { expect } from '@esm-bundle/chai';
 import { validateTdf, InvalidFileError } from '../../src/index.js';
 import { archive } from '../validation-fixtures.js';
+import cases from '../mocks/validation/manifest-cases.js';
 
 describe('validateTdf in a browser', () => {
   for (const sourceType of ['bytes', 'Blob']) {
     it(`matches the Go manifest corpus with ${sourceType}`, async () => {
-      const response = await fetch(
-        new URL('../mocks/validation/manifest-cases.json', import.meta.url)
-      );
-      expect(response.ok).to.equal(true);
-      const cases = (await response.json()) as {
-        name: string;
-        manifest: unknown;
-        valid: boolean;
-      }[];
       for (const test of cases) {
         const bytes = archive([
           {

@@ -1,5 +1,6 @@
 import { ZipWriter } from '../tdf3/src/utils/zip-writer.js';
 import { unsigned } from '../tdf3/src/utils/buffer-crc32.js';
+import manifestCases from './mocks/validation/manifest-cases.js';
 
 type Entry = { name: string; data: Uint8Array };
 export function archive(entries: Entry[], zip64 = true): Uint8Array {
@@ -31,4 +32,26 @@ function concat(chunks: Uint8Array[]): Uint8Array {
     offset += chunk.length;
   }
   return out;
+}
+
+/** Duplicate-manifest archives exported byte-for-byte to the Go verifier. */
+export function archiveParityCases(): {
+  name: string;
+  bytes: Uint8Array;
+  valid: boolean;
+  expected?: unknown;
+}[] {
+  const good = manifestCases[0].manifest;
+  const encode = (value: unknown) => new TextEncoder().encode(JSON.stringify(value));
+  return ['manifest.json', '0.manifest.json'].flatMap((name) =>
+    [false, true].map((validLast) => ({
+      name: `duplicate ${name}: ${validLast ? 'valid' : 'invalid'} last entry wins`,
+      bytes: archive([
+        { name, data: encode(validLast ? {} : good) },
+        { name, data: encode(validLast ? good : {}) },
+      ]),
+      valid: validLast,
+      expected: validLast ? good : undefined,
+    }))
+  );
 }

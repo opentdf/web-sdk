@@ -1,15 +1,10 @@
 import { expect } from 'chai';
-import { readFileSync } from 'node:fs';
 import { validateTdf } from '../../../src/validation.js';
 import { InvalidFileError } from '../../../src/errors.js';
-import { archive } from '../../validation-fixtures.js';
+import { archive, archiveParityCases } from '../../validation-fixtures.js';
+import cases from '../../mocks/validation/manifest-cases.js';
 
 const json = (value: unknown) => new TextEncoder().encode(JSON.stringify(value));
-const cases = JSON.parse(readFileSync('tests/mocks/validation/manifest-cases.json', 'utf8')) as {
-  name: string;
-  manifest: unknown;
-  valid: boolean;
-}[];
 
 async function rejects(bytes: Uint8Array): Promise<void> {
   try {
@@ -29,6 +24,12 @@ describe('validateTdf Go lax-schema parity', () => {
       if (!test.valid) return rejects(bytes);
       expect(await validateTdf(bytes)).to.deep.equal(test.manifest);
       expect(await validateTdf(new Blob([new Uint8Array(bytes)]))).to.deep.equal(test.manifest);
+    });
+  }
+  for (const test of archiveParityCases()) {
+    it(test.name, async () => {
+      if (!test.valid) return rejects(test.bytes);
+      expect(await validateTdf(test.bytes)).to.deep.equal(test.expected);
     });
   }
   for (const zip64 of [false, true]) {
