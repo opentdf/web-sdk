@@ -86,16 +86,17 @@ const client = new OpenTDF({
 
 ## Validate an existing TDF
 
-Use `validateTdf` before storing or forwarding a TDF. Like the Go SDK's
+Use `isValidTdf` before storing or forwarding a TDF. Like the Go SDK's
 `IsValidTdf`, it opens the archive, reads the manifest, and validates it against the
-lax manifest schema. It accepts a `Uint8Array` or browser `Blob` and returns the
-parsed manifest:
+lax manifest schema. It accepts a `Uint8Array` or browser `Blob` and returns
+a boolean:
 
 ```typescript
-import { validateTdf } from '@opentdf/sdk';
+import { isValidTdf } from '@opentdf/sdk';
 
-const manifest = await validateTdf(new Uint8Array(await file.arrayBuffer()));
-console.log(manifest);
+if (!(await isValidTdf(new Uint8Array(await file.arrayBuffer())))) {
+  throw new Error('Invalid TDF');
+}
 ```
 
 Validation does not initialize a client or contact KAS. It does not check the
@@ -103,6 +104,5 @@ referenced payload's existence, length, checksums, or cryptographic integrity.
 A successful result does not establish decryptability, authorization, or compliance
 with a service's policy requirements.
 
-The result is a record with unknown fields, not the complete `Manifest` type:
-the lax schema intentionally permits absent fields. Check any fields your
-application needs before using them. Schema validation loads only when called.
+Invalid archives or manifests return `false`. Unexpected errors, including source
+read failures, reject the promise. Schema validation loads only when called.
