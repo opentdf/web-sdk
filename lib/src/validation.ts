@@ -4,8 +4,8 @@ import { loadTDFStream, manifestEntryName } from '../tdf3/src/tdf.js';
 import type { Manifest } from '../tdf3/src/models/manifest.js';
 
 /**
- * Validate a local encrypted ZIP TDF before storing or forwarding it.
- * Checks ZIP/ZIP64 bounds, unambiguous stored entries, payload references,
+ * Validate an existing encrypted TDF before storing or forwarding it.
+ * Checks archive bounds, unambiguous stored entries, payload references,
  * encrypted segment lengths, readable bytes, and ZIP CRCs. Payload buffers are
  * bounded; the manifest is decoded in memory. No KAS or network access occurs.
  * Returns the parsed manifest for metadata extraction.

@@ -6,8 +6,7 @@ This project presents client code to write and read OpenTDF data formats.
 
 ### With Interceptors (Recommended)
 
-Use interceptors to provide authentication. The SDK does not manage tokens — you bring your own
-auth.
+Use interceptors to provide authentication. The SDK does not manage tokens — you bring your own auth.
 
 ```typescript
 import { authTokenInterceptor, OpenTDF } from '@opentdf/sdk';
@@ -31,8 +30,7 @@ const plainText = await client.read({
 console.log(await new Response(plainText).text()); // "hello, world"
 ```
 
-The `authTokenInterceptor` takes a function that returns an access token. Your auth library handles
-token refresh, caching, etc.
+The `authTokenInterceptor` takes a function that returns an access token. Your auth library handles token refresh, caching, etc.
 
 For DPoP-bound tokens, use `authTokenDPoPInterceptor`:
 
@@ -88,7 +86,7 @@ const client = new OpenTDF({
 
 ## Validate an existing encrypted TDF
 
-Use `validateTdf` to check a local ZIP/ZIP64 TDF before storing or forwarding it. It accepts a
+Use `validateTdf` to check an existing encrypted TDF before storing or forwarding it. It accepts a
 `Uint8Array` or browser `Blob` and returns the parsed manifest:
 
 ```typescript
