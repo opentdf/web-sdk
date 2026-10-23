@@ -24,6 +24,7 @@ import {
   DecryptError,
   InvalidFileError,
   IntegrityError,
+  IvExhaustionError,
   NetworkError,
   UnsafeUrlError,
   UnsupportedFeatureError as UnsupportedError,
@@ -120,6 +121,48 @@ export function manifestEntryName(centralDirectory: CentralDirectory[]): string 
 }
 
 const HEX_SEMVER_VERSION = '4.2.2';
+
+/**
+ * Most payload segments a writer may encrypt under one data encryption key.
+ *
+ * Each segment is one AES-GCM invocation with a random 96-bit IV (the RBG-based
+ * construction, NIST SP 800-38D §8.2.2). §8.3 caps the total invocations under
+ * one key at 2^32 for that construction. That is a normative "shall", so do not
+ * raise it. At k = 2^32 invocations the IV collision probability is about
+ * k^2 / 2^97 = 2^-33, within §8's 2^-32 requirement. One invocation is set
+ * aside for the key access metadata, which is encrypted under the data key
+ * itself when there is a single key split; that leaves 2^32 - 1 for payload
+ * segments.
+ *
+ * The writer counts per {@link writeStream} call, so this holds per key only
+ * because each write uses a freshly generated key (the default
+ * `keyMiddleware`). A `keyMiddleware` that reuses a key across writes is not
+ * covered: each write starts a fresh count, so the total under that key can
+ * exceed the cap.
+ */
+export const MAX_PAYLOAD_SEGMENTS_PER_KEY = 2 ** 32 - 1;
+
+/**
+ * Checks there is room for one more payload segment encryption, given how many
+ * have already been attempted. Throws {@link IvExhaustionError} before the
+ * segment that would exceed `max` is encrypted.
+ *
+ * @param attempted - segment encryptions already attempted under the key.
+ * @param max - the budget; defaults to {@link MAX_PAYLOAD_SEGMENTS_PER_KEY},
+ *   and is lowered only through the `maxPayloadSegments` test seam.
+ * @returns the attempt count including this segment.
+ */
+export function reservePayloadSegment(
+  attempted: number,
+  max: number = MAX_PAYLOAD_SEGMENTS_PER_KEY
+): number {
+  if (attempted >= max) {
+    throw new IvExhaustionError(
+      `AES-GCM IV space exhausted: refusing to encrypt more than ${max} segments under one key, as NIST SP 800-38D §8.3 limits random-IV invocations per key; use a larger segment size or split the input`
+    );
+  }
+  return attempted + 1;
+}
 
 /**
  * Configuration for TDF3
@@ -280,6 +323,11 @@ export type EncryptConfiguration = {
   assertionConfigs?: AssertionConfig[];
   systemMetadataAssertion?: boolean;
   tdfSpecVersion?: string;
+  /**
+   * @internal Test seam: overrides {@link MAX_PAYLOAD_SEGMENTS_PER_KEY} so the
+   * cap is reachable without encrypting 2^32 segments.
+   */
+  maxPayloadSegments?: number;
 };
 
 export type DecryptConfiguration = {
@@ -588,6 +636,17 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
       `segment size must be a positive integer; got [${cfg.segmentSizeDefault}]`
     );
   }
+  // A test seam: it may lower the §8.3 cap, never raise or disable it.
+  const maxPayloadSegments = cfg.maxPayloadSegments ?? MAX_PAYLOAD_SEGMENTS_PER_KEY;
+  if (
+    !Number.isInteger(maxPayloadSegments) ||
+    maxPayloadSegments < 0 ||
+    maxPayloadSegments > MAX_PAYLOAD_SEGMENTS_PER_KEY
+  ) {
+    throw new ConfigurationError(
+      `maxPayloadSegments must be an integer from 0 to ${MAX_PAYLOAD_SEGMENTS_PER_KEY}; got [${maxPayloadSegments}]`
+    );
+  }
 
   // The guards above are deliberately case-insensitive, so callers may pass user
   // input straight through. Manifests, however, are read back by strict parsers --
@@ -623,6 +682,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
   let bytesProcessed = 0;
   let crcCounter = 0;
   let fileByteCount = 0;
+  let segmentEncryptAttempts = 0;
   let aggregateHash422 = '';
   const segmentHashList: Uint8Array[] = [];
 
@@ -902,6 +962,9 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
   }
 
   async function _encryptAndCountSegment(chunk: Uint8Array) {
+    // Reserve before the IV is drawn, so the count can never trail the real
+    // number of invocations under the key.
+    segmentEncryptAttempts = reservePayloadSegment(segmentEncryptAttempts, maxPayloadSegments);
     // Read once: a `CryptoService` may transfer the buffer below, detaching `chunk`.
     const plaintextLength = chunk.length;
     bytesProcessed += plaintextLength;
