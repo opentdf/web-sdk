@@ -5,7 +5,12 @@ import { InvalidFileError } from '../../../src/errors.js';
 import { encodeArrayBuffer } from '../../../src/encodings/base64.js';
 import { fromBuffer, fromUrl } from '../../../src/seekable.js';
 import type { CentralDirectory } from '../../../tdf3/src/utils/zip-reader.js';
-import { parseCDBuffer, readUInt64LE, ZipReader } from '../../../tdf3/src/utils/zip-reader.js';
+import {
+  findCentralDirectoryEntry,
+  parseCDBuffer,
+  readUInt64LE,
+  ZipReader,
+} from '../../../tdf3/src/utils/zip-reader.js';
 import { ZipWriter, dateToDosDateTime, writeUInt64LE } from '../../../tdf3/src/utils/zip-writer.js';
 
 const CD_SIGNATURE_BYTES = new Uint8Array([0x50, 0x4b, 0x01, 0x02]);
@@ -830,6 +835,65 @@ describe('reader', () => {
           'central directory ended early: found [2] of [3]'
         );
       });
+    });
+  });
+
+  // DSPX-5357: Go keys ZIP entries by name, so the last record wins for every
+  // name. The manifest and the payload must resolve under the same rule, or
+  // decrypt checks one copy's payload against another copy's manifest.
+  describe('duplicate entry names', () => {
+    const manifestA = { payload: { type: 'reference' }, copy: 'A' };
+    const manifestB = { payload: { type: 'reference' }, copy: 'B' };
+    // Different lengths, so a segment read sized for B fails against A's bounds.
+    const payloadA = new Uint8Array([0xa, 0xa, 0xa]);
+    const payloadB = new Uint8Array([0xb, 0xb, 0xb, 0xb, 0xb]);
+    const manifestEntry = (manifest: unknown) => ({
+      name: '0.manifest.json',
+      data: manifestBytes(manifest),
+    });
+    const payloadEntry = (data: Uint8Array) => ({ name: '0.payload', data });
+    const orders: [string, ZipEntry[]][] = [
+      [
+        'manifest first',
+        [
+          manifestEntry(manifestA),
+          payloadEntry(payloadA),
+          manifestEntry(manifestB),
+          payloadEntry(payloadB),
+        ],
+      ],
+      [
+        'payload first, as ZipWriter orders them',
+        [
+          payloadEntry(payloadA),
+          manifestEntry(manifestA),
+          payloadEntry(payloadB),
+          manifestEntry(manifestB),
+        ],
+      ],
+    ];
+
+    for (const zip64 of [false, true]) {
+      for (const [order, entries] of orders) {
+        it(`resolves manifest and payload to the last records (${zip64 ? 'zip64' : 'non-zip64'}, ${order})`, async () => {
+          const reader = new ZipReader(fromBuffer(buildZip(entries, { zip64 })));
+          const centralDirectory = await reader.getCentralDirectory();
+          expect(centralDirectory).to.have.length(4);
+          expect(await reader.getManifest(centralDirectory, '0.manifest.json')).to.eql(manifestB);
+          expect(
+            await reader.getPayloadSegment(centralDirectory, '0.payload', 0, payloadB.length)
+          ).to.eql(payloadB);
+        });
+      }
+    }
+
+    it('findCentralDirectoryEntry returns the last record with the name', () => {
+      const records = ['a', 'b', 'a', 'c'].map(
+        (fileName, index) => ({ fileName, relativeOffsetOfLocalHeader: index }) as CentralDirectory
+      );
+      expect(findCentralDirectoryEntry(records, 'a')?.relativeOffsetOfLocalHeader).to.equal(2);
+      expect(findCentralDirectoryEntry(records, 'c')?.relativeOffsetOfLocalHeader).to.equal(3);
+      expect(findCentralDirectoryEntry(records, 'd')).to.be.undefined;
     });
   });
 

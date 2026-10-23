@@ -77,7 +77,7 @@ function newClient(): Client.Client {
   });
 }
 
-async function encryptToBuffer(client: Client.Client): Promise<Uint8Array> {
+async function encryptToBuffer(client: Client.Client, data = plaintext): Promise<Uint8Array> {
   const encryptionInformation = new SplitKey(new AesGcmCipher(WebCryptoService));
   const key = await encryptionInformation.generateKey();
   const stream = await client.encrypt({
@@ -87,7 +87,7 @@ async function encryptToBuffer(client: Client.Client): Promise<Uint8Array> {
     keyMiddleware: () => Promise.resolve({ keyForEncryption: key, keyForManifest: key }),
     source: new ReadableStream({
       start(controller) {
-        controller.enqueue(plaintext);
+        controller.enqueue(data);
         controller.close();
       },
     }),
@@ -163,7 +163,8 @@ async function entriesOf(buffer: Uint8Array): Promise<ArchiveEntry[]> {
 function buildArchive(entries: ArchiveEntry[], aliases: AliasRecord[] = []): Uint8Array {
   const zipWriter = new ZipWriter();
   const parts: Uint8Array[] = [];
-  const offsets: Record<string, number> = {};
+  // By position, not name: a fixture may repeat a name.
+  const offsets: number[] = [];
   let offset = 0;
 
   for (const { fileName, data, crc32 } of entries) {
@@ -172,28 +173,28 @@ function buildArchive(entries: ArchiveEntry[], aliases: AliasRecord[] = []): Uin
       data,
       zipWriter.writeDataDescriptor(crc32, data.length),
     ];
-    offsets[fileName] = offset;
+    offsets.push(offset);
     parts.push(...chunks);
     offset += chunks.reduce((total, { length }) => total + length, 0);
   }
 
   const records = [
-    ...entries.map(({ fileName, data, crc32 }) => ({
+    ...entries.map(({ fileName, data, crc32 }, index) => ({
       fileName,
       uncompressedSize: data.length,
-      localHeaderOffset: offsets[fileName],
+      localHeaderOffset: offsets[index],
       crc32,
     })),
     ...aliases.map(({ fileName, sameDataAs, uncompressedSize }) => {
-      const aliased = entries.find((e) => e.fileName === sameDataAs);
-      if (!aliased) {
+      const index = entries.findIndex((e) => e.fileName === sameDataAs);
+      if (index < 0) {
         throw new Error(`buildArchive: no entry named ${sameDataAs} to alias`);
       }
       return {
         fileName,
         uncompressedSize,
-        localHeaderOffset: offsets[sameDataAs],
-        crc32: aliased.crc32,
+        localHeaderOffset: offsets[index],
+        crc32: entries[index].crc32,
       };
     }),
   ];
@@ -426,5 +427,48 @@ describe('manifest entry name (platform#3513)', function () {
         'Unable to retrieve CD manifest'
       );
     });
+  });
+
+  /**
+   * DSPX-5357: one archive carrying two complete copies, A then B. Go keys ZIP
+   * entries by name, so the last record wins for every name and Go decrypts B.
+   * The manifest and the payload must resolve under that same rule: a last-wins
+   * manifest with a first-wins payload checks payload A against manifest B and
+   * fails the integrity check.
+   */
+  describe('an archive carrying every entry twice', function () {
+    const plaintextA = new TextEncoder().encode('copy A, written first');
+    const plaintextB = new TextEncoder().encode('copy B, written last');
+    let copyA: ArchiveEntry[];
+    let copyB: ArchiveEntry[];
+
+    beforeEach(async function () {
+      copyA = await entriesOf(await encryptToBuffer(client, plaintextA));
+      copyB = await entriesOf(await encryptToBuffer(client, plaintextB));
+    });
+
+    function manifestFirst(copy: ArchiveEntry[]): ArchiveEntry[] {
+      return [OFFSPEC_NAME, '0.payload'].map((name) => {
+        const found = copy.find(({ fileName }) => fileName === name);
+        if (!found) {
+          throw new Error(`fixture has no ${name} entry`);
+        }
+        return found;
+      });
+    }
+
+    for (const [order, arrange] of [
+      ['manifest first', manifestFirst],
+      ['payload first, as the writer orders them', (copy: ArchiveEntry[]) => copy],
+    ] as const) {
+      it(`decrypts the last copy (${order})`, async function () {
+        const doubled = buildArchive([...arrange(copyA), ...arrange(copyB)]);
+        const names = (await fileNamesOf(doubled)).slice(0, 2);
+        assert.deepEqual(await fileNamesOf(doubled), [...names, ...names]);
+        assert.sameMembers(names, [OFFSPEC_NAME, '0.payload']);
+        const stream = await client.decrypt({ source: { type: 'buffer', location: doubled } });
+        assert.deepEqual(new Uint8Array(await stream.toBuffer()), plaintextB);
+      });
+    }
   });
 });
