@@ -1,5 +1,6 @@
 import { expect } from 'chai';
 import { ConfigurationError } from '../../../src/errors.js';
+import { fromBuffer } from '../../../src/seekable.js';
 import { isValidTdf, loadManifestValidator, validateTdf } from '../../../src/validation.js';
 import { archive, archiveParityCases } from '../../validation-fixtures.js';
 import cases, { experimentalCases } from '../../mocks/validation/manifest-cases.js';
@@ -103,7 +104,6 @@ describe('isValidTdf lax-schema validation', () => {
     ]);
     // Locate opaque payload bytes through the existing archive reader.
     const { loadTDFStream } = await import('../../../tdf3/src/tdf.js');
-    const { fromBuffer } = await import('../../../src/seekable.js');
     const { centralDirectory } = await loadTDFStream(fromBuffer(bytes));
     const payload = centralDirectory.find(({ fileName }) => fileName === '0.payload')!;
     bytes[payload.relativeOffsetOfLocalHeader + payload.headerLength] ^= 1;
@@ -165,6 +165,29 @@ describe('validateTdf', () => {
 });
 
 describe('validateTdf source types', () => {
+  it('reads a Chunker', async () => {
+    const reads: (number | undefined)[][] = [];
+    const bytes = validTdf();
+    const chunker = fromBuffer(bytes);
+    const source = (start?: number, end?: number) => {
+      reads.push([start, end]);
+      return chunker(start, end);
+    };
+    expect(await isValidTdf(source)).to.equal(true);
+    expect(await validateTdf(source)).to.eql({ valid: true });
+    // It reads the tail first and never asks for the whole archive.
+    expect(reads[0][0]).to.be.lessThan(0);
+    expect(reads.every(([start]) => start !== undefined)).to.equal(true);
+  });
+  it('reports an invalid archive read through a Chunker', async () => {
+    const result = await validateTdf(fromBuffer(new TextEncoder().encode('not a ZIP archive')));
+    expect(result).to.deep.include({ valid: false });
+  });
+  it('propagates errors thrown by a Chunker', async () => {
+    const failure = new Error('file changed while reading');
+    const error = await rejectionOf(validateTdf(() => Promise.reject(failure)));
+    expect(error).to.equal(failure);
+  });
   it('reads a Blob-like object that is not a Blob instance', async () => {
     const source = blobLike(new Blob([validTdf()]));
     expect(source).to.not.be.instanceOf(Blob);
@@ -185,7 +208,7 @@ describe('validateTdf source types', () => {
       for (const check of [isValidTdf, validateTdf]) {
         const error = await rejectionOf(check(source as unknown as Uint8Array));
         expect(error).to.be.instanceOf(ConfigurationError);
-        expect((error as Error).message).to.contain('expected a Uint8Array or Blob');
+        expect((error as Error).message).to.contain('expected a Uint8Array, Blob or Chunker');
       }
     });
   }

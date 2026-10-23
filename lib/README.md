@@ -88,10 +88,10 @@ const client = new OpenTDF({
 
 Use `isValidTdf` before storing or forwarding a TDF. It opens the archive, reads the
 manifest, and validates it against the lax manifest schema from the Go SDK, including
-support for experimental `mlkem-wrapped` key access. It accepts a `Uint8Array` or a
-`Blob`, such as a browser `File` (Blobs work in Node too), and returns a boolean. Pass
-a `File` or `Blob` directly: only the end of the archive, its central directory and
-the manifest are read, not the whole file.
+support for experimental `mlkem-wrapped` key access. It accepts a `Uint8Array`, a
+`Blob` such as a browser `File` (Blobs work in Node too), or a `Chunker`, and returns a
+boolean. Pass a `File` or `Blob` directly: only the end of the archive, its central
+directory and the manifest are read, not the whole file.
 
 ```typescript
 import { isValidTdf } from '@opentdf/sdk';
@@ -100,6 +100,10 @@ if (!(await isValidTdf(file))) {
   throw new Error('Invalid TDF');
 }
 ```
+
+In Node, do not use `fs.openAsBlob` for files of 4 GiB or more: Node reports the size
+of a file-backed Blob modulo 2^32, so the wrong bytes are read. Pass a `Chunker` that
+reads the file by position instead, as the `@opentdf/ctl` `validate` command does.
 
 To find out why a TDF was rejected, use `validateTdf`. It resolves to
 `{ valid: true }` or `{ valid: false, reason }`. The reason is meant for logs and
@@ -119,8 +123,8 @@ referenced payload's existence, length, checksums, or cryptographic integrity.
 A successful result does not establish decryptability, authorization, or compliance
 with a service's policy requirements.
 
-Invalid archives or manifests resolve as invalid. A source that is neither a
-`Uint8Array` nor a `Blob` rejects with a `ConfigurationError`. Other unexpected errors,
+Invalid archives or manifests resolve as invalid. A source that is not a `Uint8Array`,
+a `Blob` or a `Chunker` rejects with a `ConfigurationError`. Other unexpected errors,
 including source read failures, also reject the promise. The schema validator is only
 loaded the first time it is needed.
 

@@ -28,6 +28,20 @@ bin/opentdf.mjs \
   decrypt sample.tdf
 ```
 
+### Validate a TDF
+
+`validate` checks that a file is a structurally valid TDF without decrypting it. It needs no
+platform, KAS or OIDC options, and it reads only the end of the file, the central directory
+and the manifest, so it works on files of any size.
+
+```sh
+bin/opentdf.mjs validate sample.tdf
+```
+
+It prints one JSON line to stdout, `{"valid":true}` or `{"valid":false,"reason":"..."}`. The
+exit status is 0 when the file is valid, 3 when it is not, and any other nonzero value when the
+check could not run, for example because the file is missing.
+
 ### References
 
 - [yargs](http://yargs.js.org)
