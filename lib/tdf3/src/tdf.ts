@@ -123,16 +123,14 @@ export function manifestEntryName(centralDirectory: CentralDirectory[]): string 
 const HEX_SEMVER_VERSION = '4.2.2';
 
 /**
- * Most payload segments a writer may encrypt under one data encryption key.
+ * Most AES-GCM invocations a writer may make under one data encryption key.
  *
- * Each segment is one AES-GCM invocation with a random 96-bit IV (the RBG-based
- * construction, NIST SP 800-38D §8.2.2). §8.3 caps the total invocations under
- * one key at 2^32 for that construction. That is a normative "shall", so do not
- * raise it. At k = 2^32 invocations the IV collision probability is about
- * k^2 / 2^97 = 2^-33, within §8's 2^-32 requirement. One invocation is set
- * aside for the key access metadata, which is encrypted under the data key
- * itself when there is a single key split; that leaves 2^32 - 1 for payload
- * segments.
+ * Payload segments and, with a single key split, key access metadata are each
+ * one AES-GCM invocation with a random 96-bit IV (the RBG-based construction,
+ * NIST SP 800-38D §8.2.2). §8.3 caps the total invocations under one key at
+ * 2^32 for that construction. That is a normative "shall", so do not raise it.
+ * At k = 2^32 invocations the IV collision probability is about k^2 / 2^97 =
+ * 2^-33, within §8's 2^-32 requirement.
  *
  * The writer counts per {@link writeStream} call, so this holds per key only
  * because each write uses a freshly generated key (the default
@@ -140,28 +138,39 @@ const HEX_SEMVER_VERSION = '4.2.2';
  * covered: each write starts a fresh count, so the total under that key can
  * exceed the cap.
  */
-export const MAX_PAYLOAD_SEGMENTS_PER_KEY = 2 ** 32 - 1;
+export const MAX_INVOCATIONS_PER_KEY = 2 ** 32;
+
+/**
+ * Most payload segments one write can hold in the usual case: a single key
+ * access object, whose metadata takes one of the {@link MAX_INVOCATIONS_PER_KEY}.
+ * Each extra object sharing the data key takes one more; see
+ * `SplitKey.payloadKeyMetadataInvocations`. Informational: the writer enforces
+ * {@link MAX_INVOCATIONS_PER_KEY}, so with several splits, whose metadata is
+ * not charged, a write can hold up to 2^32 segments.
+ */
+export const MAX_PAYLOAD_SEGMENTS_PER_KEY = MAX_INVOCATIONS_PER_KEY - 1;
 
 /**
  * Checks there is room for one more payload segment encryption, given how many
- * have already been attempted. Throws {@link IvExhaustionError} before the
- * segment that would exceed `max` is encrypted.
+ * invocations the key has already seen (key access metadata included).
+ * Throws {@link IvExhaustionError} before the segment that would exceed `max`
+ * is encrypted.
  *
- * @param attempted - segment encryptions already attempted under the key.
- * @param max - the budget; defaults to {@link MAX_PAYLOAD_SEGMENTS_PER_KEY},
- *   and is lowered only through the `maxPayloadSegments` test seam.
- * @returns the attempt count including this segment.
+ * @param invocations - AES-GCM invocations already made under the key.
+ * @param max - the budget; defaults to {@link MAX_INVOCATIONS_PER_KEY}, and is
+ *   lowered only through the `maxInvocationsPerKey` test seam.
+ * @returns the invocation count including this segment.
  */
 export function reservePayloadSegment(
-  attempted: number,
-  max: number = MAX_PAYLOAD_SEGMENTS_PER_KEY
+  invocations: number,
+  max: number = MAX_INVOCATIONS_PER_KEY
 ): number {
-  if (attempted >= max) {
+  if (invocations >= max) {
     throw new IvExhaustionError(
-      `AES-GCM IV space exhausted: refusing to encrypt more than ${max} segments under one key, as NIST SP 800-38D §8.3 limits random-IV invocations per key; use a larger segment size or split the input`
+      `AES-GCM IV space exhausted: refusing to make more than ${max} encryptions under one key, as NIST SP 800-38D §8.3 limits random-IV invocations per key; use a larger segment size or split the input`
     );
   }
-  return attempted + 1;
+  return invocations + 1;
 }
 
 /**
@@ -324,10 +333,10 @@ export type EncryptConfiguration = {
   systemMetadataAssertion?: boolean;
   tdfSpecVersion?: string;
   /**
-   * @internal Test seam: overrides {@link MAX_PAYLOAD_SEGMENTS_PER_KEY} so the
-   * cap is reachable without encrypting 2^32 segments.
+   * @internal Test seam: overrides {@link MAX_INVOCATIONS_PER_KEY} so the cap
+   * is reachable without encrypting 2^32 segments.
    */
-  maxPayloadSegments?: number;
+  maxInvocationsPerKey?: number;
 };
 
 export type DecryptConfiguration = {
@@ -637,14 +646,14 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
     );
   }
   // A test seam: it may lower the §8.3 cap, never raise or disable it.
-  const maxPayloadSegments = cfg.maxPayloadSegments ?? MAX_PAYLOAD_SEGMENTS_PER_KEY;
+  const maxInvocationsPerKey = cfg.maxInvocationsPerKey ?? MAX_INVOCATIONS_PER_KEY;
   if (
-    !Number.isInteger(maxPayloadSegments) ||
-    maxPayloadSegments < 0 ||
-    maxPayloadSegments > MAX_PAYLOAD_SEGMENTS_PER_KEY
+    !Number.isInteger(maxInvocationsPerKey) ||
+    maxInvocationsPerKey < 0 ||
+    maxInvocationsPerKey > MAX_INVOCATIONS_PER_KEY
   ) {
     throw new ConfigurationError(
-      `maxPayloadSegments must be an integer from 0 to ${MAX_PAYLOAD_SEGMENTS_PER_KEY}; got [${maxPayloadSegments}]`
+      `maxInvocationsPerKey must be an integer from 0 to ${MAX_INVOCATIONS_PER_KEY}; got [${maxInvocationsPerKey}]`
     );
   }
 
@@ -682,7 +691,6 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
   let bytesProcessed = 0;
   let crcCounter = 0;
   let fileByteCount = 0;
-  let segmentEncryptAttempts = 0;
   let aggregateHash422 = '';
   const segmentHashList: Uint8Array[] = [];
 
@@ -699,6 +707,12 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
     // Set in encrypt; should never be reached.
     throw new ConfigurationError('internal: please use "loadTDFStream" first to load a manifest.');
   }
+
+  // Generating the manifest encrypted the key access metadata; when that used
+  // the data key itself, those invocations come out of the payload's budget.
+  // This assumes `keyForManifest` is `keyForEncryption`, as the default
+  // `keyMiddleware` makes it; if they differ it over-charges, which is safe.
+  let payloadKeyInvocations = cfg.encryptionInformation.payloadKeyMetadataInvocations();
 
   const { segmentSizeDefault } = cfg;
   const encryptedSegmentSizeDefault =
@@ -964,7 +978,7 @@ export async function writeStream(cfg: EncryptConfiguration): Promise<DecoratedR
   async function _encryptAndCountSegment(chunk: Uint8Array) {
     // Reserve before the IV is drawn, so the count can never trail the real
     // number of invocations under the key.
-    segmentEncryptAttempts = reservePayloadSegment(segmentEncryptAttempts, maxPayloadSegments);
+    payloadKeyInvocations = reservePayloadSegment(payloadKeyInvocations, maxInvocationsPerKey);
     // Read once: a `CryptoService` may transfer the buffer below, detaching `chunk`.
     const plaintextLength = chunk.length;
     bytesProcessed += plaintextLength;

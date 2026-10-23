@@ -389,11 +389,11 @@ describe('splitLookupTableFactory', () => {
 });
 
 describe('AES-GCM payload segment budget', () => {
-  it('caps payload segments at 2^32 - 1 per key', () => {
+  it('caps invocations at 2^32 per key', () => {
+    // NIST SP 800-38D §8.3: at most 2^32 random-IV invocations per key.
+    expect(TDF.MAX_INVOCATIONS_PER_KEY).to.equal(2 ** 32);
+    // One goes to a single key access object's metadata.
     expect(TDF.MAX_PAYLOAD_SEGMENTS_PER_KEY).to.equal(2 ** 32 - 1);
-    // NIST SP 800-38D §8.3 allows at most 2^32 random-IV invocations per key;
-    // the payload cap keeps one free for the key access metadata.
-    expect(TDF.MAX_PAYLOAD_SEGMENTS_PER_KEY + 1).to.be.at.most(2 ** 32);
   });
 
   it('counts each reservation', () => {
@@ -401,18 +401,15 @@ describe('AES-GCM payload segment budget', () => {
     expect(TDF.reservePayloadSegment(41)).to.equal(42);
   });
 
-  it('allows the last segment under the cap', () => {
-    expect(TDF.reservePayloadSegment(TDF.MAX_PAYLOAD_SEGMENTS_PER_KEY - 1)).to.equal(
-      TDF.MAX_PAYLOAD_SEGMENTS_PER_KEY
+  it('allows the last invocation under the cap', () => {
+    expect(TDF.reservePayloadSegment(TDF.MAX_INVOCATIONS_PER_KEY - 1)).to.equal(
+      TDF.MAX_INVOCATIONS_PER_KEY
     );
   });
 
-  it('throws IvExhaustionError before the segment that would exceed the cap', () => {
-    for (const attempted of [
-      TDF.MAX_PAYLOAD_SEGMENTS_PER_KEY,
-      TDF.MAX_PAYLOAD_SEGMENTS_PER_KEY + 1,
-    ]) {
-      expect(() => TDF.reservePayloadSegment(attempted))
+  it('throws IvExhaustionError before the invocation that would exceed the cap', () => {
+    for (const invocations of [TDF.MAX_INVOCATIONS_PER_KEY, TDF.MAX_INVOCATIONS_PER_KEY + 1]) {
+      expect(() => TDF.reservePayloadSegment(invocations))
         .to.throw(IvExhaustionError, /AES-GCM IV space exhausted/)
         .with.property('name', 'IvExhaustionError');
     }
@@ -428,12 +425,18 @@ describe('AES-GCM payload segment budget', () => {
     let progress: number[];
 
     /**
-     * Writes `plaintext` in `segmentSize` segments with the budget lowered to
-     * `maxPayloadSegments`, counting only the encryptions that happen after
-     * `writeStream` returns: the key access metadata is encrypted while the
-     * manifest is generated, before then.
+     * Writes `plaintext` in `segmentSize` segments with the per-key budget
+     * lowered to `maxInvocationsPerKey`, and one key access object per entry
+     * of `sids`. Counts only the encryptions that happen after `writeStream`
+     * returns: the key access metadata is encrypted while the manifest is
+     * generated, before then.
      */
-    async function write(plaintext: string, segmentSize: number, maxPayloadSegments: number) {
+    async function write(
+      plaintext: string,
+      segmentSize: number,
+      maxInvocationsPerKey: number,
+      sids: (string | undefined)[] = [undefined]
+    ) {
       let counting = false;
       payloadEncrypts = 0;
       progress = [];
@@ -451,9 +454,17 @@ describe('AES-GCM payload segment budget', () => {
         },
       });
       const encryptionInformation = new SplitKey(new AesGcmCipher(countingCryptoService));
-      encryptionInformation.keyAccess = [
-        new Wrapped(Mocks.getKasUrl(), undefined, Mocks.kasPublicKey, {}, countingCryptoService),
-      ];
+      encryptionInformation.keyAccess = sids.map(
+        (sid) =>
+          new Wrapped(
+            Mocks.getKasUrl(),
+            undefined,
+            Mocks.kasPublicKey,
+            {},
+            countingCryptoService,
+            sid
+          )
+      );
       const key = await encryptionInformation.generateKey();
       const stream = await TDF.writeStream({
         auth: { updateClientPublicKey: async () => {}, withCreds: (r) => Promise.resolve(r) },
@@ -469,7 +480,7 @@ describe('AES-GCM payload segment budget', () => {
         encryptionInformation,
         keyForEncryption: key,
         keyForManifest: key,
-        maxPayloadSegments,
+        maxInvocationsPerKey,
         policy: Mocks.getPolicyObject(),
         progressHandler: (bytes) => progress.push(bytes),
         rootIntegrityAlgorithm: 'HS256',
@@ -480,30 +491,48 @@ describe('AES-GCM payload segment budget', () => {
       return stream.toBuffer();
     }
 
+    /** Resolves to what `promise` rejects with, failing if it resolves. */
+    function rejection(promise: Promise<unknown>): Promise<unknown> {
+      return promise.then(
+        () => expect.fail('expected the write to fail'),
+        (e: unknown) => e
+      );
+    }
+
+    // With the default single key access object, its metadata takes one
+    // invocation under the data key, so a budget of 4 leaves 3 segments.
+
     it('writes exactly up to the budget', async () => {
-      await write('abc', 1, 3);
+      await write('abc', 1, 4);
       expect(payloadEncrypts).to.equal(3);
     });
 
     it('refuses the segment past the budget without encrypting it', async () => {
-      const error = await write('abcd', 1, 3).then(
-        () => expect.fail('expected the write to fail'),
-        (e: unknown) => e
-      );
+      const error = await rejection(write('abcd', 1, 4));
       expect(error).to.be.instanceOf(IvExhaustionError);
-      expect((error as Error).message).to.match(/more than 3 segments/);
+      expect((error as Error).message).to.match(/more than 4 encryptions/);
       expect(payloadEncrypts).to.equal(3);
       expect(progress).to.deep.equal([1, 2, 3]);
     });
 
     it('refuses a short final segment past the budget', async () => {
       // 3 + 3 + a 1-byte tail, which `pull` encrypts from a separate call site.
-      const error = await write('1234567', 3, 2).then(
-        () => expect.fail('expected the write to fail'),
-        (e: unknown) => e
-      );
+      const error = await rejection(write('1234567', 3, 3));
       expect(error).to.be.instanceOf(IvExhaustionError);
       expect(payloadEncrypts).to.equal(2);
+    });
+
+    it('charges each key access object sharing the data key', async () => {
+      // A single split: both objects' metadata is encrypted under the data key.
+      const error = await rejection(write('abc', 1, 4, ['s', 's']));
+      expect(error).to.be.instanceOf(IvExhaustionError);
+      expect(payloadEncrypts).to.equal(2);
+    });
+
+    it('charges nothing for metadata under split shares', async () => {
+      // Two splits: metadata is encrypted under the shares, not the data key.
+      await write('abcd', 1, 4, ['a', 'b']);
+      expect(payloadEncrypts).to.equal(4);
     });
   });
 });
