@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import { isValidTdf } from '../../src/index.js';
+import { isValidTdf, validateTdf } from '../../src/index.js';
 import { archive, archiveParityCases } from '../validation-fixtures.js';
 import cases, { experimentalCases } from '../mocks/validation/manifest-cases.js';
 
@@ -24,4 +24,29 @@ describe('isValidTdf in a browser', () => {
       }
     });
   }
+
+  it('reads a Blob from another realm', async () => {
+    const iframe = document.createElement('iframe');
+    document.body.append(iframe);
+    try {
+      const OtherBlob = (iframe.contentWindow as unknown as { Blob: typeof Blob }).Blob;
+      const bytes = archive([
+        {
+          name: '0.manifest.json',
+          data: new TextEncoder().encode(JSON.stringify(cases[0].manifest)),
+        },
+      ]);
+      const source = new OtherBlob([new Uint8Array(bytes)]);
+      expect(source instanceof Blob).to.equal(false);
+      expect(await isValidTdf(source)).to.equal(true);
+    } finally {
+      iframe.remove();
+    }
+  });
+
+  it('reports a reason with validateTdf', async () => {
+    const result = await validateTdf(new Blob(['not a ZIP archive']));
+    expect(result.valid).to.equal(false);
+    expect(result.valid ? '' : result.reason).to.contain('end of central directory');
+  });
 });

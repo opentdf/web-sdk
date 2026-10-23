@@ -61,6 +61,31 @@ describe('chunkers', () => {
     });
   });
 
+  describe('fromBrowserFile', () => {
+    const b = new Uint8Array(range(256));
+    /** Delegates to a real Blob, but is not one: like a Blob from another realm. */
+    const blobLike = (blob: Blob): Blob =>
+      ({
+        size: blob.size,
+        type: blob.type,
+        slice: (start?: number, end?: number) => blobLike(blob.slice(start, end)),
+        arrayBuffer: () => blob.arrayBuffer(),
+      }) as Blob;
+
+    for (const [name, wrap] of [
+      ['Blob', (blob: Blob) => blob],
+      ['Blob-like object', blobLike],
+    ] as const) {
+      it(`reads all, a range and a suffix of a ${name}`, async () => {
+        const { fromBrowserFile } = await import('../../../src/seekable.js');
+        const chunker = fromBrowserFile(wrap(new Blob([b])));
+        expect(await chunker()).to.deep.equal(b);
+        expect(Array.from(await chunker(1, 3))).to.deep.equal([1, 2]);
+        expect(Array.from(await chunker(-2))).to.deep.equal([254, 255]);
+      });
+    }
+  });
+
   describe('fromUrl', () => {
     const r = range(256);
     const b = new Uint8Array(r);
