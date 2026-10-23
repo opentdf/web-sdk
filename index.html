@@ -30,6 +30,20 @@
 <pre><code class="typescript"><span class="hl-0">import</span><span class="hl-1"> { </span><span class="hl-2">AuthProviders</span><span class="hl-1">, </span><span class="hl-2">OpenTDF</span><span class="hl-1"> } </span><span class="hl-0">from</span><span class="hl-1"> </span><span class="hl-3">&#39;@opentdf/sdk&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-5">authProvider</span><span class="hl-1"> = </span><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-2">AuthProviders</span><span class="hl-1">.</span><span class="hl-6">refreshAuthProvider</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-2">clientId:</span><span class="hl-1"> </span><span class="hl-3">&#39;my-client-id&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">refreshToken:</span><span class="hl-1"> </span><span class="hl-2">refreshToken</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">oidcOrigin:</span><span class="hl-1"> </span><span class="hl-3">&#39;https://keycloak.example.com/auth/realms/my-realm&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-5">client</span><span class="hl-1"> = </span><span class="hl-4">new</span><span class="hl-1"> </span><span class="hl-6">OpenTDF</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-2">authProvider</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">platformUrl:</span><span class="hl-1"> </span><span class="hl-3">&#39;https://platform.example.com&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">});</span>
 </code><button type="button">Copy</button></pre>
 
+<h2 id="validate-an-existing-tdf" class="tsd-anchor-link">Validate an existing TDF<a href="#validate-an-existing-tdf" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>Use <code>isValidTdf</code> before storing or forwarding a TDF. Like the Go SDK's
+<code>IsValidTdf</code>, it opens the archive, reads the manifest, and validates it against the
+lax manifest schema. It accepts a <code>Uint8Array</code> or browser <code>Blob</code> and returns
+a boolean, including support for experimental <code>mlkem-wrapped</code> key access:</p>
+<pre><code class="typescript"><span class="hl-0">import</span><span class="hl-1"> { </span><span class="hl-2">isValidTdf</span><span class="hl-1"> } </span><span class="hl-0">from</span><span class="hl-1"> </span><span class="hl-3">&#39;@opentdf/sdk&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">if</span><span class="hl-1"> (!(</span><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-6">isValidTdf</span><span class="hl-1">(</span><span class="hl-4">new</span><span class="hl-1"> </span><span class="hl-6">Uint8Array</span><span class="hl-1">(</span><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-2">file</span><span class="hl-1">.</span><span class="hl-6">arrayBuffer</span><span class="hl-1">())))) {</span><br/><span class="hl-1">  </span><span class="hl-0">throw</span><span class="hl-1"> </span><span class="hl-4">new</span><span class="hl-1"> </span><span class="hl-6">Error</span><span class="hl-1">(</span><span class="hl-3">&#39;Invalid TDF&#39;</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Validation does not initialize a client or contact KAS. It does not check the
+referenced payload's existence, length, checksums, or cryptographic integrity.
+A successful result does not establish decryptability, authorization, or compliance
+with a service's policy requirements.</p>
+<p>Invalid archives or manifests return <code>false</code>. Unexpected errors, including source
+read failures, reject the promise. Schema validation loads only when called.</p>
 </div></div>
 <div class="col-sidebar">
 <div class="page-menu">
@@ -51,7 +65,8 @@
 <li>
 <ul>
 <li><a href="#with-interceptors-recommended"><span>With <wbr/>Interceptors (<wbr/>Recommended)</span></a></li>
-<li><a href="#with-authprovider-legacy"><span>With <wbr/>Auth<wbr/>Provider (<wbr/>Legacy)</span></a></li></ul></li></ul></div></details></div>
+<li><a href="#with-authprovider-legacy"><span>With <wbr/>Auth<wbr/>Provider (<wbr/>Legacy)</span></a></li></ul></li>
+<li><a href="#validate-an-existing-tdf"><span>Validate an existing <wbr/>TDF</span></a></li></ul></div></details></div>
 <div class="site-menu">
 <nav class="tsd-navigation"><a href="modules.html">@opentdf/sdk</a>
 <ul class="tsd-small-nested-navigation" id="tsd-nav-container">
