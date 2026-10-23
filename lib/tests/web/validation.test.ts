@@ -1,7 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import { isValidTdf } from '../../src/index.js';
 import { archive, archiveParityCases } from '../validation-fixtures.js';
-import cases from '../mocks/validation/manifest-cases.js';
+import cases, { experimentalCases } from '../mocks/validation/manifest-cases.js';
 
 describe('isValidTdf in a browser', () => {
   for (const sourceType of ['bytes', 'Blob']) {
@@ -11,8 +11,8 @@ describe('isValidTdf in a browser', () => {
         expect(await isValidTdf(source)).to.equal(test.valid);
       });
     }
-    it(`matches the Go manifest corpus with ${sourceType}`, async () => {
-      for (const test of cases) {
+    it(`checks the manifest corpus with ${sourceType}`, async () => {
+      for (const test of [...cases, ...experimentalCases]) {
         const bytes = archive([
           {
             name: '0.manifest.json',

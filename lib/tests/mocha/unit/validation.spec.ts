@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { isValidTdf } from '../../../src/validation.js';
 import { archive, archiveParityCases } from '../../validation-fixtures.js';
-import cases from '../../mocks/validation/manifest-cases.js';
+import cases, { experimentalCases } from '../../mocks/validation/manifest-cases.js';
 
 const json = (value: unknown) => new TextEncoder().encode(JSON.stringify(value));
 
@@ -11,8 +11,8 @@ async function expectInvalid(bytes: Uint8Array): Promise<void> {
 
 // Expectations were checked against OpenTDF Go SDK v0.35.0 IsValidTdf.
 // No payload is present: like Go, this API validates the manifest, not ciphertext.
-describe('isValidTdf Go lax-schema parity', () => {
-  for (const test of cases) {
+describe('isValidTdf lax-schema validation', () => {
+  for (const test of [...cases, ...experimentalCases]) {
     it(test.name, async () => {
       const bytes = archive([{ name: '0.manifest.json', data: json(test.manifest) }]);
       if (!test.valid) return expectInvalid(bytes);

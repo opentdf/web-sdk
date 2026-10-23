@@ -1,6 +1,6 @@
-// Vendored without semantic changes from OpenTDF Go SDK v0.35.0:
+// Based on the lax schema from OpenTDF Go SDK v0.35.0:
 // https://github.com/opentdf/platform/blob/sdk/v0.35.0/sdk/schema/manifest-lax.schema.json
-// Keep this schema aligned with Go IsValidTdf's Lax validation.
+// Includes the experimental mlkem-wrapped key-access type.
 import type { Schema } from '@cfworker/json-schema';
 
 export default {
@@ -60,7 +60,7 @@ export default {
               type: {
                 description: 'The type of key access object.',
                 type: 'string',
-                enum: ['wrapped', 'ec-wrapped', 'hybrid-wrapped', 'remote'],
+                enum: ['wrapped', 'ec-wrapped', 'hybrid-wrapped', 'mlkem-wrapped', 'remote'],
               },
               url: {
                 description:

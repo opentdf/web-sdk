@@ -677,3 +677,15 @@ const cases: { name: string; manifest: unknown; valid: boolean }[] = [
   },
 ];
 export default cases;
+
+// Additional coverage for experimental key-access types.
+export const experimentalCases = [
+  {
+    name: 'experimental ML-KEM key access',
+    manifest: {
+      payload: { type: 'reference', url: '0.payload', protocol: 'zip', isEncrypted: true },
+      encryptionInformation: { keyAccess: [{ type: 'mlkem-wrapped' }] },
+    },
+    valid: true,
+  },
+];

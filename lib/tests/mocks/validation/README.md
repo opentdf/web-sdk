@@ -5,6 +5,9 @@
 `archiveParityCases()` adds four duplicate-manifest archives covering both supported names and both
 entry orders, plus two BOM-prefixed manifest archives that must be rejected.
 
+The separately exported `experimentalCases` covers `mlkem-wrapped` key access in
+Node and browser tests.
+
 To compare byte-identical archives with Go, first export the TypeScript fixtures:
 
 ```sh

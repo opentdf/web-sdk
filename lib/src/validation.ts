@@ -4,7 +4,8 @@ import { loadTDFStream } from '../tdf3/src/tdf.js';
 
 /**
  * Check an existing TDF using the Go SDK IsValidTdf validation rules.
- * Opens the archive, reads its manifest, and applies the same lax manifest schema.
+ * Opens the archive, reads its manifest, and applies the lax manifest schema.
+ * Supports experimental mlkem-wrapped key access.
  * Returns false for an invalid archive or manifest and true when validation passes.
  * No client or KAS access is needed. Unexpected errors, including source read
  * failures, propagate to the caller.

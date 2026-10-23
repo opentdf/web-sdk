@@ -89,7 +89,7 @@ const client = new OpenTDF({
 Use `isValidTdf` before storing or forwarding a TDF. Like the Go SDK's
 `IsValidTdf`, it opens the archive, reads the manifest, and validates it against the
 lax manifest schema. It accepts a `Uint8Array` or browser `Blob` and returns
-a boolean:
+a boolean, including support for experimental `mlkem-wrapped` key access:
 
 ```typescript
 import { isValidTdf } from '@opentdf/sdk';
