@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.23.0...sdk-v0.24.0) (2026-10-23)
+
+
+### Bug Fixes
+
+* **sdk:** resolve duplicate ZIP entries consistently (DSPX-5357) ([#1117](https://github.com/opentdf/web-sdk/issues/1117)) ([1a0710b](https://github.com/opentdf/web-sdk/commit/1a0710b45d2ffb5d612ceb88971b31652473e90b))
+
 ## [0.23.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.22.0...sdk-v0.23.0) (2026-10-23)
 
 
