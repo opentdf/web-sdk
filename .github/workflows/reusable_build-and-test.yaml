@@ -277,7 +277,11 @@ jobs:
     defaults:
       run:
         working-directory: .github/workflows/roundtrip
-    timeout-minutes: 45
+    # Normally ~5 min. `playwright install --with-deps` pulls ~90 MB of apt
+    # packages, and azure.archive.ubuntu.com intermittently trickles them at
+    # ~30 kB/s (~50 min) without failing over (actions/runner-images#14823).
+    # 90 min leaves headroom for a mirror ~2x slower than the worst seen.
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 #v7.0.1
         with:
