@@ -83,3 +83,26 @@ const client = new OpenTDF({
   platformUrl: 'https://platform.example.com',
 });
 ```
+
+## Validate an existing TDF
+
+Use `isValidTdf` before storing or forwarding a TDF. Like the Go SDK's
+`IsValidTdf`, it opens the archive, reads the manifest, and validates it against the
+lax manifest schema. It accepts a `Uint8Array` or browser `Blob` and returns
+a boolean, including support for experimental `mlkem-wrapped` key access:
+
+```typescript
+import { isValidTdf } from '@opentdf/sdk';
+
+if (!(await isValidTdf(new Uint8Array(await file.arrayBuffer())))) {
+  throw new Error('Invalid TDF');
+}
+```
+
+Validation does not initialize a client or contact KAS. It does not check the
+referenced payload's existence, length, checksums, or cryptographic integrity.
+A successful result does not establish decryptability, authorization, or compliance
+with a service's policy requirements.
+
+Invalid archives or manifests return `false`. Unexpected errors, including source
+read failures, reject the promise. Schema validation loads only when called.

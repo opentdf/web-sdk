@@ -323,7 +323,11 @@ export class ZipReader {
    * large to decode, not valid JSON, or not a JSON object
    */
   async getManifest(cdBuffers: CentralDirectory[], manifestFileName: string): Promise<Manifest> {
-    const cdObj = cdBuffers.find(({ fileName }) => fileName === manifestFileName);
+    // Match Go's ZIP reader: the last directory record wins for duplicate names.
+    let cdObj: CentralDirectory | undefined;
+    for (const entry of cdBuffers) {
+      if (entry.fileName === manifestFileName) cdObj = entry;
+    }
     if (!cdObj) {
       throw new InvalidFileError('Unable to retrieve CD manifest');
     }
@@ -333,7 +337,8 @@ export class ZipReader {
 
     let text: string;
     try {
-      text = new TextDecoder().decode(manifest);
+      // Preserve a leading BOM so JSON.parse rejects it, matching Go's JSON reader.
+      text = new TextDecoder('utf-8', { ignoreBOM: true }).decode(manifest);
     } catch (e) {
       throw new InvalidFileError(
         `manifest [${manifestFileName}] of [${manifest.length}] bytes is too large to decode`,
