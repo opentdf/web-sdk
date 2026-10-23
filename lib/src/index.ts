@@ -60,4 +60,4 @@ export {
 export * from './seekable.js';
 export * from '../tdf3/src/models/index.js';
 
-export { isValidTdf } from './validation.js';
+export { isValidTdf, validateTdf, type TdfValidationResult } from './validation.js';
