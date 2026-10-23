@@ -17,6 +17,8 @@ import {
   DecoratedStream,
   isPublicKeyAlgorithm,
   PUBLIC_KEY_ALGORITHMS,
+  type TdfValidationResult,
+  validateTdf,
 } from '@opentdf/sdk';
 import { CLIError, Level, log } from './logger.js';
 import { type FileChunker, openFileChunker } from './file-chunker.js';
@@ -374,7 +376,8 @@ async function parseCreateTDFOptions(
   return c;
 }
 
-async function fileAsSource(file: string): Promise<Source> {
+/** Opens the input file for random access. Close it with {@link closeInputFile}. */
+async function openInputFile(file: string): Promise<FileChunker> {
   if (!file) {
     throw new CLIError('CRITICAL', 'Must specify file or pipe');
   }
@@ -388,7 +391,23 @@ async function fileAsSource(file: string): Promise<Source> {
     throw new CLIError('CRITICAL', `File is not accessible [${file}]: ${cause.message}`, cause);
   }
   log('DEBUG', `Using input from file [${file}] (${location.size} bytes)`);
-  return { type: 'chunker', location };
+  return location;
+}
+
+async function fileAsSource(file: string): Promise<Source> {
+  return { type: 'chunker', location: await openInputFile(file) };
+}
+
+/**
+ * Releases a file opened by {@link openInputFile}. Never throws, so it can run
+ * in `finally` without replacing the real error.
+ */
+async function closeInputFile(file: FileChunker): Promise<void> {
+  try {
+    await file.close();
+  } catch (e) {
+    log('WARNING', `Failed to close input file: ${asError(e).message}`);
+  }
 }
 
 /**
@@ -397,13 +416,17 @@ async function fileAsSource(file: string): Promise<Source> {
  */
 async function closeSource(source?: Source): Promise<void> {
   if (source?.type === 'chunker' && 'close' in source.location) {
-    try {
-      await (source.location as FileChunker).close();
-    } catch (e) {
-      log('WARNING', `Failed to close input file: ${asError(e).message}`);
-    }
+    await closeInputFile(source.location as FileChunker);
   }
 }
+
+/**
+ * Exit status of `validate` when the check ran and the file is not a valid TDF.
+ * Shared with the other SDKs' CLIs and the xtest validity suite: 0 means valid,
+ * 3 means invalid, and any other nonzero status means the check could not run.
+ * `fail()` below exits 1 or 2 for errors and usage problems.
+ */
+const VALIDATE_INVALID_EXIT_CODE = 3;
 
 export const handleArgs = (args: string[]) => {
   return (
@@ -655,6 +678,40 @@ export const handleArgs = (args: string[]) => {
           } finally {
             await closeSource(readOptions?.source);
             ct.close();
+          }
+        }
+      )
+
+      .command(
+        'validate [file]',
+        'Check that a file is a valid TDF, without decrypting it or contacting any server',
+        (yargs) => {
+          yargs
+            .strict()
+            .positional('file', {
+              describe: 'path to the TDF to check',
+              type: 'string',
+            })
+            .epilogue(
+              'Prints one JSON line to stdout: {"valid":true} or {"valid":false,"reason":"..."}.\n' +
+                `Exits 0 when valid, ${VALIDATE_INVALID_EXIT_CODE} when invalid, and any other ` +
+                'nonzero status when the check could not run.'
+            );
+        },
+        async (argv) => {
+          log('DEBUG', 'Running validate command');
+          // No client and no auth: validation reads only the local file.
+          const file = await openInputFile(argv.file as string);
+          let result: TdfValidationResult;
+          try {
+            result = await validateTdf(file);
+          } finally {
+            await closeInputFile(file);
+          }
+          console.log(JSON.stringify(result));
+          if (!result.valid) {
+            // Not process.exit(), which can cut off stdout when it is a pipe.
+            process.exitCode = VALIDATE_INVALID_EXIT_CODE;
           }
         }
       )

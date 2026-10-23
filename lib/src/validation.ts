@@ -11,14 +11,19 @@ import type * as ManifestValidation from './manifest-validation.js';
 export type TdfValidationResult = { valid: true } | { valid: false; reason: string };
 
 /**
+ * A TDF to validate: its bytes, a `Blob` (including a `File`), or a {@link Chunker}.
+ */
+export type TdfValidationSource = Uint8Array | Blob | Chunker;
+
+/**
  * Checks whether `source` is a structurally valid TDF, and reports why when it is not.
  *
  * Opens the ZIP archive and reads the manifest entry: `manifest.json` if present,
  * otherwise `0.manifest.json`. The manifest must parse as a JSON object and pass
  * the lax manifest schema from the Go SDK (v0.35.0), extended with the experimental
  * `mlkem-wrapped` key access type. Only the end of the archive, its central
- * directory and the manifest are read, so a large `Blob` or `File` is never loaded
- * whole. No client is created and no KAS is contacted.
+ * directory and the manifest are read, so a large source is never loaded whole. No
+ * client is created and no KAS is contacted.
  *
  * This is not full parity with the Go SDK's `IsValidTdf`. The manifest entry names
  * and duplicate entry selection (the last record wins) match, and so does the schema
@@ -33,15 +38,19 @@ export type TdfValidationResult = { valid: true } | { valid: false; reason: stri
  * It does not check that the payload exists, its length or checksums, cryptographic
  * integrity, decryptability, or any service-specific policy.
  *
- * @param source the TDF as bytes, or as a `Blob` (including a `File`). Works in
- * browsers and in Node.
+ * @param source the TDF as bytes, as a `Blob` (including a `File`), or as a
+ * {@link Chunker}. Blobs work in browsers and in Node. A chunker must support
+ * negative offsets, which read from the end; `fromUrl` and `fromSource` return
+ * suitable ones. Use one where a Blob would misreport the source: Node
+ * reports the size of a file-backed Blob (`fs.openAsBlob`) modulo 2^32, so a TDF of
+ * 4 GiB or more read that way is checked against the wrong bytes.
  * @returns `{ valid: true }`, or `{ valid: false, reason }` for an invalid archive
  * or manifest
- * @throws ConfigurationError if `source` is neither a `Uint8Array` nor a `Blob`
+ * @throws ConfigurationError if `source` is not a `Uint8Array`, a `Blob` or a function
  * @throws other errors, such as source read failures, unchanged; they do not
  * resolve as invalid
  */
-export async function validateTdf(source: Uint8Array | Blob): Promise<TdfValidationResult> {
+export async function validateTdf(source: TdfValidationSource): Promise<TdfValidationResult> {
   const chunker = toChunker(source);
   let manifest: unknown;
   try {
@@ -69,9 +78,9 @@ export async function validateTdf(source: Uint8Array | Blob): Promise<TdfValidat
  * }
  * ```
  * @returns true when validation passes, false for an invalid archive or manifest
- * @throws ConfigurationError if `source` is neither a `Uint8Array` nor a `Blob`
+ * @throws ConfigurationError if `source` is not a `Uint8Array`, a `Blob` or a function
  */
-export async function isValidTdf(source: Uint8Array | Blob): Promise<boolean> {
+export async function isValidTdf(source: TdfValidationSource): Promise<boolean> {
   return (await validateTdf(source)).valid;
 }
 
@@ -107,8 +116,11 @@ function toChunker(source: unknown): Chunker {
   if (isBlobLike(source)) {
     return fromBrowserFile(source);
   }
+  if (typeof source === 'function') {
+    return source as Chunker;
+  }
   throw new ConfigurationError(
-    `validateTdf: expected a Uint8Array or Blob, not ${Object.prototype.toString.call(source)}`
+    `validateTdf: expected a Uint8Array, Blob or Chunker, not ${Object.prototype.toString.call(source)}`
   );
 }
 
