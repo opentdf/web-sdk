@@ -317,17 +317,14 @@ export class ZipReader {
   }
 
   /**
-   * Reads and parses the manifest entry.
+   * Reads and parses the manifest entry. A duplicated name resolves to its last
+   * record, the same as {@link getPayloadSegment} (see {@link findCentralDirectoryEntry}).
    * @returns The manifest, parsed from JSON
    * @throws InvalidFileError if the entry is missing, out of bounds, short, too
    * large to decode, not valid JSON, or not a JSON object
    */
   async getManifest(cdBuffers: CentralDirectory[], manifestFileName: string): Promise<Manifest> {
-    // Match Go's ZIP reader: the last directory record wins for duplicate names.
-    let cdObj: CentralDirectory | undefined;
-    for (const entry of cdBuffers) {
-      if (entry.fileName === manifestFileName) cdObj = entry;
-    }
+    const cdObj = findCentralDirectoryEntry(cdBuffers, manifestFileName);
     if (!cdObj) {
       throw new InvalidFileError('Unable to retrieve CD manifest');
     }
@@ -408,13 +405,17 @@ export class ZipReader {
     }
   }
 
+  /**
+   * Reads `[offset, offset + size)` of the named payload entry. A duplicated name
+   * resolves to its last record, the same as {@link getManifest}.
+   */
   async getPayloadSegment(
     cdBuffers: CentralDirectory[],
     payloadName: string,
     encrpytedSegmentOffset: number,
     encryptedSegmentSize: number
   ): Promise<Uint8Array> {
-    const cdObj = cdBuffers.find(({ fileName }) => payloadName === fileName);
+    const cdObj = findCentralDirectoryEntry(cdBuffers, payloadName);
     if (!cdObj) {
       throw new InvalidFileError('Unable to retrieve CD');
     }
@@ -477,6 +478,27 @@ export class ZipReader {
     }
     return cdBuffers;
   }
+}
+
+/**
+ * Finds the central directory record named `fileName`. When several records share
+ * the name, the last one wins. This matches Go's ZIP reader, which keys entries by
+ * name. Every by-name entry lookup goes through here, so the manifest and the
+ * payload always resolve under the same rule. Mixing first-wins and last-wins
+ * would pair one copy's manifest with another copy's payload (DSPX-5357).
+ *
+ * @returns the last record named `fileName`, or undefined if there is none
+ */
+export function findCentralDirectoryEntry(
+  cdBuffers: CentralDirectory[],
+  fileName: string
+): CentralDirectory | undefined {
+  for (let i = cdBuffers.length - 1; i >= 0; i--) {
+    if (cdBuffers[i].fileName === fileName) {
+      return cdBuffers[i];
+    }
+  }
+  return undefined;
 }
 
 /**
