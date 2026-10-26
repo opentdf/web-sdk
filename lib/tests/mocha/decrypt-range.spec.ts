@@ -1,9 +1,9 @@
 /**
- * Plaintext byte-range decrypt (DSPX-5116): a range read returns exactly the
- * requested plaintext, fetches only the segments it needs, checks each of them,
- * confirms the end of the plaintext when it reads to it, and refuses an
- * unsatisfiable range before the KAS rewrap. A manifest edit cannot move an
- * authentic segment of a uniformly written file to another offset; see
+ * Decrypt selected portions of ciphertext (DSPX-5116): a range read returns
+ * exactly the requested plaintext, fetches only the segments it needs, checks
+ * each of them, confirms the end of the plaintext when it reads to it, and
+ * refuses an unsatisfiable range before the KAS rewrap. A manifest edit cannot
+ * move an authentic segment of a uniformly written file to another offset; see
  * planPlaintextRange for the gap that remains for other files.
  */
 import { assert } from 'chai';
@@ -16,7 +16,7 @@ import { type DecryptParams } from '../../tdf3/src/client/builders.js';
 import { type KeyInfo } from '../../tdf3/src/models/encryption-information.js';
 import { type Manifest } from '../../tdf3/src/models/manifest.js';
 import { loadTDFStream } from '../../tdf3/src/tdf.js';
-import { type PlaintextRange } from '../../tdf3/src/utils/plaintext-range.js';
+import { type DecryptRange } from '../../tdf3/src/utils/plaintext-range.js';
 import { concatUint8 } from '../../tdf3/src/utils/index.js';
 import { type Chunker, fromBuffer } from '../../src/seekable.js';
 import { base64 } from '../../src/encodings/index.js';
@@ -24,7 +24,7 @@ import {
   ConfigurationError,
   IntegrityError,
   InvalidFileError,
-  PlaintextRangeError,
+  DecryptRangeError,
 } from '../../src/errors.js';
 import { packTdf, sparseTdf, unpackTdf } from './helpers/tdf-archive.js';
 
@@ -147,7 +147,7 @@ async function expectRejection(
   assert.fail(`expected a ${type.name}`);
 }
 
-describe('decrypt plaintext range', function () {
+describe('decrypt selected portions of ciphertext', function () {
   const plaintext = patternedPlaintext();
   let auth: ReturnType<typeof countingAuthProvider>;
   let client: Client.Client;
@@ -166,7 +166,7 @@ describe('decrypt plaintext range', function () {
   });
 
   async function decryptRange(
-    range: PlaintextRange,
+    range: DecryptRange,
     { source = { type: 'buffer', location: buffer }, ...rest }: Partial<DecryptParams> = {}
   ) {
     const stream = await client.decrypt({ source, range, ...rest });
@@ -174,7 +174,7 @@ describe('decrypt plaintext range', function () {
   }
 
   describe('returns exactly the requested bytes', function () {
-    const cases: Array<[string, PlaintextRange]> = [
+    const cases: Array<[string, DecryptRange]> = [
       ['offset 0', { offset: 0, length: 10 }],
       ['offset 0 to the end', { offset: 0 }],
       ['inside one segment', { offset: SEGMENT_SIZE + 6, length: 100 }],
@@ -224,7 +224,7 @@ describe('decrypt plaintext range', function () {
 
   describe('Blob.slice end semantics', function () {
     /** Decrypt a range, counting reads inside the payload entry. */
-    async function payloadReadsFor(range: PlaintextRange, tdf = buffer) {
+    async function payloadReadsFor(range: DecryptRange, tdf = buffer) {
       const { chunker, reads } = recordingChunker(tdf);
       const payload = await payloadBounds(fromBuffer(tdf));
       const out = await decryptRange(range, { source: { type: 'chunker', location: chunker } });
@@ -264,8 +264,8 @@ describe('decrypt plaintext range', function () {
       }
       await expectRejection(
         decryptRange({ offset: 1 }, { source: { type: 'buffer', location: empty } }),
-        PlaintextRangeError,
-        /past the end of the plaintext \[0\]/
+        DecryptRangeError,
+        /past the end of the decrypted data \[0\]/
       );
     });
   });
@@ -384,7 +384,7 @@ describe('decrypt plaintext range', function () {
   describe('manifest edits cannot move a segment or end a read early', function () {
     type Segment = Manifest['encryptionInformation']['integrityInformation']['segments'][number];
 
-    async function expectCorrectOrRejected(tdf: Uint8Array, range: PlaintextRange) {
+    async function expectCorrectOrRejected(tdf: Uint8Array, range: DecryptRange) {
       let out: Uint8Array;
       try {
         out = await decryptRange(range, { source: { type: 'buffer', location: tdf } });
@@ -531,7 +531,7 @@ describe('decrypt plaintext range', function () {
       { segmentBatchSize: 1, maxConcurrentSegmentBatches: 1 },
       { segmentBatchSize: 7, maxConcurrentSegmentBatches: 3 },
     ]) {
-      const read = (tdf: Uint8Array, range: PlaintextRange) =>
+      const read = (tdf: Uint8Array, range: DecryptRange) =>
         decryptRange(range, { source: { type: 'buffer', location: tdf }, ...batching });
 
       it(`recording a zero size for the last segment, batched as ${JSON.stringify(batching)}`, async function () {
@@ -650,7 +650,7 @@ describe('decrypt plaintext range', function () {
   });
 
   describe('rejects before the KAS rewrap', function () {
-    const cases: Array<[string, PlaintextRange, RegExp]> = [
+    const cases: Array<[string, DecryptRange, RegExp]> = [
       ['an offset past the end', { offset: PLAINTEXT_SIZE + 1 }, /past the end/],
       ['an offset past the end, length 0', { offset: PLAINTEXT_SIZE + 1, length: 0 }, /past/],
       ['a negative offset', { offset: -1 }, /offset must be/],
@@ -662,7 +662,7 @@ describe('decrypt plaintext range', function () {
     ];
     for (const [name, range, pattern] of cases) {
       it(name, async function () {
-        await expectRejection(decryptRange(range), PlaintextRangeError, pattern);
+        await expectRejection(decryptRange(range), DecryptRangeError, pattern);
         assert.equal(auth.calls, 0, 'a bad range must not cost a KAS call');
       });
     }
@@ -741,8 +741,8 @@ describe('decrypt plaintext range', function () {
 
     await expectRejection(
       decryptRange({ offset: total + 1 }, { source }),
-      PlaintextRangeError,
-      new RegExp(`past the end of the plaintext \\[${total}\\]`)
+      DecryptRangeError,
+      new RegExp(`past the end of the decrypted data \\[${total}\\]`)
     );
   });
 });

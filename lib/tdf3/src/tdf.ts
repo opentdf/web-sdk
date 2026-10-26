@@ -70,7 +70,7 @@ import { unsigned } from './utils/buffer-crc32.js';
 import { ZipReader, ZipWriter, buffToString, toArrayBuffer } from './utils/index.js';
 import type { CentralDirectory } from './utils/zip-reader.js';
 import { derivePrefetchWindow } from './utils/prefetch-window.js';
-import { type PlaintextRange, planPlaintextRange } from './utils/plaintext-range.js';
+import { type DecryptRange, planPlaintextRange } from './utils/plaintext-range.js';
 import { getZtdfSalt } from './crypto/salt.js';
 import { decodeKemEnvelopeDer } from './crypto/core/mlkem-asn1.js';
 import type { Payload } from './models/payload.js';
@@ -352,7 +352,7 @@ export type DecryptConfiguration = {
   maxConcurrentSegmentBatches?: number;
   wrappingKeyAlgorithm?: KasPublicKeyAlgorithm;
   /** Limits the output to a span of the plaintext. */
-  range?: PlaintextRange;
+  range?: DecryptRange;
 };
 
 export type UpsertConfiguration = {
@@ -1855,7 +1855,7 @@ export async function decryptStreamFrom(
               // The plan and the length checks should make this unreachable;
               // never let a range read end short without saying so.
               throw new IntegrityError(
-                `plaintext ended [${remaining}] bytes short of the requested range`
+                `decrypted data ended [${remaining}] bytes short of the requested range`
               );
             }
             controller.close();

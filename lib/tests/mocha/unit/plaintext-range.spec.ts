@@ -4,7 +4,7 @@ import {
   planPlaintextRange,
   validatePlaintextRange,
 } from '../../../tdf3/src/utils/plaintext-range.js';
-import { ConfigurationError, InvalidFileError, PlaintextRangeError } from '../../../src/errors.js';
+import { ConfigurationError, InvalidFileError, DecryptRangeError } from '../../../src/errors.js';
 
 const OVERHEAD = 28;
 const encryptedSize = (size: number) => size + OVERHEAD;
@@ -39,14 +39,14 @@ describe('validatePlaintextRange', () => {
 
   for (const offset of [-1, 0.5, NaN, Infinity, 2 ** 53, '1' as unknown as number]) {
     it(`rejects offset ${String(offset)}`, () => {
-      expect(() => validatePlaintextRange({ offset })).to.throw(PlaintextRangeError, 'offset');
+      expect(() => validatePlaintextRange({ offset })).to.throw(DecryptRangeError, 'offset');
     });
   }
 
   for (const length of [-1, 0.5, NaN, Infinity, 2 ** 53, null as unknown as number]) {
     it(`rejects length ${String(length)}`, () => {
       expect(() => validatePlaintextRange({ offset: 0, length })).to.throw(
-        PlaintextRangeError,
+        DecryptRangeError,
         'length'
       );
     });
@@ -173,10 +173,10 @@ describe('planPlaintextRange', () => {
 
     it('rejects an offset past the end', () => {
       expect(() => plan(chunks, 25, 0)).to.throw(
-        PlaintextRangeError,
-        'past the end of the plaintext [24]'
+        DecryptRangeError,
+        'past the end of the decrypted data [24]'
       );
-      expect(() => plan(sized(), 1)).to.throw(PlaintextRangeError);
+      expect(() => plan(sized(), 1)).to.throw(DecryptRangeError);
     });
   });
 

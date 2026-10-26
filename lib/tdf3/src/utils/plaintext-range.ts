@@ -1,19 +1,19 @@
-import { InvalidFileError, PlaintextRangeError } from '../../../src/errors.js';
+import { InvalidFileError, DecryptRangeError } from '../../../src/errors.js';
 
 /**
- * A span of plaintext bytes to decrypt. Only the segments needed for it are
- * fetched and decrypted (see planPlaintextRange), and the output is trimmed to
- * exactly these bytes.
+ * Decrypt selected portions of ciphertext, given as a span of bytes of the
+ * decrypted data. Only the segments that hold it are fetched and decrypted (see
+ * planPlaintextRange), and the output is trimmed to exactly these bytes.
  *
- * As with `Blob.slice(offset, offset + length)`, an offset equal to the
- * plaintext size gives empty output, and a span running past the end is cut
+ * As with `Blob.slice(offset, offset + length)`, an offset equal to the size of
+ * the decrypted data gives empty output, and a span running past the end is cut
  * short there. Unlike `Blob.slice`, negative values are rejected and an offset
  * past the end throws.
  */
-export type PlaintextRange = {
-  /** First plaintext byte to return. At most the plaintext size. */
+export type DecryptRange = {
+  /** First byte of the decrypted data to return. At most its size. */
   offset: number;
-  /** Number of bytes to return. Omit to read to the end of the plaintext. */
+  /** Number of bytes to return. Omit to read to the end of the decrypted data. */
   length?: number;
 };
 
@@ -43,16 +43,16 @@ function isNonNegativeSafeInteger(value: unknown): value is number {
 /**
  * Checks the shape of a caller's plaintext range, independent of any file.
  *
- * @throws PlaintextRangeError if offset or length is not a non-negative safe integer
+ * @throws DecryptRangeError if offset or length is not a non-negative safe integer
  */
-export function validatePlaintextRange({ offset, length }: PlaintextRange): void {
+export function validatePlaintextRange({ offset, length }: DecryptRange): void {
   if (!isNonNegativeSafeInteger(offset)) {
-    throw new PlaintextRangeError(
+    throw new DecryptRangeError(
       `range offset must be a non-negative safe integer; got [${String(offset)}]`
     );
   }
   if (length !== undefined && !isNonNegativeSafeInteger(length)) {
-    throw new PlaintextRangeError(
+    throw new DecryptRangeError(
       `range length must be a non-negative safe integer; got [${String(length)}]`
     );
   }
@@ -86,7 +86,7 @@ function uniformSegmentSize(
 }
 
 /**
- * Plans the decrypt of a plaintext range.
+ * Plans which portions of ciphertext to decrypt for a plaintext range.
  *
  * Plaintext positions must not rest on unauthenticated manifest data. The root
  * signature fixes the segment count and each segment's ciphertext (and so,
@@ -121,17 +121,17 @@ function uniformSegmentSize(
  * unread ones before them are not checked, so the range can come from the
  * wrong offset. Closing this needs the format to sign the segment sizes.
  *
- * The end-of-file check that throws `PlaintextRangeError` uses the recorded
+ * The end-of-file check that throws `DecryptRangeError` uses the recorded
  * plaintext size, before the root signature is verified, so that error can
  * also come from a tampered manifest.
  *
  * @param encryptedSize the cipher's ciphertext size for a given plaintext size
- * @throws PlaintextRangeError if the range is malformed or starts past the end
+ * @throws DecryptRangeError if the range is malformed or starts past the end
  * @throws InvalidFileError if a segment's plaintext size is missing or unusable
  */
 export function planPlaintextRange<T extends RangeSegment>(
   chunks: T[],
-  range: PlaintextRange,
+  range: DecryptRange,
   encryptedSize: (plaintextSize: number) => number
 ): RangePlan<T> {
   validatePlaintextRange(range);
@@ -151,8 +151,8 @@ export function planPlaintextRange<T extends RangeSegment>(
   }
   const { offset } = range;
   if (offset > total) {
-    throw new PlaintextRangeError(
-      `range offset [${offset}] is past the end of the plaintext [${total}], as recorded in the manifest`
+    throw new DecryptRangeError(
+      `range offset [${offset}] is past the end of the decrypted data [${total}], as recorded in the manifest`
     );
   }
   const take = Math.min(range.length ?? total - offset, total - offset);

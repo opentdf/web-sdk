@@ -33,11 +33,12 @@ requests.
 
 ### Decrypting part of a file
 
-`decrypt` takes a plaintext byte range with `--offset` and `--length`, and reads and decrypts only
-the segments needed for it. As with `Blob.slice(offset, offset + length)`, omitting `--length` reads
-to the end, a range running past the end stops there, and an offset equal to the plaintext size
-prints nothing. Unlike `Blob.slice`, an offset past the end is an error (exit status 1), as are
-negative or non-decimal values.
+`decrypt` can decrypt selected portions of ciphertext. `--offset` and `--length` are byte positions
+in the decrypted data, and only the segments that hold those bytes are read and decrypted. As with
+`Blob.slice(offset, offset + length)`, omitting `--length` reads to the end, a range running past
+the end stops there, and an offset equal to the size of the decrypted data prints nothing. Unlike
+`Blob.slice`, an offset past the end is an error (exit status 1), as are negative or non-decimal
+values.
 
 ```sh
 bin/opentdf.mjs <auth options> --offset 1048576 --length 4096 \

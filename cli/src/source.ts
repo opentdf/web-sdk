@@ -1,4 +1,4 @@
-import { type PlaintextRange, PlaintextRangeError } from '@opentdf/sdk';
+import { type DecryptRange, DecryptRangeError } from '@opentdf/sdk';
 import { CLIError } from './logger.js';
 
 /**
@@ -28,11 +28,11 @@ export function rangeFromArgs({
 }: {
   offset?: unknown;
   length?: unknown;
-}): PlaintextRange | undefined {
+}): DecryptRange | undefined {
   if (offset === undefined && length === undefined) {
     return undefined;
   }
-  const range: PlaintextRange = {
+  const range: DecryptRange = {
     offset: offset === undefined ? 0 : parseByteCount('offset', offset),
   };
   if (length !== undefined) {
@@ -43,11 +43,12 @@ export function rangeFromArgs({
 
 /**
  * Turns the SDK's error for an unsatisfiable or malformed range (such as an
- * offset past the end of the plaintext) into a CLI error, which prints just
- * its message and exits with status 1. Other errors pass through unchanged.
+ * offset past the end of the decrypted data) into a CLI error, which prints
+ * just its message and exits with status 1. Other errors pass through
+ * unchanged.
  */
 export function asRangeCliError(e: unknown): unknown {
-  return e instanceof PlaintextRangeError ? new CLIError('CRITICAL', e.message, e) : e;
+  return e instanceof DecryptRangeError ? new CLIError('CRITICAL', e.message, e) : e;
 }
 
 /** True for an `http:` or `https:` URL, which is read with HTTP Range requests. */

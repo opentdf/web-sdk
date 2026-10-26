@@ -486,12 +486,12 @@ export const handleArgs = (args: string[]) => {
       })
       .option('offset', {
         group: 'Decrypt',
-        desc: 'First plaintext byte to decrypt; only the segments needed for the range are read',
+        desc: 'Decrypt selected portions of ciphertext, starting at this byte of the decrypted data; only the segments needed are read',
         type: 'string',
       })
       .option('length', {
         group: 'Decrypt',
-        desc: 'Number of plaintext bytes to decrypt; omit to read to the end',
+        desc: 'Number of bytes of decrypted data to output; omit to read to the end',
         type: 'string',
       })
       .option('concurrencyLimit', {

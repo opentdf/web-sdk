@@ -812,7 +812,7 @@ export class Client {
    * @param params.eo Optional entity object (legacy AuthZ)
    * @param params.assertionVerificationKeys Optional verification keys for assertions.
    * @param params.fulfillableObligationFQNs Optional fulfillable obligation value FQNs (overrides those on the Client)
-   * @param params.range Optional plaintext byte range; only the segments it needs are fetched
+   * @param params.range Optional byte range of the decrypted data to return; only the segments it needs are fetched
    * @return a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} stream containing the decrypted plaintext.
    * @see DecryptParamsBuilder
    */

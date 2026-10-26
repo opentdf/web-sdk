@@ -1,6 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import { CLIError } from '../src/logger.js';
-import { PlaintextRangeError } from '@opentdf/sdk';
+import { DecryptRangeError } from '@opentdf/sdk';
 import { asRangeCliError, isUrl, parseByteCount, rangeFromArgs } from '../src/source.js';
 
 describe('parseByteCount', function () {
@@ -47,12 +47,12 @@ describe('rangeFromArgs', function () {
 describe('asRangeCliError', function () {
   it('reports an unsatisfiable range as a CLI error', function () {
     const e = asRangeCliError(
-      new PlaintextRangeError('range offset [11] is past the end of the plaintext [10]')
+      new DecryptRangeError('range offset [11] is past the end of the decrypted data [10]')
     );
     expect(e).to.be.instanceOf(CLIError);
     expect((e as CLIError).prefix).to.equal('CRITICAL');
     expect((e as Error).message).to.equal(
-      'range offset [11] is past the end of the plaintext [10]'
+      'range offset [11] is past the end of the decrypted data [10]'
     );
   });
 
