@@ -22,7 +22,10 @@ export type RangeSegment = {
 
 /** Which segments a range read decrypts, and what it does with their output. */
 export type RangePlan<T> = {
-  /** Segments to fetch and decrypt, in order. */
+  /**
+   * Segments to fetch and decrypt, in order. All of them, even once `take`
+   * bytes have been returned: the later ones confirm where the plaintext ends.
+   */
   chunks: T[];
   /** Plaintext bytes to drop from the front of the decrypted segments. */
   skip: number;
@@ -87,24 +90,37 @@ function uniformSegmentSize(
  * once its hash is checked, its length), but not the recorded sizes of
  * segments that are never read. Summing recorded sizes, or deriving positions
  * from ciphertext offsets, would let a keyless editor shift which authentic
- * segment an offset lands on. So:
+ * segment an offset lands on, and understating sizes would let them end a read
+ * early. So:
  *
- * - **Uniform layout** (what every SDK writer produces): segment i starts at
+ * - **Uniform layout** (what this SDK's writer produces): segment i starts at
  *   i * S. S comes from the manifest, so the plan always decrypts at least one
  *   non-last segment, whose authenticated length must equal S; a range inside
  *   the last segment also reads the one before it, and drops its output. (A
  *   lone segment starts at 0, so there is nothing to confirm.)
  * - **Any other layout**: decrypt from segment 0 and drop the output before the
  *   offset, so positions are those of the authenticated plaintext itself.
- *   Slower, but no SDK writer produces such files.
+ *   Slower, as it reads everything before the range.
  *
- * Either way, the caller must check that every decrypted segment's plaintext
- * length equals its recorded `plainSegmentSize` (zero included): `skip` and
- * `take` are computed from those sizes.
+ * A range that reaches the recorded end of the plaintext, including an offset
+ * equal to it, also decrypts the last segment, so the end is confirmed rather
+ * than read from the manifest. Only a length of 0, or a file with no segments,
+ * decrypts nothing.
  *
- * The end-of-file checks use the recorded plaintext size, before the root
- * signature is verified, so a `PlaintextRangeError` can also come from a
- * tampered manifest; a decrypt that goes ahead fails its length checks instead.
+ * The caller must decrypt every planned segment, even after `take` bytes have
+ * been returned, and check that each one's plaintext length equals its
+ * recorded `plainSegmentSize` (zero included): `skip` and `take` are computed
+ * from those sizes.
+ *
+ * Remaining gap: the layout itself is not signed. A keyless editor can relabel
+ * a file written with segments of differing sizes (some writers take segments
+ * of any length) as uniform; the segments read then pass their checks, but the
+ * unread ones before them are not checked, so the range can come from the
+ * wrong offset. Closing this needs the format to sign the segment sizes.
+ *
+ * The end-of-file check that throws `PlaintextRangeError` uses the recorded
+ * plaintext size, before the root signature is verified, so that error can
+ * also come from a tampered manifest.
  *
  * @param encryptedSize the cipher's ciphertext size for a given plaintext size
  * @throws PlaintextRangeError if the range is malformed or starts past the end
@@ -133,21 +149,29 @@ export function planPlaintextRange<T extends RangeSegment>(
   const { offset } = range;
   if (offset > total) {
     throw new PlaintextRangeError(
-      `range offset [${offset}] is past the end of the plaintext [${total}]`
+      `range offset [${offset}] is past the end of the plaintext [${total}], as recorded in the manifest`
     );
   }
   const take = Math.min(range.length ?? total - offset, total - offset);
-  if (take === 0) {
-    return { chunks: [], skip: 0, take };
+  if (range.length === 0 || !chunks.length) {
+    // Nothing asked for, or nothing to read: the segment count is root-signed.
+    return { chunks: [], skip: 0, take: 0 };
   }
+  const toEnd = offset + take === total;
+  const lastIndex = chunks.length - 1;
 
   const segmentSize = uniformSegmentSize(chunks, encryptedSize);
   if (segmentSize === undefined) {
-    return { chunks, skip: offset, take };
+    // Through the segment holding the range's last byte. The length checks
+    // confirm the recorded sizes of every segment up to it.
+    let end = 0;
+    const last = toEnd
+      ? lastIndex
+      : chunks.findIndex(({ plainSegmentSize = 0 }) => (end += plainSegmentSize) >= offset + take);
+    return { chunks: chunks.slice(0, last + 1), skip: offset, take };
   }
-  const lastIndex = chunks.length - 1;
-  let first = Math.floor(offset / segmentSize);
-  const last = Math.min(Math.floor((offset + take - 1) / segmentSize), lastIndex);
+  let first = Math.min(Math.floor(offset / segmentSize), lastIndex);
+  const last = toEnd ? lastIndex : Math.floor((offset + take - 1) / segmentSize);
   if (first === lastIndex && first > 0) {
     // Only the last segment covers the range, and its length cannot confirm S.
     first -= 1;

@@ -1621,7 +1621,8 @@ export async function sliceAndDecrypt({
       cryptoService
     );
     if (plainSegmentSize && result.payload.length() !== plainSegmentSize) {
-      throw new DecryptError(
+      // The hash has authenticated the segment, so the manifest is what's wrong.
+      throw new IntegrityError(
         `incorrect segment size: found [${result.payload.length()}], expected [${plainSegmentSize}]`
       );
     }
@@ -1715,11 +1716,11 @@ export async function decryptStreamFrom(
   );
   const cipher = new AesGcmCipher(cfg.cryptoService);
   // A range read fetches only the segments planPlaintextRange picks (see there
-  // for how their positions are authenticated); for files the SDK writes, those
-  // are the segments covering the range. Output outside the range is dropped as
-  // segments are handed out, and reading stops once the range is satisfied.
-  // Planning needs only the manifest, so a bad range is refused before the
-  // rewrap.
+  // for how their positions and the end of the plaintext are authenticated):
+  // for files this SDK writes, the segments covering the range, plus the one
+  // before the last when only the last covers it. Output outside the range is
+  // dropped as segments are handed out. Planning needs only the manifest, so a
+  // bad range is refused before the rewrap.
   const {
     chunks,
     skip: rangeSkip,
@@ -1818,8 +1819,8 @@ export async function decryptStreamFrom(
       });
       if (cfg.range) {
         // The range's positions assume these lengths; each segment's hash has
-        // just authenticated its real one. sliceAndDecrypt skips segments that
-        // record no size, so check all of them here, zero included. Checked per
+        // just authenticated its real one. sliceAndDecrypt skips its own check
+        // when the recorded size is 0, so check every segment here. Checked per
         // batch, so no plaintext from a batch with a mismatch reaches the reader.
         slice.forEach(({ plainSegmentSize }, i) => {
           if (plaintexts[i].length !== plainSegmentSize) {
@@ -1842,21 +1843,17 @@ export async function decryptStreamFrom(
   let draining: Array<{ plaintext: Uint8Array; encryptedSegmentSize: number }> = [];
   const underlyingSource = {
     pull: async (controller: ReadableStreamDefaultController) => {
-      // Segments wholly before the range produce no output, so keep going
-      // until one does.
+      // Segments outside the range produce no output, so keep going until one
+      // does or the batches run out. A range read decrypts every planned
+      // segment, even after its last byte is handed out: the later ones confirm
+      // where the plaintext ends.
       for (;;) {
-        if (!remaining) {
-          // Done early (a range): stop fetching.
-          controller.close();
-          batches.cancel().catch(() => undefined);
-          return;
-        }
         if (!draining.length) {
           const { done, value: batch } = await batches.read();
           if (done) {
             if (cfg.range && remaining) {
-              // The length checks should make this unreachable; never let a
-              // range read end short without saying so.
+              // The plan and the length checks should make this unreachable;
+              // never let a range read end short without saying so.
               throw new IntegrityError(
                 `plaintext ended [${remaining}] bytes short of the requested range`
               );

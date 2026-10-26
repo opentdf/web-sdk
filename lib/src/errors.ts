@@ -57,7 +57,9 @@ export class AttributeValidationError extends ConfigurationError {
 /**
  * A plaintext range for decrypt is malformed (offset or length not a
  * non-negative safe integer) or cannot be satisfied (offset past the end of the
- * plaintext). An offset equal to the plaintext size is valid and reads nothing.
+ * plaintext). An offset equal to the plaintext size is valid and returns
+ * nothing. The end is the plaintext size recorded in the manifest, checked
+ * before the file is authenticated, so a tampered file can also cause this.
  */
 export class PlaintextRangeError extends ConfigurationError {
   override name = 'PlaintextRangeError';

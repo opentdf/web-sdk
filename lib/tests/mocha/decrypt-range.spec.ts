@@ -1,8 +1,10 @@
 /**
  * Plaintext byte-range decrypt (DSPX-5116): a range read returns exactly the
  * requested plaintext, fetches only the segments it needs, checks each of them,
- * never lets a manifest edit move an authentic segment to another offset, and
- * refuses an unsatisfiable range before the KAS rewrap.
+ * confirms the end of the plaintext when it reads to it, and refuses an
+ * unsatisfiable range before the KAS rewrap. A manifest edit cannot move an
+ * authentic segment of a uniformly written file to another offset; see
+ * planPlaintextRange for the gap that remains for other files.
  */
 import { assert } from 'chai';
 
@@ -234,14 +236,23 @@ describe('decrypt plaintext range', function () {
 
     for (const range of [
       { offset: 3000, length: 0 },
-      { offset: PLAINTEXT_SIZE },
       { offset: PLAINTEXT_SIZE, length: 0 },
-      { offset: PLAINTEXT_SIZE, length: 5 },
     ]) {
       it(`returns nothing for ${JSON.stringify(range)}, and reads no payload`, async function () {
         const { out, payloadReads } = await payloadReadsFor(range);
         assert.lengthOf(out, 0);
         assert.isEmpty(payloadReads);
+      });
+    }
+
+    for (const range of [{ offset: PLAINTEXT_SIZE }, { offset: PLAINTEXT_SIZE, length: 5 }]) {
+      it(`returns nothing for ${JSON.stringify(range)}, after confirming the end`, async function () {
+        // The recorded end is not signed: the last segment's length confirms
+        // it, and the one before confirms the segment size.
+        const { out, payloadReads } = await payloadReadsFor(range);
+        assert.lengthOf(out, 0);
+        const payload = await payloadBounds(fromBuffer(buffer));
+        assert.deepEqual(payloadReads, [[payload.start + 6 * ENCRYPTED_SEGMENT_SIZE, payload.end]]);
       });
     }
 
@@ -367,9 +378,10 @@ describe('decrypt plaintext range', function () {
 
   // A keyless attacker can rewrite the manifest's segment sizes and the payload
   // bytes, but not the root-signed segment hash list. Positions computed from
-  // recorded sizes would let them move an authentic segment to another offset:
-  // a range read must either fail or return the right bytes.
-  describe('manifest edits cannot move a segment', function () {
+  // recorded sizes would let them move an authentic segment to another offset,
+  // and understated sizes would let them end a read early: a range read must
+  // either fail or return the right bytes.
+  describe('manifest edits cannot move a segment or end a read early', function () {
     type Segment = Manifest['encryptionInformation']['integrityInformation']['segments'][number];
 
     async function expectCorrectOrRejected(tdf: Uint8Array, range: PlaintextRange) {
@@ -468,24 +480,92 @@ describe('decrypt plaintext range', function () {
       );
     });
 
-    it('recording a zero size for the last segment', async function () {
-      // A zero size makes the layout non-uniform and understates the total by
-      // the last segment's 500 bytes, so the read to the end would stop short.
+    it('understating the last segment of a uniform layout', async function () {
+      // With a matching ciphertext size the layout stays uniform, and the
+      // recorded total is 7169.
       const tdf = await edit((segments) => [
         ...segments.slice(0, -1),
-        { ...segments[segments.length - 1], segmentSize: 0 },
+        {
+          ...segments[segments.length - 1],
+          segmentSize: 1,
+          encryptedSegmentSize: 1 + GCM_OVERHEAD,
+        },
+      ]);
+      for (const range of [{ offset: 7169 }, { offset: 7169, length: 10 }, { offset: 7000 }]) {
+        await expectRejection(
+          decryptRange(range, { source: { type: 'buffer', location: tdf } }),
+          IntegrityError
+        );
+      }
+    });
+
+    it('recording every segment as empty', async function () {
+      // The recorded total is 0, so unconfirmed, every range would be empty.
+      const tdf = await edit((segments) =>
+        segments.map((segment) => ({ ...segment, segmentSize: 0 }))
+      );
+      for (const range of [{ offset: 0 }, { offset: 0, length: 100 }]) {
+        await expectRejection(
+          decryptRange(range, { source: { type: 'buffer', location: tdf } }),
+          IntegrityError
+        );
+      }
+    });
+
+    it('inflating the ciphertext size of the last segment, to shrink the batches', async function () {
+      // A ciphertext size past the prefetch budget means one segment per batch.
+      const tdf = await edit((segments) => [
+        ...segments.slice(0, -1),
+        { ...segments[segments.length - 1], segmentSize: 0, encryptedSegmentSize: 2 ** 28 },
       ]);
       await expectRejection(
-        decryptRange({ offset: 7000 }, { source: { type: 'buffer', location: tdf } }),
-        IntegrityError,
-        /does not match the manifest/
+        decryptRange({ offset: 0 }, { source: { type: 'buffer', location: tdf } }),
+        InvalidFileError
       );
     });
+
+    // A zero size makes the layout non-uniform and understates the total. The
+    // segments it hides must be checked however the segments are batched.
+    for (const batching of [
+      {},
+      { segmentBatchSize: 1, maxConcurrentSegmentBatches: 1 },
+      { segmentBatchSize: 7, maxConcurrentSegmentBatches: 3 },
+    ]) {
+      const read = (tdf: Uint8Array, range: PlaintextRange) =>
+        decryptRange(range, { source: { type: 'buffer', location: tdf }, ...batching });
+
+      it(`recording a zero size for the last segment, batched as ${JSON.stringify(batching)}`, async function () {
+        // Hides the last segment's 500 bytes.
+        const tdf = await edit((segments) => [
+          ...segments.slice(0, -1),
+          { ...segments[segments.length - 1], segmentSize: 0 },
+        ]);
+        for (const range of [
+          { offset: 0 },
+          { offset: 7000 },
+          { offset: 7000, length: 668 },
+          { offset: 7 * SEGMENT_SIZE },
+        ]) {
+          await expectRejection(read(tdf, range), IntegrityError, /does not match the manifest/);
+        }
+      });
+
+      it(`recording zero sizes for the last three segments, batched as ${JSON.stringify(batching)}`, async function () {
+        const tdf = await edit((segments) => [
+          ...segments.slice(0, -3),
+          ...segments.slice(-3).map((segment) => ({ ...segment, segmentSize: 0 })),
+        ]);
+        for (const range of [{ offset: 0 }, { offset: 5 * SEGMENT_SIZE }]) {
+          await expectRejection(read(tdf, range), IntegrityError, /does not match the manifest/);
+        }
+      });
+    }
   });
 
-  describe('a layout no SDK writer produces', function () {
+  describe('a non-uniform layout', function () {
     // Segments of 1024, 976, 512, 512 and 476: authentic (one key, re-signed
-    // root) but not uniform, so positions come from decrypting from the start.
+    // root) but not uniform, as a writer that takes segments of any length can
+    // produce. Positions come from decrypting from the start.
     const partA = patternedPlaintext().slice(0, 2000);
     const partB = patternedPlaintext()
       .slice(3000, 4500)
