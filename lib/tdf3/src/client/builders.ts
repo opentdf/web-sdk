@@ -762,11 +762,12 @@ class DecryptParamsBuilder {
   }
 
   /**
-   * Decrypt only `length` plaintext bytes starting at plaintext byte `offset`,
-   * with `Blob.slice` semantics: omitting `length` reads to the end, a span
-   * running past the end stops there, and an offset equal to the plaintext size
-   * reads nothing. An offset past the end throws a `PlaintextRangeError` when
-   * decrypting; a malformed range throws one here.
+   * Decrypt only `length` plaintext bytes starting at plaintext byte `offset`.
+   * As with `Blob.slice(offset, offset + length)`, omitting `length` reads to
+   * the end, a span running past the end stops there, and an offset equal to
+   * the plaintext size returns nothing. Unlike `Blob.slice`, an offset past the
+   * end throws a `PlaintextRangeError` when decrypting, and a malformed range
+   * (a negative, fractional or unsafe value) throws one here.
    */
   withRange(offset: number, length?: number): this {
     const range: PlaintextRange = length === undefined ? { offset } : { offset, length };

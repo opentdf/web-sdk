@@ -198,18 +198,20 @@ export type ReadOptions = {
   wrappingKeyAlgorithm?: KasPublicKeyAlgorithm;
 
   /**
-   * Decrypt only this span of the plaintext, with `Blob.slice` semantics.
-   * `offset` and `length` are plaintext byte positions: non-negative safe
-   * integers. Omitting `length` reads to the end, and a span running past the
-   * end stops there. An offset equal to the plaintext size gives empty output;
-   * an offset past it, or a malformed range, throws a `PlaintextRangeError`.
+   * Decrypt only this span of the plaintext: `length` bytes starting at byte
+   * `offset`, both non-negative safe integers. As with
+   * `Blob.slice(offset, offset + length)`, omitting `length` reads to the end,
+   * a span running past the end stops there, and an offset equal to the
+   * plaintext size gives empty output. Unlike `Blob.slice`, an offset past the
+   * end, or a malformed range, throws a `PlaintextRangeError`.
    *
    * Only the segments needed are fetched and decrypted, and each is checked
    * against the root-signed segment hashes. For the uniform segment layout
-   * every SDK writer produces, that is the covering segments, plus the one
-   * before the last when only the last covers the span. For any other layout,
-   * decryption starts at the first segment. The progress handler reports the
-   * ciphertext bytes of the segments read.
+   * this SDK writes, that is the covering segments, plus the one before the
+   * last when only the last covers the span; a span that reaches the end also
+   * reads the last segment, to confirm where the plaintext ends. For any other
+   * layout, decryption starts at the first segment. The client's
+   * `progressHandler` reports the ciphertext bytes of the segments read.
    */
   range?: PlaintextRange;
 };

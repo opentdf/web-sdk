@@ -486,7 +486,7 @@ export const handleArgs = (args: string[]) => {
       })
       .option('offset', {
         group: 'Decrypt',
-        desc: 'First plaintext byte to decrypt; only the segments covering the range are read',
+        desc: 'First plaintext byte to decrypt; only the segments needed for the range are read',
         type: 'string',
       })
       .option('length', {

@@ -28,13 +28,16 @@ bin/opentdf.mjs \
   decrypt sample.tdf
 ```
 
+The input to `decrypt` may be a local path or an `http(s)` URL, which is read with HTTP Range
+requests.
+
 ### Decrypting part of a file
 
-`decrypt` takes a plaintext byte range with `--offset` and `--length`, with the same meaning as
-`Blob.slice`. Only the segments needed for the range are read and decrypted. Omitting `--length`
-reads to the end, and a range running past the end stops there. An offset equal to the plaintext
-size prints nothing; an offset past it is an error (exit status 1). The input may be a local path or
-an `http(s)` URL, which is read with HTTP Range requests.
+`decrypt` takes a plaintext byte range with `--offset` and `--length`, and reads and decrypts only
+the segments needed for it. As with `Blob.slice(offset, offset + length)`, omitting `--length` reads
+to the end, a range running past the end stops there, and an offset equal to the plaintext size
+prints nothing. Unlike `Blob.slice`, an offset past the end is an error (exit status 1), as are
+negative or non-decimal values.
 
 ```sh
 bin/opentdf.mjs <auth options> --offset 1048576 --length 4096 \

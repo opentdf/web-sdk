@@ -1,11 +1,14 @@
 import { InvalidFileError, PlaintextRangeError } from '../../../src/errors.js';
 
 /**
- * A span of plaintext bytes to decrypt. Only the segments that cover it are
- * fetched and decrypted, and the output is trimmed to exactly these bytes.
+ * A span of plaintext bytes to decrypt. Only the segments needed for it are
+ * fetched and decrypted (see planPlaintextRange), and the output is trimmed to
+ * exactly these bytes.
  *
- * Follows `Blob.slice`: an offset equal to the plaintext size gives empty
- * output, and a span running past the end is cut short there.
+ * As with `Blob.slice(offset, offset + length)`, an offset equal to the
+ * plaintext size gives empty output, and a span running past the end is cut
+ * short there. Unlike `Blob.slice`, negative values are rejected and an offset
+ * past the end throws.
  */
 export type PlaintextRange = {
   /** First plaintext byte to return. At most the plaintext size. */
@@ -157,13 +160,14 @@ export function planPlaintextRange<T extends RangeSegment>(
     // Nothing asked for, or nothing to read: the segment count is root-signed.
     return { chunks: [], skip: 0, take: 0 };
   }
+  // A range reaching the recorded end reads the last segment, to confirm it.
   const toEnd = offset + take === total;
   const lastIndex = chunks.length - 1;
 
   const segmentSize = uniformSegmentSize(chunks, encryptedSize);
   if (segmentSize === undefined) {
-    // Through the segment holding the range's last byte. The length checks
-    // confirm the recorded sizes of every segment up to it.
+    // Through the segment holding the range's last byte, or the last segment.
+    // The length checks confirm the recorded sizes of every segment read.
     let end = 0;
     const last = toEnd
       ? lastIndex
