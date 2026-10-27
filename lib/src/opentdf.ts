@@ -34,6 +34,7 @@ import {
   type RootIntegrityAlgorithm,
   type SegmentIntegrityAlgorithm,
 } from '../tdf3/src/tdf.js';
+import { type DecryptRange } from '../tdf3/src/utils/plaintext-range.js';
 import { base64 } from './encodings/index.js';
 import type { Policy } from '../tdf3/src/models/policy.js';
 
@@ -46,6 +47,7 @@ export {
   type KeyAccessObject,
   type Manifest,
   type Payload,
+  type DecryptRange,
   type RootIntegrityAlgorithm,
   type Segment,
   type SegmentIntegrityAlgorithm,
@@ -194,6 +196,24 @@ export type ReadOptions = {
 
   /** Type of key to use for wrapping responses. */
   wrappingKeyAlgorithm?: KasPublicKeyAlgorithm;
+
+  /**
+   * Decrypt selected portions of ciphertext: output only `length` bytes of the
+   * decrypted data, starting at byte `offset`, both non-negative safe integers.
+   * As with `Blob.slice(offset, offset + length)`, omitting `length` reads to
+   * the end, a span running past the end stops there, and an offset equal to
+   * the size of the decrypted data gives empty output. Unlike `Blob.slice`, an
+   * offset past the end, or a malformed range, throws a `DecryptRangeError`.
+   *
+   * Only the segments needed are fetched and decrypted, and each is checked
+   * against the root-signed segment hashes. For the uniform segment layout
+   * this SDK writes, that is the covering segments, plus the one before the
+   * last when only the last covers the span; a span that reaches the end also
+   * reads the last segment, to confirm where the data ends. For any other
+   * layout, decryption starts at the first segment. The client's
+   * `progressHandler` reports the encrypted bytes of the segments read.
+   */
+  range?: DecryptRange;
 };
 
 /** Defaults and shared settings that are relevant to creating TDF objects. */
@@ -542,6 +562,7 @@ class ZTDFReader {
       assertionVerificationKeys,
       maxConcurrentSegmentBatches,
       noVerify: noVerifyAssertions,
+      range,
       segmentBatchSize,
       wrappingKeyAlgorithm,
     } = this.opts;
@@ -590,6 +611,7 @@ class ZTDFReader {
         assertionVerificationKeys,
         maxConcurrentSegmentBatches,
         noVerifyAssertions,
+        range,
         segmentBatchSize,
         wrappingKeyAlgorithm,
         fulfillableObligations: this.opts.fulfillableObligationFQNs || [],

@@ -57,6 +57,7 @@ export {
   AttributeNotFoundError,
   ConfigurationError,
   IvExhaustionError,
+  DecryptRangeError,
 } from './errors.js';
 export * from './seekable.js';
 export * from '../tdf3/src/models/index.js';

@@ -812,6 +812,7 @@ export class Client {
    * @param params.eo Optional entity object (legacy AuthZ)
    * @param params.assertionVerificationKeys Optional verification keys for assertions.
    * @param params.fulfillableObligationFQNs Optional fulfillable obligation value FQNs (overrides those on the Client)
+   * @param params.range Optional byte range of the decrypted data to return; only the segments it needs are fetched
    * @return a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} stream containing the decrypted plaintext.
    * @see DecryptParamsBuilder
    */
@@ -830,6 +831,7 @@ export class Client {
     noVerifyAssertions,
     concurrencyLimit = 1,
     maxConcurrentSegmentBatches,
+    range,
     segmentBatchSize,
     wrappingKeyAlgorithm,
     fulfillableObligationFQNs = [],
@@ -873,6 +875,7 @@ export class Client {
         assertionVerificationKeys,
         maxConcurrentSegmentBatches,
         noVerifyAssertions,
+        range,
         segmentBatchSize,
         wrappingKeyAlgorithm,
         fulfillableObligations: fulfillableObligationFQNs,

@@ -55,6 +55,18 @@ export class AttributeValidationError extends ConfigurationError {
 }
 
 /**
+ * The range given to decrypt selected portions of ciphertext is malformed
+ * (offset or length not a non-negative safe integer) or cannot be satisfied
+ * (offset past the end of the decrypted data). An offset equal to the size of
+ * the decrypted data is valid and returns nothing. The end is the size recorded
+ * in the manifest, checked before the file is authenticated, so a tampered file
+ * can also cause this.
+ */
+export class DecryptRangeError extends ConfigurationError {
+  override name = 'DecryptRangeError';
+}
+
+/**
  * Errors that indicate the TDF object is corrupt, invalid, or fails validation or decrypt.
  */
 export class InvalidFileError extends TdfError {

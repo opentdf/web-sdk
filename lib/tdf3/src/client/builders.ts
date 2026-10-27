@@ -14,6 +14,7 @@ import { type Chunker } from '../../../src/seekable.js';
 import type { AssertionConfig, AssertionVerificationKeys } from '../assertions.js';
 import type { Value } from '../../../src/policy/attributes.js';
 import type { KasPublicKeyAlgorithm, OriginAllowList } from '../../../src/access.js';
+import { type DecryptRange, validatePlaintextRange } from '../utils/plaintext-range.js';
 
 export const DEFAULT_SEGMENT_SIZE: number = 2 * 1024 * 1024;
 export type Scope = {
@@ -545,6 +546,8 @@ export type DecryptParams = {
   concurrencyLimit?: number;
   segmentBatchSize?: number;
   maxConcurrentSegmentBatches?: number;
+  /** Decrypt selected portions of ciphertext; see {@link DecryptParamsBuilder#withRange}. */
+  range?: DecryptRange;
   noVerifyAssertions?: boolean;
   wrappingKeyAlgorithm?: KasPublicKeyAlgorithm;
   fulfillableObligationFQNs?: string[];
@@ -755,6 +758,22 @@ class DecryptParamsBuilder {
    */
   withMaxConcurrentSegmentBatches(limit: number): DecryptParamsBuilder {
     this._params.maxConcurrentSegmentBatches = limit;
+    return this;
+  }
+
+  /**
+   * Decrypt selected portions of ciphertext: output only `length` bytes of the
+   * decrypted data, starting at byte `offset`. As with
+   * `Blob.slice(offset, offset + length)`, omitting `length` reads to the end,
+   * a span running past the end stops there, and an offset equal to the size
+   * of the decrypted data returns nothing. Unlike `Blob.slice`, an offset past
+   * the end throws a `DecryptRangeError` when decrypting, and a malformed
+   * range (a negative, fractional or unsafe value) throws one here.
+   */
+  withRange(offset: number, length?: number): this {
+    const range: DecryptRange = length === undefined ? { offset } : { offset, length };
+    validatePlaintextRange(range);
+    this._params.range = range;
     return this;
   }
 

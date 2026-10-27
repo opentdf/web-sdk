@@ -70,6 +70,7 @@ import { unsigned } from './utils/buffer-crc32.js';
 import { ZipReader, ZipWriter, buffToString, toArrayBuffer } from './utils/index.js';
 import type { CentralDirectory } from './utils/zip-reader.js';
 import { derivePrefetchWindow } from './utils/prefetch-window.js';
+import { type DecryptRange, planPlaintextRange } from './utils/plaintext-range.js';
 import { getZtdfSalt } from './crypto/salt.js';
 import { decodeKemEnvelopeDer } from './crypto/core/mlkem-asn1.js';
 import type { Payload } from './models/payload.js';
@@ -204,7 +205,7 @@ type EntryInfo = {
   fileByteCount?: number;
 };
 
-type Chunk = {
+export type Chunk = {
   hash: string;
   plainSegmentSize?: number;
   encryptedOffset: number;
@@ -350,6 +351,8 @@ export type DecryptConfiguration = {
   segmentBatchSize?: number;
   maxConcurrentSegmentBatches?: number;
   wrappingKeyAlgorithm?: KasPublicKeyAlgorithm;
+  /** Limits the output to a span of the plaintext. */
+  range?: DecryptRange;
 };
 
 export type UpsertConfiguration = {
@@ -1600,8 +1603,8 @@ export async function sliceAndDecrypt({
   for (const chunk of slice) {
     const { encryptedOffset, encryptedSegmentSize, plainSegmentSize } = chunk;
 
-    const offset =
-      slice[0].encryptedOffset === 0 ? encryptedOffset : encryptedOffset % slice[0].encryptedOffset;
+    // `buffer` starts at the slice's first segment, so offsets are relative to it.
+    const offset = encryptedOffset - slice[0].encryptedOffset;
     const encryptedChunk = buffer.subarray(offset, offset + (encryptedSegmentSize as number));
 
     if (encryptedChunk.length !== encryptedSegmentSize) {
@@ -1618,7 +1621,8 @@ export async function sliceAndDecrypt({
       cryptoService
     );
     if (plainSegmentSize && result.payload.length() !== plainSegmentSize) {
-      throw new DecryptError(
+      // The hash has authenticated the segment, so the manifest is what's wrong.
+      throw new IntegrityError(
         `incorrect segment size: found [${result.payload.length()}], expected [${plainSegmentSize}]`
       );
     }
@@ -1692,6 +1696,38 @@ export async function decryptStreamFrom(
     ...cfg,
     segmentSize: largestEncryptedSegmentSize,
   });
+
+  let mapOfRequestsOffset = 0;
+  const allChunks = segments.map(
+    ({
+      hash,
+      encryptedSegmentSize = encryptedSegmentSizeDefault,
+      segmentSize = segmentSizeDefault,
+    }) => {
+      const chunk: Chunk = {
+        hash,
+        encryptedOffset: mapOfRequestsOffset,
+        encryptedSegmentSize,
+        plainSegmentSize: segmentSize,
+      };
+      mapOfRequestsOffset += encryptedSegmentSize;
+      return chunk;
+    }
+  );
+  const cipher = new AesGcmCipher(cfg.cryptoService);
+  // A range read fetches only the segments planPlaintextRange picks (see there
+  // for how their positions and the end of the plaintext are authenticated):
+  // for files this SDK writes, the segments covering the range, plus the one
+  // before the last when only the last covers it. Output outside the range is
+  // dropped as segments are handed out. Planning needs only the manifest, so a
+  // bad range is refused before the rewrap.
+  const {
+    chunks,
+    skip: rangeSkip,
+    take: rangeTake,
+  } = cfg.range
+    ? planPlaintextRange(allChunks, cfg.range, (size) => cipher.encryptedPayloadSize(size))
+    : { chunks: allChunks, skip: 0, take: Infinity };
   const { metadata, reconstructedKey, requiredObligations } = await unwrapKey({
     fulfillableObligations: cfg.fulfillableObligations,
     manifest,
@@ -1763,25 +1799,6 @@ export async function decryptStreamFrom(
     throw new IntegrityError('Failed integrity check on root signature');
   }
 
-  let mapOfRequestsOffset = 0;
-  const chunks = segments.map(
-    ({
-      hash,
-      encryptedSegmentSize = encryptedSegmentSizeDefault,
-      segmentSize = segmentSizeDefault,
-    }) => {
-      const chunk: Chunk = {
-        hash,
-        encryptedOffset: mapOfRequestsOffset,
-        encryptedSegmentSize,
-        plainSegmentSize: segmentSize,
-      };
-      mapOfRequestsOffset += encryptedSegmentSize;
-      return chunk;
-    }
-  );
-
-  const cipher = new AesGcmCipher(cfg.cryptoService);
   // Segment GMAC is sound (it is the AEAD's own tag), so both algorithms stay
   // valid here; only unknown ones are rejected.
   const segmentIntegrityAlg = asSegmentIntegrityAlgorithm(segmentHashAlg || rootIntegrityAlgorithm);
@@ -1789,8 +1806,8 @@ export async function decryptStreamFrom(
   const batches = prefetchSegmentBatches({
     chunks,
     ...schedulerOptions,
-    fetchBatch: (slice) =>
-      fetchAndDecryptChunkSlice({
+    fetchBatch: async (slice) => {
+      const plaintexts = await fetchAndDecryptChunkSlice({
         centralDirectory,
         zipReader,
         reconstructedKey: keyForDecryption,
@@ -1799,38 +1816,80 @@ export async function decryptStreamFrom(
         cryptoService: cfg.cryptoService,
         specVersion,
         slice,
-      }),
+      });
+      if (cfg.range) {
+        // The range's positions assume these lengths; each segment's hash has
+        // just authenticated its real one. sliceAndDecrypt skips its own check
+        // when the recorded size is 0, so check every segment here. Checked per
+        // batch, so no plaintext from a batch with a mismatch reaches the reader.
+        slice.forEach(({ plainSegmentSize }, i) => {
+          if (plaintexts[i].length !== plainSegmentSize) {
+            throw new IntegrityError(
+              `segment plaintext size [${plaintexts[i].length}] does not match the manifest [${plainSegmentSize}]`
+            );
+          }
+        });
+      }
+      return plaintexts;
+    },
   }).getReader();
 
   let progress = 0;
+  // Plaintext still to drop from the front, and still to hand out, for a range.
+  let skip = rangeSkip;
+  let remaining = rangeTake;
   // The batch being drained, one segment per pull. Taking segments off the
   // front releases each one as soon as it is handed to the consumer.
   let draining: Array<{ plaintext: Uint8Array; encryptedSegmentSize: number }> = [];
   const underlyingSource = {
     pull: async (controller: ReadableStreamDefaultController) => {
-      if (!draining.length) {
-        const { done, value: batch } = await batches.read();
-        if (done) {
-          controller.close();
+      // Segments outside the range produce no output, so keep going until one
+      // does or the batches run out. A range read decrypts every planned
+      // segment, even after its last byte is handed out: the later ones confirm
+      // where the plaintext ends.
+      for (;;) {
+        if (!draining.length) {
+          const { done, value: batch } = await batches.read();
+          if (done) {
+            if (cfg.range && remaining) {
+              // The plan and the length checks should make this unreachable;
+              // never let a range read end short without saying so.
+              throw new IntegrityError(
+                `decrypted data ended [${remaining}] bytes short of the requested range`
+              );
+            }
+            controller.close();
+            return;
+          }
+          try {
+            const plaintexts = await batch.plaintext;
+            draining = batch.slice.map(({ encryptedSegmentSize = 0 }, i) => ({
+              plaintext: plaintexts[i],
+              encryptedSegmentSize,
+            }));
+          } catch (e) {
+            // Drop the queued batches and stop fetching more.
+            batches.cancel(e).catch(() => undefined);
+            throw e;
+          }
+        }
+
+        const { plaintext, encryptedSegmentSize } = draining.shift()!;
+        const dropped = Math.min(skip, plaintext.length);
+        skip -= dropped;
+        const end = Math.min(plaintext.length, dropped + remaining);
+        const output =
+          dropped || end < plaintext.length ? plaintext.subarray(dropped, end) : plaintext;
+        remaining -= output.length;
+        // Progress counts the ciphertext of the segments handed through here,
+        // whole, trimmed or dropped.
+        progress += encryptedSegmentSize;
+        cfg.progressHandler?.(progress);
+        if (output.length) {
+          controller.enqueue(output);
           return;
         }
-        try {
-          const plaintexts = await batch.plaintext;
-          draining = batch.slice.map(({ encryptedSegmentSize = 0 }, i) => ({
-            plaintext: plaintexts[i],
-            encryptedSegmentSize,
-          }));
-        } catch (e) {
-          // Drop the queued batches and stop fetching more.
-          batches.cancel(e).catch(() => undefined);
-          throw e;
-        }
       }
-
-      const { plaintext, encryptedSegmentSize } = draining.shift()!;
-      controller.enqueue(plaintext);
-      progress += encryptedSegmentSize;
-      cfg.progressHandler?.(progress);
     },
     cancel: (reason: unknown) => batches.cancel(reason),
     ...(cfg.fileStreamServiceWorker && { fileStreamServiceWorker: cfg.fileStreamServiceWorker }),
