@@ -19,7 +19,7 @@ import {
   decryptedFileName,
   expectedKaoType,
 } from './fileNames.js';
-import { canSaveAs, DownloadError, toFile } from './downloadSink.js';
+import { canSaveAs, DownloadError, type SinkStrategy, toFile } from './downloadSink.js';
 
 const oidcClient = new OidcClient(config.oidc.host, config.oidc.clientId, 'otdf-sample-web-app');
 
@@ -148,6 +148,14 @@ function fileNameFor(inputSource: InputSource) {
 // The SDK can have succeeded when only saving its output failed.
 function failureLabel(e: unknown, type: 'Encrypt' | 'Decrypt') {
   return e instanceof DownloadError ? `${type}ed, but saving failed` : `${type} Failed`;
+}
+
+// The Blob fallback ends by clicking a download link, which reports nothing
+// back, so only the service worker can tell us the file was saved.
+function completeLabel(type: 'Encrypt' | 'Decrypt', strategy?: SinkStrategy) {
+  return strategy === 'blob'
+    ? `✍️ ${type}ed; check that your browser saved the file`
+    : `✍️ ${type} Complete`;
 }
 
 function drain() {
@@ -492,10 +500,11 @@ function App() {
       }
     }
     const cipherTextWithProgress = cipherText.pipeThrough(progressTransformers.writer);
+    let strategy: SinkStrategy | undefined;
     try {
       switch (sinkType) {
         case 'file':
-          await toFile(cipherTextWithProgress, downloadName, {
+          strategy = await toFile(cipherTextWithProgress, downloadName, {
             signal: sc.signal,
             onFallback: warnBuffering,
           });
@@ -512,7 +521,7 @@ function App() {
           await cipherTextWithProgress.pipeTo(drain(), { signal: sc.signal });
           break;
       }
-      setDownloadState('✍️ Encrypt Complete');
+      setDownloadState(completeLabel('Encrypt', strategy));
     } catch (e) {
       setDownloadState(
         `${failureLabel(e, 'Encrypt')}: ${e instanceof Error ? e.message : String(e)}`
@@ -594,9 +603,13 @@ function App() {
       const plainTextStream = plainText
         .pipeThrough(progressTransformers.reader)
         .pipeThrough(progressTransformers.writer);
+      let strategy: SinkStrategy | undefined;
       switch (sinkType) {
         case 'file':
-          await toFile(plainTextStream, dfn, { signal: sc.signal, onFallback: warnBuffering });
+          strategy = await toFile(plainTextStream, dfn, {
+            signal: sc.signal,
+            onFallback: warnBuffering,
+          });
           break;
         case 'fsapi': {
           if (!f) {
@@ -610,7 +623,7 @@ function App() {
           await plainTextStream.pipeTo(drain(), { signal: sc.signal });
           break;
       }
-      setDownloadState('✍️ Decrypt Complete');
+      setDownloadState(completeLabel('Decrypt', strategy));
       const { fqns: requiredObligations } = await reader.obligations();
       console.log(
         `Found required obligations count: ${requiredObligations.length}. ${requiredObligations.length ?? JSON.stringify(requiredObligations)}`
