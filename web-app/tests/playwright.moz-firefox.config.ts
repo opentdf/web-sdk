@@ -36,7 +36,8 @@ export default {
     {
       name: 'moz-firefox',
       use: {
-        browserName: '_bidiFirefox',
+        // A moz- channel is what selects Playwright's BiDi driver.
+        browserName: 'firefox',
         channel: 'moz-firefox',
         launchOptions: {
           firefoxUserPrefs: {

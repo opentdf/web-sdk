@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test';
 import { test, expect } from '../fixtures.js';
 import fs from 'node:fs';
-import { appUrl, authorize, downloadPath, loadFile } from './acts.js';
+import { appUrl, authorize, downloadPath, isStockFirefox, loadFile } from './acts.js';
 
 test.beforeEach(async ({ page }) => {
   page.on('pageerror', (err) => {
@@ -18,7 +18,7 @@ test.beforeEach(async ({ page }) => {
 // channel buffers too, so use it only on a workstation with RAM to spare.
 // WebKit's memory can also grow when the source outruns the disk (DSPX-5246).
 test.skip(
-  ({ browserName }) => browserName === 'firefox',
+  ({ browserName, channel }) => browserName === 'firefox' && !isStockFirefox(channel),
   "Playwright's Firefox buffers downloads in memory; use playwright.moz-firefox.config.ts"
 );
 

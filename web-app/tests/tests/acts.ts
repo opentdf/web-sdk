@@ -5,6 +5,13 @@ import { expect, type Download, type Page } from '@playwright/test';
 
 export const appUrl = 'http://localhost:65432/';
 
+/**
+ * Whether this is stock Firefox over WebDriver BiDi, from
+ * playwright.moz-firefox.config.ts. Its browserName is 'firefox' too, so a skip
+ * meant for Playwright's patched Firefox has to check this as well.
+ */
+export const isStockFirefox = (channel?: string) => !!channel?.startsWith('moz-');
+
 export const authorize = async (page: Page) => {
   await page.goto(appUrl);
   // If we are logged in, return early.
