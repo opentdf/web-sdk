@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.24.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.23.0...sdk-v0.24.0) (2026-10-30)
+
+
+### Features
+
+* **sdk:** decrypt selected portions of ciphertext in the SDK and CLI (DSPX-5116) ([#1093](https://github.com/opentdf/web-sdk/issues/1093)) ([2cb7eff](https://github.com/opentdf/web-sdk/commit/2cb7eff24977eff5da09d475f2be3597495dba21))
+
+
+### Bug Fixes
+
+* **ci:** raise platform-roundtrip timeout to 90 min ([#1123](https://github.com/opentdf/web-sdk/issues/1123)) ([90848b8](https://github.com/opentdf/web-sdk/commit/90848b8c7fbd169bd57d08ca686ffa0d6ac40a29))
+* **sdk:** bounds-check little-endian reads and remote byte ranges (DSPX-4591) ([#1087](https://github.com/opentdf/web-sdk/issues/1087)) ([be1c930](https://github.com/opentdf/web-sdk/commit/be1c9303d8dd0cf5212daaad2036deff998c0746))
+* **sdk:** resolve duplicate ZIP entries consistently (DSPX-5357) ([#1117](https://github.com/opentdf/web-sdk/issues/1117)) ([1a0710b](https://github.com/opentdf/web-sdk/commit/1a0710b45d2ffb5d612ceb88971b31652473e90b))
+
 ## [0.23.0](https://github.com/opentdf/web-sdk/compare/sdk-v0.22.0...sdk-v0.23.0) (2026-10-23)
 
 
