@@ -234,7 +234,7 @@ test('large download keeps memory flat', async ({ page, browserName, channel }) 
   const path = await downloadPath(download);
   const { baselineKiB, peakKiB } = stopSampling();
   try {
-    expect(fs.statSync(path).size).toBe(largeBytes);
+    await expectPattern(path, largeBytes);
   } finally {
     fs.unlinkSync(path);
   }
