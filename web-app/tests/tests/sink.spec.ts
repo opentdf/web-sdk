@@ -222,6 +222,8 @@ test.describe('without a service worker', () => {
 });
 
 test('large download keeps memory flat', async ({ page, browserName, channel }) => {
+  // Opt-in: a file big enough to show memory growth takes minutes and fills the
+  // disk, so CI skips it (see the note at the top of this file).
   test.skip(!largeBytes, 'set SINK_TEST_BYTES to run');
   test.setTimeout(0);
   const stopSampling = await sampleBrowserMemory(browserName, channel);

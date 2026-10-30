@@ -4,7 +4,7 @@
   "license": "BSD-3-Clause-Clear",
   "type": "module",
   "scripts": {
-    "build": "tsc && vite build",
+    "build": "tsc && tsc -p src/sw && vite build",
     "coverage:browser": "mkdir -p coverage/browser && nyc report --reporter=text --reporter=lcov --cwd .. -t web-app/.nyc_output --report-dir=web-app/coverage/browser >coverage/browser/coverage.txt",
     "dev": "vite",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"  \"tests/*.{js,jsx,ts,tsx}\" \"tests/tests/**/*.{js,jsx,ts,tsx}\"",

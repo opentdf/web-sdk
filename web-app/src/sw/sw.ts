@@ -1,6 +1,7 @@
 // Streams downloads from the page straight into the browser's download manager,
 // so a multi-GiB encrypt or decrypt never has to fit in memory or in storage
-// quota. The page side lives in web-app/src/downloadSink.ts.
+// quota. The page side lives in ../downloadSink.ts, and the message types in
+// ./protocol.ts.
 //
 // 1. The page posts { type: 'register', id, filename } with a MessagePort.
 // 2. We wrap the port in a ReadableStream and reply { type: 'ready' }.
@@ -18,30 +19,40 @@
 // { type: 'abort', reason }, and we post { type: 'cancel', reason } when the
 // browser cancels the response. While streaming, the page also posts
 // { type: 'ping' } every 10 s, so the browser doesn't stop us mid-download.
+//
+// vite.config.ts strips the types from this file and serves it as /sw.js, a
+// classic script. So it can't import or export anything, not even a type; use
+// import() types for anything shared with the page.
+
+declare const self: ServiceWorkerGlobalScope;
+
+type ControlMessage = import('./protocol.js').ControlMessage;
+type FromWorker = import('./protocol.js').FromWorker;
+type ToWorker = import('./protocol.js').ToWorker;
 
 const HIGH_WATER_MARK_BYTES = 4 * 2 ** 20;
 
-/** @type {Map<string, { stream: ReadableStream<Uint8Array>, source: PortSource, filename: string }>} */
-const pending = new Map();
+const pending = new Map<
+  string,
+  { stream: ReadableStream<Uint8Array>; source: PortSource; filename: string }
+>();
 
 function downloadBase() {
   return new URL('__download__/', self.registration.scope).href;
 }
 
-/** @implements {UnderlyingDefaultSource<Uint8Array>} */
-class PortSource {
-  /**
-   * @param {MessagePort} port
-   * @param {() => void} forget drops the entry if the download never started
-   */
-  constructor(port, forget) {
-    this.port = port;
-    this.forget = forget;
+class PortSource implements UnderlyingDefaultSource<Uint8Array> {
+  readonly #port: MessagePort;
+  // Drops the entry if the download never started.
+  readonly #forget: () => void;
+
+  constructor(port: MessagePort, forget: () => void) {
+    this.#port = port;
+    this.#forget = forget;
   }
 
-  /** @param {ReadableStreamDefaultController<Uint8Array>} controller */
-  start(controller) {
-    this.port.onmessage = ({ data }) => {
+  start(controller: ReadableStreamDefaultController<Uint8Array>) {
+    this.#port.onmessage = ({ data }: MessageEvent<ToWorker | null>) => {
       switch (data?.type) {
         case 'chunk':
           controller.enqueue(new Uint8Array(data.chunk));
@@ -58,12 +69,12 @@ class PortSource {
           this.end();
           break;
         default:
-          console.warn(`download worker: unknown message type ${data?.type}`);
+          console.warn('download worker: unknown message', data);
       }
     };
     // A chunk that can't be deserialized is lost, and the page has already
     // spent its credit on it; fail rather than save a file with a hole in it.
-    this.port.onmessageerror = () => {
+    this.#port.onmessageerror = () => {
       const error = new Error('a message from the page could not be read');
       controller.error(error);
       this.cancel(error.message);
@@ -71,39 +82,41 @@ class PortSource {
   }
 
   pull() {
-    this.port.postMessage({ type: 'pull' });
+    this.send({ type: 'pull' });
   }
 
-  /** @param {unknown} reason */
-  cancel(reason) {
+  // The browser passes a DOMException, if anything.
+  cancel(reason?: Error | string) {
     // The user cancelled in the download UI. Firefox is expected to report
     // this (not yet verified); Chromium does not (https://crbug.com/638494),
     // so there the page notices only when its stall watchdog fires.
-    this.port.postMessage({ type: 'cancel', reason: String(reason ?? 'no reason given') });
+    this.send({ type: 'cancel', reason: String(reason ?? 'no reason given') });
     this.end();
   }
 
+  send(message: FromWorker) {
+    this.#port.postMessage(message);
+  }
+
   end() {
-    this.port.close();
-    this.forget();
+    this.#port.close();
+    this.#forget();
   }
 }
 
 /**
  * Passes the body through, posting { type: 'done' } once the browser has read
  * all of it, so the page does not report success while bytes are still queued.
- * @param {ReadableStream<Uint8Array>} stream
- * @param {PortSource} source
  */
-function reportWhenRead(stream, source) {
+function reportWhenRead(stream: ReadableStream<Uint8Array>, source: PortSource) {
   const reader = stream.getReader();
-  return new ReadableStream(
+  return new ReadableStream<Uint8Array>(
     {
       async pull(controller) {
         const { done, value } = await reader.read();
         if (done) {
           controller.close();
-          source.port.postMessage({ type: 'done' });
+          source.send({ type: 'done' });
           source.end();
         } else {
           controller.enqueue(value);
@@ -115,8 +128,8 @@ function reportWhenRead(stream, source) {
   );
 }
 
-/** @param {string} filename */
-function contentDisposition(filename) {
+function contentDisposition(filename: string) {
+  // eslint-disable-next-line no-control-regex -- control characters are what this replaces
   const safe = filename.replace(/[\u0000-\u001f\u007f/\\]/g, '_');
   const ascii = safe.replace(/[^\x20-\x7e]|["%]/g, '_');
   const encoded = encodeURIComponent(safe).replace(
@@ -139,7 +152,9 @@ self.addEventListener('message', (event) => {
     console.warn(`download worker: ignoring message from ${event.origin}`);
     return;
   }
-  const { data } = event;
+  // Same origin, but not necessarily the same version of the page: check the
+  // fields at runtime rather than trusting the type.
+  const data = event.data as ControlMessage | null;
   // 'ping' needs no handling: receiving a message is what keeps us alive.
   if (data?.type !== 'register') {
     return;
@@ -156,7 +171,7 @@ self.addEventListener('message', (event) => {
     new ByteLengthQueuingStrategy({ highWaterMark: HIGH_WATER_MARK_BYTES })
   );
   pending.set(id, { stream, source, filename });
-  port.postMessage({ type: 'ready' });
+  source.send({ type: 'ready' });
 });
 
 self.addEventListener('fetch', (event) => {
@@ -173,7 +188,7 @@ self.addEventListener('fetch', (event) => {
   }
   // Single use: a second request for the same id gets a 404.
   pending.delete(id);
-  entry.source.port.postMessage({ type: 'started' });
+  entry.source.send({ type: 'started' });
   event.respondWith(
     new Response(reportWhenRead(entry.stream, entry.source), {
       headers: {

@@ -1,0 +1,15 @@
+{
+  // The download worker runs in a ServiceWorkerGlobalScope, not a Window, so it
+  // gets the WebWorker lib in place of DOM. The two can't share a program,
+  // which is why ../../tsconfig.json excludes this directory.
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ESNext", "WebWorker"],
+    // sw.ts has no imports, so TypeScript would otherwise treat it as a script
+    // and reject its `declare const self` as a redeclaration of the global.
+    "moduleDetection": "force",
+    "types": []
+  },
+  "include": ["."],
+  "exclude": []
+}

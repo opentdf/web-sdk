@@ -1,14 +1,16 @@
 /**
  * Saves a stream as a browser download without holding it in memory.
  *
- * The page hands the stream to our own service worker (public/sw.js) over a
- * MessagePort, then navigates a hidden iframe to a URL the worker answers with
- * a streamed attachment. Once the worker's 4 MiB queue has filled, each pull
- * by the browser's download manager grants the page one more chunk, so
- * backpressure reaches back through the SDK to its source. This replaces
- * StreamSaver, which did the same through a service worker on a third-party
- * origin.
+ * The page hands the stream to our own service worker (sw/sw.ts, served as
+ * /sw.js) over a MessagePort, then navigates a hidden iframe to a URL the
+ * worker answers with a streamed attachment. Once the worker's 4 MiB queue has
+ * filled, each pull by the browser's download manager grants the page one more
+ * chunk, so backpressure reaches back through the SDK to its source. This
+ * replaces StreamSaver, which did the same through a service worker on a
+ * third-party origin.
  */
+
+import type { ControlMessage, FromWorker, ToWorker } from './sw/protocol.js';
 
 export type SinkStrategy = 'service-worker' | 'blob';
 
@@ -44,16 +46,6 @@ const STALL_TIMEOUT_MS = 10 * 60_000;
 // browser owns it; wait a moment before removing them to be safe.
 const CLEANUP_DELAY_MS = 30_000;
 
-type FromWorker =
-  | { type: 'ready' }
-  | { type: 'started' }
-  | { type: 'pull' }
-  | { type: 'done' }
-  | { type: 'cancel'; reason: string };
-
-type ToWorker =
-  { type: 'chunk'; chunk: ArrayBuffer } | { type: 'close' } | { type: 'abort'; reason: string };
-
 let registered: Promise<ServiceWorkerRegistration> | undefined;
 
 export function registerDownloadWorker(): void {
@@ -84,7 +76,9 @@ export async function toFile(
     reason = found;
   } else {
     const sink = new PortSink();
-    found.worker.postMessage({ type: 'register', id: sink.id, filename }, [sink.remotePort]);
+    found.worker.postMessage({ type: 'register', id: sink.id, filename } satisfies ControlMessage, [
+      sink.remotePort,
+    ]);
     // An outdated or broken worker may never answer; the stream is untouched
     // until it does, so falling back is still possible.
     if (await withTimeout(sink.ready)) {
@@ -134,7 +128,10 @@ async function streamThroughWorker(
   sink.expectStart();
   // Ping the worker holding the stream, not registration.active, which an
   // update can replace mid-download.
-  const keepalive = setInterval(() => worker.postMessage({ type: 'ping' }), KEEPALIVE_MS);
+  const keepalive = setInterval(
+    () => worker.postMessage({ type: 'ping' } satisfies ControlMessage),
+    KEEPALIVE_MS
+  );
   // pipeTo stops watching its signal once the source has closed, but close()
   // can then wait minutes for the browser to finish reading.
   const { signal } = options;
@@ -159,7 +156,7 @@ class PortSink implements UnderlyingSink<Uint8Array> {
   readonly id = crypto.randomUUID();
   readonly remotePort: MessagePort;
   readonly ready: Promise<true>;
-  #port: MessagePort;
+  readonly #port: MessagePort;
   #credits = 0;
   #started = false;
   #done = false;

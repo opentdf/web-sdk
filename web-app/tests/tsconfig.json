@@ -1,0 +1,21 @@
+{
+  // Playwright and Node both strip types without checking them, so nothing
+  // here is type-checked unless `npm run typecheck` runs.
+  "compilerOptions": {
+    // run-server.ts imports ./static-server.ts by its real name, as Node needs.
+    "allowImportingTsExtensions": true,
+    // Node's type stripping can only erase types, so no enums or namespaces,
+    // and type-only imports must say so.
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    // page.evaluate() callbacks run in the browser.
+    "lib": ["DOM", "ESNext"],
+    "module": "NodeNext",
+    "noEmit": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "ESNext",
+    "types": ["node"]
+  },
+  "include": ["*.ts", "tests"]
+}

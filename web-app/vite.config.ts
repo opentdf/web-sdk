@@ -1,7 +1,14 @@
 import { existsSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { defineConfig, type Plugin, type PluginOption, type ProxyOptions } from 'vite';
+import {
+  defineConfig,
+  transformWithOxc,
+  type Plugin,
+  type PluginOption,
+  type ProxyOptions,
+} from 'vite';
 import react from '@vitejs/plugin-react';
 import istanbul from 'vite-plugin-istanbul';
 
@@ -97,6 +104,45 @@ function libDependencyResolution(): Plugin {
   };
 }
 
+/**
+ * src/downloadSink.ts registers the download worker as ./sw.js, so it needs a
+ * fixed URL beside index.html. As a build entry its name would be hashed, and
+ * public/ is copied verbatim, with no compile step. Strip the types from
+ * src/sw/sw.ts and serve it as /sw.js in dev, or emit it as sw.js in a build.
+ * It is registered as a classic script, so this is a strip and not a bundle,
+ * and any import or export left in the output is an error.
+ */
+function downloadWorker(): Plugin {
+  const source = fileURLToPath(new URL('src/sw/sw.ts', import.meta.url));
+  async function compile() {
+    const { code } = await transformWithOxc(await readFile(source, 'utf8'), source);
+    // oxc adds `export {};` when it strips an `import type`, so this also
+    // catches type imports.
+    if (/^\s*(import|export)\b/m.test(code)) {
+      throw new Error(`${source} must compile to a classic script, with no import or export`);
+    }
+    return code;
+  }
+  return {
+    name: 'opentdf-download-worker',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (req.url?.split('?')[0] !== `${server.config.base}sw.js`) {
+          next();
+          return;
+        }
+        compile().then((code) => {
+          res.setHeader('Content-Type', 'text/javascript');
+          res.end(code);
+        }, next);
+      });
+    },
+    async generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'sw.js', source: await compile() });
+    },
+  };
+}
+
 function coveragePlugins(): PluginOption[] {
   if (!coverage) {
     return [];
@@ -134,7 +180,7 @@ export default defineConfig({
       shimMissingExports: true,
     },
   },
-  plugins: [react(), ...coveragePlugins()],
+  plugins: [react(), downloadWorker(), ...coveragePlugins()],
   resolve: {
     alias: coverage ? sdkSourceAliases : [],
   },

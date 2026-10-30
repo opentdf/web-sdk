@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DownloadError, toFile } from './downloadSink.js';
+import type { ControlMessage, FromWorker, ToWorker } from './sw/protocol.js';
 
 // Drives the page side of the download protocol against a scripted worker, with
 // fake timers so the start and stall timeouts run instantly. Port messages
@@ -7,22 +8,20 @@ import { DownloadError, toFile } from './downloadSink.js';
 
 const MINUTE = 60_000;
 
-type Message = { type: string; [key: string]: unknown };
-
-/** Plays public/sw.js: records what the page sends and answers on cue. */
+/** Plays sw/sw.ts: records what the page sends and answers on cue. */
 class FakeWorker {
   port?: MessagePort;
-  received: Message[] = [];
+  received: ToWorker[] = [];
 
-  postMessage(message: Message, transfer: Transferable[] = []) {
+  postMessage(message: ControlMessage, transfer: Transferable[] = []) {
     if (message.type !== 'register') {
       return;
     }
     this.port = transfer[0] as MessagePort;
-    this.port.onmessage = ({ data }: MessageEvent<Message>) => void this.received.push(data);
+    this.port.onmessage = ({ data }: MessageEvent<ToWorker>) => void this.received.push(data);
   }
 
-  send(...messages: Message[]) {
+  send(...messages: FromWorker[]) {
     for (const message of messages) {
       this.port?.postMessage(message);
     }

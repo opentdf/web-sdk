@@ -158,6 +158,12 @@ jobs:
       - run: npm audit --omit dev && npm audit --audit-level high --omit dev
       - run: npm run license-check
       - run: npm run lint
+      # The Playwright project only runs in platform-roundtrip, which strips
+      # types without checking them. Check them here, without waiting for that
+      # job to bring up a platform.
+      - name: Type-check the Playwright project
+        working-directory: ./web-app/tests
+        run: npm ci && npm run typecheck
       - run: npx playwright install
       - run: npm test
       - uses: fingerprintjs/action-coverage-report-md@72dfb7de7581612640a8e599e918b2eda98f9bba #v2.0.1
