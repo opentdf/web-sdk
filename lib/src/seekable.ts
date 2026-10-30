@@ -168,6 +168,14 @@ export const fromUrl = async (location: string): Promise<Chunker> => {
         `byte range [${byteStart}, ${byteEnd ?? 'end'}) extends past remote file length [${knownLength}]`
       );
     }
+    // Offsets are frequently derived from the (untrusted) file being read; never
+    // let a non-integer such as `NaN` or `1e+21` reach the Range header.
+    if (
+      !Number.isSafeInteger(byteStart) ||
+      (byteEnd !== undefined && !Number.isSafeInteger(byteEnd))
+    ) {
+      throw new InvalidFileError(`invalid byte range [${byteStart}, ${byteEnd}) for [${location}]`);
+    }
     let rangeHeader = `${byteStart}`;
     if (byteEnd && byteEnd < 0) {
       // NOTE: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Range
