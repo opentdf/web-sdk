@@ -124,7 +124,7 @@ jobs:
       - run: npm run lint
       - run: npm pack
       - name: Setup Bats and bats libs
-        uses: bats-core/bats-action@3.0.1
+        uses: bats-core/bats-action@4.0.0
       - run: bats bin/opentdf.bats
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 #v7.0.2
         with:
