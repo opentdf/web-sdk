@@ -23,6 +23,8 @@
     "types": ["node", "wicg-file-system-access"],
     "useDefineForClassFields": true
   },
-  "include": ["src", "public/sw.js"],
+  "include": ["src"],
+  // The download service worker needs the WebWorker lib; see src/sw/tsconfig.json.
+  "exclude": ["src/sw"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

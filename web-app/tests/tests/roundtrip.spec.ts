@@ -2,7 +2,7 @@ import { test, expect } from '../fixtures.js';
 import fs from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { serve } from '../static-server.js';
-import { authorize, loadFile } from './acts.js';
+import { authorize, downloadPath, loadFile } from './acts.js';
 
 // References
 // Playwright assertions: https://playwright.dev/docs/test-assertions
@@ -36,7 +36,7 @@ test('roundtrip ztdf', async ({ page }) => {
   const download = await downloadPromise;
   // Encrypt tags the container with the default wrap algorithm.
   expect(download.suggestedFilename()).toContain('README.md-ecsecp256r1');
-  const cipherTextPath = await download.path();
+  const cipherTextPath = await downloadPath(download);
   expect(cipherTextPath).toBeTruthy();
   if (!cipherTextPath) {
     throw new Error();
@@ -50,7 +50,7 @@ test('roundtrip ztdf', async ({ page }) => {
   await page.locator('#decryptButton').click();
   const download2 = await plainDownloadPromise;
   expect(download2.suggestedFilename()).toContain('.decrypted');
-  const plainTextPath = await download2.path();
+  const plainTextPath = await downloadPath(download2);
   if (!plainTextPath) {
     throw new Error();
   }
@@ -84,7 +84,7 @@ for (const algorithm of ['mlkem:768', 'mlkem:1024'] as const) {
     // The wrap qualifier is the algorithm token without its colon, which for
     // ML-KEM is also the KAS kid.
     expect(download.suggestedFilename()).toContain(`README.md-${expectedKid}`);
-    const cipherTextPath = await download.path();
+    const cipherTextPath = await downloadPath(download);
     expect(cipherTextPath).toBeTruthy();
     if (!cipherTextPath) {
       throw new Error();
@@ -108,7 +108,7 @@ for (const algorithm of ['mlkem:768', 'mlkem:1024'] as const) {
     await page.locator('#decryptButton').click();
     const download2 = await plainDownloadPromise;
     expect(download2.suggestedFilename()).toContain('.decrypted');
-    const plainTextPath = await download2.path();
+    const plainTextPath = await downloadPath(download2);
     if (!plainTextPath) {
       throw new Error();
     }
@@ -135,7 +135,7 @@ test('download names record both key wrap legs', async ({ page }) => {
   await page.locator('#encryptButton').click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe('README.md-mlkem768.tdf');
-  const cipherTextPath = await download.path();
+  const cipherTextPath = await downloadPath(download);
   if (!cipherTextPath) {
     throw new Error();
   }
@@ -160,7 +160,7 @@ test('download names record both key wrap legs', async ({ page }) => {
   // The download event fires when the stream opens, not when it finishes, so the
   // name alone would still be asserted had the mlkem:768 -> mlkem:1024 rewrap
   // failed partway. Read the bytes back to pin that the exchange completed.
-  const plainTextPath = await download2.path();
+  const plainTextPath = await downloadPath(download2);
   if (!plainTextPath) {
     throw new Error();
   }
@@ -199,7 +199,7 @@ test('Remote Source Streaming', async ({ page }) => {
     await page.locator('#encryptButton').click();
 
     const download = await downloadPromise;
-    const cipherTextPath = await download.path();
+    const cipherTextPath = await downloadPath(download);
     expect(download.suggestedFilename()).toContain('README.md-ecsecp256r1');
     expect(cipherTextPath).toBeTruthy();
     if (!cipherTextPath) {
@@ -217,7 +217,7 @@ test('Remote Source Streaming', async ({ page }) => {
     await page.locator('#fileSink').click();
     await page.locator('#decryptButton').click();
     const download2 = await plainDownloadPromise;
-    const plainTextPath = await download2.path();
+    const plainTextPath = await downloadPath(download2);
     if (!plainTextPath) {
       throw new Error();
     }

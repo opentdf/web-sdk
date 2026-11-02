@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-import { serve } from './static-server.js';
+// Node strips the types itself, but only resolves the real file name.
+import { serve } from './static-server.ts';
 
 const dirname = new URL('.', import.meta.url).pathname;
 const port = 8000;

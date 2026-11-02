@@ -1,15 +1,15 @@
 // Simplest HTTP server that supports RANGE headers AFAIK.
-import { createServer } from 'node:http';
+import { createServer, type Server } from 'node:http';
 import { stat } from 'node:fs/promises';
 import NodePath from 'node:path';
 import send from 'send';
 
-export async function serve(path, port) {
+export async function serve(path: string, port: number): Promise<Server> {
   const stats = await stat(path);
   const folder = !!stats?.isDirectory();
   const singleFile = !!stats?.isFile();
   if (!folder && !singleFile) {
-    throw new Error('CRITICAL', `Path parameter not valid: [${file}]`);
+    throw new Error(`Path parameter not valid: [${path}]`);
   }
 
   console.log(`Listening on port ${port}; serving up ${folder ? 'file' : 'bit'}s from ${path}`);
@@ -21,7 +21,7 @@ export async function serve(path, port) {
       res.setHeader('Access-Control-Allow-Headers', req.headers.origin);
     }
     res.setHeader('Access-Control-Expose-Headers', 'Content-Length');
-    const url = new URL(req.url, `http://${req.headers.host}`);
+    const url = new URL(req.url ?? '/', `http://${req.headers.host}`);
     const validNamePart = NodePath.basename(url.pathname);
     const allowedName = `/${validNamePart}`;
     if (allowedName !== url.pathname) {
