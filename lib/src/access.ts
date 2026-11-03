@@ -149,6 +149,12 @@ export const publicKeyAlgorithmToJwa = (a: KasPublicKeyAlgorithm): string => {
       return 'ML-KEM-768+A192KW';
     case 'mlkem:1024':
       return 'ML-KEM-1024+A256KW';
+    // No JWA name exists for the composite KEMs: these are their labels in
+    // draft-ietf-lamps-pq-composite-kem-14, whose keys come in no certificate.
+    case 'hpqt:secp256r1-mlkem768':
+      return 'MLKEM768-P256';
+    case 'hpqt:secp384r1-mlkem1024':
+      return 'MLKEM1024-P384';
     default:
       throw new Error(`unsupported public key algorithm: ${String(a)}`);
   }

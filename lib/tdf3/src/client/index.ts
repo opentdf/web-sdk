@@ -42,6 +42,7 @@ import { ConfigurationError } from '../../../src/errors.js';
 import { AesGcmCipher } from '../ciphers/aes-gcm-cipher.js';
 import {
   isEcKeyAlgorithm,
+  isHybridKeyAlgorithm,
   isMlKemKeyAlgorithm,
   isRsaKeyAlgorithm,
   type CryptoService,
@@ -288,6 +289,10 @@ export function algorithmEnumValueToString(algorithmEnumValue: Algorithm) {
       return 'mlkem:768';
     case Algorithm.MLKEM_1024:
       return 'mlkem:1024';
+    case Algorithm.HPQT_SECP256R1_MLKEM768:
+      return 'hpqt:secp256r1-mlkem768';
+    case Algorithm.HPQT_SECP384R1_MLKEM1024:
+      return 'hpqt:secp384r1-mlkem1024';
     case Algorithm.UNSPECIFIED:
       // Not entirely sure undefined is correct here, but since we need to generate a key for our cache
       // synchonously, it seems to be the best approach for now.
@@ -763,6 +768,8 @@ export class Client {
           type = 'ec-wrapped';
         } else if (isMlKemKeyAlgorithm(algorithm)) {
           type = 'mlkem-wrapped';
+        } else if (isHybridKeyAlgorithm(algorithm)) {
+          type = 'hybrid-wrapped';
         } else {
           throw new ConfigurationError(`Unsupported algorithm ${String(algorithm)}`);
         }

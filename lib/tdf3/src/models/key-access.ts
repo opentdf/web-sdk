@@ -3,6 +3,7 @@ import { ConfigurationError } from '../../../src/errors.js';
 import { Binary } from '../binary.js';
 import type {
   CryptoService,
+  HybridKeyAlgorithm,
   KeyPair,
   MlKemKeyAlgorithm,
   SymmetricKey,
@@ -15,7 +16,8 @@ import { MLKEM_CT_SIZES } from '../crypto/core/mlkem.js';
 import { encodeKemEnvelopeDer } from '../crypto/core/mlkem-asn1.js';
 import { toArrayBuffer } from '../utils/index.js';
 
-export type KeyAccessType = 'remote' | 'wrapped' | 'ec-wrapped' | 'mlkem-wrapped';
+export type KeyAccessType =
+  'remote' | 'wrapped' | 'ec-wrapped' | 'mlkem-wrapped' | 'hybrid-wrapped';
 
 export const schemaVersion = '1.0';
 
@@ -187,8 +189,6 @@ export class MlKemWrapped {
     dek: SymmetricKey,
     encryptedMetadataStr: string
   ): Promise<KeyAccessObject> {
-    const policyStr = JSON.stringify(policy);
-
     // Import KAS ML-KEM encapsulation key from raw base64
     const kasPublicKey = await this.cryptoService.importPublicKey(this.publicKey, {
       algorithmHint: this.alg,
@@ -201,60 +201,133 @@ export class MlKemWrapped {
     const { ciphertext: kemCiphertext, sharedSecret } =
       await this.cryptoService.mlKemEncapsulate(kasPublicKey);
 
-    // ML-KEM "direct key wrap" (per the platform's canonical format): the raw
-    // 32-byte ML-KEM shared secret IS the AES-256 key — no HKDF. AES-256-GCM
-    // seals the DEK, and the 12-byte nonce is prepended to the ciphertext+tag.
-    const iv = await this.cryptoService.randomBytes(12);
-    const encryptResult = await this.cryptoService.encrypt(
+    return (this.keyAccessObject = await writeKemKeyAccess('mlkem-wrapped', this, {
+      policy,
       dek,
+      encryptedMetadataStr,
+      kemCiphertext,
       sharedSecret,
-      Binary.fromArrayBuffer(toArrayBuffer(iv)),
-      Algorithms.AES_256_GCM
-    );
-
-    const aesCt = new Uint8Array(encryptResult.payload.asArrayBuffer());
-    const authTag = encryptResult.authTag
-      ? new Uint8Array(encryptResult.authTag.asArrayBuffer())
-      : new Uint8Array(0);
-
-    // encryptedDek = nonce(12) || aes_ct || tag(16)  (nonce-prepended AES-GCM)
-    const encryptedDek = new Uint8Array(iv.length + aesCt.length + authTag.length);
-    encryptedDek.set(iv);
-    encryptedDek.set(aesCt, iv.length);
-    encryptedDek.set(authTag, iv.length + aesCt.length);
-
-    // wrappedKey = base64( DER( kemEnvelope { [0] kemCiphertext, [1] encryptedDek } ) )
-    const blob = encodeKemEnvelopeDer(kemCiphertext, encryptedDek);
-
-    const policyBinding = hex.encodeArrayBuffer(
-      (await this.cryptoService.hmac(new TextEncoder().encode(base64.encode(policyStr)), dek))
-        .buffer
-    );
-
-    const kao: KeyAccessObject = {
-      type: 'mlkem-wrapped',
-      url: this.url,
-      protocol: 'kas',
-      wrappedKey: base64.encodeArrayBuffer(blob),
-      encryptedMetadata: base64.encode(encryptedMetadataStr),
-      policyBinding: {
-        alg: 'HS256',
-        hash: base64.encode(policyBinding),
-      },
-      schemaVersion,
-    };
-    kao.kid = this.kid;
-    if (this.sid?.length) {
-      kao.sid = this.sid;
-    }
-    this.keyAccessObject = kao;
-    return kao;
+    }));
   }
+}
+
+export class HybridWrapped {
+  readonly type = 'hybrid-wrapped';
+  keyAccessObject?: KeyAccessObject;
+
+  constructor(
+    public readonly url: string,
+    public readonly kid: string,
+    public readonly publicKey: string,
+    public readonly metadata: unknown,
+    public readonly cryptoService: CryptoService,
+    public readonly sid: string | undefined,
+    public readonly alg: HybridKeyAlgorithm
+  ) {
+    // The KAS finds a hybrid key by its id only.
+    if (!kid?.trim()) {
+      throw new ConfigurationError('HybridWrapped requires a non-empty kid');
+    }
+  }
+
+  async write(
+    policy: Policy,
+    dek: SymmetricKey,
+    encryptedMetadataStr: string
+  ): Promise<KeyAccessObject> {
+    const kasPublicKey = await this.cryptoService.importPublicKey(this.publicKey, {
+      algorithmHint: this.alg,
+    });
+    if (!this.cryptoService.hybridEncapsulate) {
+      throw new ConfigurationError(
+        'CryptoService does not support hybrid KEMs (hybridEncapsulate)'
+      );
+    }
+    // ECDH + ML-KEM, combined per draft-ietf-lamps-pq-composite-kem-14 into the
+    // 32-byte AES-256 key, as the platform's lib/ocrypto does.
+    const { ciphertext: kemCiphertext, sharedSecret } =
+      await this.cryptoService.hybridEncapsulate(kasPublicKey);
+    return (this.keyAccessObject = await writeKemKeyAccess('hybrid-wrapped', this, {
+      policy,
+      dek,
+      encryptedMetadataStr,
+      kemCiphertext,
+      sharedSecret,
+    }));
+  }
+}
+
+/**
+ * The key access object of a KEM, in the platform's canonical "direct key
+ * wrap" format: the KEM's 32-byte shared secret IS the AES-256 key, with no
+ * HKDF; AES-256-GCM seals the DEK with the 12-byte nonce prepended to the
+ * ciphertext and tag; `wrappedKey` is
+ * base64(DER(kemEnvelope { [0] kemCiphertext, [1] encryptedDek })).
+ */
+async function writeKemKeyAccess(
+  type: 'mlkem-wrapped' | 'hybrid-wrapped',
+  kas: { url: string; kid: string; sid: string | undefined; cryptoService: CryptoService },
+  input: {
+    policy: Policy;
+    dek: SymmetricKey;
+    encryptedMetadataStr: string;
+    kemCiphertext: Uint8Array;
+    sharedSecret: SymmetricKey;
+  }
+): Promise<KeyAccessObject> {
+  const { cryptoService } = kas;
+  const iv = await cryptoService.randomBytes(12);
+  const encryptResult = await cryptoService.encrypt(
+    input.dek,
+    input.sharedSecret,
+    Binary.fromArrayBuffer(toArrayBuffer(iv)),
+    Algorithms.AES_256_GCM
+  );
+
+  const aesCt = new Uint8Array(encryptResult.payload.asArrayBuffer());
+  const authTag = encryptResult.authTag
+    ? new Uint8Array(encryptResult.authTag.asArrayBuffer())
+    : new Uint8Array(0);
+
+  // encryptedDek = nonce(12) || aes_ct || tag(16)  (nonce-prepended AES-GCM)
+  const encryptedDek = new Uint8Array(iv.length + aesCt.length + authTag.length);
+  encryptedDek.set(iv);
+  encryptedDek.set(aesCt, iv.length);
+  encryptedDek.set(authTag, iv.length + aesCt.length);
+
+  const blob = encodeKemEnvelopeDer(input.kemCiphertext, encryptedDek);
+
+  const policyBinding = hex.encodeArrayBuffer(
+    (
+      await cryptoService.hmac(
+        new TextEncoder().encode(base64.encode(JSON.stringify(input.policy))),
+        input.dek
+      )
+    ).buffer
+  );
+
+  const kao: KeyAccessObject = {
+    type,
+    url: kas.url,
+    protocol: 'kas',
+    wrappedKey: base64.encodeArrayBuffer(blob),
+    encryptedMetadata: base64.encode(input.encryptedMetadataStr),
+    policyBinding: {
+      alg: 'HS256',
+      hash: base64.encode(policyBinding),
+    },
+    schemaVersion,
+  };
+  kao.kid = kas.kid;
+  if (kas.sid?.length) {
+    kao.sid = kas.sid;
+  }
+  return kao;
 }
 
 export { MLKEM_CT_SIZES };
 
-export type KeyAccess = ECWrapped | MlKemWrapped | Wrapped;
+export type KeyAccess = ECWrapped | HybridWrapped | MlKemWrapped | Wrapped;
 
 /**
  * A KeyAccess object stores all information about how an object key OR one key split is stored.
