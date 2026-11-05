@@ -33,6 +33,7 @@ import { type Chunker } from '../../src/seekable.js';
 import { tdfSpecVersion } from '../../src/version.js';
 import type { AssertionConfig, AssertionKey, AssertionVerificationKeys } from './assertions.js';
 import * as assertions from './assertions.js';
+import { verifyManifestAssertion } from './assertion-verifier.js';
 import { Binary } from './binary.js';
 import { AesGcmCipher } from './ciphers/aes-gcm-cipher.js';
 import type { SymmetricCipher } from './ciphers/symmetric-cipher-base.js';
@@ -1768,23 +1769,18 @@ export async function decryptStreamFrom(
   );
 
   if (!cfg.noVerifyAssertions) {
-    for (const assertion of manifest.assertions || []) {
-      // Create a default assertion key
-      let assertionKey: AssertionKey = {
-        alg: 'HS256',
-        key: keyForDecryption, // SymmetricKey (opaque)
-      };
-
-      if (cfg.assertionVerificationKeys) {
-        const foundKey = cfg.assertionVerificationKeys.Keys[assertion.id];
-        if (foundKey) {
-          assertionKey = foundKey;
-        }
-      }
-      await assertions.verify(
+    // Each assertion is checked as received, with exactly one key source:
+    // its per-ID key, else the default key, else the payload key (HS256).
+    const manifestAssertions: unknown = manifest.assertions ?? [];
+    if (!Array.isArray(manifestAssertions)) {
+      throw new InvalidFileError('manifest assertions member is not an array');
+    }
+    for (const assertion of manifestAssertions) {
+      await verifyManifestAssertion(
         assertion,
         aggregateHash,
-        assertionKey,
+        cfg.assertionVerificationKeys,
+        keyForDecryption, // SymmetricKey (opaque)
         isLegacyTDF,
         cfg.cryptoService
       );
