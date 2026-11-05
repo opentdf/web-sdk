@@ -1,5 +1,4 @@
 import { createWriteStream } from 'node:fs';
-import { readFile } from 'node:fs/promises';
 import { Writable } from 'node:stream';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
@@ -21,6 +20,11 @@ import {
 import { CLIError, Level, log } from './logger.js';
 import { type FileChunker, openFileChunker } from './file-chunker.js';
 import { asRangeCliError, isUrl, rangeFromArgs } from './source.js';
+import {
+  correctAssertionKeys,
+  parseAssertionVerificationKeys,
+  readJsonFileText,
+} from './assertion-keys.js';
 import * as assertions from '@opentdf/sdk/assertions';
 import { base64 } from '@opentdf/sdk/encodings';
 import { type KeyPair } from '@opentdf/sdk/singlecontainer';
@@ -56,11 +60,6 @@ const lowercaseIntegrityAlgorithm = (v: unknown) =>
 
 const asError = (value: unknown): Error =>
   value instanceof Error ? value : new Error(String(value));
-
-// TextDecoder, like Blob.text(), removes a leading UTF-8 BOM. readFile's
-// 'utf8' string decoding leaves it in place, which JSON.parse rejects.
-const readJsonFileText = async (path: string): Promise<string> =>
-  new TextDecoder().decode(await readFile(path));
 
 const parseJwt = (jwt: string, field = 1) => {
   return JSON.parse(base64.decode(jwt.split('.')[field])) as unknown;
@@ -133,64 +132,6 @@ const rstrip = (str: string, suffix = ' '): string => {
   return str;
 };
 
-async function parseAssertionVerificationKeys(
-  s: string
-): Promise<assertions.AssertionVerificationKeys> {
-  let u: assertions.AssertionVerificationKeys;
-  try {
-    u = JSON.parse(s) as assertions.AssertionVerificationKeys;
-  } catch (err) {
-    // try as file name:
-    try {
-      u = JSON.parse(await readJsonFileText(s)) as assertions.AssertionVerificationKeys;
-    } catch (err2) {
-      const cause = asError(err2);
-      throw new CLIError(
-        'CRITICAL',
-        `Failed to open/parse assertion verification keys as string or file path ${asError(err).message}`,
-        cause
-      );
-    }
-  }
-  if (typeof u !== 'object' || u === null) {
-    throw new Error('Invalid input: The input must be an object');
-  }
-  // handle both cases of "keys"
-  if (!('Keys' in u && typeof u.Keys === 'object')) {
-    if ('keys' in u && typeof u.keys === 'object') {
-      u.Keys = u.keys as Record<string, assertions.AssertionKey>;
-    } else {
-      throw new CLIError(
-        'CRITICAL',
-        'Invalid input: invalid structure of assertionVerificationKeys'
-      );
-    }
-  }
-  for (const assertionName in u.Keys) {
-    const assertionKey: assertions.AssertionKey = u.Keys[assertionName];
-    // Ensure each entry has the required 'key' and 'alg' fields
-    if (typeof assertionKey !== 'object' || assertionKey === null) {
-      throw new CLIError('CRITICAL', `Invalid assertion for ${assertionName}: Must be an object`);
-    }
-
-    if (typeof assertionKey.alg !== 'string') {
-      throw new CLIError(
-        'CRITICAL',
-        `Invalid assertion for ${assertionName}: Missing or invalid 'key' or 'alg'`
-      );
-    }
-    try {
-      u.Keys[assertionName].key = correctAssertionKeys(assertionKey);
-    } catch (err) {
-      throw new CLIError(
-        'CRITICAL',
-        `Issue converting assertion key from string: ${asError(err).message}`
-      );
-    }
-  }
-  return u;
-}
-
 async function parseReadOptions(argv: Partial<mainArgs>): Promise<ReadOptions> {
   const file = argv.file as string;
   // A URL is read with HTTP Range requests; a local file by position.
@@ -231,24 +172,6 @@ async function parseReadOptionsFor(source: Source, argv: Partial<mainArgs>): Pro
     r.concurrencyLimit = 100;
   }
   return r;
-}
-
-function correctAssertionKeys({ alg, key }: assertions.AssertionKey): string | Uint8Array {
-  if (alg === 'HS256') {
-    // Convert key string to Uint8Array
-    if (typeof key !== 'string') {
-      throw new CLIError('CRITICAL', 'HS256 key must be a string');
-    }
-    return new TextEncoder().encode(key); // Update array element directly
-  } else if (alg === 'RS256') {
-    // Convert PEM string to a KeyLike object
-    if (typeof key !== 'string') {
-      throw new CLIError('CRITICAL', 'RS256 key must be a PEM string');
-    }
-    return key;
-  }
-  // Otherwise its an unsupported alg
-  throw new CLIError('CRITICAL', `Unsupported signing key algorithm: ${alg}`); // Handle unsupported algs
 }
 
 async function parseAssertionConfig(s: string): Promise<assertions.AssertionConfig[]> {
@@ -479,7 +402,7 @@ export const handleArgs = (args: string[]) => {
       .option('assertionVerificationKeys', {
         alias: 'with-assertion-verification-keys',
         group: 'Decrypt',
-        desc: 'keys for assertion verification or path to a json file containing keys for assertion verification',
+        desc: 'keys for assertion verification or path to a json file containing keys for assertion verification, as {"keys": {"<assertion id>": {"alg", "key"}}, "defaultKey": {"alg", "key"}}; defaultKey applies to assertions with no entry in keys',
         type: 'string',
         default: '',
         validate: parseAssertionVerificationKeys,
