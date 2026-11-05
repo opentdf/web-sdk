@@ -1,5 +1,12 @@
 import { assert } from 'chai';
-import { DecryptError, IntegrityError, IvExhaustionError, TdfError } from '../../../src/errors.js';
+import {
+  AssertionVerificationError,
+  DecryptError,
+  IntegrityError,
+  InvalidFileError,
+  IvExhaustionError,
+  TdfError,
+} from '../../../src/errors.js';
 
 function causeOf(error: unknown): unknown {
   return error instanceof Error ? (error as Error & { cause?: unknown }).cause : undefined;
@@ -100,5 +107,49 @@ describe('scrubbing causes', () => {
       }
       assert.equal(scrubbedCause, undefined);
     }
+  });
+
+  describe('AssertionVerificationError', () => {
+    it('is an IntegrityError with a reason, the exact id, and both in its message', () => {
+      const e = new AssertionVerificationError('binding-mismatch', 'detail', 'a1');
+      assert.instanceOf(e, IntegrityError);
+      assert.instanceOf(e, InvalidFileError);
+      assert.equal(e.name, 'AssertionVerificationError');
+      assert.equal(e.reason, 'binding-mismatch');
+      assert.equal(e.assertionId, 'a1');
+      assert.equal(
+        e.message,
+        'assertion integrity check failed, id: a1, reason=binding-mismatch: detail'
+      );
+    });
+
+    it('omits the id when there is none', () => {
+      const e = new AssertionVerificationError('duplicate-member');
+      assert.equal(e.assertionId, undefined);
+      assert.equal(e.message, 'assertion integrity check failed, reason=duplicate-member');
+    });
+
+    it('escapes backslashes and control characters in the rendered id', () => {
+      const id = 'a1\nreason=signature-invalid\t\\\u0000\u001b\u007f\u009f é';
+      const e = new AssertionVerificationError('binding-mismatch', undefined, id);
+      assert.equal(e.assertionId, id);
+      assert.notInclude(e.message, '\n');
+      assert.equal(
+        e.message,
+        'assertion integrity check failed, id: a1\\nreason=signature-invalid\\t\\\\\\u0000\\u001b\\u007f\\u009f é, reason=binding-mismatch'
+      );
+    });
+
+    it('shortens a long rendered id to 256 code points', () => {
+      const id = '😀'.repeat(300);
+      const e = new AssertionVerificationError('invalid-binding', undefined, id);
+      assert.equal(e.assertionId, id);
+      assert.include(e.message, `id: ${'😀'.repeat(256)}…, reason=invalid-binding`);
+      const exact = 'x'.repeat(256);
+      assert.include(
+        new AssertionVerificationError('invalid-binding', undefined, exact).message,
+        `id: ${exact}, reason=`
+      );
+    });
   });
 });

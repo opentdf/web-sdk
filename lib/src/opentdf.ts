@@ -550,6 +550,10 @@ class ZTDFReader {
     readonly source: Chunker
   ) {
     this.overview = loadTDFStream(source);
+    // A manifest that fails to load is reported where the overview is awaited
+    // (decrypt, manifest, attributes); until then it is not an unhandled
+    // rejection.
+    this.overview.catch(() => undefined);
   }
 
   /**
