@@ -302,9 +302,24 @@ export type AssertionConfig = {
   signingKey?: AssertionKey;
 };
 
-// AssertionVerificationKeys represents the verification keys for assertions.
+/**
+ * Verification keys for assertions. Each assertion is checked with one key,
+ * chosen by its exact `id`:
+ *
+ * 1. `Keys[id]`, when that entry exists;
+ * 2. otherwise `DefaultKey`, when it is set;
+ * 3. otherwise the payload key, with HS256.
+ */
 export type AssertionVerificationKeys = {
+  /**
+   * Used for every assertion whose `id` has no entry in `Keys`. That includes
+   * assertions the writer bound with the payload key, such as the
+   * `system-metadata` assertion Java writers add, so files that carry one fail
+   * verification when a default key is set. To verify such files, configure
+   * per-ID keys instead.
+   */
   DefaultKey?: AssertionKey;
+  /** Keys for specific assertion ids. */
   Keys: Record<string, AssertionKey>;
 };
 

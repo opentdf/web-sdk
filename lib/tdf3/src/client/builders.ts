@@ -718,7 +718,12 @@ class DecryptParamsBuilder {
   /**
    * Sets the assertion verification keys for the decryption parameters.
    *
-   * @param {AssertionVerificationKeys} assertionVerificationKeys - An array of assertion configurations to be set.
+   * A default key applies to every assertion without a per-ID key, including
+   * payload-key assertions such as the `system-metadata` assertion Java writers
+   * add, so those files fail verification; configure per-ID keys for them
+   * instead.
+   *
+   * @param {AssertionVerificationKeys} assertionVerificationKeys - Per-ID keys, and an optional default key.
    * @returns {DecryptParamsBuilder} The current instance of the EncryptParamsBuilder for method chaining.
    */
   withAssertionVerificationKeys(
