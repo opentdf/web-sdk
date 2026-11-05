@@ -103,6 +103,17 @@
   [[ $output == *"File is not accessible [noone]"* ]]
 }
 
+@test "decrypt prints the reason for a manifest that fails strict parsing" {
+  cd "$BATS_TEST_TMPDIR"
+  printf '0123456789abcdef' > 0.payload
+  printf '{"payload":{"type":"reference","url":"0.payload","url":"other"},"encryptionInformation":{},"assertions":[]}' > 0.manifest.json
+  zip -q -0 -X duplicate.tdf 0.payload 0.manifest.json
+  run $BATS_TEST_DIRNAME/opentdf.mjs --oidcEndpoint "http://invalid" --concurrencyLimit 1 --auth "b:c" --allowList "http://invalid" decrypt duplicate.tdf
+  echo "$output"
+  [ "$status" -eq 1 ]
+  [[ $output == *"[CRITICAL] assertion integrity check failed, reason=duplicate-member"* ]]
+}
+
 @test "version command" {
   run $BATS_TEST_DIRNAME/opentdf.mjs --version
   echo "$output"
