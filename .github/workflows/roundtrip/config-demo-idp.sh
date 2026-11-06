@@ -2,31 +2,22 @@
 
 set -x
 
-: "${KC_VERSION:=24.0.3}"
+APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null && pwd)"
 
-if ! which kcadm.sh; then
-  KCADM_URL=https://github.com/keycloak/keycloak/releases/download/${KC_VERSION}/keycloak-${KC_VERSION}.zip
-  echo "DOWNLOADING ${KCADM_URL}"
-  if ! curl --output kc.zip --fail --location "${KCADM_URL}"; then
-    echo "[ERROR] Failed to download ${KCADM_URL}"
-    exit 3
-  fi
-  ls -l
-  if ! unzip ./kc.zip; then
-    echo "[ERROR] Failed to unzip file from ${KCADM_URL}"
-    exit 3
-  fi
-  ls -l
-  ls -l "$(pwd)/keycloak-${KC_VERSION}/bin"
-  PATH=$PATH:"$(pwd)/keycloak-${KC_VERSION}/bin"
-  export PATH
-  if ! which kcadm.sh; then
-    echo "[ERROR] Failed to find kcadm.sh"
-    exit 3
-  fi
-fi
+# Run kcadm inside the keycloak container instead of downloading the release
+# zip. The container ships a JRE matching its own Keycloak version; the host
+# does not necessarily -- Keycloak 26's kcadm needs Java 17, while the
+# ubuntu-22.04 runner defaults to Java 11 (UnsupportedClassVersionError).
+# Using -f makes the compose project resolve from this script's directory, so
+# the caller's working directory doesn't matter.
+kcadm.sh() {
+  docker compose -f "${APP_DIR}/docker-compose.yaml" \
+    exec -T keycloak /opt/keycloak/bin/kcadm.sh "$@"
+}
 
-kcadm.sh config credentials --server http://localhost:65432/auth \
+# Inside the container Keycloak is reached on its own KC_HTTP_PORT, not through
+# the vite dev-server proxy on 65432 that host-side callers use.
+kcadm.sh config credentials --server http://localhost:8888/auth \
   --realm master --user admin --password changeme
 
 kcadm.sh create clients -r opentdf \
@@ -39,8 +30,7 @@ kcadm.sh create clients -r opentdf \
   -s serviceAccountsEnabled=false \
   -s publicClient=true \
   -s protocol=openid-connect \
-  -s 'protocolMappers=[{"name":"aud","protocol":"openid-connect","protocolMapper":"oidc-audience-mapper","consentRequired":false,"config":{"access.token.claim":"true","included.custom.audience":"http://localhost:65432"}}]' \
-  -s 'attributes={"dpop.bound.access.tokens":"true"}'
+  -s 'protocolMappers=[{"name":"aud","protocol":"openid-connect","protocolMapper":"oidc-audience-mapper","consentRequired":false,"config":{"access.token.claim":"true","included.custom.audience":"http://localhost:65432"}}]'
 
 kcadm.sh create clients -r opentdf \
   -s clientId=testclient \
