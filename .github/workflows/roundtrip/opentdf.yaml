@@ -54,6 +54,16 @@ server:
     public_client_id: 'opentdf-public'
     audience: 'http://localhost:65432'
     issuer: http://localhost:65432/auth/realms/opentdf
+    dpop:
+      # Make KAS answer the first DPoP-proofed request with 401 + DPoP-Nonce so
+      # the roundtrip actually walks the server-issued nonce retry, not just
+      # plain proof-of-possession. xtest can't cover this: its nonce cases only
+      # run when the shared `dpop-challenge` input is on, which also swaps in a
+      # platform config other SDKs aren't ready for. Left off, this PR's headline
+      # feature would ship with no CI coverage at all.
+      # Only `enforce` would reject bearer tokens outright; that stays off, so
+      # the non-DPoP paths in this job are unaffected.
+      require_nonce: true
     policy:
       ## Dot notation is used to access nested claims (i.e. realm_access.roles)
       # Claim that represents the user (i.e. email)
