@@ -116,7 +116,9 @@ describe('assertions', () => {
         key: keyPair.publicKey,
       };
 
-      await assertions.verify(assertion, aggregateHash, configuredKey, isLegacyTDF, cryptoService);
+      expect(
+        await assertions.verify(assertion, aggregateHash, configuredKey, isLegacyTDF, cryptoService)
+      ).to.be.undefined;
     });
 
     it('persists ES256 bindings as raw IEEE P1363, the only encoding on the wire', async () => {
@@ -309,13 +311,15 @@ describe('assertions', () => {
           x5c: [certificate],
         });
 
-        await assertions.verify(
-          assertion,
-          aggregateHash,
-          { alg: 'RS256', key: configured.publicKey },
-          isLegacyTDF,
-          cryptoService
-        );
+        expect(
+          await assertions.verify(
+            assertion,
+            aggregateHash,
+            { alg: 'RS256', key: configured.publicKey },
+            isLegacyTDF,
+            cryptoService
+          )
+        ).to.be.undefined;
       });
     });
   });
