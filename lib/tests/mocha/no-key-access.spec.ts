@@ -1,4 +1,5 @@
 import { assert, expect } from 'chai';
+import sinon from 'sinon';
 
 import { getMocks } from '../mocks/index.js';
 import type { HttpRequest } from '../../src/auth/auth.js';
@@ -71,50 +72,81 @@ describe('manifests with no key access objects', function () {
 
   const rewraps = () => requests.filter((url) => /rewrap/i.test(url));
 
-  async function expectNoKeyAccess(reading: Promise<unknown>) {
+  /** Run `read` while counting network requests from any client in this realm. */
+  async function counting(read: () => Promise<unknown>) {
+    const fetchSpy = sinon.spy(globalThis, 'fetch');
+    requests = [];
     let error: unknown;
     try {
-      await reading;
+      await read();
     } catch (e) {
       error = e;
+    } finally {
+      fetchSpy.restore();
     }
-    expect(error).to.be.instanceOf(InvalidFileError);
-    expect((error as Error).message).to.contain('no key access objects');
-    expect(rewraps()).to.deep.equal([]);
+    return { error, fetches: fetchSpy.callCount };
   }
 
+  async function expectRefusedWithoutRequests(read: () => Promise<unknown>) {
+    const { error, fetches } = await counting(read);
+    expect(error).to.be.instanceOf(InvalidFileError);
+    expect((error as Error).message).to.contain('no key access objects');
+    expect(fetches, 'network requests').to.equal(0);
+    expect(requests, 'authorized requests').to.deep.equal([]);
+  }
+
+  // A fresh client has no cached KAS allowlist, so it fetches one from the
+  // platform before decrypting.
+  const freshClient = () =>
+    new Client.Client({
+      kasEndpoint: kasUrl,
+      platformUrl: kasUrl,
+      dpopKeys: Mocks.entityKeyPair(),
+      clientId: 'id',
+      authProvider,
+    });
   const tdf3Decrypt = async (file: Uint8Array) =>
-    (await client.decrypt({ source: { type: 'buffer', location: file } })).toString();
+    (await freshClient().decrypt({ source: { type: 'buffer', location: file } })).toString();
 
-  it('decrypts the unmodified file', async function () {
-    assert.equal(await tdf3Decrypt(tdf), plaintext);
-    expect(rewraps()).to.not.be.empty;
-  });
-
-  it('refuses an empty or absent key access list before contacting a KAS', async function () {
-    for (const file of [withKeyAccess([]), withKeyAccess(undefined)]) {
-      await expectNoKeyAccess(tdf3Decrypt(file));
-    }
-  });
-
-  it('refuses it through the OpenTDF reader too', async function () {
+  const openTdfRead = async (file: Uint8Array) => {
     const opentdf = new OpenTDF({
       authProvider,
       platformUrl: kasUrl,
       dpopKeys: Mocks.entityKeyPair(),
     });
     try {
-      const read = (file: Uint8Array) =>
-        opentdf
-          .read({ source: { type: 'buffer', location: file }, allowedKASEndpoints: [kasUrl] })
-          .then((stream) => new Response(stream).text());
-      assert.equal(await read(tdf), plaintext);
-      requests = [];
-      for (const file of [withKeyAccess([]), withKeyAccess(undefined)]) {
-        await expectNoKeyAccess(read(file));
-      }
+      // No allowlist in the read options, so the reader fetches one.
+      const stream = await opentdf.read({
+        source: { type: 'buffer', location: file },
+        platformUrl: kasUrl,
+      });
+      return await new Response(stream).text();
     } finally {
       opentdf.close();
     }
-  });
+  };
+
+  for (const [path, read] of [
+    ['tdf3 decrypt', tdf3Decrypt],
+    ['OpenTDF read', openTdfRead],
+  ] as const) {
+    describe(path, function () {
+      it('decrypts the unmodified file, contacting the platform and a KAS', async function () {
+        let text = '';
+        const { error, fetches } = await counting(async () => {
+          text = await read(tdf);
+        });
+        expect(error).to.equal(undefined);
+        assert.equal(text, plaintext);
+        expect(fetches).to.be.greaterThan(0);
+        expect(rewraps()).to.not.be.empty;
+      });
+
+      it('refuses an empty or absent key access list before any request', async function () {
+        for (const file of [withKeyAccess([]), withKeyAccess(undefined)]) {
+          await expectRefusedWithoutRequests(() => read(file));
+        }
+      });
+    });
+  }
 });

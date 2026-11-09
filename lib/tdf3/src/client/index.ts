@@ -2,13 +2,14 @@ import { v4 } from 'uuid';
 import { keyMiddleware as defaultKeyMiddleware, streamToBuffer } from '../utils/index.js';
 import { base64 } from '../../../src/encodings/index.js';
 import {
+  assertKeyAccessObjects,
   buildKeyAccess,
+  decryptStreamFrom,
   type EncryptConfiguration,
   fetchKasPublicKey,
   isRootIntegrityAlgorithm,
   isSegmentIntegrityAlgorithm,
   loadTDFStream,
-  readStream,
   ROOT_INTEGRITY_ALGORITHM,
   SEGMENT_INTEGRITY_ALGORITHM,
   validatePolicyObject,
@@ -843,6 +844,10 @@ export class Client {
       throw new ConfigurationError('AuthProvider or interceptors missing');
     }
     const chunker = await makeChunkable(source);
+    // Read the manifest first, so a file that cannot be decrypted is refused
+    // before any request to the platform or a KAS.
+    const overview = await loadTDFStream(chunker);
+    assertKeyAccessObjects(overview.manifest);
     if (!allowList && this.allowedKases) {
       allowList = this.allowedKases;
     } else if (this.platformUrl) {
@@ -864,24 +869,27 @@ export class Client {
     // Await in order to catch any errors from this call.
     // TODO: Write error event to stream and don't await.
     return await streamMiddleware(
-      await readStream({
-        allowList,
-        auth: this.auth,
-        chunker,
-        concurrencyLimit,
-        cryptoService: this.cryptoService,
-        dpopKeys,
-        fileStreamServiceWorker: this.clientConfig.fileStreamServiceWorker,
-        keyMiddleware,
-        progressHandler: this.clientConfig.progressHandler,
-        assertionVerificationKeys,
-        maxConcurrentSegmentBatches,
-        noVerifyAssertions,
-        range,
-        segmentBatchSize,
-        wrappingKeyAlgorithm,
-        fulfillableObligations: fulfillableObligationFQNs,
-      })
+      await decryptStreamFrom(
+        {
+          allowList,
+          auth: this.auth,
+          chunker,
+          concurrencyLimit,
+          cryptoService: this.cryptoService,
+          dpopKeys,
+          fileStreamServiceWorker: this.clientConfig.fileStreamServiceWorker,
+          keyMiddleware,
+          progressHandler: this.clientConfig.progressHandler,
+          assertionVerificationKeys,
+          maxConcurrentSegmentBatches,
+          noVerifyAssertions,
+          range,
+          segmentBatchSize,
+          wrappingKeyAlgorithm,
+          fulfillableObligations: fulfillableObligationFQNs,
+        },
+        overview
+      )
     );
   }
 
