@@ -77,8 +77,11 @@ const TOP_LEVEL_MEMBERS = ['keys', 'Keys', 'defaultKey', 'DefaultKey'];
  * ```
  *
  * `Keys` and `DefaultKey` are accepted as spellings too; any other top-level
- * member is an error. The default key is used for assertions without an entry
- * in `keys`; a default key with no alg and no key counts as not configured.
+ * member is an error. The default key is used for every assertion without an
+ * entry in `keys`, including payload-key assertions such as the
+ * `system-metadata` assertion Java writers add, so those files fail
+ * verification; give such assertions per-ID keys instead. A default key with
+ * no alg and no key counts as not configured.
  */
 export async function parseAssertionVerificationKeys(
   s: string

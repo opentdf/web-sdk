@@ -292,7 +292,13 @@ export type AssertionConfig = {
  * add to these.
  */
 export type AssertionVerificationKeys = {
-  /** Used for assertions whose `id` has no entry in `Keys`. */
+  /**
+   * Used for every assertion whose `id` has no entry in `Keys`. That includes
+   * assertions the writer bound with the payload key, such as the
+   * `system-metadata` assertion Java writers add, so files that carry one fail
+   * verification when a default key is set. To verify such files, configure
+   * per-ID keys instead.
+   */
   DefaultKey?: AssertionKey;
   /** Keys for specific assertion ids. */
   Keys: Record<string, AssertionKey>;

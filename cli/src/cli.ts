@@ -402,7 +402,7 @@ export const handleArgs = (args: string[]) => {
       .option('assertionVerificationKeys', {
         alias: 'with-assertion-verification-keys',
         group: 'Decrypt',
-        desc: 'keys for assertion verification or path to a json file containing keys for assertion verification, as {"keys": {"<assertion id>": {"alg", "key"}}, "defaultKey": {"alg", "key"}}; defaultKey applies to assertions with no entry in keys',
+        desc: 'keys for assertion verification or path to a json file containing keys for assertion verification, as {"keys": {"<assertion id>": {"alg", "key"}}, "defaultKey": {"alg", "key"}}; defaultKey applies to every assertion with no entry in keys, including payload-key assertions such as the system-metadata assertion Java writers add, so those files fail verification; use per-assertion keys for them instead',
         type: 'string',
         default: '',
         validate: parseAssertionVerificationKeys,
