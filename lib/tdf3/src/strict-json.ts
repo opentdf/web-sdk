@@ -1,11 +1,11 @@
 /**
- * Strict JSON reading for manifests and assertions (ZTDF assertions contract,
- * Section 3).
+ * Strict JSON reading and canonical serialization for manifests and assertions
+ * (ZTDF assertions contract, Sections 3 and 4).
  *
  * `JSON.parse` silently keeps the last of duplicate member names, accepts lone
- * surrogates, and turns `1e400` into `Infinity`. Every SDK must read the same
- * object from the same manifest bytes, so {@link scanStrictJson} runs over the
- * raw text before `JSON.parse` builds a tree, and reports:
+ * surrogates, and turns `1e400` into `Infinity`. Assertions are hashed as
+ * received, so every reader must see the same object. {@link scanStrictJson}
+ * runs over the raw text before `JSON.parse` builds a tree, and reports:
  *
  * - duplicate member names in any object, compared after decoding escapes
  *   (`duplicate-member`);
@@ -620,4 +620,83 @@ export function scanStrictJson(text: string, root: StrictJsonRoot): StrictJsonSc
     };
   }
   return { ok: true };
+}
+
+// With the u flag a valid surrogate pair matches as one supplementary code
+// point, so only lone surrogates fall in this range.
+const LONE_SURROGATE = /[\uD800-\uDFFF]/u;
+
+/**
+ * Serialize a JSON value with the JSON Canonicalization Scheme (RFC 8785).
+ *
+ * Accepts only what `JSON.parse` produces: `null`, booleans, finite numbers,
+ * well-formed strings, arrays, and plain objects. Object members whose value is
+ * `undefined` are skipped, as `JSON.stringify` does. Anything else throws a
+ * `TypeError` rather than being coerced; in particular a member named `toJSON`
+ * is serialized like any other.
+ */
+export function canonicalJson(value: unknown): string {
+  // Appends to one buffer, sorting each object's names once: O(n log n) in
+  // members and linear in size, whatever the nesting.
+  const out: string[] = [];
+  const write = (v: unknown): void => {
+    switch (typeof v) {
+      case 'string':
+        if (LONE_SURROGATE.test(v)) {
+          throw new TypeError('JCS: string contains a lone surrogate');
+        }
+        out.push(JSON.stringify(v));
+        return;
+      case 'boolean':
+        out.push(v ? 'true' : 'false');
+        return;
+      case 'number':
+        if (!Number.isFinite(v)) {
+          throw new TypeError('JCS: number is not finite');
+        }
+        // ECMAScript number serialization is the one RFC 8785 specifies.
+        out.push(JSON.stringify(v));
+        return;
+      case 'object': {
+        if (v === null) {
+          out.push('null');
+          return;
+        }
+        if (Array.isArray(v)) {
+          out.push('[');
+          v.forEach((element: unknown, i) => {
+            if (i) {
+              out.push(',');
+            }
+            write(element);
+          });
+          out.push(']');
+          return;
+        }
+        const prototype = Object.getPrototypeOf(v) as unknown;
+        if (prototype !== Object.prototype && prototype !== null) {
+          throw new TypeError('JCS: only plain objects can be canonicalized');
+        }
+        const record = v as Record<string, unknown>;
+        // The default sort compares UTF-16 code units, as RFC 8785 requires.
+        const names = Object.keys(record)
+          .filter((k) => record[k] !== undefined)
+          .sort();
+        out.push('{');
+        names.forEach((name, i) => {
+          if (LONE_SURROGATE.test(name)) {
+            throw new TypeError('JCS: member name contains a lone surrogate');
+          }
+          out.push(i ? ',' : '', JSON.stringify(name), ':');
+          write(record[name]);
+        });
+        out.push('}');
+        return;
+      }
+      default:
+        throw new TypeError(`JCS: cannot canonicalize a value of type ${typeof v}`);
+    }
+  };
+  write(value);
+  return out.join('');
 }
