@@ -28,10 +28,15 @@ export async function unpackTdf(buffer: Uint8Array): Promise<TdfParts> {
  * material is involved.
  */
 export function packTdf(payload: Uint8Array, manifest: unknown): Uint8Array {
+  return packTdfWithManifestText(payload, JSON.stringify(manifest));
+}
+
+/** As {@link packTdf}, with the manifest given as exact JSON text. */
+export function packTdfWithManifestText(payload: Uint8Array, manifestText: string): Uint8Array {
   const zipWriter = new ZipWriter();
   const entries = [
     { filename: '0.payload', content: payload },
-    { filename: '0.manifest.json', content: new TextEncoder().encode(JSON.stringify(manifest)) },
+    { filename: '0.manifest.json', content: new TextEncoder().encode(manifestText) },
   ];
 
   const parts: Uint8Array[] = [];

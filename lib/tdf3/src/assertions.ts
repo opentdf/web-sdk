@@ -1,21 +1,15 @@
 import { base64, hex } from '../../src/encodings/index.js';
-import {
-  asError,
-  AssertionVerificationError,
-  ConfigurationError,
-  IntegrityError,
-  InvalidFileError,
-} from '../../src/errors.js';
+import { asError, AssertionVerificationError, ConfigurationError } from '../../src/errors.js';
 import { tdfSpecVersion, version as sdkVersion } from '../../src/version.js';
-import { assertionDigest, computeAssertionHash } from './assertion-hash.js';
+import { assertionDigest, assertionId, computeAssertionHash } from './assertion-hash.js';
+import { prepareVerificationKey, verifyAssertionBinding } from './assertion-verifier.js';
 import {
   type CryptoService,
   type PrivateKey,
   type PublicKey,
   type SymmetricKey,
 } from './crypto/declarations.js';
-import { decodeProtectedHeader, signJwt, verifyJwt, type JwtHeader } from './crypto/jwt.js';
-import { toArrayBuffer } from './utils/index.js';
+import { signJwt, type JwtHeader } from './crypto/jwt.js';
 
 export { computeAssertionHash };
 
@@ -143,15 +137,20 @@ export function isAssertionConfig(obj: unknown): obj is AssertionConfig {
 }
 
 /**
- * Verifies the signature of the assertion using the provided key.
+ * Verifies one assertion with the given, already selected key (ZTDF assertions
+ * contract, Section 8 steps 3.1 and 3.3 to 3.9).
  *
- * @param thiz - The assertion to verify.
+ * The signature is checked only with `key` and its configured algorithm. A
+ * `jwk` or `x5c` header in the binding never supplies the key: it must name
+ * the same public key as `key`, and either one is rejected when `key` is
+ * HS256.
+ *
+ * @param thiz - The assertion to verify, exactly as parsed from the manifest.
  * @param aggregateHash - The aggregate hash for integrity checking.
  * @param key - The key used for verification.
  * @param isLegacyTDF - Whether this is a legacy TDF format.
  * @param cryptoService - The crypto service to use for verification.
- * @throws {InvalidFileError} If the verification fails.
- * @throws {IntegrityError} If the integrity check fails.
+ * @throws {AssertionVerificationError} If verification fails; its `reason` says why.
  */
 export async function verify(
   thiz: Assertion,
@@ -160,62 +159,9 @@ export async function verify(
   isLegacyTDF: boolean,
   cryptoService: CryptoService
 ): Promise<void> {
-  let payload: AssertionPayload;
-  try {
-    // Parse JWT header to check for embedded keys (jwk or x5c)
-    const header = decodeProtectedHeader(thiz.binding.signature);
-
-    // Runtime check: ensure we have a verification key, not a signing key
-    if (typeof key.key === 'object' && '_brand' in key.key && key.key._brand === 'PrivateKey') {
-      throw new ConfigurationError(
-        'Cannot verify assertion with PrivateKey. Use PublicKey or SymmetricKey for verification.'
-      );
-    }
-    let verificationKey: string | Uint8Array | PublicKey | SymmetricKey = key.key;
-
-    if (header.jwk) {
-      // Convert embedded JWK to PEM
-      verificationKey = await cryptoService.jwkToPublicKeyPem(header.jwk);
-    } else if (header.x5c && Array.isArray(header.x5c) && header.x5c.length > 0) {
-      // Extract public key from X.509 certificate
-      const cert = `-----BEGIN CERTIFICATE-----\n${header.x5c[0]}\n-----END CERTIFICATE-----`;
-      verificationKey = await cryptoService.extractPublicKeyPem(cert);
-    }
-
-    const result = await verifyJwt(cryptoService, thiz.binding.signature, verificationKey, {
-      algorithms: [key.alg],
-    });
-    payload = result.payload as AssertionPayload;
-  } catch (error) {
-    throw new InvalidFileError(`Verifying assertion failed: ${String(error)}`, asError(error));
-  }
-  const { assertionHash, assertionSig } = payload;
-
-  // Get the hash of the assertion
-  const hashOfAssertion = await hash(thiz, cryptoService);
-
-  // check if assertionHash is same as hashOfAssertion
-  if (hashOfAssertion !== assertionHash) {
-    throw new IntegrityError('Assertion hash mismatch');
-  }
-
-  let encodedHash: string;
-  if (isLegacyTDF) {
-    const aggregateHashAsStr = new TextDecoder('utf-8').decode(aggregateHash);
-    const combinedHash = aggregateHashAsStr + hashOfAssertion;
-    encodedHash = base64.encode(combinedHash);
-  } else {
-    const combinedHash = concatenateUint8Arrays(
-      aggregateHash,
-      new Uint8Array(hex.decodeArrayBuffer(assertionHash))
-    );
-    encodedHash = base64.encodeArrayBuffer(toArrayBuffer(combinedHash));
-  }
-
-  // check if assertionSig is same as encodedHash
-  if (assertionSig !== encodedHash) {
-    throw new IntegrityError('Failed integrity check on assertion signature');
-  }
+  const id = assertionId(thiz);
+  const prepared = await prepareVerificationKey(key, cryptoService, id);
+  await verifyAssertionBinding(thiz, aggregateHash, prepared, isLegacyTDF, cryptoService, id);
 }
 
 /**
@@ -327,9 +273,23 @@ export type AssertionConfig = {
   signingKey?: AssertionKey;
 };
 
-// AssertionVerificationKeys represents the verification keys for assertions.
+/**
+ * Verification keys for assertions. Each assertion is checked with exactly one
+ * source, chosen by its exact `id`:
+ *
+ * 1. `Keys[id]`, when that entry exists;
+ * 2. otherwise `DefaultKey`, when it is set;
+ * 3. otherwise the payload key, with HS256.
+ *
+ * A failure with the chosen source is final; no other source is tried. An
+ * entry that is chosen but empty or invalid fails with `configuration-error`
+ * instead of falling through. Keys embedded in a binding (`jwk`, `x5c`) never
+ * add to these.
+ */
 export type AssertionVerificationKeys = {
+  /** Used for assertions whose `id` has no entry in `Keys`. */
   DefaultKey?: AssertionKey;
+  /** Keys for specific assertion ids. */
   Keys: Record<string, AssertionKey>;
 };
 
