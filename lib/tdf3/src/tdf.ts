@@ -1652,6 +1652,12 @@ export async function decryptStreamFrom(
   if (!manifest) {
     throw new InvalidFileError('Missing manifest data');
   }
+  // With no key access object there is no payload key to reconstruct. Refuse
+  // before any KAS call, integrity check, or assertion check.
+  const keyAccess: unknown = manifest.encryptionInformation?.keyAccess;
+  if (!Array.isArray(keyAccess) || !keyAccess.length) {
+    throw new InvalidFileError('manifest has no key access objects');
+  }
 
   cfg.keyMiddleware ??= async (key) => {
     await Promise.resolve();
