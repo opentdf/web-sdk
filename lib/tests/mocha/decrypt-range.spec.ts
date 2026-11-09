@@ -18,6 +18,7 @@ import { type Manifest } from '../../tdf3/src/models/manifest.js';
 import { loadTDFStream } from '../../tdf3/src/tdf.js';
 import { type DecryptRange } from '../../tdf3/src/utils/plaintext-range.js';
 import { concatUint8 } from '../../tdf3/src/utils/index.js';
+import { Binary } from '../../tdf3/src/binary.js';
 import { type Chunker, fromBuffer } from '../../src/seekable.js';
 import { base64 } from '../../src/encodings/index.js';
 import {
@@ -744,5 +745,62 @@ describe('decrypt selected portions of ciphertext', function () {
       DecryptRangeError,
       new RegExp(`past the end of the decrypted data \\[${total}\\]`)
     );
+  });
+
+  it('seeks in a java-sdk layout, whose last segment is empty, past a sparse prefix', async function () {
+    // java-sdk ends a plaintext that is a multiple of the segment size with an
+    // empty segment. Every range must skip the prefix, which is a hole.
+    const MIB = 1024 * 1024;
+    const real = new Uint8Array(2 * MIB).map((_, i) => (i * 13 + (i >> 20)) % 251);
+    const encrypted = await encryptToBuffer(client, real, { windowSize: MIB });
+    const { payload, manifest } = await unpackTdf(encrypted.buffer);
+    const info = manifest.encryptionInformation.integrityInformation;
+    assert.lengthOf(info.segments, 2);
+    assert.equal(info.segmentHashAlg, 'GMAC');
+    const { payload: empty } = await new AesGcmCipher(WebCryptoService).encrypt(
+      Binary.fromArrayBuffer(new ArrayBuffer(0)),
+      encrypted.key.unwrappedKey,
+      Binary.fromArrayBuffer(crypto.getRandomValues(new Uint8Array(12)).buffer)
+    );
+    const emptyCiphertext = new Uint8Array(empty.asArrayBuffer());
+    const prefixCount = 16;
+    const prefix = Array.from({ length: prefixCount }, (_, i) => {
+      const hash = new Uint8Array(16);
+      new DataView(hash.buffer).setUint32(0, i + 1);
+      return { hash: base64.encodeArrayBuffer(hash.buffer) };
+    });
+    info.segments = [
+      ...prefix,
+      ...info.segments,
+      {
+        // A GMAC segment hash is the AES-GCM tag.
+        hash: base64.encodeArrayBuffer(emptyCiphertext.slice(-16).buffer),
+        segmentSize: 0,
+        encryptedSegmentSize: emptyCiphertext.length,
+      },
+    ];
+    await resignRoot(manifest, encrypted.key);
+
+    const sparse = sparseTdf(
+      [prefixCount * (MIB + GCM_OVERHEAD), payload, emptyCiphertext],
+      manifest
+    );
+    const source = { type: 'chunker', location: sparse.chunker } as const;
+    const base = prefixCount * MIB;
+    const total = base + real.length;
+    for (const range of [
+      { offset: base + 10, length: 10 },
+      // Inside the last data segment: also reads the one before.
+      { offset: base + MIB + 5, length: 10 },
+      // Reaching the end: also reads the empty segment.
+      { offset: base + MIB + 5 },
+      { offset: total - 3, length: 100 },
+      { offset: total },
+    ]) {
+      const out = await decryptRange(range, { source, noVerifyAssertions: true });
+      const start = range.offset - base;
+      const end = range.length === undefined ? undefined : start + range.length;
+      assert.deepEqual(out, real.slice(start, end), JSON.stringify(range));
+    }
   });
 });

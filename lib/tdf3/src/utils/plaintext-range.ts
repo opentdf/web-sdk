@@ -90,7 +90,8 @@ function uniformLayout(
       return undefined;
     }
   }
-  return (trailingEmpty ? full : fits)(chunks[lastData]) ? { size, lastData } : undefined;
+  const lastFits = trailingEmpty ? full : fits;
+  return lastFits(chunks[lastData]) ? { size, lastData } : undefined;
 }
 
 /**
