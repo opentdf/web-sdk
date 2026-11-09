@@ -1636,6 +1636,19 @@ export async function readStream(cfg: DecryptConfiguration) {
   return decryptStreamFrom(cfg, overview);
 }
 
+/**
+ * Throws `InvalidFileError` unless the manifest has at least one key access
+ * object. Without one there is no payload key to reconstruct, so readers
+ * refuse the file before contacting the platform, a KAS, or checking
+ * integrity or assertions.
+ */
+export function assertKeyAccessObjects(manifest: Manifest): void {
+  const keyAccess: unknown = manifest.encryptionInformation?.keyAccess;
+  if (!Array.isArray(keyAccess) || !keyAccess.length) {
+    throw new InvalidFileError('manifest has no key access objects');
+  }
+}
+
 export async function decryptStreamFrom(
   cfg: DecryptConfiguration,
   { manifest, zipReader, centralDirectory }: InspectedTDFOverview
@@ -1651,6 +1664,7 @@ export async function decryptStreamFrom(
   if (!manifest) {
     throw new InvalidFileError('Missing manifest data');
   }
+  assertKeyAccessObjects(manifest);
 
   cfg.keyMiddleware ??= async (key) => {
     await Promise.resolve();

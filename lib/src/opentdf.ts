@@ -27,6 +27,7 @@ import {
 } from '../tdf3/src/models/encryption-information.js';
 import { type KeyAccessObject } from '../tdf3/src/models/key-access.js';
 import {
+  assertKeyAccessObjects,
   decryptStreamFrom,
   loadTDFStream,
   type InspectedTDFOverview,
@@ -571,6 +572,11 @@ class ZTDFReader {
       throw new ConfigurationError('platformUrl is required when allowedKasEndpoints is empty');
     }
 
+    // Refuse a file that cannot be decrypted before any request to the
+    // platform (the KAS allowlist) or a KAS.
+    const overview = await this.overview;
+    assertKeyAccessObjects(overview.manifest);
+
     const dpopKeys = await this.client.dpopKeys;
 
     const { auth, cryptoService } = this.client;
@@ -593,7 +599,6 @@ class ZTDFReader {
       );
     }
 
-    const overview = await this.overview;
     const oldStream = await decryptStreamFrom(
       {
         allowList,
