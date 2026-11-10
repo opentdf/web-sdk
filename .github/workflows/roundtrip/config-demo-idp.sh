@@ -9,10 +9,14 @@ APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null && pwd)"
 # does not necessarily -- Keycloak 26's kcadm needs Java 17, while the
 # ubuntu-22.04 runner defaults to Java 11 (UnsupportedClassVersionError).
 # Using -f makes the compose project resolve from this script's directory, so
-# the caller's working directory doesn't matter.
+# the caller's working directory doesn't matter. Any failure exits the script,
+# so an early error isn't masked by later calls succeeding.
 kcadm.sh() {
-  docker compose -f "${APP_DIR}/docker-compose.yaml" \
-    exec -T keycloak /opt/keycloak/bin/kcadm.sh "$@"
+  if ! docker compose -f "${APP_DIR}/docker-compose.yaml" \
+    exec -T keycloak /opt/keycloak/bin/kcadm.sh "$@"; then
+    echo "[ERROR] kcadm.sh $1 $2 failed"
+    exit 1
+  fi
 }
 
 # Inside the container Keycloak is reached on its own KC_HTTP_PORT, not through
