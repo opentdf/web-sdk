@@ -30,7 +30,8 @@ kcadm.sh create clients -r opentdf \
   -s serviceAccountsEnabled=false \
   -s publicClient=true \
   -s protocol=openid-connect \
-  -s 'protocolMappers=[{"name":"aud","protocol":"openid-connect","protocolMapper":"oidc-audience-mapper","consentRequired":false,"config":{"access.token.claim":"true","included.custom.audience":"http://localhost:65432"}}]'
+  -s 'protocolMappers=[{"name":"aud","protocol":"openid-connect","protocolMapper":"oidc-audience-mapper","consentRequired":false,"config":{"access.token.claim":"true","included.custom.audience":"http://localhost:65432"}}]' \
+  -s 'attributes={"dpop.bound.access.tokens":"true"}'
 
 kcadm.sh create clients -r opentdf \
   -s clientId=testclient \

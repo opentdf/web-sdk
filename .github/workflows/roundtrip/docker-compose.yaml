@@ -8,12 +8,9 @@ services:
     environment:
       KC_FEATURES: "preview,token-exchange,admin-fine-grained-authz:v1"
       KC_HEALTH_ENABLED: 'true'
-      KC_HOSTNAME_ADMIN_URL: 'http://localhost:65432/auth'
-      KC_HOSTNAME_PORT: '65432'
-      KC_HOSTNAME_STRICT: 'false'
-      KC_HOSTNAME_STRICT_BACKCHANNEL: 'false'
-      KC_HOSTNAME_STRICT_HTTPS: 'false'
-      KC_HOSTNAME_URL: 'http://localhost:65432/auth'
+      KC_HOSTNAME: 'http://localhost:65432/auth'
+      KC_HOSTNAME_ADMIN: 'http://localhost:65432/auth'
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: 'true'
       KC_HTTP_ENABLED: 'true'
       KC_HTTP_PORT: '8888'
       KC_HTTP_RELATIVE_PATH: '/auth'
@@ -23,7 +20,7 @@ services:
     ports:
       - '8888:8888'
     healthcheck:
-      test: ['CMD-SHELL', '[ -f /tmp/HealthCheck.java ] || echo "public class HealthCheck { public static void main(String[] args) throws java.lang.Throwable { System.exit(java.net.HttpURLConnection.HTTP_OK == ((java.net.HttpURLConnection)new java.net.URL(args[0]).openConnection()).getResponseCode() ? 0 : 1); } }" > /tmp/HealthCheck.java && java /tmp/HealthCheck.java http://localhost:9000/auth/health/live']
+      test: ['CMD-SHELL', '[ -f /tmp/HealthCheck.java ] || echo "public class HealthCheck { public static void main(String[] args) throws java.lang.Throwable { System.exit(java.net.HttpURLConnection.HTTP_OK == ((java.net.HttpURLConnection)new java.net.URL(args[0]).openConnection()).getResponseCode() ? 0 : 1); } }" > /tmp/HealthCheck.java && java /tmp/HealthCheck.java http://localhost:9000/auth/health/ready']
       interval: 5s
       timeout: 10s
       retries: 3
