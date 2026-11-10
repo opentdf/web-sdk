@@ -6,7 +6,7 @@ services:
     - "start-dev"
     - "--verbose"
     environment:
-      KC_FEATURES: "preview,token-exchange,admin-fine-grained-authz:v1"
+      KC_FEATURES: "preview,token-exchange"
       KC_HEALTH_ENABLED: 'true'
       KC_HOSTNAME: 'http://localhost:65432/auth'
       KC_HOSTNAME_ADMIN: 'http://localhost:65432/auth'
