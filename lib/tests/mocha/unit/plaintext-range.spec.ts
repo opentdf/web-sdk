@@ -142,6 +142,47 @@ describe('planPlaintextRange', () => {
     });
   });
 
+  describe("java-sdk's trailing empty segment", () => {
+    // java-sdk ends a plaintext that is a multiple of S with an empty segment,
+    // as in the DSPX-5551 repro: 64 MiB in 2 MiB segments.
+    const MIB = 1024 * 1024;
+    const java = sized(...new Array<number>(32).fill(2 * MIB), 0);
+
+    it('seeks to the covering segments', () => {
+      expect(plan(java, 20 * 2 * MIB + 3, 5)).to.deep.equal({ indices: [20], skip: 3, take: 5 });
+      expect(plan(sized(10, 0), 3, 2)).to.deep.equal({ indices: [0], skip: 3, take: 2 });
+    });
+
+    it('also reads the segment before the last data segment', () => {
+      expect(plan(java, 31 * 2 * MIB + 3, 5)).to.deep.equal({
+        indices: [30, 31],
+        skip: 2 * MIB + 3,
+        take: 5,
+      });
+    });
+
+    it('reads through the empty segment when the range reaches the end', () => {
+      expect(plan(java, 20 * 2 * MIB)).to.deep.equal({
+        indices: Array.from({ length: 13 }, (_, i) => 20 + i),
+        skip: 0,
+        take: 12 * 2 * MIB,
+      });
+      for (const length of [undefined, 5]) {
+        expect(plan(java, 64 * MIB - 5, length)).to.deep.equal({
+          indices: [30, 31, 32],
+          skip: 4 * MIB - 5,
+          take: 5,
+        });
+        expect(plan(java, 64 * MIB, length)).to.deep.equal({
+          indices: [30, 31, 32],
+          skip: 4 * MIB,
+          take: 0,
+        });
+      }
+      expect(plan(sized(10, 0), 3)).to.deep.equal({ indices: [0, 1], skip: 3, take: 7 });
+    });
+  });
+
   describe('Blob.slice end semantics', () => {
     const chunks = sized(10, 10, 4);
 
@@ -193,17 +234,24 @@ describe('planPlaintextRange', () => {
     it('segments of different sizes', () => fallback(sized(5, 10, 10, 4), 1));
     it('a last segment longer than the others', () => fallback(sized(10, 10, 11), 1));
     it('an empty segment', () => fallback(sized(10, 0, 10, 4), 2));
+    it('an empty segment before an empty last one', () => fallback(sized(10, 0, 10, 0), 2));
+    it('an empty last segment after a short one', () => fallback(sized(10, 10, 4, 0), 1));
     it('a ciphertext size that does not match', () => {
       const chunks = sized(10, 10, 10);
       chunks[0].encryptedSegmentSize = 100;
       fallback(chunks, 1);
     });
+    it('a ciphertext size that does not match, for an empty last segment', () => {
+      const chunks = sized(10, 10, 0);
+      chunks[2].encryptedSegmentSize = 100;
+      fallback(chunks, 1);
+    });
 
     it('reads through the last segment when the range reaches the end', () => {
       // A recorded 0 may understate the total; decrypting the segment checks it.
-      const chunks = sized(10, 10, 0);
-      expect(plan(chunks, 5)).to.deep.equal({ indices: [0, 1, 2], skip: 5, take: 15 });
-      expect(plan(chunks, 20)).to.deep.equal({ indices: [0, 1, 2], skip: 20, take: 0 });
+      const chunks = sized(10, 4, 0);
+      expect(plan(chunks, 5)).to.deep.equal({ indices: [0, 1, 2], skip: 5, take: 9 });
+      expect(plan(chunks, 14)).to.deep.equal({ indices: [0, 1, 2], skip: 14, take: 0 });
       expect(plan(chunks, 5, 3).indices).to.deep.equal([0]);
     });
   });

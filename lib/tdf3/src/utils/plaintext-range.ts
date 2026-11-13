@@ -59,15 +59,20 @@ export function validatePlaintextRange({ offset, length }: DecryptRange): void {
 }
 
 /**
- * The common segment size S if every segment but the last records plaintext
- * size S and the matching ciphertext size, and the last records a size in
- * (0, S] with its matching ciphertext size. Otherwise undefined. A lone
- * segment is uniform, with S its own size.
+ * The common segment size S, and the index of the last segment holding data,
+ * if every segment but the last records plaintext size S and the matching
+ * ciphertext size, and the last records a size in (0, S] with its matching
+ * ciphertext size. Otherwise undefined. A lone segment is uniform, with S its
+ * own size.
+ *
+ * java-sdk ends a plaintext that is a multiple of S with an empty segment, so
+ * segments of size S followed by one recording 0 and `encryptedSize(0)` are
+ * uniform too, with the last data segment the one before it.
  */
-function uniformSegmentSize(
+function uniformLayout(
   chunks: RangeSegment[],
   encryptedSize: (plaintextSize: number) => number
-): number | undefined {
+): { size: number; lastData: number } | undefined {
   const size = chunks[0]?.plainSegmentSize;
   if (!size) {
     return undefined;
@@ -76,13 +81,17 @@ function uniformSegmentSize(
     !!plainSegmentSize &&
     plainSegmentSize <= size &&
     encryptedSegmentSize === encryptedSize(plainSegmentSize);
-  const last = chunks.length - 1;
-  for (let i = 0; i < last; i++) {
-    if (chunks[i].plainSegmentSize !== size || !fits(chunks[i])) {
+  const full = (chunk: RangeSegment) => chunk.plainSegmentSize === size && fits(chunk);
+  const { plainSegmentSize, encryptedSegmentSize } = chunks[chunks.length - 1];
+  const trailingEmpty = plainSegmentSize === 0 && encryptedSegmentSize === encryptedSize(0);
+  const lastData = chunks.length - (trailingEmpty ? 2 : 1);
+  for (let i = 0; i < lastData; i++) {
+    if (!full(chunks[i])) {
       return undefined;
     }
   }
-  return fits(chunks[last]) ? size : undefined;
+  const lastFits = trailingEmpty ? full : fits;
+  return lastFits(chunks[lastData]) ? { size, lastData } : undefined;
 }
 
 /**
@@ -96,11 +105,14 @@ function uniformSegmentSize(
  * segment an offset lands on, and understating sizes would let them end a read
  * early. So:
  *
- * - **Uniform layout** (what this SDK's writer produces): segment i starts at
- *   i * S. S comes from the manifest, so the plan always decrypts at least one
- *   non-last segment, whose authenticated length must equal S; a range inside
- *   the last segment also reads the one before it, and drops its output. (A
- *   lone segment starts at 0, so there is nothing to confirm.)
+ * - **Uniform layout** (what this SDK's writer produces, and java-sdk's, which
+ *   may end with an empty segment): segment i starts at i * S. S comes from
+ *   the manifest, so the plan always decrypts at least one non-last segment,
+ *   whose authenticated length must equal S; a range inside the last data
+ *   segment also reads the one before it, and drops its output. (A lone data
+ *   segment starts at 0, so there is nothing to confirm.) A trailing empty
+ *   segment gives an editor nothing to shift positions with: its hash is in
+ *   the root signature, and it must decrypt to 0 bytes.
  * - **Any other layout**: decrypt from segment 0 and drop the output before the
  *   offset, so positions are those of the authenticated plaintext itself.
  *   Slower, as it reads everything before the range.
@@ -164,8 +176,8 @@ export function planPlaintextRange<T extends RangeSegment>(
   const toEnd = offset + take === total;
   const lastIndex = chunks.length - 1;
 
-  const segmentSize = uniformSegmentSize(chunks, encryptedSize);
-  if (segmentSize === undefined) {
+  const layout = uniformLayout(chunks, encryptedSize);
+  if (layout === undefined) {
     // Through the segment holding the range's last byte, or the last segment.
     // The length checks confirm the recorded sizes of every segment read.
     let end = 0;
@@ -174,10 +186,11 @@ export function planPlaintextRange<T extends RangeSegment>(
       : chunks.findIndex(({ plainSegmentSize = 0 }) => (end += plainSegmentSize) >= offset + take);
     return { chunks: chunks.slice(0, last + 1), skip: offset, take };
   }
-  let first = Math.min(Math.floor(offset / segmentSize), lastIndex);
+  const { size: segmentSize, lastData } = layout;
+  let first = Math.min(Math.floor(offset / segmentSize), lastData);
   const last = toEnd ? lastIndex : Math.floor((offset + take - 1) / segmentSize);
-  if (first === lastIndex && first > 0) {
-    // Only the last segment covers the range, and its length cannot confirm S.
+  if (first === lastData && first > 0) {
+    // Only the last data segment covers the range, and its length need not be S.
     first -= 1;
   }
   return {
