@@ -100,6 +100,7 @@ export class SplitKey {
     );
 
     const keyAccessObjects: KeyAccessObject[] = [];
+    const encryptedMetadataByCacheKey = new Map<string, string>();
     for (const item of this.keyAccess) {
       // use the key split to encrypt metadata for each key access object
       const unwrappedKeySplit = splitsByName[item.sid || ''];
@@ -124,18 +125,28 @@ export class SplitKey {
         toArrayBuffer(new TextEncoder().encode(metadataStr))
       );
 
-      const encryptedMetadataResult = await this.encrypt(
-        metadataBinary,
-        unwrappedKeySplit,
-        keyInfo.unwrappedKeyIvBinary
-      );
+      // Encrypt once per (split, metadata) under a fresh IV, rather than the
+      // caller-supplied `keyInfo.unwrappedKeyIvBinary`, so a (wrongly) reused
+      // key never repeats a (key, IV) pair. KAOs sharing a split reuse the
+      // result, keeping metadata to one AES-GCM invocation per split key; with a
+      // single split that key is the payload key, so this counts against the
+      // payload IV budget.
+      const cacheKey = JSON.stringify([item.sid || '', metadataStr]);
+      let encryptedMetadataStr = encryptedMetadataByCacheKey.get(cacheKey);
+      if (encryptedMetadataStr === undefined) {
+        const metadataIvBinary = await this.generateIvBinary();
+        const encryptedMetadataResult = await this.encrypt(
+          metadataBinary,
+          unwrappedKeySplit,
+          metadataIvBinary
+        );
+        encryptedMetadataStr = JSON.stringify({
+          ciphertext: base64.encode(encryptedMetadataResult.payload.asString()),
+          iv: base64.encode(metadataIvBinary.asString()),
+        });
+        encryptedMetadataByCacheKey.set(cacheKey, encryptedMetadataStr);
+      }
 
-      const encryptedMetadataOb = {
-        ciphertext: base64.encode(encryptedMetadataResult.payload.asString()),
-        iv: base64.encode(keyInfo.unwrappedKeyIvBinary.asString()),
-      };
-
-      const encryptedMetadataStr = JSON.stringify(encryptedMetadataOb);
       const keyAccessObject = await item.write(policy, unwrappedKeySplit, encryptedMetadataStr);
       keyAccessObjects.push(keyAccessObject);
     }
