@@ -42,9 +42,11 @@ realms:
           serviceAccountsEnabled: true
           clientAuthenticatorType: client-secret
           secret: secret
+          attributes:
+            dpop.bound.access.tokens: "true"
           protocolMappers:
             - *customAudMapper
-        sa_realm_roles: 
+        sa_realm_roles:
           - opentdf-standard
       - client:
           clientID: tdf-entity-resolution
