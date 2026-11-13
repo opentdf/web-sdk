@@ -27,3 +27,6 @@ go run /path/to/web-sdk/lib/tests/mocks/validation/check-go.go \
 Go is not required for the normal TypeScript test suite. The schema source/version is recorded in
 `lib/src/manifest-lax.schema.ts`; preserve its validation semantics when refreshing it, including
 intentionally permissive lax-schema cases.
+
+Once the cross-SDK validity suite in opentdf/tests (DSPX-5349) lands, this corpus and the Go
+verifier can shrink to a smoke test.
