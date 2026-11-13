@@ -93,6 +93,7 @@
     "@cfworker/json-schema": "^4.1.1",
     "@connectrpc/connect": "^2.0.2",
     "@connectrpc/connect-web": "^2.0.2",
+    "@noble/hashes": "~2.2.0",
     "@noble/post-quantum": "^0.6.1",
     "buffer-crc32": "^1.0.0",
     "jose": "6.0.8",

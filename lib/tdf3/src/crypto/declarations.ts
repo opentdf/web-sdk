@@ -29,6 +29,15 @@ export type PemKeyPair = {
 export const EC_KEY_ALGORITHMS = ['ec:secp256r1', 'ec:secp384r1', 'ec:secp521r1'] as const;
 export const RSA_KEY_ALGORITHMS = ['rsa:2048', 'rsa:4096'] as const;
 export const MLKEM_KEY_ALGORITHMS = ['mlkem:768', 'mlkem:1024'] as const;
+/**
+ * Hybrid post-quantum/traditional KEMs: ML-KEM combined with ECDH, as the
+ * composite KEMs of draft-ietf-lamps-pq-composite-kem-14 and the OpenTDF
+ * platform's `hpqt:*` key types define them.
+ */
+export const HYBRID_KEY_ALGORITHMS = [
+  'hpqt:secp256r1-mlkem768',
+  'hpqt:secp384r1-mlkem1024',
+] as const;
 
 /**
  * All supported key algorithms. Order is significant: it is re-exported as
@@ -39,6 +48,7 @@ export const KEY_ALGORITHMS = [
   ...EC_KEY_ALGORITHMS,
   ...RSA_KEY_ALGORITHMS,
   ...MLKEM_KEY_ALGORITHMS,
+  ...HYBRID_KEY_ALGORITHMS,
 ] as const;
 
 /** Elliptic-curve key algorithm identifiers (`ec:*`). */
@@ -47,11 +57,14 @@ export type EcKeyAlgorithm = (typeof EC_KEY_ALGORITHMS)[number];
 export type RsaKeyAlgorithm = (typeof RSA_KEY_ALGORITHMS)[number];
 /** ML-KEM key algorithm identifiers (`mlkem:*`). */
 export type MlKemKeyAlgorithm = (typeof MLKEM_KEY_ALGORITHMS)[number];
+/** Hybrid ML-KEM + ECDH key algorithm identifiers (`hpqt:*`). */
+export type HybridKeyAlgorithm = (typeof HYBRID_KEY_ALGORITHMS)[number];
 
 /**
  * Key algorithm identifier combining key type and parameters.
  */
-export type KeyAlgorithm = EcKeyAlgorithm | RsaKeyAlgorithm | MlKemKeyAlgorithm;
+export type KeyAlgorithm =
+  EcKeyAlgorithm | RsaKeyAlgorithm | MlKemKeyAlgorithm | HybridKeyAlgorithm;
 
 /** Narrows a string to an elliptic-curve (`ec:*`) key algorithm. */
 export const isEcKeyAlgorithm = (a: string): a is EcKeyAlgorithm =>
@@ -62,6 +75,9 @@ export const isRsaKeyAlgorithm = (a: string): a is RsaKeyAlgorithm =>
 /** Narrows a string to an ML-KEM (`mlkem:*`) key algorithm. */
 export const isMlKemKeyAlgorithm = (a: string): a is MlKemKeyAlgorithm =>
   (MLKEM_KEY_ALGORITHMS as readonly string[]).includes(a);
+/** Narrows a string to a hybrid ML-KEM + ECDH (`hpqt:*`) key algorithm. */
+export const isHybridKeyAlgorithm = (a: string): a is HybridKeyAlgorithm =>
+  (HYBRID_KEY_ALGORITHMS as readonly string[]).includes(a);
 /** Narrows a string to any supported key algorithm. */
 export const isKeyAlgorithm = (a: string): a is KeyAlgorithm =>
   (KEY_ALGORITHMS as readonly string[]).includes(a);
@@ -532,4 +548,16 @@ export type CryptoService = {
    * @returns Raw shared secret (32 bytes, not yet HKDF-derived)
    */
   mlKemDecapsulate?: (sk: PrivateKey, ct: Uint8Array) => Promise<SymmetricKey>;
+
+  /**
+   * Encapsulate to a hybrid ML-KEM + ECDH public key (`hpqt:*`): ECDH with an
+   * ephemeral key, ML-KEM encapsulation, then the SHA3-256 combiner of
+   * draft-ietf-lamps-pq-composite-kem-14 §3.4.
+   * @param pk - Opaque hybrid public key
+   * @returns KEM ciphertext (ML-KEM ciphertext followed by the ephemeral EC
+   * public key) and the combiner's 32-byte output, used directly as the AES-256 key
+   */
+  hybridEncapsulate?: (
+    pk: PublicKey
+  ) => Promise<{ ciphertext: Uint8Array; sharedSecret: SymmetricKey }>;
 };

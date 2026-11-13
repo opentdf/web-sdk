@@ -2,6 +2,7 @@ import {
   ecAlgorithmToCurve,
   isEcKeyAlgorithm,
   isRsaKeyAlgorithm,
+  type HybridKeyAlgorithm,
   type KeyAlgorithm,
   type PrivateKey,
   type PublicKey,
@@ -124,6 +125,31 @@ export function wrapMlKemPrivateKey(bytes: Uint8Array, level: 768 | 1024): Priva
     _internal: bytes,
   } as PrivateKey & InternalBytes;
   return result;
+}
+
+/**
+ * Wrap a raw hybrid public key (ML-KEM encapsulation key || EC point) as an
+ * opaque PublicKey.
+ * @internal
+ */
+export function wrapHybridPublicKey(bytes: Uint8Array, algorithm: HybridKeyAlgorithm): PublicKey {
+  const result = {
+    _brand: 'PublicKey',
+    algorithm,
+    _internal: bytes,
+  } as PublicKey & InternalBytes;
+  return result;
+}
+
+/**
+ * Unwrap an opaque hybrid PublicKey to get its raw bytes.
+ * @internal
+ */
+export function unwrapHybridKey(key: PublicKey): Uint8Array {
+  if (typeof key !== 'object' || key === null) {
+    throw new TypeError('Key is not owned by this crypto service');
+  }
+  return unwrapBytes(key);
 }
 
 /**
