@@ -5,6 +5,7 @@
     "noEmit": false,
     "outDir": "../dist/web",
     "rootDir": "..",
+    "resolveJsonModule": true,
     "types": ["mocha", "node"]
   },
   "include": ["./**/*.ts"]

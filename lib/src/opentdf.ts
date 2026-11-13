@@ -167,7 +167,13 @@ export type ReadOptions = {
   ignoreAllowlist?: boolean;
   /** Optionally override client fulfillableObligationFQNs. */
   fulfillableObligationFQNs?: string[];
-  /** Public (or shared) keys for verifying assertions. */
+  /**
+   * Public (or shared) keys for verifying assertions: per-ID keys, and a
+   * default key for every other assertion. A default key also applies to
+   * payload-key assertions such as the `system-metadata` assertion Java writers
+   * add, so those files fail verification; configure per-ID keys for them
+   * instead. See {@link AssertionVerificationKeys}.
+   */
   assertionVerificationKeys?: AssertionVerificationKeys;
   /** Optionally disable assertion verification. */
   noVerify?: boolean;
@@ -551,6 +557,10 @@ class ZTDFReader {
     readonly source: Chunker
   ) {
     this.overview = loadTDFStream(source);
+    // A manifest that fails to load is reported where the overview is awaited
+    // (decrypt, manifest, attributes); until then it is not an unhandled
+    // rejection.
+    this.overview.catch(() => undefined);
   }
 
   /**
