@@ -107,4 +107,23 @@ describe('auth provider factories — DPoP passthrough', function (this: Mocha.S
       expect(headers).to.not.have.property('X-VirtruPubKey');
     });
   }
+
+  it('discovers the resource DPoP mode through the AccessToken request function', async () => {
+    const provider = await FACTORIES[0][1]({ dpopEnabled: true, signingKey: keyPair });
+    const seen: string[] = [];
+    provider.oidcAuth.request = (input) => {
+      seen.push(typeof input === 'string' ? input : input.url);
+      return Promise.resolve(
+        new Response(JSON.stringify({ configuration: { dpop: { rfc9449: true } } }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      );
+    };
+    const rpcUrl = 'https://kas.example.test/kas.AccessService/Rewrap';
+    expect(await provider.oidcAuth.dpopModeResolver?.htuForRpc(rpcUrl)).to.equal(rpcUrl);
+    expect(seen).to.deep.equal([
+      'https://kas.example.test/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration',
+    ]);
+  });
 });

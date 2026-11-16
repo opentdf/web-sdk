@@ -115,7 +115,12 @@ export class AccessToken {
 
   constructor(cfg: OIDCCredentials, cryptoService: CryptoService, request?: typeof fetch) {
     this.dpopModeResolver = cfg.dpopEnabled
-      ? new DPoPModeResolver({ mode: cfg.dpopMode })
+      ? new DPoPModeResolver({
+          mode: cfg.dpopMode,
+          // Read `request` at call time so discovery follows the same transport as token calls.
+          fetch: (input, init) =>
+            (this.request ?? fetch)(input instanceof URL ? input.href : input, init),
+        })
       : undefined;
     if (!cfg.clientId) {
       throw new ConfigurationError(
