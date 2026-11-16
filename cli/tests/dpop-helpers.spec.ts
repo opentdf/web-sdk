@@ -4,6 +4,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
+  assertRequestBinding,
   derToPem,
   generateEphemeralDPoPKeyPair,
   loadDPoPKeyPairFromPem,
@@ -311,5 +312,50 @@ describe('resolveDPoPFromArgs', function () {
         expect((err as Error).message).to.include('--no-dpop conflicts');
       }
     }
+  });
+});
+
+describe('assertRequestBinding', function () {
+  const b64url = (v: unknown) => Buffer.from(JSON.stringify(v)).toString('base64url');
+  const jwt = (payload: unknown) => `${b64url({ alg: 'none' })}.${b64url(payload)}.sig`;
+  const bound = `DPoP ${jwt({ sub: 'u', cnf: { jkt: 'thumb' } })}`;
+  const proof = jwt({ htm: 'POST', htu: '/kas.AccessService/Rewrap' });
+
+  it('accepts a bound token with a DPoP proof', function () {
+    assertRequestBinding({ headers: { Authorization: bound, DPoP: proof } }, true);
+  });
+
+  it('accepts a plain bearer token when DPoP is off', function () {
+    assertRequestBinding({ headers: { authorization: `Bearer ${jwt({ sub: 'u' })}` } }, false);
+  });
+
+  it('fails when no authenticated request was recorded', function () {
+    expect(() => assertRequestBinding(undefined, false)).to.throw('No authenticated request');
+  });
+
+  it('fails without an access token', function () {
+    expect(() => assertRequestBinding({ headers: {} }, false)).to.throw('No access_token found');
+  });
+
+  it('fails when DPoP is on but the token is not bound', function () {
+    const unbound = { Authorization: `DPoP ${jwt({ sub: 'u' })}`, DPoP: proof };
+    expect(() => assertRequestBinding({ headers: unbound }, true)).to.throw('missing cnf.jkt');
+  });
+
+  it('fails when DPoP is on but no proof was sent', function () {
+    expect(() => assertRequestBinding({ headers: { Authorization: bound } }, true)).to.throw(
+      'no DPoP proof was sent'
+    );
+  });
+
+  it('fails on duplicate DPoP or Authorization headers', function () {
+    const twoProofs = { Authorization: bound, DPoP: proof, dpop: proof };
+    expect(() => assertRequestBinding({ headers: twoProofs }, true)).to.throw(
+      'Multiple dpop headers'
+    );
+    const twoTokens = { Authorization: bound, authorization: bound, DPoP: proof };
+    expect(() => assertRequestBinding({ headers: twoTokens }, true)).to.throw(
+      'Multiple authorization headers'
+    );
   });
 });

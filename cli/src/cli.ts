@@ -23,9 +23,8 @@ import { CLIError, Level, log } from './logger.js';
 import { type FileChunker, openFileChunker } from './file-chunker.js';
 import { asRangeCliError, isUrl, rangeFromArgs } from './source.js';
 import * as assertions from '@opentdf/sdk/assertions';
-import { base64 } from '@opentdf/sdk/encodings';
 import { type KeyPair } from '@opentdf/sdk/singlecontainer';
-import { VALID_DPOP_ALGS, resolveDPoPFromArgs } from './dpop-helpers.js';
+import { VALID_DPOP_ALGS, assertRequestBinding, resolveDPoPFromArgs } from './dpop-helpers.js';
 
 type AuthToProcess = {
   auth?: string;
@@ -64,14 +63,6 @@ const asError = (value: unknown): Error =>
 // 'utf8' string decoding leaves it in place, which JSON.parse rejects.
 const readJsonFileText = async (path: string): Promise<string> =>
   new TextDecoder().decode(await readFile(path));
-
-const parseJwt = (jwt: string, field = 1) => {
-  return JSON.parse(base64.decode(jwt.split('.')[field])) as unknown;
-};
-
-const parseJwtComplete = (jwt: string) => {
-  return { header: parseJwt(jwt, 0), payload: parseJwt(jwt) };
-};
 
 async function processAuth(
   { auth, clientId, clientSecret, concurrencyLimit, oidcEndpoint, userId, dpopMode }: AuthToProcess,
@@ -771,51 +762,13 @@ export const handleArgs = (args: string[]) => {
             const ct = await client.read(readOptions).catch((e: unknown) => {
               throw asRangeCliError(e);
             });
+            // client.read() has already rewrapped, so the KAS request is in the log.
+            assertRequestBinding(
+              authProvider.requestLog[authProvider.requestLog.length - 1],
+              dpopEnabled
+            );
             const destination = argv.output ? createWriteStream(argv.output) : process.stdout;
             await ct.pipeTo(Writable.toWeb(destination) as WritableStream<Uint8Array>);
-
-            const lastRequest = authProvider.requestLog[authProvider.requestLog.length - 1];
-            log('SILLY', `last request is ${JSON.stringify(lastRequest)}`);
-            let accessToken = null;
-            let dpopToken = null;
-            for (const h of Object.keys(lastRequest.headers)) {
-              switch (h.toLowerCase()) {
-                case 'dpop':
-                  console.assert(!dpopToken, 'Multiple dpop headers found');
-                  dpopToken = parseJwtComplete(lastRequest.headers[h]);
-                  log('INFO', `dpop: ${JSON.stringify(dpopToken)}`);
-                  break;
-                case 'authorization':
-                  console.assert(!accessToken, 'Multiple authorization headers found');
-                  accessToken = parseJwt(lastRequest.headers[h].split(' ')[1]);
-                  log('INFO', `Access Token: ${JSON.stringify(accessToken)}`);
-                  if (dpopEnabled) {
-                    const cnf =
-                      typeof accessToken === 'object' &&
-                      accessToken !== null &&
-                      'cnf' in accessToken
-                        ? accessToken.cnf
-                        : undefined;
-                    const hasJkt =
-                      typeof cnf === 'object' && cnf !== null && 'jkt' in cnf && Boolean(cnf.jkt);
-                    if (!hasJkt) {
-                      // A missing cnf.jkt means token binding silently didn't take
-                      // effect; fail loudly rather than exit 0 with only a warning.
-                      throw new CLIError(
-                        'CRITICAL',
-                        'DPoP requested but the access token is not bound (missing cnf.jkt)'
-                      );
-                    }
-                  }
-                  break;
-              }
-            }
-            if (!accessToken) {
-              throw new CLIError('CRITICAL', 'No access_token found');
-            }
-            if (dpopEnabled && !dpopToken) {
-              throw new CLIError('CRITICAL', 'DPoP requested but no DPoP proof was sent');
-            }
           } finally {
             await closeSource(readOptions?.source);
             client.close();

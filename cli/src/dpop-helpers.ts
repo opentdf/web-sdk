@@ -1,8 +1,9 @@
 // cli/src/dpop-helpers.ts
 import { readFile } from 'node:fs/promises';
 import { type webcrypto } from 'node:crypto';
+import { base64 } from '@opentdf/sdk/encodings';
 import { type KeyPair, WebCryptoService } from '@opentdf/sdk/singlecontainer';
-import { CLIError } from './logger.js';
+import { CLIError, log } from './logger.js';
 
 export const VALID_DPOP_ALGS = ['ES256', 'ES384', 'ES512', 'RS256'] as const;
 export type DPoPAlg = (typeof VALID_DPOP_ALGS)[number];
@@ -253,4 +254,66 @@ export async function resolveDPoPFromArgs(argv: {
   const dpopAlg = argv.dpopAlg || (argv.dpopKey ? undefined : 'ES256');
   const dpopKeyPair = await resolveDPoPKeyPair(dpopAlg, argv.dpopKey, !!argv.dpopAlg);
   return { dpopEnabled, dpopKeyPair };
+}
+
+const parseJwt = (jwt: string, field = 1) => {
+  return JSON.parse(base64.decode(jwt.split('.')[field])) as unknown;
+};
+
+const parseJwtComplete = (jwt: string) => {
+  return { header: parseJwt(jwt, 0), payload: parseJwt(jwt) };
+};
+
+/**
+ * Check the credentials on the last authenticated request: an access token must
+ * be present, and with DPoP enabled it must be bound (`cnf.jkt`) and accompanied
+ * by a proof. Run this before writing any decrypted output, so a binding failure
+ * never leaves plaintext behind with a non-zero exit.
+ */
+export function assertRequestBinding(
+  request: { headers: Record<string, string> } | undefined,
+  dpopEnabled: boolean
+): void {
+  log('SILLY', `last request is ${JSON.stringify(request)}`);
+  if (!request) {
+    throw new CLIError('CRITICAL', 'No authenticated request was recorded');
+  }
+  let accessToken: unknown = null;
+  let dpopToken: unknown = null;
+  for (const h of Object.keys(request.headers)) {
+    switch (h.toLowerCase()) {
+      case 'dpop':
+        if (dpopToken) {
+          throw new CLIError('CRITICAL', 'Multiple dpop headers found');
+        }
+        dpopToken = parseJwtComplete(request.headers[h]);
+        log('INFO', `dpop: ${JSON.stringify(dpopToken)}`);
+        break;
+      case 'authorization':
+        if (accessToken) {
+          throw new CLIError('CRITICAL', 'Multiple authorization headers found');
+        }
+        accessToken = parseJwt(request.headers[h].split(' ')[1]);
+        log('INFO', `Access Token: ${JSON.stringify(accessToken)}`);
+        break;
+    }
+  }
+  if (!accessToken) {
+    throw new CLIError('CRITICAL', 'No access_token found');
+  }
+  if (!dpopEnabled) {
+    return;
+  }
+  const cnf = typeof accessToken === 'object' && 'cnf' in accessToken ? accessToken.cnf : undefined;
+  const hasJkt = typeof cnf === 'object' && cnf !== null && 'jkt' in cnf && Boolean(cnf.jkt);
+  if (!hasJkt) {
+    // A missing cnf.jkt means token binding silently didn't take effect.
+    throw new CLIError(
+      'CRITICAL',
+      'DPoP requested but the access token is not bound (missing cnf.jkt)'
+    );
+  }
+  if (!dpopToken) {
+    throw new CLIError('CRITICAL', 'DPoP requested but no DPoP proof was sent');
+  }
 }
