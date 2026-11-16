@@ -130,8 +130,14 @@ async function readDiscoveryJSON(
 /**
  * Discovers the DPoP proof style independently for each server origin.
  * Discovery never sends Authorization, DPoP, or cookies. Concurrent requests to
- * the same origin share one discovery; a short fallback avoids pinning a server
- * to legacy after a transient failure.
+ * the same origin share one discovery.
+ *
+ * In `auto` mode, an origin is `rfc9449` only if it advertises support; anything
+ * else, including failed or blocked discovery, is `legacy`. This keeps older
+ * platforms working without configuration, at the cost of proofs that do not
+ * name the origin. Use the `rfc9449` mode where every server supports it.
+ * Failed discovery is cached only for `retryIntervalMs`, so a transient failure
+ * does not pin a server to legacy for the full `cacheTtlMs`.
  */
 export class DPoPModeResolver {
   readonly mode: DPoPMode;

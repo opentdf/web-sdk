@@ -48,14 +48,21 @@ const client = new OpenTDF({
 });
 ```
 
-Resource DPoP proofs default to `dpopMode: 'auto'`. The SDK checks each server's
-unauthenticated well-known configuration, then protected resource metadata, for
-RFC 9449 support. Servers that do not advertise it receive the RPC procedure
-path expected by older KAS releases. To select a format explicitly, pass
-`dpopMode: 'legacy'` or `dpopMode: 'rfc9449'` to `authTokenDPoPInterceptor` (or to
-the OIDC provider credentials). Token endpoint and non-RPC proofs always use the
-full URL without its query or fragment. The CLI exposes the same setting as
-`--dpop-mode`.
+Resource DPoP proofs default to `dpopMode: 'auto'`. The SDK checks each server's unauthenticated
+well-known configuration, then protected resource metadata, for RFC 9449 support. Servers that
+advertise it receive the full request URL as `htu`. Everything else receives the bare RPC procedure
+path (for example `/kas.AccessService/Rewrap`, with any proxy prefix dropped) that older KAS
+releases expect. That includes servers where discovery fails or is blocked, for example by CORS.
+This fallback is deliberate, so new clients keep working against older platforms. A failed discovery
+is retried after 30 seconds; a definitive answer is cached for 5 minutes.
+
+Legacy-form proofs do not name the server origin. Deployments where every server supports RFC 9449
+should pass `dpopMode: 'rfc9449'` to `authTokenDPoPInterceptor` (or to the OIDC provider
+credentials), which skips discovery and always binds proofs to the full URL. `dpopMode: 'legacy'`
+always uses the procedure path. The CLI exposes the same setting as `--dpop-mode`.
+
+Before this release, `authTokenDPoPInterceptor` always used the full URL. To keep that behavior,
+pass `dpopMode: 'rfc9449'`.
 
 You can also write your own interceptor for full control over request headers:
 

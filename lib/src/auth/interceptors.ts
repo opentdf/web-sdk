@@ -23,9 +23,14 @@ export type DPoPInterceptorOptions = {
   dpopKeys?: KeyPair | Promise<KeyPair>;
   /** CryptoService for signing. Defaults to DefaultCryptoService. */
   cryptoService?: CryptoService;
-  /** Resource proof style. Defaults to per-origin advertisement discovery. */
+  /**
+   * Resource proof `htu` style. Defaults to `auto`: per-origin discovery, using the
+   * legacy procedure path unless the server advertises RFC 9449 (including when
+   * discovery fails). Pass `rfc9449` to always sign the full URL, which was this
+   * interceptor's behavior before `dpopMode` existed.
+   */
   dpopMode?: DPoPMode;
-  /** Share a resolver/cache with other auth paths when needed. */
+  /** Share a resolver/cache with other auth paths. Takes precedence over `dpopMode`. */
   dpopModeResolver?: DPoPModeResolver;
 };
 
@@ -65,6 +70,7 @@ export function authTokenInterceptor(tokenProvider: TokenProvider): Interceptor 
  * Creates a DPoP-aware auth interceptor.
  * Per-request: gets token, generates DPoP proof JWT, sets Authorization + DPoP + X-VirtruPubKey headers.
  * Exposes `dpopKeys` for TDF request body signing.
+ * The proof `htu` follows `options.dpopMode`; see {@link DPoPInterceptorOptions.dpopMode}.
  *
  * @param options DPoP interceptor configuration.
  * @returns A DPoP interceptor with an exposed `dpopKeys` promise.
