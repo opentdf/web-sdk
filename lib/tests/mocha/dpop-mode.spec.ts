@@ -6,7 +6,8 @@ import {
   fullDPoPHTU,
   legacyRpcDPoPHTU,
 } from '../../src/auth/dpop-mode.js';
-import { authProviderInterceptor } from '../../src/auth/interceptors.js';
+import { authProviderInterceptor, authTokenDPoPInterceptor } from '../../src/auth/interceptors.js';
+import * as jose from 'jose';
 import type { AuthProvider, HttpRequest } from '../../src/auth/auth.js';
 
 const rpcUrl = 'https://kas.example/proxy/kas.AccessService/Rewrap?ignored=1#fragment';
@@ -193,5 +194,107 @@ describe('resource DPoP mode discovery', () => {
     await interceptor(next as unknown as Parameters<typeof interceptor>[0])(request);
     expect(seen?.url).to.equal(rpcUrl);
     expect(seen?.dpopHtu).to.equal(procedure);
+  });
+
+  it('retries soon after a non-200, non-missing status', async () => {
+    let now = 0;
+    let calls = 0;
+    const resolver = new DPoPModeResolver({
+      now: () => now,
+      fetch: () => {
+        calls++;
+        return Promise.resolve(jsonResponse({}, 403));
+      },
+    });
+    expect(await resolver.htuForRpc(rpcUrl)).to.equal(procedure);
+    now = 30_000;
+    await resolver.htuForRpc(rpcUrl);
+    expect(calls).to.equal(4);
+  });
+
+  it('treats a non-JSON 200 as a definitive absence', async () => {
+    let now = 0;
+    let calls = 0;
+    const resolver = new DPoPModeResolver({
+      now: () => now,
+      fetch: () => {
+        calls++;
+        return Promise.resolve(new Response('<html></html>', { status: 200 }));
+      },
+    });
+    expect(await resolver.htuForRpc(rpcUrl)).to.equal(procedure);
+    now = 30_000;
+    await resolver.htuForRpc(rpcUrl);
+    expect(calls).to.equal(2);
+  });
+
+  it('falls back to legacy on timeout and retries soon', async () => {
+    let now = 0;
+    let hang = true;
+    const resolver = new DPoPModeResolver({
+      now: () => now,
+      timeoutMs: 10,
+      fetch: (_input, init) => {
+        if (!hang) {
+          return Promise.resolve(jsonResponse({ configuration: { dpop: { rfc9449: true } } }));
+        }
+        // Like fetch, reject at once for an already-aborted signal.
+        return new Promise((_resolve, reject) => {
+          const signal = init?.signal;
+          const fail = () => reject(new Error('aborted'));
+          if (signal?.aborted) fail();
+          signal?.addEventListener('abort', fail);
+        });
+      },
+    });
+    expect(await resolver.htuForRpc(rpcUrl)).to.equal(procedure);
+    hang = false;
+    now = 30_000;
+    expect(await resolver.htuForRpc(rpcUrl)).to.equal(fullHtu);
+  });
+
+  it('rejects only the aborted caller and still completes shared discovery', async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    let calls = 0;
+    const resolver = new DPoPModeResolver({
+      fetch: async () => {
+        calls++;
+        await gate;
+        return jsonResponse({ configuration: { dpop: { rfc9449: true } } });
+      },
+    });
+    const controller = new AbortController();
+    const aborted = resolver.htuForRpc(rpcUrl, controller.signal);
+    const other = resolver.htuForRpc(rpcUrl);
+    controller.abort(new Error('caller gave up'));
+    let abortError: unknown;
+    try {
+      await aborted;
+    } catch (e) {
+      abortError = e;
+    }
+    expect((abortError as Error)?.message).to.equal('caller gave up');
+    release();
+    expect(await other).to.equal(fullHtu);
+    expect(await resolver.htuForRpc(rpcUrl)).to.equal(fullHtu);
+    expect(calls).to.equal(1);
+  });
+
+  it('signs the resolver-selected htu in authTokenDPoPInterceptor', async () => {
+    for (const [mode, expected] of [
+      ['legacy', procedure],
+      ['rfc9449', fullHtu],
+    ] as const) {
+      const interceptor = authTokenDPoPInterceptor({
+        tokenProvider: () => Promise.resolve('token'),
+        dpopModeResolver: new DPoPModeResolver({ mode }),
+      });
+      const header = new Headers();
+      const request = { url: rpcUrl, header } as Parameters<ReturnType<typeof interceptor>>[0];
+      const next = (r: typeof request) => Promise.resolve(r);
+      await interceptor(next as unknown as Parameters<typeof interceptor>[0])(request);
+      expect(jose.decodeJwt(header.get('DPoP')!).htu).to.equal(expected);
+    }
   });
 });

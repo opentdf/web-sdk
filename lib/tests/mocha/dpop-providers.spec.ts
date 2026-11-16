@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import * as jose from 'jose';
 
+import type { HttpRequest } from '../../src/auth/auth.js';
 import type { AccessToken } from '../../src/auth/oidc.js';
 import {
   clientSecretAuthProvider,
@@ -125,5 +126,45 @@ describe('auth provider factories — DPoP passthrough', function (this: Mocha.S
     expect(seen).to.deep.equal([
       'https://kas.example.test/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration',
     ]);
+  });
+
+  describe('withCreds proof htu', () => {
+    async function proofHtu(request: HttpRequest): Promise<unknown> {
+      const provider = await FACTORIES[0][1]({ dpopEnabled: true, signingKey: keyPair });
+      provider.oidcAuth.request = () =>
+        Promise.resolve(
+          new Response(JSON.stringify({ access_token: 'issued-token' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        );
+      const signed = await provider.oidcAuth.withCreds(request);
+      return jose.decodeJwt(signed.headers.DPoP).htu;
+    }
+
+    const rpcUrl = 'https://kas.example.test/proxy/kas.AccessService/Rewrap?q=1#f';
+
+    it('signs the negotiated dpopHtu', async () => {
+      expect(
+        await proofHtu({
+          url: rpcUrl,
+          dpopHtu: '/kas.AccessService/Rewrap',
+          method: 'POST',
+          headers: {},
+        })
+      ).to.equal('/kas.AccessService/Rewrap');
+    });
+
+    it('signs the absolute URL without query or fragment when dpopHtu is unset', async () => {
+      expect(await proofHtu({ url: rpcUrl, method: 'POST', headers: {} })).to.equal(
+        'https://kas.example.test/proxy/kas.AccessService/Rewrap'
+      );
+    });
+
+    it('signs a path-only URL as given', async () => {
+      expect(
+        await proofHtu({ url: '/kas.AccessService/Rewrap', method: 'POST', headers: {} })
+      ).to.equal('/kas.AccessService/Rewrap');
+    });
   });
 });
