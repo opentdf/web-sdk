@@ -136,8 +136,8 @@ export function authProviderInterceptor(authProvider: AuthProvider): Interceptor
     const pathOnly = url.pathname;
     const modeResolver = authProvider.dpopModeResolver;
     // Custom providers without a resolver retain the previous path-only input.
-    // DPoP-aware providers need the absolute URL for their nonce cache, while
-    // dpopHtu carries the server's selected proof style separately.
+    // Providers with a resolver get the absolute URL, plus the negotiated proof
+    // htu in dpopHtu.
     const dpopHtu = modeResolver ? await modeResolver.htuForRpc(req.url, req.signal) : undefined;
     let token;
     try {

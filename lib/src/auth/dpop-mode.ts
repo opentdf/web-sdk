@@ -40,7 +40,11 @@ export function fullDPoPHTU(requestUrl: string): string {
   return `${url.origin}${url.pathname}`;
 }
 
-/** Older Connect KAS implementations compare `htu` with the bare RPC procedure. */
+/**
+ * Older Connect KAS implementations compare `htu` with the bare RPC procedure:
+ * the last two path segments (`/package.Service/Method`), so any proxy prefix is
+ * dropped. URLs with fewer than two segments fall back to {@link fullDPoPHTU}.
+ */
 export function legacyRpcDPoPHTU(requestUrl: string): string {
   const url = new URL(requestUrl);
   const segments = url.pathname.split('/').filter(Boolean);
@@ -158,15 +162,6 @@ export class DPoPModeResolver {
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   }
 
-  /** Seed a result from a well-known configuration already fetched by the SDK. */
-  recordRFC9449Support(serverUrl: string, supported: boolean): void {
-    const origin = new URL(serverUrl).origin;
-    this.cache.set(origin, {
-      mode: supported ? 'rfc9449' : 'legacy',
-      expiresAt: this.now() + this.cacheTtlMs,
-    });
-  }
-
   /** Resolve once per origin, with a five-minute conclusive cache by default. */
   async modeFor(requestUrl: string, signal?: AbortSignal): Promise<ResolvedMode> {
     if (this.mode !== 'auto') return this.mode;
@@ -192,7 +187,7 @@ export class DPoPModeResolver {
     });
   }
 
-  /** Select `htu` for a Connect RPC. Non-RPC and token requests use `fullDPoPHTU`. */
+  /** Select `htu` for a Connect RPC. Not used for token-endpoint or other non-RPC proofs. */
   async htuForRpc(requestUrl: string, signal?: AbortSignal): Promise<string> {
     const mode = await this.modeFor(requestUrl, signal);
     return mode === 'legacy' ? legacyRpcDPoPHTU(requestUrl) : fullDPoPHTU(requestUrl);

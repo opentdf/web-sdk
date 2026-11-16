@@ -86,7 +86,11 @@ export async function reqSignature(
  * [the claims object](https://github.com/opentdf/spec/blob/main/schema/ClaimsObject.md).
  */
 export type AuthProvider = {
-  /** Enables per-origin DPoP proof-style discovery for Connect RPC requests. */
+  /**
+   * Enables per-origin DPoP proof-style discovery for Connect RPC requests. When
+   * set, `authProviderInterceptor` passes `withCreds` the absolute request URL
+   * and the negotiated proof `htu` in `dpopHtu`, instead of the bare path.
+   */
   readonly dpopModeResolver?: DPoPModeResolver;
   /**
    * This function should be called if the consumer of this auth provider

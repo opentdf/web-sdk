@@ -1,4 +1,3 @@
-// cli/src/dpop-helpers.ts
 import { readFile } from 'node:fs/promises';
 import { type webcrypto } from 'node:crypto';
 import { base64 } from '@opentdf/sdk/encodings';
@@ -75,7 +74,7 @@ export async function generateEphemeralDPoPKeyPair(alg: string): Promise<KeyPair
 /**
  * Load a DPoP key pair from a PKCS8 PEM-encoded private key file.
  * Derives the public key from the private key via JWK round-trip.
- * Supports ECDSA (P-256, P-384, P-521) and RSA (PKCS1-v1_5 SHA-256).
+ * Supports ECDSA (P-256, P-384, P-521) and RSA 2048/4096 (signed as RS256).
  */
 export async function loadDPoPKeyPairFromPem(pemPath: string): Promise<KeyPair> {
   let privatePem: string;
@@ -99,8 +98,8 @@ export async function loadDPoPKeyPairFromPem(pemPath: string): Promise<KeyPair> 
 
   // Try EC curves (P-256, P-384, P-521). Catch only the importKey call so that
   // any SDK-layer errors from buildKeyPairFromCryptoKey propagate with full context.
-  // Retain the most recent import failure so a genuinely corrupt key surfaces its
-  // real decode error as the cause, instead of only the generic "unsupported" message.
+  // Retain the last import failure (from the RSA attempt, if reached) as the cause,
+  // so the error carries more than the generic "unsupported" message.
   let lastImportError: unknown;
   for (const namedCurve of ['P-256', 'P-384', 'P-521']) {
     let privCK: webcrypto.CryptoKey | undefined;
@@ -175,8 +174,8 @@ async function buildKeyPairFromCryptoKey(
 
 /**
  * The opaque key `algorithm` string the SDK reports for a key of each DPoP JWS
- * algorithm. EC curves are matched exactly; all RSA key sizes sign as RS256, so
- * RS256 matches the `rsa` family (e.g. `rsa:2048`, `rsa:4096`).
+ * algorithm. EC curves are matched exactly; both supported RSA sizes sign as
+ * RS256, so RS256 matches the `rsa` family (`rsa:2048`, `rsa:4096`).
  */
 const DPOP_ALG_TO_KEY_ALG: Record<DPoPAlg, string> = {
   ES256: 'ec:secp256r1',
