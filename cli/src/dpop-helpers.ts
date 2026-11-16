@@ -4,7 +4,7 @@ import { type webcrypto } from 'node:crypto';
 import { type KeyPair, WebCryptoService } from '@opentdf/sdk/singlecontainer';
 import { CLIError } from './logger.js';
 
-const VALID_DPOP_ALGS = ['ES256', 'ES384', 'ES512', 'RS256'] as const;
+export const VALID_DPOP_ALGS = ['ES256', 'ES384', 'ES512', 'RS256'] as const;
 export type DPoPAlg = (typeof VALID_DPOP_ALGS)[number];
 
 const EC_CURVE_MAP: Record<string, string> = {
@@ -186,7 +186,7 @@ const DPOP_ALG_TO_KEY_ALG: Record<DPoPAlg, string> = {
 
 /**
  * Throw if a loaded key's algorithm doesn't satisfy an explicitly-requested
- * `--dpop` algorithm, so the CLI never silently signs with a different (possibly
+ * `--dpop-alg` algorithm, so the CLI never silently signs with a different (possibly
  * weaker) algorithm than the user asked for.
  */
 function assertKeyMatchesRequestedAlg(keyPair: KeyPair, alg: string, keyPath: string): void {
@@ -202,8 +202,8 @@ function assertKeyMatchesRequestedAlg(keyPair: KeyPair, alg: string, keyPath: st
   if (!matches) {
     throw new CLIError(
       'CRITICAL',
-      `--dpop=${alg} conflicts with the key in --dpopKey (${keyPath}): the key's algorithm is ` +
-        `${actual}. Remove --dpop to infer the algorithm from the key, or supply a key matching ${alg}.`
+      `--dpop-alg=${alg} conflicts with the key in --dpopKey (${keyPath}): the key's algorithm is ` +
+        `${actual}. Remove --dpop-alg to infer the algorithm from the key, or supply a key matching ${alg}.`
     );
   }
 }
@@ -211,7 +211,7 @@ function assertKeyMatchesRequestedAlg(keyPair: KeyPair, alg: string, keyPath: st
 /**
  * Main entry point: resolve a DPoP KeyPair from CLI arguments.
  * Returns undefined if DPoP is not requested. When a key file is supplied, its
- * algorithm is inferred from the key; an explicitly-requested `--dpop` algorithm
+ * algorithm is inferred from the key; an explicitly-requested `--dpop-alg` algorithm
  * that disagrees with the key is a hard error (see {@link assertKeyMatchesRequestedAlg}).
  */
 export async function resolveDPoPKeyPair(
@@ -233,22 +233,24 @@ export async function resolveDPoPKeyPair(
 }
 
 /**
- * Resolve DPoP configuration from CLI argv. Bare `--dpop` defaults to ES256;
- * `--dpopKey` enables DPoP even without `--dpop`.
+ * Resolve DPoP configuration from CLI argv. `--dpop` enables DPoP with an ES256
+ * ephemeral key; `--dpop-alg` picks a different ephemeral algorithm (or, with
+ * `--dpopKey`, the algorithm the key must match); `--dpopKey` loads a key and
+ * infers its algorithm. Either of the latter two enables DPoP without `--dpop`.
  */
 export async function resolveDPoPFromArgs(argv: {
-  dpop?: string | boolean;
+  dpop?: boolean;
+  dpopAlg?: string;
   dpopKey?: string;
 }): Promise<{ dpopEnabled: boolean; dpopKeyPair: KeyPair | undefined }> {
-  // yargs coerces `--no-dpop` into the boolean `false` (its automatic negation),
-  // and a bare `--dpop` into the empty string. Only a string requests DPoP; a
-  // boolean `false` (or absent) means the user explicitly disabled it, so it must
-  // NOT fall through to the ES256 default.
-  const dpopAlg = typeof argv.dpop === 'string' ? argv.dpop || 'ES256' : undefined;
-  // A non-empty --dpop value is an explicit algorithm choice; a bare --dpop
-  // (empty string → ES256 default) is not, so it never conflicts with --dpopKey.
-  const algWasExplicit = typeof argv.dpop === 'string' && argv.dpop !== '';
-  const dpopEnabled = dpopAlg !== undefined || !!argv.dpopKey;
-  const dpopKeyPair = await resolveDPoPKeyPair(dpopAlg, argv.dpopKey, algWasExplicit);
+  if (argv.dpop === false && (argv.dpopAlg || argv.dpopKey)) {
+    throw new CLIError('CRITICAL', '--no-dpop conflicts with --dpop-alg and --dpopKey');
+  }
+  const dpopEnabled = !!argv.dpop || !!argv.dpopAlg || !!argv.dpopKey;
+  if (!dpopEnabled) {
+    return { dpopEnabled, dpopKeyPair: undefined };
+  }
+  const dpopAlg = argv.dpopAlg || (argv.dpopKey ? undefined : 'ES256');
+  const dpopKeyPair = await resolveDPoPKeyPair(dpopAlg, argv.dpopKey, !!argv.dpopAlg);
   return { dpopEnabled, dpopKeyPair };
 }

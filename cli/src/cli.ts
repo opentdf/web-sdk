@@ -25,7 +25,7 @@ import { asRangeCliError, isUrl, rangeFromArgs } from './source.js';
 import * as assertions from '@opentdf/sdk/assertions';
 import { base64 } from '@opentdf/sdk/encodings';
 import { type KeyPair } from '@opentdf/sdk/singlecontainer';
-import { resolveDPoPFromArgs } from './dpop-helpers.js';
+import { VALID_DPOP_ALGS, resolveDPoPFromArgs } from './dpop-helpers.js';
 
 type AuthToProcess = {
   auth?: string;
@@ -516,13 +516,19 @@ export const handleArgs = (args: string[]) => {
       })
       .option('dpop', {
         group: 'Security:',
-        desc: 'Enable DPoP token binding. Optional value selects algorithm: ES256 (default), ES384, ES512, RS256. Use --dpop=ES512 to specify.',
-        type: 'string',
+        desc: 'Use DPoP for token binding, with an ephemeral ES256 key unless --dpop-alg or --dpopKey says otherwise',
+        type: 'boolean',
+      })
+      .option('dpopAlg', {
+        alias: 'dpop-alg',
+        group: 'Security:',
+        desc: 'DPoP signing algorithm for the ephemeral key, or the algorithm --dpopKey must match. Implies --dpop.',
+        choices: VALID_DPOP_ALGS,
       })
       .option('dpopKey', {
         alias: 'dpop-key',
         group: 'Security:',
-        desc: 'Path to PEM-encoded PKCS8 private key for DPoP signing. Enables DPoP alone if --dpop is omitted.',
+        desc: 'Path to PEM-encoded PKCS8 private key for DPoP signing; its algorithm is inferred. Implies --dpop.',
         type: 'string',
       })
       .option('dpopMode', {

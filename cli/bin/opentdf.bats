@@ -103,6 +103,26 @@
   [[ $output == *"File is not accessible [noone]"* ]]
 }
 
+# `--dpop` is a boolean, so it must not swallow the positional after it; the
+# algorithm goes in `--dpop-alg`.
+
+@test "--dpop does not consume the following positional" {
+  run $BATS_TEST_DIRNAME/opentdf.mjs --kasEndpoint "https://example.com" --oidcEndpoint "http://invalid" --auth "b:c" decrypt --dpop noone
+  echo "$output"
+  [ "$status" -eq 1 ]
+  # Got as far as the token request, rather than reading `noone` as an algorithm.
+  [[ $output != *"Unsupported DPoP algorithm"* ]]
+  [[ $output == *"ENOTFOUND invalid"* ]]
+}
+
+@test "rejects an unknown --dpop-alg" {
+  run $BATS_TEST_DIRNAME/opentdf.mjs --dpop-alg RS384 decrypt noone
+  echo "$output"
+  [ "$status" -ne 0 ]
+  [[ $output == *"Invalid values"* ]]
+  [[ $output == *"RS384"* ]]
+}
+
 # `supports <feature>` is a capability probe for scripts that gate on which CLI
 # build they got (the roundtrip harness skips its DPoP leg when this fails).
 # Exit status is the whole contract, so both directions are pinned here.

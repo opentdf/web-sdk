@@ -205,7 +205,7 @@ describe('resolveDPoPKeyPair', function () {
   });
 
   it('infers the key algorithm, ignoring a non-explicit (default) alg', async function () {
-    // algWasExplicit defaults to false: a bare --dpop must not conflict with a key.
+    // algWasExplicit defaults to false: an inferred algorithm must not conflict with a key.
     const path = join(tmpDir, 'p384-pref.pem');
     await writeFile(path, await ecPrivatePem('P-384'));
     const result = await resolveDPoPKeyPair('ES256', path);
@@ -213,7 +213,7 @@ describe('resolveDPoPKeyPair', function () {
     expect(result!.publicKey.algorithm).to.equal('ec:secp384r1');
   });
 
-  it('errors when an explicit --dpop alg conflicts with the key file', async function () {
+  it('errors when an explicit --dpop-alg conflicts with the key file', async function () {
     const path = join(tmpDir, 'p384-conflict.pem');
     await writeFile(path, await ecPrivatePem('P-384'));
     try {
@@ -224,7 +224,7 @@ describe('resolveDPoPKeyPair', function () {
     }
   });
 
-  it('accepts an explicit --dpop alg that matches the key file', async function () {
+  it('accepts an explicit --dpop-alg that matches the key file', async function () {
     const path = join(tmpDir, 'p384-match.pem');
     await writeFile(path, await ecPrivatePem('P-384'));
     const result = await resolveDPoPKeyPair('ES384', path, true);
@@ -243,66 +243,73 @@ describe('resolveDPoPFromArgs', function () {
     await rm(tmpDir, { recursive: true, force: true });
   });
 
-  it('returns disabled when neither --dpop nor --dpopKey is set', async function () {
+  it('returns disabled when no DPoP flag is set', async function () {
     const result = await resolveDPoPFromArgs({});
     expect(result.dpopEnabled).to.be.false;
     expect(result.dpopKeyPair).to.be.undefined;
   });
 
-  it('defaults to ES256 when --dpop is passed without a value', async function () {
-    // yargs delivers a bare `--dpop` as the empty string for type: 'string'
-    const result = await resolveDPoPFromArgs({ dpop: '' });
+  it('defaults to an ES256 ephemeral key for --dpop', async function () {
+    const result = await resolveDPoPFromArgs({ dpop: true });
     expect(result.dpopEnabled).to.be.true;
     expect(result.dpopKeyPair?.publicKey.algorithm).to.equal('ec:secp256r1');
   });
 
-  it('stays disabled for --no-dpop (yargs boolean false), not re-enabled', async function () {
-    // yargs turns the negated `--no-dpop` flag into boolean false on the
-    // string-typed --dpop option; it must NOT fall through to the ES256 default.
+  it('stays disabled for --no-dpop', async function () {
     const result = await resolveDPoPFromArgs({ dpop: false });
     expect(result.dpopEnabled).to.be.false;
     expect(result.dpopKeyPair).to.be.undefined;
   });
 
-  it('honours an explicit --dpop=ES384', async function () {
-    const result = await resolveDPoPFromArgs({ dpop: 'ES384' });
-    expect(result.dpopEnabled).to.be.true;
-    expect(result.dpopKeyPair?.publicKey.algorithm).to.equal('ec:secp384r1');
+  it('honours --dpop-alg=ES384, with or without --dpop', async function () {
+    for (const argv of [{ dpopAlg: 'ES384' }, { dpop: true, dpopAlg: 'ES384' }]) {
+      const result = await resolveDPoPFromArgs(argv);
+      expect(result.dpopEnabled).to.be.true;
+      expect(result.dpopKeyPair?.publicKey.algorithm).to.equal('ec:secp384r1');
+    }
   });
 
-  it('enables DPoP from --dpopKey alone (no --dpop)', async function () {
+  it('enables DPoP from --dpopKey alone and infers its algorithm', async function () {
     const path = join(tmpDir, 'args-key.pem');
-    await writeFile(path, await ecPrivatePem('P-256'));
-    const result = await resolveDPoPFromArgs({ dpopKey: path });
-    expect(result.dpopEnabled).to.be.true;
-    expect(result.dpopKeyPair?.publicKey.algorithm).to.equal('ec:secp256r1');
+    await writeFile(path, await ecPrivatePem('P-384'));
+    for (const argv of [{ dpopKey: path }, { dpop: true, dpopKey: path }]) {
+      const result = await resolveDPoPFromArgs(argv);
+      expect(result.dpopEnabled).to.be.true;
+      expect(result.dpopKeyPair?.publicKey.algorithm).to.equal('ec:secp384r1');
+    }
   });
 
   it('propagates the CLIError for an invalid algorithm', async function () {
     try {
-      await resolveDPoPFromArgs({ dpop: 'INVALID' });
+      await resolveDPoPFromArgs({ dpopAlg: 'INVALID' });
       expect.fail('should have thrown');
     } catch (err) {
       expect((err as Error).message).to.include('Unsupported DPoP algorithm');
     }
   });
 
-  it('errors when an explicit --dpop conflicts with --dpopKey', async function () {
+  it('errors when --dpop-alg conflicts with --dpopKey', async function () {
     const path = join(tmpDir, 'args-conflict.pem');
     await writeFile(path, await ecPrivatePem('P-384'));
     try {
-      await resolveDPoPFromArgs({ dpop: 'ES256', dpopKey: path });
+      await resolveDPoPFromArgs({ dpopAlg: 'ES256', dpopKey: path });
       expect.fail('should have thrown');
     } catch (err) {
-      expect((err as Error).message).to.include('conflicts with the key');
+      expect((err as Error).message).to.include('--dpop-alg=ES256 conflicts with the key');
     }
   });
 
-  it('bare --dpop with --dpopKey infers the key algorithm (no conflict)', async function () {
-    const path = join(tmpDir, 'args-bare.pem');
-    await writeFile(path, await ecPrivatePem('P-384'));
-    const result = await resolveDPoPFromArgs({ dpop: '', dpopKey: path });
-    expect(result.dpopEnabled).to.be.true;
-    expect(result.dpopKeyPair?.publicKey.algorithm).to.equal('ec:secp384r1');
+  it('errors when --no-dpop is combined with --dpop-alg or --dpopKey', async function () {
+    for (const argv of [
+      { dpop: false, dpopAlg: 'ES256' },
+      { dpop: false, dpopKey: 'unused.pem' },
+    ]) {
+      try {
+        await resolveDPoPFromArgs(argv);
+        expect.fail('should have thrown');
+      } catch (err) {
+        expect((err as Error).message).to.include('--no-dpop conflicts');
+      }
+    }
   });
 });
