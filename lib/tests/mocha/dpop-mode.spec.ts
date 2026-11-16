@@ -115,6 +115,54 @@ describe('resource DPoP mode discovery', () => {
     expect(calls).to.equal(4);
   });
 
+  it('retries soon when either probe is inconclusive', async () => {
+    const answers: Array<[well: () => Promise<Response>, resource: () => Promise<Response>]> = [
+      // Definitive well-known absence, then a transient metadata failure.
+      [() => Promise.resolve(jsonResponse({}, 404)), () => Promise.resolve(jsonResponse({}, 503))],
+      // Transient well-known failure, then definitive metadata absence.
+      [
+        () => Promise.reject(new Error('network unavailable')),
+        () => Promise.resolve(jsonResponse({}, 404)),
+      ],
+    ];
+    for (const [well, resource] of answers) {
+      let now = 0;
+      let healthy = false;
+      const resolver = new DPoPModeResolver({
+        now: () => now,
+        fetch: (input) => {
+          if (healthy) {
+            return Promise.resolve(jsonResponse({ configuration: { dpop: { rfc9449: true } } }));
+          }
+          return requestHref(input).includes('GetWellKnownConfiguration') ? well() : resource();
+        },
+      });
+      expect(await resolver.htuForRpc(rpcUrl)).to.equal(procedure);
+      healthy = true;
+      now = 30_000;
+      expect(await resolver.htuForRpc(rpcUrl)).to.equal(fullHtu);
+    }
+  });
+
+  it('keeps a definitive legacy answer for the full cache lifetime', async () => {
+    let now = 0;
+    let calls = 0;
+    const resolver = new DPoPModeResolver({
+      now: () => now,
+      fetch: () => {
+        calls++;
+        return Promise.resolve(jsonResponse({}, 404));
+      },
+    });
+    expect(await resolver.htuForRpc(rpcUrl)).to.equal(procedure);
+    now = 5 * 60 * 1000 - 1;
+    expect(await resolver.htuForRpc(rpcUrl)).to.equal(procedure);
+    expect(calls).to.equal(2);
+    now = 5 * 60 * 1000;
+    await resolver.htuForRpc(rpcUrl);
+    expect(calls).to.equal(4);
+  });
+
   it('supports fixed modes and RFC 9449 URI normalization without discovery', async () => {
     const fetcher: typeof fetch = () => Promise.reject(new Error('fixed mode must not discover'));
     expect(

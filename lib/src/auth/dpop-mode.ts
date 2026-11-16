@@ -218,7 +218,7 @@ export class DPoPModeResolver {
           mode = 'rfc9449';
           conclusive = true;
         } else {
-          conclusive = wellKnown.kind !== 'inconclusive';
+          conclusive = wellKnown.kind !== 'inconclusive' && resource.kind !== 'inconclusive';
         }
       }
     } finally {
