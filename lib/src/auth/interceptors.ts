@@ -6,6 +6,8 @@ import DPoP from './dpop.js';
 import { type AuthProvider } from './auth.js';
 import { base64 } from '../encodings/index.js';
 import { DPoPModeResolver, type DPoPMode } from './dpop-mode.js';
+import { callWithNonceRetry, defaultNonceCache, toOrigin } from './dpop-nonce.js';
+import type { DPoPNonceCache } from './dpop-nonce.js';
 
 /**
  * A function that returns a valid access token string.
@@ -27,6 +29,12 @@ export type DPoPInterceptorOptions = {
   dpopMode?: DPoPMode;
   /** Share a resolver/cache with other auth paths when needed. */
   dpopModeResolver?: DPoPModeResolver;
+  /**
+   * Per-client DPoP-Nonce cache (RFC 9449 §8). Defaults to the shared
+   * {@link defaultNonceCache}; pass the same instance to `PlatformClient` for
+   * strict per-client isolation on the interceptor-only path.
+   */
+  nonceCache?: DPoPNonceCache;
 };
 
 /**
@@ -84,6 +92,7 @@ export function authTokenInterceptor(tokenProvider: TokenProvider): Interceptor 
 export function authTokenDPoPInterceptor(options: DPoPInterceptorOptions): DPoPInterceptor {
   const cryptoService = options.cryptoService ?? DefaultCryptoService;
   const modeResolver = options.dpopModeResolver ?? new DPoPModeResolver({ mode: options.dpopMode });
+  const nonceCache = options.nonceCache ?? defaultNonceCache;
   const dpopKeysPromise: Promise<KeyPair> = options.dpopKeys
     ? Promise.resolve(options.dpopKeys)
     : cryptoService.generateSigningKeyPair();
@@ -91,19 +100,22 @@ export function authTokenDPoPInterceptor(options: DPoPInterceptorOptions): DPoPI
   const interceptor: Interceptor = (next) => async (req) => {
     const [token, keys] = await Promise.all([options.tokenProvider(), dpopKeysPromise]);
 
+    const url = new URL(req.url);
+    const origin = url.origin;
     const httpUri = await modeResolver.htuForRpc(req.url, req.signal);
-
-    // Generate DPoP proof JWT for this request
-    const dpopProof = await DPoP(keys, cryptoService, httpUri, 'POST');
 
     // Export public key PEM for X-VirtruPubKey header
     const publicKeyPem = await cryptoService.exportPublicKeyPem(keys.publicKey);
 
-    req.header.set('Authorization', `Bearer ${token}`);
-    req.header.set('DPoP', dpopProof);
+    req.header.set('Authorization', `DPoP ${token}`);
     req.header.set('X-VirtruPubKey', base64.encode(publicKeyPem));
 
-    return next(req);
+    // Mint the proof around whichever nonce applies — the cached one normally,
+    // the server's on a DPoP-Nonce challenge retry.
+    return callWithNonceRetry(nonceCache, origin, 'rpc interceptor', async (nonce) => {
+      req.header.set('DPoP', await DPoP(keys, cryptoService, httpUri, 'POST', nonce, token));
+      return next(req);
+    });
   };
 
   // Attach dpopKeys to the interceptor function
@@ -126,44 +138,59 @@ export function authTokenDPoPInterceptor(options: DPoPInterceptorOptions): DPoPI
  */
 export function authProviderInterceptor(authProvider: AuthProvider): Interceptor {
   return (next) => async (req) => {
-    const url = new URL(req.url);
-    const pathOnly = url.pathname;
     const modeResolver = authProvider.dpopModeResolver;
-    // Custom providers without a resolver retain the previous path-only input.
-    // DPoP-aware providers need the absolute URL for their nonce cache, while
-    // dpopHtu carries the server's selected proof style separately.
     const dpopHtu = modeResolver ? await modeResolver.htuForRpc(req.url, req.signal) : undefined;
-    let token;
-    try {
-      token = await authProvider.withCreds({
-        url: modeResolver ? req.url : pathOnly,
-        dpopHtu,
-        method: 'POST',
-        // Start with any headers Connect already has
-        headers: {
-          ...Object.fromEntries(req.header.entries()),
-          'Content-Type': 'application/json',
-        },
-      });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes('public key') || msg.includes('updateClientPublicKey')) {
-        throw new Error(
-          'PlatformClient: DPoP key binding is not complete. ' +
-            'If you are using OpenTDF with PlatformClient, create OpenTDF first and ' +
-            '`await client.ready` before constructing PlatformClient. ' +
-            `Original error: ${msg}`,
-          { cause: err }
-        );
+    // Re-sign the request via withCreds and apply the resulting headers. Called
+    // once normally, and again on a DPoP-Nonce challenge so the provider mints a
+    // fresh proof carrying the server-issued nonce (read from nonceCache).
+    const sign = async (): Promise<void> => {
+      let token;
+      try {
+        token = await authProvider.withCreds({
+          url: req.url,
+          dpopHtu,
+          method: 'POST',
+          // Start with any headers Connect already has
+          headers: {
+            ...Object.fromEntries(req.header.entries()),
+            'Content-Type': 'application/json',
+          },
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes('public key') || msg.includes('updateClientPublicKey')) {
+          throw new Error(
+            'PlatformClient: DPoP key binding is not complete. ' +
+              'If you are using OpenTDF with PlatformClient, create OpenTDF first and ' +
+              '`await client.ready` before constructing PlatformClient. ' +
+              `Original error: ${msg}`,
+            { cause: err }
+          );
+        }
+        throw err;
       }
-      throw err;
+
+      Object.entries(token.headers).forEach(([key, value]) => {
+        req.header.set(key, String(value));
+      });
+    };
+
+    // Non-absolute URLs have no origin; nonce caching is origin-keyed, so those pass through.
+    const origin = toOrigin(req.url);
+    if (!origin) {
+      await sign();
+      return next(req);
     }
 
-    Object.entries(token.headers).forEach(([key, value]) => {
-      req.header.set(key, String(value));
+    // Share the provider's per-client cache so the nonce withCreds embeds and the
+    // one we read back on a 401 are the same instance (falls back to the shared
+    // default for custom providers that don't expose one). `sign` re-reads the
+    // nonce from that cache itself, so the nonce argument is unused here.
+    const nonceCache = authProvider.nonceCache ?? defaultNonceCache;
+    return callWithNonceRetry(nonceCache, origin, 'auth interceptor', async () => {
+      await sign();
+      return next(req);
     });
-
-    return await next(req);
   };
 }
 
