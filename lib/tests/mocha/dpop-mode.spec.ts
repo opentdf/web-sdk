@@ -116,17 +116,24 @@ describe('resource DPoP mode discovery', () => {
     expect(calls).to.equal(4);
   });
 
-  it('retries soon when either probe is inconclusive', async () => {
-    const answers: Array<[well: () => Promise<Response>, resource: () => Promise<Response>]> = [
-      // Definitive well-known absence, then a transient metadata failure.
-      [() => Promise.resolve(jsonResponse({}, 404)), () => Promise.resolve(jsonResponse({}, 503))],
-      // Transient well-known failure, then definitive metadata absence.
+  it('decides conclusiveness from the well-known probe alone, like the Go and Java SDKs', async () => {
+    const answers: Array<
+      [well: () => Promise<Response>, resource: () => Promise<Response>, retried: boolean]
+    > = [
+      // Definitive well-known absence; a metadata failure does not shorten the cache.
+      [
+        () => Promise.resolve(jsonResponse({}, 404)),
+        () => Promise.resolve(jsonResponse({}, 503)),
+        false,
+      ],
+      // Transient well-known failure, then definitive metadata absence: retry soon.
       [
         () => Promise.reject(new Error('network unavailable')),
         () => Promise.resolve(jsonResponse({}, 404)),
+        true,
       ],
     ];
-    for (const [well, resource] of answers) {
+    for (const [well, resource, retried] of answers) {
       let now = 0;
       let healthy = false;
       const resolver = new DPoPModeResolver({
@@ -141,7 +148,7 @@ describe('resource DPoP mode discovery', () => {
       expect(await resolver.htuForRpc(rpcUrl)).to.equal(procedure);
       healthy = true;
       now = 30_000;
-      expect(await resolver.htuForRpc(rpcUrl)).to.equal(fullHtu);
+      expect(await resolver.htuForRpc(rpcUrl)).to.equal(retried ? fullHtu : procedure);
     }
   });
 

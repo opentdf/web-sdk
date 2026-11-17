@@ -140,8 +140,9 @@ async function readDiscoveryJSON(
  * else, including failed or blocked discovery, is `legacy`. This keeps older
  * platforms working without configuration, at the cost of proofs that do not
  * name the origin. Use the `rfc9449` mode where every server supports it.
- * Failed discovery is cached only for `retryIntervalMs`, so a transient failure
- * does not pin a server to legacy for the full `cacheTtlMs`.
+ * If the well-known configuration gives no answer (and metadata does not
+ * advertise support), legacy is cached only for `retryIntervalMs`, so a
+ * transient failure does not pin a server to legacy for the full `cacheTtlMs`.
  */
 export class DPoPModeResolver {
   readonly mode: DPoPMode;
@@ -219,7 +220,9 @@ export class DPoPModeResolver {
           mode = 'rfc9449';
           conclusive = true;
         } else {
-          conclusive = wellKnown.kind !== 'inconclusive' && resource.kind !== 'inconclusive';
+          // RFC 9728 is new, so its absence says little. Conclude legacy once the
+          // well-known configuration has answered, as the Go and Java SDKs do.
+          conclusive = wellKnown.kind !== 'inconclusive';
         }
       }
     } finally {
