@@ -1,0 +1,170 @@
+import { expect } from 'chai';
+import * as jose from 'jose';
+
+import type { HttpRequest } from '../../src/auth/auth.js';
+import type { AccessToken } from '../../src/auth/oidc.js';
+import {
+  clientSecretAuthProvider,
+  externalAuthProvider,
+  refreshAuthProvider,
+} from '../../src/auth/providers.js';
+import { generateSigningKeyPair } from '../../tdf3/src/crypto/index.js';
+import type { KeyPair } from '../../tdf3/src/crypto/declarations.js';
+
+const ORIGIN = 'https://idp.example.test';
+const TOKEN_URL = `${ORIGIN}/protocol/openid-connect/token`;
+
+type DPoPOptions = { dpopEnabled?: boolean; signingKey?: KeyPair };
+
+/** The three provider factories, each reduced to "build me one with these DPoP options". */
+const FACTORIES: [string, (dpop: DPoPOptions) => Promise<{ oidcAuth: AccessToken }>][] = [
+  [
+    'clientSecretAuthProvider',
+    (dpop) =>
+      clientSecretAuthProvider({
+        exchange: 'client',
+        clientId: 'test-client',
+        clientSecret: 'test-secret',
+        oidcOrigin: ORIGIN,
+        ...dpop,
+      }),
+  ],
+  [
+    'externalAuthProvider',
+    (dpop) =>
+      externalAuthProvider({
+        exchange: 'external',
+        clientId: 'test-client',
+        externalJwt: 'external.jwt.value',
+        oidcOrigin: ORIGIN,
+        ...dpop,
+      }),
+  ],
+  [
+    'refreshAuthProvider',
+    (dpop) =>
+      refreshAuthProvider({
+        exchange: 'refresh',
+        clientId: 'test-client',
+        refreshToken: 'refresh-token-value',
+        oidcOrigin: ORIGIN,
+        ...dpop,
+      }),
+  ],
+];
+
+/** Stub the provider's token request and return the headers of the token POST it makes. */
+async function tokenPostHeaders(oidcAuth: AccessToken): Promise<Record<string, string>> {
+  let sent: Record<string, string> | undefined;
+  oidcAuth.request = (_input, init) => {
+    sent = init?.headers as Record<string, string>;
+    return Promise.resolve(
+      new Response(JSON.stringify({ access_token: 'issued-token' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    );
+  };
+  expect(await oidcAuth.get(false)).to.equal('issued-token');
+  expect(sent, 'no token request was made').to.not.be.undefined;
+  return sent!;
+}
+
+/**
+ * The provider factories must hand `dpopEnabled` and `signingKey` through to the
+ * `AccessToken` they build. They used to drop both, so a CLI started with
+ * `--dpop` sent its very first POST /token without a DPoP proof, and a
+ * DPoP-bound Keycloak client rejected it.
+ */
+describe('auth provider factories — DPoP passthrough', function (this: Mocha.Suite) {
+  this.timeout(10_000);
+
+  let keyPair: KeyPair;
+
+  before(async () => {
+    keyPair = await generateSigningKeyPair();
+  });
+
+  for (const [name, factory] of FACTORIES) {
+    it(`${name} sends a DPoP proof on the token request when given a signing key`, async () => {
+      const provider = await factory({ dpopEnabled: true, signingKey: keyPair });
+      expect(provider.oidcAuth.config.dpopEnabled).to.equal(true);
+
+      const headers = await tokenPostHeaders(provider.oidcAuth);
+      expect(headers).to.have.property('DPoP');
+      expect(headers).to.have.property('X-VirtruPubKey');
+
+      const proofHeader = jose.decodeProtectedHeader(headers.DPoP);
+      expect(proofHeader.typ).to.equal('dpop+jwt');
+      const claims = jose.decodeJwt(headers.DPoP);
+      expect(claims.htm).to.equal('POST');
+      expect(claims.htu).to.equal(TOKEN_URL);
+    });
+
+    it(`${name} sends no DPoP proof when DPoP is not configured`, async () => {
+      const provider = await factory({});
+      const headers = await tokenPostHeaders(provider.oidcAuth);
+      expect(headers).to.not.have.property('DPoP');
+      expect(headers).to.not.have.property('X-VirtruPubKey');
+    });
+  }
+
+  it('discovers the resource DPoP mode through the AccessToken request function', async () => {
+    const provider = await FACTORIES[0][1]({ dpopEnabled: true, signingKey: keyPair });
+    const seen: string[] = [];
+    provider.oidcAuth.request = (input) => {
+      seen.push(typeof input === 'string' ? input : input.url);
+      return Promise.resolve(
+        new Response(JSON.stringify({ configuration: { dpop: { rfc9449: true } } }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      );
+    };
+    const rpcUrl = 'https://kas.example.test/kas.AccessService/Rewrap';
+    expect(await provider.oidcAuth.dpopModeResolver?.htuForRpc(rpcUrl)).to.equal(rpcUrl);
+    expect(seen).to.deep.equal([
+      'https://kas.example.test/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration',
+    ]);
+  });
+
+  describe('withCreds proof htu', () => {
+    async function proofHtu(request: HttpRequest): Promise<unknown> {
+      const provider = await FACTORIES[0][1]({ dpopEnabled: true, signingKey: keyPair });
+      provider.oidcAuth.request = () =>
+        Promise.resolve(
+          new Response(JSON.stringify({ access_token: 'issued-token' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        );
+      const signed = await provider.oidcAuth.withCreds(request);
+      return jose.decodeJwt(signed.headers.DPoP).htu;
+    }
+
+    const rpcUrl = 'https://kas.example.test/proxy/kas.AccessService/Rewrap?q=1#f';
+
+    it('signs the negotiated dpopHtu', async () => {
+      expect(
+        await proofHtu({
+          url: rpcUrl,
+          dpopHtu: '/kas.AccessService/Rewrap',
+          method: 'POST',
+          headers: {},
+        })
+      ).to.equal('/kas.AccessService/Rewrap');
+    });
+
+    it('signs the absolute URL without query or fragment when dpopHtu is unset', async () => {
+      expect(await proofHtu({ url: rpcUrl, method: 'POST', headers: {} })).to.equal(
+        'https://kas.example.test/proxy/kas.AccessService/Rewrap'
+      );
+    });
+
+    it('signs a path-only URL as given', async () => {
+      expect(
+        await proofHtu({ url: '/kas.AccessService/Rewrap', method: 'POST', headers: {} })
+      ).to.equal('/kas.AccessService/Rewrap');
+    });
+  });
+});
