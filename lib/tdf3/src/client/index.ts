@@ -811,7 +811,9 @@ export class Client {
    * @param params streamMiddleware fucntion to process streamMiddleware
    * @param params.source A data stream object, one of remote, stream, buffer, etc. types.
    * @param params.eo Optional entity object (legacy AuthZ)
-   * @param params.assertionVerificationKeys Optional verification keys for assertions.
+   * @param params.assertionVerificationKeys Optional verification keys for assertions. A default
+   * key applies to every assertion without a per-ID key, including payload-key assertions such as
+   * the `system-metadata` assertion Java writers add; configure per-ID keys for those instead.
    * @param params.fulfillableObligationFQNs Optional fulfillable obligation value FQNs (overrides those on the Client)
    * @param params.range Optional byte range of the decrypted data to return; only the segments it needs are fetched
    * @return a {@link https://nodejs.org/api/stream.html#stream_class_stream_readable|Readable} stream containing the decrypted plaintext.

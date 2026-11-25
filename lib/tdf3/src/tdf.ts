@@ -1789,8 +1789,14 @@ export async function decryptStreamFrom(
         key: keyForDecryption, // SymmetricKey (opaque)
       };
 
-      if (cfg.assertionVerificationKeys) {
-        const foundKey = cfg.assertionVerificationKeys.Keys[assertion.id];
+      // The per-ID key, else the default key, else the payload key (HS256).
+      const verificationKeys = cfg.assertionVerificationKeys;
+      if (verificationKeys) {
+        const { Keys: keys, DefaultKey: defaultKey } = verificationKeys;
+        const foundKey =
+          keys && Object.prototype.hasOwnProperty.call(keys, assertion.id)
+            ? keys[assertion.id]
+            : defaultKey;
         if (foundKey) {
           assertionKey = foundKey;
         }
