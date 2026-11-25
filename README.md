@@ -168,17 +168,19 @@ You can run any of these commands using `make <command>`.
 
 Developing with this code requires a recent version of `npm` and `node`.
 We develop using [nvm](https://github.com/nvm-sh/nvm#readme),
-which allows us to pin to the same version of `npm` easily.
+which pins everyone to the Node.js version in `.nvmrc` — and therefore to the `npm` bundled with it.
 
 - Install [nvm](https://github.com/nvm-sh/nvm#readme)
   - see <https://github.com/nvm-sh/nvm#installing-and-updating>
-  - `nvm use` will install `npm` and `node`
+  - `nvm install` downloads the Node.js version pinned in `.nvmrc` (currently Node 24), including its bundled `npm`
+  - `nvm use` selects that installed version in the current shell; it does not download anything, so run it after `nvm install`
 
 [![Build](https://github.com/opentdf/web-sdk/actions/workflows/build.yaml/badge.svg)](https://github.com/opentdf/web-sdk/actions/workflows/build.yaml)
 
 To check out, build, and validate your installation, and test the sample web application, you may:
 
 ```sh
+nvm install # first time only; installs the version pinned in .nvmrc
 nvm use
 make test
 make start
