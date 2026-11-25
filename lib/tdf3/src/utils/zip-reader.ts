@@ -1,7 +1,8 @@
-import { InvalidFileError } from '../../../src/errors.js';
+import { AssertionVerificationError, InvalidFileError } from '../../../src/errors.js';
 import { type Chunker } from '../../../src/seekable.js';
 import type { Manifest } from '../models/index.js';
 import { readUInt32LE, readUInt16LE, copyUint8Arr, buffToString } from './index.js';
+import { scanStrictJson } from '../strict-json.js';
 
 // Signatures and fixed record sizes from PKWARE APPNOTE.TXT sections 4.3.7-4.3.16.
 /** Local file header signature (APPNOTE 4.3.7). */
@@ -107,6 +108,66 @@ export type EndOfCentralDirectory = {
   /** True if the values above were read from a ZIP64 end of central directory record. */
   zip64: boolean;
 };
+
+/**
+ * Decodes and parses manifest bytes. The manifest is parsed strictly (ZTDF
+ * assertions contract, Section 3) whether or not assertions are later
+ * verified: duplicate member names anywhere, case variants of modelled member
+ * names, and invalid UTF-8 are rejected, as are lone surrogates,
+ * noncharacters, and out-of-range numbers inside assertion objects.
+ * @throws InvalidFileError if the text is too large to decode, not valid JSON,
+ * or not a JSON object
+ * @throws AssertionVerificationError if it is not valid UTF-8 or fails strict parsing
+ */
+export function parseManifestBytes(manifest: Uint8Array, manifestFileName: string): Manifest {
+  let text: string;
+  try {
+    // Preserve a leading BOM so JSON.parse rejects it, matching Go's JSON reader.
+    text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(manifest);
+  } catch (e) {
+    // The Encoding standard reports malformed input as a TypeError; engines
+    // report a string too long to create with other errors.
+    if (e instanceof TypeError) {
+      throw new AssertionVerificationError(
+        'invalid-json',
+        `manifest [${manifestFileName}] is not valid UTF-8`,
+        undefined,
+        e
+      );
+    }
+    throw new InvalidFileError(
+      `manifest [${manifestFileName}] of [${manifest.length}] bytes is too large to decode`,
+      e instanceof Error ? e : undefined
+    );
+  }
+  // Check the raw text before JSON.parse can drop a duplicate member or
+  // accept input that canonicalizes differently in other SDKs.
+  const scan = scanStrictJson(text, 'manifest');
+  if (scan.failure) {
+    const { reason, detail, assertionId } = scan.failure;
+    throw new AssertionVerificationError(
+      reason,
+      `manifest [${manifestFileName}]: ${detail}`,
+      assertionId
+    );
+  }
+  let parsed: unknown;
+  try {
+    if (scan.syntaxError !== undefined) {
+      throw new SyntaxError(scan.syntaxError);
+    }
+    parsed = JSON.parse(text);
+  } catch (e) {
+    throw new InvalidFileError(
+      `manifest [${manifestFileName}] is not valid JSON`,
+      e instanceof Error ? e : undefined
+    );
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new InvalidFileError(`manifest [${manifestFileName}] is not a JSON object`);
+  }
+  return parsed as Manifest;
+}
 
 /**
  *
@@ -319,9 +380,11 @@ export class ZipReader {
   /**
    * Reads and parses the manifest entry. A duplicated name resolves to its last
    * record, the same as {@link getPayloadSegment} (see {@link findCentralDirectoryEntry}).
+   * The text is parsed strictly; see {@link parseManifestBytes}.
    * @returns The manifest, parsed from JSON
    * @throws InvalidFileError if the entry is missing, out of bounds, short, too
    * large to decode, not valid JSON, or not a JSON object
+   * @throws AssertionVerificationError if it is not valid UTF-8 or fails strict parsing
    */
   async getManifest(cdBuffers: CentralDirectory[], manifestFileName: string): Promise<Manifest> {
     const cdObj = findCentralDirectoryEntry(cdBuffers, manifestFileName);
@@ -332,29 +395,7 @@ export class ZipReader {
     const byteEnd = byteStart + cdObj.uncompressedSize;
     const manifest = await this.readRange(byteStart, byteEnd, `manifest [${manifestFileName}]`);
 
-    let text: string;
-    try {
-      // Preserve a leading BOM so JSON.parse rejects it, matching Go's JSON reader.
-      text = new TextDecoder('utf-8', { ignoreBOM: true }).decode(manifest);
-    } catch (e) {
-      throw new InvalidFileError(
-        `manifest [${manifestFileName}] of [${manifest.length}] bytes is too large to decode`,
-        e instanceof Error ? e : undefined
-      );
-    }
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(text);
-    } catch (e) {
-      throw new InvalidFileError(
-        `manifest [${manifestFileName}] is not valid JSON`,
-        e instanceof Error ? e : undefined
-      );
-    }
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-      throw new InvalidFileError(`manifest [${manifestFileName}] is not a JSON object`);
-    }
-    return parsed as Manifest;
+    return parseManifestBytes(manifest, manifestFileName);
   }
 
   async adjustHeaders(cdObj: CentralDirectory): Promise<void> {

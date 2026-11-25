@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import sinon from 'sinon';
 
-import { InvalidFileError } from '../../../src/errors.js';
+import { AssertionVerificationError, InvalidFileError } from '../../../src/errors.js';
 import { encodeArrayBuffer } from '../../../src/encodings/base64.js';
 import { fromBuffer, fromUrl } from '../../../src/seekable.js';
 import type { CentralDirectory } from '../../../tdf3/src/utils/zip-reader.js';
@@ -1205,6 +1205,120 @@ describe('reader', () => {
         () => reader.getManifest(centralDirectory, '0.manifest.json'),
         'manifest not JSON'
       );
+    });
+
+    describe('strict manifest parsing', () => {
+      async function readManifest(data: Uint8Array) {
+        const reader = new ZipReader(fromBuffer(buildZip([{ name: '0.manifest.json', data }])));
+        const centralDirectory = await reader.getCentralDirectory();
+        return reader.getManifest(centralDirectory, '0.manifest.json');
+      }
+      const text = (json: string) => new TextEncoder().encode(json);
+
+      const failures: Array<[string, string, string, string?]> = [
+        ['a duplicate member anywhere', '{"payload":{"type":"a","type":"b"}}', 'duplicate-member'],
+        [
+          'an escaped duplicate member',
+          '{"schemaVersion":"4.3.0","schem\\u0061Version":"x"}',
+          'duplicate-member',
+        ],
+        ['both assertions and Assertions', '{"assertions":[],"Assertions":[]}', 'ambiguous-member'],
+        ['an id and an ID', '{"assertions":[{"id":"a1","ID":"a2"}]}', 'ambiguous-member', 'a1'],
+        [
+          'a lone surrogate in an assertion',
+          '{"assertions":[{"x":"\\udead","id":"a1"}]}',
+          'invalid-json',
+          'a1',
+        ],
+        [
+          'an out-of-range number in an assertion',
+          '{"assertions":[{"id":"a1","n":-1e400}]}',
+          'invalid-json',
+          'a1',
+        ],
+        ['a Payload alone', '{"Payload":{}}', 'ambiguous-member'],
+        ['a SchemaVersion', '{"SchemaVersion":"4.3.0"}', 'ambiguous-member'],
+        [
+          'a URL in a key access object',
+          '{"encryptionInformation":{"keyAccess":[{"url":"k"},{"URL":"k"}]}}',
+          'ambiguous-member',
+        ],
+        [
+          'a long-s segmentHashAlg',
+          '{"encryptionInformation":{"integrityInformation":{"\\u017FegmentHashAlg":"GMAC"}}}',
+          'ambiguous-member',
+        ],
+        [
+          'a Hash in the second segment',
+          '{"encryptionInformation":{"integrityInformation":{"segments":[{"hash":"a"},{"Hash":"b"}]}}}',
+          'ambiguous-member',
+        ],
+        [
+          'an ALG in a policy binding',
+          '{"encryptionInformation":{"keyAccess":[{"policyBinding":{"ALG":"x"}}]}}',
+          'ambiguous-member',
+        ],
+        ['two unlisted names that differ only in case', '{"foo":1,"Foo":2}', 'ambiguous-member'],
+        [
+          'isStreamable and IsStreamable together',
+          '{"encryptionInformation":{"method":{"isStreamable":true,"IsStreamable":true}}}',
+          'ambiguous-member',
+        ],
+      ];
+      for (const [what, json, reason, id] of failures) {
+        it(`rejects ${what} with ${reason}`, async () => {
+          let error: unknown;
+          try {
+            await readManifest(text(json));
+          } catch (e) {
+            error = e;
+          }
+          expect(error).to.be.instanceOf(AssertionVerificationError);
+          expect((error as AssertionVerificationError).reason).to.equal(reason);
+          expect((error as AssertionVerificationError).assertionId).to.equal(id);
+          expect(messageOf(error)).to.contain(`reason=${reason}`);
+        });
+      }
+
+      it('rejects invalid UTF-8 with invalid-json', async () => {
+        let error: unknown;
+        try {
+          await readManifest(Uint8Array.from([...text('{"payload":"'), 0xc3, 0x28, ...text('"}')]));
+        } catch (e) {
+          error = e;
+        }
+        expect(error).to.be.instanceOf(AssertionVerificationError);
+        expect((error as AssertionVerificationError).reason).to.equal('invalid-json');
+      });
+
+      it('keeps reporting malformed JSON as not valid JSON', async () => {
+        for (const json of ['{"a":1,}', '\ufeff{}', '{"assertions":[{"id":"a1"}]']) {
+          const message = await expectInvalidFile(() => readManifest(text(json)), json);
+          expect(message).to.contain('not valid JSON');
+        }
+      });
+
+      it('allows the legacy IsStreamable, and case pairs outside modelled levels', async () => {
+        for (const json of [
+          '{"encryptionInformation":{"method":{"algorithm":"AES-256-GCM","IsStreamable":true}}}',
+          '{"assertions":[{"id":"a1","statement":{"value":{"Value":1,"value":2}}}]}',
+          '{"extra":{"foo":1,"Foo":2,"Payload":3},"payload":{"extra":{"URL":1,"url":2}}}',
+          '{"encryptionInformation":{"policy":"{\\"Body\\":1,\\"body\\":2}"}}',
+          '{"encryptionInformation":{"keyAccess":[{"policyBinding":"a string binding"}]}}',
+        ]) {
+          expect(await readManifest(text(json)), json).to.be.an('object');
+        }
+      });
+
+      it('applies the Unicode and number checks only inside assertions', async () => {
+        expect(await readManifest(text('{"other":"\\udead","n":1e400}'))).to.deep.equal({
+          other: '\udead',
+          n: Infinity,
+        });
+        expect(
+          await readManifest(text('{"assertions":[{"id":"a1","statement":{"value":{"ID":1}}}]}'))
+        ).to.have.property('assertions');
+      });
     });
 
     for (const json of ['null', '42', '"manifest"', '[]']) {

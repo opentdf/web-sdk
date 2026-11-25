@@ -85,6 +85,103 @@ export class IntegrityError extends InvalidFileError {
 }
 
 /**
+ * Stable reasons an assertion, or the manifest that carries it, can fail. The
+ * strings are shared with the Go and Java SDKs and appear in error messages as
+ * `reason=<code>`.
+ *
+ * `invalid-statement` is reserved; nothing reports it yet.
+ */
+export const ASSERTION_FAILURE_REASONS = [
+  'invalid-json',
+  'duplicate-member',
+  'ambiguous-member',
+  'invalid-id',
+  'invalid-statement',
+  'invalid-binding',
+  'unsupported-binding',
+  'unsupported-algorithm',
+  'algorithm-mismatch',
+  'invalid-embedded-key',
+  'signer-not-permitted',
+  'signature-invalid',
+  'binding-mismatch',
+  'configuration-error',
+] as const;
+
+/** One of {@link ASSERTION_FAILURE_REASONS}. */
+export type AssertionFailureReason = (typeof ASSERTION_FAILURE_REASONS)[number];
+
+const MAX_RENDERED_ID_CODE_POINTS = 256;
+
+const SHORT_ESCAPES: Record<number, string> = {
+  0x08: '\\b',
+  0x09: '\\t',
+  0x0a: '\\n',
+  0x0c: '\\f',
+  0x0d: '\\r',
+  0x5c: '\\\\',
+};
+
+/**
+ * Render an untrusted assertion id for an error message. Backslashes and
+ * control characters (U+0000-U+001F, U+007F-U+009F) are escaped JSON-style,
+ * and an id longer than 256 code points is cut there and ends with `…`, so an
+ * id cannot start a new log line or bury the reason.
+ */
+function renderAssertionId(id: string): string {
+  const codePoints = Array.from(id);
+  let rendered = '';
+  for (const ch of codePoints.slice(0, MAX_RENDERED_ID_CODE_POINTS)) {
+    const c = ch.codePointAt(0)!;
+    if (c === 0x5c || c <= 0x1f || (c >= 0x7f && c <= 0x9f)) {
+      rendered += SHORT_ESCAPES[c] ?? `\\u${c.toString(16).padStart(4, '0')}`;
+    } else {
+      rendered += ch;
+    }
+  }
+  return codePoints.length > MAX_RENDERED_ID_CODE_POINTS ? `${rendered}…` : rendered;
+}
+
+/**
+ * An assertion failed verification, or the manifest failed the strict parsing
+ * that assertion verification depends on (duplicate or ambiguous member names,
+ * or JSON that is not I-JSON inside an assertion).
+ *
+ * The message contains `reason=<code>` and, when the assertion's `id` is known,
+ * `id: <id>` with control characters escaped and long ids shortened;
+ * {@link assertionId} keeps the exact id.
+ */
+export class AssertionVerificationError extends IntegrityError {
+  override name = 'AssertionVerificationError';
+  /** Why verification failed. */
+  readonly reason: AssertionFailureReason;
+  /** The exact `id` of the failing assertion, when one could be read. */
+  readonly assertionId?: string;
+  /** What failed, in more detail than the reason. */
+  readonly detail?: string;
+
+  constructor(
+    reason: AssertionFailureReason,
+    detail?: string,
+    assertionId?: string,
+    cause?: Error
+  ) {
+    const id = assertionId === undefined ? '' : `, id: ${renderAssertionId(assertionId)}`;
+    super(
+      `assertion integrity check failed${id}, reason=${reason}${detail ? `: ${detail}` : ''}`,
+      cause
+    );
+    this.reason = reason;
+    if (assertionId !== undefined) {
+      this.assertionId = assertionId;
+    }
+    if (detail) {
+      this.detail = detail;
+    }
+  }
+}
+
+/**
  * A write used up the AES-GCM invocation budget for a single data encryption
  * key. Payload segments use random 96-bit IVs, so the chance of an IV
  * collision grows with the square of the segment count; NIST SP 800-38D §8.3
