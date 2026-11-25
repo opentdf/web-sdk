@@ -1,13 +1,42 @@
 import { expect } from 'chai';
-import { isValidTdf } from '../../../src/validation.js';
+import { ConfigurationError } from '../../../src/errors.js';
+import { isValidTdf, loadManifestValidator, validateTdf } from '../../../src/validation.js';
 import { archive, archiveParityCases } from '../../validation-fixtures.js';
 import cases, { experimentalCases } from '../../mocks/validation/manifest-cases.js';
 
 const json = (value: unknown) => new TextEncoder().encode(JSON.stringify(value));
 
-async function expectInvalid(bytes: Uint8Array): Promise<void> {
+/** Asserts both APIs reject `bytes`, and returns validateTdf's reason. */
+async function expectInvalid(bytes: Uint8Array): Promise<string> {
   expect(await isValidTdf(bytes)).to.equal(false);
+  const result = await validateTdf(bytes);
+  if (result.valid) {
+    expect.fail('validateTdf reported valid');
+  }
+  expect(result.reason).to.be.a('string').and.not.be.empty;
+  return result.reason;
 }
+
+/** Resolves to the rejection reason of `promise`; fails the test if it resolves. */
+function rejectionOf(promise: Promise<unknown>): Promise<unknown> {
+  return promise.then(
+    (value) => expect.fail(`expected a rejection, but it resolved to ${JSON.stringify(value)}`),
+    (error: unknown) => error
+  );
+}
+
+/** Delegates to a real Blob, but is not one: like a Blob from another realm. */
+const blobLike = (blob: Blob): Blob =>
+  ({
+    size: blob.size,
+    type: blob.type,
+    slice: (start?: number, end?: number) => blobLike(blob.slice(start, end)),
+    arrayBuffer: () => blob.arrayBuffer(),
+  }) as Blob;
+
+// Copied so the bytes are ArrayBuffer-backed, as Blob and Response require.
+const validTdf = () =>
+  new Uint8Array(archive([{ name: '0.manifest.json', data: json(cases[0].manifest) }]));
 
 // Expectations were checked against OpenTDF Go SDK v0.35.0 IsValidTdf.
 // No payload is present: like Go, this API validates the manifest, not ciphertext.
@@ -15,14 +44,20 @@ describe('isValidTdf lax-schema validation', () => {
   for (const test of [...cases, ...experimentalCases]) {
     it(test.name, async () => {
       const bytes = archive([{ name: '0.manifest.json', data: json(test.manifest) }]);
-      if (!test.valid) return expectInvalid(bytes);
+      if (!test.valid) {
+        await expectInvalid(bytes);
+        return;
+      }
       expect(await isValidTdf(bytes)).to.equal(true);
       expect(await isValidTdf(new Blob([new Uint8Array(bytes)]))).to.equal(true);
     });
   }
   for (const test of archiveParityCases()) {
     it(test.name, async () => {
-      if (!test.valid) return expectInvalid(test.bytes);
+      if (!test.valid) {
+        await expectInvalid(test.bytes);
+        return;
+      }
       expect(await isValidTdf(test.bytes)).to.equal(true);
     });
   }
@@ -81,12 +116,8 @@ describe('isValidTdf lax-schema validation', () => {
         throw failure;
       }
     }
-    try {
-      await isValidTdf(new UnreadableBlob());
-      expect.fail('Source read should fail');
-    } catch (error) {
-      expect(error).to.equal(failure);
-    }
+    expect(await rejectionOf(isValidTdf(new UnreadableBlob()))).to.equal(failure);
+    expect(await rejectionOf(validateTdf(new UnreadableBlob()))).to.equal(failure);
   });
   it('rejects invalid manifest JSON', async () => {
     await expectInvalid(
@@ -100,5 +131,76 @@ describe('isValidTdf lax-schema validation', () => {
     await expectInvalid(
       archive([{ name: '0.manifest.json', data: json(cases[0].manifest) }]).slice(0, -10)
     );
+  });
+});
+
+describe('validateTdf', () => {
+  it('reports a valid TDF without a reason', async () => {
+    expect(await validateTdf(validTdf())).to.eql({ valid: true });
+  });
+  it('reports why the archive is unreadable', async () => {
+    const reason = await expectInvalid(new TextEncoder().encode('not a ZIP archive'));
+    expect(reason).to.contain('end of central directory');
+  });
+  it('reports why the manifest is not JSON', async () => {
+    const reason = await expectInvalid(
+      archive([{ name: '0.manifest.json', data: new TextEncoder().encode('{') }])
+    );
+    expect(reason).to.contain('not valid JSON');
+  });
+  it('reports the most specific schema error', async () => {
+    const manifest = structuredClone(cases[0].manifest) as { payload: { isEncrypted: unknown } };
+    manifest.payload.isEncrypted = 'yes';
+    const reason = await expectInvalid(
+      archive([{ name: '0.manifest.json', data: json(manifest) }])
+    );
+    expect(reason).to.contain('lax schema');
+    expect(reason).to.contain('#/payload/isEncrypted');
+    expect(reason).to.contain('boolean');
+  });
+  it('reports a missing required property', async () => {
+    const reason = await expectInvalid(archive([{ name: '0.manifest.json', data: json({}) }]));
+    expect(reason).to.contain('required property "payload"');
+  });
+});
+
+describe('validateTdf source types', () => {
+  it('reads a Blob-like object that is not a Blob instance', async () => {
+    const source = blobLike(new Blob([validTdf()]));
+    expect(source).to.not.be.instanceOf(Blob);
+    expect(await isValidTdf(source)).to.equal(true);
+    expect(await validateTdf(source)).to.eql({ valid: true });
+  });
+  for (const [name, source] of [
+    ['a number[]', Array.from(validTdf())],
+    ['a string', 'PK'],
+    // A valid TDF's bytes: an ArrayBuffer used to pass by accident.
+    ['an ArrayBuffer', validTdf().buffer],
+    ['a plain object', {}],
+    ['a Response', new Response(validTdf())],
+    ['null', null],
+    ['undefined', undefined],
+  ] as const) {
+    it(`rejects ${name} instead of resolving false`, async () => {
+      for (const check of [isValidTdf, validateTdf]) {
+        const error = await rejectionOf(check(source as unknown as Uint8Array));
+        expect(error).to.be.instanceOf(ConfigurationError);
+        expect((error as Error).message).to.contain('expected a Uint8Array or Blob');
+      }
+    });
+  }
+});
+
+describe('loadManifestValidator', () => {
+  it('loads the validator', async () => {
+    const { validateManifest } = await loadManifestValidator();
+    expect(validateManifest(cases[0].manifest)).to.eql({ valid: true });
+  });
+  it('adds context when the validator fails to load', async () => {
+    const cause = new TypeError('Failed to fetch dynamically imported module');
+    const error = await rejectionOf(loadManifestValidator(() => Promise.reject(cause)));
+    expect(error).to.be.instanceOf(Error);
+    expect((error as Error).message).to.equal('validateTdf: failed to load the manifest validator');
+    expect((error as Error).cause).to.equal(cause);
   });
 });

@@ -86,16 +86,31 @@ const client = new OpenTDF({
 
 ## Validate an existing TDF
 
-Use `isValidTdf` before storing or forwarding a TDF. Like the Go SDK's
-`IsValidTdf`, it opens the archive, reads the manifest, and validates it against the
-lax manifest schema. It accepts a `Uint8Array` or browser `Blob` and returns
-a boolean, including support for experimental `mlkem-wrapped` key access:
+Use `isValidTdf` before storing or forwarding a TDF. It opens the archive, reads the
+manifest, and validates it against the lax manifest schema from the Go SDK, including
+support for experimental `mlkem-wrapped` key access. It accepts a `Uint8Array` or a
+`Blob`, such as a browser `File` (Blobs work in Node too), and returns a boolean. Pass
+a `File` or `Blob` directly: only the end of the archive, its central directory and
+the manifest are read, not the whole file.
 
 ```typescript
 import { isValidTdf } from '@opentdf/sdk';
 
-if (!(await isValidTdf(new Uint8Array(await file.arrayBuffer())))) {
+if (!(await isValidTdf(file))) {
   throw new Error('Invalid TDF');
+}
+```
+
+To find out why a TDF was rejected, use `validateTdf`. It resolves to
+`{ valid: true }` or `{ valid: false, reason }`. The reason is meant for logs and
+diagnostics; its wording may change.
+
+```typescript
+import { validateTdf } from '@opentdf/sdk';
+
+const result = await validateTdf(file);
+if (!result.valid) {
+  console.warn(`Rejected TDF: ${result.reason}`);
 }
 ```
 
@@ -104,5 +119,16 @@ referenced payload's existence, length, checksums, or cryptographic integrity.
 A successful result does not establish decryptability, authorization, or compliance
 with a service's policy requirements.
 
-Invalid archives or manifests return `false`. Unexpected errors, including source
-read failures, reject the promise. Schema validation loads only when called.
+Invalid archives or manifests resolve as invalid. A source that is neither a
+`Uint8Array` nor a `Blob` rejects with a `ConfigurationError`. Other unexpected errors,
+including source read failures, also reject the promise. The schema validator is only
+loaded the first time it is needed.
+
+This is not full parity with the Go SDK's `IsValidTdf`. The manifest entry names and
+which entry wins when a name is repeated (the last one) match, and so does the schema
+apart from `mlkem-wrapped`. Otherwise it differs, in both directions. Unlike Go,
+`isValidTdf` accepts `mlkem-wrapped` key access, an archive with a ZIP comment, and
+deeply nested manifest JSON. It rejects some archives that Go accepts: trailing data
+after the manifest JSON, compressed entries or entries whose compressed and
+uncompressed sizes differ, and an end of central directory record that overstates the
+central directory size.

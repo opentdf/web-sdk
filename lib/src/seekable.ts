@@ -19,8 +19,8 @@ export type Source =
   | { type: 'stream'; location: ReadableStream<Uint8Array> };
 
 /**
- * Creates a seekable object from a browser file object.
- * @param fileRef the browser file data
+ * Creates a seekable object from a Blob, such as a browser File or a Node Blob.
+ * @param fileRef the Blob to read
  */
 export const fromBrowserFile = (fileRef: Blob): Chunker => {
   // Reads issued before the length is known, other than the first suffix read,
@@ -29,9 +29,10 @@ export const fromBrowserFile = (fileRef: Blob): Chunker => {
     if (byteStart === undefined) {
       return new Uint8Array(await fileRef.arrayBuffer());
     }
+    // Read the slice directly. `new Response(slice)` stringifies a body it does
+    // not recognise as a Blob, such as a Blob-like object, and reads that instead.
     const chunkBlob = fileRef.slice(byteStart, byteEnd);
-    const arrayBuffer = await new Response(chunkBlob).arrayBuffer();
-    return new Uint8Array(arrayBuffer);
+    return new Uint8Array(await chunkBlob.arrayBuffer());
   };
 };
 
