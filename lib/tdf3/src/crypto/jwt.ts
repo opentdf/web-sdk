@@ -113,7 +113,7 @@ export async function signJwt(
   header: JwtHeader,
   options?: SignJwtOptions
 ): Promise<string> {
-  validateCrit(joseErrors.JWSInvalid, new Map([['b64', true]]), options?.crit, header, header);
+  validateCrit(joseErrors.JWSInvalid, options?.crit, header, header);
 
   // Encode header and payload per RFC 7515
   const headerB64 = base64urlEncode(JSON.stringify(header));
@@ -187,13 +187,7 @@ export async function verifyJwt(
     throw new joseErrors.JWTInvalid(`Invalid JWT: algorithm "${headerRaw.alg}" not in allowlist`);
   }
 
-  const extensions = validateCrit(
-    joseErrors.JWSInvalid,
-    new Map([['b64', true]]),
-    options?.crit,
-    headerRaw,
-    headerRaw
-  );
+  const extensions = validateCrit(joseErrors.JWSInvalid, options?.crit, headerRaw, headerRaw);
 
   // Now we know it's a valid algorithm
   const header = headerRaw;
