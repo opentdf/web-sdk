@@ -3,9 +3,13 @@ import { type AuthProvider, type HttpRequest } from './auth.js';
 import { AccessToken, type ExternalJwtCredentials } from './oidc.js';
 import * as defaultCryptoService from '../../tdf3/src/crypto/index.js';
 import { type CryptoService, type KeyPair } from '../../tdf3/src/crypto/declarations.js';
+import type { DPoPModeResolver } from './dpop-mode.js';
 
 export class OIDCExternalJwtProvider implements AuthProvider {
   oidcAuth: AccessToken;
+  get dpopModeResolver(): DPoPModeResolver | undefined {
+    return this.oidcAuth.dpopModeResolver;
+  }
   externalJwt?: string;
 
   constructor(
@@ -15,6 +19,9 @@ export class OIDCExternalJwtProvider implements AuthProvider {
       oidcOrigin,
       oidcTokenEndpoint,
       oidcUserInfoEndpoint,
+      dpopEnabled,
+      dpopMode,
+      signingKey,
     }: Partial<ExternalJwtCredentials> & Omit<ExternalJwtCredentials, 'exchange'>,
     cryptoService: CryptoService = defaultCryptoService
   ) {
@@ -30,6 +37,9 @@ export class OIDCExternalJwtProvider implements AuthProvider {
         oidcOrigin,
         oidcTokenEndpoint,
         oidcUserInfoEndpoint,
+        dpopEnabled,
+        dpopMode,
+        signingKey,
       },
       cryptoService
     );

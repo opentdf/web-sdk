@@ -6,6 +6,7 @@ import { base64 } from '../encodings/index.js';
 import { ConfigurationError, TdfError } from '../errors.js';
 import { rstrip } from '../utils.js';
 import { type CryptoService, type KeyPair } from '../../tdf3/src/crypto/declarations.js';
+import { DPoPModeResolver, fullDPoPHTU, type DPoPMode } from './dpop-mode.js';
 
 /**
  * Common fields used by all OIDC credentialing flows.
@@ -19,6 +20,8 @@ export type CommonCredentials = {
   oidcUserInfoEndpoint?: string;
   /** Whether or not DPoP is enabled. */
   dpopEnabled?: boolean;
+  /** Resource-server proof style; defaults to per-origin discovery when DPoP is enabled. */
+  dpopMode?: DPoPMode;
 
   /** the client's public key, base64 encoded. Will be bound to the OIDC token. Deprecated. If not set in the constructor, */
   signingKey?: KeyPair;
@@ -108,7 +111,17 @@ export class AccessToken {
 
   cryptoService: CryptoService;
 
+  readonly dpopModeResolver?: DPoPModeResolver;
+
   constructor(cfg: OIDCCredentials, cryptoService: CryptoService, request?: typeof fetch) {
+    this.dpopModeResolver = cfg.dpopEnabled
+      ? new DPoPModeResolver({
+          mode: cfg.dpopMode,
+          // Read `request` at call time so discovery follows the same transport as token calls.
+          fetch: (input, init) =>
+            (this.request ?? fetch)(input instanceof URL ? input.href : input, init),
+        })
+      : undefined;
     if (!cfg.clientId) {
       throw new ConfigurationError(
         'A Keycloak client identifier is currently required for all auth mechanisms'
@@ -333,10 +346,12 @@ export class AccessToken {
     }
     const accessToken = await this.get();
     if (this.config.dpopEnabled && this.signingKey) {
+      const htu =
+        httpReq.dpopHtu ?? (URL.canParse(httpReq.url) ? fullDPoPHTU(httpReq.url) : httpReq.url);
       const dpopToken = await dpopFn(
         this.signingKey,
         this.cryptoService,
-        httpReq.url,
+        htu,
         httpReq.method,
         /* nonce */ undefined,
         accessToken

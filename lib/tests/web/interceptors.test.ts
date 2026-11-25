@@ -58,6 +58,7 @@ describe('authTokenDPoPInterceptor', () => {
   it('sets Authorization, DPoP, and X-VirtruPubKey headers', async () => {
     const interceptor = authTokenDPoPInterceptor({
       tokenProvider: () => Promise.resolve('dpop-token'),
+      dpopMode: 'rfc9449',
     });
 
     const headers = await captureHeaders(interceptor);
@@ -100,6 +101,7 @@ describe('authTokenDPoPInterceptor', () => {
   it('generates a valid DPoP proof JWT', async () => {
     const interceptor = authTokenDPoPInterceptor({
       tokenProvider: () => Promise.resolve('test-access-token'),
+      dpopMode: 'rfc9449',
     });
 
     const headers = await captureHeaders(interceptor, 'https://example.com/v1/rewrap');

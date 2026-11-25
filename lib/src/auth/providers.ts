@@ -43,6 +43,9 @@ export const clientSecretAuthProvider = async (
       oidcOrigin: clientConfig.oidcOrigin,
       oidcTokenEndpoint: clientConfig.oidcTokenEndpoint,
       oidcUserInfoEndpoint: clientConfig.oidcUserInfoEndpoint,
+      dpopEnabled: clientConfig.dpopEnabled,
+      dpopMode: clientConfig.dpopMode,
+      signingKey: clientConfig.signingKey,
     },
     cryptoService
   );
@@ -76,6 +79,9 @@ export const externalAuthProvider = async (
       oidcOrigin: clientConfig.oidcOrigin,
       oidcTokenEndpoint: clientConfig.oidcTokenEndpoint,
       oidcUserInfoEndpoint: clientConfig.oidcUserInfoEndpoint,
+      dpopEnabled: clientConfig.dpopEnabled,
+      dpopMode: clientConfig.dpopMode,
+      signingKey: clientConfig.signingKey,
     },
     cryptoService
   );
@@ -107,6 +113,9 @@ export const refreshAuthProvider = async (
       oidcOrigin: clientConfig.oidcOrigin,
       oidcTokenEndpoint: clientConfig.oidcTokenEndpoint,
       oidcUserInfoEndpoint: clientConfig.oidcUserInfoEndpoint,
+      dpopEnabled: clientConfig.dpopEnabled,
+      dpopMode: clientConfig.dpopMode,
+      signingKey: clientConfig.signingKey,
     },
     cryptoService
   );

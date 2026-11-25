@@ -3,9 +3,14 @@ import type { AuthProvider, HttpRequest } from './auth.js';
 import { AccessToken, type ClientSecretCredentials } from './oidc.js';
 import * as defaultCryptoService from '../../tdf3/src/crypto/index.js';
 import { type CryptoService, type KeyPair } from '../../tdf3/src/crypto/declarations.js';
+import type { DPoPModeResolver } from './dpop-mode.js';
 
 export class OIDCClientCredentialsProvider implements AuthProvider {
   oidcAuth: AccessToken;
+
+  get dpopModeResolver(): DPoPModeResolver | undefined {
+    return this.oidcAuth.dpopModeResolver;
+  }
 
   constructor(
     {
@@ -14,6 +19,9 @@ export class OIDCClientCredentialsProvider implements AuthProvider {
       oidcOrigin,
       oidcTokenEndpoint,
       oidcUserInfoEndpoint,
+      dpopEnabled,
+      dpopMode,
+      signingKey,
     }: Partial<ClientSecretCredentials> & Omit<ClientSecretCredentials, 'exchange'>,
     cryptoService: CryptoService = defaultCryptoService
   ) {
@@ -29,6 +37,9 @@ export class OIDCClientCredentialsProvider implements AuthProvider {
         oidcOrigin,
         oidcTokenEndpoint,
         oidcUserInfoEndpoint,
+        dpopEnabled,
+        dpopMode,
+        signingKey,
       },
       cryptoService
     );

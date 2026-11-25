@@ -3,6 +3,7 @@ import { type AuthProvider, type HttpRequest } from './auth.js';
 import { AccessToken, type RefreshTokenCredentials } from './oidc.js';
 import * as defaultCryptoService from '../../tdf3/src/crypto/index.js';
 import { type CryptoService, type KeyPair } from '../../tdf3/src/crypto/declarations.js';
+import type { DPoPModeResolver } from './dpop-mode.js';
 
 /**
  * An AuthProvider that uses an OIDC refresh token to obtain an access token.
@@ -20,6 +21,9 @@ import { type CryptoService, type KeyPair } from '../../tdf3/src/crypto/declarat
  */
 export class OIDCRefreshTokenProvider implements AuthProvider {
   oidcAuth: AccessToken;
+  get dpopModeResolver(): DPoPModeResolver | undefined {
+    return this.oidcAuth.dpopModeResolver;
+  }
   refreshToken?: string;
 
   constructor(
@@ -29,6 +33,9 @@ export class OIDCRefreshTokenProvider implements AuthProvider {
       oidcOrigin,
       oidcTokenEndpoint,
       oidcUserInfoEndpoint,
+      dpopEnabled,
+      dpopMode,
+      signingKey,
     }: Partial<RefreshTokenCredentials> & Omit<RefreshTokenCredentials, 'exchange'>,
     cryptoService: CryptoService = defaultCryptoService
   ) {
@@ -44,6 +51,9 @@ export class OIDCRefreshTokenProvider implements AuthProvider {
         oidcOrigin,
         oidcTokenEndpoint,
         oidcUserInfoEndpoint,
+        dpopEnabled,
+        dpopMode,
+        signingKey,
       },
       cryptoService
     );
