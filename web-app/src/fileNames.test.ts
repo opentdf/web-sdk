@@ -20,6 +20,8 @@ const ALL_ALGORITHMS = [
   'rsa:4096',
   'mlkem:768',
   'mlkem:1024',
+  'hpqt:secp256r1-mlkem768',
+  'hpqt:secp384r1-mlkem1024',
 ] as const;
 
 // ENCRYPTED_FILE_NAME builds its qualifier alternation from PUBLIC_KEY_ALGORITHMS,
@@ -35,6 +37,8 @@ describe('algorithmSlug', () => {
     ['rsa:2048', 'rsa2048'],
     ['mlkem:768', 'mlkem768'],
     ['mlkem:1024', 'mlkem1024'],
+    ['hpqt:secp256r1-mlkem768', 'hpqtsecp256r1mlkem768'],
+    ['hpqt:secp384r1-mlkem1024', 'hpqtsecp384r1mlkem1024'],
   ] as const)('%s -> %s', (algorithm, expected) => {
     expect(algorithmSlug(algorithm)).toBe(expected);
   });
@@ -63,6 +67,8 @@ describe('expectedKaoType', () => {
     ['rsa:4096', 'wrapped'],
     ['mlkem:768', 'mlkem-wrapped'],
     ['mlkem:1024', 'mlkem-wrapped'],
+    ['hpqt:secp256r1-mlkem768', 'hybrid-wrapped'],
+    ['hpqt:secp384r1-mlkem1024', 'hybrid-wrapped'],
   ] as const)('%s -> %s', (algorithm, expected) => {
     expect(expectedKaoType(algorithm)).toBe(expected);
   });
@@ -73,6 +79,7 @@ describe('actualWrapQualifier', () => {
     ['wrapped', 'r1', '-kao=rsa-kid=r1'],
     ['ec-wrapped', 'e1', '-kao=ec-kid=e1'],
     ['mlkem-wrapped', 'mlkem768', '-kao=mlkem-kid=mlkem768'],
+    ['hybrid-wrapped', 'h1', '-kao=hybrid-kid=h1'],
     ['remote', 'r1', '-kao=remote-kid=r1'],
     // kaoMetadataFrom substitutes this when the key access object has no kid.
     // Parens and a space cannot survive as a qualifier, so the kid is dropped
@@ -87,7 +94,13 @@ describe('actualWrapQualifier', () => {
   // Same contract as the algorithmSlug round-trip above: whatever we append on
   // encrypt, decrypt has to be able to read back off the container name.
   it('produces a qualifier the file name parser can round-trip', () => {
-    for (const kaoType of ['remote', 'wrapped', 'ec-wrapped', 'mlkem-wrapped'] as const) {
+    for (const kaoType of [
+      'remote',
+      'wrapped',
+      'ec-wrapped',
+      'mlkem-wrapped',
+      'hybrid-wrapped',
+    ] as const) {
       for (const kid of ['e1', 'r1', 'mlkem768', '(no kid)']) {
         const qualifier = actualWrapQualifier(kaoType, kid);
         expect(parseEncryptedFileName(`README.md${qualifier}.tdf`)).toEqual({
