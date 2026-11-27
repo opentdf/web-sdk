@@ -5,16 +5,15 @@ import {
 } from '@opentdf/sdk';
 
 /**
- * `mlkem:768` -> `mlkem768`. Colons are legal in a file name but awkward on
- * Windows and in shell paths. For ML-KEM the slug happens to equal the KAS kid
- * (`mlkem:768` -> kid `mlkem768`); EC and RSA kids are unrelated (`e1`, `r1`).
- *
- * Every member of KasPublicKeyAlgorithm has exactly one colon and is otherwise
- * alphanumeric, so a non-global replace is enough today; a hybrid identifier
- * such as `ec:secp256r1+mlkem:768` would need `replaceAll`.
+ * `mlkem:768` -> `mlkem768`, `hpqt:secp256r1-mlkem768` -> `hpqtsecp256r1mlkem768`.
+ * Colons are legal in a file name but awkward on Windows and in shell paths, and
+ * a slug has to stay a single `\w+` token for the file name parser, so the
+ * hyphen of a hybrid identifier goes too. For ML-KEM the slug happens to equal
+ * the KAS kid (`mlkem:768` -> kid `mlkem768`); EC and RSA kids are unrelated
+ * (`e1`, `r1`).
  */
 export function algorithmSlug(algorithm: KasPublicKeyAlgorithm): string {
-  return algorithm.replace(':', '');
+  return algorithm.replace(/\W/g, '');
 }
 
 /**
@@ -22,6 +21,9 @@ export function algorithmSlug(algorithm: KasPublicKeyAlgorithm): string {
  * algorithm. Used to detect the case where it produced something else.
  */
 export function expectedKaoType(algorithm: KasPublicKeyAlgorithm): KeyAccessType {
+  if (algorithm.startsWith('hpqt:')) {
+    return 'hybrid-wrapped';
+  }
   if (algorithm.startsWith('mlkem:')) {
     return 'mlkem-wrapped';
   }
@@ -38,6 +40,7 @@ const KAO_TYPE_SLUG: Record<KeyAccessType, string> = {
   wrapped: 'rsa',
   'ec-wrapped': 'ec',
   'mlkem-wrapped': 'mlkem',
+  'hybrid-wrapped': 'hybrid',
 };
 
 /**
